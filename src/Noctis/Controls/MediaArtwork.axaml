@@ -1,0 +1,377 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Controls.MediaArtwork"
+             x:Name="Root">
+
+    <!-- The now-playing cover in one of four costumes. Every costume paints the SAME art
+         stack (placeholder → instant fallback bitmap → high-res CachedImage → animated
+         cover) so a track change behaves identically whichever one is showing; the
+         bitmaps are shared through ArtworkCache by (path, DecodeWidth), so the extra
+         copies cost layout, not decodes. Code-behind flips the layouts' IsVisible, keeps
+         only the visible costume's AnimatedCoverImage active, and drives the rotation of
+         the disc / record / reels from the frame clock (see SpinClock).
+
+         Light does not turn with the object: every specular sweep sits OUTSIDE the
+         rotating panel, so a spinning disc reads as something turning under a fixed
+         lamp rather than a picture of a disc rotating. -->
+    <Panel>
+
+        <!-- ── Cover: the classic rounded square ──────────────────────────────── -->
+        <Border x:Name="CoverLayout"
+                CornerRadius="{Binding #Root.CoverCornerRadius}"
+                ClipToBounds="True"
+                BoxShadow="0 16 50 0 #60000000">
+            <Panel>
+                <Border Background="#333344">
+                    <TextBlock Text="&#x266B;" FontSize="60" Foreground="#555566"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Image Source="{Binding #Root.FallbackSource}"
+                       Stretch="UniformToFill"
+                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                       IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                      DecodeWidth="{Binding #Root.DecodeWidth}"
+                                      Stretch="UniformToFill"
+                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                      IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <controls:AnimatedCoverImage x:Name="CoverAnimated"
+                                             Source="{Binding #Root.AnimatedSource}"/>
+            </Panel>
+        </Border>
+
+        <!-- ── Compact disc ───────────────────────────────────────────────────── -->
+        <!-- Drawn on a 200-unit canvas and scaled by the Viewbox so every proportion
+             (hole, clear hub, rim) holds at 84px and 780px alike. A geometry Clip on the
+             outer panel punches the centre hole out of everything — print, hub glass,
+             shadow, light — so the page background shows through (a clip is free per
+             frame; an OpacityMask costs an offscreen layer of the whole disc every
+             frame it turns). The one OpacityMask, on a WRAPPER (the frosted-band rule:
+             mask the output, not the child), thins the print to a trace under the hub,
+             where a real disc is bare polycarbonate and you see the backdrop through it. -->
+        <Viewbox x:Name="DiscLayout" Stretch="Uniform" IsVisible="False">
+            <Panel Width="200" Height="200">
+                <Panel.Clip>
+                    <!-- Everything (the rect is oversized so the drop shadow survives)
+                         minus the 27-unit hole. -->
+                    <CombinedGeometry GeometryCombineMode="Exclude">
+                        <CombinedGeometry.Geometry1>
+                            <RectangleGeometry Rect="-80,-80,360,360"/>
+                        </CombinedGeometry.Geometry1>
+                        <CombinedGeometry.Geometry2>
+                            <EllipseGeometry Rect="86.5,86.5,27,27"/>
+                        </CombinedGeometry.Geometry2>
+                    </CombinedGeometry>
+                </Panel.Clip>
+
+                <Panel x:Name="DiscSpin" Width="200" Height="200" RenderTransformOrigin="50%,50%">
+                    <Panel>
+                        <Panel.OpacityMask>
+                            <RadialGradientBrush Center="50%,50%" GradientOrigin="50%,50%" RadiusX="50%" RadiusY="50%">
+                                <GradientStop Offset="0" Color="#3A000000"/>
+                                <GradientStop Offset="0.325" Color="#3A000000"/>
+                                <GradientStop Offset="0.34" Color="Black"/>
+                                <GradientStop Offset="1" Color="Black"/>
+                            </RadialGradientBrush>
+                        </Panel.OpacityMask>
+                        <Border CornerRadius="1000" ClipToBounds="True" Background="#333344"
+                                BoxShadow="0 12 36 0 #66000000">
+                            <Panel>
+                                <TextBlock Text="&#x266B;" FontSize="60" Foreground="#555566"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{Binding #Root.FallbackSource}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                                      DecodeWidth="{Binding #Root.DecodeWidth}"
+                                                      Stretch="UniformToFill"
+                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                      IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <controls:AnimatedCoverImage x:Name="DiscAnimated"
+                                                             Source="{Binding #Root.AnimatedSource}"/>
+                                <!-- Iridescence: a conic rainbow over the print, the way a
+                                     pressed disc catches light. It is part of the disc,
+                                     so it turns with it. -->
+                                <Ellipse Opacity="0.30" IsHitTestVisible="False">
+                                    <Ellipse.Fill>
+                                        <ConicGradientBrush Center="50%,50%" Angle="20">
+                                            <GradientStop Offset="0" Color="#FF9FD8"/>
+                                            <GradientStop Offset="0.18" Color="#9FE8FF"/>
+                                            <GradientStop Offset="0.36" Color="#FFF29F"/>
+                                            <GradientStop Offset="0.52" Color="#C89FFF"/>
+                                            <GradientStop Offset="0.70" Color="#9FFFD0"/>
+                                            <GradientStop Offset="0.86" Color="#FFC49F"/>
+                                            <GradientStop Offset="1" Color="#FF9FD8"/>
+                                        </ConicGradientBrush>
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                            </Panel>
+                        </Border>
+                    </Panel>
+                    <!-- Clear outer rim: the print stops ~4 units short of the edge and
+                         the band outside is bare plastic, washed out over the art. -->
+                    <Ellipse Margin="2" Stroke="#2EFFFFFF" StrokeThickness="4" IsHitTestVisible="False"/>
+                    <Ellipse Margin="4" Stroke="#40000000" StrokeThickness="0.75" IsHitTestVisible="False"/>
+                </Panel>
+
+                <!-- Static layer: hub glass, edges, and the lamp. -->
+                <!-- Clear polycarbonate hub over the thinned print, lit from upper-left. -->
+                <Ellipse Width="66" Height="66" IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush Center="50%,50%" GradientOrigin="40%,36%" RadiusX="55%" RadiusY="55%">
+                            <GradientStop Offset="0" Color="#3CFFFFFF"/>
+                            <GradientStop Offset="0.55" Color="#1CFFFFFF"/>
+                            <GradientStop Offset="1" Color="#10FFFFFF"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse Width="66" Height="66" Stroke="#73FFFFFF" StrokeThickness="1" IsHitTestVisible="False"/>
+                <!-- Stacking ring -->
+                <Ellipse Width="44" Height="44" Stroke="#38FFFFFF" StrokeThickness="0.8" IsHitTestVisible="False"/>
+                <!-- Hole lip and outer rim edge sit outside the clipping Border so their
+                     strokes aren't halved by the clip. -->
+                <Ellipse Width="28" Height="28" Stroke="#99000000" StrokeThickness="1.5" IsHitTestVisible="False"/>
+                <Ellipse Margin="0.75" Stroke="#66FFFFFF" StrokeThickness="1.5" IsHitTestVisible="False"/>
+                <!-- Specular streak across one diagonal: fixed in place while the disc
+                     turns beneath it. -->
+                <Ellipse IsHitTestVisible="False">
+                    <Ellipse.Fill>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Offset="0" Color="#52FFFFFF"/>
+                            <GradientStop Offset="0.36" Color="#00FFFFFF"/>
+                            <GradientStop Offset="0.64" Color="#00FFFFFF"/>
+                            <GradientStop Offset="1" Color="#30FFFFFF"/>
+                        </LinearGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+            </Panel>
+        </Viewbox>
+
+        <!-- ── Vinyl: sleeve on the left, record pulled out on the right ──────── -->
+        <!-- Sleeve and record are 132 units in a 200-unit canvas so the record can come
+             far enough out for its label to show past the sleeve's edge (a 152 sleeve
+             hid the label entirely). The record is tucked while paused and slides out
+             26 units on play (code-behind sets RenderTransform on VinylSlide; the
+             transition below eases it). -->
+        <Viewbox x:Name="VinylLayout" Stretch="Uniform" IsVisible="False">
+            <Canvas Width="200" Height="200">
+                <Panel x:Name="VinylSlide" Canvas.Left="42" Canvas.Top="34" Width="132" Height="132">
+                    <Panel.Transitions>
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.7">
+                                <TransformOperationsTransition.Easing>
+                                    <CubicEaseOut/>
+                                </TransformOperationsTransition.Easing>
+                            </TransformOperationsTransition>
+                        </Transitions>
+                    </Panel.Transitions>
+
+                    <!-- The record. Grooves are faint rings; the label is the album art
+                         again, printed small — the one part of a turning record you can
+                         actually see turn. -->
+                    <Border x:Name="VinylSpin" CornerRadius="1000" ClipToBounds="True"
+                            RenderTransformOrigin="50%,50%"
+                            BoxShadow="0 8 24 0 #66000000">
+                        <Border.Background>
+                            <RadialGradientBrush Center="50%,50%" GradientOrigin="42%,42%" RadiusX="52%" RadiusY="52%">
+                                <GradientStop Offset="0" Color="#2C2C30"/>
+                                <GradientStop Offset="0.38" Color="#17171B"/>
+                                <GradientStop Offset="1" Color="#060607"/>
+                            </RadialGradientBrush>
+                        </Border.Background>
+                        <Panel>
+                            <Ellipse Margin="3" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="8" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="13" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="18" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="23" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="28" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="33" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
+                            <Ellipse Margin="38" Stroke="#22FFFFFF" StrokeThickness="1"/>
+                            <!-- Label -->
+                            <Border Width="48" Height="48" CornerRadius="1000" ClipToBounds="True" Background="#333344">
+                                <Panel>
+                                    <Image Source="{Binding #Root.FallbackSource}"
+                                           Stretch="UniformToFill"
+                                           RenderOptions.BitmapInterpolationMode="HighQuality"
+                                           IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                                          DecodeWidth="{Binding #Root.DecodeWidth}"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                          IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                </Panel>
+                            </Border>
+                            <Ellipse Width="48" Height="48" Stroke="#40000000" StrokeThickness="1" IsHitTestVisible="False"/>
+                            <!-- Spindle hole -->
+                            <Ellipse Width="5" Height="5" Fill="#0A0A0C"/>
+                        </Panel>
+                    </Border>
+
+                    <!-- Light sweeping across the grooves: fixed, so the grooves turn
+                         under it. -->
+                    <Ellipse IsHitTestVisible="False">
+                        <Ellipse.Fill>
+                            <LinearGradientBrush StartPoint="10%,0%" EndPoint="90%,100%">
+                                <GradientStop Offset="0" Color="#2CFFFFFF"/>
+                                <GradientStop Offset="0.35" Color="#00FFFFFF"/>
+                                <GradientStop Offset="0.65" Color="#00FFFFFF"/>
+                                <GradientStop Offset="1" Color="#16FFFFFF"/>
+                            </LinearGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                </Panel>
+
+                <!-- The sleeve, in front. -->
+                <Border Canvas.Left="0" Canvas.Top="34" Width="132" Height="132"
+                        CornerRadius="3" ClipToBounds="True"
+                        BoxShadow="0 10 30 0 #70000000">
+                    <Panel>
+                        <Border Background="#333344">
+                            <TextBlock Text="&#x266B;" FontSize="48" Foreground="#555566"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Image Source="{Binding #Root.FallbackSource}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                               IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                              DecodeWidth="{Binding #Root.DecodeWidth}"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <controls:AnimatedCoverImage x:Name="SleeveAnimated"
+                                                     Source="{Binding #Root.AnimatedSource}"/>
+                        <!-- Spine shading on the open edge so the sleeve reads as card,
+                             not a flat square. -->
+                        <Rectangle Width="10" HorizontalAlignment="Right" IsHitTestVisible="False">
+                            <Rectangle.Fill>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                    <GradientStop Offset="0" Color="#00000000"/>
+                                    <GradientStop Offset="1" Color="#59000000"/>
+                                </LinearGradientBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
+                    </Panel>
+                </Border>
+            </Canvas>
+        </Viewbox>
+
+        <!-- ── Cassette: the art becomes the label ────────────────────────────── -->
+        <!-- Shell is 200×128, the real 100×64 mm proportion. The window is kept to 40%
+             of the width so the label keeps enough of the cover to recognise. -->
+        <Viewbox x:Name="CassetteLayout" Stretch="Uniform" IsVisible="False">
+            <Canvas Width="200" Height="200">
+                <!-- Shell -->
+                <Border Canvas.Left="0" Canvas.Top="36" Width="200" Height="128"
+                        CornerRadius="12" BorderBrush="#40000000" BorderThickness="1"
+                        BoxShadow="0 10 28 0 #66000000">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#4A4A52"/>
+                            <GradientStop Offset="1" Color="#28282E"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border Canvas.Left="5" Canvas.Top="41" Width="190" Height="118"
+                        CornerRadius="9" BorderBrush="#1AFFFFFF" BorderThickness="1"/>
+
+                <!-- Label with the art. UniformToFill crops the cover to the label's
+                     wide aspect. -->
+                <Border Canvas.Left="12" Canvas.Top="46" Width="176" Height="74"
+                        CornerRadius="5" ClipToBounds="True"
+                        BorderBrush="#33FFFFFF" BorderThickness="1">
+                    <Panel>
+                        <Border Background="#333344">
+                            <TextBlock Text="&#x266B;" FontSize="30" Foreground="#555566"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Image Source="{Binding #Root.FallbackSource}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                               IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                              DecodeWidth="{Binding #Root.DecodeWidth}"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <controls:AnimatedCoverImage x:Name="CassetteAnimated"
+                                                     Source="{Binding #Root.AnimatedSource}"/>
+                    </Panel>
+                </Border>
+
+                <!-- Window: tape packs behind two toothed hubs, centred at (20,17) and
+                     (60,17) in window space. -->
+                <Border Canvas.Left="60" Canvas.Top="78" Width="80" Height="34"
+                        CornerRadius="6" ClipToBounds="True"
+                        Background="#0B0B0D" BorderBrush="#99000000" BorderThickness="1.5">
+                    <Canvas Width="80" Height="34">
+                        <!-- Tape packs: equal, and 2.5 units clear of the window edge so nothing clips. -->
+                        <Ellipse Canvas.Left="5.5" Canvas.Top="2.5" Width="29" Height="29" Fill="#3D2D22" Stroke="#26FFFFFF" StrokeThickness="0.6"/>
+                        <Ellipse Canvas.Left="45.5" Canvas.Top="2.5" Width="29" Height="29" Fill="#3D2D22" Stroke="#26FFFFFF" StrokeThickness="0.6"/>
+                        <!-- Tape running along the bottom between the packs -->
+                        <Rectangle Canvas.Left="20" Canvas.Top="31" Width="40" Height="2" Fill="#1B140F"/>
+
+                        <!-- Hubs: a pale ring with six teeth pointing inward. Each tooth
+                             pair is one bar whose middle is transparent. -->
+                        <Panel x:Name="ReelLeftSpin" Canvas.Left="10" Canvas.Top="7" Width="20" Height="20"
+                               RenderTransformOrigin="50%,50%">
+                            <Ellipse Fill="#141418"/>
+                            <Ellipse Margin="0.5" Stroke="#D8D8DE" StrokeThickness="2.5"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(60deg)"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(120deg)"/>
+                            <Ellipse Margin="7" Fill="#0B0B0D" Stroke="#30FFFFFF" StrokeThickness="0.6"/>
+                        </Panel>
+                        <Panel x:Name="ReelRightSpin" Canvas.Left="50" Canvas.Top="7" Width="20" Height="20"
+                               RenderTransformOrigin="50%,50%">
+                            <Ellipse Fill="#141418"/>
+                            <Ellipse Margin="0.5" Stroke="#D8D8DE" StrokeThickness="2.5"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(60deg)"/>
+                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(120deg)"/>
+                            <Ellipse Margin="7" Fill="#0B0B0D" Stroke="#30FFFFFF" StrokeThickness="0.6"/>
+                        </Panel>
+                    </Canvas>
+                </Border>
+
+                <!-- Foot: the pressure-pad plate with its capstan and guide holes. -->
+                <Path Fill="#202025" Stroke="#40000000" StrokeThickness="1"
+                      Data="M 44,124 L 156,124 L 168,158 L 32,158 Z"/>
+                <Ellipse Canvas.Left="53" Canvas.Top="134" Width="7" Height="7" Fill="#0A0A0C"/>
+                <Ellipse Canvas.Left="140" Canvas.Top="134" Width="7" Height="7" Fill="#0A0A0C"/>
+                <Ellipse Canvas.Left="75" Canvas.Top="144" Width="5" Height="5" Fill="#0A0A0C"/>
+                <Ellipse Canvas.Left="120" Canvas.Top="144" Width="5" Height="5" Fill="#0A0A0C"/>
+                <Ellipse Canvas.Left="97" Canvas.Top="133" Width="6" Height="6" Fill="#0A0A0C"/>
+
+                <!-- Screws -->
+                <Ellipse Canvas.Left="9" Canvas.Top="43" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+                <Ellipse Canvas.Left="186" Canvas.Top="43" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+                <Ellipse Canvas.Left="9" Canvas.Top="152" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+                <Ellipse Canvas.Left="186" Canvas.Top="152" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+                <Ellipse Canvas.Left="97.5" Canvas.Top="153" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+            </Canvas>
+        </Viewbox>
+    </Panel>
+
+    <UserControl.Resources>
+        <!-- One bar = two opposite hub teeth: opaque at both ends, clear through the
+             middle so the hub's open centre stays open. -->
+        <LinearGradientBrush x:Key="CassetteHubTeeth" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#D8D8DE"/>
+            <GradientStop Offset="0.24" Color="#D8D8DE"/>
+            <GradientStop Offset="0.25" Color="#00D8D8DE"/>
+            <GradientStop Offset="0.75" Color="#00D8D8DE"/>
+            <GradientStop Offset="0.76" Color="#D8D8DE"/>
+            <GradientStop Offset="1" Color="#D8D8DE"/>
+        </LinearGradientBrush>
+    </UserControl.Resources>
+</UserControl>
