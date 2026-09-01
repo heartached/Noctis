@@ -2286,18 +2286,38 @@ public class VlcAudioPlayer : IAudioPlayer
         path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>An audio-CD track path (<c>cdda:///D:/#3</c>); see <see cref="AudioCd.AudioCdPaths"/>.</summary>
+    internal static bool IsAudioCdPath(string path) => AudioCd.AudioCdPaths.IsAudioCdPath(path);
+
+    /// <summary>Paths that are not files: no File.Exists, no Path.GetFullPath, no standby pre-roll.</summary>
+    internal static bool IsPathlessMedia(string path) => IsRemoteStreamPath(path) || IsAudioCdPath(path);
+
+    /// <summary>
+    /// libvlc opens the whole disc from <c>cdda:///D:/</c> and picks the track through
+    /// the <c>cdda-track</c> option (the same option its own sub-items carry), so the
+    /// track number travels as a media option rather than in the MRL.
+    /// </summary>
+    internal static Media CreateAudioCdMedia(LibVLC libVlc, string path)
+    {
+        if (!AudioCd.AudioCdPaths.TryParseTrackPath(path, out var discMrl, out var trackNumber))
+            throw new ArgumentException("Not an audio-CD track path.", nameof(path));
+        var media = new Media(libVlc, discMrl, FromType.FromLocation);
+        media.AddOption($":cdda-track={trackNumber}");
+        return media;
+    }
+
     public void Play(string filePath)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
 
-        if (!IsRemoteStreamPath(filePath) && !File.Exists(filePath))
+        if (!IsPathlessMedia(filePath) && !File.Exists(filePath))
         {
             PlaybackError?.Invoke(this, $"File not found: {filePath}");
             return;
         }
 
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play",
-            $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : Path.GetFileName(filePath))}");
+            $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : IsAudioCdPath(filePath) ? filePath : Path.GetFileName(filePath))}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
 
@@ -2372,11 +2392,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // compare Path.GetFullPath-normalized local paths and the standby player
             // is never prepared for URLs (PrepareNext rejects them).
             var isRemote = IsRemoteStreamPath(filePath);
+            var isCd = IsAudioCdPath(filePath);
+            // Neither a stream nor a disc track is a file: the standby/crossfade helpers
+            // compare Path.GetFullPath-normalized local paths and PrepareNext never
+            // stages them, so both take the plain open path.
+            var isPathless = isRemote || isCd;
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
             var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
                                     _wasapiOut == null && !_exclusiveModeEnabled && !_gaplessEngine &&
-                                    !startPaused && !isRemote;
+                                    !startPaused && !isPathless;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -2413,7 +2438,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // behind the active segment, so the audible boundary needs NOTHING
             // from us. This "track change" is pure bookkeeping: swap the player
             // roles and let the outgoing segment play its tail out of the ring.
-            if (_gaplessEngine && !startPaused && !isRemote && hadPreviousMedia &&
+            if (_gaplessEngine && !startPaused && !isPathless && hadPreviousMedia &&
                 _engineStagedPath != null && _standbyMedia != null &&
                 string.Equals(_engineStagedPath, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
             {
@@ -2465,14 +2490,14 @@ public class VlcAudioPlayer : IAudioPlayer
             // Gapless: no crossfade, but the next track was prepared on the
             // standby player — hand off to it instantly at full volume instead
             // of the audible stop/parse/start path.
-            if (!canTransitionFade && !startPaused && !isRemote && _gaplessEnabled && hadPreviousMedia && !_standbyPrepared)
+            if (!canTransitionFade && !startPaused && !isPathless && _gaplessEnabled && hadPreviousMedia && !_standbyPrepared)
             {
                 // No standby to hand off to — the audible cold open below is the
                 // seam. Logged so a "gapless still gaps" report can be tied to a
                 // dead prepare (see AutoMix.DualPrepareCancelled) from the log.
                 DebugLogger.Info(DebugLogger.Category.Playback, "Gapless.ColdFallback", "no prepared standby");
             }
-            if (!canTransitionFade && !startPaused && !isRemote && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
+            if (!canTransitionFade && !startPaused && !isPathless && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
                 TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: true))
             {
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
@@ -2487,7 +2512,9 @@ public class VlcAudioPlayer : IAudioPlayer
             // and decoder-ready before the audible handoff starts.
             // Remote media-server streams are locations, not paths, and their
             // headers must be parsed over the network.
-            var media = new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
+            var media = isCd
+                ? CreateAudioCdMedia(_libVlc, filePath)
+                : new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
 
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
@@ -2699,7 +2726,7 @@ public class VlcAudioPlayer : IAudioPlayer
     /// </summary>
     private bool TryStartPreparedAutoMix(string filePath, int targetVolume, long sessionId, CancellationToken cancel, bool instantHandoff)
     {
-        var normalizedPath = Path.GetFullPath(filePath);
+        var normalizedPath = IsPathlessMedia(filePath) ? filePath : Path.GetFullPath(filePath);
         if (!_standbyPrepared ||
             _standbyMedia == null ||
             string.IsNullOrWhiteSpace(_standbyPath) ||

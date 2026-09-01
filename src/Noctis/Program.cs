@@ -254,6 +254,8 @@ internal class Program
         services.AddSingleton<IMediaSourceConnector, NavidromeMediaSourceConnector>();
         // On-demand media-server browsing/streaming (the "Server" section).
         services.AddSingleton<Services.MediaServer.IMediaServerService, Services.MediaServer.MediaServerService>();
+        services.AddSingleton<Services.AudioCd.IAudioCdService>(_ =>
+            new Services.AudioCd.AudioCdService(new Services.AudioCd.SystemDriveProbe(), new Services.AudioCd.LibVlcAudioCdReader()));
         services.AddSingleton<LoonClient>(sp =>
         {
             var persistence = sp.GetRequiredService<IPersistenceService>();

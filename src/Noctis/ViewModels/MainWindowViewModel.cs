@@ -10,6 +10,7 @@ using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.Services.MediaServer;
+using Noctis.Services.AudioCd;
 
 namespace Noctis.ViewModels;
 
@@ -197,6 +198,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly FavoritesViewModel _favoritesVm;
     private readonly LibraryFoldersViewModel _foldersVm;
     private readonly ServerViewModel _serverVm;
+    private readonly AudioCdViewModel _audioCdVm;
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
@@ -232,7 +234,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ILrcLibService lrcLib,
         INetEaseService netEase,
         IPlayHistoryService playHistory,
-        IMediaServerService mediaServer)
+        IMediaServerService mediaServer,
+        IAudioCdService audioCd)
     {
         _library = library;
         _playHistory = playHistory;
@@ -292,6 +295,17 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!configured && ReferenceEquals(CurrentView, _serverVm))
                 Navigate("home");
         };
+        // The Audio CD entry only exists in the rail while an optical drive does; the
+        // service polls for drive/disc changes once the shell is up.
+        _audioCdVm = new AudioCdViewModel(audioCd, Player);
+        Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
+        audioCd.DriveStateChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
+            if (!audioCd.HasDrive && ReferenceEquals(CurrentView, _audioCdVm))
+                Navigate("home");
+        });
+        audioCd.StartWatching();
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory, Settings);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence, Settings);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
@@ -1499,6 +1513,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return GetSectionBackButtonText("statistics");
         if (ReferenceEquals(view, _serverVm))
             return GetSectionBackButtonText("server");
+        if (ReferenceEquals(view, _audioCdVm))
+            return GetSectionBackButtonText("cd");
         if (ReferenceEquals(view, Settings))
             return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
@@ -1555,6 +1571,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return "statistics";
         if (ReferenceEquals(view, _serverVm))
             return "server";
+        if (ReferenceEquals(view, _audioCdVm))
+            return "cd";
         if (ReferenceEquals(view, Settings))
             return "settings";
 
@@ -1687,6 +1705,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "queue" => _queueVm,
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
                 "server" => RefreshAndReturnServer(_serverVm),
+                "cd" => RefreshAndReturnAudioCd(_audioCdVm),
                 "settings" => RefreshAndReturnSettings(),
                 _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
                 _ => _homeVm
@@ -1725,6 +1744,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "queue" => "Queue",
             "lyrics" => "Lyrics",
             "server" => "Server",
+            "cd" => "Audio CD",
             "settings" => "Settings",
             _ when key.StartsWith("playlist:") => "Playlist",
             _ => "Library"
@@ -1784,6 +1804,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private ServerViewModel RefreshAndReturnServer(ServerViewModel vm)
+    {
+        vm.OnNavigatedTo();
+        return vm;
+    }
+
+    private AudioCdViewModel RefreshAndReturnAudioCd(AudioCdViewModel vm)
     {
         vm.OnNavigatedTo();
         return vm;
@@ -2252,6 +2278,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _lyricsVm) return "lyrics";
         if (CurrentView == _statisticsVm) return "statistics";
         if (CurrentView == _serverVm) return "server";
+        if (CurrentView == _audioCdVm) return "cd";
         if (CurrentView == Settings) return "settings";
         if (CurrentView is AlbumDetailViewModel) return "albums";
         if (CurrentView is MoreByArtistViewModel) return "artists";

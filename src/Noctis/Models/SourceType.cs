@@ -10,6 +10,8 @@ public enum SourceType
     WebDav = 2,
     Navidrome = 3,
     Plex = 4,
-    Jellyfin = 5
+    Jellyfin = 5,
+    /// <summary>A track on an audio CD in an optical drive; FilePath is a cdda:// MRL, never a file.</summary>
+    AudioCd = 6
 }
 

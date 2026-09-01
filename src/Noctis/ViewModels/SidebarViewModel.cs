@@ -79,21 +79,32 @@ public partial class SidebarViewModel : ViewModelBase
     /// container doesn't leave a dead gap in the rail.
     /// </summary>
     public void SetServerSectionVisible(bool visible)
+        => SetOptionalSectionVisible(visible, "server", "Server", "ServerIcon", after: null, before: "cd");
+
+    /// <summary>
+    /// Shows or hides the "Audio CD" entry. It sits after Server (when present),
+    /// otherwise directly above Settings, and only exists while an optical drive does.
+    /// </summary>
+    public void SetAudioCdSectionVisible(bool visible)
+        => SetOptionalSectionVisible(visible, "cd", "Audio CD", "CdIcon", after: "server", before: null);
+
+    /// <summary>Insert order: right after <paramref name="after"/> if present, else right before
+    /// <paramref name="before"/> if present, else above Settings.</summary>
+    private void SetOptionalSectionVisible(bool visible, string key, string label, string icon, string? after, string? before)
     {
-        var existing = NavItems.FirstOrDefault(i => i.Key == "server");
+        var existing = NavItems.FirstOrDefault(i => i.Key == key);
         if (visible == (existing != null)) return;
+        if (!visible) { NavItems.Remove(existing!); return; }
 
-        if (!visible)
-        {
-            NavItems.Remove(existing!);
-            return;
-        }
-
-        var settingsIndex = NavItems
-            .Select((item, index) => (item, index))
-            .FirstOrDefault(x => x.item.Key == "settings").index;
-        var insertAt = settingsIndex > 0 ? settingsIndex : NavItems.Count;
-        NavItems.Insert(insertAt, new NavItem { Key = "server", Label = "Server", IconGlyph = "ServerIcon" });
+        var indexed = NavItems.Select((item, index) => (item, index)).ToList();
+        var afterIndex = after == null ? -1 : indexed.FirstOrDefault(x => x.item.Key == after, (null!, -1)).index;
+        var beforeIndex = before == null ? -1 : indexed.FirstOrDefault(x => x.item.Key == before, (null!, -1)).index;
+        var settingsIndex = indexed.FirstOrDefault(x => x.item.Key == "settings", (null!, -1)).index;
+        var insertAt = afterIndex >= 0 ? afterIndex + 1
+            : beforeIndex >= 0 ? beforeIndex
+            : settingsIndex >= 0 ? settingsIndex
+            : NavItems.Count;
+        NavItems.Insert(insertAt, new NavItem { Key = key, Label = label, IconGlyph = icon });
     }
 
     private bool _suppressNavigationRequest;

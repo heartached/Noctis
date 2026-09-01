@@ -128,12 +128,12 @@ public partial class Track : ObservableObject
     public string SourceConnectionId { get; set; } = string.Empty;
 
     /// <summary>
-    /// True for tracks streamed from a media server (FilePath is an http(s) URL,
-    /// not a local file). File-only paths — tag writes, sidecars, file operations —
-    /// must no-op for these.
+    /// True for tracks whose FilePath is not a local file: media-server streams
+    /// (http(s) URL) and audio-CD tracks (cdda:// MRL). File-only paths — tag writes,
+    /// sidecars, file operations — must no-op for these.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsRemoteStream => SourceType is SourceType.Navidrome or SourceType.Jellyfin or SourceType.Plex;
+    public bool IsRemoteStream => SourceType is SourceType.Navidrome or SourceType.Jellyfin or SourceType.Plex or SourceType.AudioCd;
 
     /// <summary>Timestamp of when this track was first discovered by a library scan.</summary>
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;

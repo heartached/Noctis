@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             x:Class="Noctis.Views.AudioCdView"
+             x:DataType="vm:AudioCdViewModel">
+    <Grid RowDefinitions="Auto,*" Margin="16,8,8,0">
+
+        <!-- Header: disc name, artist / count / length, Play All + Refresh -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="10,2,10,12">
+            <Border Grid.Column="0" Width="120" Height="120" CornerRadius="60" Background="#1AFFFFFF">
+                <Panel>
+                    <Border Width="34" Height="34" CornerRadius="17"
+                            Background="{DynamicResource AppMainBackground}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="118" Height="118" CornerRadius="59"
+                            BorderBrush="#22FFFFFF" BorderThickness="1"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Panel>
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6" Margin="18,0,0,0">
+                <TextBlock Text="{Binding DiscTitle}" FontSize="24" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding DiscMeta}" FontSize="13" Opacity="0.6"
+                           IsVisible="{Binding DiscMeta, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="13" Opacity="0.6"
+                           IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                    <Button Content="Play"
+                            Command="{Binding PlayAllCommand}"
+                            IsVisible="{Binding ShowTracks}"
+                            Padding="22,8" CornerRadius="999" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate>
+                                <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                  Foreground="{DynamicResource AccentForegroundBrush}"
+                                                  CornerRadius="999"
+                                                  Padding="22,8"
+                                                  FontSize="13"
+                                                  FontWeight="SemiBold"
+                                                  Content="{TemplateBinding Content}"/>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <Button Content="Re-read disc"
+                            Command="{Binding RefreshCommand}"
+                            IsEnabled="{Binding !IsReading}"
+                            IsVisible="{Binding HasDrive}"
+                            Padding="14,7" CornerRadius="999" Cursor="Hand"
+                            FontSize="12" FontWeight="SemiBold"
+                            Background="{DynamicResource SystemControlBackgroundListMediumBrush}"
+                            BorderThickness="0"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Track list -->
+        <ListBox Grid.Row="1" Classes="track-list"
+                 ItemsSource="{Binding Tracks}"
+                 IsVisible="{Binding ShowTracks}"
+                 Padding="0,0,10,115"
+                 Background="Transparent" BorderThickness="0"
+                 DoubleTapped="OnTrackDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="m:Track">
+                    <Grid ColumnDefinitions="32,*,Auto" Margin="6,4">
+                        <Grid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Play"
+                                          Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackCommand}"
+                                          CommandParameter="{Binding}"/>
+                                <MenuItem Header="Play Next"
+                                          Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackNextCommand}"
+                                          CommandParameter="{Binding}"/>
+                                <MenuItem Header="Add to Queue"
+                                          Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).AddTrackToQueueCommand}"
+                                          CommandParameter="{Binding}"/>
+                            </ContextMenu>
+                        </Grid.ContextMenu>
+                        <TextBlock Grid.Column="0" Text="{Binding TrackNumber}" FontSize="13" Opacity="0.45"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" Margin="4,0,8,0">
+                            <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Artist}" FontSize="12" Opacity="0.55" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding DurationFormatted}" FontSize="13" Opacity="0.5"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
