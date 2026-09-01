@@ -98,8 +98,9 @@
         <Style Selector="Border.server-pill-shell">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <!-- Same quiet outline as the rail's search box (plain TextBox theme brushes). -->
+            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource TextControlBackground}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
         </Style>
         <!-- Focus parity: the field boxes turn accent on :focus, the shell follows suit. -->
@@ -481,14 +482,14 @@
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,10" />
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+            <Setter Property="Background" Value="{DynamicResource TextControlBackground}" />
         </Style>
         <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
         <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
