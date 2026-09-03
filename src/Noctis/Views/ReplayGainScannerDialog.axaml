@@ -33,10 +33,11 @@
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}"
+                                IsVisible="{Binding ShowCancel}"
                                 Width="100" Padding="0,8" FontWeight="Bold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="Scan" Command="{Binding StartCommand}"
+                        <Button Grid.Column="2" Content="{Binding PrimaryButtonText}" Command="{Binding StartCommand}"
                                 IsEnabled="{Binding !IsScanning}"
                                 Width="100" Padding="0,8"
                                 Classes="accent-btn"

@@ -1641,6 +1641,7 @@ public class VlcAudioPlayer : IAudioPlayer
             _gaplessSink = null;
             DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.Disabled", "output mode rebuilt");
             ApplyMuteToOwner(); // mute moves back to the player (or the exclusive sink)
+            ApplyPlaybackRateToOwner(); // and so does the playback speed
         }
 
         // Loaded media counts as active even when IsPlaying is still false:
@@ -1733,6 +1734,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 _exclusiveOut = null;
             }
             ApplyMuteToOwner(); // exclusive sink gone: the engine gate or the player owns mute again
+            ApplyPlaybackRateToOwner();
             _keepAlive?.SetSuspended(false);
             if (_sessionVolume != null)
             {
@@ -2101,6 +2103,38 @@ public class VlcAudioPlayer : IAudioPlayer
         _crossfadeOverlap = overlap;
     }
 
+    // ── Playback speed (podcast/audiobook island) ──
+    private double _playbackRate = 1.0;
+
+    public void SetPlaybackRate(double rate)
+    {
+        if (_disposed) return;
+        Volatile.Write(ref _playbackRate, TempoStretchProvider.ClampRate(rate));
+        ApplyPlaybackRateToOwner();
+    }
+
+    /// <summary>
+    /// Engine: the speed is a pitch-preserving stretch in the sink's render path
+    /// (LibVLC stays at 1× — it was started with --no-audio-time-stretch, so its
+    /// own rate change would shift pitch). Other outputs: LibVLC's rate, which is
+    /// pitch-preserving only because those media are opened with
+    /// ":audio-time-stretch" (see the AddOption sites). Re-applied whenever the
+    /// output owner changes, like mute.
+    /// </summary>
+    private void ApplyPlaybackRateToOwner()
+    {
+        var rate = Volatile.Read(ref _playbackRate);
+        if (_gaplessEngine && _gaplessSink is { } sink)
+        {
+            sink.Provider.PlaybackRate = rate;
+            try { _player.SetRate(1f); } catch { }
+            try { _standbyPlayer.SetRate(1f); } catch { }
+            return;
+        }
+        try { _player.SetRate((float)rate); } catch { }
+        try { _standbyPlayer.SetRate((float)rate); } catch { }
+    }
+
     public void SetGapless(bool enabled)
     {
         if (_disposed) return;
@@ -2154,6 +2188,10 @@ public class VlcAudioPlayer : IAudioPlayer
             try
             {
                 media = new Media(_libVlc, normalizedPath, FromType.FromPath);
+                // Off the engine the playback-speed button is LibVLC's rate; only
+                // media opened with time-stretch keep their pitch at ≠ 1×.
+                if (!_gaplessEngine)
+                    media.AddOption(":audio-time-stretch");
             }
             catch (Exception ex)
             {
@@ -2517,7 +2555,21 @@ public class VlcAudioPlayer : IAudioPlayer
                 // outgoing segment over to the staged one instead (Abandon also
                 // unblocks its writer before that Stop joins the decoder).
                 var outgoingSeg = Volatile.Read(ref _engineSegments[EngineSlotOf(_player)]);
-                if (outgoingSeg != null && !outgoingSeg.EndOfStream)
+                // Transition-mode advance (Crossfade / AutoMix): the queue moved on
+                // fade-length seconds BEFORE the outgoing's end, so a plain cut here
+                // dropped that tail dead — "the last 5 seconds skip" (Discord, 08-19).
+                // The engine is single-stream, so the blend is rendered by the sink
+                // itself: the outgoing keeps decoding into its ring as a fading tail
+                // mixed under the staged track. Cleanup of its player waits it out.
+                var engineFadeMs = 0;
+                if (_crossfadeEnabled && outgoingSeg != null && !outgoingSeg.IsFinished &&
+                    _gaplessSink is { } fadeSink)
+                {
+                    var wantMs = Math.Clamp(_crossfadeDurationMs, 250, 12000);
+                    if (fadeSink.Provider.BeginCrossfade(wantMs, _crossfadeFadeCurve))
+                        engineFadeMs = wantMs;
+                }
+                if (engineFadeMs == 0 && outgoingSeg != null && !outgoingSeg.EndOfStream)
                     outgoingSeg.Abandon();
                 var outgoingPlayer = _player;
                 var outgoingMedia = _currentMedia;
@@ -2539,11 +2591,14 @@ public class VlcAudioPlayer : IAudioPlayer
                 _gaplessSink?.Resume();
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
                 _positionTimer.Start();
-                DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Spliced", $"path={Path.GetFileName(filePath)}");
+                DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Spliced",
+                    $"path={Path.GetFileName(filePath)}, crossfadeMs={engineFadeMs}");
                 // Outgoing input already hit EOF (decode-ahead) — the deferred
                 // Stop() cannot block on a writer, and its segment keeps playing
-                // from the ring untouched.
-                QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
+                // from the ring untouched. A crossfading tail must keep its decoder
+                // alive for the whole fade, so the stop waits that long extra.
+                QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId,
+                    extraDelayMs: engineFadeMs > 0 ? engineFadeMs + 500 : 0);
                 return;
             }
             if (_gaplessEngine)
@@ -2581,6 +2636,11 @@ public class VlcAudioPlayer : IAudioPlayer
             var media = isCd
                 ? CreateAudioCdMedia(_libVlc, filePath)
                 : new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
+            // Off the engine the playback-speed button is LibVLC's rate; only media
+            // opened with time-stretch keep their pitch at ≠ 1× (scaletempo is a
+            // pass-through at 1×, and it is VLC's own default filter).
+            if (!_gaplessEngine)
+                media.AddOption(":audio-time-stretch");
 
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
@@ -3426,14 +3486,14 @@ public class VlcAudioPlayer : IAudioPlayer
             $"waitedMs={Environment.TickCount64 - start}");
     }
 
-    private void QueueInactivePlayerCleanup(MediaPlayer inactivePlayer, Media? inactiveMedia, long sessionId)
+    private void QueueInactivePlayerCleanup(MediaPlayer inactivePlayer, Media? inactiveMedia, long sessionId, int extraDelayMs = 0)
     {
         ThreadPool.QueueUserWorkItem(_ =>
         {
             var cleanupStart = Environment.TickCount64;
             try
             {
-                Thread.Sleep(DeferredCleanupDelayMs);
+                Thread.Sleep(DeferredCleanupDelayMs + Math.Max(0, extraDelayMs));
                 if (_disposed) return;
                 DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupStart", $"session={sessionId}");
 

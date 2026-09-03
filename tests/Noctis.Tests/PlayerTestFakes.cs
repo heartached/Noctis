@@ -52,6 +52,8 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void ApplyReplayGain(string mode, double preampDb) { }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public void SetGapless(bool enabled) { }
+    public double PlaybackRate { get; private set; } = 1.0;
+    public void SetPlaybackRate(double rate) => PlaybackRate = rate;
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public void CancelPreparedNext() { }
     public void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb) { }

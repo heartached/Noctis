@@ -24,6 +24,19 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private string _statusMessage = string.Empty;
 
+    /// <summary>
+    /// True once a scan ran to completion. The primary button then reads "Done" and
+    /// closes the dialog instead of silently rescanning the whole selection; Cancel
+    /// is hidden because there is nothing left to cancel.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrimaryButtonText))]
+    [NotifyPropertyChangedFor(nameof(ShowCancel))]
+    private bool _hasFinished;
+
+    public string PrimaryButtonText => HasFinished ? "Done" : "Scan";
+    public bool ShowCancel => !HasFinished;
+
     public ObservableCollection<RgJobRow> Jobs { get; } = new();
 
     /// <summary>
@@ -106,6 +119,13 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     [RelayCommand]
     private async Task Start()
     {
+        if (HasFinished)
+        {
+            // "Done": the scan already ran, just dismiss.
+            _initCts.Cancel();
+            Closed?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         if (IsScanning || !_service.IsAvailable) return;
         // Stop the pre-scan tag reads so they can't hold a handle while we write.
         _initCts.Cancel();
@@ -138,6 +158,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
             // Refresh the library so any in-app view (e.g. metadata window) that
             // reads RG tags picks up the new values.
             _library.NotifyMetadataChanged();
+            HasFinished = true;
         }
         catch (OperationCanceledException)
         {

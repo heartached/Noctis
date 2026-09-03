@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Noctis.Services;
 
 namespace Noctis.Helpers;
 
@@ -43,15 +44,7 @@ public static class PlatformHelper
                 {
                     var parent = Path.GetDirectoryName(filePath);
                     if (!string.IsNullOrEmpty(parent))
-                    {
-                        // ArgumentList — the string overload splits on spaces.
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = "xdg-open",
-                            ArgumentList = { parent },
-                            UseShellExecute = false
-                        });
-                    }
+                        OpenLinuxFolder(parent);
                 }
             }
         }
@@ -146,6 +139,7 @@ public static class PlatformHelper
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+            ScrubAppImageEnvironment(psi);
             using var proc = Process.Start(psi);
             if (proc != null)
             {
@@ -186,7 +180,7 @@ public static class PlatformHelper
                 if (IsMacOS)
                     Process.Start("open", url);
                 else if (IsLinux)
-                    Process.Start("xdg-open", url);
+                    TryRunHostTool("xdg-open", new[] { url }, waitMs: 4000);
             }
             catch { /* best effort */ }
         }
@@ -219,19 +213,135 @@ public static class PlatformHelper
             }
             else if (IsLinux)
             {
-                // ArgumentList — the string overload splits on spaces.
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "xdg-open",
-                    ArgumentList = { folderPath },
-                    UseShellExecute = false
-                });
+                OpenLinuxFolder(folderPath);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Non-critical
+            DebugLog.Write("PlatformHelper", $"OpenFolder failed: {ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Linux "open this folder": FileManager1 D-Bus (every major file manager
+    /// answers it), then xdg-open, then gio. Each step is checked by exit code
+    /// and logged, so a Steam Deck / AppImage failure no longer reads as "the
+    /// button does nothing". (Discord, Spark, 09-02: SteamOS AppImage.)
+    /// </summary>
+    private static void OpenLinuxFolder(string folderPath)
+    {
+        var folderUri = new Uri(folderPath).AbsoluteUri.Replace(",", "%2C");
+        if (TryRunHostTool("dbus-send", new[]
+            {
+                "--session", "--print-reply",
+                "--dest=org.freedesktop.FileManager1", "--type=method_call",
+                "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1.ShowFolders",
+                $"array:string:{folderUri}", "string:"
+            }, waitMs: 2500))
+            return;
+        if (TryRunHostTool("xdg-open", new[] { folderPath }, waitMs: 4000))
+            return;
+        if (TryRunHostTool("gio", new[] { "open", folderPath }, waitMs: 4000))
+            return;
+        DebugLog.Write("PlatformHelper", $"OpenFolder: every Linux launcher failed for {folderPath}");
+    }
+
+    /// <summary>
+    /// Runs a host tool with the AppImage runtime scrubbed from its environment
+    /// and reports whether it exited 0 within <paramref name="waitMs"/>. A tool
+    /// still running at the deadline (a file manager that stays in the
+    /// foreground) counts as success. Missing binaries and non-zero exits are
+    /// logged and return false so the caller can try the next launcher.
+    /// </summary>
+    private static bool TryRunHostTool(string fileName, string[] args, int waitMs)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            ScrubAppImageEnvironment(psi);
+            using var proc = Process.Start(psi);
+            if (proc == null)
+            {
+                DebugLog.Write("PlatformHelper", $"{fileName}: Process.Start returned null");
+                return false;
+            }
+            if (!proc.WaitForExit(waitMs))
+                return true; // still running = it launched something
+            if (proc.ExitCode == 0)
+                return true;
+            string err;
+            try { err = proc.StandardError.ReadToEnd().Trim(); } catch { err = string.Empty; }
+            DebugLog.Write("PlatformHelper", $"{fileName} exited {proc.ExitCode}{(err.Length > 0 ? ": " + err : string.Empty)}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("PlatformHelper", $"{fileName} failed to start: {ex.GetType().Name}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The AppImage's AppRun exports LD_LIBRARY_PATH (its bundled Ubuntu .so
+    /// tree) and VLC_PLUGIN_PATH for our own process, and every child inherits
+    /// them — so a host tool like xdg-open, dbus-send or the file manager it
+    /// spawns loads the AppImage's libraries ahead of the distro's and dies
+    /// (SteamOS/Arch vs Ubuntu 24.04 payload). Strip every entry that points
+    /// inside the AppImage mount before launching anything that isn't ours.
+    /// </summary>
+    internal static void ScrubAppImageEnvironment(ProcessStartInfo psi) =>
+        ScrubAppImageEnvironment(psi,
+            Environment.GetEnvironmentVariable("APPDIR"),
+            Environment.GetEnvironmentVariable("APPIMAGE"));
+
+    internal static void ScrubAppImageEnvironment(ProcessStartInfo psi, string? appDir, string? appImage)
+    {
+        if (string.IsNullOrWhiteSpace(appDir) && string.IsNullOrWhiteSpace(appImage))
+            return;
+        var env = psi.Environment;
+        foreach (var key in new[] { "LD_LIBRARY_PATH", "LD_PRELOAD" })
+        {
+            if (!env.TryGetValue(key, out var value) || string.IsNullOrEmpty(value))
+                continue;
+            var kept = StripAppDirEntries(value, appDir);
+            if (kept.Length == 0) env.Remove(key);
+            else env[key] = kept;
+        }
+        foreach (var key in new[] { "VLC_PLUGIN_PATH", "NOCTIS_BUNDLED_VLC", "PYTHONHOME", "PYTHONPATH" })
+        {
+            if (!env.TryGetValue(key, out var value)) continue;
+            if (key is "NOCTIS_BUNDLED_VLC" || string.IsNullOrEmpty(appDir) || (value != null && PointsInside(value, appDir)))
+                env.Remove(key);
+        }
+    }
+
+    /// <summary>Drops every ':'-separated path entry that lives under <paramref name="appDir"/>
+    /// (or, with no known AppDir, under a /tmp/.mount_ AppImage mount); keeps the rest in order.</summary>
+    internal static string StripAppDirEntries(string pathList, string? appDir)
+    {
+        var kept = new List<string>();
+        foreach (var raw in pathList.Split(':'))
+        {
+            if (raw.Length == 0) continue;
+            if (!string.IsNullOrEmpty(appDir) && PointsInside(raw, appDir)) continue;
+            if (string.IsNullOrEmpty(appDir) && raw.StartsWith("/tmp/.mount_", StringComparison.Ordinal)) continue;
+            kept.Add(raw);
+        }
+        return string.Join(':', kept);
+    }
+
+    private static bool PointsInside(string path, string root)
+    {
+        var r = root.TrimEnd('/');
+        return path == r || path.StartsWith(r + "/", StringComparison.Ordinal);
     }
 
     /// <summary>

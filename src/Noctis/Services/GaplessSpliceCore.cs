@@ -343,6 +343,32 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private readonly bool _readTrace = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"));
     private long _lastTraceTick;
 
+    // Mixed crossfade (transition-mode advance under the engine): the outgoing
+    // segment keeps rendering as a fading tail ADDED to the new active segment
+    // for _fadeTotalSamples, then is abandoned. Without this the engine could
+    // only butt-splice or cut, so an early transition advance cut the last
+    // fade-length seconds of every playlist track dead.
+    private GaplessTrackSegment? _fading;
+    private ISampleProvider? _fadingAdapted;
+    private Noctis.Models.AutoMixFadeCurve _fadeCurve;
+    private int _fadeTotalSamples;
+    private int _fadeElapsedSamples;   // render thread only
+    private volatile bool _crossfadeArmed; // BeginCrossfade swapped the active off the render thread
+    private float[]? _fadeScratch;
+
+    // Playback speed (podcast/audiobook island): a WSOLA stretch is the LAST
+    // adapter stage, pulling media frames at the rate, so the segment's
+    // PositionMs stays media time and LibVLC keeps decoding at 1×. 1.0 is a
+    // pass-through — the gapless seam stays bit-exact.
+    private double _playbackRate = 1.0;
+
+    /// <summary>Playback speed, 0.5–2.0; 1.0 = untouched.</summary>
+    public double PlaybackRate
+    {
+        get => Volatile.Read(ref _playbackRate);
+        set => Volatile.Write(ref _playbackRate, TempoStretchProvider.ClampRate(value));
+    }
+
     public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
@@ -366,6 +392,37 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     /// Drop every queued segment and the active one (full stop / new queue).
     /// The render side falls to silence until the next Enqueue.
     /// </summary>
+    /// <summary>
+    /// Start a mixed crossfade from the active segment into the next queued one:
+    /// the next segment becomes active NOW (position/bookkeeping follow it) while
+    /// the outgoing keeps rendering as a fading tail mixed underneath for
+    /// <paramref name="durationMs"/>, after which it is abandoned. False when
+    /// nothing is active or nothing is staged — the caller then cuts as before.
+    /// The outgoing decoder must keep feeding its segment for the fade length.
+    /// </summary>
+    public bool BeginCrossfade(int durationMs, Noctis.Models.AutoMixFadeCurve curve)
+    {
+        lock (_gate)
+        {
+            if (_active == null || _active.Abandoned || _pending.Count == 0)
+                return false;
+            // A fade still in flight: its tail is stale now — drop it.
+            _fading?.Abandon();
+            _fading = _active;
+            _fadingAdapted = _activeAdapted;
+            _active = _pending.Dequeue();
+            _activeAdapted = Adapt(_active);
+            _fadeCurve = curve;
+            _fadeTotalSamples = Math.Max(1, WaveFormat.SampleRate * WaveFormat.Channels * Math.Clamp(durationMs, 1, 20000) / 1000);
+            _fadeElapsedSamples = 0;
+            _crossfadeArmed = true;
+            return true;
+        }
+    }
+
+    /// <summary>True while an outgoing tail is still being mixed underneath the active segment.</summary>
+    public bool IsCrossfading { get { lock (_gate) return _fading != null; } }
+
     public void Clear()
     {
         lock (_gate)
@@ -375,6 +432,9 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             _active?.Abandon();
             _active = null;
             _activeAdapted = null;
+            _fading?.Abandon();
+            _fading = null;
+            _fadingAdapted = null;
             while (_pending.Count > 0)
                 _pending.Dequeue().Abandon();
         }
@@ -396,6 +456,18 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     public int Read(float[] buffer, int offset, int count)
     {
         var written = 0;
+        if (_crossfadeArmed)
+        {
+            // BeginCrossfade promoted the staged segment off the render thread:
+            // a fresh active is governed by its own start gate, not a leftover
+            // underrun hold, and the audible boundary is announced like a splice.
+            _crossfadeArmed = false;
+            _refillSamplesNeeded = 0;
+            GaplessTrackSegment? promoted;
+            lock (_gate) promoted = _active;
+            if (promoted != null)
+                SegmentStarted?.Invoke(promoted);
+        }
         while (written < count)
         {
             ISampleProvider? adapted;
@@ -555,6 +627,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             }
             _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
         }
+        MixFadingTail(buffer, offset, count);
         if (_readTrace && Environment.TickCount64 - _lastTraceTick > 250)
         {
             _lastTraceTick = Environment.TickCount64;
@@ -562,6 +635,66 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 $"offset={offset}, count={count}, written={written}, padded={padded}, bufLen={buffer.Length}, declick={_declickRemaining}, fade={_fadeRemaining}, silent={_silentSamples}, active={(_active != null ? 1 : 0)}");
         }
         return count;
+    }
+
+    // Crossfade render: the buffer holds the new active segment's audio (or
+    // silence) for this read; scale it by the fade-in factor and add the
+    // outgoing tail scaled by the fade-out factor, sample-locked so both
+    // sides advance together. The tail is dropped when the fade completes or
+    // it runs dry (EOS drained). Render thread only.
+    private void MixFadingTail(float[] buffer, int offset, int count)
+    {
+        GaplessTrackSegment? fading;
+        ISampleProvider? adapted;
+        lock (_gate)
+        {
+            fading = _fading;
+            adapted = _fadingAdapted;
+        }
+        if (fading == null || adapted == null)
+            return;
+
+        var scratch = _fadeScratch;
+        if (scratch == null || scratch.Length < count)
+            _fadeScratch = scratch = new float[Math.Max(count, 4096)];
+        var got = 0;
+        if (!fading.Abandoned)
+        {
+            while (got < count)
+            {
+                var n = adapted.Read(scratch, got, count - got);
+                if (n <= 0) break; // underrun or drained: the rest of the tail is silence
+                got += n;
+            }
+        }
+        for (var i = got; i < count; i++)
+            scratch[i] = 0f;
+
+        var total = _fadeTotalSamples;
+        var elapsed = _fadeElapsedSamples;
+        var ch = WaveFormat.Channels;
+        for (var i = 0; i < count; i += ch)
+        {
+            var progress = Math.Min(1.0, (elapsed + i) / (double)total);
+            var (outGain, inGain) = AutoMixFadeMath.GetFadeFactors(progress, _fadeCurve);
+            var end = Math.Min(count, i + ch);
+            for (var c = i; c < end; c++)
+                buffer[offset + c] = (float)(buffer[offset + c] * inGain + scratch[c] * outGain);
+        }
+        _fadeElapsedSamples = (int)Math.Min((long)elapsed + count, int.MaxValue / 2);
+
+        if (_fadeElapsedSamples >= total || fading.IsFinished || fading.Abandoned)
+        {
+            lock (_gate)
+            {
+                if (ReferenceEquals(_fading, fading))
+                {
+                    _fading = null;
+                    _fadingAdapted = null;
+                }
+            }
+            fading.Abandon();
+        }
     }
 
     // Linear per-sample ramp 0 → 1 across _startFadeSamples, resuming across
@@ -587,6 +720,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             source = new StereoToMonoSampleProvider(source);
         if (source.WaveFormat.SampleRate != WaveFormat.SampleRate)
             source = new WdlResamplingSampleProvider(source, WaveFormat.SampleRate);
+        source = new TempoStretchProvider(source, () => Volatile.Read(ref _playbackRate));
         return source;
     }
 

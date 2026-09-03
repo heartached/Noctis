@@ -225,7 +225,11 @@ public partial class PlaybackBarView : UserControl
         }
 
         if (e.PropertyName == nameof(PlayerViewModel.IsLyricsPageActive) ||
-            e.PropertyName == nameof(PlayerViewModel.PlaybackBarIslandWidth))
+            e.PropertyName == nameof(PlayerViewModel.PlaybackBarIslandWidth) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowSkipButtons) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowPlaybackSpeed) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowSleepTimer) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowShuffle))
         {
             UpdateIslandWidth();
         }
@@ -942,6 +946,9 @@ public partial class PlaybackBarView : UserControl
     private const double IslandFullShapeMinWidth = 606; // below: viewports narrow to 120
     private const double IslandMidShapeMinWidth = 536;  // below: track info hidden (compact pill)
     private const double IslandMinUserWidth = IslandLyricsPageWidth;
+    // Each optional island button (speed / skip back / skip forward / sleep) is a 34px
+    // transport button plus the row's 2px spacing.
+    private const double ExtraTransportButtonWidth = 36;
     // Breathing room to the host's edges, matching the 8px margins the side panels use.
     private const double IslandEdgeMargin = 8;
     private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
@@ -1115,17 +1122,41 @@ public partial class PlaybackBarView : UserControl
     {
         if (_isResizeDragging) return; // the live drag owns the width until release
 
+        // The podcast/audiobook extras widen the transport cluster; the stock width
+        // (and the fixed lyrics-page pill) grow with them so the layout budget holds.
+        // A width the user chose themselves is left alone — the shape thresholds
+        // below account for the extras instead.
+        var extra = ExtraTransportWidth;
         if (CompactWhenLyricsPageActive && _observedPlayerViewModel?.IsLyricsPageActive == true)
-            IslandBorder.Width = IslandLyricsPageWidth;
+            IslandBorder.Width = IslandLyricsPageWidth + extra;
         else if (!CompactWhenLyricsPageActive && _observedPlayerViewModel is { } vm)
-            IslandBorder.Width = ClampUserIslandWidth(vm.PlaybackBarIslandWidth);
+        {
+            var width = ClampUserIslandWidth(vm.PlaybackBarIslandWidth);
+            if (Math.Abs(width - IslandBaseWidth) < 0.5)
+                width += extra;
+            IslandBorder.Width = width;
+        }
         else
-            IslandBorder.Width = IslandBaseWidth;
+            IslandBorder.Width = IslandBaseWidth + extra;
 
         // SizeChanged only fires when the arranged size actually changes, so re-apply
         // here too: a lyrics-page flip must refresh the track-info visibility even
         // when the width stays put.
         ApplyIslandShape(IslandBorder.Width);
+    }
+
+    /// <summary>Width the visible island extras add to the transport cluster.</summary>
+    private double ExtraTransportWidth
+    {
+        get
+        {
+            if (_observedPlayerViewModel is not { } vm) return 0;
+            var buttons = (vm.IslandShowSkipButtons ? 2 : 0)
+                        + (vm.IslandShowPlaybackSpeed ? 1 : 0)
+                        + (vm.IslandShowSleepTimer ? 1 : 0)
+                        + (vm.IslandShowShuffle ? 1 : 0);
+            return buttons * ExtraTransportButtonWidth;
+        }
     }
 
     /// <summary>Lower bound + garbage guard for a stored width; the upper bound is the
@@ -1141,8 +1172,9 @@ public partial class PlaybackBarView : UserControl
     {
         if (!CompactWhenLyricsPageActive && width > 0)
         {
-            _isWidthCompact = width < IslandMidShapeMinWidth;
-            var mid = !_isWidthCompact && width < IslandFullShapeMinWidth;
+            var extra = ExtraTransportWidth;
+            _isWidthCompact = width < IslandMidShapeMinWidth + extra;
+            var mid = !_isWidthCompact && width < IslandFullShapeMinWidth + extra;
             if (IslandBorder.Classes.Contains("bar-mid") != mid)
             {
                 if (mid) IslandBorder.Classes.Add("bar-mid");

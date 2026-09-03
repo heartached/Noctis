@@ -108,6 +108,10 @@ public interface IAudioPlayer : IDisposable
     /// </summary>
     void SetGapless(bool enabled);
 
+    /// <summary>Playback speed (0.5–2.0, 1.0 = normal), pitch-preserving. Sticks across
+    /// track changes until changed again; not persisted.</summary>
+    void SetPlaybackRate(double rate);
+
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 

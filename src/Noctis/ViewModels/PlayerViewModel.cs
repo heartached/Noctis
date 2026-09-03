@@ -89,6 +89,44 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _autoMixBeatMatch = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
+
+    // ── Player island extras (Settings → Appearance → Player Island Buttons) ──
+    // Podcast/audiobook transport (Discord, Luwi, 08-26): skip back/forward,
+    // playback speed and a sleep-timer button, each opt-in. Mirrored from
+    // SettingsViewModel like the marquee flags — the bar's DataContext is this VM.
+    [ObservableProperty] private bool _islandShowSkipButtons;
+    [ObservableProperty] private bool _islandShowPlaybackSpeed;
+    [ObservableProperty] private bool _islandShowSleepTimer;
+    /// <summary>GitHub #59: shuffle on the island, after Repeat.</summary>
+    [ObservableProperty] private bool _islandShowShuffle;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandSkipLabel))]
+    [NotifyPropertyChangedFor(nameof(SkipBackTooltip))]
+    [NotifyPropertyChangedFor(nameof(SkipForwardTooltip))]
+    private int _islandSkipSeconds = 15;
+
+    public string IslandSkipLabel => IslandSkipSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    public string SkipBackTooltip => $"Back {IslandSkipSeconds} seconds";
+    public string SkipForwardTooltip => $"Forward {IslandSkipSeconds} seconds";
+
+    /// <summary>Playback speed as a percent (75 … 200); 100 = normal. Session-only on
+    /// purpose: a forgotten 1.5× would make every album sound wrong on the next launch.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlaybackRate))]
+    [NotifyPropertyChangedFor(nameof(PlaybackRateText))]
+    [NotifyPropertyChangedFor(nameof(IsPlaybackRateChanged))]
+    private int _playbackRatePercent = 100;
+
+    public double PlaybackRate => PlaybackRatePercent / 100.0;
+    public string PlaybackRateText => (PlaybackRatePercent / 100.0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×";
+    public bool IsPlaybackRateChanged => PlaybackRatePercent != 100;
+
+    partial void OnPlaybackRatePercentChanged(int value)
+    {
+        _audioPlayer.SetPlaybackRate(value / 100.0);
+        DebugLogger.Info(DebugLogger.Category.Playback, "PlaybackRate", $"percent={value}");
+    }
     /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
     /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
@@ -350,6 +388,31 @@ public partial class PlayerViewModel : ViewModelBase
             CancelAutoMixTransition("user skipped");
             GoBackInQueue(QueueAdvanceReason.Previous);
         }
+    }
+
+    /// <summary>Island speed menu; parameter is a percent ("75" … "200").</summary>
+    [RelayCommand]
+    private void SetPlaybackRate(string? percent)
+    {
+        if (int.TryParse(percent, out var p) && p is >= 50 and <= 200)
+            PlaybackRatePercent = p;
+    }
+
+    [RelayCommand]
+    private void SkipBack() => SeekBy(TimeSpan.FromSeconds(-IslandSkipSeconds));
+
+    [RelayCommand]
+    private void SkipForward() => SeekBy(TimeSpan.FromSeconds(IslandSkipSeconds));
+
+    /// <summary>Relative seek, clamped to the track; rides the absolute seek so the
+    /// AutoMix cancel, seek bookkeeping and Seeked event all stay in one place.</summary>
+    internal void SeekBy(TimeSpan delta)
+    {
+        if (CurrentTrack == null || Duration <= TimeSpan.Zero) return;
+        var target = Position + delta;
+        if (target < TimeSpan.Zero) target = TimeSpan.Zero;
+        if (target > Duration) target = Duration;
+        SeekToPosition(target.Ticks / (double)Duration.Ticks);
     }
 
     [RelayCommand]

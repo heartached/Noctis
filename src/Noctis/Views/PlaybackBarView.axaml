@@ -491,6 +491,101 @@
 
                     <!-- Shuffle lives in the Queue panel's Up Next header; Repeat is also surfaced here on the bar. -->
 
+                    <!-- Island extras (Settings → Appearance → Player Island Buttons): podcast /
+                         audiobook transport, each opt-in. Playback speed: a small "1×" label that
+                         opens the speed menu. -->
+                    <Button x:Name="PlaybackSpeedButton"
+                            Classes="pill-btn transport-btn"
+                            ToolTip.Tip="Playback speed"
+                            IsVisible="{Binding IslandShowPlaybackSpeed}"
+                            Width="34" Height="34">
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding IsPlaybackRateChanged}" />
+                            <TextBlock Text="{Binding PlaybackRateText}"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource IslandIconFill}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Panel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="0.75×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="75">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=75}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="1× (normal)" Command="{Binding SetPlaybackRateCommand}" CommandParameter="100">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=100}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="1.25×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="125">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=125}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="1.5×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="150">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=150}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="1.75×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="175">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=175}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="2×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="200">
+                                    <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=200}"/>
+                                </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Skip back N seconds (island extra) -->
+                    <Button Classes="pill-btn transport-btn"
+                            Command="{Binding SkipBackCommand}"
+                            ToolTip.Tip="{Binding SkipBackTooltip}"
+                            IsVisible="{Binding IslandShowSkipButtons}"
+                            Width="34" Height="34">
+                        <!-- Podcast-style glyph: a ring open at the top-left, the arrowhead at
+                             12 o'clock pointing left (counter-clockwise = back), the seconds inside. -->
+                        <Viewbox Width="22" Height="22">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="{DynamicResource IslandIconFill}" StrokeThickness="1.75"
+                                      StrokeLineCap="Round" StrokeJoin="Round"
+                                      Data="M12 5 A8 8 0 1 1 5.07 9 M15 2 L12 5 L15 8" />
+                                <!-- The seconds as scaled geometry: a big-font TextBlock in a Viewbox pinned
+                                     on the ring's centre (12,13). A tiny font laid out directly landed a pixel
+                                     low-left after DPI rounding; measured this way it sits within 0.6 device px
+                                     of centre at 100–200% scale for 10 / 15 / 30. -->
+                                <Viewbox Canvas.Left="5.975" Canvas.Top="7.75" Width="12.65" Height="11">
+                                    <TextBlock Text="{Binding IslandSkipLabel}"
+                                               FontSize="20" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource IslandIconFill}" />
+                                </Viewbox>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
                     <!-- Previous button -->
                     <Button Classes="pill-btn transport-btn"
                             Command="{Binding PreviousCommand}"
@@ -545,6 +640,112 @@
                         </Viewbox>
                     </Button>
 
+                    <!-- Skip forward N seconds (island extra) -->
+                    <Button Classes="pill-btn transport-btn"
+                            Command="{Binding SkipForwardCommand}"
+                            ToolTip.Tip="{Binding SkipForwardTooltip}"
+                            IsVisible="{Binding IslandShowSkipButtons}"
+                            Width="34" Height="34">
+                        <!-- Mirror of the back glyph: ring open at the top-right, arrowhead
+                             pointing right (clockwise = forward), the seconds inside. -->
+                        <Viewbox Width="22" Height="22">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="{DynamicResource IslandIconFill}" StrokeThickness="1.75"
+                                      StrokeLineCap="Round" StrokeJoin="Round"
+                                      Data="M12 5 A8 8 0 1 0 18.93 9 M9 2 L12 5 L9 8" />
+                                <!-- The seconds as scaled geometry: a big-font TextBlock in a Viewbox pinned
+                                     on the ring's centre (12,13). A tiny font laid out directly landed a pixel
+                                     low-left after DPI rounding; measured this way it sits within 0.6 device px
+                                     of centre at 100–200% scale for 10 / 15 / 30. -->
+                                <Viewbox Canvas.Left="5.975" Canvas.Top="7.75" Width="12.65" Height="11">
+                                    <TextBlock Text="{Binding IslandSkipLabel}"
+                                               FontSize="20" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource IslandIconFill}" />
+                                </Viewbox>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
+                    <!-- Sleep timer (island extra): the Options menu's sleep submenu, one click away.
+                         The accent pill lights while a timer (or end-of-track stop) is armed. -->
+                    <Button x:Name="SleepTimerButton"
+                            Classes="pill-btn transport-btn"
+                            ToolTip.Tip="Sleep timer"
+                            IsVisible="{Binding IslandShowSleepTimer}"
+                            Width="34" Height="34">
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding IsSleepTimerActive}" />
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding StopAfterCurrentTrack}" />
+                            <Viewbox Width="18" Height="18">
+                                <Canvas Width="24" Height="24">
+                                    <Path Stroke="{DynamicResource IslandIconFill}" StrokeThickness="2"
+                                          StrokeLineCap="Round" StrokeJoin="Round"
+                                          Data="M12 12 m-8 0 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 M12 7.5 V12 L15 14.5" />
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem IsEnabled="False" IsVisible="{Binding IsSleepTimerActive}">
+                                    <MenuItem.Header>
+                                        <TextBlock FontSize="12" Opacity="0.7">
+                                            <Run Text="Pausing in"/>
+                                            <Run Text="{Binding SleepTimerRemainingText}"/>
+                                        </TextBlock>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                <MenuItem Header="15 minutes" Command="{Binding StartSleepTimerCommand}" CommandParameter="15">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="30 minutes" Command="{Binding StartSleepTimerCommand}" CommandParameter="30">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="45 minutes" Command="{Binding StartSleepTimerCommand}" CommandParameter="45">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="1 hour" Command="{Binding StartSleepTimerCommand}" CommandParameter="60">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="End of track" Command="{Binding ToggleStopAfterCurrentCommand}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                <MenuItem Header="Cancel timer" IsVisible="{Binding IsSleepTimerActive}" Command="{Binding CancelSleepTimerCommand}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <!-- Repeat: cycles Off → All → One. A single PNG glyph is tinted by
                          state (dimmed when off, accent when on); the centered "1" marks
                          repeat-one, since there is no separate one-shot icon. While on,
@@ -587,6 +788,28 @@
                                            Foreground="{DynamicResource AccentColorBrush}"
                                            IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
                             </Panel>
+                        </Panel>
+                    </Button>
+
+                    <!-- Shuffle (island extra, GitHub #59): after Repeat, same accent pill
+                         treatment while shuffle is on. Shuffle also stays in the Queue header. -->
+                    <Button Classes="pill-btn transport-btn"
+                            Command="{Binding ToggleShuffleCommand}"
+                            ToolTip.Tip="Shuffle"
+                            IsVisible="{Binding IslandShowShuffle}"
+                            Width="34" Height="34">
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding IsShuffleEnabled}" />
+                            <Viewbox Width="18" Height="18">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource IslandIconFill}"
+                                          Data="{StaticResource ShuffleIcon}" />
+                                </Canvas>
+                            </Viewbox>
                         </Panel>
                     </Button>
 
