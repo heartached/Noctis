@@ -432,6 +432,18 @@
         <Style Selector="Border.island.bar-mid Border#ArtistNameViewport">
             <Setter Property="Width" Value="120"/>
         </Style>
+
+        <!-- GitHub #52 (Aosneg, 1.4.7): hovering a bar button long enough for its tooltip
+             made the FIRST click do nothing. The bar sits on the bottom edge, so
+             Avalonia's default Pointer placement (20px below the cursor) has no room and
+             flips the tooltip UP — over the button, under the pointer. The click then
+             landed on the tooltip's own popup window (dismissing it) instead of the
+             button. Anchor every bar tooltip above its control instead: never under the
+             pointer, and it reads better over a bottom bar anyway. -->
+        <Style Selector="Border#IslandBorder :is(Button)">
+            <Setter Property="ToolTip.Placement" Value="Top" />
+            <Setter Property="ToolTip.VerticalOffset" Value="-6" />
+        </Style>
     </UserControl.Styles>
 
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
@@ -448,7 +460,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
-                Width="590">
+                Width="626">
             <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Player Bar
                  Opacity). Driving the brush opacity (not the Border's) keeps text/controls crisp. -->
             <Border.Background>
@@ -820,6 +832,21 @@
                             Spacing="2"
                             VerticalAlignment="Center"
                             Margin="-16,0,0,0">
+
+                    <!-- Favorite (Discord, Reuben Strides 2026-08-25): one click instead of
+                         "… → Favorites". Visibility follows TrackInfoPanel (code-behind), so
+                         the 340px compact pill and the lyrics-page bar keep their proven
+                         4-icon layout; the full layout's width budget grew by one icon. -->
+                    <Button x:Name="FavoriteButton"
+                            Classes="secondary-btn"
+                            Command="{Binding ToggleCurrentTrackFavoriteCommand}"
+                            IsEnabled="{Binding CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            ToolTip.Tip="Favorite"
+                            Width="34" Height="34">
+                        <controls:HeartIcon Size="16"
+                                            OffBrush="{DynamicResource IslandIconFill}" OffOpacity="0.7"
+                                            IsFavorite="{Binding CurrentTrack.IsFavorite, FallbackValue=False}" />
+                    </Button>
 
                     <!-- More options button -->
                     <Button x:Name="OptionsButton"

@@ -91,6 +91,16 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Opens the Spek-style spectrogram window for one track (decodes via ffmpeg).</summary>
+    public static async Task OpenSpectrogramWindow(Track track)
+    {
+        if (track == null) return;
+        var converter = App.Services!.GetRequiredService<IAudioConverterService>();
+        var vm = new SpectrogramViewModel(track, converter);
+        var window = new SpectrogramWindow(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;

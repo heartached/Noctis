@@ -177,7 +177,7 @@
                                                                     SwatchSize="26"
                                                                     Margin="-3"
                                                                     VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="Sidebar background"
+                                        <TextBlock Grid.Column="1" Text="Sidebar selection"
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding SidebarHex}"

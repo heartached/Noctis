@@ -63,6 +63,22 @@ public interface IMetadataService
         AdvancedTagIO.AdvancedFields original);
 
     /// <summary>
+    /// Writes only the iTunes advisory flag (0 = none, 1 = explicit, 2 = clean) through the
+    /// crash-safe atomic path. Used by the album-scoped editor's "Album is explicit" toggle.
+    /// Returns false when the file could not be written.
+    /// The default routes through <see cref="WriteAdvancedFields"/> (read the Advanced set,
+    /// flip the flag, write it back) so existing implementations and test stubs keep
+    /// working; <see cref="MetadataService"/> overrides it with a single-field write.
+    /// </summary>
+    bool WriteAdvisory(string filePath, int advisory)
+    {
+        var original = AdvancedTagIO.ReadAll(filePath);
+        var updated = AdvancedTagIO.ReadAll(filePath);
+        updated.ItunesAdvisory = advisory;
+        return WriteAdvancedFields(filePath, updated, original);
+    }
+
+    /// <summary>
     /// Reads detailed technical file information from an audio file.
     /// </summary>
     AudioFileInfo? ReadFileInfo(string filePath);

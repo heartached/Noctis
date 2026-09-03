@@ -1334,6 +1334,10 @@ public partial class MainWindow : Window
             case ShortcutAction.VolumeDown:
                 vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
                 return true;
+            case ShortcutAction.ToggleFavorite:
+                if (vm.Player.CurrentTrack == null) return false;
+                vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null);
+                return true;
             case ShortcutAction.ToggleFullscreen:
                 ToggleFullScreen();
                 return true;
@@ -1447,11 +1451,8 @@ public partial class MainWindow : Window
             AlbumsUpNextModeBtn.Background = isCoverFlow ? ActiveToggleBg : InactiveToggleBg;
             AlbumsUpNextModeBtn.Opacity = isCoverFlow ? 1.0 : 0.5;
         }
-        if (AlbumsCollageModeBtn != null)
-        {
-            AlbumsCollageModeBtn.Background = isCollage ? ActiveToggleBg : InactiveToggleBg;
-            AlbumsCollageModeBtn.Opacity = isCollage ? 1.0 : 0.5;
-        }
+        // The layout segment is now a labelled dropdown (Carousel / Cascade / Collage),
+        // always full-opacity while Cover Flow is on; nothing to toggle here.
     }
 
     // ── Queue popup event handlers ──

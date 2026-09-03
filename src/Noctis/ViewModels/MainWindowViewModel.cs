@@ -325,6 +325,34 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
+        // Artists sort: mirror the grid's sort state into the top-bar chip and persist
+        // changes — same shape as the Albums sort. Settings load asynchronously, so the
+        // persisted choice is adopted when ViewStateLoaded fires, not read here.
+        var adoptingArtistSort = false;
+        _artistsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryArtistsViewModel.SortMode))
+            {
+                TopBar.ArtistSortMode = _artistsVm.SortMode;
+                TopBar.ArtistSortLabel = _artistsVm.SortLabel;
+                if (!adoptingArtistSort) Settings.ArtistSortMode = _artistsVm.SortMode;
+            }
+            else if (e.PropertyName == nameof(LibraryArtistsViewModel.SortAscending))
+            {
+                TopBar.ArtistSortAscending = _artistsVm.SortAscending;
+                if (!adoptingArtistSort) Settings.ArtistSortAscending = _artistsVm.SortAscending;
+            }
+        };
+        Settings.ViewStateLoaded += (_, _) =>
+        {
+            adoptingArtistSort = true;
+            try
+            {
+                _artistsVm.SortMode = Settings.ArtistSortMode;
+                _artistsVm.SortAscending = Settings.ArtistSortAscending;
+            }
+            finally { adoptingArtistSort = false; }
+        };
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
         // Same mirroring as the Albums sort chip: the label lives on the grid view-model,
         // the control that shows it lives in the shared top bar.
@@ -457,11 +485,26 @@ public partial class MainWindowViewModel : ViewModelBase
         _coverFlowVm.SetViewArtistAction(ViewArtistByName);
         _coverFlowVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
 
-        // Mirror the Cover Flow sub-mode (Carousel/Collage) into the top-bar pill segment.
+        // Mirror the Cover Flow layout into the top-bar pill segment, and keep it two-way
+        // with the Appearance setting: the pill segment writes the setting; the Appearance
+        // picker (and the load from disk) drives the page. Both setters no-op on equal
+        // values, so the pair cannot ping-pong.
+        _coverFlowVm.Layout = Settings.CoverFlowLayoutMode;
         _coverFlowVm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CoverFlowViewModel.IsCollageMode))
                 TopBar.IsCollageMode = _coverFlowVm.IsCollageMode;
+            else if (e.PropertyName == nameof(CoverFlowViewModel.Layout))
+            {
+                Settings.CoverFlowLayoutMode = _coverFlowVm.Layout;
+                TopBar.CoverFlowLayoutLabel = _coverFlowVm.LayoutLabel;
+            }
+        };
+        TopBar.CoverFlowLayoutLabel = _coverFlowVm.LayoutLabel;
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.CoverFlowLayout))
+                _coverFlowVm.Layout = Settings.CoverFlowLayoutMode;
         };
 
         // Forward Player.HasContent changes to IsPlaybackBarVisible
@@ -1208,6 +1251,14 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.IsSearchVisible = CurrentView is MoreByArtistViewModel
             || (!_isCoverFlowMode && TopBar.CurrentTabName is not ("Home" or "Settings" or "Lyrics"));
 
+        // Cover Flow is an overlay on the current section, so Back leaves it (the only
+        // exit used to be the "Library" segment in the top bar, which read as a trap).
+        if (_isCoverFlowMode && ReferenceEquals(CurrentView, _coverFlowVm))
+        {
+            TopBar.ShowBackButton("Back", new RelayCommand(ExitCoverFlowMode));
+            return;
+        }
+
         if (CurrentView is MoreByArtistViewModel mbaVm)
         {
             TopBar.ShowBackButton("Back", GoBackInHistoryCommand, mbaVm.Title);
@@ -1664,10 +1715,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         var goingToEligibleSection = ToggleEligibleSections.Contains(key);
 
-        // If we're in Cover Flow and the user clicks an ineligible destination
-        // (album detail, settings, lyrics, etc.), auto-exit Cover Flow first
-        // so the toggle hide and the destination view land in a consistent state.
-        if (_isCoverFlowMode && !goingToEligibleSection)
+        // Any sidebar navigation leaves Cover Flow. It used to stay "sticky" across the
+        // seven toggle-eligible sections (click Songs while in Cover Flow and the carousel
+        // stayed up with Songs merely selected underneath), which read as being trapped —
+        // the sidebar highlight moved but the screen never changed. Cover Flow is now a
+        // mode of the section you are on; picking a section shows that section.
+        if (_isCoverFlowMode)
         {
             _isCoverFlowMode = false;
             TopBar.IsCoverFlowMode = false;
@@ -1680,17 +1733,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (goingToEligibleSection)
             _currentSectionKey = key;
 
-        // Resolve the destination view. If we're staying in Cover Flow (eligible
-        // destination + sticky mode), the visible content stays as the carousel;
-        // only the underlying section key changes.
-        if (_isCoverFlowMode && goingToEligibleSection)
-        {
-            // Touch the underlying section so its data is fresh when the user
-            // exits Cover Flow (mirrors what Navigate would normally do).
-            _ = ResolveSectionView(key);
-            // CurrentView stays as _coverFlowVm.
-        }
-        else
+        // Resolve the destination view (Cover Flow was left above, so this always shows
+        // the section itself).
         {
             CurrentView = key switch
             {
@@ -1764,6 +1808,8 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (key == "folders")
             TopBar.ShowFoldersActions(_foldersVm.PlayFolderCommand, _foldersVm.ShuffleFolderCommand, _foldersVm.OpenMediaFolderSettingsCommand);
+        else if (key == "artists")
+            TopBar.ShowArtistSort(_artistsVm.SetSortCommand, _artistsVm.SortLabel, _artistsVm.SortMode, _artistsVm.SortAscending);
 
         RefreshBackButton();
     }
@@ -2108,6 +2154,7 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.HideArtistActions();
         TopBar.HideFavoritesActions();
         TopBar.HideFoldersActions();
+        TopBar.HideArtistSort();
         TopBar.HideViewModeToggle();
     }
 
@@ -2160,7 +2207,9 @@ public partial class MainWindowViewModel : ViewModelBase
             new RelayCommand(EnterCoverFlowMode),
             _isCoverFlowMode,
             _coverFlowVm.ToggleCollageModeCommand,
-            _coverFlowVm.IsCollageMode);
+            _coverFlowVm.IsCollageMode,
+            _coverFlowVm.SetLayoutCommand,
+            _coverFlowVm.LayoutLabel);
 
         // Home and Cover Flow do not use the top-bar search field.
         if (_isCoverFlowMode || _currentSectionKey == "home")
@@ -2202,6 +2251,8 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.IsCoverFlowMode = true;
         TopBar.IsSearchVisible = false;
         CurrentView = _coverFlowVm;
+        // Arms the sidebar Back chevron as "leave Cover Flow" (see RefreshBackButton).
+        RefreshBackButton();
     }
 
     private void ExitCoverFlowMode()
@@ -2220,7 +2271,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             // Return to the section that was selected underneath
             CurrentView = ResolveSectionView(_currentSectionKey);
+            RestoreTopBarActionsForView(CurrentView);
         }
+        RefreshBackButton();
     }
 
     /// <summary>Resolves a sidebar section key to the cached long-lived ViewModel for that section. Refreshes content as needed (mirrors Navigate's switch).</summary>
@@ -2261,6 +2314,10 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (ReferenceEquals(view, _lyricsVm))
             WireLyricsPageToPlayer();
+        else if (ReferenceEquals(view, _foldersVm))
+            TopBar.ShowFoldersActions(_foldersVm.PlayFolderCommand, _foldersVm.ShuffleFolderCommand, _foldersVm.OpenMediaFolderSettingsCommand);
+        else if (ReferenceEquals(view, _artistsVm))
+            TopBar.ShowArtistSort(_artistsVm.SetSortCommand, _artistsVm.SortLabel, _artistsVm.SortMode, _artistsVm.SortAscending);
         // Artist actions for _albumsVm are restored in CaptureRestoreState's lambda
     }
 

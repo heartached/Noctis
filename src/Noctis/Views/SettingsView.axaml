@@ -194,6 +194,18 @@
         <Style Selector="RadioButton.transition-card:disabled">
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
+        <!-- Same card, laid out four-up for the Now Playing Artwork picker: no bottom
+             margin (the Grid spaces them) and centred glyph + label. -->
+        <Style Selector="RadioButton.medium-card">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="RadioButton.medium-card Canvas.medium-glyph">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Opacity" Value="0.85"/>
+        </Style>
 
 
         <!-- Setting row: label left, control right -->
@@ -1801,6 +1813,198 @@
                 </Grid>
             </Border>
 
+            <!-- Now-playing artwork costume (Discord suggestion): the Lyrics-page cover
+                 can be printed on a CD, a vinyl sleeve or a cassette label instead of
+                 the plain square. Discs and reels spin while music plays. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Now Playing Artwork" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="How the cover appears on the Lyrics page. Discs spin while music plays."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="NowPlayingArtwork"
+                                     IsChecked="{Binding IsArtworkStyleCover, Mode=TwoWay}"
+                                     ToolTip.Tip="The album cover as it is">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="3" Canvas.Top="3" Width="22" Height="22" RadiusX="5" RadiusY="5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Cover" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="NowPlayingArtwork"
+                                     IsChecked="{Binding IsArtworkStyleCompactDisc, Mode=TwoWay}"
+                                     ToolTip.Tip="A spinning compact disc">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Ellipse Canvas.Left="2" Canvas.Top="2" Width="24" Height="24"
+                                             Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="8"/>
+                                </Canvas>
+                                <TextBlock Text="CD" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     GroupName="NowPlayingArtwork"
+                                     IsChecked="{Binding IsArtworkStyleVinyl, Mode=TwoWay}"
+                                     ToolTip.Tip="A sleeve with the record peeking out">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Ellipse Canvas.Left="10" Canvas.Top="6" Width="16" Height="16"
+                                             Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="5"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="5" Width="18" Height="18" RadiusX="3" RadiusY="3"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Vinyl" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="3" Classes="transition-card medium-card"
+                                     GroupName="NowPlayingArtwork"
+                                     IsChecked="{Binding IsArtworkStyleCassette, Mode=TwoWay}"
+                                     ToolTip.Tip="A cassette with the cover on its label">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="6" Width="24" Height="16" RadiusX="4" RadiusY="4"
+                                               Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="2.5"/>
+                                    <Ellipse Canvas.Left="7" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Ellipse Canvas.Left="16" Canvas.Top="11.5" Width="5" Height="5"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Cassette" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Cover Flow layout (Albums → Cover Flow). Three arrangements; the pill segment
+                 on that page steps through the same three, and both persist here. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Cover Flow Layout" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="How the Cover Flow page arranges the queue's covers."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="CoverFlowLayout"
+                                     IsChecked="{Binding IsCoverFlowCarousel, Mode=TwoWay}"
+                                     ToolTip.Tip="The classic row: playing cover centred, history and up next to each side">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="1" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="21" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="8" Canvas.Top="5" Width="12" Height="18" RadiusX="2.5" RadiusY="2.5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Carousel" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="CoverFlowLayout"
+                                     IsChecked="{Binding IsCoverFlowCascade, Mode=TwoWay}"
+                                     ToolTip.Tip="Tilted covers on a diagonal path with the track details beside them">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="4" Canvas.Top="1" Width="9" Height="9" RadiusX="2" RadiusY="2" Opacity="0.45"
+                                               RenderTransformOrigin="50%,50%" RenderTransform="rotate(-24deg)"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="4" Canvas.Top="18" Width="9" Height="9" RadiusX="2" RadiusY="2" Opacity="0.45"
+                                               RenderTransformOrigin="50%,50%" RenderTransform="rotate(18deg)"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="11" Canvas.Top="7" Width="14" Height="14" RadiusX="3" RadiusY="3"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Cascade" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     GroupName="CoverFlowLayout"
+                                     IsChecked="{Binding IsCoverFlowCollage, Mode=TwoWay}"
+                                     ToolTip.Tip="A mosaic of the queue's covers">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="2" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="15" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Collage" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Mini player design (community mockups, 2026-09): the classic resizable card
+                 or one of two fixed designs. Same three-card picker as Cover Flow; the mini
+                 player follows the choice live. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Mini Player Design" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="How the mini player looks. Classic morphs with its size; Pill and Sleeve are fixed designs."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="MiniPlayerStyle"
+                                     IsChecked="{Binding IsMiniStyleClassic, Mode=TwoWay}"
+                                     ToolTip.Tip="The resizable glass card: icon, bar, card, large icon and lyrics forms">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="5" Canvas.Top="2" Width="18" Height="24" RadiusX="5" RadiusY="5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="9" Canvas.Top="6" Width="10" Height="10" RadiusX="3" RadiusY="3" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Classic" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="MiniPlayerStyle"
+                                     IsChecked="{Binding IsMiniStylePill, Mode=TwoWay}"
+                                     ToolTip.Tip="A round cover overlapping a light card with the title and transport">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="8" Canvas.Top="8" Width="19" Height="12" RadiusX="6" RadiusY="6" Opacity="0.45"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Ellipse Canvas.Left="1" Canvas.Top="6" Width="16" Height="16"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Pill" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     GroupName="MiniPlayerStyle"
+                                     IsChecked="{Binding IsMiniStyleSleeve, Mode=TwoWay}"
+                                     ToolTip.Tip="A spinning disc peeking out of the top of a light card">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Ellipse Canvas.Left="6" Canvas.Top="1" Width="16" Height="16" Opacity="0.45"
+                                             Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="3" Canvas.Top="9" Width="22" Height="17" RadiusX="5" RadiusY="5"
+                                               Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Sleeve" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Album cover size (Albums / Favorites grids). Automatic = classic five per
                  row; custom size derives the column count from the window width instead,
                  so covers stay near the chosen size on ultrawide and small windows alike. -->
@@ -1809,7 +2013,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Automatic Album Cover Size" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Fit five covers per row in the Albums and Favorites grids. Turn off to choose your own cover size for any window width."
+                            <TextBlock Text="Five covers per row. Turn off to pick your own cover size."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1843,7 +2047,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Flowing Lyrics Background" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Drift glowing album colors behind the lyrics."
+                        <TextBlock Text="The blurred album artwork drifts and pulses with the beat behind the lyrics on the lyrics page, the lyrics panel and the mini player. Artwork background only."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -1871,7 +2075,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Join Split Words" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Keep words whole when lyrics split them into syllables."
+                        <TextBlock Text="Keep words whole when TTML lyrics split them into syllables."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2051,12 +2255,26 @@
                 </Grid>
             </Border>
 
+            <!-- Explicit content: a PLAYBACK filter (skip / exclude), not a library filter. -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Explicit Content" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Allow explicit songs. When off, they're skipped unless you play them directly."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding AllowExplicitContent}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Exclusive mode (Windows WASAPI) -->
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Sends audio straight to your output device at the track's own sample rate, bypassing the Windows mixer. Noctis takes sole control of the device, so other apps can't play sound and song transitions (AutoMix &amp; Crossfade) are unavailable while it's active. If another app already holds the device, Noctis falls back to normal shared output."
+                        <TextBlock Text="Bit-perfect output that bypasses the Windows mixer. Other apps go silent and song transitions are off while it's active."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ExclusiveAudioStatus}"
                                    IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -2074,7 +2292,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Analyze Tempo &amp; Key" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Detect BPM and key in the background. Powers AutoMix and Track Radio."
+                            <TextBlock Text="Detect BPM and key for AutoMix and Track Radio."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2084,7 +2302,7 @@
                     <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding BpmKeyAnalysisEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Save analysis to file tags" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY). Applies to tracks analyzed from now on, not ones already analyzed. Rewrites files, so sync tools like Syncthing will see changes."
+                            <TextBlock Text="Write BPM/key into the file's tags for newly analyzed tracks. This modifies your files."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"

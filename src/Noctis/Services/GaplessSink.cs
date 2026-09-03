@@ -33,6 +33,15 @@ public sealed class GaplessSink : IDisposable
     private string? _deviceId; // endpoint the current output was opened against
     private readonly WaveFileWriter? _tap; // NOCTIS_ENGINE_TAP diagnostic capture
     private readonly ISampleProvider _renderSource;
+    private readonly MuteGateProvider _muteGate;
+
+    /// <summary>User mute, applied post-buffer in the render chain (instant, click-free).
+    /// Survives output rebuilds: the gate is upstream of the WasapiOut that gets replaced.</summary>
+    public bool IsMuted
+    {
+        get => _muteGate.IsMuted;
+        set => _muteGate.IsMuted = value;
+    }
     private readonly StallProbe _probe;
     private readonly Timer _deviceWatch;
     private volatile bool _desiredPlaying = true;
@@ -84,6 +93,16 @@ public sealed class GaplessSink : IDisposable
         // renders to a WAV so glitches can be inspected sample-by-sample
         // instead of by ear. Diagnostic only — never breaks rendering.
         ISampleProvider renderSource = Provider;
+        // Mute lives HERE, after the staged ring, not in LibVLC: VLC's mute is software
+        // gain on the blocks it hands us, so with seconds staged ahead it was heard ~2 s
+        // late (and unmute ~2 s late again, the ring being full of zeros by then). The
+        // gate ramps over a few ms and is a pure pass-through when open.
+        _muteGate = new MuteGateProvider(renderSource);
+        renderSource = _muteGate;
+        // Beat pulse for the flowing-artwork lyrics background: tapped post-mute so a
+        // muted player shows a still backdrop, stamped with this sink's output depth
+        // so the visual beat lands when the audible one does.
+        renderSource = new BeatTapProvider(renderSource, OutputLatencyMs);
         var tap = Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP");
         if (!string.IsNullOrEmpty(tap))
         {
@@ -124,9 +143,13 @@ public sealed class GaplessSink : IDisposable
     // which read as a skip/pause. (The old "buzz at 50ms" was actually the
     // Array.Clear pad bug, not buffer starvation; an underrun now renders a
     // clean declicked pad, not stale audio.)
+    /// <summary>Requested WasapiOut buffer depth. Also the lead of the segment's
+    /// consumed-frame position over the speaker (see VlcAudioPlayer.OutputLatency).</summary>
+    public const int OutputLatencyMs = 100;
+
     private WasapiOut CreateOutput()
     {
-        var wasapiOut = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 100);
+        var wasapiOut = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs);
         try
         {
             wasapiOut.Init(new SampleToWaveProvider(_renderSource));

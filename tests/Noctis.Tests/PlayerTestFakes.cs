@@ -20,6 +20,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public PlaybackState State { get; private set; } = PlaybackState.Stopped;
     public TimeSpan Duration => TimeSpan.FromMinutes(3);
     public TimeSpan Position => TimeSpan.Zero;
+    public TimeSpan OutputLatency => TimeSpan.Zero;
     public long CurrentSessionId { get; private set; }
     public int Volume { get; set; }
     public int VolumeAdjust { get; set; }

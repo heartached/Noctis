@@ -129,8 +129,36 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
 
     private void OnChanged(object sender, FileSystemEventArgs e)
     {
-        if (!IsAudio(e.FullPath)) return;
-        Record(() => _debouncer.Record(e.FullPath, FileChangeKind.CreatedOrChanged));
+        if (IsAudio(e.FullPath))
+        {
+            Record(() => _debouncer.Record(e.FullPath, FileChangeKind.CreatedOrChanged));
+            return;
+        }
+        RecordCoverImageChange(e.FullPath);
+    }
+
+    /// <summary>
+    /// A replaced cover.jpg (or any recognised folder-art name) has no audio event of its
+    /// own, so the library never re-read the album's cover. Route it through one sibling
+    /// audio file: the import path sees an unchanged track and runs the folder-art
+    /// staleness check for that album.
+    /// </summary>
+    private void RecordCoverImageChange(string imagePath)
+    {
+        if (!MetadataService.IsFolderArtCandidate(imagePath)) return;
+        string? sibling = null;
+        try
+        {
+            var dir = Path.GetDirectoryName(imagePath);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+            sibling = Directory.EnumerateFiles(dir).FirstOrDefault(IsAudio);
+        }
+        catch
+        {
+            // Folder vanished mid-event — nothing to refresh.
+        }
+        if (sibling == null) return;
+        Record(() => _debouncer.Record(sibling, FileChangeKind.CreatedOrChanged));
     }
 
     private void OnCreated(object sender, FileSystemEventArgs e)
@@ -138,6 +166,11 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         if (IsAudio(e.FullPath))
         {
             Record(() => _debouncer.Record(e.FullPath, FileChangeKind.CreatedOrChanged));
+            return;
+        }
+        if (MetadataService.IsFolderArtCandidate(e.FullPath))
+        {
+            RecordCoverImageChange(e.FullPath);
             return;
         }
         // A folder moved into the watched tree arrives as a single directory-create

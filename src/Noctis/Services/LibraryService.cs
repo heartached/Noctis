@@ -301,11 +301,20 @@ public class LibraryService : ILibraryService
                             // Cache this album's cover live the first time we see it (zero extra
                             // I/O — the picture was already read above), so covers fill in with
                             // tracks during the scan. Folder-art fallback runs after the scan.
-                            if (embeddedArt != null
-                                && albumArtClaimed.TryAdd(track.AlbumId, true)
-                                && !File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
+                            if (embeddedArt != null && albumArtClaimed.TryAdd(track.AlbumId, true))
                             {
-                                _persistence.SaveArtwork(track.AlbumId, embeddedArt);
+                                if (existing != null)
+                                {
+                                    // A file we already knew was re-tagged: its embedded cover is
+                                    // the freshest truth for the album. Every writer used to
+                                    // short-circuit on File.Exists, so a changed cover never
+                                    // reached the cache until the user wiped it.
+                                    RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
+                                }
+                                else if (!File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
+                                {
+                                    _persistence.SaveArtwork(track.AlbumId, embeddedArt);
+                                }
                             }
                         }
                         else
@@ -503,6 +512,17 @@ public class LibraryService : ILibraryService
             // those albums here; it costs one existence probe per album when there
             // is nothing to do.
             await BackfillMissingArtworkAsync(ct);
+            // A rescan with no audio changes is exactly when a swapped cover.jpg goes
+            // unnoticed: no file was re-read, so nothing touched the cached cover.
+            if (!ct.IsCancellationRequested)
+            {
+                var refreshed = await RefreshStaleFolderArtworkAsync(_tracks, ct);
+                if (refreshed > 0 && !ct.IsCancellationRequested)
+                {
+                    await RebuildIndexesAsync();
+                    LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                }
+            }
             return;
         }
 
@@ -523,6 +543,8 @@ public class LibraryService : ILibraryService
         // here (post-scan), and each cover comes from the album's lowest disc/track
         // representative — stable across scans.
         await ExtractArtworkProgressivelyAsync(newTracks, ct);
+        if (!ct.IsCancellationRequested)
+            await RefreshStaleFolderArtworkAsync(newTracks, ct);
         if (ct.IsCancellationRequested)
         {
             if (_checkpointRequested)
@@ -686,6 +708,98 @@ public class LibraryService : ILibraryService
         return extracted;
     }
 
+    /// <summary>
+    /// Replaces the cached cover for <paramref name="albumId"/> when <paramref name="freshBytes"/>
+    /// differ from what is on disk, and drops the in-memory bitmap so every
+    /// <c>CachedImage</c> showing that path reloads. Returns true when the cover changed.
+    /// The cache path is stable (keyed by AlbumId), which is why an overwrite plus an
+    /// invalidate — not a new path — is what makes the UI pick the new picture up.
+    /// </summary>
+    private bool RefreshAlbumArtworkIfChanged(Guid albumId, byte[]? freshBytes)
+    {
+        if (albumId == Track.UnknownAlbumBucketId) return false;
+        if (freshBytes is not { Length: > 0 }) return false;
+
+        var artPath = _persistence.GetArtworkPath(albumId);
+        try
+        {
+            if (File.Exists(artPath))
+            {
+                var cached = File.ReadAllBytes(artPath);
+                if (cached.AsSpan().SequenceEqual(freshBytes)) return false;
+            }
+        }
+        catch
+        {
+            // Unreadable cache file — rewrite it below.
+        }
+
+        _persistence.SaveArtwork(albumId, freshBytes);
+        ArtworkCache.Invalidate(artPath);
+        return true;
+    }
+
+    /// <summary>
+    /// Re-extracts covers for albums whose folder image (cover.jpg etc.) is newer than the
+    /// cached cover. Unchanged audio files are skipped by mtime during a scan, so this is
+    /// the only path that notices a swapped folder cover. One directory probe per album;
+    /// albums without a cached cover are left to <see cref="BackfillMissingArtworkAsync"/>.
+    /// Returns the number of covers replaced.
+    /// </summary>
+    private async Task<int> RefreshStaleFolderArtworkAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct)
+    {
+        var groups = tracks
+            .Where(t => t.SourceType == SourceType.Local)
+            .GroupBy(t => t.AlbumId)
+            .Where(g => g.Key != Track.UnknownAlbumBucketId)
+            .ToList();
+        if (groups.Count == 0) return 0;
+
+        var refreshed = 0;
+        try
+        {
+            await Task.Run(() =>
+            {
+                Parallel.ForEach(groups,
+                    new ParallelOptions { MaxDegreeOfParallelism = GetScanParallelism(), CancellationToken = ct },
+                    g =>
+                    {
+                        if (ct.IsCancellationRequested) return;
+                        var artPath = _persistence.GetArtworkPath(g.Key);
+                        DateTime cachedStamp;
+                        try
+                        {
+                            if (!File.Exists(artPath)) return;
+                            cachedStamp = File.GetLastWriteTimeUtc(artPath);
+                        }
+                        catch { return; }
+
+                        var rep = Album.SelectArtworkRepresentative(g.ToList());
+                        if (rep == null) return;
+                        var folderArt = MetadataService.TryGetFolderArtFile(Path.GetDirectoryName(rep.FilePath));
+                        if (folderArt == null || folderArt.LastWriteTimeUtc <= cachedStamp) return;
+
+                        // ExtractAlbumArt keeps the embedded-first precedence and the
+                        // loose-file attribution rules; a newer cover.jpg only wins when
+                        // that is what extraction would have picked in the first place.
+                        var fresh = _metadata.ExtractAlbumArt(rep.FilePath);
+                        if (RefreshAlbumArtworkIfChanged(g.Key, fresh))
+                        {
+                            Interlocked.Increment(ref refreshed);
+                        }
+                        else
+                        {
+                            // Same picture (or embedded art still wins): stamp the cache so
+                            // the next scan doesn't re-read this folder image again.
+                            try { File.SetLastWriteTimeUtc(artPath, DateTime.UtcNow); } catch { }
+                        }
+                    });
+            }, ct);
+        }
+        catch (OperationCanceledException) { }
+        return refreshed;
+    }
+
     // Single-flight guard for BackfillMissingArtworkAsync: the startup heal, a
     // no-change scan and a settings-toggle flip can all request one concurrently,
     // and two passes at once would just read the same files twice.
@@ -759,6 +873,7 @@ public class LibraryService : ILibraryService
         var originalAlbumIndex = _albumIndex;
         var didPublishPartial = false;
         var imported = new ConcurrentBag<Track>();
+        var unchangedKnown = new ConcurrentBag<Track>();
 
         void RestoreOriginalLibrary()
         {
@@ -836,6 +951,9 @@ public class LibraryService : ILibraryService
                 fi.LastWriteTimeUtc == existing.LastModified &&
                 fi.Length == existing.FileSize)
             {
+                // The audio didn't change, but the watcher also routes a replaced
+                // cover.jpg here via a sibling audio file — check that album's folder art.
+                unchangedKnown.Add(existing);
                 continue;
             }
 
@@ -854,6 +972,12 @@ public class LibraryService : ILibraryService
                 var artBytes = _metadata.ExtractAlbumArt(filePath);
                 if (artBytes != null)
                     _persistence.SaveArtwork(track.AlbumId, artBytes);
+            }
+            else if (existing != null)
+            {
+                // Known file changed on disk (watcher / drop-import): re-read its art
+                // and replace the cached cover when it differs.
+                RefreshAlbumArtworkIfChanged(track.AlbumId, _metadata.ExtractAlbumArt(filePath));
             }
 
             track.IsRecentImport = true;
@@ -877,6 +1001,18 @@ public class LibraryService : ILibraryService
         {
             RestoreOriginalLibrary();
             ct.ThrowIfCancellationRequested();
+        }
+
+        // Folder-cover refresh for albums whose audio was untouched (a replaced
+        // cover.jpg reaches here through a sibling audio file the watcher records).
+        if (!unchangedKnown.IsEmpty)
+        {
+            var refreshedCovers = await RefreshStaleFolderArtworkAsync(unchangedKnown.ToArray(), ct);
+            if (refreshedCovers > 0 && !changed)
+            {
+                await RebuildIndexesAsync();
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         if (!changed) return;

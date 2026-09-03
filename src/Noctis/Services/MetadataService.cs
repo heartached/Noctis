@@ -314,27 +314,9 @@ public class MetadataService : IMetadataService
     /// </summary>
     public static byte[]? TryReadFolderArt(string? directory)
     {
-        if (string.IsNullOrWhiteSpace(directory)) return null;
         try
         {
-            string[] artworkNames = { "cover", "folder", "album", "front", "art", "artwork" };
-            string[] imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".webp" };
-
-            var candidates = new List<FileInfo>();
-            foreach (var name in artworkNames)
-            {
-                foreach (var ext in imageExtensions)
-                {
-                    var artPath = Path.Combine(directory, name + ext);
-                    if (File.Exists(artPath))
-                        candidates.Add(new FileInfo(artPath));
-                }
-            }
-
-            var bestFile = candidates
-                .OrderByDescending(f => f.Length)
-                .FirstOrDefault();
-
+            var bestFile = TryGetFolderArtFile(directory);
             if (bestFile != null && bestFile.Exists)
                 return File.ReadAllBytes(bestFile.FullName);
         }
@@ -344,6 +326,55 @@ public class MetadataService : IMetadataService
         }
 
         return null;
+    }
+
+    private static readonly string[] FolderArtNames = { "cover", "folder", "album", "front", "art", "artwork" };
+    private static readonly string[] FolderArtExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".webp" };
+
+    /// <summary>
+    /// True when <paramref name="path"/> is named like a folder cover (cover/folder/album/
+    /// front/art/artwork + image extension). Lets the folder watcher react to a replaced
+    /// cover image without treating every image in the tree as library-relevant.
+    /// </summary>
+    public static bool IsFolderArtCandidate(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var ext = Path.GetExtension(path);
+        if (!FolderArtExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)) return false;
+        var name = Path.GetFileNameWithoutExtension(path);
+        return FolderArtNames.Contains(name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The folder cover image <see cref="TryReadFolderArt"/> would pick for
+    /// <paramref name="directory"/> (largest of the recognised names), without reading it.
+    /// Null when the folder has none. Used to compare the image's mtime against the
+    /// cached album cover so a replaced cover.jpg is re-extracted on the next scan.
+    /// </summary>
+    public static FileInfo? TryGetFolderArtFile(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory)) return null;
+        try
+        {
+            var candidates = new List<FileInfo>();
+            foreach (var name in FolderArtNames)
+            {
+                foreach (var ext in FolderArtExtensions)
+                {
+                    var artPath = Path.Combine(directory, name + ext);
+                    if (File.Exists(artPath))
+                        candidates.Add(new FileInfo(artPath));
+                }
+            }
+
+            return candidates
+                .OrderByDescending(f => f.Length)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static byte[]? SelectBestEmbeddedPicture(TagLib.IPicture[]? pictures)
@@ -508,6 +539,11 @@ public class MetadataService : IMetadataService
         AdvancedTagIO.AdvancedFields original)
     {
         return SaveTagsAtomically(filePath, file => AdvancedTagIO.ApplyAll(file, fields, original));
+    }
+
+    public bool WriteAdvisory(string filePath, int advisory)
+    {
+        return SaveTagsAtomically(filePath, file => AdvancedTagIO.WriteAdvisory(file, advisory));
     }
 
     public bool WriteRating(string filePath, int rating, bool isDisliked)

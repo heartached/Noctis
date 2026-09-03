@@ -257,6 +257,48 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+
+    /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
+    /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
+    /// shape as the Song Transitions style cards.</summary>
+    [ObservableProperty] private string _nowPlayingArtworkStyle = ArtworkMediums.DefaultSetting;
+
+    /// <summary>Typed view of <see cref="NowPlayingArtworkStyle"/> for the lyrics page's MediaArtwork.</summary>
+    public ArtworkMedium NowPlayingArtworkMedium => ArtworkMediums.Parse(NowPlayingArtworkStyle);
+
+    public bool IsArtworkStyleCover { get => NowPlayingArtworkMedium == ArtworkMedium.Cover; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Cover); } }
+    public bool IsArtworkStyleCompactDisc { get => NowPlayingArtworkMedium == ArtworkMedium.CompactDisc; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.CompactDisc); } }
+    public bool IsArtworkStyleVinyl { get => NowPlayingArtworkMedium == ArtworkMedium.Vinyl; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Vinyl); } }
+    public bool IsArtworkStyleCassette { get => NowPlayingArtworkMedium == ArtworkMedium.Cassette; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Cassette); } }
+
+    /// <summary>Mini player design picker (Appearance): the classic resizable card or one
+    /// of the fixed community designs. The mini player VM follows this live.</summary>
+    [ObservableProperty] private string _miniPlayerStyle = MiniPlayerStyles.DefaultSetting;
+
+    public MiniPlayerStyle MiniPlayerStyleMode => MiniPlayerStyles.Parse(MiniPlayerStyle);
+
+    public bool IsMiniStyleClassic { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Classic; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Classic); } }
+    public bool IsMiniStylePill { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Pill; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Pill); } }
+    public bool IsMiniStyleSleeve { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Sleeve; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Sleeve); } }
+
+    /// <summary>Persisted name of the Cover Flow layout ("Carousel", "Cascade", "Collage").
+    /// Two-way with CoverFlowViewModel.Layout via MainWindowViewModel, so the top-bar pill
+    /// segment and the Appearance picker stay in step.</summary>
+    [ObservableProperty] private string _coverFlowLayout = CoverFlowLayouts.DefaultSetting;
+
+    public CoverFlowLayout CoverFlowLayoutMode
+    {
+        get => CoverFlowLayouts.Parse(CoverFlowLayout);
+        set => CoverFlowLayout = value.ToString();
+    }
+
+    public bool IsCoverFlowCarousel { get => CoverFlowLayoutMode == Models.CoverFlowLayout.Carousel; set { if (value) CoverFlowLayout = nameof(Models.CoverFlowLayout.Carousel); } }
+    public bool IsCoverFlowCascade { get => CoverFlowLayoutMode == Models.CoverFlowLayout.Cascade; set { if (value) CoverFlowLayout = nameof(Models.CoverFlowLayout.Cascade); } }
+    public bool IsCoverFlowCollage { get => CoverFlowLayoutMode == Models.CoverFlowLayout.Collage; set { if (value) CoverFlowLayout = nameof(Models.CoverFlowLayout.Collage); } }
+
+    /// <summary>Explicit Content toggle (Audio tab). Off = explicit tracks never play
+    /// automatically; see <see cref="AppSettings.AllowExplicitContent"/>.</summary>
+    [ObservableProperty] private bool _allowExplicitContent = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
@@ -371,12 +413,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _songsShowOnlyFavorites;
     [ObservableProperty] private string _albumSortMode = "default";
     [ObservableProperty] private bool _albumSortAscending = true;
+    [ObservableProperty] private string _artistSortMode = "name";
+    [ObservableProperty] private bool _artistSortAscending = true;
 
     partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Home section collapse state ──
     //
@@ -1110,6 +1156,10 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
+            NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
+            CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
+            MiniPlayerStyle = MiniPlayerStyles.Parse(_settings.MiniPlayerStyle).ToString();
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
@@ -1137,6 +1187,8 @@ public partial class SettingsViewModel : ViewModelBase
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
+            ArtistSortMode = _settings.ArtistSortMode;
+            ArtistSortAscending = _settings.ArtistSortAscending;
             HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
             HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
             HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
@@ -1170,6 +1222,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
+            AllowExplicitContent = _settings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
@@ -1464,6 +1517,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
+        _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
+        _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -1488,6 +1544,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
+        _settings.ArtistSortMode = ArtistSortMode;
+        _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
         _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
         _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;
@@ -1513,6 +1571,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
+        _settings.AllowExplicitContent = AllowExplicitContent;
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
@@ -1590,6 +1649,23 @@ public partial class SettingsViewModel : ViewModelBase
     /// trailing write. See <see cref="ProcessOwnedPlacementKeys"/> for why these survive
     /// the on-disk merge.
     /// </summary>
+    /// <summary>Position only: the mini player's stored SIZE is the classic card's and
+    /// must survive a fixed design (whose canonical size is not the user's).</summary>
+    public void SetMiniPlayerPosition(double x, double y)
+    {
+        if (!double.IsFinite(x) || !double.IsFinite(y)) return;
+        _settings.MiniPlayerX = x;
+        _settings.MiniPlayerY = y;
+        QueueSettingsSave();
+    }
+
+    /// <summary>The persisted classic-card size, if any.</summary>
+    public (double Width, double Height)? StoredMiniPlayerSize
+        => _settings.MiniPlayerWidth is { } w && _settings.MiniPlayerHeight is { } h
+           && double.IsFinite(w) && double.IsFinite(h) && w > 0 && h > 0
+            ? (w, h)
+            : null;
+
     public void SetMiniPlayerPlacement(double width, double height, double x, double y)
     {
         if (!double.IsFinite(width) || !double.IsFinite(height) ||
@@ -1639,6 +1715,7 @@ public partial class SettingsViewModel : ViewModelBase
         ApplyAutoMixToPlayer();
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
+        _player.AllowExplicitContent = AllowExplicitContent;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -2415,6 +2492,43 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnEnableAnimatedCoversChanged(bool value)
     {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnNowPlayingArtworkStyleChanged(string value)
+    {
+        // No Apply* step: the lyrics page binds NowPlayingArtworkMedium directly.
+        OnPropertyChanged(nameof(NowPlayingArtworkMedium));
+        OnPropertyChanged(nameof(IsArtworkStyleCover));
+        OnPropertyChanged(nameof(IsArtworkStyleCompactDisc));
+        OnPropertyChanged(nameof(IsArtworkStyleVinyl));
+        OnPropertyChanged(nameof(IsArtworkStyleCassette));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnAllowExplicitContentChanged(bool value)
+    {
+        // Push straight to the player: turning it off prunes explicit tracks from the
+        // live queue immediately, not at the next track change.
+        if (_player != null) _player.AllowExplicitContent = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnCoverFlowLayoutChanged(string value)
+    {
+        OnPropertyChanged(nameof(CoverFlowLayoutMode));
+        OnPropertyChanged(nameof(IsCoverFlowCarousel));
+        OnPropertyChanged(nameof(IsCoverFlowCascade));
+        OnPropertyChanged(nameof(IsCoverFlowCollage));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnMiniPlayerStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(MiniPlayerStyleMode));
+        OnPropertyChanged(nameof(IsMiniStyleClassic));
+        OnPropertyChanged(nameof(IsMiniStylePill));
+        OnPropertyChanged(nameof(IsMiniStyleSleeve));
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -4002,6 +4116,9 @@ public partial class SettingsViewModel : ViewModelBase
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
+            CoverFlowLayout = defaultSettings.CoverFlowLayout;
+            MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
@@ -4037,6 +4154,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
+            AllowExplicitContent = defaultSettings.AllowExplicitContent;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
             ReplayGainMode = defaultSettings.ReplayGainMode;

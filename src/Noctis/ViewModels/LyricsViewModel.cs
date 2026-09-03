@@ -183,15 +183,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private const int LineSyncIntervalMs = 100;
 
-    // ── Extrapolated playback clock ──
-    // LibVLC only refreshes MediaPlayer.Time every ~150-300ms, so raw Position reads
-    // move in coarse steps — far too chunky for the word-level colour sweep. Anchor
-    // each fresh raw value against Stopwatch time and extrapolate between updates,
-    // with a monotonic guard so re-anchor jitter never drags the sweep backwards.
-    private long _clockRawMs = -1;
-    private long _clockAnchorMs;
-    private long _clockAnchorTimestamp;
-    private double _clockLastMs;
+    // ── Rate-locked playback clock ──
+    // Raw Position reaches us in coarse steps (audio-layer blocks → 100ms poll →
+    // dispatcher), far too chunky for the word-level colour sweep. The clock runs
+    // continuously and bends its rate toward the raw source instead of re-anchoring
+    // (which froze or jumped the sweep at every poll). See LyricsPlaybackClock.
+    private readonly LyricsPlaybackClock _clock = new();
 
     // True while the RequestAnimationFrame loop driving the word sweep is running.
     // Managed by UpdateWordClockSubscription() / OnWordClockFrame().
@@ -2698,21 +2695,25 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             line.Timestamp.Value.TotalSeconds / _player.Duration.TotalSeconds);
     }
 
-    /// <summary>
-    /// Updates the currently active (highlighted) lyric line based on playback position.
-    /// Called from OnPlayerPropertyChanged which fires on UI thread, so no extra dispatch needed.
-    /// A 350ms lookahead compensates for VLC position polling latency + UI dispatch delay,
-    /// ensuring lyrics highlight at the moment the vocal begins rather than after.
-    ///
-    /// Uses a monotonic cursor (_lineCursor) that advances forward per tick — O(1) amortized
-    /// instead of scanning every line on every tick. Resets to 0 on seek-backwards.
-    /// </summary>
-    private static readonly TimeSpan LyricsLookahead = TimeSpan.FromMilliseconds(350);
-
     // Word-level lookahead: small lead so the sweep matches the vocal instead of trailing
     // UI dispatch latency. AMLL feels in-sync around 80ms — bigger leads start to read
     // as the colour racing ahead of the voice.
-    private static readonly TimeSpan WordLookahead = TimeSpan.FromMilliseconds(80);
+    private const int WordLookaheadMs = 80;
+    private static readonly TimeSpan WordLookahead = TimeSpan.FromMilliseconds(WordLookaheadMs);
+
+    /// <summary>
+    /// Lead for lines WITHOUT word timings. A plain line has no sweep, so its only cue
+    /// is the glide bringing it to the anchor — activate it early enough that the glide
+    /// has covered half its travel (the moment the eye reads it as "arrived") when the
+    /// vocal starts. Derived from the shared line-motion curve, plus the same small
+    /// dispatch lead the word clock uses; it was a fixed 350ms that pre-dated the
+    /// rate-locked clock and switched plain lines a beat early.
+    ///
+    /// UpdateActiveLine uses a monotonic cursor (_lineCursor) that advances forward per
+    /// tick — O(1) amortized instead of scanning every line. Resets on seek-backwards.
+    /// </summary>
+    private static readonly TimeSpan LyricsLookahead =
+        TimeSpan.FromMilliseconds(WordLookaheadMs + Helpers.LineMotion.HalfTravelMs);
 
     private void UpdateActiveLine(TimeSpan position)
     {
@@ -2809,6 +2810,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 bestMatch.IsActive = true;
 
             _currentActiveLine = bestMatch;
+            if (DebugLog.VlcBridgeEnabled)
+                Views.LyricsView.Trace($"active {ActiveLineIndex}→{bestIndex} at {position.TotalMilliseconds:0}ms" +
+                                       (bestMatch?.Timestamp is { } ts ? $" (line starts {ts.TotalMilliseconds:0}ms)" : ""));
             ActiveLineIndex = bestIndex;
             UpdateLineOpacities(bestIndex);
             UpdateWordClockSubscription();
@@ -2915,68 +2919,39 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Continuous playback clock. LibVLC refreshes its cached Time only every
-    /// ~150-300ms, so raw reads move in coarse steps that make the karaoke sweep
-    /// visibly jump. Extrapolates with a Stopwatch between raw updates while playing;
-    /// small backward re-anchors are held (monotonic), real seeks pass through.
+    /// Continuous playback clock for the sweep and line engine. The raw position
+    /// arrives in coarse steps; <see cref="LyricsPlaybackClock"/> turns them into a
+    /// smooth, rate-locked estimate (small disagreements bend the rate, seeks snap).
+    /// The engine's reported position is where the output buffer has been FILLED to,
+    /// which leads the speaker by the buffer depth — subtracted here so the sweep
+    /// lines up with what is audible, not with what has been queued.
     /// </summary>
     private TimeSpan GetPlaybackPosition()
     {
         var raw = _player.Position;
         if (_player.State != Models.PlaybackState.Playing)
         {
-            // Not advancing — drop the anchor so resume re-anchors fresh (an anchor
-            // held across a pause would otherwise add the pause length on resume).
-            _clockRawMs = -1;
-            _clockLastMs = raw.TotalMilliseconds;
+            // Not advancing — forget the clock so resume re-anchors fresh (state held
+            // across a pause would otherwise add the pause length on resume).
+            _clock.Reset();
             return raw;
         }
 
         // While the timeline is being dragged, Position is a target the user is steering,
         // not a clock that is running — VLC has not been told to seek yet, that happens on
-        // release. Extrapolating it forward actively fought a backward drag: hold the
-        // slider still and the estimate crept ahead by up to a second (the stall-guard
-        // cap), pulling the active line back down the list, then snapped up again when the
-        // drag resumed. A forward drag hid this completely because the creep pointed the
-        // same way the user was going. Re-anchor on the raw value so extrapolation resumes
-        // cleanly the moment the drag ends.
+        // release. Advancing it forward actively fought a backward drag: hold the slider
+        // still and the estimate crept ahead, pulling the active line back down the list,
+        // then snapped up again when the drag resumed. Follow the raw value verbatim and
+        // re-anchor the moment the drag ends.
         if (_player.IsSeeking)
         {
-            _clockRawMs = (long)raw.TotalMilliseconds;
-            _clockAnchorMs = _clockRawMs;
-            _clockAnchorTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
-            _clockLastMs = raw.TotalMilliseconds;
+            _clock.Reset();
             return raw;
         }
 
-        var rawMs = (long)raw.TotalMilliseconds;
-        var now = System.Diagnostics.Stopwatch.GetTimestamp();
-        // A raw value below the PREVIOUS raw value is the player itself moving backwards —
-        // a seek, or the timeline slider writing its target while the user drags. The
-        // monotonic guard below exists for VLC republishing a time behind our extrapolation,
-        // which never lowers the raw value, so the two cases are distinguishable. Without
-        // this, a slow drag backwards was smoothed away 300ms at a time and the position
-        // handed to UpdateActiveLine never actually moved back.
-        var rawMovedBack = _clockRawMs >= 0 && rawMs < _clockRawMs;
-        if (rawMs != _clockRawMs)
-        {
-            _clockRawMs = rawMs;
-            _clockAnchorMs = rawMs;
-            _clockAnchorTimestamp = now;
-        }
-
-        var elapsedMs = (now - _clockAnchorTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        // Stall guard: if VLC stops publishing time (buffering hiccup), stop
-        // extrapolating past 1s rather than running away from the real position.
-        if (elapsedMs > 1000) elapsedMs = 1000;
-        var estimate = _clockAnchorMs + elapsedMs;
-
-        // Monotonic guard: a fresh raw value slightly behind our extrapolation would
-        // step the sweep backwards — hold instead. Larger drops are real seeks.
-        if (!rawMovedBack && estimate < _clockLastMs && _clockLastMs - estimate < 300)
-            estimate = _clockLastMs;
-        _clockLastMs = estimate;
-        return TimeSpan.FromMilliseconds(estimate);
+        var nowMs = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        var estimate = _clock.Sample(raw.TotalMilliseconds, nowMs) - _player.OutputLatency.TotalMilliseconds;
+        return TimeSpan.FromMilliseconds(Math.Max(0, estimate));
     }
 
     /// <summary>

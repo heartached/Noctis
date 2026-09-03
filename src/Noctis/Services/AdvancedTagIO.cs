@@ -24,6 +24,10 @@ internal static class AdvancedTagIO
         "UNSYNCEDLYRICS", "GROUPING", "COPYRIGHT",
         // Sort fields (handled by this tab, but known)
         "TITLESORT", "ARTISTSORT", "ALBUMSORT", "ALBUMARTISTSORT", "COMPOSERSORT",
+        // ffmpeg-style spellings of the same fields (see FieldAliases): absorbed into
+        // the dedicated boxes, so they must not also show up as custom tags.
+        "SORT_NAME", "SORT_ARTIST", "SORT_ALBUM", "SORT_ALBUM_ARTIST", "SORT_COMPOSER",
+        "ENCODED_BY", "RELEASE_DATE", "CATALOG_NUMBER", "CATALOG", "ITUNES_ADVISORY",
         // People fields (handled by this tab, but known)
         "CONDUCTOR", "LYRICIST", "PUBLISHER", "ORGANIZATION", "LABEL",
         "ENCODEDBY", "ENCODED-BY",
@@ -177,11 +181,67 @@ internal static class AdvancedTagIO
         fields.ReplayGainAlbumGain = ReadCustomField(file, "REPLAYGAIN_ALBUM_GAIN");
         fields.ReplayGainAlbumPeak = ReadCustomField(file, "REPLAYGAIN_ALBUM_PEAK");
 
+        // ── Aliases ──
+        // ffmpeg (and files converted through it) spell the same fields differently —
+        // SORT_ALBUM instead of ALBUMSORT and so on — and those landed in the Custom
+        // Tags list right under an empty "album sort" box. Fill an empty dedicated
+        // field from its alias; the alias itself is a KnownKey so it stays out of the
+        // custom list.
+        fields.TitleSort = FirstNonEmpty(fields.TitleSort, () => ReadAliases(file, nameof(AdvancedFields.TitleSort)));
+        fields.ArtistSort = FirstNonEmpty(fields.ArtistSort, () => ReadAliases(file, nameof(AdvancedFields.ArtistSort)));
+        fields.AlbumSort = FirstNonEmpty(fields.AlbumSort, () => ReadAliases(file, nameof(AdvancedFields.AlbumSort)));
+        fields.AlbumArtistSort = FirstNonEmpty(fields.AlbumArtistSort, () => ReadAliases(file, nameof(AdvancedFields.AlbumArtistSort)));
+        fields.ComposerSort = FirstNonEmpty(fields.ComposerSort, () => ReadAliases(file, nameof(AdvancedFields.ComposerSort)));
+        fields.EncodedBy = FirstNonEmpty(fields.EncodedBy, () => ReadAliases(file, nameof(AdvancedFields.EncodedBy)));
+        fields.CatalogNumber = FirstNonEmpty(fields.CatalogNumber, () => ReadAliases(file, nameof(AdvancedFields.CatalogNumber)));
+        fields.ReleaseDate = FirstNonEmpty(fields.ReleaseDate, () => ReadAliases(file, nameof(AdvancedFields.ReleaseDate)));
+        if (fields.ItunesAdvisory == 0 && TryParseAdvisory(ReadAliases(file, "ItunesAdvisory"), out var aliasAdvisory))
+            fields.ItunesAdvisory = aliasAdvisory;
+
         // ── Custom tags ──
         fields.CustomTags = EnumerateCustomTags(file);
 
         return fields;
     }
+
+    /// <summary>
+    /// Alternative custom-field spellings for dedicated Advanced fields, keyed by the
+    /// <see cref="AdvancedFields"/> property name. Read as fallbacks and cleared when
+    /// the dedicated field is written, so the file never carries two disagreeing copies.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> FieldAliases = new(StringComparer.Ordinal)
+    {
+        [nameof(AdvancedFields.TitleSort)] = new[] { "SORT_NAME" },
+        [nameof(AdvancedFields.ArtistSort)] = new[] { "SORT_ARTIST" },
+        [nameof(AdvancedFields.AlbumSort)] = new[] { "SORT_ALBUM" },
+        [nameof(AdvancedFields.AlbumArtistSort)] = new[] { "SORT_ALBUM_ARTIST" },
+        [nameof(AdvancedFields.ComposerSort)] = new[] { "SORT_COMPOSER" },
+        [nameof(AdvancedFields.EncodedBy)] = new[] { "ENCODED_BY" },
+        [nameof(AdvancedFields.CatalogNumber)] = new[] { "CATALOG_NUMBER", "CATALOG" },
+        [nameof(AdvancedFields.ReleaseDate)] = new[] { "RELEASE_DATE" },
+        ["ItunesAdvisory"] = new[] { "ITUNES_ADVISORY" },
+    };
+
+    private static string ReadAliases(TagFile file, string field)
+    {
+        if (!FieldAliases.TryGetValue(field, out var keys)) return string.Empty;
+        foreach (var key in keys)
+        {
+            var v = ReadCustomField(file, key);
+            if (!string.IsNullOrWhiteSpace(v)) return v;
+        }
+        return string.Empty;
+    }
+
+    private static void ClearAliases(TagFile file, string field)
+    {
+        if (!FieldAliases.TryGetValue(field, out var keys)) return;
+        foreach (var key in keys)
+            WriteCustomField(file, key, string.Empty);
+    }
+
+    private static string FirstNonEmpty(string current, Func<string> fallback)
+        => string.IsNullOrWhiteSpace(current) ? fallback() : current;
 
     // ══════════════════════════════════════════════════════════════
     //  WRITE
@@ -226,6 +286,19 @@ internal static class AdvancedTagIO
             tag.AlbumSort = NullIfEmpty(fields.AlbumSort);
             tag.AlbumArtistsSort = SplitSemicolon(fields.AlbumArtistSort);
             tag.ComposersSort = SplitSemicolon(fields.ComposerSort);
+
+            // A field that was loaded from an ffmpeg-style alias (SORT_ALBUM …) is now
+            // written under its canonical key; drop the alias when the user changed the
+            // value so the stale spelling can't resurface after the box is cleared.
+            if (fields.TitleSort != original.TitleSort) ClearAliases(file, nameof(AdvancedFields.TitleSort));
+            if (fields.ArtistSort != original.ArtistSort) ClearAliases(file, nameof(AdvancedFields.ArtistSort));
+            if (fields.AlbumSort != original.AlbumSort) ClearAliases(file, nameof(AdvancedFields.AlbumSort));
+            if (fields.AlbumArtistSort != original.AlbumArtistSort) ClearAliases(file, nameof(AdvancedFields.AlbumArtistSort));
+            if (fields.ComposerSort != original.ComposerSort) ClearAliases(file, nameof(AdvancedFields.ComposerSort));
+            if (fields.EncodedBy != original.EncodedBy) ClearAliases(file, nameof(AdvancedFields.EncodedBy));
+            if (fields.CatalogNumber != original.CatalogNumber) ClearAliases(file, nameof(AdvancedFields.CatalogNumber));
+            if (fields.ReleaseDate != original.ReleaseDate) ClearAliases(file, nameof(AdvancedFields.ReleaseDate));
+            if (fields.ItunesAdvisory != original.ItunesAdvisory) ClearAliases(file, "ItunesAdvisory");
 
             // ── People ──
             WriteCustomField(file, "PERFORMER", fields.Performer);
@@ -527,6 +600,14 @@ internal static class AdvancedTagIO
             else asf.SetDescriptorString(clean, key);
         }
     }
+
+    /// <summary>
+    /// Writes only the iTunes advisory (0 = none, 1 = explicit, 2 = clean) into an open
+    /// tag file, leaving every other Advanced field untouched. Lets the album-scoped
+    /// editor flip "explicit" across a whole album without reading each track's full
+    /// Advanced field set first.
+    /// </summary>
+    public static void WriteAdvisory(TagFile file, int value) => WriteAdvisoryValue(file, value);
 
     private static void WriteAdvisoryValue(TagFile file, int value)
     {

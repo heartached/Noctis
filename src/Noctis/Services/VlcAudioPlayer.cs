@@ -617,6 +617,7 @@ public class VlcAudioPlayer : IAudioPlayer
             }
         }
         _wasapiOut = wasapi;
+        ApplyMuteToOwner(); // the sink now owns mute; VLC must be unmuted behind it
 
         // Volume is driven through the Windows audio session as a FLOAT level via
         // a fine click-free ramp (see the NOCTIS_VOL_RAMP_* notes above). When
@@ -757,6 +758,17 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    /// <summary>
+    /// Engine path: the reported position is the sink segment's consumed-frame count,
+    /// i.e. how far WasapiOut has been FED — the output buffer's worth of audio is
+    /// still ahead of the speaker. The legacy VLC path reports VLC's own clock,
+    /// which already accounts for its output latency.
+    /// </summary>
+    public TimeSpan OutputLatency =>
+        _gaplessEngine && _gaplessSink != null
+            ? TimeSpan.FromMilliseconds(GaplessSink.OutputLatencyMs)
+            : TimeSpan.Zero;
+
     public long CurrentSessionId => Interlocked.Read(ref _playbackSessionId);
 
     // Store the user-facing volume (0–100) separately from VLC's internal volume,
@@ -874,15 +886,66 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public bool IsMuted
     {
-        get => !_disposed && _player.Mute;
+        // On a sink path LibVLC is deliberately left unmuted (see ApplyMuteToOwner), so
+        // the user's intent is the truth there; the native path can read the player.
+        get => !_disposed && (SinkOwnsMute ? _userMuted : _player.Mute);
         set
         {
             if (_disposed) return;
             _userMuted = value;
-            _player.Mute = value;
-            if (_standbyPrepared)
-                _standbyPlayer.Mute = value;
+            ApplyMuteToOwner();
         }
+    }
+
+    /// <summary>True when a post-buffer stage — the gapless engine's gate or a WASAPI
+    /// callback sink's gain — applies the user's mute, so LibVLC must stay unmuted.</summary>
+    private bool SinkOwnsMute => ActiveCallbackSink != null || (_gaplessEngine && _gaplessSink != null);
+
+    /// <summary>
+    /// Routes the user's mute to whatever currently renders the audio. Discord "Mute
+    /// button unresponsive on Windows" (2026-08-17): the gapless engine stages seconds of
+    /// PCM ahead of the device, and LibVLC's mute is software gain applied BEFORE that
+    /// ring, so it was heard ~2 s late — and unmute ~2 s late again, the ring being full
+    /// of zeros by then. Post-buffer owners (engine gate, sink gain) mute within the
+    /// device buffer instead, and on those paths VLC is kept unmuted so the ring never
+    /// fills with silence. The native output path (macOS/Linux, or Windows with the
+    /// engine off) still mutes the player itself. Idempotent — also called whenever the
+    /// owner changes (sink opened/closed, engine disabled).
+    /// </summary>
+    private void ApplyMuteToOwner()
+    {
+        if (_disposed) return;
+        var muted = _userMuted;
+        var callbackSink = ActiveCallbackSink;
+        var engineOwns = callbackSink == null && _gaplessEngine && _gaplessSink != null;
+
+        if (_gaplessSink is { } engineSink)
+            engineSink.IsMuted = muted && engineOwns;
+
+        if (callbackSink != null || engineOwns)
+        {
+            callbackSink?.SetGainTarget(WasapiGainLevel()); // 0 while muted
+            ClearVlcMute();
+            return;
+        }
+
+        try
+        {
+            if (_player.Mute != muted) _player.Mute = muted;
+            if (_standbyPrepared && _standbyPlayer.Mute != muted) _standbyPlayer.Mute = muted;
+        }
+        catch { /* player transitioning */ }
+    }
+
+    /// <summary>LibVLC must never software-mute on a sink path: its zeros would sit in the staged ring.</summary>
+    private void ClearVlcMute()
+    {
+        try
+        {
+            if (_player.Mute) _player.Mute = false;
+            if (_standbyPrepared && _standbyPlayer.Mute) _standbyPlayer.Mute = false;
+        }
+        catch { /* player transitioning */ }
     }
 
     /// <summary>
@@ -1577,6 +1640,7 @@ public class VlcAudioPlayer : IAudioPlayer
             try { _gaplessSink?.Dispose(); } catch { }
             _gaplessSink = null;
             DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.Disabled", "output mode rebuilt");
+            ApplyMuteToOwner(); // mute moves back to the player (or the exclusive sink)
         }
 
         // Loaded media counts as active even when IsPlaying is still false:
@@ -1668,6 +1732,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 _exclusiveOut?.Dispose();
                 _exclusiveOut = null;
             }
+            ApplyMuteToOwner(); // exclusive sink gone: the engine gate or the player owns mute again
             _keepAlive?.SetSuspended(false);
             if (_sessionVolume != null)
             {
@@ -1777,7 +1842,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     }
 
                     _exclusiveOut = sink;
-                    sink.SetGainTarget(WasapiGainLevel());
+                    // Sets the sink's gain (0 while muted) and clears any VLC-side mute.
+                    ApplyMuteToOwner();
 
                     // A device that disappears mid-track (USB DAC unplugged, Bluetooth
                     // drop, default device switched) otherwise leaves this sink wedged
@@ -2399,7 +2465,7 @@ public class VlcAudioPlayer : IAudioPlayer
             var isPathless = isRemote || isCd;
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
-            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
+            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !IsMuted &&
                                     _wasapiOut == null && !_exclusiveModeEnabled && !_gaplessEngine &&
                                     !startPaused && !isPathless;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
@@ -3517,8 +3583,12 @@ public class VlcAudioPlayer : IAudioPlayer
     // curve (with the ReplayGain scalar folded in, matching the session path)
     // cubed to the same taper the OS-session path used, so all paths sound
     // identical at a given slider position.
-    private float WasapiGainLevel() =>
-        CurvedVolumeToLevelMilli(ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)))) / 1000f;
+    // Mute is folded in: on the callback-sink paths the sink's per-sample gain IS the
+    // mute (see ApplyMuteToOwner), so every re-apply — volume drag, commit, sink
+    // (re)open, exclusive fallback — keeps a muted player muted.
+    private float WasapiGainLevel() => _userMuted
+        ? 0f
+        : CurvedVolumeToLevelMilli(ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)))) / 1000f;
 
     // The callback sink currently receiving LibVLC's decoded PCM: the
     // experimental env-gated one, or the settings-driven exclusive-mode one.
@@ -3748,7 +3818,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // write also heals the OS-side restore entry for future streams.
     private void ScheduleMuteIntentReassert(long sessionId)
     {
-        if (_sessionVolume != null || ActiveCallbackSink != null) return;
+        // Sink paths keep VLC unmuted on purpose — re-asserting _userMuted onto the
+        // player there would recreate the buffered-mute lag this fixes.
+        if (_sessionVolume != null || SinkOwnsMute) return;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             for (var waited = 0; waited < 2000; waited += 50)
@@ -4509,7 +4581,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     //   • Native integer volume (macOS/Linux): dip/restore _player.Volume.
                     //   • WASAPI callback sink (exclusive mode): the sink owns gain — seek.
                     // Paused/muted is already silent, so just seek.
-                    if (_isPaused || _player.Mute)
+                    if (_isPaused || IsMuted)
                     {
                         _player.Time = targetMs;
                     }

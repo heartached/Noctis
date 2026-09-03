@@ -21,6 +21,18 @@ public partial class LyricsView : UserControl
     // Bumped to invalidate any in-flight frame-clock scroll animation (replaces stopping a timer).
     private int _scrollAnimationGeneration;
     private bool _isProgrammaticScroll;
+
+    // Dev-mode event trace of the lyrics flow (Settings ▸ About ▸ Developer Mode ▸
+    // Copy Logs): every line change, every scroll start with its route, every glide
+    // end, every cancellation and every offset write that did not come from this
+    // view. Timestamps are ms since process start, so the lines can be laid on one
+    // timeline against the view model's "active a→b" entries.
+    private static readonly Stopwatch TraceClock = Stopwatch.StartNew();
+    internal static void Trace(string message)
+    {
+        if (Services.DebugLog.VlcBridgeEnabled)
+            Services.DebugLog.Write("Lyrics", $"+{TraceClock.ElapsedMilliseconds}ms {message}");
+    }
     // Lines currently carrying a transient cascade translate (Apple Music-style
     // staggered glide); cleared whenever the scroll animation ends or is cancelled.
     private List<(Control Control, double DelayMs)>? _cascadeLines;
@@ -43,15 +55,11 @@ public partial class LyricsView : UserControl
     private const double NarrowBreakpoint = 900;
     private const double LyricsTimelineThumbSize = 16;
 
-    // ── Flowing-light mesh background (issue #22) ──
-    // The blobs are moved from code (timer-driven transforms); a XAML KeyFrame
-    // animation on RenderTransform crashes Avalonia at startup.
-    private DispatcherTimer? _meshTimer;
-    private readonly Stopwatch _meshClock = Stopwatch.StartNew();
-    private readonly TranslateTransform _meshBlob1Transform = new();
-    private readonly TranslateTransform _meshBlob2Transform = new();
-    private readonly TranslateTransform _meshBlob3Transform = new();
-    private const int MeshFrameMs = 33;
+    // ── Flowing-artwork background (issue #22) ──
+    // One shared frame-clock animator (same math on the page, the side panel and the
+    // mini player). Transforms are driven from code: a XAML KeyFrame animation on
+    // RenderTransform crashes Avalonia at startup.
+    private readonly FlowingArtworkAnimator _flow;
 
     public LyricsView()
     {
@@ -67,9 +75,7 @@ public partial class LyricsView : UserControl
 
         LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
 
-        MeshBlob1.RenderTransform = _meshBlob1Transform;
-        MeshBlob2.RenderTransform = _meshBlob2Transform;
-        MeshBlob3.RenderTransform = _meshBlob3Transform;
+        _flow = new FlowingArtworkAnimator(this, FlowBackdrop, FlowLayer1, FlowLayer2, BeatGlow, GetBeatContext);
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerReleasedEvent, OnTimelineSeekEnd, RoutingStrategies.Tunnel);
@@ -223,10 +229,8 @@ public partial class LyricsView : UserControl
             }
             JumpToActiveLineWhenReady(vm.ActiveLineIndex);
 
-            // Retint the flowing-light blobs to the current artwork palette and start
-            // their drift if the artwork background mode is active.
-            ApplyMeshColors(vm);
-            UpdateMeshAnimationState(vm);
+            // Start the artwork flow if the artwork background mode is active.
+            UpdateFlowAnimationState(vm);
         }
 
     }
@@ -271,8 +275,8 @@ public partial class LyricsView : UserControl
             (DataContext as LyricsViewModel)?.SetLyricsSurfaceVisible(false);
         }
 
-        // The flowing-light drift only makes sense while this page can be seen.
-        StopMeshAnimation();
+        // The artwork flow only makes sense while this page can be seen.
+        _flow.Enabled = false;
 
         base.OnDetachedFromVisualTree(e);
     }
@@ -660,115 +664,32 @@ public partial class LyricsView : UserControl
                 SetResourceBrush("LyricsBtnBgHoverRes", vm.LyricsBtnBgHover);
                 SetResourceBrush("LyricsSecBtnBgHoverRes", vm.LyricsBtnBgHover);
                 break;
-            case nameof(LyricsViewModel.MeshBlobColor1):
-            case nameof(LyricsViewModel.MeshBlobColor2):
-            case nameof(LyricsViewModel.MeshBlobColor3):
-                ApplyMeshColors(vm);
-                break;
             case nameof(LyricsViewModel.IsColorModeArtwork):
-                UpdateMeshAnimationState(vm);
+                UpdateFlowAnimationState(vm);
                 break;
         }
     }
 
-    // ── Flowing-light mesh background ──
-    // Apple-Music-style drifting color blobs behind the blurred artwork (issue #22).
-    // Three radial-gradient ellipses in the artwork's palette wander on slow sine
-    // paths whose frequencies share no common period, so the pattern never visibly
-    // loops. Driven by a ~30fps DispatcherTimer that only runs while this view is
-    // attached and the Artwork background mode is active — a handful of transform/
-    // opacity writes per tick, nowhere near the budget the pre-blurred backdrop
-    // bought back (issue #11).
+    // ── Flowing-artwork background ──
+    // See FlowingArtworkAnimator / FlowingArtworkMotion: the blurred cover drifts and
+    // breathes on the beat, only while this page is attached, the Artwork background
+    // mode is on and the Settings toggle is on.
 
-    private void UpdateMeshAnimationState(LyricsViewModel vm)
-    {
-        if (vm.IsColorModeArtwork && vm.Player.LyricsFlowingLightEnabled)
-            StartMeshAnimation();
-        else
-            StopMeshAnimation();
-    }
+    private void UpdateFlowAnimationState(LyricsViewModel vm)
+        => _flow.Enabled = vm.IsColorModeArtwork && vm.Player.LyricsFlowingLightEnabled;
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        // The layer's visibility is bound in XAML; this only parks/resumes the timer.
+        // The layers' visibility is bound in XAML; this only parks/resumes the loop.
         if (e.PropertyName == nameof(PlayerViewModel.LyricsFlowingLightEnabled) &&
             DataContext is LyricsViewModel vm)
-            UpdateMeshAnimationState(vm);
+            UpdateFlowAnimationState(vm);
     }
 
-    private void StartMeshAnimation()
+    private BeatContext GetBeatContext()
     {
-        if (_meshTimer != null) return;
-        _meshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MeshFrameMs) };
-        _meshTimer.Tick += OnMeshTick;
-        _meshTimer.Start();
-    }
-
-    private void StopMeshAnimation()
-    {
-        if (_meshTimer == null) return;
-        _meshTimer.Stop();
-        _meshTimer.Tick -= OnMeshTick;
-        _meshTimer = null;
-    }
-
-    private void OnMeshTick(object? sender, EventArgs e)
-    {
-        var size = Bounds.Size;
-        var w = size.Width;
-        var h = size.Height;
-        if (w <= 0 || h <= 0) return;
-
-        // Base geometry tracks the current bounds every tick — writes are no-ops
-        // unless the window was resized, and it saves a separate resize hook.
-        PlaceMeshBlob(MeshBlob1, w * 0.90, -w * 0.20, -h * 0.30);
-        PlaceMeshBlob(MeshBlob2, w * 0.75,  w * 0.45,  h * 0.40);
-        PlaceMeshBlob(MeshBlob3, w * 0.60,  w * 0.30, -h * 0.15);
-
-        var t = _meshClock.Elapsed.TotalSeconds;
-
-        // Drift amplitudes are fractions of the page so the motion scales with the
-        // window. Full cycles run about a minute — flowing light, not a screensaver.
-        _meshBlob1Transform.X = Math.Sin(t * 0.110) * w * 0.14;
-        _meshBlob1Transform.Y = Math.Cos(t * 0.083) * h * 0.12;
-        _meshBlob2Transform.X = Math.Sin(t * 0.071 + 2.1) * w * 0.16;
-        _meshBlob2Transform.Y = Math.Cos(t * 0.127 + 0.7) * h * 0.14;
-        _meshBlob3Transform.X = Math.Sin(t * 0.093 + 4.2) * w * 0.18;
-        _meshBlob3Transform.Y = Math.Cos(t * 0.059 + 1.3) * h * 0.16;
-
-        // Slow breathing so the light reads as evolving, not just sliding around.
-        MeshBlob1.Opacity = 0.68 + 0.22 * Math.Sin(t * 0.151);
-        MeshBlob2.Opacity = 0.66 + 0.24 * Math.Sin(t * 0.101 + 2.6);
-        MeshBlob3.Opacity = 0.62 + 0.26 * Math.Sin(t * 0.131 + 5.0);
-    }
-
-    private static void PlaceMeshBlob(Avalonia.Controls.Shapes.Ellipse blob, double diameter, double left, double top)
-    {
-        // Width starts as NaN (unset), and NaN comparisons are false — check explicitly.
-        if (double.IsNaN(blob.Width) || Math.Abs(blob.Width - diameter) > 0.5)
-        {
-            blob.Width = diameter;
-            blob.Height = diameter;
-        }
-        Canvas.SetLeft(blob, left);
-        Canvas.SetTop(blob, top);
-    }
-
-    /// <summary>Retints the three blob gradients in place (same mutate-in-place pattern
-    /// as SetResourceBrush) whenever the VM re-derives the artwork palette.</summary>
-    private void ApplyMeshColors(LyricsViewModel vm)
-    {
-        SetMeshBlobColor(MeshBlob1, vm.MeshBlobColor1);
-        SetMeshBlobColor(MeshBlob2, vm.MeshBlobColor2);
-        SetMeshBlobColor(MeshBlob3, vm.MeshBlobColor3);
-    }
-
-    private static void SetMeshBlobColor(Avalonia.Controls.Shapes.Ellipse blob, Color color)
-    {
-        if (blob.Fill is not RadialGradientBrush brush || brush.GradientStops.Count < 3) return;
-        brush.GradientStops[0].Color = Color.FromArgb(0xD8, color.R, color.G, color.B);
-        brush.GradientStops[1].Color = Color.FromArgb(0x60, color.R, color.G, color.B);
-        brush.GradientStops[2].Color = Color.FromArgb(0x00, color.R, color.G, color.B);
+        if (DataContext is not LyricsViewModel { Player: { } player }) return default;
+        return new BeatContext(player.CurrentTrack?.Bpm ?? 0, player.Position.TotalMilliseconds, player.IsPlaying);
     }
 
     private void SetResourceBrush(string key, IBrush brush)
@@ -862,6 +783,8 @@ public partial class LyricsView : UserControl
 
     private void CancelScrollAnimation()
     {
+        if (_isProgrammaticScroll || _chaseRunning)
+            Trace($"cancel {(_chaseRunning ? "chase" : "glide")} in flight at offset {LyricsScrollViewer?.Offset.Y:0}");
         _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
         _chaseRunning = false;
@@ -900,6 +823,7 @@ public partial class LyricsView : UserControl
             // Pick the chase up from wherever the offset actually is, so a glide that was
             // in flight hands over without a jump.
             _chaseY = scrollViewer.Offset.Y;
+            Trace($"chase start {_chaseY:0}→{targetY:0}");
             _chaseLastFrameTicks = Stopwatch.GetTimestamp();
             _chaseRunning = true;
             _isProgrammaticScroll = true;
@@ -1054,7 +978,10 @@ public partial class LyricsView : UserControl
 
         // 1px tolerance: layout can round the offset we asked for.
         if (Math.Abs(v.Y - _lastAppliedScrollY) > 1.0)
+        {
+            Trace($"offset moved externally {_lastAppliedScrollY:0}→{v.Y:0} — pausing auto-follow");
             PauseAutoFollow();
+        }
     }
 
     private void OnLyricsPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -1144,7 +1071,10 @@ public partial class LyricsView : UserControl
         _lastScrolledIndex = index;
 
         if (DataContext is LyricsViewModel vm && vm.IsAutoFollowPaused)
+        {
+            Trace($"scroll→{index} skipped: auto-follow paused");
             return;
+        }
 
         // Updates arriving on top of each other mean the position is being dragged, not
         // advancing with playback. Those go to the chase, which retargets instead of
@@ -1167,6 +1097,7 @@ public partial class LyricsView : UserControl
             // item layout the offset is measured against has not moved.
             if (TryComputeAnchorOffset(index) is { } scrubTarget)
             {
+                Trace($"scroll→{index} chase to {scrubTarget:0} (sinceLast {sinceLastMs:0}ms, sinceSeek {sinceSeekMs:0}ms)");
                 _scrollAnimationGeneration++;   // supersede the eased glide, keep the chase
                 ClearCascadeTransforms();
                 ChaseTo(LyricsScrollViewer, scrubTarget);
@@ -1176,59 +1107,64 @@ public partial class LyricsView : UserControl
 
         CancelScrollAnimation();
 
-        // Minimal delay — just enough for layout to settle after active line change.
-        // Generation-stamped: a cancel or supersede landing inside this window (swap
-        // jump, tab switch, another request) must kill the pending glide too, not
-        // only animations that have already started.
-        var generation = _scrollAnimationGeneration;
-        DispatcherTimer.RunOnce(() =>
+        // Start the glide NOW, on the same frame the line's scale/opacity transitions
+        // start. It used to wait on a 10ms DispatcherTimer "for layout to settle" —
+        // a relic of the era when activation swapped in a differently-wrapped
+        // TextBlock. Lines are always word-laid-out today, so activation changes no
+        // layout; and on Windows a 10ms timer fires on the ~15.6ms timer tick, so the
+        // list held still for a frame or two after the line had brightened and begun
+        // to grow, then set off on the curve's acceleration — a hesitation at the
+        // start of every flow. (Mounts and track swaps, where layout IS pending, go
+        // through JumpToActiveLineWhenReady, not here.)
+        try
         {
-            try
+            if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
+
+            var presenter = LyricsItemsControl.GetVisualDescendants()
+                .OfType<ItemsPresenter>()
+                .FirstOrDefault();
+            if (presenter == null) return;
+
+            var panel = presenter.GetVisualChildren().FirstOrDefault() as Panel;
+            if (panel == null || index >= panel.Children.Count) return;
+
+            var targetChild = panel.Children[index];
+            if (LyricsScrollViewer == null) return;
+
+            var childBounds = targetChild.TransformToVisual(panel);
+            if (childBounds == null) return;
+
+            // Extent space: panel coordinates + the ItemsControl top margin
+            // (see TryComputeAnchorOffset).
+            var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
+                           + LyricsItemsControl.Margin.Top;
+            var childHeight = targetChild.Bounds.Height;
+
+            var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
+                childTop, childHeight,
+                LyricsScrollViewer.Viewport.Height,
+                LyricsScrollViewer.Extent.Height,
+                ActiveAnchorRatio);
+
+            var currentOffset = LyricsScrollViewer.Offset.Y;
+            var diff = targetOffset - currentOffset;
+
+            if (Math.Abs(diff) < 2)
             {
-                if (generation != _scrollAnimationGeneration) return;
-                if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
-
-                var presenter = LyricsItemsControl.GetVisualDescendants()
-                    .OfType<ItemsPresenter>()
-                    .FirstOrDefault();
-                if (presenter == null) return;
-
-                var panel = presenter.GetVisualChildren().FirstOrDefault() as Panel;
-                if (panel == null || index >= panel.Children.Count) return;
-
-                var targetChild = panel.Children[index];
-                if (LyricsScrollViewer == null) return;
-
-                var childBounds = targetChild.TransformToVisual(panel);
-                if (childBounds == null) return;
-
-                // Extent space: panel coordinates + the ItemsControl top margin
-                // (see TryComputeAnchorOffset).
-                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
-                               + LyricsItemsControl.Margin.Top;
-                var childHeight = targetChild.Bounds.Height;
-
-                var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
-                    childTop, childHeight,
-                    LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height,
-                    ActiveAnchorRatio);
-
-                var currentOffset = LyricsScrollViewer.Offset.Y;
-                var diff = targetOffset - currentOffset;
-
-                if (Math.Abs(diff) < 2)
-                {
-                    ApplyScrollOffset(LyricsScrollViewer, targetOffset);
-                    return;
-                }
-
-                var distance = Math.Abs(diff);
-                var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
-                AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs, panel, index);
+                Trace($"scroll→{index} snap {currentOffset:0}→{targetOffset:0}");
+                ApplyScrollOffset(LyricsScrollViewer, targetOffset);
+                return;
             }
-            catch { }
-        }, TimeSpan.FromMilliseconds(10));
+
+            // A line-to-line advance runs exactly LineMotion.DurationMs so it lands
+            // together with the line's own scale transition; only seek-sized jumps
+            // stretch beyond it.
+            var distance = Math.Abs(diff);
+            var durationMs = (int)Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
+            Trace($"scroll→{index} glide {currentOffset:0}→{targetOffset:0} ({diff:+0;-0}px) {durationMs}ms");
+            AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs, panel, index);
+        }
+        catch { }
     }
 
     private void JumpToActiveLineWhenReady(int index)
@@ -1236,6 +1172,7 @@ public partial class LyricsView : UserControl
         if (index < 0)
             return;
 
+        Trace($"jump→{index}");
         _lastScrolledIndex = index;
         CancelScrollAnimation();
 
@@ -1331,6 +1268,15 @@ public partial class LyricsView : UserControl
         var totalMs = (double)durationMs;
         var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
 
+        // Frame-pacing diagnostic: a dropped frame during the glide is a visible skip
+        // (positions are time-based, so the next frame catches up in one step). One
+        // dev-log line per glide that dropped any, with where in the glide it happened.
+        var lastFrameMs = double.NaN;
+        var frames = 0;
+        var maxGapMs = 0.0;
+        var maxGapAtMs = 0.0;
+        var droppedFrames = 0;
+
         void Frame(TimeSpan _)
         {
             // Superseded or cancelled: the canceller already reset flags/transforms.
@@ -1339,9 +1285,22 @@ public partial class LyricsView : UserControl
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
-            // Scroll easing: smootherstep glides without overshoot. Spring overshoot here
-            // reads as "the lyrics jumped past, then snapped back" — opposite of smooth.
-            var eased = Easing.SmootherStep(t);
+            frames++;
+            if (!double.IsNaN(lastFrameMs))
+            {
+                var gap = elapsed - lastFrameMs;
+                if (gap > maxGapMs) { maxGapMs = gap; maxGapAtMs = elapsed; }
+                if (gap > 30) droppedFrames++;
+            }
+            lastFrameMs = elapsed;
+
+            // Scroll easing: the shared line-motion curve (ζ=0.85 spring: sub-pixel
+            // overshoot — the old wobbly SpringEase read as "jumped past, then snapped
+            // back"; a critically damped one crept for 3px after the eye saw it stop).
+            // Same curve as the line's scale transition, so size and position arrive
+            // together; smootherstep sat nearly still for its first quarter while the
+            // scale had already popped.
+            var eased = LineMotion.Ease(t);
             ApplyScrollOffset(scrollViewer, from + delta * eased);
 
             // Stagger: each cascade line is displaced by the gap between the base ease
@@ -1367,8 +1326,8 @@ public partial class LyricsView : UserControl
             foreach (var (control, delayMs) in cascade)
             {
                 var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
-                var lag = delta * (eased - Easing.SmootherStep(tLine));
-                lag = Math.Clamp(lag, prevLag - MaxCascadeLagStepPx, prevLag + MaxCascadeLagStepPx);
+                var lag = LineMotion.CascadeStep(
+                    delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
                 prevLag = lag;
 
                 // Bounds is layout-only, so it is not disturbed by the transforms written
@@ -1393,6 +1352,8 @@ public partial class LyricsView : UserControl
                 ApplyScrollOffset(scrollViewer, to);
                 ClearCascadeTransforms();
                 _isProgrammaticScroll = false;
+                Trace($"glide end at {elapsed:0}ms (planned {durationMs}+{maxDelayMs:0}): {frames} frames, " +
+                      $"{droppedFrames} gap(s) >30ms, worst {maxGapMs:0}ms at {maxGapAtMs:0}ms, {cascade.Count} cascade lines, offset {to:0}");
                 return;
             }
 

@@ -39,16 +39,19 @@ public partial class MiniPlayerWindow : Window
     private Avalonia.Threading.DispatcherTimer? _lyricsFontTimer;
     private double _pendingLyricsFontSize = 21;
 
-    // ── Flowing-light mesh (mini copy of the lyrics page's MeshBlobLayer) ──
-    // Same drift math and palette plumbing as LyricsView; the timer only runs while
-    // the Lyrics form, the Artwork background mode and the flowing-light setting are
-    // all active, so the other forms never pay for it.
-    private const int MeshFrameMs = 33;
-    private Avalonia.Threading.DispatcherTimer? _meshTimer;
-    private readonly System.Diagnostics.Stopwatch _meshClock = System.Diagnostics.Stopwatch.StartNew();
-    private readonly TranslateTransform _meshBlob1Transform = new();
-    private readonly TranslateTransform _meshBlob2Transform = new();
-    private readonly TranslateTransform _meshBlob3Transform = new();
+    // ── Flowing-artwork background (mini copy of the lyrics page's FlowBackdrop) ──
+    // The same FlowingArtworkAnimator as the page and the panel; it only runs while
+    // the Lyrics form, the Artwork background mode and the setting are all active,
+    // so the other forms never pay for it.
+    private FlowingArtworkAnimator? _flow;
+
+    // ── Frost bands (Large icon + Lyrics forms) ──
+    // Per-form brushes whose stops are re-derived from the controls' pixel height on
+    // every resize (MiniFrostBand), replacing the fixed-fraction shared resources.
+    private readonly LinearGradientBrush _largeFrostMask = MiniFrostBand.CreateMask();
+    private readonly LinearGradientBrush _largeFrostScrim = MiniFrostBand.CreateScrim();
+    private readonly LinearGradientBrush _lyricsFrostMask = MiniFrostBand.CreateMask();
+    private readonly LinearGradientBrush _lyricsFrostScrim = MiniFrostBand.CreateScrim();
 
     // ── Form morphing ──
     // Poses the form roots animate between. Hidden forms sit at Enter, so showing one is
@@ -113,7 +116,7 @@ public partial class MiniPlayerWindow : Window
         // Seek commits follow the same BeginSeek/EndSeek protocol as the playback bar
         // so drags update the UI live and send a single debounced seek on release.
         // Every form has its own seek slider; wire all of them the same way.
-        foreach (var slider in new[] { SeekSlider, BarSeekSlider, LargeSeekSlider, LyricsSeekSlider })
+        foreach (var slider in new[] { SeekSlider, BarSeekSlider, LargeSeekSlider, LyricsSeekSlider, PillSeekSlider, SleeveSeekSlider })
         {
             slider.AddHandler(PointerPressedEvent, OnSeekPointerPressed, RoutingStrategies.Tunnel);
             slider.AddHandler(PointerReleasedEvent, OnSeekPointerReleased, RoutingStrategies.Tunnel);
@@ -178,9 +181,27 @@ public partial class MiniPlayerWindow : Window
         // LargeArtClip / LyricsArtClip need no clip of their own any more: both forms'
         // artwork is now full bleed, so RootPanel's rounded clip above is what rounds it.
 
-        MiniMeshBlob1.RenderTransform = _meshBlob1Transform;
-        MiniMeshBlob2.RenderTransform = _meshBlob2Transform;
-        MiniMeshBlob3.RenderTransform = _meshBlob3Transform;
+        _flow = new FlowingArtworkAnimator(this, MiniFlowBackdrop, MiniFlowLayer1, MiniFlowLayer2, MiniBeatGlow, GetBeatContext);
+
+        _classicRootFill = RootBorder.Background;
+        _pillSpinner = new CoverSpinner(this, PillCoverSpin);
+        // The design ground follows the card's laid-out rect; the drawer palette follows
+        // the theme's foreground brushes (they are copied, not aliased).
+        LayoutUpdated += (_, _) => SyncDesignGround();
+        // Inside a layout pass (SizeChanged) the slab's new rect is absorbed by the same
+        // pass; LayoutUpdated above is the catch-all a frame later.
+        FormGrid.SizeChanged += (_, _) => SyncDesignGround();
+        PillFormRoot.SizeChanged += (_, _) => SyncDesignGround();
+        SleeveFormRoot.SizeChanged += (_, _) => SyncDesignGround();
+        ActualThemeVariantChanged += (_, _) => SyncDrawerPalette();
+        LargeFrostBand.OpacityMask = _largeFrostMask;
+        LargeFrostScrim.Background = _largeFrostScrim;
+        LyricsFrostBand.OpacityMask = _lyricsFrostMask;
+        LyricsFrostScrim.Background = _lyricsFrostScrim;
+        LargeIconFormRoot.SizeChanged += (_, _) => UpdateFrostBands();
+        LargeControls.SizeChanged += (_, _) => UpdateFrostBands();
+        LyricsArtColumn.SizeChanged += (_, _) => UpdateFrostBands();
+        LyricsArtControls.SizeChanged += (_, _) => UpdateFrostBands();
 
         // WrapPanel word lines must wrap at the visible width — the scroller's padding
         // is not subtracted from the measure width (see the lyrics panel's MaxWidth).
@@ -273,13 +294,21 @@ public partial class MiniPlayerWindow : Window
             RootBorder.Opacity = 1;
             RootBorder.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
 
+            // A fixed design opens at its own size — the stored placement belonged to
+            // whatever classic form was last used.
+            if (Vm is { IsStyleLocked: true } styled)
+            {
+                var (w, h) = MiniPlayerViewModel.CanonicalSize(styled.Form);
+                Width = w;
+                Height = h;
+            }
             Vm?.UpdateFromSize(ClientSize.Width, ClientSize.Height);
             // The roots all start hidden (the .form-root style), and UpdateFromSize only
             // raises Form when it CHANGES — so the opening form has to be shown explicitly
             // or the card comes up empty.
             SyncFormVisual();
             UpdateLyricsSurfaceRegistration();
-            UpdateMeshAnimationState();
+            UpdateFlowAnimationState();
             if (Vm?.IsLyricsForm == true)
                 OnEnteredLyricsForm();
 
@@ -307,6 +336,13 @@ public partial class MiniPlayerWindow : Window
         if (!_placementTrackable) return;
         // Persist the COLLAPSED geometry: back out the drawer's height and any upward shift
         // it needed to stay on screen, so reopening restores the player, not the expansion.
+        // Under a fixed design only the position is written: the stored size is the
+        // classic card's, and it is what Classic comes back to (this session or the next).
+        if (Vm is { IsStyleLocked: true } styled)
+        {
+            styled.Settings.SetMiniPlayerPosition(Position.X, Position.Y + _drawerShiftY);
+            return;
+        }
         Vm?.Settings.SetMiniPlayerPlacement(
             ClientSize.Width, ClientSize.Height - _drawerHeight,
             Position.X, Position.Y + _drawerShiftY);
@@ -324,6 +360,7 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
+            _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
         }
 
         _hookedVm = Vm;
@@ -334,10 +371,12 @@ public partial class MiniPlayerWindow : Window
         _hookedVm.Lyrics.PropertyChanged += OnLyricsPropertyChanged;
         _hookedVm.Player.PropertyChanged += OnPlayerPropertyChanged;
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
+        _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
+        UpdateDesignSegment();
 
         // A DataContext arriving after Opened would otherwise leave every form hidden.
         SyncFormVisual();
-        UpdateMeshAnimationState();
+        UpdateFlowAnimationState();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -360,7 +399,7 @@ public partial class MiniPlayerWindow : Window
 
                 SyncFormVisual();
                 UpdateLyricsSurfaceRegistration();
-                UpdateMeshAnimationState();
+                UpdateFlowAnimationState();
                 if (Vm?.IsLyricsForm == true)
                     OnEnteredLyricsForm();
                 break;
@@ -374,114 +413,47 @@ public partial class MiniPlayerWindow : Window
             case nameof(LyricsViewModel.ActiveLineIndex) when Vm?.IsLyricsForm == true:
                 CenterActiveLyric(animated: true);
                 break;
-            case nameof(LyricsViewModel.MeshBlobColor1):
-            case nameof(LyricsViewModel.MeshBlobColor2):
-            case nameof(LyricsViewModel.MeshBlobColor3):
-                ApplyMeshColors();
-                break;
             case nameof(LyricsViewModel.IsColorModeArtwork):
-                UpdateMeshAnimationState();
+                UpdateFlowAnimationState();
                 break;
         }
     }
 
     private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // The blob layer's visibility is bound in XAML; this only parks/resumes the timer.
+        if (e.PropertyName == nameof(PlayerViewModel.State))
+            UpdatePillSpin();
+        // The layers' visibility is bound in XAML; this only parks/resumes the loop.
         if (e.PropertyName == nameof(PlayerViewModel.LyricsFlowingLightEnabled))
-            UpdateMeshAnimationState();
+            UpdateFlowAnimationState();
     }
 
-    // ── Flowing-light mesh background ──
-    // Mini copy of the lyrics page's drifting palette blobs (issue #22): the same
-    // never-looping sine paths and breathing, behind the lyrics COLUMN only. See
-    // LyricsView.OnMeshTick for the full notes on the constants.
+    // ── Flowing-artwork background ──
+    // Mini copy of the lyrics page's flow: the blurred cover drifts and breathes on
+    // the beat behind the lyrics COLUMN only. See FlowingArtworkAnimator.
 
-    private void UpdateMeshAnimationState()
+    private void UpdateFlowAnimationState()
     {
-        if (Vm is { IsLyricsForm: true } vm && vm.Lyrics.IsColorModeArtwork &&
-            vm.Player.LyricsFlowingLightEnabled)
-            StartMeshAnimation();
-        else
-            StopMeshAnimation();
+        if (_flow == null) return;
+        _flow.Enabled = Vm is { IsLyricsForm: true } vm && vm.Lyrics.IsColorModeArtwork &&
+                        vm.Player.LyricsFlowingLightEnabled;
     }
 
-    private void StartMeshAnimation()
+    /// <summary>Re-anchors both frost bands to their controls' current pixel height.</summary>
+    private void UpdateFrostBands()
     {
-        if (_meshTimer != null) return;
-        ApplyMeshColors();
-        _meshTimer = new Avalonia.Threading.DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(MeshFrameMs)
-        };
-        _meshTimer.Tick += OnMeshTick;
-        _meshTimer.Start();
+        MiniFrostBand.Apply(_largeFrostMask, _largeFrostScrim,
+            MiniFrostBand.Compute(LargeIconFormRoot.Bounds.Height,
+                LargeControls.Bounds.Height + LargeControls.Margin.Bottom));
+        MiniFrostBand.Apply(_lyricsFrostMask, _lyricsFrostScrim,
+            MiniFrostBand.Compute(LyricsArtColumn.Bounds.Height,
+                LyricsArtControls.Bounds.Height + LyricsArtControls.Margin.Bottom));
     }
 
-    private void StopMeshAnimation()
+    private BeatContext GetBeatContext()
     {
-        if (_meshTimer == null) return;
-        _meshTimer.Stop();
-        _meshTimer.Tick -= OnMeshTick;
-        _meshTimer = null;
-    }
-
-    private void OnMeshTick(object? sender, EventArgs e)
-    {
-        // Geometry tracks the blob layer's own bounds (the lyrics column, not the
-        // window); re-deriving it every tick doubles as the resize hook, same as
-        // the page.
-        var size = MiniMeshBlobLayer.Bounds.Size;
-        var w = size.Width;
-        var h = size.Height;
-        if (w <= 0 || h <= 0) return;
-
-        PlaceMeshBlob(MiniMeshBlob1, w * 0.90, -w * 0.20, -h * 0.30);
-        PlaceMeshBlob(MiniMeshBlob2, w * 0.75,  w * 0.45,  h * 0.40);
-        PlaceMeshBlob(MiniMeshBlob3, w * 0.60,  w * 0.30, -h * 0.15);
-
-        var t = _meshClock.Elapsed.TotalSeconds;
-
-        _meshBlob1Transform.X = Math.Sin(t * 0.110) * w * 0.14;
-        _meshBlob1Transform.Y = Math.Cos(t * 0.083) * h * 0.12;
-        _meshBlob2Transform.X = Math.Sin(t * 0.071 + 2.1) * w * 0.16;
-        _meshBlob2Transform.Y = Math.Cos(t * 0.127 + 0.7) * h * 0.14;
-        _meshBlob3Transform.X = Math.Sin(t * 0.093 + 4.2) * w * 0.18;
-        _meshBlob3Transform.Y = Math.Cos(t * 0.059 + 1.3) * h * 0.16;
-
-        MiniMeshBlob1.Opacity = 0.68 + 0.22 * Math.Sin(t * 0.151);
-        MiniMeshBlob2.Opacity = 0.66 + 0.24 * Math.Sin(t * 0.101 + 2.6);
-        MiniMeshBlob3.Opacity = 0.62 + 0.26 * Math.Sin(t * 0.131 + 5.0);
-    }
-
-    private static void PlaceMeshBlob(Avalonia.Controls.Shapes.Ellipse blob, double diameter, double left, double top)
-    {
-        // Width starts as NaN (unset), and NaN comparisons are false — check explicitly.
-        if (double.IsNaN(blob.Width) || Math.Abs(blob.Width - diameter) > 0.5)
-        {
-            blob.Width = diameter;
-            blob.Height = diameter;
-        }
-        Canvas.SetLeft(blob, left);
-        Canvas.SetTop(blob, top);
-    }
-
-    /// <summary>Retints the three blob gradients in place whenever the VM re-derives
-    /// the artwork palette (same mutate-in-place pattern as the page).</summary>
-    private void ApplyMeshColors()
-    {
-        if (Vm is not { } vm) return;
-        SetMeshBlobColor(MiniMeshBlob1, vm.Lyrics.MeshBlobColor1);
-        SetMeshBlobColor(MiniMeshBlob2, vm.Lyrics.MeshBlobColor2);
-        SetMeshBlobColor(MiniMeshBlob3, vm.Lyrics.MeshBlobColor3);
-    }
-
-    private static void SetMeshBlobColor(Avalonia.Controls.Shapes.Ellipse blob, Color color)
-    {
-        if (blob.Fill is not RadialGradientBrush brush || brush.GradientStops.Count < 3) return;
-        brush.GradientStops[0].Color = Color.FromArgb(0xD8, color.R, color.G, color.B);
-        brush.GradientStops[1].Color = Color.FromArgb(0x60, color.R, color.G, color.B);
-        brush.GradientStops[2].Color = Color.FromArgb(0x00, color.R, color.G, color.B);
+        if (Vm is not { Player: { } player }) return default;
+        return new BeatContext(player.CurrentTrack?.Bpm ?? 0, player.Position.TotalMilliseconds, player.IsPlaying);
     }
 
     /// <summary>Exact window size (and the form it belonged to) captured when the menu
@@ -494,13 +466,52 @@ public partial class MiniPlayerWindow : Window
     /// <summary>Previous VM form, kept to detect the Lyrics→other edge above.</summary>
     private MiniPlayerForm? _lastVmForm;
 
+    /// <summary>Exact size (and form) of the classic card when a fixed design was picked,
+    /// handed back when the user returns to Classic — the counterpart of _preLyricsSize.</summary>
+    private (MiniPlayerForm Form, double Width, double Height)? _preDesignSize;
+
     private void OnFormResizeRequested(MiniPlayerForm form)
     {
+        // The collapsed height: a drawer that is open adds its own rows to Height.
+        var collapsedHeight = Height - _drawerHeight;
+
+        // A drawer mid-slide shares Window.Height with the form glide (both eased the
+        // same property with competing generations): the loser's timer died leaving
+        // _drawerHeight stale, and the sheet kept a 64px slice of the new form — the
+        // "pill shrinks" bug. Snap the drawer shut before any form jump.
+        SnapDrawerClosed();
+
+        if (form is MiniPlayerForm.Pill or MiniPlayerForm.Sleeve)
+        {
+            // Leaving a classic form for a design: remember where the card was. The VM
+            // raises this BEFORE flipping Form, so Form still names the classic form.
+            if (Vm is { IsDesignForm: false, IsLyricsForm: false } classicVm &&
+                double.IsFinite(Width) && double.IsFinite(collapsedHeight))
+                _preDesignSize = (classicVm.Form, Width, collapsedHeight);
+        }
+        else if (form != MiniPlayerForm.Lyrics && Vm is { IsDesignForm: true } or { IsStyleLocked: true })
+        {
+            // Back to Classic: the size the user left the card at — this session's
+            // capture, else the persisted classic size (a design never overwrites it,
+            // see CapturePlacement), else the form's canonical size.
+            if (_preDesignSize is { } savedClassic)
+            {
+                _preDesignSize = null;
+                AnimateSizeTo(savedClassic.Width, savedClassic.Height);
+                return;
+            }
+            if (Vm?.Settings.StoredMiniPlayerSize is { } stored)
+            {
+                AnimateSizeTo(Math.Clamp(stored.Width, MinWidth, MaxWidth), Math.Clamp(stored.Height, MinHeight, MaxHeight));
+                return;
+            }
+        }
+
         if (form == MiniPlayerForm.Lyrics)
         {
             if (Vm is { Form: not MiniPlayerForm.Lyrics } vm &&
-                double.IsFinite(Width) && double.IsFinite(Height))
-                _preLyricsSize = (vm.Form, Width, Height);
+                double.IsFinite(Width) && double.IsFinite(collapsedHeight))
+                _preLyricsSize = (vm.Form, Width, collapsedHeight);
         }
         else if (_preLyricsSize is { } saved && saved.Form == form)
         {
@@ -536,6 +547,7 @@ public partial class MiniPlayerWindow : Window
         const double durationMs = 280;
         var clock = System.Diagnostics.Stopwatch.StartNew();
         _suppressPlacementCapture = true;
+        _sizeAnimating = true;
 
         // Render priority + whole-DIP steps: the default Background priority starves
         // under layout churn (irregular jumps), and fractional sizes shimmer the
@@ -550,6 +562,9 @@ public partial class MiniPlayerWindow : Window
             if (generation != _resizeAnimationGeneration || _closeAnimationDone)
             {
                 timer.Stop();
+                // Superseded (a drawer or a newer jump took the height): whatever was
+                // waiting on this glide shows now rather than never.
+                if (generation == _sizeAnimationOwner) { _sizeAnimating = false; RevealDeferredForm(); }
                 return;
             }
 
@@ -564,10 +579,16 @@ public partial class MiniPlayerWindow : Window
             Width = targetWidth;
             Height = targetHeight;
             _suppressPlacementCapture = false;
+            _sizeAnimating = false;
             CapturePlacement();
+            RevealDeferredForm();
         };
+        _sizeAnimationOwner = generation;
         timer.Start();
     }
+
+    /// <summary>Generation of the AnimateSizeTo that owns <see cref="_sizeAnimating"/>.</summary>
+    private int _sizeAnimationOwner;
 
     /// <summary>
     /// Cross-fades the form layouts. Both are alive for the length of the fade, which is
@@ -600,8 +621,44 @@ public partial class MiniPlayerWindow : Window
             }, FormFadeDuration);
         }
 
+        // A jump into or out of a fixed design glides the window between two very
+        // different sizes. Cross-fading through the glide painted the incoming design at
+        // full opacity inside a still-tiny window (the Sleeve's disc over its own
+        // transport, the slab snapping to each frame's size). So: the outgoing form fades
+        // during the glide, and the incoming one is revealed only when the glide lands,
+        // at its final size — one clean swap. Classic-to-classic (drag resizes, Lyrics)
+        // keeps its cross-fade.
+        if (_sizeAnimating && (IsDesign(next) || (previous is { } p && IsDesign(p))))
+        {
+            _deferredForm = next;
+            return;
+        }
+        _deferredForm = null;
+        ShowIncomingForm(next);
+    }
+
+    private static bool IsDesign(MiniPlayerForm form) => form is MiniPlayerForm.Pill or MiniPlayerForm.Sleeve;
+
+    /// <summary>Form waiting for the size glide to land before it fades in.</summary>
+    private MiniPlayerForm? _deferredForm;
+
+    /// <summary>True while AnimateSizeTo is easing the window.</summary>
+    private bool _sizeAnimating;
+
+    private void RevealDeferredForm()
+    {
+        if (_deferredForm is not { } form) return;
+        _deferredForm = null;
+        if (_visibleForm != form) return;
+        ShowIncomingForm(form);
+    }
+
+    private void ShowIncomingForm(MiniPlayerForm next)
+    {
         var incoming = FormRoot(next);
         incoming.IsVisible = true;
+        SyncChrome(next);
+        UpdatePillSpin();
         // One frame parked at the enter pose, so the transition has a start value to
         // animate from rather than jumping straight to rest.
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -618,8 +675,234 @@ public partial class MiniPlayerWindow : Window
         MiniPlayerForm.Bar => BarFormRoot,
         MiniPlayerForm.Card => CardFormRoot,
         MiniPlayerForm.LargeIcon => LargeIconFormRoot,
+        MiniPlayerForm.Pill => PillFormRoot,
+        MiniPlayerForm.Sleeve => SleeveFormRoot,
         _ => LyricsFormRoot,
     };
+
+    /// <summary>
+    /// The fixed designs paint their own light cards (the pill is not even rectangular),
+    /// so the window's dark glass — base fill, outline, sheen, specular — steps aside for
+    /// them and comes back for every classic form.
+    /// </summary>
+    private void SyncChrome(MiniPlayerForm form)
+    {
+        var design = form is MiniPlayerForm.Pill or MiniPlayerForm.Sleeve;
+        RootBorder.BorderThickness = design ? new Thickness(0) : new Thickness(1.5);
+        RootBorder.Background = design ? Brushes.Transparent : _classicRootFill;
+        GlassSheen.IsVisible = !design;
+        GlassSpecular.IsVisible = !design;
+
+        // Under a design the card and the drawer share ONE painted shape, DesignGround
+        // (theme colour at the opacity setting). The sheet itself is always transparent:
+        // on the classic forms it sits on the root glass, under a design on the ground.
+        // Its specular top hairline is a classic-only detail — on the ground it read as
+        // a seam between "two pieces".
+        DrawerSheet.BorderThickness = design ? new Thickness(0) : new Thickness(0, 1, 0, 0);
+        UpdateDesignGroundShadow();
+        SyncDrawerPalette();
+        if (design)
+            SyncDesignGround(force: true);
+        else
+        {
+            DrawerSheet.Margin = new Thickness(0);
+            DrawerSheet.Padding = ClassicSheetPadding;
+        }
+    }
+
+    private static readonly Thickness ClassicSheetPadding = new(12, 10, 12, 12);
+
+    /// <summary>
+    /// Keeps <c>DesignGround</c> on the design card's outline. Measured from the card's
+    /// laid-out rect inside the form grid while the drawer is CLOSED (the grid is then
+    /// exactly the card row, so the insets are the card's own); while a drawer is open or
+    /// sliding the insets are left alone and the ground simply spans the taller grid —
+    /// the card row never changes size during the slide (AnimateDrawer), so the card is
+    /// still where it was measured. The sheet takes the ground's side insets and keeps its
+    /// rows above the ground's bottom inset, so the drawer content stays inside the slab's
+    /// rounded bottom.
+    /// </summary>
+    private void SyncDesignGround(bool force = false)
+    {
+        if (Vm is not { IsDesignForm: true } vm) return;
+        var grid = FormGrid;
+        if (grid.Bounds.Width <= 0) return;
+        var sleeve = vm.Form == MiniPlayerForm.Sleeve;
+        var card = sleeve ? SleeveCard : PillCard;
+        var formRoot = sleeve ? SleeveFormRoot : PillFormRoot;
+        if (card.Bounds.Width <= 0 || LayoutRectIn(card, grid) is not { } rect ||
+            LayoutRectIn(formRoot, grid) is not { } rootRect) return;
+        if (!force && (_drawerHeight > 0 || _drawerAnim != null || vm.IsDrawerOpen))
+        {
+            // Insets are frozen while a drawer is open; only the slab's height follows.
+            ApplyDesignGroundRect();
+            return;
+        }
+
+        // Only the closed grid is the card row; with a sheet in row 1 the bottom inset
+        // would be measured through the sheet.
+        var gridHeight = grid.Bounds.Height - _drawerHeight;
+        var margin = new Thickness(
+            Math.Round(rect.Left), Math.Round(rect.Top),
+            Math.Round(grid.Bounds.Width - rect.Right), Math.Round(gridHeight - rect.Bottom));
+        if (margin.Left < 0 || margin.Top < 0 || margin.Right < 0 || margin.Bottom < 0) return;
+        var rootOffset = rootRect.Position;
+        if (!force && NearlyEqual(margin, _designGroundInsets) && rootOffset == _designGroundRootOffset)
+        {
+            ApplyDesignGroundRect();
+            return;
+        }
+
+        _designGroundInsets = margin;
+        _designGroundRootOffset = rootOffset;
+        ApplyDesignGroundRect();
+        DrawerSheet.Margin = new Thickness(margin.Left, 0, margin.Right, 0);
+        DrawerSheet.Padding = new Thickness(
+            ClassicSheetPadding.Left, ClassicSheetPadding.Top,
+            ClassicSheetPadding.Right, ClassicSheetPadding.Bottom + margin.Bottom);
+    }
+
+    /// <summary>The child's LAYOUT rect in the ancestor's coordinates — Bounds offsets
+    /// only, no render transforms. The form roots ease in from scale(1.03), and a
+    /// TransformToVisual taken mid-ease inflated the ground by that pose (and no layout
+    /// pass follows a render-transform transition to correct it).</summary>
+    private static Rect? LayoutRectIn(Visual child, Visual ancestor)
+    {
+        var offset = new Point();
+        for (Visual? v = child; v != ancestor; v = v.GetVisualParent())
+        {
+            if (v == null) return null;
+            offset += v.Bounds.Position;
+        }
+        return new Rect(offset, child.Bounds.Size);
+    }
+
+    /// <summary>The ground's insets from the form grid's edges (left, top, right, and the
+    /// bottom inset that stays constant while a drawer stretches the grid).</summary>
+    private Thickness _designGroundInsets = new(66, 6, 10, 6);
+
+    /// <summary>Where the active design's form root sits in the form grid (its margin),
+    /// so grid-relative insets can be laid out inside the root-hosted Canvas.</summary>
+    private Point _designGroundRootOffset = new(6, 6);
+
+    /// <summary>The active design's ground slab and its Canvas host.</summary>
+    private (Canvas Host, Border Ground)? ActiveGround() => Vm?.Form switch
+    {
+        MiniPlayerForm.Pill => (PillGroundHost, PillGround),
+        MiniPlayerForm.Sleeve => (SleeveGroundHost, SleeveGround),
+        _ => null,
+    };
+
+    /// <summary>Lays the slab out from the stored insets: the grid's full rect (drawer
+    /// row included) minus the insets, expressed in the form root's coordinates — so it
+    /// runs past the root's bottom edge while a drawer is open.</summary>
+    private void ApplyDesignGroundRect()
+    {
+        if (ActiveGround() is not { } g) return;
+        var grid = FormGrid.Bounds.Size;
+        if (grid.Width <= 0 || grid.Height <= 0) return;
+        var i = _designGroundInsets;
+        Canvas.SetLeft(g.Ground, i.Left - _designGroundRootOffset.X);
+        Canvas.SetTop(g.Ground, i.Top - _designGroundRootOffset.Y);
+        g.Ground.Width = Math.Max(0, grid.Width - i.Left - i.Right);
+        g.Ground.Height = Math.Max(0, grid.Height - i.Top - i.Bottom);
+    }
+
+    private static bool NearlyEqual(Thickness a, Thickness b) =>
+        Math.Abs(a.Left - b.Left) < 0.5 && Math.Abs(a.Top - b.Top) < 0.5 &&
+        Math.Abs(a.Right - b.Right) < 0.5 && Math.Abs(a.Bottom - b.Bottom) < 0.5;
+
+    /// <summary>The ground's drop shadow per design (Pill 0 6 22, Sleeve 0 8 26, #33).</summary>
+    private void UpdateDesignGroundShadow()
+    {
+        if (ActiveGround() is not { } g) return;
+        var sleeve = Vm?.Form == MiniPlayerForm.Sleeve;
+        g.Ground.BoxShadow = new BoxShadows(new BoxShadow
+        {
+            OffsetY = sleeve ? 8 : 6,
+            Blur = sleeve ? 26 : 22,
+            Color = Color.FromArgb(0x33, 0, 0, 0),
+        });
+    }
+
+    // Drawer ink under a design: the sheet sits on the theme-coloured ground, so the
+    // classic white palette (Window.Resources MiniDrawer*) is overridden on the sheet
+    // with the theme's foreground brushes. Copied per call (re-run on theme change).
+    private static readonly (string Key, string Theme)[] DesignDrawerPalette =
+    {
+        ("MiniDrawerText", "SystemControlForegroundBaseHighBrush"),
+        ("MiniDrawerTextHeader", "SystemControlForegroundBaseMediumHighBrush"),
+        ("MiniDrawerTextSoft", "SystemControlForegroundBaseMediumBrush"),
+        ("MiniDrawerTextFaint", "SystemControlForegroundBaseMediumLowBrush"),
+        ("MiniDrawerFieldFill", "SystemControlForegroundBaseLowBrush"),
+        ("MiniDrawerFieldStroke", "SystemControlForegroundBaseMediumLowBrush"),
+        ("MiniDrawerRowHover", "SystemControlForegroundBaseLowBrush"),
+        ("MiniDrawerDisc", "SystemControlForegroundBaseLowBrush"),
+        ("MiniDrawerDiscHover", "SystemControlForegroundBaseMediumLowBrush"),
+        ("MiniDrawerDiscPressed", "SystemControlForegroundBaseMediumBrush"),
+        ("MiniDrawerBadgeFill", "SystemControlForegroundBaseLowBrush"),
+        ("MiniDrawerBadgeText", "SystemControlForegroundBaseHighBrush"),
+        ("MiniDrawerTrack", "SystemControlForegroundBaseMediumLowBrush"),
+    };
+
+    private void SyncDrawerPalette()
+    {
+        var design = Vm is { IsDesignForm: true };
+        foreach (var (key, theme) in DesignDrawerPalette)
+        {
+            if (design && this.TryFindResource(theme, ActualThemeVariant, out var brush) && brush is IBrush b)
+                DrawerSheet.Resources[key] = b;
+            else
+                DrawerSheet.Resources.Remove(key);
+        }
+    }
+
+    // ── "…" menu ▸ Design segment ──
+    // A highlight pill slides under the selected design (translate transition on the
+    // thumb); the three labels are transparent buttons over it.
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerStyle))
+            UpdateDesignSegment();
+    }
+
+    private void UpdateDesignSegment()
+    {
+        if (Vm == null) return;
+        var width = DesignSegmentPanel.Bounds.Width;
+        if (width <= 0) return;
+        var segment = width / 3;
+        var index = Vm.Settings.MiniPlayerStyleMode switch
+        {
+            Noctis.Models.MiniPlayerStyle.Pill => 1,
+            Noctis.Models.MiniPlayerStyle.Sleeve => 2,
+            _ => 0,
+        };
+        DesignSegmentThumb.Width = segment;
+        DesignSegmentThumb.RenderTransform =
+            Avalonia.Media.Transformation.TransformOperations.Parse($"translateX({segment * index:0.##}px)");
+    }
+
+    // Wheel over a design card: volume, 5 per notch (the classic forms have their own bar
+    // or the Volume drawer; the designs' only volume affordance is the drawer item).
+    private void OnDesignVolumeWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (Vm == null || e.Delta.Y == 0) return;
+        Vm.NudgeVolume(e.Delta.Y > 0 ? 1 : -1);
+        e.Handled = true;
+    }
+
+    private IBrush? _classicRootFill;
+
+    // Pill design: the round cover turns like a disc while music plays.
+    private CoverSpinner? _pillSpinner;
+
+    private void UpdatePillSpin()
+    {
+        if (_pillSpinner == null) return;
+        _pillSpinner.IsSpinning = Vm is { IsPillForm: true, Player.IsPlaying: true };
+    }
 
     // ── Close / lifecycle ────────────────────────────────────
 
@@ -646,7 +929,7 @@ public partial class MiniPlayerWindow : Window
         _drawerHideTimer?.Stop();
         _lyricsScrollTimer?.Stop();
         _lyricsFontTimer?.Stop();
-        StopMeshAnimation();
+        _flow?.Dispose();
         if (_lyricsSurfaceRegistered && _hookedVm != null)
         {
             _lyricsSurfaceRegistered = false;
@@ -712,15 +995,50 @@ public partial class MiniPlayerWindow : Window
     }
 
     // The window has no title bar, so any press on the glass (not on a control) drags it.
+    // Window drag is armed on press and only STARTED once the pointer has travelled a
+    // few pixels. BeginMoveDrag hands the window to the OS move loop (on Windows a modal
+    // WM_SYSCOMMAND loop) the instant it is called, and while the mouse is merely held
+    // still that loop starves the UI thread's frame callbacks — the Sleeve's disc and
+    // the Pill's cover (RequestAnimationFrame spinners) froze for a beat and then
+    // lurched to catch up. A held-still press now never enters that loop.
+    private const double DragStartThreshold = 4;
+    private PointerPressedEventArgs? _armedDrag;
+    private Point _armedDragOrigin;
+
+    /// <summary>True between an eligible press and either the drag starting or the release.</summary>
+    internal bool IsDragArmed => _armedDrag != null;
+
     private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        _armedDrag = null;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
         if (!ShouldBeginWindowDrag(e.Source))
             return;
 
-        BeginMoveDrag(e);
+        _armedDrag = e;
+        _armedDragOrigin = e.GetPosition(this);
     }
+
+    private void OnRootPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_armedDrag is not { } armed) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            _armedDrag = null;
+            return;
+        }
+        var delta = e.GetPosition(this) - _armedDragOrigin;
+        if (Math.Abs(delta.X) < DragStartThreshold && Math.Abs(delta.Y) < DragStartThreshold)
+            return;
+
+        _armedDrag = null;
+        BeginMoveDrag(armed);
+    }
+
+    private void OnRootPointerReleased(object? sender, PointerReleasedEventArgs e) => _armedDrag = null;
+
+    private void OnRootPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e) => _armedDrag = null;
 
     /// <summary>
     /// True when a press landed on the window's own glass rather than on a control.
@@ -795,6 +1113,10 @@ public partial class MiniPlayerWindow : Window
         MenuCard.Opacity = 0;
         MenuCard.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.96)");
         MorePopup.IsOpen = true;
+        // The popup's content lays out now; the segment sizes itself from that pass.
+        DesignSegmentPanel.SizeChanged -= OnDesignSegmentSizeChanged;
+        DesignSegmentPanel.SizeChanged += OnDesignSegmentSizeChanged;
+        UpdateDesignSegment();
 
         // Apply the shown target on the next render tick so the transitions animate
         // from the hidden state instead of snapping.
@@ -807,6 +1129,8 @@ public partial class MiniPlayerWindow : Window
     }
 
     private void OnMenuItemClick(object? sender, RoutedEventArgs e) => CloseMorePopup();
+
+    private void OnDesignSegmentSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateDesignSegment();
 
     private void CloseMorePopup()
     {
@@ -837,10 +1161,47 @@ public partial class MiniPlayerWindow : Window
         _ => 0,
     };
 
+    // True while SnapDrawerClosed is collapsing the VM's drawer state without animation.
+    private bool _suppressDrawerAnimation;
+
+    /// <summary>
+    /// Closes the drawer instantly (no slide, no window-height animation) and clears every
+    /// piece of in-flight drawer state. Used before a form jump so the jump owns
+    /// Window.Height alone.
+    /// </summary>
+    private void SnapDrawerClosed()
+    {
+        _drawerHideTimer?.Stop();
+        _drawerHideTimer = null;
+        _drawerAnim = null;
+        var hadHeight = _drawerHeight;
+        _drawerHeight = 0;
+        DrawerSheet.Height = 0;
+        DrawerSheet.Opacity = 0;
+        DrawerSheet.IsVisible = false;
+        SetDrawerOffset(14);
+        if (hadHeight > 0 && double.IsFinite(Height))
+            Height = Math.Max(MinHeight, Height - hadHeight);
+        if (Vm is { IsDrawerOpen: true } vm)
+        {
+            _suppressDrawerAnimation = true;
+            try { vm.Drawer = MiniDrawer.None; }
+            finally { _suppressDrawerAnimation = false; }
+        }
+        if (Vm != null) Vm.IsDrawerAnimating = false;
+    }
+
+    // No per-open chrome change under a design: DesignGround already spans the card AND
+    // the sheet's row, so the slab simply stretches with the window (the classic glide),
+    // instead of corners squaring off and margins snapping the moment the sheet appears.
     private void OnDrawerChanged()
     {
+        if (_suppressDrawerAnimation) return;
         var open = Vm?.IsDrawerOpen == true;
         var target = open ? DrawerTargetHeight(Vm!.Drawer) : 0;
+
+        // Row streaming (StreamingFill) waits for the slide to land — see IsDrawerAnimating.
+        if (Vm != null) Vm.IsDrawerAnimating = true;
 
         _drawerHideTimer?.Stop();
         _drawerHideTimer = null;
@@ -867,6 +1228,7 @@ public partial class MiniPlayerWindow : Window
 
         AnimateDrawer(target, onLanded: () =>
         {
+            if (Vm != null) Vm.IsDrawerAnimating = false;
             if (Vm?.IsDrawerOpen != true)
                 DrawerSheet.IsVisible = false;
         });

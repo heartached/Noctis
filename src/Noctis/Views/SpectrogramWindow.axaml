@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.SpectrogramWindow"
+        x:DataType="vm:SpectrogramViewModel"
+        Title="Spectrogram"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <!-- Same modal chrome as the Convert / Metadata dialogs: dimmed overlay, rounded card. -->
+    <Border Background="#50000000" PointerPressed="OnOverlayPointerPressed">
+        <Border x:Name="Card"
+                CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                MaxWidth="1180"
+                Margin="24,40"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                PointerPressed="OnCardPointerPressed"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <!-- Header: track, artist · album, stream info -->
+                <Grid DockPanel.Dock="Top" Margin="24,18,24,10" ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Subtitle}" FontSize="13" Opacity="0.65"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding InfoLine}" FontSize="12" Opacity="0.5" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="Spectrogram" FontSize="12" FontWeight="SemiBold"
+                               Opacity="0.4" VerticalAlignment="Top" />
+                </Grid>
+
+                <!-- Footer: status + Close -->
+                <Border DockPanel.Dock="Bottom" Padding="24,10,24,16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <Button Grid.Column="1"
+                                Content="Close"
+                                Command="{Binding CloseCommand}"
+                                Width="110"
+                                Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentButtonBackground}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- Plot area: black panel with the composed image (axes drawn in) -->
+                <Border Margin="24,0,24,0"
+                        CornerRadius="12"
+                        ClipToBounds="True"
+                        Background="#000000"
+                        Padding="8">
+                    <Panel>
+                        <Image Source="{Binding Image}"
+                               Stretch="Uniform"
+                               StretchDirection="DownOnly"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding !IsBusy}" />
+                        <!-- Busy / error state keeps the plot footprint so the card doesn't jump. -->
+                        <StackPanel x:Name="BusyPanel"
+                                    Spacing="12"
+                                    Width="360"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsBusy}">
+                            <TextBlock Text="Analyzing audio…" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="#DDFFFFFF" HorizontalAlignment="Center"
+                                       IsVisible="{Binding !HasError}" />
+                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}"
+                                         Height="6" CornerRadius="3"
+                                         IsVisible="{Binding !HasError}" />
+                            <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#AAFFFFFF"
+                                       TextWrapping="Wrap" TextAlignment="Center" />
+                        </StackPanel>
+                    </Panel>
+                </Border>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

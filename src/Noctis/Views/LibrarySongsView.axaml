@@ -192,6 +192,36 @@
                 <Style Selector="Border.row-body:pointerover">
                     <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
                 </Style>
+                <!-- Row heart: invisible at rest, faint on row hover, brighter under the
+                     pointer, red and always visible once favorited. Declaration order
+                     matters — the favorited rules come last so they win on hovered rows. -->
+                <Style Selector="Button.row-heart">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="6" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Opacity" Value="0" />
+                    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                </Style>
+                <Style Selector="Button.row-heart:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="Button.row-heart:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover Button.row-heart">
+                    <Setter Property="Opacity" Value="0.4" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover Button.row-heart:pointerover">
+                    <Setter Property="Opacity" Value="0.9" />
+                </Style>
+                <Style Selector="Button.row-heart.is-favorite">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="Foreground" Value="#E74856" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover Button.row-heart.is-favorite">
+                    <Setter Property="Opacity" Value="1" />
+                </Style>
                 <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
                     <Setter Property="Background" Value="#3FFFFFFF" />
                 </Style>
@@ -331,12 +361,19 @@
                         </Border>
                         <Border Grid.Column="5" Width="80"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
-                            <PathIcon Data="{StaticResource HeartFillIcon}"
-                                     Width="12" Height="12"
-                                     Foreground="#E74856"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     IsVisible="{Binding IsFavorite}" />
+                            <!-- One-click favorite (Discord, Reuben Strides 2026-08-25): red when
+                                 favorited, faint on row hover otherwise, invisible at rest so the
+                                 column reads exactly as before. Ctrl-selected rows toggle together,
+                                 like the context menu. -->
+                            <Button Classes="row-heart"
+                                    Classes.is-favorite="{Binding IsFavorite}"
+                                    Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ToggleFavoriteCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="Favorite"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <controls:HeartIcon Size="12" IsFavorite="{Binding IsFavorite}" />
+                            </Button>
                         </Border>
                         <Border Grid.Column="6" Width="84"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">

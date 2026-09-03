@@ -28,6 +28,12 @@ public partial class SidebarView : UserControl
         // press so we see it before the ListBoxItem commits the (same) selection.
         foreach (var list in GetNavLists())
             list.AddHandler(PointerPressedEvent, OnNavListPointerPressed, RoutingStrategies.Tunnel);
+        // Drop target: tracks dragged from any list land in a playlist; a dragged
+        // playlist row reorders / moves into a folder. Payloads come from DragFileBehavior.
+        DragDrop.SetAllowDrop(PlaylistList, true);
+        PlaylistList.AddHandler(DragDrop.DragOverEvent, OnPlaylistDragOver);
+        PlaylistList.AddHandler(DragDrop.DragLeaveEvent, OnPlaylistDragLeave);
+        PlaylistList.AddHandler(DragDrop.DropEvent, OnPlaylistDrop);
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -82,6 +88,21 @@ public partial class SidebarView : UserControl
 
     private void OnNavListPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Right-click on a playlist row / folder header opens its context menu without
+        // the ListBox also selecting (= navigating to) the row underneath the menu.
+        if (sender is ListBox rightList && ReferenceEquals(rightList, PlaylistList)
+            && e.GetCurrentPoint(rightList).Properties.IsRightButtonPressed)
+        {
+            var target = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>();
+            if (target?.DataContext is PlaylistNavItem && target.ContextMenu is { } menu)
+            {
+                e.Handled = true;
+                menu.DataContext = target.DataContext;
+                menu.Open(target);
+            }
+            return;
+        }
+
         if (sender is not ListBox list || !e.GetCurrentPoint(list).Properties.IsLeftButtonPressed)
             return;
         // Only plain section rows re-navigate. Playlist rows build a fresh view per
@@ -92,6 +113,85 @@ public partial class SidebarView : UserControl
         var container = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>();
         if (container?.DataContext is NavItem pressed && ReferenceEquals(pressed, current))
             _vm.RequestNavigation(pressed);
+    }
+
+    // ── Playlist list as a drop target ──
+
+    private ListBoxItem? _dropHighlighted;
+
+    private (ListBoxItem? Container, PlaylistNavItem? Item, bool PlaceAfter) HitPlaylistRow(DragEventArgs e)
+    {
+        var pos = e.GetPosition(PlaylistList);
+        foreach (var container in PlaylistList.GetRealizedContainers())
+        {
+            if (container is not ListBoxItem row) continue;
+            var origin = row.TranslatePoint(new Point(0, 0), PlaylistList);
+            if (origin == null) continue;
+            var rect = new Rect(origin.Value, row.Bounds.Size);
+            if (!rect.Contains(pos)) continue;
+            var placeAfter = pos.Y > rect.Y + rect.Height / 2;
+            return (row, row.DataContext as PlaylistNavItem, placeAfter);
+        }
+        return (null, null, false);
+    }
+
+    private void SetDropHighlight(ListBoxItem? row)
+    {
+        if (ReferenceEquals(_dropHighlighted, row)) return;
+        _dropHighlighted?.Classes.Set("drop-target", false);
+        _dropHighlighted = row;
+        _dropHighlighted?.Classes.Set("drop-target", true);
+    }
+
+    private static bool CanAccept(PlaylistNavItem? item, IReadOnlyList<Track>? tracks, Guid? playlistId)
+    {
+        if (item == null) return false;
+        if (tracks is { Count: > 0 })
+            return !item.IsFolder && !item.IsSmartPlaylist && item.PlaylistId != null;
+        if (playlistId != null)
+            return item.IsFolder || (item.PlaylistId != null && item.PlaylistId != playlistId);
+        return false;
+    }
+
+    private void OnPlaylistDragOver(object? sender, DragEventArgs e)
+    {
+        var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.Data);
+        var playlistId = Helpers.DragFileBehavior.GetDraggedPlaylistId(e.Data);
+        if (tracks == null && playlistId == null) return; // external file drag — the window handles it
+
+        var (container, item, _) = HitPlaylistRow(e);
+        var ok = CanAccept(item, tracks, playlistId);
+        SetDropHighlight(ok ? container : null);
+        e.DragEffects = !ok ? DragDropEffects.None
+            : playlistId != null ? DragDropEffects.Move : DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private void OnPlaylistDragLeave(object? sender, DragEventArgs e) => SetDropHighlight(null);
+
+    private async void OnPlaylistDrop(object? sender, DragEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            SetDropHighlight(null);
+            var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.Data);
+            var playlistId = Helpers.DragFileBehavior.GetDraggedPlaylistId(e.Data);
+            if (tracks == null && playlistId == null) return;
+
+            var (_, item, placeAfter) = HitPlaylistRow(e);
+            if (!CanAccept(item, tracks, playlistId) || _vm == null || item == null) return;
+            e.Handled = true;
+
+            if (tracks is { Count: > 0 } && item.PlaylistId is { } targetId)
+                await _vm.AddTracksToPlaylist(targetId, tracks);
+            else if (playlistId is { } dragged)
+                await _vm.MovePlaylistAsync(dragged, item, placeAfter);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SidebarView] Drop failed: {ex.Message}");
+        }
     }
 
     private void OnNavListSelectionChanged(object? sender, SelectionChangedEventArgs e)

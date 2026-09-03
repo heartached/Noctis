@@ -102,22 +102,45 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _centerIsFavorite;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCarousel))]
+    [NotifyPropertyChangedFor(nameof(ShowCascade))]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
     private bool _hasQueue;
 
-    /// <summary>Collage sub-mode: a static, decorative library-artwork showcase instead of the carousel.</summary>
+    /// <summary>Which arrangement the page shows (Appearance → Cover Flow Layout; the top-bar
+    /// pill segment steps through them). MainWindowViewModel keeps this two-way with the
+    /// persisted setting. Defaults to the classic carousel.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCollageMode))]
+    [NotifyPropertyChangedFor(nameof(IsCarouselMode))]
+    [NotifyPropertyChangedFor(nameof(IsCascadeMode))]
     [NotifyPropertyChangedFor(nameof(ShowCarousel))]
+    [NotifyPropertyChangedFor(nameof(ShowCascade))]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
-    private bool _isCollageMode;
+    [NotifyPropertyChangedFor(nameof(LayoutLabel))]
+    private CoverFlowLayout _layout = CoverFlowLayout.Carousel;
 
-    /// <summary>Carousel (queue-driven) shows only outside collage mode and when a queue exists.</summary>
-    public bool ShowCarousel => !IsCollageMode && HasQueue;
-    /// <summary>"Nothing playing" empty state — carousel mode with no queue.</summary>
+    /// <summary>Collage: a static, decorative queue-artwork mosaic instead of the carousel.</summary>
+    public bool IsCollageMode => Layout == CoverFlowLayout.Collage;
+    public bool IsCarouselMode => Layout == CoverFlowLayout.Carousel;
+    public bool IsCascadeMode => Layout == CoverFlowLayout.Cascade;
+
+    /// <summary>Classic row (queue-driven) shows only in carousel layout and when a queue exists.</summary>
+    public bool ShowCarousel => IsCarouselMode && HasQueue;
+    /// <summary>Cascade pile + text column: cascade layout with a queue.</summary>
+    public bool ShowCascade => IsCascadeMode && HasQueue;
+    /// <summary>"Nothing playing" empty state — any queue-driven layout with no queue.</summary>
     public bool ShowEmptyState => !IsCollageMode && !HasQueue;
 
+    /// <summary>Top-bar pill segment: Carousel → Cascade → Collage → Carousel.</summary>
     [RelayCommand]
-    private void ToggleCollageMode() => IsCollageMode = !IsCollageMode;
+    private void ToggleCollageMode() => Layout = CoverFlowLayouts.Next(Layout);
+
+    /// <summary>Top-bar layout dropdown: pick a layout by name ("Carousel" / "Cascade" / "Collage").</summary>
+    [RelayCommand]
+    private void SetLayout(string? name) => Layout = CoverFlowLayouts.Parse(name);
+
+    /// <summary>Human label for the current layout (the dropdown's face).</summary>
+    public string LayoutLabel => Layout.ToString();
 
     public PlayerViewModel Player => _player;
 

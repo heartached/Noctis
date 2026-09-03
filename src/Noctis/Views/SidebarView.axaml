@@ -4,6 +4,7 @@
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
              xmlns:ctrl="using:Noctis.Controls"
+             xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.SidebarView"
              x:Name="SidebarRoot"
              x:DataType="vm:SidebarViewModel"
@@ -18,6 +19,84 @@
         <conv:CountLabelConverter x:Key="CountLabel" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Drop target highlight while a track / playlist drag hovers a sidebar row. -->
+        <Style Selector="ListBox#PlaylistList ListBoxItem.drop-target /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SidebarSelectedHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+        </Style>
+
+        <!-- Right-click menu for playlist rows and folder headers. One shared menu; the
+             items switch on IsFolder. Opened from code-behind on right-press so the
+             ListBox doesn't also select (and navigate to) the row. -->
+        <Style Selector="ListBox#PlaylistList ListBoxItem">
+            <Setter Property="ContextMenu">
+                <ContextMenu x:DataType="m:PlaylistNavItem">
+                    <!-- Playlist rows -->
+                    <MenuItem Header="Edit Playlist…"
+                              IsVisible="{Binding !IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).EditPlaylistItemCommand}"
+                              CommandParameter="{Binding}" />
+                    <MenuItem Header="Star in Sidebar"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsFolder" />
+                                <Binding Path="!IsPinned" />
+                            </MultiBinding>
+                        </MenuItem.IsVisible>
+                    </MenuItem>
+                    <MenuItem Header="Unstar from Sidebar"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsFolder" />
+                                <Binding Path="IsPinned" />
+                            </MultiBinding>
+                        </MenuItem.IsVisible>
+                    </MenuItem>
+                    <MenuItem Header="Move to Folder…"
+                              IsVisible="{Binding !IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).MoveToFolderCommand}"
+                              CommandParameter="{Binding}" />
+                    <MenuItem Header="Remove from Folder"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RemoveFromFolderCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsFolder" />
+                                <Binding Path="HasFolder" />
+                            </MultiBinding>
+                        </MenuItem.IsVisible>
+                    </MenuItem>
+                    <Separator IsVisible="{Binding !IsFolder}" />
+                    <MenuItem Header="Delete Playlist" Classes="danger"
+                              IsVisible="{Binding !IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DeletePlaylistItemCommand}"
+                              CommandParameter="{Binding}" />
+
+                    <!-- Folder headers -->
+                    <MenuItem Header="New Playlist in Folder…"
+                              IsVisible="{Binding IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).NewPlaylistInFolderCommand}"
+                              CommandParameter="{Binding}" />
+                    <MenuItem Header="Rename Folder…"
+                              IsVisible="{Binding IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RenameFolderCommand}"
+                              CommandParameter="{Binding}" />
+                    <Separator IsVisible="{Binding IsFolder}" />
+                    <MenuItem Header="Remove Folder (keep playlists)" Classes="danger"
+                              IsVisible="{Binding IsFolder}"
+                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DissolveFolderCommand}"
+                              CommandParameter="{Binding}" />
+                </ContextMenu>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+
     <Border CornerRadius="20">
         <DockPanel LastChildFill="True">
 
@@ -29,33 +108,30 @@
             <StackPanel x:Name="RailActions"
                         DockPanel.Dock="Top"
                         Orientation="Vertical"
-                        Spacing="10"
-                        HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}"
-                        Margin="{Binding IsExpanded, Converter={StaticResource BoolToThickness}, ConverterParameter='6,2,0,6;0,2,0,6'}">
+                        Spacing="0"
+                        Margin="6,2,6,6">
                 <StackPanel.Styles>
+                    <!-- Same footprint as a nav row (ListBox.sidebar ListBoxItem: Padding 10 around
+                         a 28px icon = 48px, 2px vertical margin, full width when expanded), so Back
+                         and Search read as two more rows rather than two smaller buttons. -->
                     <Style Selector="Button.rail-action">
                         <Setter Property="Background" Value="Transparent"/>
                         <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Width" Value="32"/>
-                        <Setter Property="Height" Value="32"/>
+                        <Setter Property="MinHeight" Value="0"/>
                         <Setter Property="CornerRadius" Value="999"/>
-                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Padding" Value="10"/>
+                        <Setter Property="Margin" Value="0,2"/>
+                        <Setter Property="FontSize" Value="15"/>
                         <Setter Property="Cursor" Value="Hand"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="VerticalContentAlignment" Value="Center"/>
                     </Style>
                     <Style Selector="Button.rail-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="#22FFFFFF"/>
+                        <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
                     </Style>
                     <Style Selector="Button.rail-action:disabled">
                         <Setter Property="Opacity" Value="0.3"/>
-                    </Style>
-                    <!-- Expanded sidebar: align with the nav rows (icon column at the same
-                         x-offset: 6 panel margin + 10 padding) and show the text label. -->
-                    <Style Selector="Button.rail-action.expanded">
-                        <Setter Property="Width" Value="NaN"/>
-                        <Setter Property="Padding" Value="10,0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
                     </Style>
                 </StackPanel.Styles>
 
@@ -65,7 +141,8 @@
                         Command="{Binding TopBar.BackCommand}"
                         IsEnabled="{Binding TopBar.IsBackButtonVisible, FallbackValue=False}"
                         ToolTip.Tip="Back">
-                    <StackPanel Orientation="Horizontal" Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="14"
+                                HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid Width="28" Height="28">
                             <!-- Y nudge centers the chevron glyph in the circular button
                                  (the geometry sits slightly high in its viewbox). -->
@@ -76,7 +153,8 @@
                                 </PathIcon.RenderTransform>
                             </PathIcon>
                         </Grid>
-                        <TextBlock Text="Back"
+                        <TextBlock x:Name="BackLabel"
+                                   Text="Back"
                                    FontSize="15"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
@@ -89,7 +167,8 @@
                         IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
                         ToolTip.Tip="Search (Ctrl+F)">
-                    <StackPanel Orientation="Horizontal" Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="14"
+                                HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid x:Name="SearchIconHost" Width="28" Height="28">
                             <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
                                       Foreground="{DynamicResource IslandForeground}"/>
@@ -318,7 +397,16 @@
                                FontSize="12"
                                FontWeight="SemiBold"
                                Opacity="0.5"
-                               VerticalAlignment="Center" />
+                               VerticalAlignment="Center"
+                               Background="Transparent"
+                               ToolTip.Tip="Right-click for New Playlist">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="New Playlist…" Command="{Binding CreatePlaylistCommand}" />
+                                <MenuItem Header="New Smart Playlist…" Command="{Binding CreateSmartPlaylistFromSidebarCommand}" />
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                    </TextBlock>
 
                     <!-- User playlists: pinned first, then folders, then loose playlists -->
                     <ListBox Classes="sidebar"
@@ -371,10 +459,13 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <!-- Playlist row -->
+                                <!-- Playlist row. EnableFileDrag on a PlaylistNavItem starts a playlist
+                                     reorder / move-to-folder drag (see DragFileBehavior). -->
                                 <StackPanel Orientation="Horizontal" Spacing="10"
                                             ToolTip.Tip="{Binding Label}"
                                             IsVisible="{Binding !IsFolder}"
+                                            Background="Transparent"
+                                            helpers:DragFileBehavior.EnableFileDrag="True"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <!-- Indent for playlists inside an expanded folder. Hidden in the
                                          collapsed rail: with it, the row is 52px (14+10 spacing+28 art)

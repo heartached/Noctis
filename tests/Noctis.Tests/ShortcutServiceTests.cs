@@ -15,6 +15,28 @@ public class ShortcutServiceTests
         => new() { Key = key, KeyModifiers = mods, RoutedEvent = InputElement.KeyDownEvent };
 
     [Fact]
+    public void ToggleFavorite_DefaultsToPrimaryL_OnBothPlatforms()
+    {
+        Assert.Equal(new KeyGesture(Key.L, KeyModifiers.Control), Win().Get(ShortcutAction.ToggleFavorite));
+        Assert.Equal(new KeyGesture(Key.L, KeyModifiers.Meta), new ShortcutService(isMac: true).Get(ShortcutAction.ToggleFavorite));
+    }
+
+    [Fact]
+    public void EveryAction_HasADescriptor_AndADistinctDefault()
+    {
+        // A new action that forgets its descriptor never shows in Settings › Shortcuts; one
+        // that reuses a default gesture silently shadows another action.
+        var actions = Enum.GetValues<ShortcutAction>();
+        Assert.Equal(actions.Length, ShortcutDefaults.All.Count);
+        Assert.All(actions, a => Assert.Contains(ShortcutDefaults.All, d => d.Action == a));
+
+        var win = Win();
+        var gestures = new List<KeyGesture>();
+        foreach (var a in actions) gestures.Add(win.Get(a));
+        Assert.Equal(gestures.Count, new HashSet<KeyGesture>(gestures).Count);
+    }
+
+    [Fact]
     public void FreshService_ReturnsDefaults_AndReportsThemAsDefault()
     {
         var s = Win();

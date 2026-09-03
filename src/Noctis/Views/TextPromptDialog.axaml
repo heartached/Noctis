@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Noctis.Views.TextPromptDialog"
+        Title="Enter a name"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <!-- Same dimmed-overlay + centered card as ConfirmationDialog; one text field. -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <Border x:Name="DialogCard"
+                Background="{DynamicResource AppMainBackground}"
+                CornerRadius="24"
+                ClipToBounds="True"
+                Width="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+            <DockPanel Margin="0">
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Click="OnCancelClick"
+                                Width="100"
+                                Padding="0,8"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand" />
+                        <Button x:Name="ConfirmButton"
+                                Grid.Column="2"
+                                Content="OK"
+                                Click="OnConfirmClick"
+                                Width="100"
+                                Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentButtonBackground}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Margin="24,18,24,8" Spacing="10">
+                    <TextBlock x:Name="TitleText"
+                               Text="Name"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="InputBox"
+                             CornerRadius="999"
+                             Padding="14,8"
+                             KeyDown="OnInputKeyDown" />
+                    <TextBlock x:Name="HintText"
+                               FontSize="12"
+                               Opacity="0.55"
+                               TextWrapping="Wrap"
+                               IsVisible="False" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

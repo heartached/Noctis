@@ -924,20 +924,23 @@ public partial class PlaybackBarView : UserControl
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, VolumeThumbSize);
     }
 
-    // Slim bar (3 transport, 4 right icons) — narrower than the old 5+5 layout.
-    private const double IslandBaseWidth = 590;
+    // Slim bar (3 transport, 5 right icons — the favorite heart joined in 1.4.8) — still
+    // narrower than the old 5+5 layout.
+    private const double IslandBaseWidth = 626;
     // Lyrics page hides the center track-info, so the pill only holds transport + right icons.
     private const double IslandLyricsPageWidth = 340;
 
     // ── User resize (persistent bar only) ──
     // Shape thresholds derived from the clusters' natural widths as declared in the
-    // XAML: transport 148 + 14 margin = 162; right icons 142 − 16 margin = 126;
-    // track info 36 art + 12 + 192 viewport + 8 + 6 margins = 254; island chrome
-    // 24 padding + 3 border = 27. Full layout therefore needs 569px; with the
-    // viewports narrowed to 120 ("bar-mid") it needs 497px; transport + icons alone
-    // need 315px — 340 is the proven compact layout the lyrics page already uses.
-    private const double IslandFullShapeMinWidth = 570; // below: viewports narrow to 120
-    private const double IslandMidShapeMinWidth = 500;  // below: track info hidden (compact pill)
+    // XAML: transport 148 + 14 margin = 162; right icons 5 × 34 + 4 × 2 spacing = 178,
+    // − 16 margin = 162 (the favorite heart hides with the track info, so the compact
+    // pill still holds the proven 4); track info 36 art + 12 + 192 viewport + 8 + 6
+    // margins = 254; island chrome 24 padding + 3 border = 27. Full layout therefore
+    // needs 605px; with the viewports narrowed to 120 ("bar-mid") it needs 533px;
+    // transport + 4 icons alone need 315px — 340 is the compact layout the lyrics page
+    // already uses.
+    private const double IslandFullShapeMinWidth = 606; // below: viewports narrow to 120
+    private const double IslandMidShapeMinWidth = 536;  // below: track info hidden (compact pill)
     private const double IslandMinUserWidth = IslandLyricsPageWidth;
     // Breathing room to the host's edges, matching the 8px margins the side panels use.
     private const double IslandEdgeMargin = 8;
@@ -1156,6 +1159,9 @@ public partial class PlaybackBarView : UserControl
     private void UpdateTrackInfoVisibility()
     {
         var visible = _observedPlayerViewModel?.IsLyricsPageActive != true && !_isWidthCompact;
+        // The favorite heart is budgeted with the track info: both go when the pill is
+        // compact, so the 340px layout keeps its original four right-hand icons.
+        FavoriteButton.IsVisible = visible;
         if (TrackInfoPanel.IsVisible == visible)
             return;
 

@@ -68,6 +68,7 @@ public partial class TopBarViewModel : ViewModelBase
         || HasArtistActions
         || HasFavoritesActions
         || HasFoldersActions
+        || HasArtistSort
         || SongsFiltersVisible;
 
     public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
@@ -167,7 +168,49 @@ public partial class TopBarViewModel : ViewModelBase
     // Playlist-specific action buttons
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    [NotifyPropertyChangedFor(nameof(PlaylistActionsVisible))]
     private bool _hasPlaylistActions;
+
+    // Section actions don't apply while the Cover Flow overlay is up (its content is
+    // the queue, not the section underneath), so every section's action group is gated
+    // the same way the Songs actions already were. Previously only Songs was gated,
+    // which is why Folders/Playlists/Favorites buttons leaked into Cover Flow.
+    public bool PlaylistActionsVisible => HasPlaylistActions && !IsCoverFlowMode;
+    public bool FoldersActionsVisible => HasFoldersActions && !IsCoverFlowMode;
+    public bool FavoritesActionsVisible => HasFavoritesActions && !IsCoverFlowMode;
+
+    // Cover Flow layout picker (Carousel / Cascade / Collage), shown as a labelled
+    // dropdown segment on the view-mode pill while Cover Flow is active.
+    [ObservableProperty] private ICommand? _setCoverFlowLayoutCommand;
+    [ObservableProperty] private string _coverFlowLayoutLabel = "Carousel";
+
+    // Artists grid sort (Name / Songs / Albums + direction), mirrored here for top-bar
+    // placement — same pattern as the Albums sort chip.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasArtistSort;
+    [ObservableProperty] private ICommand? _artistSortCommand;
+    [ObservableProperty] private string _artistSortLabel = "Name";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ArtistSortDescending))]
+    private bool _artistSortAscending = true;
+    [ObservableProperty] private string _artistSortMode = "name";
+    public bool ArtistSortDescending => !ArtistSortAscending;
+
+    public void ShowArtistSort(ICommand sortCommand, string label, string mode, bool ascending)
+    {
+        ArtistSortCommand = sortCommand;
+        ArtistSortLabel = label;
+        ArtistSortMode = mode;
+        ArtistSortAscending = ascending;
+        HasArtistSort = true;
+    }
+
+    public void HideArtistSort()
+    {
+        HasArtistSort = false;
+        ArtistSortCommand = null;
+    }
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
@@ -185,6 +228,9 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
     [NotifyPropertyChangedFor(nameof(SongsFiltersVisible))]
+    [NotifyPropertyChangedFor(nameof(PlaylistActionsVisible))]
+    [NotifyPropertyChangedFor(nameof(FoldersActionsVisible))]
+    [NotifyPropertyChangedFor(nameof(FavoritesActionsVisible))]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
     private bool _isCoverFlowMode;
@@ -207,6 +253,7 @@ public partial class TopBarViewModel : ViewModelBase
     // Folders action buttons (Play / Shuffle / Manage Folders)
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    [NotifyPropertyChangedFor(nameof(FoldersActionsVisible))]
     private bool _hasFoldersActions;
     [ObservableProperty] private ICommand? _pagePlayFolderCommand;
     [ObservableProperty] private ICommand? _pageShuffleFolderCommand;
@@ -215,6 +262,7 @@ public partial class TopBarViewModel : ViewModelBase
     // Favorites action buttons
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    [NotifyPropertyChangedFor(nameof(FavoritesActionsVisible))]
     private bool _hasFavoritesActions;
     [ObservableProperty] private ICommand? _pageShuffleFavoritesCommand;
     [ObservableProperty] private ICommand? _pagePlayFavoritesCommand;
@@ -338,13 +386,16 @@ public partial class TopBarViewModel : ViewModelBase
     }
 
     public void ShowViewModeToggle(ICommand setLibraryMode, ICommand setCoverFlowMode, bool isCoverFlowMode,
-        ICommand? toggleCollageMode = null, bool isCollageMode = false)
+        ICommand? toggleCollageMode = null, bool isCollageMode = false,
+        ICommand? setLayoutCommand = null, string? layoutLabel = null)
     {
         SetLibraryModeCommand = setLibraryMode;
         SetCoverFlowModeCommand = setCoverFlowMode;
         IsCoverFlowMode = isCoverFlowMode;
         ToggleCollageModeCommand = toggleCollageMode;
         IsCollageMode = isCollageMode;
+        SetCoverFlowLayoutCommand = setLayoutCommand;
+        if (layoutLabel != null) CoverFlowLayoutLabel = layoutLabel;
         HasViewModeToggle = true;
     }
 
@@ -393,7 +444,16 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;
     [ObservableProperty] private string _releaseTypeFilterLabel = "All";
     [ObservableProperty] private ICommand? _qualityFilterCommand;
-    [ObservableProperty] private string _qualityFilterLabel = "All";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AlbumQualityAll))]
+    [NotifyPropertyChangedFor(nameof(AlbumQualityLossless))]
+    [NotifyPropertyChangedFor(nameof(AlbumQualityHiRes))]
+    private string _qualityFilterLabel = "All";
+
+    // Albums quality pill segments (mirrors the Songs pill; label is what the albums VM reports).
+    public bool AlbumQualityAll => QualityFilterLabel == "All";
+    public bool AlbumQualityLossless => QualityFilterLabel == "Lossless";
+    public bool AlbumQualityHiRes => QualityFilterLabel == "Hi-Res";
 
     public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand,
         ObservableCollection<QualityChip>? qualityChips = null, ICommand? qualityCommand = null,

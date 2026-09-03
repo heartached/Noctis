@@ -418,14 +418,10 @@
                 </StackPanel>
 
                 <!-- Favorite indicator -->
-                <PathIcon Grid.Column="3"
-                          Data="{StaticResource HeartFillIcon}"
-                          Width="20" Height="20"
-                          Foreground="#E74856"
-                          VerticalAlignment="Center"
-                          HorizontalAlignment="Right"
-                          IsVisible="{Binding HeaderIsFavorite}"
-                          ToolTip.Tip="Favorited" />
+                <controls:HeartIcon Grid.Column="3" Size="20" ShowWhenOff="False"
+                                VerticalAlignment="Center" HorizontalAlignment="Right"
+                                IsFavorite="{Binding HeaderIsFavorite}"
+                                ToolTip.Tip="Favorited" />
             </Grid>
         </Border>
 
@@ -606,6 +602,14 @@
                         <CheckBox Classes="metadata-pill-checkbox"
                                   Content="Album is compilation"
                                   IsChecked="{Binding IsCompilation}" />
+
+                        <!-- Whole-album dialog only: writes ITUNESADVISORY to every track on Save.
+                             A single track sets its advisory on the Advanced tab instead. -->
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="{Binding ExplicitCheckboxLabel}"
+                                  IsChecked="{Binding IsExplicit}"
+                                  IsVisible="{Binding ShowExplicitCheckbox}"
+                                  ToolTip.Tip="Marks the content as explicit (iTunes advisory tag). The Explicit Content setting uses this to skip songs." />
 
                         <!-- Artist -->
                         <StackPanel Spacing="4">

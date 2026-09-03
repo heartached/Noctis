@@ -51,9 +51,15 @@ public partial class LyricsPanelView : UserControl
     /// <summary>True while this panel is counted in the VM's visible-surface tally.</summary>
     private bool _countedAsVisible;
 
+    // Flowing-artwork background: the same animator as the lyrics page and the mini
+    // player, so the panel's backdrop drifts and pulses in step with them.
+    private readonly FlowingArtworkAnimator _flow;
+
     public LyricsPanelView()
     {
         InitializeComponent();
+
+        _flow = new FlowingArtworkAnimator(this, PanelFlowBackdrop, PanelFlowLayer1, PanelFlowLayer2, PanelBeatGlow, GetBeatContext);
 
         DataContextChanged += (_, _) => HookViewModel();
         AttachedToVisualTree += (_, _) =>
@@ -70,11 +76,13 @@ public partial class LyricsPanelView : UserControl
 
             if (_vm is { ActiveLineIndex: >= 0 } vm)
                 JumpToLineWhenReady(vm.ActiveLineIndex);
+            UpdateFlowAnimationState();
         };
         DetachedFromVisualTree += (_, _) =>
         {
             CancelScrollAnimation();
             CancelFollowResumeTimer();
+            _flow.Enabled = false;
 
             if (_countedAsVisible)
             {
@@ -94,6 +102,7 @@ public partial class LyricsPanelView : UserControl
             _vm.PropertyChanged -= OnVmPropertyChanged;
             _vm.LyricsSwapPending -= OnLyricsSwapPending;
             _vm.LyricsSwapped -= OnLyricsSwapped;
+            _vm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         }
         _vm = DataContext as LyricsViewModel;
         if (_vm != null)
@@ -101,8 +110,31 @@ public partial class LyricsPanelView : UserControl
             _vm.PropertyChanged += OnVmPropertyChanged;
             _vm.LyricsSwapPending += OnLyricsSwapPending;
             _vm.LyricsSwapped += OnLyricsSwapped;
+            // The Settings toggle lives on the Player VM (same live channel as the page).
+            _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
         }
         _lastScrolledIndex = -1;
+        UpdateFlowAnimationState();
+    }
+
+    // ── Flowing-artwork background ──
+    // Runs while the panel is attached, the Artwork background mode is on and the
+    // Settings toggle is on; the animator itself idles while the panel is hidden.
+
+    private void UpdateFlowAnimationState()
+        => _flow.Enabled = _vm != null && this.GetVisualRoot() != null
+                           && _vm.IsColorModeArtwork && _vm.Player.LyricsFlowingLightEnabled;
+
+    private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlayerViewModel.LyricsFlowingLightEnabled))
+            UpdateFlowAnimationState();
+    }
+
+    private BeatContext GetBeatContext()
+    {
+        if (_vm is not { Player: { } player }) return default;
+        return new BeatContext(player.CurrentTrack?.Bpm ?? 0, player.Position.TotalMilliseconds, player.IsPlaying);
     }
 
     // ── Track-change lyric swap (mirrors the lyrics page): fade out, let the
@@ -151,6 +183,12 @@ public partial class LyricsPanelView : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LyricsViewModel.IsColorModeArtwork))
+        {
+            UpdateFlowAnimationState();
+            return;
+        }
+
         // Skip anchoring work entirely while the panel is closed (wrapper hidden);
         // opening the panel re-anchors via EnsureLyricsForCurrentTrack.
         if (_vm == null || this.GetVisualRoot() == null || !IsEffectivelyVisible) return;
@@ -268,28 +306,26 @@ public partial class LyricsPanelView : UserControl
 
         CancelScrollAnimation();
 
-        // Small delay so layout settles after the active-line style change.
-        DispatcherTimer.RunOnce(() =>
+        // Start on the same frame as the line's own transitions — see the page's
+        // ScrollToActiveLine for why the old 10ms settle timer read as a hesitation.
+        try
         {
-            try
+            var offset = ComputeTargetOffset(index);
+            if (offset is not { } target) return;
+
+            var current = PanelScrollViewer.Offset.Y;
+            var diff = target - current;
+            if (Math.Abs(diff) < 2)
             {
-                var offset = ComputeTargetOffset(index);
-                if (offset is not { } target) return;
-
-                var current = PanelScrollViewer.Offset.Y;
-                var diff = target - current;
-                if (Math.Abs(diff) < 2)
-                {
-                    PanelScrollViewer.Offset = new Vector(0, target);
-                    return;
-                }
-
-                var distance = Math.Abs(diff);
-                var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
-                AnimateScroll(current, target, durationMs, GetLinesPanel(), index);
+                PanelScrollViewer.Offset = new Vector(0, target);
+                return;
             }
-            catch { }
-        }, TimeSpan.FromMilliseconds(10));
+
+            var distance = Math.Abs(diff);
+            var durationMs = (int)Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
+            AnimateScroll(current, target, durationMs, GetLinesPanel(), index);
+        }
+        catch { }
     }
 
     // Frame-clock animation via TopLevel.RequestAnimationFrame: vsync-locked, unlike a
@@ -333,8 +369,8 @@ public partial class LyricsPanelView : UserControl
 
             var elapsed = stopwatch.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
-            // Smootherstep glides in and out without overshoot.
-            var eased = Easing.SmootherStep(t);
+            // Shared line-motion curve: same as the line's scale transition (see the page).
+            var eased = LineMotion.Ease(t);
             PanelScrollViewer.Offset = new Vector(0, from + delta * eased);
 
             // Stagger: each cascade line is displaced by the gap between the base ease
@@ -346,8 +382,8 @@ public partial class LyricsPanelView : UserControl
             foreach (var (control, delayMs) in cascade)
             {
                 var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
-                var lag = delta * (eased - Easing.SmootherStep(tLine));
-                lag = Math.Clamp(lag, prevLag - MaxCascadeLagStepPx, prevLag + MaxCascadeLagStepPx);
+                var lag = LineMotion.CascadeStep(
+                    delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
                 prevLag = lag;
                 if (control.RenderTransform is TranslateTransform tt)
                     tt.Y = lag;

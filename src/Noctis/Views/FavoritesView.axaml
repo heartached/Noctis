@@ -136,6 +136,9 @@
                                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <MenuItem Header="Spectrogram"
+                                                              Command="{x:Static helpers:SpectrogramLauncher.OpenCommand}"
+                                                              CommandParameter="{Binding}" />
                                                     <MenuItem Header="Scan ReplayGain"
                                                               Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ScanItemReplayGainCommand}"
                                                               CommandParameter="{Binding}">

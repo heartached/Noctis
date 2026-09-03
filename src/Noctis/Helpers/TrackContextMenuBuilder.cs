@@ -41,6 +41,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Metadata { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
+    public MenuItem Spectrogram { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     public MenuItem OpenWith { get; private set; } = null!;
@@ -118,6 +119,12 @@ public sealed class TrackContextMenuBuilder
         ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
         ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
+
+        // Spek-style spectrum analysis of the file. Self-contained (shared static command),
+        // so every view that uses this builder gets it without wiring a command.
+        Spectrogram = new MenuItem { Header = "Spectrogram", Command = SpectrogramLauncher.OpenCommand };
+        Spectrogram.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        items.Add(Spectrogram);
 
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
         SearchLyrics.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Lyrics%20ICON.png");
@@ -253,6 +260,8 @@ public sealed class TrackContextMenuBuilder
         {
             ScanReplayGain.IsVisible = false;
         }
+
+        Spectrogram.CommandParameter = track;
 
         SearchLyrics.Command = searchLyricsCommand;
         SearchLyrics.CommandParameter = track;

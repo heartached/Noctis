@@ -18,13 +18,17 @@ public static class ShuffleHelper
     /// <summary>Selection weight multiplier for recently-played tracks (avoid repeats).</summary>
     private const double RecentlyPlayedWeight = 0.25;
 
+    /// <param name="allowExplicit">When false (Settings → Explicit Content off), tracks marked
+    /// explicit are excluded the same way snoozed tracks are — they never come up in a shuffle.</param>
     public static List<Track> WeightedShuffle(
-        IEnumerable<Track> tracks, Random? rng = null, ISet<Guid>? recentlyPlayed = null)
+        IEnumerable<Track> tracks, Random? rng = null, ISet<Guid>? recentlyPlayed = null,
+        bool allowExplicit = true)
     {
         rng ??= Random.Shared;
         var now = DateTime.UtcNow;
         return tracks
             .Where(t => t.SnoozedUntil == null || t.SnoozedUntil <= now)
+            .Where(t => allowExplicit || !t.IsExplicit)
             .OrderByDescending(t => Math.Pow(rng.NextDouble(), 1.0 / WeightOf(t, recentlyPlayed)))
             .ToList();
     }

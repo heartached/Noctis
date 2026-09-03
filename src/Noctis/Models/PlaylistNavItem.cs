@@ -46,6 +46,14 @@ public partial class PlaylistNavItem : NavItem
     /// <summary>Pinned playlists sort to the top of the sidebar with a pin glyph.</summary>
     [ObservableProperty] private bool _isPinned;
 
+    /// <summary>Smart playlists are rule-driven: they don't accept dropped tracks.</summary>
+    public bool IsSmartPlaylist { get; init; }
+
+    /// <summary>Context menu: "Move to folder…" vs "Remove from folder".</summary>
+    public bool HasFolder => !string.IsNullOrWhiteSpace(Folder);
+
+    partial void OnFolderChanged(string value) => OnPropertyChanged(nameof(HasFolder));
+
     /// <summary>Folder this playlist belongs to (empty = root).</summary>
     [ObservableProperty] private string _folder = string.Empty;
 

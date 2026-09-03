@@ -306,6 +306,7 @@ public partial class SidebarViewModel : ViewModelBase
             Key = $"playlist:{pl.Id}",
             Label = pl.Name,
             IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
+            IsSmartPlaylist = pl.IsSmartPlaylist,
             PlaylistId = pl.Id,
             TrackCount = pl.TrackIds.Count,
             CoverArtPath = pl.CoverArtPath,
@@ -352,7 +353,18 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task CreatePlaylist()
+    private Task CreatePlaylist() => CreatePlaylistCoreAsync(folder: null);
+
+    /// <summary>Folder header context menu: "New Playlist in folder" lands inside that folder.</summary>
+    [RelayCommand]
+    private Task NewPlaylistInFolder(PlaylistNavItem? item)
+        => CreatePlaylistCoreAsync(item is { IsFolder: true } ? item.Label : null);
+
+    /// <summary>Sidebar header context menu: same dialog the Playlists page "New" menu opens.</summary>
+    [RelayCommand]
+    private Task CreateSmartPlaylistFromSidebar() => CreateSmartPlaylistAsync();
+
+    private async Task CreatePlaylistCoreAsync(string? folder)
     {
         var dialogVm = new CreatePlaylistDialogViewModel();
         var dialog = new CreatePlaylistDialog
@@ -392,13 +404,177 @@ public partial class SidebarViewModel : ViewModelBase
         {
             Name = playlistName,
             Description = playlistDescription,
-            Color = Playlist.GetRandomColor()
+            Color = Playlist.GetRandomColor(),
+            Folder = folder?.Trim() ?? string.Empty,
         };
         Playlists.Add(playlist);
         PlaylistItems.Add(BuildPlaylistNavItem(playlist));
         RebuildSidebarRows();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    // ── Sidebar context menu + drag-and-drop ──
+    // Right-click on a playlist row / folder header, and drops onto the list, come
+    // through here. Folders are just the Folder string on each playlist, so "create a
+    // folder" means "put a playlist in a folder with a new name" and a folder with no
+    // playlists left in it simply disappears.
+
+    [RelayCommand]
+    private async Task EditPlaylistItem(PlaylistNavItem? item)
+    {
+        var playlist = ResolveNavPlaylist(item);
+        if (playlist == null) return;
+        await EditPlaylistAsync(playlist);
+    }
+
+    [RelayCommand]
+    private async Task TogglePinItem(PlaylistNavItem? item)
+    {
+        if (item?.PlaylistId is { } id) await TogglePinAsync(id);
+    }
+
+    [RelayCommand]
+    private async Task DeletePlaylistItem(PlaylistNavItem? item)
+    {
+        if (item?.PlaylistId is { } id) await DeletePlaylist(id);
+    }
+
+    /// <summary>Prompts for a folder name (existing or new) and moves the playlist there.</summary>
+    [RelayCommand]
+    private async Task MoveToFolder(PlaylistNavItem? item)
+    {
+        var playlist = ResolveNavPlaylist(item);
+        if (playlist == null) return;
+
+        var existing = GetFolderNames();
+        var hint = existing.Count > 0
+            ? "Existing folders: " + string.Join(", ", existing) + ". Type a new name to create a folder."
+            : "Type a name to create a folder.";
+        var name = await Views.TextPromptDialog.ShowAsync("Move to folder", playlist.Folder, hint, "Move");
+        if (name == null) return;
+
+        await SetPlaylistFolderAsync(playlist, name);
+    }
+
+    [RelayCommand]
+    private async Task RemoveFromFolder(PlaylistNavItem? item)
+    {
+        var playlist = ResolveNavPlaylist(item);
+        if (playlist == null || string.IsNullOrWhiteSpace(playlist.Folder)) return;
+        await SetPlaylistFolderAsync(playlist, string.Empty);
+    }
+
+    /// <summary>Folder header: rename every playlist's Folder that matches.</summary>
+    [RelayCommand]
+    private async Task RenameFolder(PlaylistNavItem? item)
+    {
+        if (item is not { IsFolder: true }) return;
+        var newName = await Views.TextPromptDialog.ShowAsync("Rename folder", item.Label, null, "Rename");
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, item.Label, StringComparison.Ordinal)) return;
+
+        var wasCollapsed = _collapsedFolders.Remove(item.Label);
+        if (wasCollapsed) _collapsedFolders.Add(newName);
+
+        foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)))
+        {
+            pl.Folder = newName;
+            pl.ModifiedAt = DateTime.UtcNow;
+            var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
+            if (nav != null) nav.Folder = newName;
+        }
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    /// <summary>Folder header: the playlists stay, the folder goes.</summary>
+    [RelayCommand]
+    private async Task DissolveFolder(PlaylistNavItem? item)
+    {
+        if (item is not { IsFolder: true }) return;
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(
+            $"Remove the folder \"{item.Label}\"? The playlists inside it are kept.");
+        if (!confirmed) return;
+
+        _collapsedFolders.Remove(item.Label);
+        foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)))
+        {
+            pl.Folder = string.Empty;
+            pl.ModifiedAt = DateTime.UtcNow;
+            var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
+            if (nav != null) nav.Folder = string.Empty;
+        }
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    /// <summary>
+    /// Drop of a dragged playlist onto <paramref name="target"/>: onto a folder header
+    /// files it into that folder (end of the folder); onto another playlist places it
+    /// right before/after that row and adopts the row's group (pinned state + folder),
+    /// so "put it where I dropped it" is exactly what happens. Sidebar order within a
+    /// group is the saved playlist order.
+    /// </summary>
+    public async Task MovePlaylistAsync(Guid draggedId, PlaylistNavItem target, bool placeAfter)
+    {
+        var dragged = Playlists.FirstOrDefault(p => p.Id == draggedId);
+        if (dragged == null) return;
+
+        if (target.IsFolder)
+        {
+            dragged.IsPinned = false;
+            dragged.Folder = target.Label;
+            Playlists.Remove(dragged);
+            var lastInFolder = Playlists.LastOrDefault(p =>
+                !p.IsPinned && string.Equals(p.Folder.Trim(), target.Label, StringComparison.OrdinalIgnoreCase));
+            var insertAt = lastInFolder == null ? Playlists.Count : Playlists.IndexOf(lastInFolder) + 1;
+            Playlists.Insert(insertAt, dragged);
+        }
+        else
+        {
+            if (target.PlaylistId == null || target.PlaylistId == draggedId) return;
+            var targetPl = Playlists.FirstOrDefault(p => p.Id == target.PlaylistId);
+            if (targetPl == null) return;
+
+            dragged.IsPinned = targetPl.IsPinned;
+            dragged.Folder = targetPl.Folder;
+            Playlists.Remove(dragged);
+            var idx = Playlists.IndexOf(targetPl) + (placeAfter ? 1 : 0);
+            Playlists.Insert(Math.Clamp(idx, 0, Playlists.Count), dragged);
+        }
+
+        dragged.ModifiedAt = DateTime.UtcNow;
+        SyncPlaylistItemsWithPlaylists();
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    private Playlist? ResolveNavPlaylist(PlaylistNavItem? item)
+        => item?.PlaylistId is { } id ? Playlists.FirstOrDefault(p => p.Id == id) : null;
+
+    private async Task SetPlaylistFolderAsync(Playlist playlist, string folder)
+    {
+        playlist.Folder = folder.Trim();
+        playlist.ModifiedAt = DateTime.UtcNow;
+        var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
+        if (nav != null) nav.Folder = playlist.Folder;
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    /// <summary>Re-orders PlaylistItems to match Playlists and copies pin/folder state across.</summary>
+    private void SyncPlaylistItemsWithPlaylists()
+    {
+        for (int i = 0; i < Playlists.Count; i++)
+        {
+            var pl = Playlists[i];
+            var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
+            if (nav == null) continue;
+            nav.IsPinned = pl.IsPinned;
+            nav.Folder = pl.Folder;
+            var at = PlaylistItems.IndexOf(nav);
+            if (at != i && i < PlaylistItems.Count) PlaylistItems.Move(at, i);
+        }
     }
 
     [RelayCommand]

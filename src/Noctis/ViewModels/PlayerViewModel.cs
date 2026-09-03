@@ -19,6 +19,10 @@ namespace Noctis.ViewModels;
 public partial class PlayerViewModel : ViewModelBase
 {
     private readonly IAudioPlayer _audioPlayer;
+
+    /// <summary>Lead of <see cref="Position"/> over the speaker (output buffer depth);
+    /// the lyrics clock subtracts it. See <see cref="IAudioPlayer.OutputLatency"/>.</summary>
+    public TimeSpan OutputLatency => _audioPlayer.OutputLatency;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IAnimatedCoverService _animatedCovers;
@@ -90,8 +94,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
     /// <summary>User-resized width of the persistent playback bar island. Hydrated from
     /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
-    /// 590 default mirrors both the settings default and the XAML base width.</summary>
-    [ObservableProperty] private double _playbackBarIslandWidth = 590;
+    /// 626 default mirrors both the settings default and the XAML base width.</summary>
+    [ObservableProperty] private double _playbackBarIslandWidth = 626;
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
@@ -275,7 +279,8 @@ public partial class PlayerViewModel : ViewModelBase
                 else if (_library.Tracks.Count > 0)
                 {
                     // No track loaded — shuffle entire library.
-                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks, recentlyPlayed: _recentlyPlayed);
+                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(
+                        _library.Tracks, recentlyPlayed: _recentlyPlayed, allowExplicit: _allowExplicitContent);
                     ReplaceQueueAndPlay(allTracks, 0);
                     // Set AFTER the call: ReplaceQueueAndPlay clears the flag (a new queue
                     // isn't shuffled by definition), so setting it first left the queue
@@ -470,9 +475,13 @@ public partial class PlayerViewModel : ViewModelBase
                 _originalQueue = UpNext.ToList();
                 // Shuffle the queue, respecting SkipWhenShuffling and
                 // down-weighting "not liked" + recently-played tracks.
+                // Explicit tracks are NOT filtered here: with the filter off they are parked
+                // out of the new order by PruneBlockedExplicit below, so turning the filter
+                // back on can return them (WeightedShuffle dropping them would lose them).
                 var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
                     UpNext.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
                 UpNext.ReplaceAll(shuffled);
+                PruneBlockedExplicit(wholeQueue: true);
             }
             else if (_originalQueue.Count > 0)
             {
@@ -489,7 +498,11 @@ public partial class PlayerViewModel : ViewModelBase
                     // come back: they were never played, they're just absent from UpNext.
                     // SkipWhenShuffling was handled; snoozed tracks were not — WeightedShuffle
                     // drops those too, so they satisfied neither branch and a shuffle
-                    // on/off round trip silently deleted them from the queue.
+                    // on/off round trip silently deleted them from the queue. Blocked
+                    // explicit tracks are NOT restored here: they sit in _parkedExplicit
+                    // and only the Explicit Content switch brings them back.
+                    if (IsBlockedExplicit(t))
+                        continue;
                     if (t.SkipWhenShuffling || t.IsSnoozed)
                     {
                         restored.Add(t);
@@ -689,7 +702,8 @@ public partial class PlayerViewModel : ViewModelBase
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         // No recency weighting here: the user explicitly chose to shuffle this one album,
         // so every track on it should stay equally likely even if just played.
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks, allowExplicit: _allowExplicitContent);
+        if (shuffled.Count == 0) return; // every track on the album is blocked explicit
         ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -703,7 +717,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (seed == null) return;
         var exclude = new HashSet<Guid> { seed.Id };
-        var batch = _radioService.BuildSimilar(seed, _library.Tracks, RadioBatchSize, exclude);
+        var batch = _radioService.BuildSimilar(seed, PlayableLibraryTracks(), RadioBatchSize, exclude);
         var queue = new List<Track> { seed };
         queue.AddRange(batch);
         // ReplaceQueueAndPlay clears IsRadioActive/_radioSeed; re-arm radio afterward.
@@ -855,6 +869,7 @@ public partial class PlayerViewModel : ViewModelBase
 
         // Clear stale shuffle state — a new queue replaces whatever was shuffled.
         _originalQueue.Clear();
+        _parkedExplicit.Clear(); // parked explicit tracks belonged to the old queue
         IsShuffleEnabled = false;
 
         // Record the full cycle for Repeat All, starting at the track being played so a
@@ -924,6 +939,7 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Clear();
+        _parkedExplicit.Clear();
     }
 
     /// <summary>Stops playback and clears all queue data.</summary>
@@ -944,6 +960,7 @@ public partial class PlayerViewModel : ViewModelBase
         UpNext.Clear();
         History.Clear();
         _originalQueue.Clear();
+        _parkedExplicit.Clear();
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         PositionFraction = 0;
@@ -1541,6 +1558,130 @@ public partial class PlayerViewModel : ViewModelBase
         }
     }
 
+    private bool _allowExplicitContent = true;
+
+    /// <summary>
+    /// Explicit tracks taken OUT of UpNext while the filter is off, each with the track
+    /// that followed it at the time, so turning the filter back on can put them back where
+    /// they were (or at the end if that neighbour has since played). Removing without
+    /// parking made the toggle one-way: off pruned the queue, on brought nothing back.
+    /// Cleared whenever the queue is replaced or cleared — parked tracks belong to the
+    /// queue they were parked from.
+    /// </summary>
+    private readonly List<(Track Track, Track? Successor)> _parkedExplicit = new();
+
+    /// <summary>
+    /// Settings → Explicit Content. On (default): no effect. Off: explicit tracks are a
+    /// PLAYBACK filter — parked out of the queue the moment the switch flips (and restored
+    /// when it flips back), skipped on queue advance, left out of shuffle / Autoplay /
+    /// Radio, never pre-rolled for a gapless or AutoMix handoff. Not a library filter: a
+    /// track the user plays directly (click, Play Now) still plays, since that is a
+    /// deliberate act.
+    /// </summary>
+    public bool AllowExplicitContent
+    {
+        get => _allowExplicitContent;
+        set
+        {
+            if (_allowExplicitContent == value) return;
+            _allowExplicitContent = value;
+            if (value) RestoreParkedExplicit();
+            else PruneBlockedExplicit(wholeQueue: true);
+        }
+    }
+
+    /// <summary>True when the filter is on and this track must not start on its own.</summary>
+    private bool IsBlockedExplicit(Track track) => track.IsExplicit && !_allowExplicitContent;
+
+    /// <summary>Library tracks eligible for automatic selection (Autoplay, Radio, library shuffle).</summary>
+    private IEnumerable<Track> PlayableLibraryTracks()
+        => _allowExplicitContent ? _library.Tracks : _library.Tracks.Where(t => !t.IsExplicit);
+
+    /// <summary>
+    /// Takes blocked explicit tracks out of UpNext. <paramref name="wholeQueue"/> (the
+    /// switch flipping off, or a fresh shuffle order) PARKS every explicit track with its
+    /// following non-explicit neighbour so <see cref="RestoreParkedExplicit"/> can undo it.
+    /// The head-only form (an advance or pre-roll about to pick UpNext[0]) drops the
+    /// leading run outright: those are tracks the queue is moving past, exactly like a
+    /// played track, so they do not come back. Nothing removed here plays or enters History.
+    /// </summary>
+    private void PruneBlockedExplicit(bool wholeQueue = false)
+    {
+        if (_allowExplicitContent || UpNext.Count == 0) return;
+
+        int removed = 0;
+        if (wholeQueue)
+        {
+            var kept = new List<Track>(UpNext.Count);
+            var pendingParked = new List<Track>();
+            foreach (var t in UpNext)
+            {
+                if (t.IsExplicit)
+                {
+                    pendingParked.Add(t);
+                    continue;
+                }
+                // The first clean track after a run of explicit ones is the anchor for all of them.
+                foreach (var p in pendingParked) _parkedExplicit.Add((p, t));
+                pendingParked.Clear();
+                kept.Add(t);
+            }
+            foreach (var p in pendingParked) _parkedExplicit.Add((p, null)); // trailing: restore at the end
+            removed = UpNext.Count - kept.Count;
+            if (removed > 0) UpNext.ReplaceAll(kept);
+        }
+        else
+        {
+            while (UpNext.Count > 0 && UpNext[0].IsExplicit)
+            {
+                UpNext.RemoveAt(0);
+                removed++;
+            }
+        }
+
+        if (removed > 0)
+        {
+            MarkQueueChanged();
+            DebugLogger.Info(DebugLogger.Category.Queue, "ExplicitFilter.Pruned",
+                $"removed={removed}, wholeQueue={wholeQueue}, parked={_parkedExplicit.Count}, queueCount={UpNext.Count}");
+        }
+    }
+
+    /// <summary>
+    /// Puts parked explicit tracks back: in front of their remembered neighbour when it is
+    /// still queued, otherwise at the end (the neighbour has played, so the slot is gone).
+    /// A parked track the user has meanwhile re-queued by hand is not added twice.
+    /// </summary>
+    private void RestoreParkedExplicit()
+    {
+        if (_parkedExplicit.Count == 0) return;
+
+        int restored = 0;
+        foreach (var (track, successor) in _parkedExplicit)
+        {
+            if (UpNext.Any(t => t.Id == track.Id)) continue;
+            var index = successor == null ? -1 : IndexOfTrack(successor);
+            if (index < 0) UpNext.Add(track);
+            else UpNext.Insert(index, track);
+            restored++;
+        }
+        _parkedExplicit.Clear();
+
+        if (restored > 0)
+        {
+            MarkQueueChanged();
+            DebugLogger.Info(DebugLogger.Category.Queue, "ExplicitFilter.Restored",
+                $"restored={restored}, queueCount={UpNext.Count}");
+        }
+
+        int IndexOfTrack(Track t)
+        {
+            for (int i = 0; i < UpNext.Count; i++)
+                if (UpNext[i].Id == t.Id) return i;
+            return -1;
+        }
+    }
+
     private void AdvanceQueueCore(QueueAdvanceReason reason)
     {
         if (reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous or QueueAdvanceReason.Error)
@@ -1588,6 +1729,11 @@ public partial class PlayerViewModel : ViewModelBase
             TrimHistory();
         }
 
+        // Explicit Content off: whatever explicit tracks sit at the head of the queue are
+        // dropped here, so the advance below lands on the first playable one (or falls
+        // through to repeat / autoplay / stop when nothing playable is left).
+        PruneBlockedExplicit();
+
         if (UpNext.Count > 0)
         {
             DebugLogger.Info(
@@ -1607,6 +1753,8 @@ public partial class PlayerViewModel : ViewModelBase
             var allTracks = _repeatCycleTracks.Count > 0
                 ? new List<Track>(_repeatCycleTracks)
                 : History.Reverse().ToList();
+            if (!_allowExplicitContent)
+                allTracks.RemoveAll(IsBlockedExplicit);
 
             History.Clear();
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
@@ -1666,14 +1814,16 @@ public partial class PlayerViewModel : ViewModelBase
         foreach (var t in History)
             exclude.Add(t.Id);
 
-        var picks = _autoplayService.PickSimilar(seed, _library.Tracks, AutoplayBatchSize, exclude);
+        // Materialize once: the fall-back call below scans the same pool again.
+        var pool = _allowExplicitContent ? _library.Tracks : PlayableLibraryTracks().ToList();
+        var picks = _autoplayService.PickSimilar(seed, pool, AutoplayBatchSize, exclude);
         if (picks.Count == 0)
         {
             // Candidate pool exhausted for this run — allow reuse: start a fresh cycle
             // that only refuses to replay the seed itself back-to-back.
             _autoplayPickedIds.Clear();
             picks = _autoplayService.PickSimilar(
-                seed, _library.Tracks, AutoplayBatchSize, new HashSet<Guid> { seed.Id });
+                seed, pool, AutoplayBatchSize, new HashSet<Guid> { seed.Id });
             if (picks.Count == 0)
                 return false;
         }
@@ -1728,7 +1878,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Snapshot on the UI thread so the background scan can't race library mutations
         // or live queue collections.
         var seed = _radioSeed;
-        var snapshot = _library.Tracks.ToList();
+        var snapshot = PlayableLibraryTracks().ToList();
         var exclude = new HashSet<Guid>(History.Select(t => t.Id));
         foreach (var t in UpNext) exclude.Add(t.Id);
         if (CurrentTrack != null) exclude.Add(CurrentTrack.Id);
@@ -2053,6 +2203,11 @@ public partial class PlayerViewModel : ViewModelBase
         if (State != PlaybackState.Playing || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
             return false;
 
+        // Never pre-roll a track the explicit filter is about to skip.
+        PruneBlockedExplicit();
+        if (UpNext.Count == 0)
+            return false;
+
         var nextTrack = UpNext[0];
         var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions());
         LogAutoMixPlan(CurrentTrack, nextTrack, plan);
@@ -2209,6 +2364,11 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
 
         if (duration <= TimeSpan.Zero)
+            return false;
+
+        // Never pre-roll a track the explicit filter is about to skip.
+        PruneBlockedExplicit();
+        if (UpNext.Count == 0)
             return false;
 
         var nextTrack = UpNext[0];

@@ -157,7 +157,8 @@ internal sealed class WasapiGainOutput : IDisposable
 
         (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
         _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
-        _out.Init(_gain);
+        // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
+        _out.Init(new BeatTapProvider(_gain, 50));
         HookPlaybackStopped();
         _out.Play();
         Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
@@ -180,11 +181,13 @@ internal sealed class WasapiGainOutput : IDisposable
         Exception? lastError = null;
         foreach (var bits in new[] { 24, 16, 32 })
         {
+            // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
+            var tapped = new BeatTapProvider(_gain, 100);
             IWaveProvider rendered = bits switch
             {
-                24 => new SampleToWaveProvider24(_gain),
-                16 => new SampleToWaveProvider16(_gain),
-                _ => new SampleToWaveProvider(_gain),
+                24 => new SampleToWaveProvider24(tapped),
+                16 => new SampleToWaveProvider16(tapped),
+                _ => new SampleToWaveProvider(tapped),
             };
 
             var attempt = new WasapiOut(AudioClientShareMode.Exclusive, useEventSync: true, latency: 100);

@@ -34,6 +34,11 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Current playback position.</summary>
     TimeSpan Position { get; }
 
+    /// <summary>How far <see cref="Position"/> (and PositionChanged) lead the speaker:
+    /// the depth of output buffer already filled but not yet heard. Zero when the
+    /// reported position is already the audible one. Lyrics subtract it.</summary>
+    TimeSpan OutputLatency { get; }
+
     /// <summary>Monotonic playback session id, incremented for every Play request.</summary>
     long CurrentSessionId { get; }
 

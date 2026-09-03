@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:conv="using:Noctis.Converters"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.AlbumDescriptionDialog"
         x:DataType="vm:AlbumDetailViewModel"
@@ -12,6 +13,7 @@
         ShowInTaskbar="False">
 
     <Window.Resources>
+        <conv:TitleSplitConverter x:Key="TitleSplit" />
     </Window.Resources>
 
     <Window.Styles>
@@ -147,24 +149,24 @@
                 <Grid Grid.Column="1" Margin="26,20,26,0" RowDefinitions="Auto,*,Auto">
 
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+                        <!-- The last word and the "E" badge live in ONE inline container, so a
+                             long title that wraps can never leave the badge alone on the next
+                             line (the line breaker treats an inline object as its own word). -->
                         <TextBlock Grid.Column="0"
                                    FontSize="34"
                                    FontWeight="Bold"
                                    TextWrapping="Wrap"
-                                   Margin="0,0,14,0">
-                            <Run Text="{Binding Album.Name}" />
-                            <InlineUIContainer BaselineAlignment="Center">
-                                <Border Classes="explicit-badge"
+                                   Margin="0,0,14,0"><Run Text="{Binding Album.Name, Converter={StaticResource TitleSplit}, ConverterParameter=head}" /><InlineUIContainer BaselineAlignment="Bottom"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="{Binding Album.Name, Converter={StaticResource TitleSplit}, ConverterParameter=last}"
+                                                                                                                                                                                                                                  FontSize="34"
+                                                                                                                                                                                                                                  FontWeight="Bold" /><Border Classes="explicit-badge"
                                         IsVisible="{Binding Album.IsExplicit}"
-                                        Margin="0,0,0,-2"
+                                        VerticalAlignment="Center"
                                         ToolTip.Tip="Explicit">
                                     <TextBlock Text="E"
                                                Classes="explicit-badge-text"
                                                FontSize="10"
                                                Opacity="0.95" />
-                                </Border>
-                            </InlineUIContainer>
-                        </TextBlock>
+                                </Border></StackPanel></InlineUIContainer></TextBlock>
 
                         <Button Grid.Column="1"
                                 Background="Transparent"

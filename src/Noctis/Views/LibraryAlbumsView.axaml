@@ -146,13 +146,9 @@
                                                                TextTrimming="CharacterEllipsis"
                                                                MaxLines="1" />
                                                 </StackPanel>
-                                                <PathIcon Grid.Column="1"
-                                                          Data="{StaticResource HeartFillIcon}"
-                                                          Width="14" Height="14"
-                                                          Foreground="#E74856"
-                                                          Margin="6,0,0,0"
-                                                          VerticalAlignment="Center"
-                                                          IsVisible="{Binding Track.IsFavorite}" />
+                                                <ctrl:HeartIcon Grid.Column="1" Size="14" ShowWhenOff="False"
+                                                Margin="6,0,0,0" VerticalAlignment="Center"
+                                                IsFavorite="{Binding Track.IsFavorite}" />
                                             </Grid>
                                             <StackPanel Grid.Column="3"
                                                         Orientation="Horizontal"
@@ -323,13 +319,9 @@
                                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                     <!-- Favorite heart overlay (visible when any track in album is favorited) -->
-                                                    <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                              Width="18" Height="18"
-                                                              Foreground="#E74856"
-                                                              HorizontalAlignment="Right"
-                                                              VerticalAlignment="Bottom"
-                                                              Margin="0,0,8,8"
-                                                              IsVisible="{Binding HasFavoriteTrack}" />
+                                                    <ctrl:HeartIcon Size="18" ShowWhenOff="False"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                                IsFavorite="{Binding HasFavoriteTrack}" />
                                                 </Panel>
                                             </Border>
                                             <!-- Album name + inline explicit badge -->

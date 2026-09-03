@@ -92,15 +92,9 @@
         <Style Selector="Button.heart-btn:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <Style Selector="PathIcon.faint-heart">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.heart-btn:pointerover PathIcon.faint-heart">
-            <Setter Property="Opacity" Value="0.7" />
+        <!-- The row heart is a HeartIcon now; hover brightens its not-favorited glyph. -->
+        <Style Selector="Button.heart-btn:pointerover controls|HeartIcon.faint-heart">
+            <Setter Property="OffOpacity" Value="0.7" />
         </Style>
 
         <!-- Album run headers live inside each run-start item, so the row
@@ -988,22 +982,13 @@
                                             ToolTip.Tip="Favorite"
                                             Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ToggleFavoriteSingleCommand}"
                                             CommandParameter="{Binding}">
-                                        <Panel>
-                                            <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                      Width="13" Height="13"
-                                                      Foreground="#E74856"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      IsVisible="{Binding IsFavorite}" />
-                                            <PathIcon Classes="faint-heart"
-                                                      Data="{StaticResource HeartFillIcon}"
-                                                      Width="13" Height="13"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                                      Opacity="0.28"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      IsVisible="{Binding !IsFavorite}" />
-                                        </Panel>
+                                        <!-- Shared HeartIcon (pops both ways); the faint-heart styles
+                                             above drive its OffOpacity on row hover. -->
+                                        <controls:HeartIcon Classes="faint-heart" Size="13"
+                                                            OffBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                            OffOpacity="0.28"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            IsFavorite="{Binding IsFavorite}" />
                                     </Button>
 
                                     <!-- Time / duration -->

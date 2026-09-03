@@ -20,6 +20,10 @@ public enum MiniPlayerForm
     LargeIcon,
     /// <summary>Wide split view: controls left, synced lyrics right.</summary>
     Lyrics,
+    /// <summary>Fixed design (Settings ▸ Mini Player Design): round cover over a light card.</summary>
+    Pill,
+    /// <summary>Fixed design (Settings ▸ Mini Player Design): disc peeking out of a light card.</summary>
+    Sleeve,
 }
 
 /// <summary>Which bottom-sheet layer is open over the card ("…" menu actions).</summary>
@@ -55,6 +59,77 @@ public partial class MiniPlayerViewModel : ViewModelBase
         {
             if (Drawer == MiniDrawer.Queue) RefreshQueuePreview();
         };
+
+        // The design picker (Settings ▸ Appearance) drives the form while a fixed design
+        // is selected; the window follows Form the same way it follows a size change.
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerStyle))
+                ApplyStyle(resizeWindow: true);
+        };
+        if (StyleForm is { } styled)
+            Form = styled;
+    }
+
+    // ── Fixed designs (Settings ▸ Mini Player Design) ──
+
+    /// <summary>The selected design; Classic is the size-driven card.</summary>
+    public MiniPlayerStyle Style => Settings.MiniPlayerStyleMode;
+
+    /// <summary>True while a fixed design owns the form (window size no longer picks it).</summary>
+    public bool IsStyleLocked => StyleForm != null;
+
+    private MiniPlayerForm? StyleForm => Style switch
+    {
+        MiniPlayerStyle.Pill => MiniPlayerForm.Pill,
+        MiniPlayerStyle.Sleeve => MiniPlayerForm.Sleeve,
+        _ => null,
+    };
+
+    private double _lastWidth = double.NaN, _lastHeight = double.NaN;
+
+    /// <summary>"…" menu ▸ Design segment: same setting the Settings picker writes.</summary>
+    [RelayCommand]
+    private void SetDesign(string name)
+    {
+        var style = MiniPlayerStyles.Parse(name);
+        if (Settings.MiniPlayerStyleMode == style) return;
+        Settings.MiniPlayerStyle = style.ToString();
+    }
+
+    /// <summary>Mouse wheel over a design card nudges the volume (5 per notch, like the
+    /// playback bar's flyout).</summary>
+    public void NudgeVolume(int notches)
+    {
+        if (notches == 0) return;
+        Player.Volume = Math.Clamp(Player.Volume + notches * 5, 0, 100);
+    }
+
+    /// <summary>The classic form in use when a fixed design was picked, so Classic comes
+    /// back as THAT form (the window restores its exact size too — see the window's
+    /// pre-design capture). Running the design's own size through the thresholds
+    /// turned every Card into a Bar on the way back.</summary>
+    private MiniPlayerForm? _formBeforeDesign;
+
+    private void ApplyStyle(bool resizeWindow)
+    {
+        OnPropertyChanged(nameof(Style));
+        OnPropertyChanged(nameof(IsStyleLocked));
+        if (Drawer != MiniDrawer.None) Drawer = MiniDrawer.None;
+        if (StyleForm is { } styled)
+        {
+            if (!IsDesignForm && !IsLyricsForm) _formBeforeDesign = Form;
+            // Resize first, while Form still names the form being left: the window
+            // captures the outgoing size from it (same order as the Lyrics toggle).
+            if (resizeWindow) FormResizeRequested?.Invoke(styled);
+            Form = styled;
+            return;
+        }
+        // Back to Classic: the form the design replaced, else whatever the size says.
+        var classic = _formBeforeDesign ?? ComputeForm(_lastWidth, _lastHeight);
+        _formBeforeDesign = null;
+        if (resizeWindow) FormResizeRequested?.Invoke(classic);
+        Form = classic;
     }
 
     /// <summary>True when neither synced nor plain lyrics exist for the current track.</summary>
@@ -64,8 +139,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIconForm), nameof(IsBarForm), nameof(IsCardForm),
-        nameof(IsLargeIconForm), nameof(IsLyricsForm), nameof(SupportsDrawer),
-        nameof(LyricsMenuLabel))]
+        nameof(IsLargeIconForm), nameof(IsLyricsForm), nameof(IsPillForm), nameof(IsSleeveForm),
+        nameof(IsDesignForm), nameof(SupportsDrawer), nameof(ShowVolumeMenuItem), nameof(LyricsMenuLabel))]
     private MiniPlayerForm _form = MiniPlayerForm.Bar;
 
     public bool IsIconForm => Form == MiniPlayerForm.Icon;
@@ -73,9 +148,18 @@ public partial class MiniPlayerViewModel : ViewModelBase
     public bool IsCardForm => Form == MiniPlayerForm.Card;
     public bool IsLargeIconForm => Form == MiniPlayerForm.LargeIcon;
     public bool IsLyricsForm => Form == MiniPlayerForm.Lyrics;
+    public bool IsPillForm => Form == MiniPlayerForm.Pill;
+    public bool IsSleeveForm => Form == MiniPlayerForm.Sleeve;
+    /// <summary>One of the fixed designs: their "…" menu carries the heart the classic
+    /// forms show as a button.</summary>
+    public bool IsDesignForm => Form is MiniPlayerForm.Pill or MiniPlayerForm.Sleeve;
 
-    /// <summary>Bottom-sheet layers exist on every form with a "…" menu (not the tiny icon).</summary>
+    /// <summary>Bottom-sheet layers exist on every form with a "…" menu (not the tiny icon).
+    /// Under a fixed design the sheet paints its own dark ground (see SyncChrome).</summary>
     public bool SupportsDrawer => Form is not MiniPlayerForm.Icon;
+
+    /// <summary>The "…" menu's Volume item: needs a drawer, and the large icon has its own bar.</summary>
+    public bool ShowVolumeMenuItem => SupportsDrawer && !IsLargeIconForm;
 
     /// <summary>Dead-band applied to the current form's thresholds during a live resize, in
     /// pixels and in aspect ratio. Without it a drag creeping along a boundary re-crosses it
@@ -118,6 +202,12 @@ public partial class MiniPlayerViewModel : ViewModelBase
     /// <summary>Called by the window on every resize with the current client size.</summary>
     public void UpdateFromSize(double width, double height)
     {
+        _lastWidth = width;
+        _lastHeight = height;
+        // A fixed design keeps its form whatever the window does; Lyrics opened from a
+        // design is handed back explicitly by ToggleLyricsForm.
+        if (IsStyleLocked) return;
+
         var next = ComputeForm(width, height, Form, FormHysteresisPx, FormHysteresisRatio);
         if (next == Form) return;
 
@@ -138,6 +228,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
         MiniPlayerForm.Bar => (420, 188),
         MiniPlayerForm.LargeIcon => (340, 520),
         MiniPlayerForm.Lyrics => (640, 412),
+        MiniPlayerForm.Pill => (352, 140),
+        MiniPlayerForm.Sleeve => (340, 372),
         _ => (340, 432),
     };
 
@@ -158,16 +250,20 @@ public partial class MiniPlayerViewModel : ViewModelBase
         if (IsLyricsForm)
         {
             // Icon has no "…" menu, so it can't be the form we came from; Lyrics itself
-            // would be a no-op. Card is the neutral fallback either way.
-            var back = _formBeforeLyrics is MiniPlayerForm.Lyrics or MiniPlayerForm.Icon
+            // would be a no-op. Card is the neutral fallback either way — unless a fixed
+            // design is selected, which always takes the window back.
+            var back = StyleForm ?? (_formBeforeLyrics is MiniPlayerForm.Lyrics or MiniPlayerForm.Icon
                 ? MiniPlayerForm.Card
-                : _formBeforeLyrics;
+                : _formBeforeLyrics);
             FormResizeRequested?.Invoke(back);
+            // Size no longer drives the form under a design: hand it back explicitly.
+            if (IsStyleLocked) Form = back;
             return;
         }
 
         _formBeforeLyrics = Form;
         FormResizeRequested?.Invoke(MiniPlayerForm.Lyrics);
+        if (IsStyleLocked) Form = MiniPlayerForm.Lyrics;
     }
 
     // ── Bottom-sheet layers ──
@@ -197,6 +293,14 @@ public partial class MiniPlayerViewModel : ViewModelBase
     // ── Library search (Search layer) ──
 
     private DispatcherTimer? _searchDebounce;
+    // Bumped per fill so an in-flight streamed fill (StreamingFill) yields to a newer one.
+    private int _searchFillGeneration;
+    private int _queueFillGeneration;
+
+    /// <summary>True while the window is sliding the drawer open/closed (set by the window).
+    /// Row streaming waits for it: rows inflated mid-slide are re-laid-out on every resize
+    /// tick, which is what the "Search lags for a second" hitch was made of.</summary>
+    public bool IsDrawerAnimating { get; set; }
 
     /// <summary>Rows the drawer shows, for both a query's hits and the empty-query shuffle.</summary>
     private const int SearchResultCap = 30;
@@ -225,7 +329,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
         {
             _searchDebounce?.Stop();
             _searchDebounce = null;
-            SearchResults.ReplaceAll(FilterTracks(_library.Tracks, SearchQuery, SearchResultCap));
+            StreamingFill.Into(SearchResults, FilterTracks(_library.Tracks, SearchQuery, SearchResultCap),
+                ++_searchFillGeneration, () => _searchFillGeneration, gate: () => !IsDrawerAnimating);
         };
         _searchDebounce.Start();
     }
@@ -235,7 +340,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
     /// onto something tappable instead of a blank sheet.
     /// </summary>
     private void ShowShuffledSuggestions()
-        => SearchResults.ReplaceAll(ShuffleSample(_library.Tracks, SearchResultCap, Random.Shared));
+        => StreamingFill.Into(SearchResults, ShuffleSample(_library.Tracks, SearchResultCap, Random.Shared),
+            ++_searchFillGeneration, () => _searchFillGeneration, gate: () => !IsDrawerAnimating);
 
     /// <summary>
     /// <paramref name="limit"/> tracks drawn at random from <paramref name="tracks"/>, or all
@@ -320,7 +426,10 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     private void RefreshQueuePreview()
     {
-        QueuePreview.ReplaceAll(Player.UpNext.Take(QueuePreviewCap).ToList());
+        // Streamed (see StreamingFill): a hundred artwork rows inflated on the open
+        // frame was the hitch on the Queue button.
+        StreamingFill.Into(QueuePreview, Player.UpNext.Take(QueuePreviewCap).ToList(),
+            ++_queueFillGeneration, () => _queueFillGeneration, gate: () => !IsDrawerAnimating);
         QueuePreviewTruncated = Player.UpNext.Count > QueuePreviewCap;
     }
 

@@ -27,6 +27,9 @@
              step. MiniFrostMask reveals the blurred artwork copy; MiniFrostScrim is the
              contrast ramp over it. Both are measured, not eyeballed — see the notes at the
              Large-icon form's L2/L3 layers before changing an offset. -->
+        <!-- These are the 340x520 values; code-behind swaps in per-form brushes whose
+             stops follow the controls in PIXELS (MiniFrostBand), so a tall card keeps
+             its cover sharp instead of frosting 40% of the height. -->
         <LinearGradientBrush x:Key="MiniFrostMask" StartPoint="0%,0%" EndPoint="0%,100%">
             <GradientStop Offset="0.40" Color="#00000000"/>
             <GradientStop Offset="0.54" Color="#8C000000"/>
@@ -105,6 +108,25 @@
                 </Viewbox>
             </Panel>
         </DataTemplate>
+
+        <!-- Drawer palette. These are the classic values (white ink on the dark glass);
+             under a Pill / Sleeve design the drawer sits on the theme-coloured card, so
+             code-behind overrides the same keys on DrawerSheet.Resources with the
+             theme's foreground brushes (SyncDrawerPalette). Everything inside the sheet
+             - and the shared styles it uses - reads these by DynamicResource. -->
+        <SolidColorBrush x:Key="MiniDrawerText" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerTextHeader" Color="#B3FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerTextSoft" Color="#99FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerTextFaint" Color="#66FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerFieldFill" Color="#33000000"/>
+        <SolidColorBrush x:Key="MiniDrawerFieldStroke" Color="#26FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerRowHover" Color="#1FFFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerDisc" Color="#26FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerDiscHover" Color="#3DFFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerDiscPressed" Color="#52FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerBadgeFill" Color="#59FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerBadgeText" Color="#FF000000"/>
+        <SolidColorBrush x:Key="MiniDrawerTrack" Color="#66FFFFFF"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -163,13 +185,28 @@
             <Setter Property="ClipToBounds" Value="True"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
+        <!-- Fluent's HorizontalTemplate is a 32px MinHeight grid with 15px tick rows top
+             and bottom, so the track always sits at y=15 regardless of its height and
+             its centre lands (h/2 − 1) px below the grid's — 1px low for the 4px seek
+             line, 3px low for the 8px volume pill, which read as the speaker icons
+             floating above the bar. The negative top margin pulls the track back onto
+             the centre (measured in MiniPlayerProbeTests). -->
+        <!-- The Track is as tall as the slider (16): the whole slider is the click/drag
+             target, not just the 4px line (the visible line is the Border inside the
+             repeat buttons' transparent panels). Fluent's HorizontalTemplate parks the
+             track's centre (h/2 − 1) px below the slider's centre for any track height
+             h (measured: +1 at 4, +3 at 8, +10 at 22 — MiniPlayerProbeTests), so each
+             height carries the matching negative top margin. -->
         <Style Selector="Slider.mini-seek /template/ Track">
-            <Setter Property="Height" Value="4"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Margin" Value="0,-7,0,7"/>
         </Style>
         <Style Selector="Slider.mini-seek /template/ RepeatButton">
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border/>
+                    <Panel Background="Transparent">
+                        <Border VerticalAlignment="Center"/>
+                    </Panel>
                 </ControlTemplate>
             </Setter>
         </Style>
@@ -201,12 +238,87 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+        <!-- Volume sliders: the fatter pill from the playback bar's volume flyout
+             (the seek bars keep the thin 4px line). Declared after mini-seek so the
+             equal-specificity setters below win. -->
+        <Style Selector="Slider.mini-volume">
+            <Setter Property="Height" Value="22"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ Track">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="0,-10,0,10"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,0,-8,0"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_IncreaseButton">
+            <Setter Property="Margin" Value="-8,0,0,0"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ RepeatButton /template/ Border">
+            <Setter Property="Height" Value="8"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerTrack}"/>
+        </Style>
+        <Style Selector="Slider.mini-volume /template/ Thumb">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+        </Style>
+
+        <!-- "…" on the design cards: a persistent theme-coloured disc (glass-circle's white
+             wash is invisible on a light card). -->
+        <Style Selector="Button.mini-transport.design-circle /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
+        <Style Selector="Button.mini-transport.design-circle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+        </Style>
+        <Style Selector="Button.mini-transport.design-circle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+        </Style>
+        <!-- "…" menu ▸ Design segment -->
+        <Style Selector="Button.mini-segment">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.mini-segment /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.mini-segment:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
+        <Style Selector="Button.mini-segment.active">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.mini-segment.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Explicit badge on the theme-coloured design cards (mini-explicit's white wash is
+             invisible on a light card). -->
+        <Style Selector="Border.design-explicit">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <!-- Search box inside the drawer pill: strip the Fluent TextBox chrome -->
         <Style Selector="TextBox.mini-search">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource MiniDrawerText}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource MiniDrawerText}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="0"/>
@@ -230,7 +342,7 @@
              from its viewport, so a long title trims/scrolls instead of pushing the badge
              out from under the infinite-width StackPanel measure and over the heart. -->
         <Style Selector="Border.mini-explicit">
-            <Setter Property="Background" Value="#59FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerBadgeFill}"/>
             <Setter Property="CornerRadius" Value="3"/>
             <Setter Property="Padding" Value="4,0"/>
             <Setter Property="Height" Value="14"/>
@@ -244,19 +356,19 @@
             <Setter Property="Padding" Value="6"/>
         </Style>
         <Style Selector="Border.mini-row:pointerover">
-            <Setter Property="Background" Value="#1FFFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerRowHover}"/>
         </Style>
 
         <!-- Liquid circle: persistent translucent glass disc behind the glyph
              (Apple Music's star / "…" buttons) -->
         <Style Selector="Button.mini-transport.glass-circle /template/ ContentPresenter">
-            <Setter Property="Background" Value="#26FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerDisc}"/>
         </Style>
         <Style Selector="Button.mini-transport.glass-circle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#3DFFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerDiscHover}"/>
         </Style>
         <Style Selector="Button.mini-transport.glass-circle:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#52FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerDiscPressed}"/>
         </Style>
 
         <!-- Time readouts fade in only while the pointer is over the card; the resting
@@ -333,13 +445,14 @@
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
-            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+            <Setter Property="RenderTransform" Value="scale(0.96)"/>
             <Setter Property="ClipToBounds" Value="False"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                    <!-- Same curve/length as the scroll glide (LineMotion) — see the page. -->
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.65">
                         <TransformOperationsTransition.Easing>
-                            <helpers:SpringEase Damping="7.5" Frequency="4.0"/>
+                            <helpers:LineMotionEase/>
                         </TransformOperationsTransition.Easing>
                     </TransformOperationsTransition>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
@@ -347,7 +460,7 @@
             </Setter>
         </Style>
         <Style Selector="Button.mini-lyric-line.active">
-            <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1)"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <!-- No hover/press box on lyric lines: clickable (Cursor=Hand) but reads as text. -->
         <Style Selector="Button.mini-lyric-line /template/ ContentPresenter">
@@ -361,24 +474,16 @@
         </Style>
         <!-- Suppress the global hover-scale on lyric lines. -->
         <Style Selector="ItemsControl#LyricsItems Button:pointerover">
-            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+            <Setter Property="RenderTransform" Value="scale(0.96)"/>
         </Style>
         <Style Selector="ItemsControl#LyricsItems Button.mini-lyric-line.active:pointerover">
-            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1)"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
 
-        <!-- Per-word lift (panel feel, mini scale). -->
+        <!-- Regular words do not move while sung (as on the page); only emphasis swells. -->
         <Style Selector="Panel.word-cell">
             <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
             <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Panel.word-cell.current">
-            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1.01)"/>
         </Style>
 
         <!-- Held-note emphasis: slow swell + soft glow, as on the lyrics page. -->
@@ -551,7 +656,10 @@
             Opacity="0"
             RenderTransform="scale(0.92)"
             RenderTransformOrigin="50%,50%"
-            PointerPressed="OnRootPointerPressed">
+            PointerPressed="OnRootPointerPressed"
+            PointerMoved="OnRootPointerMoved"
+            PointerReleased="OnRootPointerReleased"
+            PointerCaptureLost="OnRootPointerCaptureLost">
         <Border.Background>
             <SolidColorBrush Color="#0B0B11" Opacity="{Binding Settings.MiniPlayerBackgroundOpacity}"/>
         </Border.Background>
@@ -590,7 +698,7 @@
                  full-bleed artwork as part of their layouts, which is unaffected. -->
 
             <!-- L4: glass sheen — diagonal highlight fading out mid-card -->
-            <Border IsHitTestVisible="False">
+            <Border x:Name="GlassSheen" IsHitTestVisible="False">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="70%,100%">
                         <GradientStop Offset="0" Color="#3DFFFFFF"/>
@@ -602,7 +710,7 @@
 
             <!-- L5: top specular — the bright hairline along the upper edge that reads as
                  the lit rim of a glass slab. Clipped to the rounded outline by RootPanel. -->
-            <Border Height="1" VerticalAlignment="Top" IsHitTestVisible="False">
+            <Border x:Name="GlassSpecular" Height="1" VerticalAlignment="Top" IsHitTestVisible="False">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                         <GradientStop Offset="0" Color="#00FFFFFF"/>
@@ -618,7 +726,8 @@
                  and transport. Now it owns its own row and the window grows to make space
                  for it (see AnimateDrawer). The glass layers above stay outside this grid
                  so the wash runs behind the drawer too and the card reads as one pane. -->
-            <Grid RowDefinitions="*,Auto">
+            <Grid x:Name="FormGrid" RowDefinitions="*,Auto">
+
             <Panel Grid.Row="0">
 
             <!-- ── Form: Icon (tiny square — artwork only, hover controls) ── -->
@@ -707,7 +816,7 @@
                         </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="12"
-                                                   Foreground="#B3FFFFFF"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
                                                    MaxDisplayWidth="{Binding #BarInfoHost.Bounds.Width}"
                                                    HorizontalAlignment="Left"
                                                    IsMiniPlayer="True"
@@ -720,18 +829,9 @@
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel Classes="mini-heart-glyph">
-                                <Viewbox Width="14" Height="14"
-                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
-                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
+                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
+                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
+                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
@@ -871,7 +971,7 @@
                         </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="13"
-                                                   Foreground="#B3FFFFFF"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
                                                    MaxDisplayWidth="{Binding #CardInfoHost.Bounds.Width}"
                                                    HorizontalAlignment="Left"
                                                    IsMiniPlayer="True"
@@ -883,18 +983,9 @@
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel Classes="mini-heart-glyph">
-                                <Viewbox Width="14" Height="14"
-                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
-                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
+                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
+                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
+                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
@@ -1086,7 +1177,7 @@
                      reads as frost (4% at 100% scaling). Note BlurEffect.Radius is in
                      DEVICE pixels, so the same radius blurs ~20% weaker at 125% scaling —
                      hence the headroom. -->
-                <Panel IsHitTestVisible="False"
+                <Panel x:Name="LargeFrostBand" IsHitTestVisible="False"
                        OpacityMask="{StaticResource MiniFrostMask}"
                        IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
@@ -1107,10 +1198,10 @@
                      floor with margin, while staying lighter than the next step up so dark
                      covers don't get crushed. Full frost lands at 0.64, just above where
                      the controls start (~0.66 at the canonical 340x520). -->
-                <Border IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
+                <Border x:Name="LargeFrostScrim" IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
 
                 <!-- L4: the controls, anchored to the bottom of the frosted band. -->
-                <Grid VerticalAlignment="Bottom" Margin="16,0,16,12"
+                <Grid x:Name="LargeControls" VerticalAlignment="Bottom" Margin="16,0,16,12"
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,0,0,0">
@@ -1129,7 +1220,7 @@
                             </controls:MarqueeTextBlock.InlineContent>
                         </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                   FontSize="13" Foreground="#B3FFFFFF"
+                                                   FontSize="13" Foreground="{DynamicResource AccentColorBrush}"
                                                    MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
                                                    HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
                     </StackPanel>
@@ -1138,18 +1229,9 @@
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel Classes="mini-heart-glyph">
-                                <Viewbox Width="14" Height="14"
-                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
-                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
+                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
+                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
+                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
@@ -1299,7 +1381,7 @@
                             </Viewbox>
                         </Panel>
                     </Button>
-                    <Slider Grid.Column="1" x:Name="LargeVolumeSlider" Classes="mini-seek"
+                    <Slider Grid.Column="1" x:Name="LargeVolumeSlider" Classes="mini-seek mini-volume"
                             Minimum="0" Maximum="100" Focusable="False"
                             Value="{Binding Player.Volume, Mode=TwoWay}"
                             Margin="4,0" VerticalAlignment="Center"/>
@@ -1364,7 +1446,7 @@
                          MiniFrostMask so the frost fades in down the card. Exactly the
                          Large-icon recipe: see the notes there for the mask-on-wrapper
                          rule, the asymmetric bleed margin and the measured radius. -->
-                    <Panel IsHitTestVisible="False"
+                    <Panel x:Name="LyricsFrostBand" IsHitTestVisible="False"
                            OpacityMask="{StaticResource MiniFrostMask}"
                            IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
@@ -1378,9 +1460,9 @@
                         </controls:CachedImage>
                     </Panel>
 
-                    <Border IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
+                    <Border x:Name="LyricsFrostScrim" IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
 
-                    <Grid VerticalAlignment="Bottom" Margin="12,0,12,10"
+                    <Grid x:Name="LyricsArtControls" VerticalAlignment="Bottom" Margin="12,0,12,10"
                           RowDefinitions="Auto,Auto,Auto,Auto">
 
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,4,0,0">
@@ -1400,7 +1482,7 @@
                                 </controls:MarqueeTextBlock.InlineContent>
                             </controls:MarqueeTextBlock>
                             <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                       FontSize="12" Foreground="#B3FFFFFF"
+                                                       FontSize="12" Foreground="{DynamicResource AccentColorBrush}"
                                                        MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
                                                        HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
                         </StackPanel>
@@ -1409,19 +1491,10 @@
                                     Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                     ToolTip.Tip="Favorites">
                                 <Panel Classes="mini-heart-glyph">
-                                    <Viewbox Width="14" Height="14"
-                                             IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
-                                             IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
+                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
+                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
+                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                            </Panel>
                             </Button>
                             <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                     ToolTip.Tip="More" Click="OnMoreMenuClick">
@@ -1554,52 +1627,40 @@
                 <Panel Grid.Column="1" ClipToBounds="True" IsHitTestVisible="False"
                        Background="{Binding Lyrics.FullBackgroundBrush}">
                     <Panel IsVisible="{Binding Lyrics.IsColorModeArtwork}">
-                        <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <!-- Pulse host: FlowingArtworkAnimator breathes this whole stack about its
+                             centre on every beat (BeatMeter) and drifts/rotates the two extra copies
+                             below, so the background keeps the artwork's own colours — the old
+                             palette-tinted blobs recoloured the whole page when the toggle went on. -->
+                        <Panel x:Name="MiniFlowBackdrop">
+                            <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                            Stretch="UniformToFill"
+                            RenderOptions.BitmapInterpolationMode="HighQuality"
+                            IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <Image.RenderTransform>
-                                <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
+                            <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                             </Image.RenderTransform>
-                        </Image>
-                        <!-- Flowing-light layer (issue #22) — mini copy of the page's
-                             MeshBlobLayer, same default palette. Positions/opacity are
-                             driven by a code-behind timer that only runs while the
-                             Lyrics form + artwork mode + the setting are all active;
-                             stop colors are retinted in place when the VM re-derives
-                             the artwork palette. -->
-                        <Canvas x:Name="MiniMeshBlobLayer"
-                                ClipToBounds="True"
-                                IsHitTestVisible="False"
-                                IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
-                            <Ellipse x:Name="MiniMeshBlob1">
-                                <Ellipse.Fill>
-                                    <RadialGradientBrush>
-                                        <GradientStop Color="#D83A1C71" Offset="0"/>
-                                        <GradientStop Color="#603A1C71" Offset="0.6"/>
-                                        <GradientStop Color="#003A1C71" Offset="1"/>
-                                    </RadialGradientBrush>
-                                </Ellipse.Fill>
-                            </Ellipse>
-                            <Ellipse x:Name="MiniMeshBlob2">
-                                <Ellipse.Fill>
-                                    <RadialGradientBrush>
-                                        <GradientStop Color="#D8D76D77" Offset="0"/>
-                                        <GradientStop Color="#60D76D77" Offset="0.6"/>
-                                        <GradientStop Color="#00D76D77" Offset="1"/>
-                                    </RadialGradientBrush>
-                                </Ellipse.Fill>
-                            </Ellipse>
-                            <Ellipse x:Name="MiniMeshBlob3">
-                                <Ellipse.Fill>
-                                    <RadialGradientBrush>
-                                        <GradientStop Color="#D8FFAF7B" Offset="0"/>
-                                        <GradientStop Color="#60FFAF7B" Offset="0.6"/>
-                                        <GradientStop Color="#00FFAF7B" Offset="1"/>
-                                    </RadialGradientBrush>
-                                </Ellipse.Fill>
-                            </Ellipse>
-                        </Canvas>
+                            </Image>
+                            <!-- Flowing-artwork layer (issue #22): two more copies of the same
+                                 pre-blurred cover slowly rotate in opposite directions over the static
+                                 one. Transform/opacity only — no live blur, no layout, so a frame is a
+                                 handful of property writes on the compositor's own clock. -->
+                            <Panel x:Name="MiniFlowLayerHost" IsHitTestVisible="False"
+                                   IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
+                                <Image x:Name="MiniFlowLayer1"
+                                       Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       Opacity="0.5"/>
+                                <Image x:Name="MiniFlowLayer2"
+                                       Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       Opacity="0.36"/>
+                            </Panel>
+                        </Panel>
+                        <!-- Beat glow: a white wash the animator lifts for a few frames on each beat. -->
+                        <Rectangle x:Name="MiniBeatGlow" Fill="White" Opacity="0" IsHitTestVisible="False"
+                                   IsVisible="{Binding Player.LyricsFlowingLightEnabled}"/>
                         <Rectangle Fill="#99000000"/>
                     </Panel>
                 </Panel>
@@ -1762,6 +1823,251 @@
 
             </Panel>
 
+            <!-- ── Design: Pill (Settings ▸ Mini Player Design, community mockup) ──
+                 A round cover (spinning like a disc, CoverSpinner) centred on the left edge
+                 of a card in the app's theme colours: title/artist,
+                 "…", a seek bar with hover-only times and prev / play / next. The window's dark glass is hidden
+                 for this form (SyncChrome) because the silhouette isn't a rectangle. -->
+            <Grid x:Name="PillFormRoot" Classes="form-root" Margin="6,6,10,6"
+                  PointerWheelChanged="OnDesignVolumeWheel">
+                <!-- Design ground: the ONE solid theme-coloured slab the card and its
+                     drawer share (AppMainBackground - the Mini Player Opacity setting is a
+                     classic-glass thing and deliberately does not apply). The card and
+                     the drawer sheet are transparent; opening a drawer just stretches this
+                     slab down past the root's bottom edge, the same lockstep glide the
+                     classic glass gets from RootBorder, with no corner or margin changes.
+                     It lives INSIDE the form root so the form's cross-fade / scale carries
+                     it too (a sibling slab popped in at full opacity while the content was
+                     still fading). Canvas host on purpose: a Canvas reports no desired
+                     size for its children, so the slab can never feed back into the row
+                     it is measured against (a margined Border grew the star row to its
+                     own stale insets and the wrong measurement became self-consistent).
+                     Rect from SyncDesignGround / ApplyDesignGroundRect. -->
+                <Canvas x:Name="PillGroundHost" IsHitTestVisible="False" ClipToBounds="False">
+                    <Border x:Name="PillGround" CornerRadius="24" Background="{DynamicResource AppMainBackground}"/>
+                </Canvas>
+                <Panel VerticalAlignment="Center">
+                    <!-- Transparent: the fill and shadow are DesignGround's (see the grid above),
+                         so the drawer can share them. -->
+                    <Border x:Name="PillCard" Margin="60,0,0,0" MinHeight="116" CornerRadius="24"
+                            Background="Transparent">
+                        <Grid Margin="72,12,14,12" RowDefinitions="Auto,Auto,*">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" x:Name="PillInfoHost" VerticalAlignment="Top" Spacing="0">
+                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                               FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                               MaxDisplayWidth="{Binding #PillInfoHost.Bounds.Width}"
+                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
+                                        <controls:MarqueeTextBlock.InlineContent>
+                                            <Border Classes="design-explicit"
+                                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                                    ToolTip.Tip="Explicit">
+                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                                           VerticalAlignment="Center" TextAlignment="Center"
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                            </Border>
+                                        </controls:MarqueeTextBlock.InlineContent>
+                                    </controls:MarqueeTextBlock>
+                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
+                                                               FontSize="11" Foreground="{DynamicResource AccentColorBrush}"
+                                                               MaxDisplayWidth="{Binding #PillInfoHost.Bounds.Width}"
+                                                               HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top" Margin="6,-2,0,0">
+                                    <Button Classes="mini-transport design-circle" Width="24" Height="24"
+                                            ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                        <Viewbox Width="14" Height="14">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <!-- Seek row: the classic card's slider (accent line, round thumb; commits
+                                 through BeginSeek/EndSeek) with hover-only times either side. -->
+                            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
+                                <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="10"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="26"/>
+                                <Slider Grid.Column="1" x:Name="PillSeekSlider" Classes="mini-seek"
+                                        Minimum="0" Maximum="1" Focusable="False"
+                                        Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                        Margin="4,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.DurationText}" FontSize="10"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="26" TextAlignment="Right"/>
+                            </Grid>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="26"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0">
+                                <Button Classes="mini-transport" Width="30" Height="30"
+                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                    <Viewbox Width="17" Height="17">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PreviousIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button Classes="mini-transport" Width="32" Height="32"
+                                        Command="{Binding Player.PlayPauseCommand}"
+                                        ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
+                                    <Panel>
+                                        <Viewbox Width="20" Height="20"
+                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PlayIcon}"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                        <Viewbox Width="20" Height="20"
+                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PauseIcon}"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Panel>
+                                </Button>
+                                <Button Classes="mini-transport" Width="30" Height="30"
+                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                    <Viewbox Width="17" Height="17">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource NextIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <!-- Round cover, its centre on the card's left edge. -->
+                    <Border Width="120" Height="120" CornerRadius="60" Background="{DynamicResource AppSidebarBackground}"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            BoxShadow="0 6 18 0 #40000000">
+                        <!-- PillCoverSpin is rotated about its centre by CoverSpinner (code-behind)
+                             while music plays and coasts to a stop on pause, like the CD costume. -->
+                        <Panel x:Name="PillCoverSpin">
+                            <Panel.Clip>
+                                <RectangleGeometry Rect="0,0,120,120" RadiusX="60" RadiusY="60"/>
+                            </Panel.Clip>
+                            <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                                                  DecodeWidth="256" Width="120" Height="120"
+                                                  Stretch="UniformToFill"/>
+                            <TextBlock Text="♪" FontSize="34" Opacity="0.25" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                        </Panel>
+                    </Border>
+                </Panel>
+            </Grid>
+
+            <!-- ── Design: Sleeve (Settings ▸ Mini Player Design, community mockup) ──
+                 A disc (the Now Playing CD costume, spinning while music plays) peeks out
+                 of the top of a rounded card in the theme's colours; the app's EQ bars,
+                 artist, title, a full-width seek bar with times, then prev / play / next. -->
+            <Grid x:Name="SleeveFormRoot" Classes="form-root" Margin="10"
+                  PointerWheelChanged="OnDesignVolumeWheel">
+                <!-- Same ground arrangement as the Pill's (see there). -->
+                <Canvas x:Name="SleeveGroundHost" IsHitTestVisible="False" ClipToBounds="False">
+                    <Border x:Name="SleeveGround" CornerRadius="34" Background="{DynamicResource AppMainBackground}"/>
+                </Canvas>
+                <!-- Transparent (fill and shadow live on DesignGround); ClipToBounds still rounds
+                     the disc off at the card's outline. -->
+                <Border x:Name="SleeveCard" CornerRadius="34" Background="Transparent" ClipToBounds="True">
+                    <Grid RowDefinitions="*,Auto">
+                        <controls:MediaArtwork x:Name="SleeveDisc" Grid.Row="0" Grid.RowSpan="2"
+                                               Width="380" Height="380"
+                                               HorizontalAlignment="Center" VerticalAlignment="Top"
+                                               Margin="0,-200,0,0"
+                                               Medium="CompactDisc"
+                                               SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                               FallbackSource="{Binding Player.AlbumArt}"
+                                               DecodeWidth="768"
+                                               AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
+                                               AnimatedActive="{Binding Settings.EnableAnimatedCovers}"
+                                               IsSpinning="{Binding Player.IsPlaying}"/>
+                        <Button Grid.Row="0" Classes="mini-transport design-circle" Width="28" Height="28"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,14,0"
+                                ToolTip.Tip="More" Click="OnMoreMenuClick">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                        <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="2" Margin="22,0,22,18">
+                            <!-- The app's animated now-playing bars (EqVisualizer) in the accent
+                                 colour, where the mockup drew a static grip. -->
+                            <controls:EqVisualizer x:Name="SleeveEq" HorizontalAlignment="Center" Margin="0,0,0,6"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                   IsPlaying="{Binding Player.IsPlaying}"/>
+                            <TextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
+                                       FontSize="13" Foreground="{DynamicResource AccentColorBrush}" HorizontalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                            <!-- Title + explicit badge: a Grid (not a StackPanel) so the title still
+                                 trims instead of measuring at infinite width (issue #30). -->
+                            <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center">
+                                <TextBlock Grid.Column="0" x:Name="SleeveTitle"
+                                           Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                           FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                           MaxWidth="240" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="design-explicit" Margin="6,0,0,0"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                               VerticalAlignment="Center" TextAlignment="Center"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Border>
+                            </Grid>
+                            <!-- Seek row: the classic card's slider (accent line, round thumb; commits
+                                 through BeginSeek/EndSeek), position left, duration right — the
+                                 mockup's 40px sliver was too small to hit. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0" MinWidth="240">
+                                <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" MinWidth="30"/>
+                                <Slider Grid.Column="1" x:Name="SleeveSeekSlider" Classes="mini-seek"
+                                        Minimum="0" Maximum="1" Focusable="False"
+                                        Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                        Margin="6,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.DurationText}" FontSize="11"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="30" TextAlignment="Right"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                <Button Classes="mini-transport" Width="32" Height="32"
+                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                    <Viewbox Width="18" Height="18">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PreviousIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button Classes="mini-transport" Width="36" Height="36"
+                                        Command="{Binding Player.PlayPauseCommand}"
+                                        ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
+                                    <Panel>
+                                        <Viewbox Width="22" Height="22"
+                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PlayIcon}"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                        <Viewbox Width="22" Height="22"
+                                                 IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PauseIcon}"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Panel>
+                                </Button>
+                                <Button Classes="mini-transport" Width="32" Height="32"
+                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                    <Viewbox Width="18" Height="18">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource NextIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
             <!-- ── Drawer sheet (Search / Queue / Volume layers) ──────────────
                  Height is driven by code-behind in lockstep with the window height, so the
                  player area above it never changes size while the card grows. Starts at 0.
@@ -1770,7 +2076,9 @@
                  (RootBorder's fill at the user's opacity setting), so it stays exactly as
                  transparent as the player above it. The top edge carries the same specular
                  hairline as the card's own top rim (L5 above) so the seam looks lit rather
-                 than drawn. -->
+                 than drawn. Under a Pill / Sleeve design both go away: the sheet is then a
+                 transparent content box over DesignGround (the one shape the card and the
+                 drawer share), inset to the ground's outline - see SyncChrome. -->
             <Border x:Name="DrawerSheet"
                     Grid.Row="1"
                     IsVisible="False"
@@ -1813,11 +2121,11 @@
                 <Panel>
                     <!-- Search layer -->
                     <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsSearchDrawer}">
-                        <Border Grid.Row="0" Background="#33000000" BorderBrush="#26FFFFFF" BorderThickness="1"
+                        <Border Grid.Row="0" Background="{DynamicResource MiniDrawerFieldFill}" BorderBrush="{DynamicResource MiniDrawerFieldStroke}" BorderThickness="1"
                                 CornerRadius="999" Padding="12,7">
                             <Grid ColumnDefinitions="Auto,*,Auto">
                                 <PathIcon Grid.Column="0" Data="{StaticResource SearchIcon}" Width="13" Height="13"
-                                          Foreground="#99FFFFFF" VerticalAlignment="Center"/>
+                                          Foreground="{DynamicResource MiniDrawerTextSoft}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" x:Name="SearchBox" Classes="mini-search"
                                          Text="{Binding SearchQuery, Mode=TwoWay}"
                                          Watermark="Search Library"
@@ -1826,7 +2134,7 @@
                                         Command="{Binding ClearSearchCommand}"
                                         IsVisible="{Binding SearchQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                         ToolTip.Tip="Clear">
-                                    <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10" Foreground="#99FFFFFF"/>
+                                    <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10" Foreground="{DynamicResource MiniDrawerTextSoft}"/>
                                 </Button>
                             </Grid>
                         </Border>
@@ -1857,7 +2165,7 @@
                                                          the badge rather than through it. -->
                                                     <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
                                                                                FontSize="13" FontWeight="SemiBold"
-                                                                               Foreground="White"
+                                                                               Foreground="{DynamicResource MiniDrawerText}"
                                                                                MaxDisplayWidth="{Binding #ResultInfoHost.Bounds.Width}"
                                                                                HorizontalAlignment="Left" IsMiniPlayer="True">
                                                         <controls:MarqueeTextBlock.InlineContent>
@@ -1866,12 +2174,12 @@
                                                                     ToolTip.Tip="Explicit">
                                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                                            VerticalAlignment="Center" TextAlignment="Center"
-                                                                           Foreground="Black"/>
+                                                                           Foreground="{DynamicResource MiniDrawerBadgeText}"/>
                                                             </Border>
                                                         </controls:MarqueeTextBlock.InlineContent>
                                                     </controls:MarqueeTextBlock>
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
-                                                               Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                                 <!-- glass-circle: persistent disc so the row reads as a button, not a
                                                      floating glyph. The 1px right nudge is optical centring — a play
@@ -1881,7 +2189,7 @@
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlaySearchResultCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Play">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="White"/>
+                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -1895,9 +2203,9 @@
                     <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsQueueDrawer}">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,0,6,6">
                             <TextBlock Grid.Column="0" Text="Up Next" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="#B3FFFFFF"/>
+                                       Foreground="{DynamicResource MiniDrawerTextHeader}"/>
                             <TextBlock Grid.Column="1" Text="showing first 100" FontSize="10"
-                                       Foreground="#66FFFFFF" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MiniDrawerTextFaint}" VerticalAlignment="Center"
                                        IsVisible="{Binding QueuePreviewTruncated}"/>
                         </Grid>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
@@ -1925,7 +2233,7 @@
                                                          title. -->
                                                     <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
                                                                                FontSize="13" FontWeight="SemiBold"
-                                                                               Foreground="White"
+                                                                               Foreground="{DynamicResource MiniDrawerText}"
                                                                                MaxDisplayWidth="{Binding #QueueInfoHost.Bounds.Width}"
                                                                                HorizontalAlignment="Left" IsMiniPlayer="True">
                                                         <controls:MarqueeTextBlock.InlineContent>
@@ -1934,19 +2242,19 @@
                                                                     ToolTip.Tip="Explicit">
                                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                                            VerticalAlignment="Center" TextAlignment="Center"
-                                                                           Foreground="Black"/>
+                                                                           Foreground="{DynamicResource MiniDrawerBadgeText}"/>
                                                             </Border>
                                                         </controls:MarqueeTextBlock.InlineContent>
                                                     </controls:MarqueeTextBlock>
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
-                                                               Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                                 <!-- Same persistent disc + optical nudge as the search-result row. -->
                                                 <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlayFromQueueCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Play">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="White"/>
+                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -1963,23 +2271,23 @@
                             <Panel>
                                 <Viewbox Width="13" Height="13" Opacity="0.75" IsVisible="{Binding !Player.IsMuted}">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource SpeakerZeroIcon}"/>
+                                        <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerZeroIcon}"/>
                                     </Canvas>
                                 </Viewbox>
                                 <Viewbox Width="13" Height="13" Opacity="0.55" IsVisible="{Binding Player.IsMuted}">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="White" Data="{StaticResource SpeakerMuteIcon}"/>
+                                        <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerMuteIcon}"/>
                                     </Canvas>
                                 </Viewbox>
                             </Panel>
                         </Button>
-                        <Slider Grid.Column="1" x:Name="DrawerVolumeSlider" Classes="mini-seek"
+                        <Slider Grid.Column="1" x:Name="DrawerVolumeSlider" Classes="mini-seek mini-volume"
                                 Minimum="0" Maximum="100" Focusable="False"
                                 Value="{Binding Player.Volume, Mode=TwoWay}"
                                 Margin="6,0" VerticalAlignment="Center"/>
                         <Viewbox Grid.Column="2" Width="15" Height="15" Opacity="0.75" VerticalAlignment="Center">
                             <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="{StaticResource SpeakerHighIcon}"/>
+                                <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerHighIcon}"/>
                             </Canvas>
                         </Viewbox>
                     </Grid>
@@ -2039,14 +2347,14 @@
                     </Border.Transitions>
                     <StackPanel Spacing="1">
                         <Button Classes="mini-menu-item" Command="{Binding ToggleSearchDrawerCommand}"
-                                Click="OnMenuItemClick">
+                                Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 <TextBlock Text="Search" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Command="{Binding ToggleQueueDrawerCommand}"
-                                Click="OnMenuItemClick">
+                                Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <!-- Same artwork the playback bar's queue button uses, so the two
                                      read as the same control. PathIcon glyphs made Queue and Lyrics
@@ -2066,7 +2374,7 @@
                         <!-- The large-icon form has its own always-visible volume bar -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleVolumeDrawerCommand}"
                                 Click="OnMenuItemClick"
-                                IsVisible="{Binding !IsLargeIconForm}">
+                                IsVisible="{Binding ShowVolumeMenuItem}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
@@ -2075,6 +2383,15 @@
                                     </Border.OpacityMask>
                                 </Border>
                                 <TextBlock Text="Volume" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- The fixed designs have no heart button on the card, so the menu carries it. -->
+                        <Button Classes="mini-menu-item" Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
+                                Click="OnMenuItemClick" IsVisible="{Binding IsDesignForm}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <controls:HeartIcon Size="14" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
+                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                                <TextBlock Text="Favorites" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Stays in the list while lyrics are open: it is the only way back
@@ -2091,6 +2408,41 @@
                                 <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <!-- Design switcher: the Settings ▸ Mini Player Design picker within reach.
+                             Same setting, so Settings and this segment stay in step. -->
+                        <Border Height="1" Margin="8,4"
+                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <Border CornerRadius="999" Padding="2" Margin="4,2,4,2"
+                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                ToolTip.Tip="Mini player design">
+                            <Panel x:Name="DesignSegmentPanel">
+                                <!-- The highlight slides under the picked design (code-behind sizes it to
+                                     a third of the row and translates it by the index). -->
+                                <Border x:Name="DesignSegmentThumb" HorizontalAlignment="Left" Width="50"
+                                        CornerRadius="999" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+                                    <Border.Transitions>
+                                        <Transitions>
+                                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2">
+                                                <TransformOperationsTransition.Easing>
+                                                    <CubicEaseOut/>
+                                                </TransformOperationsTransition.Easing>
+                                            </TransformOperationsTransition>
+                                        </Transitions>
+                                    </Border.Transitions>
+                                </Border>
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <Button Grid.Column="0" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStyleClassic}"
+                                            Content="Classic" Command="{Binding SetDesignCommand}" CommandParameter="Classic"
+                                            Click="OnMenuItemClick"/>
+                                    <Button Grid.Column="1" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStylePill}"
+                                            Content="Pill" Command="{Binding SetDesignCommand}" CommandParameter="Pill"
+                                            Click="OnMenuItemClick"/>
+                                    <Button Grid.Column="2" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStyleSleeve}"
+                                            Content="Sleeve" Command="{Binding SetDesignCommand}" CommandParameter="Sleeve"
+                                            Click="OnMenuItemClick"/>
+                                </Grid>
+                            </Panel>
+                        </Border>
                         <!-- Was the corner badge. No OnMenuItemClick needed: closing the
                              window takes the popup with it. -->
                         <Border Height="1" Margin="8,4"

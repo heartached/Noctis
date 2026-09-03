@@ -207,6 +207,17 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _barcode = string.Empty;
 
     [ObservableProperty] private string _selectedAdvisory = "None";
+
+    // ── "Album is explicit" (Details tab, whole-album dialog only) ──
+    // One checkbox marks every track of the album explicit (or clears it), written per
+    // file as ITUNESADVISORY on Save. A single track keeps its advisory picker on the
+    // Advanced tab; a multi-track selection is not an album, so it gets neither.
+    [ObservableProperty] private bool _isExplicit;
+    private bool _loadedIsExplicit;
+
+    public bool ShowExplicitCheckbox => _albumScoped && !_multiSelect;
+    public string ExplicitCheckboxLabel => "Album is explicit";
+
     [ObservableProperty] private string _language = string.Empty;
     [ObservableProperty] private string _mood = string.Empty;
     [ObservableProperty] private string _advDescription = string.Empty;
@@ -714,6 +725,7 @@ public partial class MetadataViewModel : ViewModelBase
         else { _mixedFields.Add(nameof(Genre)); Genre = string.Empty; }
 
         IsCompilation = _albumTracks!.All(t => t.IsCompilation);
+        IsExplicit = _albumTracks!.All(t => t.IsExplicit);
         ShowComposerInAllViews = _albumTracks!.All(t => t.ShowComposerInAllViews);
 
         // Rating is album-wide here: show the shared value when every track agrees,
@@ -768,6 +780,7 @@ public partial class MetadataViewModel : ViewModelBase
         _albumLoaded[nameof(MovementNumber)] = MovementNumber;
         _albumLoaded[nameof(MovementCount)] = MovementCount;
         _loadedIsCompilation = IsCompilation;
+        _loadedIsExplicit = IsExplicit;
         _loadedShowComposerInAllViews = ShowComposerInAllViews;
         _loadedRating = Rating;
         _loadedIsDisliked = IsDisliked;
@@ -946,6 +959,8 @@ public partial class MetadataViewModel : ViewModelBase
         Bpm = _track.Bpm > 0 ? _track.Bpm.ToString() : string.Empty;
         Year = _track.Year > 0 ? _track.Year.ToString() : string.Empty;
         IsCompilation = _track.IsCompilation;
+        IsExplicit = _track.IsExplicit;
+        _loadedIsExplicit = IsExplicit;
         ShowComposerInAllViews = _track.ShowComposerInAllViews;
         Grouping = _track.Grouping;
         UseWorkAndMovement = _track.UseWorkAndMovement;
@@ -2021,6 +2036,31 @@ public partial class MetadataViewModel : ViewModelBase
                     if (!_metadata.WriteTrackMetadata(t))
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
+
+            // "Album is explicit": write ITUNESADVISORY to every track whose flag differs
+            // from the checkbox. Only when the user actually toggled it — an untouched
+            // checkbox on a mixed album must not silently stamp every track.
+            if (IsExplicit != _loadedIsExplicit)
+            {
+                var advisoryTargets = _albumTracks.Where(t => t.IsExplicit != IsExplicit).ToList();
+                var advisoryValue = IsExplicit ? 1 : 0;
+                var flipped = new List<Track>();
+                await Task.Run(() =>
+                {
+                    foreach (var t in advisoryTargets)
+                    {
+                        if (_metadata.WriteAdvisory(t.FilePath, advisoryValue))
+                            lock (flipped) flipped.Add(t);
+                        else
+                            lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
+                    }
+                });
+                // Track.IsExplicit is observable, so every "E" badge and the playback
+                // filter see the change immediately; the library save below persists it.
+                foreach (var t in flipped) t.IsExplicit = IsExplicit;
+                _loadedIsExplicit = IsExplicit;
+                OnPropertyChanged(nameof(HeaderIsExplicit));
+            }
         }
         else if (NeedsTagWrite(_track))
         {

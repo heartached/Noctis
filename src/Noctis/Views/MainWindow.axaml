@@ -214,28 +214,39 @@
                             </Button.Flyout>
                         </Button>
 
-                        <Button Classes="release-chip" VerticalAlignment="Center"
+                        <!-- Quality: the same All / Lossless / Hi-Res segmented pill the Songs page
+                             uses, so both grids filter quality the same way. -->
+                        <Border Background="{DynamicResource ChipBackground}"
+                                CornerRadius="999" Padding="3"
+                                VerticalAlignment="Center"
                                 ToolTip.Tip="Filter by audio quality">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Quality:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding QualityFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
-                                          RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                            <Border.Styles>
+                                <Style Selector="Button.quality-chip">
+                                    <Setter Property="Opacity" Value="0.55"/>
+                                </Style>
+                                <Style Selector="Button.quality-chip.on">
+                                    <Setter Property="Opacity" Value="1"/>
+                                    <Setter Property="Background" Value="#30FFFFFF"/>
+                                </Style>
+                            </Border.Styles>
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ghost-btn quality-chip" Classes.on="{Binding AlbumQualityAll}"
+                                        Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                        Content="All" FontSize="12" FontWeight="SemiBold"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding QualityFilterCommand}" CommandParameter="all" />
+                                <Button Classes="ghost-btn quality-chip" Classes.on="{Binding AlbumQualityLossless}"
+                                        Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                        Content="Lossless" FontSize="12" FontWeight="SemiBold"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding QualityFilterCommand}" CommandParameter="lossless" />
+                                <Button Classes="ghost-btn quality-chip" Classes.on="{Binding AlbumQualityHiRes}"
+                                        Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                        Content="Hi-Res" FontSize="12" FontWeight="SemiBold"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding QualityFilterCommand}" CommandParameter="hires" />
                             </StackPanel>
-                            <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                    <MenuItem Header="All"
-                                              Command="{Binding QualityFilterCommand}"
-                                              CommandParameter="all"/>
-                                    <MenuItem Header="Lossless"
-                                              Command="{Binding QualityFilterCommand}"
-                                              CommandParameter="lossless"/>
-                                    <MenuItem Header="Hi-Res"
-                                              Command="{Binding QualityFilterCommand}"
-                                              CommandParameter="hires"/>
-                                </MenuFlyout>
-                            </Button.Flyout>
-                        </Button>
+                        </Border>
 
                         <Button Classes="release-chip" VerticalAlignment="Center"
                                 ToolTip.Tip="Sort albums">
@@ -516,7 +527,7 @@
                     </Border>
 
                     <!-- Playlist action buttons -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasPlaylistActions}">
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding PlaylistActionsVisible}">
                         <!-- Playlists grid sort. Every sibling grid had one; this tab had
                              none at all and showed whatever order the sidebar built. -->
                         <Button Classes="release-chip" VerticalAlignment="Center"
@@ -617,8 +628,55 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Artists grid: Sort dropdown (Name / Songs / Albums + direction), same chip as the Albums sort -->
+                    <Button Classes="release-chip" VerticalAlignment="Center"
+                            IsVisible="{Binding HasArtistSort}"
+                            ToolTip.Tip="Sort artists">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ArtistSortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                      RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Name" Command="{Binding ArtistSortCommand}" CommandParameter="name">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Song count" Command="{Binding ArtistSortCommand}" CommandParameter="songs">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=songs}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Album count" Command="{Binding ArtistSortCommand}" CommandParameter="albums">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albums}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Ascending" Command="{Binding ArtistSortCommand}" CommandParameter="Ascending">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  IsVisible="{Binding ArtistSortAscending}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Descending" Command="{Binding ArtistSortCommand}" CommandParameter="Descending">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  IsVisible="{Binding ArtistSortDescending}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <!-- Favorites action buttons — same neutral chip pill as the Songs page actions -->
-                    <Border IsVisible="{Binding HasFavoritesActions}"
+                    <Border IsVisible="{Binding FavoritesActionsVisible}"
                             Background="{DynamicResource ChipBackground}"
                             CornerRadius="999" Padding="3"
                             VerticalAlignment="Center">
@@ -648,7 +706,7 @@
 
                     <!-- Folders action buttons: Play (accent) + Shuffle / Manage Folders (neutral chips) -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
-                                IsVisible="{Binding HasFoldersActions}">
+                                IsVisible="{Binding FoldersActionsVisible}">
                         <Button Classes="accent-btn" Background="{DynamicResource AccentButtonBackground}"
                                 Padding="16,6" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PagePlayFolderCommand}"
@@ -703,20 +761,40 @@
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Flow"
                                     Content="Cover Flow" FontSize="12" FontWeight="SemiBold" />
-                            <!-- Collage sub-mode: compact icon segment, only while Cover Flow is active -->
+                            <!-- Cover Flow layout picker: a labelled dropdown (Carousel / Cascade / Collage)
+                                 instead of an unlabelled icon that cycled — the words say what the
+                                 segment is, matching the "Library" / "Cover Flow" words next to it. -->
                             <Button x:Name="AlbumsCollageModeBtn"
-                                    Command="{Binding ToggleCollageModeCommand}"
                                     IsVisible="{Binding IsCoverFlowMode}"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
-                                    Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Collage">
-                                <!-- Theme-aware tint: PNG alpha masks the foreground brush (flips for light/dark). -->
-                                <Border Width="14" Height="14"
-                                        Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Collage%20icon.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
+                                    Background="Transparent" ToolTip.Tip="Cover Flow layout">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding CoverFlowLayoutLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                        <MenuItem Header="Carousel" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Carousel">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                          IsVisible="{Binding CoverFlowLayoutLabel, Converter={StaticResource StringEquals}, ConverterParameter=Carousel}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Cascade" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Cascade">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                          IsVisible="{Binding CoverFlowLayoutLabel, Converter={StaticResource StringEquals}, ConverterParameter=Cascade}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Collage" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Collage">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                          IsVisible="{Binding CoverFlowLayoutLabel, Converter={StaticResource StringEquals}, ConverterParameter=Collage}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
                             </Button>
                         </StackPanel>
                     </Border>

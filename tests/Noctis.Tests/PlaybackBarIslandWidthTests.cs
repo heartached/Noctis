@@ -10,14 +10,14 @@ namespace Noctis.Tests;
 /// <summary>
 /// The player-bar island carries a 200ms Width transition, and the lyrics page mounts its
 /// own copy of the bar in the compact (340px) state while the XAML declares the base width
-/// (590px). Avalonia leaves transitions enabled on a control that has never been detached,
-/// so the mount-time write used to play as a visible 590→340 shrink the first time the
+/// (626px). Avalonia leaves transitions enabled on a control that has never been detached,
+/// so the mount-time write used to play as a visible full→340 shrink the first time the
 /// lyrics page opened. Establishing writes must land instantly; only live state changes
 /// may animate.
 /// </summary>
 public class PlaybackBarIslandWidthTests
 {
-    private const double IslandBaseWidth = 590;
+    private const double IslandBaseWidth = 626; // 590 before the favorite heart joined the bar
     private const double IslandLyricsPageWidth = 340;
 
     private static PlayerViewModel MakePlayer() => new(

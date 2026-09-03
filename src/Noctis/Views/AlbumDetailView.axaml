@@ -240,7 +240,7 @@
                                MaxWidth="1320" />
                     <Border Grid.Column="1"
                             Classes="explicit-badge"
-                            Margin="8,5,0,0"
+                            Margin="8,0,0,0"
                             IsVisible="{Binding Album.IsExplicit}"
                             ToolTip.Tip="Explicit">
                         <TextBlock Text="E"
@@ -336,13 +336,9 @@
                                Margin="3,0,4,0"
                                VerticalAlignment="Center"
                                IsVisible="{Binding IsAlbumFavorited}" />
-                    <PathIcon Data="{StaticResource HeartFillIcon}"
-                               Classes="heart-pop"
-                               Width="12" Height="12"
-                               Foreground="#E74856"
-                               Margin="0,2,0,0"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding IsAlbumFavorited}"/>
+                    <controls:HeartIcon Size="12" ShowWhenOff="False"
+                                    Margin="0,2,0,0" VerticalAlignment="Center"
+                                    IsFavorite="{Binding IsAlbumFavorited}"/>
                 </StackPanel>
 
                 <Button Classes="no-hover-scale"
@@ -644,13 +640,9 @@
                                  left a favorited single as the only row in the app with no
                                  heart on it. -->
                             <Panel Grid.Column="1">
-                                <PathIcon Data="{StaticResource HeartFillIcon}"
-                                         Classes="heart-pop"
-                                         Width="14" Height="14"
-                                         Foreground="#E74856"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center"
-                                         IsVisible="{Binding IsFavorite}"/>
+                                <controls:HeartIcon Size="14" ShowWhenOff="False"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsFavorite="{Binding IsFavorite}"/>
                             </Panel>
                             <!-- Col 2: duration — fixed 52px, right-aligned for perfect column -->
                             <TextBlock Grid.Column="2"
@@ -939,11 +931,16 @@
                                FontSize="20"
                                FontWeight="Bold"
                                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                    <TextBlock Text="&#xE76C;"
-                               FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                               FontSize="14"
-                               Opacity="0.55"
-                               VerticalAlignment="Center" />
+                    <!-- App chevron icon, not a Segoe Fluent glyph: the glyph rendered as a
+                         clipped box wherever that font is missing (non-Windows, some Windows installs). -->
+                    <PathIcon Data="{StaticResource ChevronRightIcon}"
+                              Width="12" Height="12"
+                              Opacity="0.55"
+                              VerticalAlignment="Center">
+                        <PathIcon.RenderTransform>
+                            <TranslateTransform Y="1" />
+                        </PathIcon.RenderTransform>
+                    </PathIcon>
                 </StackPanel>
             </Button>
             <Grid>

@@ -211,6 +211,12 @@ public class AppSettings
     /// "albumartist" or "year".</summary>
     public string AlbumSortMode { get; set; } = "default";
 
+    /// <summary>Artists grid sort: "name", "songs" (track count) or "albums" (album count).</summary>
+    public string ArtistSortMode { get; set; } = "name";
+
+    /// <summary>Artists grid sort direction.</summary>
+    public bool ArtistSortAscending { get; set; } = true;
+
     /// <summary>Albums sort direction. Only meaningful outside "default"; each mode
     /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
     public bool AlbumSortAscending { get; set; } = true;
@@ -250,10 +256,10 @@ public class AppSettings
     public double MiniPlayerBackgroundOpacity { get; set; } = 0.35;
 
     /// <summary>User-chosen width of the floating playback bar island, set by dragging its
-    /// edges (double-click a grip resets). 590 is the classic full layout; 340 is the
+    /// edges (double-click a grip resets). 626 is the full layout (590 before the favorite heart); 340 is the
     /// smallest proven layout (the lyrics-page compact pill). The window clamps the upper
     /// end live, so only a sanity ceiling is stored.</summary>
-    public double PlaybackBarWidth { get; set; } = 590;
+    public double PlaybackBarWidth { get; set; } = 626;
 
     /// <summary>Album cover sizing mode for the Albums/Favorites grids. True (default) keeps
     /// the classic layout — five covers per row, covers scale with the window — so existing
@@ -266,6 +272,27 @@ public class AppSettings
     /// is off. The grid picks however many columns land nearest this size and stretches tiles
     /// to fill the row. 220 mirrors the classic five-per-row look at a typical window width.</summary>
     public double AlbumTileTargetSize { get; set; } = 220;
+
+    /// <summary>How the large now-playing cover on the Lyrics page is dressed: "Cover"
+    /// (default, the plain square), "CompactDisc", "Vinyl" or "Cassette" — see
+    /// <see cref="ArtworkMedium"/>. Stored as a string like the other style pickers so an
+    /// unknown value from a newer build falls back to the cover instead of failing to load.</summary>
+    public string NowPlayingArtworkStyle { get; set; } = ArtworkMediums.DefaultSetting;
+
+    /// <summary>Mini player design: "Classic" (the size-morphing card), "Pill" or "Sleeve";
+    /// see <see cref="MiniPlayerStyle"/>. Stored by name like the other style pickers.</summary>
+    public string MiniPlayerStyle { get; set; } = MiniPlayerStyles.DefaultSetting;
+
+    /// <summary>Layout of the Albums → Cover Flow page: "Carousel" (default, the classic row),
+    /// "Cascade" (tilted diagonal path with the track text beside it) or "Collage" (mosaic) —
+    /// see <see cref="CoverFlowLayout"/>. Also stepped by the top-bar pill segment.</summary>
+    public string CoverFlowLayout { get; set; } = CoverFlowLayouts.DefaultSetting;
+
+    /// <summary>Whether tracks marked explicit (ITUNESADVISORY=1) may play automatically.
+    /// On by default. When off they are skipped on queue advance, excluded from shuffle,
+    /// Autoplay and Radio, and pruned from the queue — but a track the user plays
+    /// directly still plays (this is a playback filter, not a library filter).</summary>
+    public bool AllowExplicitContent { get; set; } = true;
 
     /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
     /// sidebar stays in the icon-only rail and never expands. Off by default: the rail should
@@ -391,8 +418,9 @@ public class AppSettings
     /// When false, the chosen solid/gradient color shows through instead.</summary>
     public bool LyricsShowArtworkBackground { get; set; } = true;
 
-    /// <summary>Whether the flowing-light color blobs drift over the artwork background
-    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.
+    /// <summary>Whether the blurred artwork background drifts and pulses with the beat
+    /// behind the lyrics (page, side panel and mini player; issue #22). Only applies
+    /// while the artwork mode is active.
     /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
     public bool LyricsFlowingLightEnabled { get; set; }
 
@@ -484,6 +512,10 @@ public class AppSettings
         // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
         PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
             ? Math.Clamp(PlaybackBarWidth, 340, 4096)
-            : 590;
+            : 626;
+        // 1.4.8: the bar grew a favorite heart (+36px) and its default went 590 → 626. A
+        // stored 590 is the untouched OLD default, not a choice — move it along so existing
+        // installs keep the full layout instead of dropping to the narrowed "bar-mid" shape.
+        if (PlaybackBarWidth == 590) PlaybackBarWidth = 626;
     }
 }

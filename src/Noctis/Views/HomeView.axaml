@@ -203,14 +203,9 @@
                                                         </Border>
                                                     </InlineUIContainer>
                                                 </TextBlock>
-                                                <PathIcon Grid.Column="1"
-                                                          Data="{StaticResource HeartFillIcon}"
-                                                          Classes="heart-pop"
-                                                          Width="14" Height="14"
-                                                          Foreground="#E74856"
-                                                          Margin="6,0,0,0"
-                                                          VerticalAlignment="Center"
-                                                          IsVisible="{Binding Track.IsFavorite}" />
+                                                <controls:HeartIcon Grid.Column="1" Size="14" ShowWhenOff="False"
+                                                    Margin="6,0,0,0" VerticalAlignment="Center"
+                                                    IsFavorite="{Binding Track.IsFavorite}" />
                                             </Grid>
                                             <StackPanel Grid.Column="3"
                                                         Orientation="Horizontal"
@@ -389,14 +384,9 @@
                                                                            Stretch="UniformToFill"
                                                                            RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                            IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                     <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                               Classes="heart-pop"
-                                                               Width="18" Height="18"
-                                                               Foreground="#E74856"
-                                                               HorizontalAlignment="Right"
-                                                               VerticalAlignment="Bottom"
-                                                               Margin="0,0,8,8"
-                                                               IsVisible="{Binding HasFavoriteTrack}" />
+                                                     <controls:HeartIcon Size="18" ShowWhenOff="False"
+                                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                                     IsFavorite="{Binding HasFavoriteTrack}" />
                                                      <Button Classes="recent-play"
                                                              Width="40" Height="40"
                                                              CornerRadius="20"

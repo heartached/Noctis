@@ -45,13 +45,16 @@ public class SearchPillGeometryTests
     private static void DriveRailState(SidebarView sidebar, bool expanded)
     {
         sidebar.Width = expanded ? 220 : 60;
+        // The rail is a fixed 6px-margin, stretched column in both states (the buttons
+        // are nav-row sized: Padding 10 around a 28px icon); only the labels and the
+        // inner content alignment follow IsExpanded.
         var rail = sidebar.FindControl<StackPanel>("RailActions")!;
-        rail.HorizontalAlignment = expanded ? HorizontalAlignment.Left : HorizontalAlignment.Center;
-        rail.Margin = expanded ? new Thickness(6, 2, 0, 6) : new Thickness(0, 2, 0, 6);
+        rail.Margin = new Thickness(6, 2, 6, 6);
         var button = sidebar.FindControl<Button>("SearchButton")!;
         if (expanded) button.Classes.Add("expanded");
         else button.Classes.Remove("expanded");
         sidebar.FindControl<TextBlock>("SearchLabel")!.IsVisible = expanded;
+        sidebar.FindControl<TextBlock>("BackLabel")!.IsVisible = expanded;
         (sidebar.GetVisualRoot() as Window)?.UpdateLayout();
     }
 
