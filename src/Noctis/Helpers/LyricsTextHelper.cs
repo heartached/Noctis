@@ -58,6 +58,39 @@ public static class LyricsTextHelper
     public static bool ContainsTimestamps(string? text) =>
         !string.IsNullOrWhiteSpace(text) && TimestampRegex.IsMatch(text);
 
+    // Every timing tag the shift must move: line tags [mm:ss.xx] and inline word tags
+    // <mm:ss.xx>. Captures the bracket so the replacement keeps the tag's kind.
+    private static readonly Regex AnyTimeTagRegex =
+        new(@"(?<open>[\[<])(?<min>\d{1,3}):(?<sec>\d{2})(?:[.:](?<frac>\d{1,3}))?(?<close>[\]>])", RegexOptions.Compiled);
+
+    /// <summary>
+    /// GitHub #57: moves every line and word timestamp in <paramref name="lrc"/> by
+    /// <paramref name="offset"/> (negative = earlier). Times are clamped at zero so a
+    /// large negative shift can't produce a tag the parser rejects. Untimed lines and
+    /// metadata tags like [ar:...] are untouched; tags are re-emitted as mm:ss.xx.
+    /// </summary>
+    public static string ShiftAllTimestamps(string? lrc, TimeSpan offset)
+    {
+        if (string.IsNullOrEmpty(lrc) || offset == TimeSpan.Zero) return lrc ?? string.Empty;
+
+        return AnyTimeTagRegex.Replace(lrc, m =>
+        {
+            var minutes = int.Parse(m.Groups["min"].Value);
+            var seconds = int.Parse(m.Groups["sec"].Value);
+            var fracText = m.Groups["frac"].Value;
+            var millis = fracText.Length switch
+            {
+                0 => 0,
+                1 => int.Parse(fracText) * 100,
+                2 => int.Parse(fracText) * 10,
+                _ => int.Parse(fracText[..3]),
+            };
+            var time = new TimeSpan(0, 0, minutes, seconds, millis) + offset;
+            if (time < TimeSpan.Zero) time = TimeSpan.Zero;
+            return $"{m.Groups["open"].Value}{(int)time.TotalMinutes:00}:{time.Seconds:00}.{time.Milliseconds / 10:00}{m.Groups["close"].Value}";
+        });
+    }
+
     public static string StripTimestamps(string? lrcContent)
     {
         if (string.IsNullOrWhiteSpace(lrcContent)) return string.Empty;

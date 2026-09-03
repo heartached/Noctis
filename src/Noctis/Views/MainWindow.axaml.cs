@@ -1105,6 +1105,11 @@ public partial class MainWindow : Window
                 if (e.PropertyName == nameof(PlayerViewModel.State))
                 {
                     _taskbar?.UpdatePlayPauseState(vm.Player.State == PlaybackState.Playing);
+                    UpdateTaskbarProgress(vm);
+                }
+                else if (e.PropertyName is nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Duration))
+                {
+                    UpdateTaskbarProgress(vm);
                 }
                 // IsQueuePopupOpen is handled by InitializeQueuePopupBinding, which runs
                 // on every platform — it must not depend on the taskbar being available.
@@ -1117,11 +1122,36 @@ public partial class MainWindow : Window
 
             // Seed initial state so icons reflect reality on first paint.
             RebindCurrentTrack();
+
+            // Taskbar progress (GitHub #53) follows its Settings toggle live: switching
+            // it off must clear the overlay, not leave the last frame painted.
+            vm.Settings.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SettingsViewModel.TaskbarProgressEnabled))
+                    UpdateTaskbarProgress(vm);
+            };
+            UpdateTaskbarProgress(vm);
         }
         catch
         {
             // Non-critical — taskbar buttons are a nice-to-have
         }
+    }
+
+    /// <summary>Pushes the current song position onto the taskbar button, or clears it
+    /// when the setting is off or nothing is playing. The service de-duplicates values,
+    /// so calling this on every position tick is cheap.</summary>
+    private void UpdateTaskbarProgress(MainWindowViewModel vm)
+    {
+        if (_taskbar == null) return;
+        var player = vm.Player;
+        if (!vm.Settings.TaskbarProgressEnabled || player.State == PlaybackState.Stopped || player.CurrentTrack == null)
+        {
+            _taskbar.ClearProgress();
+            return;
+        }
+        _taskbar.SetProgress(player.Position.TotalSeconds, player.Duration.TotalSeconds,
+            paused: player.State != PlaybackState.Playing);
     }
 
     // The file-import drag-drop below uses Avalonia's pre-11.3 IDataObject/DataFormats

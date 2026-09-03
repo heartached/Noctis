@@ -335,6 +335,44 @@ public class MetadataViewModelTests
         Assert.Contains("[00:10.00]line one", album[0].SyncedLyrics);
     }
 
+    // ── Import file (Discord ask): .lrc → synced, .txt → plain, both survive Save ──
+
+    [Fact]
+    public async Task ImportLyricsText_RoutesByContent_AndSaves()
+    {
+        var album = Album("A", "X", 1);
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+        Assert.False(vm.HasCustomSyncedLyrics);
+
+        const string Lrc = "[00:01.00]first" + "\n" + "[00:05.50]second";
+        const string Plain = "just words" + "\n" + "more words";
+
+        // Timestamped text lands on the synced tab, CRLF normalized.
+        vm.ImportLyricsText("[00:01.00]first" + "\r\n" + "[00:05.50]second" + "\r\n", "song.lrc");
+        Assert.True(vm.HasCustomSyncedLyrics);
+        Assert.Equal(Lrc, vm.SyncedLyrics);
+        Assert.Equal(2, vm.SyncedLyricLines.Count);
+        Assert.Equal("Imported song.lrc", vm.SyncedLyricsSearchStatus);
+
+        // Plain text lands on the plain tab and says so.
+        vm.ImportLyricsText(Plain, "song.txt");
+        Assert.True(vm.HasCustomLyrics);
+        Assert.Equal(Plain, vm.Lyrics);
+        Assert.Contains("plain lyrics", vm.SyncedLyricsSearchStatus);
+
+        // Empty file: nothing changes.
+        vm.ImportLyricsText("   ", "blank.lrc");
+        Assert.Equal(Lrc, vm.SyncedLyrics);
+        Assert.Equal("blank.lrc is empty.", vm.SyncedLyricsSearchStatus);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(Lrc, album[0].SyncedLyrics);
+        Assert.Equal(Plain, album[0].Lyrics);
+    }
+
     // ── Multi-select rename: lyric sidecars follow the audio file ──
 
     [Fact]
@@ -375,10 +413,10 @@ public class MetadataViewModelTests
     [Fact]
     public void ArtworkSearchTerm_CarriesPrimaryArtistAndAlbum()
     {
-        // Track.GetPrimaryArtist reduces the tag to its first credited artist ("Lil
-        // Nas", by its current separator rules) — every remaining word still matches
-        // the store's "Lil Nas X" credit, while "Billy Ray Cyrus" must not be sent.
-        Assert.Equal("Lil Nas 7",
+        // Track.GetPrimaryArtist reduces the tag to its first credited artist. The
+        // bare word "x" stopped being a default separator with GitHub #51, so the
+        // full "Lil Nas X" survives, while "Billy Ray Cyrus" must not be sent.
+        Assert.Equal("Lil Nas X 7",
             ITunesArtworkService.BuildAlbumSearchTerm("Lil Nas X feat. Billy Ray Cyrus", "7"));
     }
 

@@ -21,6 +21,10 @@ public class LibraryIndexCache
 
     /// <summary>Cached artist aggregations.</summary>
     public List<Artist> Artists { get; set; } = new();
+
+    /// <summary>ArtistCredit.Signature the artist list was built under (grouping mode +
+    /// separators). A restore under a different configuration must rebuild instead.</summary>
+    public string ArtistGroupingSignature { get; set; } = "";
 }
 
 /// <summary>

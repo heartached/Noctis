@@ -1420,6 +1420,16 @@
                                 HorizontalAlignment="Right"
                                 Spacing="10"
                                 Margin="0,12,0,0">
+                        <Button Content="Import file"
+                                Command="{Binding ImportLyricsFileCommand}"
+                                CommandParameter="{Binding $self}"
+                                ToolTip.Tip="Load a .txt (plain) or .lrc (synced) lyrics file from disk"
+                                Padding="14,6"
+                                CornerRadius="999"
+                                FontWeight="SemiBold"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Cursor="Hand" />
                         <Button Content="Share lyrics"
                                 Command="{Binding ShareLyricsCommand}"
                                 Padding="14,6"
@@ -1529,6 +1539,15 @@
                                     Command="{Binding CopySyncedLyricsCommand}"
                                     IsEnabled="{Binding HasSyncedLines}"
                                     ToolTip.Tip="Copy the synced lyrics (LRC with timestamps) to the clipboard"
+                                    Padding="14,6"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    FontWeight="SemiBold"
+                                    FontSize="12" />
+                            <Button Content="Import file"
+                                    Command="{Binding ImportLyricsFileCommand}"
+                                    CommandParameter="{Binding $self}"
+                                    ToolTip.Tip="Load an .lrc (synced) or .txt (plain) lyrics file from disk"
                                     Padding="14,6"
                                     CornerRadius="999"
                                     Cursor="Hand"
@@ -1683,6 +1702,37 @@
                                    Margin="16,0,2,0"
                                    TextTrimming="CharacterEllipsis" />
                     </Grid>
+
+                        <!-- Shift all (GitHub #57): move every timestamp earlier/later by
+                             the given seconds — for lyrics that are uniformly off. -->
+                        <StackPanel DockPanel.Dock="Top"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,0,2,12"
+                                    IsVisible="{Binding HasSyncedLines}">
+                            <TextBlock Text="Shift all"
+                                       FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <Button Content="Earlier"
+                                    Command="{Binding ShiftAllEarlierCommand}"
+                                    ToolTip.Tip="Move every line's timestamp earlier by this many seconds"
+                                    Padding="12,4" CornerRadius="999" Cursor="Hand"
+                                    FontWeight="SemiBold" FontSize="12"/>
+                            <TextBox Text="{Binding ShiftAllSeconds, Mode=TwoWay}"
+                                     Width="56" MinHeight="0" Padding="8,4"
+                                     FontSize="12" CornerRadius="999"
+                                     HorizontalContentAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     ToolTip.Tip="Seconds to shift by"/>
+                            <TextBlock Text="s" FontSize="12" Opacity="0.6" VerticalAlignment="Center"/>
+                            <Button Content="Later"
+                                    Command="{Binding ShiftAllLaterCommand}"
+                                    ToolTip.Tip="Move every line's timestamp later by this many seconds"
+                                    Padding="12,4" CornerRadius="999" Cursor="Hand"
+                                    FontWeight="SemiBold" FontSize="12"/>
+                        </StackPanel>
 
                         <Border BorderBrush="#44E04060"
                                 BorderThickness="1"

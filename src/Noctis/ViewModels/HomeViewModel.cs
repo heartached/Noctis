@@ -295,7 +295,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 foreach (var t in allTracks)
                 {
                     if (t.PlayCount <= 0) continue;
-                    var name = t.PrimaryArtist;
+                    var name = t.GroupingArtist;
                     if (string.IsNullOrWhiteSpace(name) ||
                         string.Equals(name, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
                         continue;

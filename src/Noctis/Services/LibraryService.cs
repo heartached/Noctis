@@ -1585,7 +1585,7 @@ public class LibraryService : ILibraryService
         var tracks = _tracks;
         var persistence = _persistence;
 
-        var (albums, artists, trackIndex, albumIndex) = await Task.Run(() =>
+        var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
             // Build track lookup dictionary
             var ti = new Dictionary<Guid, Track>(tracks.Count);
@@ -1652,17 +1652,19 @@ public class LibraryService : ILibraryService
             foreach (var a in albs)
                 ai[a.Id] = a;
 
-            // Aggregate artists by primary artist only. Collaboration credits remain
-            // on Track.Artist for rows/tags, but feature combinations do not become
-            // separate top-level artists.
+            // Aggregate artists by their grouping name only (GitHub #51: the primary
+            // track artist, or the primary album artist when Settings says so).
+            // Collaboration credits remain on Track.Artist for rows/tags, but feature
+            // combinations do not become separate top-level artists. The mode and the
+            // separators are read once here so every bucket in this rebuild agrees.
             var artistBuckets = new Dictionary<string, (string Name, HashSet<Guid> TrackIds, HashSet<Guid> AlbumIds)>(
                 StringComparer.OrdinalIgnoreCase);
+            var groupMode = ArtistCredit.GroupMode;
+            var groupingSignature = ArtistCredit.Signature;
 
             foreach (var track in tracks)
             {
-                var primaryArtist = track.PrimaryArtist;
-                if (string.IsNullOrWhiteSpace(primaryArtist))
-                    primaryArtist = string.IsNullOrWhiteSpace(track.Artist) ? "Unknown Artist" : track.Artist.Trim();
+                var primaryArtist = track.GetGroupingArtist(groupMode);
 
                 if (!artistBuckets.TryGetValue(primaryArtist, out var bucket))
                 {
@@ -1689,7 +1691,7 @@ public class LibraryService : ILibraryService
                 foreach (var t in a.Tracks)
                     t.AlbumArtworkPath = a.ArtworkPath;
 
-            return (albs, arts, ti, ai);
+            return (albs, arts, ti, ai, groupingSignature);
         });
 
         _albums = albums;
@@ -1710,7 +1712,7 @@ public class LibraryService : ILibraryService
         // stale grouping then survived restarts because TryRestoreFromCacheAsync
         // accepted it.
         if (persistCache)
-            _ = SaveIndexCacheAsync(tracks, albums, artists);
+            _ = SaveIndexCacheAsync(tracks, albums, artists, artistGroupingSignature);
     }
 
     /// <summary>
@@ -1793,6 +1795,7 @@ public class LibraryService : ILibraryService
         // static enrichment toggle reflects the persisted setting from the first read.
         MetadataService.MergeFeaturedFromTitles = settings.MergeFeaturedFromTitles;
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
+        ArtistCredit.Configure(ArtistGroupModes.Parse(settings.ArtistGroupMode), settings.ArtistTagSeparators);
         MetadataService.MusicRootFolders = settings.MusicFolders
             .Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
 
@@ -2490,6 +2493,11 @@ public class LibraryService : ILibraryService
             if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != _tracks.Count)
                 return false;
 
+            // The artist list is only valid for the grouping it was built under; a
+            // changed "Group Artists By" or separator set must fall through to a rebuild.
+            if (!string.Equals(cache.ArtistGroupingSignature, ArtistCredit.Signature, StringComparison.Ordinal))
+                return false;
+
             // The ID-hash validation and full album reconstruction + sort are CPU-bound
             // over the whole library. This fast path runs on every launch; resuming the
             // LoadIndexCacheAsync await on the UI thread meant all of it ran there and
@@ -2587,7 +2595,7 @@ public class LibraryService : ILibraryService
     /// rebuild — see the note at the call site.
     /// </summary>
     private async Task SaveIndexCacheAsync(
-        List<Track> tracks, List<Album> albums, List<Artist> artists)
+        List<Track> tracks, List<Album> albums, List<Artist> artists, string artistGroupingSignature)
     {
         try
         {
@@ -2596,7 +2604,8 @@ public class LibraryService : ILibraryService
                 Version = CurrentIndexCacheVersion,
                 TrackCount = tracks.Count,
                 TrackIdHash = ComputeTrackIdHash(tracks),
-                Artists = artists.ToList()
+                Artists = artists.ToList(),
+                ArtistGroupingSignature = artistGroupingSignature
             };
 
             foreach (var album in albums)

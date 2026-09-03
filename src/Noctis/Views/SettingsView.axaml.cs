@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -52,6 +53,14 @@ public partial class SettingsView : UserControl
         PreampSlider.AddHandler(InputElement.PointerMovedEvent, OnPreampPointerMoved, RoutingStrategies.Tunnel);
         PreampSlider.AddHandler(InputElement.PointerReleasedEvent, OnPreampPointerReleased, RoutingStrategies.Tunnel);
         PreampSlider.PointerCaptureLost += OnPreampCaptureLost;
+
+        // Double-clicking a slider's knob snaps it back to the shipped default (the
+        // island width and both opacity sliders). Defaults come from a fresh AppSettings
+        // so this can never drift from what a new install gets.
+        var defaults = new Noctis.Models.AppSettings();
+        AttachThumbDoubleTapReset(IslandWidthSlider, defaults.PlaybackBarWidth);
+        AttachThumbDoubleTapReset(PlayerBarOpacitySlider, defaults.PlaybackBarBackgroundOpacity);
+        AttachThumbDoubleTapReset(MiniPlayerOpacitySlider, defaults.MiniPlayerBackgroundOpacity);
         PreampSlider.PropertyChanged += OnPreampSliderPropertyChanged;
         PreampSlider.SizeChanged += (_, _) => UpdatePreampVisual();
         DispatcherTimer.RunOnce(UpdatePreampVisual, TimeSpan.FromMilliseconds(10));
@@ -423,6 +432,23 @@ public partial class SettingsView : UserControl
         _isPreampDragging = false;
         e.Pointer.Capture(null);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Resets <paramref name="slider"/> to <paramref name="defaultValue"/> on a
+    /// double-click of its thumb. The track is excluded on purpose: a double-click there
+    /// is two ordinary jumps, and turning it into a reset would surprise anyone clicking
+    /// quickly to fine-tune. The two-way binding carries the value to the view model.
+    /// </summary>
+    private static void AttachThumbDoubleTapReset(Slider slider, double defaultValue)
+    {
+        slider.DoubleTapped += (_, e) =>
+        {
+            if (e.Source is not Visual source) return;
+            if (source.FindAncestorOfType<Thumb>(includeSelf: true) == null) return;
+            slider.Value = defaultValue;
+            e.Handled = true;
+        };
     }
 
     private void OnPreampCaptureLost(object? sender, PointerCaptureLostEventArgs e)

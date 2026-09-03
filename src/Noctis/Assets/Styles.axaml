@@ -841,6 +841,12 @@
     <Style Selector="Border.now-playing TextBlock.explicit-badge-text">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
+    <!-- The favorite heart defaults to the app's red; on a red (or any dark) accent row
+         it vanished into the fill. Both states take the row foreground here. -->
+    <Style Selector="Border.now-playing controls|HeartIcon">
+        <Setter Property="OnBrush" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+        <Setter Property="OffBrush" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
 
     <!-- Note: track-list items get their container template from TrackListBoxItemTheme
          (ItemContainerTheme, set above). That theme declares no BasedOn and carries only a

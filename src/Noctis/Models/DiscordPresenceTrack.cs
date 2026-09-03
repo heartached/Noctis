@@ -9,4 +9,5 @@ public record DiscordPresenceTrack(
     string Title,
     string Artist,
     string? Album,
-    string? ArtworkUrl = null);
+    string? ArtworkUrl = null,
+    bool ShowAlbum = true);

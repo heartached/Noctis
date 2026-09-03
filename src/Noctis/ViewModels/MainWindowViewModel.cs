@@ -2677,7 +2677,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 track.Title ?? "Unknown",
                 track.Artist ?? "Unknown Artist",
                 track.Album,
-                artworkUrl);
+                artworkUrl,
+                ShowAlbum: Settings.DiscordShowAlbum);
             await _discord.UpdateAsync(dto, position, track.Duration, isPlaying);
         }
         catch (Exception ex)

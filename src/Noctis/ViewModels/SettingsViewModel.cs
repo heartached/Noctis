@@ -281,6 +281,18 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsMiniStylePill { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Pill; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Pill); } }
     public bool IsMiniStyleSleeve { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Sleeve; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Sleeve); } }
 
+    /// <summary>Player Island Buttons (Appearance): the podcast/audiobook extras on the bar.
+    /// Mirrored onto PlayerViewModel by ApplyPlayerSettings, like the marquee flags.</summary>
+    [ObservableProperty] private bool _playbackBarShowSkipButtons;
+    [ObservableProperty] private int _playbackBarSkipSeconds = 15;
+    [ObservableProperty] private bool _playbackBarShowPlaybackSpeed;
+    [ObservableProperty] private bool _playbackBarShowSleepTimer;
+    [ObservableProperty] private bool _playbackBarShowShuffle;
+
+    public bool IsSkipSeconds10 { get => PlaybackBarSkipSeconds == 10; set { if (value) PlaybackBarSkipSeconds = 10; } }
+    public bool IsSkipSeconds15 { get => PlaybackBarSkipSeconds == 15; set { if (value) PlaybackBarSkipSeconds = 15; } }
+    public bool IsSkipSeconds30 { get => PlaybackBarSkipSeconds == 30; set { if (value) PlaybackBarSkipSeconds = 30; } }
+
     /// <summary>Persisted name of the Cover Flow layout ("Carousel", "Cascade", "Collage").
     /// Two-way with CoverFlowViewModel.Layout via MainWindowViewModel, so the top-bar pill
     /// segment and the Appearance picker stay in step.</summary>
@@ -586,6 +598,15 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    /// <summary>Player island width in DIPs (GitHub #50): the Appearance slider and the
+    /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
+    [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
+    public const double PlaybackBarDefaultWidth = 626;
+    public const double PlaybackBarMinWidth = 340;
+    public const double PlaybackBarMaxWidth = 1400;
+    // True while a grip drag pushes its width into the slider property, so the
+    // property handler doesn't turn around and re-persist the same value.
+    private bool _syncingPlaybackBarWidth;
     /// <summary>Bound straight to the mini player card's fill brush (no player plumbing —
     /// the mini player's view model exposes this view model directly).</summary>
     [ObservableProperty] private double _miniPlayerBackgroundOpacity = 0.35;
@@ -601,9 +622,81 @@ public partial class SettingsViewModel : ViewModelBase
     /// (issue #26), so the Settings card is hidden there (same pattern as
     /// <see cref="IsExclusiveAudioSupported"/>) and MainWindow ignores the value.</summary>
     public bool IsLiquidGlassSupported => !OperatingSystem.IsLinux();
+    /// <summary>Taskbar progress rides ITaskbarList3, which only exists on Windows.</summary>
+    public bool IsTaskbarProgressSupported => OperatingSystem.IsWindows();
+
+    // ── File types (Windows "Open with" / Default apps registration) ──
+    public bool IsFileAssociationSupported => OperatingSystem.IsWindows();
+    [ObservableProperty] private bool _isRegisteredForAudioFiles;
+    [ObservableProperty] private string _fileTypesStatus = string.Empty;
+
+    private static string? CurrentExePath => Environment.ProcessPath;
+
+    public void RefreshFileAssociationState()
+    {
+        if (!OperatingSystem.IsWindows() || CurrentExePath is not { } exe) { IsRegisteredForAudioFiles = false; return; }
+        IsRegisteredForAudioFiles = WindowsFileAssociations.IsRegistered(exe);
+    }
+
+    /// <summary>Registers (or unregisters) Noctis as an Open-with / Default-apps choice for
+    /// its audio formats, then opens Windows' Default apps page so the user can pick it —
+    /// modern Windows will not let an app assign itself the default.</summary>
+    [RelayCommand]
+    private void RegisterFileTypes()
+    {
+        if (!OperatingSystem.IsWindows() || CurrentExePath is not { } exe)
+        {
+            FileTypesStatus = "Only available on Windows.";
+            return;
+        }
+        try
+        {
+            if (IsRegisteredForAudioFiles)
+            {
+                WindowsFileAssociations.Unregister();
+                FileTypesStatus = "Noctis removed from the Open-with list.";
+            }
+            else
+            {
+                WindowsFileAssociations.Register(exe);
+                FileTypesStatus = "Registered. Pick Noctis under Settings → Apps → Default apps, or right-click a song → Open with.";
+                try { Process.Start(new ProcessStartInfo("ms-settings:defaultapps") { UseShellExecute = true }); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            FileTypesStatus = $"Couldn't update file types: {ex.Message}";
+        }
+        RefreshFileAssociationState();
+    }
+    [ObservableProperty] private bool _taskbarProgressEnabled;
     [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
     [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
+
+    // ── Artist grouping (GitHub #51) ──
+
+    /// <summary>Persisted name of the Artists-section grouping ("Artist" or "AlbumArtist").</summary>
+    [ObservableProperty] private string _artistGroupMode = ArtistGroupModes.DefaultSetting;
+
+    public bool IsArtistGroupByArtist
+    {
+        get => ArtistGroupModes.Parse(ArtistGroupMode) == Models.ArtistGroupMode.Artist;
+        set { if (value) ArtistGroupMode = nameof(Models.ArtistGroupMode.Artist); }
+    }
+
+    public bool IsArtistGroupByAlbumArtist
+    {
+        get => ArtistGroupModes.Parse(ArtistGroupMode) == Models.ArtistGroupMode.AlbumArtist;
+        set { if (value) ArtistGroupMode = nameof(Models.ArtistGroupMode.AlbumArtist); }
+    }
+
+    /// <summary>Separators that split a multi-artist tag into credited names. Edited as
+    /// chips; every change re-tokenizes app-wide and regroups the artist index.</summary>
+    public ObservableCollection<string> ArtistTagSeparators { get; } = new();
+
+    /// <summary>Text of the "add separator" box on the Library tab.</summary>
+    [ObservableProperty] private string _newArtistSeparator = string.Empty;
 
     // ── Lyrics Providers ──
 
@@ -696,6 +789,8 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Accounts / Integrations ──
 
     [ObservableProperty] private bool _discordRichPresenceEnabled;
+    /// <summary>Album line on the Discord card; see <see cref="AppSettings.DiscordShowAlbum"/>.</summary>
+    [ObservableProperty] private bool _discordShowAlbum = true;
     [ObservableProperty] private bool _lastFmScrobblingEnabled;
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
@@ -1160,6 +1255,12 @@ public partial class SettingsViewModel : ViewModelBase
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
             MiniPlayerStyle = MiniPlayerStyles.Parse(_settings.MiniPlayerStyle).ToString();
+            PlaybackBarShowSkipButtons = _settings.PlaybackBarShowSkipButtons;
+            PlaybackBarSkipSeconds = _settings.PlaybackBarSkipSeconds;
+            PlaybackBarShowPlaybackSpeed = _settings.PlaybackBarShowPlaybackSpeed;
+            PlaybackBarShowSleepTimer = _settings.PlaybackBarShowSleepTimer;
+            PlaybackBarShowShuffle = _settings.PlaybackBarShowShuffle;
+            PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
@@ -1203,8 +1304,12 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
+            TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
+            RefreshFileAssociationState();
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
+            ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
+            ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -1262,6 +1367,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Integrations
             DiscordRichPresenceEnabled = _settings.DiscordRichPresenceEnabled;
+            DiscordShowAlbum = _settings.DiscordShowAlbum;
             LastFmScrobblingEnabled = _settings.LastFmScrobblingEnabled;
             LastFmUsername = _settings.LastFmUsername;
 
@@ -1520,6 +1626,11 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
+        _settings.PlaybackBarShowSkipButtons = PlaybackBarShowSkipButtons;
+        _settings.PlaybackBarSkipSeconds = PlaybackBarSkipSeconds;
+        _settings.PlaybackBarShowPlaybackSpeed = PlaybackBarShowPlaybackSpeed;
+        _settings.PlaybackBarShowSleepTimer = PlaybackBarShowSleepTimer;
+        _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -1560,8 +1671,11 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
+        _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
+        _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
+        _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
@@ -1585,6 +1699,7 @@ public partial class SettingsViewModel : ViewModelBase
         // Downgrade-safe mirror of the applied 10-band curve.
         _settings.EqualizerBands = GetGraphicEqBands().bands;
         _settings.DiscordRichPresenceEnabled = DiscordRichPresenceEnabled;
+        _settings.DiscordShowAlbum = DiscordShowAlbum;
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
         if (_lastFm is LastFmService lfm)
@@ -1638,6 +1753,28 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlaybackBarWidth(double width)
     {
         _playbackBarWidth = _settings.PlaybackBarWidth = width;
+        // Keep the Appearance slider in step with a grip drag.
+        _syncingPlaybackBarWidth = true;
+        try { PlaybackBarIslandWidth = width; }
+        finally { _syncingPlaybackBarWidth = false; }
+        QueueSettingsSave();
+    }
+
+    /// <summary>Slider path of the island width: clamp, persist through the same
+    /// debounced write the grip drag uses, and push it to the bar live.</summary>
+    partial void OnPlaybackBarIslandWidthChanged(double value)
+    {
+        var clamped = double.IsFinite(value)
+            ? Math.Clamp(value, PlaybackBarMinWidth, PlaybackBarMaxWidth)
+            : PlaybackBarDefaultWidth;
+        if (clamped != value)
+        {
+            PlaybackBarIslandWidth = clamped;
+            return;
+        }
+        if (_suspendSettingPersistence || _syncingPlaybackBarWidth) return;
+        _playbackBarWidth = _settings.PlaybackBarWidth = clamped;
+        if (_player != null) _player.PlaybackBarIslandWidth = clamped;
         QueueSettingsSave();
     }
 
@@ -1718,6 +1855,11 @@ public partial class SettingsViewModel : ViewModelBase
         _player.AllowExplicitContent = AllowExplicitContent;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
+        _player.IslandShowSkipButtons = PlaybackBarShowSkipButtons;
+        _player.IslandSkipSeconds = PlaybackBarSkipSeconds;
+        _player.IslandShowPlaybackSpeed = PlaybackBarShowPlaybackSpeed;
+        _player.IslandShowSleepTimer = PlaybackBarShowSleepTimer;
+        _player.IslandShowShuffle = PlaybackBarShowShuffle;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         // Already clamped by AppSettings.ClampToValidRanges on load; a live
         // SetPlaybackBarWidth writes the same value into _settings first.
@@ -2363,6 +2505,13 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
+    partial void OnTaskbarProgressEnabledChanged(bool value)
+    {
+        // MainWindow listens to this property to paint/clear the taskbar overlay.
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnCollapseAlbumEditionsChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -2398,6 +2547,72 @@ public partial class SettingsViewModel : ViewModelBase
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
         _ = ApplyMergeFeaturedToLibraryAsync(value);
+    }
+
+    partial void OnArtistGroupModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsArtistGroupByArtist));
+        OnPropertyChanged(nameof(IsArtistGroupByAlbumArtist));
+        ApplyArtistGrouping();
+    }
+
+    /// <summary>
+    /// Swaps the separator chips without firing a regroup per item; one apply at the end.
+    /// </summary>
+    private void ReplaceArtistTagSeparators(IEnumerable<string>? separators)
+    {
+        var normalized = ArtistCredit.NormalizeSeparators(separators);
+        if (normalized.SequenceEqual(ArtistTagSeparators, StringComparer.Ordinal))
+            return;
+        ArtistTagSeparators.Clear();
+        foreach (var s in normalized)
+            ArtistTagSeparators.Add(s);
+        ApplyArtistGrouping();
+    }
+
+    [RelayCommand]
+    private void AddArtistSeparator()
+    {
+        var value = NewArtistSeparator?.Trim() ?? string.Empty;
+        NewArtistSeparator = string.Empty;
+        if (value.Length == 0) return;
+        if (ArtistTagSeparators.Any(s => string.Equals(s, value, StringComparison.OrdinalIgnoreCase)))
+            return;
+        ArtistTagSeparators.Add(value);
+        ApplyArtistGrouping();
+    }
+
+    [RelayCommand]
+    private void RemoveArtistSeparator(string separator)
+    {
+        if (!ArtistTagSeparators.Remove(separator)) return;
+        // An empty list would tokenize nothing; ArtistCredit falls back to the defaults,
+        // so mirror that in the chips rather than showing an empty card that lies.
+        if (ArtistTagSeparators.Count == 0)
+            foreach (var s in ArtistCredit.DefaultSeparators)
+                ArtistTagSeparators.Add(s);
+        ApplyArtistGrouping();
+    }
+
+    [RelayCommand]
+    private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    /// <summary>
+    /// Pushes the grouping mode and separators into the process-wide tokenizer. Runs during
+    /// settings load too (before LibraryService restores its index cache) so startup sees
+    /// the persisted configuration; only a real change after load saves and regroups.
+    /// </summary>
+    private void ApplyArtistGrouping()
+    {
+        var before = ArtistCredit.Version;
+        ArtistCredit.Configure(ArtistGroupModes.Parse(ArtistGroupMode), ArtistTagSeparators);
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        if (ArtistCredit.Version == before) return;
+        // NotifyMetadataChanged rebuilds off-thread and raises LibraryUpdated itself,
+        // which every grid already listens to; the status line just acknowledges.
+        _library.NotifyMetadataChanged();
+        SetScanStatus("Regrouping artists…", autoClear: true);
     }
 
     // Guards the status line against a superseded flip finishing after a newer one.
@@ -2520,6 +2735,39 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsCoverFlowCarousel));
         OnPropertyChanged(nameof(IsCoverFlowCascade));
         OnPropertyChanged(nameof(IsCoverFlowCollage));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowSkipButtonsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarSkipSecondsChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsSkipSeconds10));
+        OnPropertyChanged(nameof(IsSkipSeconds15));
+        OnPropertyChanged(nameof(IsSkipSeconds30));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowPlaybackSpeedChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowSleepTimerChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowShuffleChanged(bool value)
+    {
+        ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -2874,10 +3122,19 @@ public partial class SettingsViewModel : ViewModelBase
             Title: track.Title ?? "Unknown",
             Artist: track.Artist ?? "Unknown Artist",
             Album: track.Album,
-            ArtworkUrl: artworkUrl);
+            ArtworkUrl: artworkUrl,
+            ShowAlbum: DiscordShowAlbum);
 
         var isPlaying = _player.State == PlaybackState.Playing;
         await _discord.UpdateAsync(dto, _player.Position, _player.Duration, isPlaying);
+    }
+
+    partial void OnDiscordShowAlbumChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        // Re-send the current track so the card reflects the flip without a song change.
+        _ = RepublishDiscordPresenceAsync();
     }
 
     partial void OnLastFmScrobblingEnabledChanged(bool value)
@@ -4115,10 +4372,18 @@ public partial class SettingsViewModel : ViewModelBase
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
+            ArtistGroupMode = defaultSettings.ArtistGroupMode;
+            ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
+            PlaybackBarShowSkipButtons = defaultSettings.PlaybackBarShowSkipButtons;
+            PlaybackBarSkipSeconds = defaultSettings.PlaybackBarSkipSeconds;
+            PlaybackBarShowPlaybackSpeed = defaultSettings.PlaybackBarShowPlaybackSpeed;
+            PlaybackBarShowSleepTimer = defaultSettings.PlaybackBarShowSleepTimer;
+            PlaybackBarShowShuffle = defaultSettings.PlaybackBarShowShuffle;
+            PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
@@ -4170,6 +4435,7 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
+            TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
 
             // Lyrics providers
             LrcLibEnabled = true;

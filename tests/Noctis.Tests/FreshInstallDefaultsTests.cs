@@ -29,6 +29,9 @@ public class FreshInstallDefaultsTests
         // Autoplay keeps playing past the end of the queue — continuing playback
         // the user didn't queue is opt-in.
         Assert.False(Fresh.AutoplayEnabled);
+
+        // Taskbar progress (GitHub #53) changes what the Windows taskbar shows — opt-in.
+        Assert.False(Fresh.TaskbarProgressEnabled);
     }
 
     [Fact]

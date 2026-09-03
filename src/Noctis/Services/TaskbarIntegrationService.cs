@@ -208,6 +208,57 @@ public sealed class TaskbarIntegrationService : IDisposable
         }
     }
 
+    // ITaskbarList3 progress states.
+    private const int TBPF_NOPROGRESS = 0x0, TBPF_NORMAL = 0x2, TBPF_PAUSED = 0x8;
+    private int _lastProgressState = TBPF_NOPROGRESS;
+    private ulong _lastProgressValue = ulong.MaxValue;
+
+    /// <summary>
+    /// GitHub #53: paints the song's progress on the taskbar button (green while
+    /// playing, amber while paused, like AIMP). Values are sent in permille and only
+    /// when they change, so the ~10 Hz position stream doesn't spam COM.
+    /// </summary>
+    public void SetProgress(double position, double duration, bool paused)
+    {
+        if (!_ready || _taskbar == null) return;
+        if (!(duration > 0) || !double.IsFinite(position))
+        {
+            ClearProgress();
+            return;
+        }
+
+        var state = paused ? TBPF_PAUSED : TBPF_NORMAL;
+        var value = (ulong)Math.Clamp(Math.Round(position / duration * 1000), 0, 1000);
+        try
+        {
+            if (state != _lastProgressState)
+            {
+                _taskbar.SetProgressState(_hwnd, state);
+                _lastProgressState = state;
+            }
+            if (value != _lastProgressValue)
+            {
+                _taskbar.SetProgressValue(_hwnd, value, 1000);
+                _lastProgressValue = value;
+            }
+        }
+        catch { /* taskbar gone (Explorer restart) — next update retries */ }
+    }
+
+    /// <summary>Removes the progress overlay (stopped, or the setting switched off).</summary>
+    public void ClearProgress()
+    {
+        if (!_ready || _taskbar == null) return;
+        if (_lastProgressState == TBPF_NOPROGRESS) return;
+        try
+        {
+            _taskbar.SetProgressState(_hwnd, TBPF_NOPROGRESS);
+        }
+        catch { }
+        _lastProgressState = TBPF_NOPROGRESS;
+        _lastProgressValue = ulong.MaxValue;
+    }
+
     public void UpdatePlayPauseState(bool isPlaying)
     {
         _isPlaying = isPlaying;

@@ -152,14 +152,14 @@ public partial class StatisticsViewModel : ViewModelBase
 
     private void ComputeTopArtists(IReadOnlyList<Track> tracks)
     {
-        // Grouped by PrimaryArtist, matching HomeViewModel, the library's artist index
-        // and WrapStatsBuilder. Grouping by the full credit string made "Drake feat.
-        // Rihanna" its own artist row, splitting play counts and producing a Top Artists
-        // list that contradicted Home's and Wrap's for the same library.
+        // Grouped by GroupingArtist (the "Group Artists By" setting), matching
+        // HomeViewModel and the library's artist index. Grouping by the full credit
+        // string made "Drake feat. Rihanna" its own artist row, splitting play counts
+        // and producing a Top Artists list that contradicted Home's for the same library.
         var items = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.PrimaryArtist)
-                        && !string.Equals(t.PrimaryArtist, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(t => t.PrimaryArtist.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(t => !string.IsNullOrWhiteSpace(t.GroupingArtist)
+                        && !string.Equals(t.GroupingArtist, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(t => t.GroupingArtist.Trim(), StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
                 // Hoisted: this Sum ran twice per group.

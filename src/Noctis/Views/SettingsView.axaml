@@ -934,6 +934,31 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="GeneralTabPanel" Classes="tab-page" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
 
+            <!-- File types (Windows): advertise Noctis to "Open with" / Default apps.
+                 Per-user registry, no elevation; Windows itself owns the final pick. -->
+            <Border Classes="setting-card" IsVisible="{Binding IsFileAssociationSupported}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Open Audio Files with Noctis" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Add Noctis to Windows' Open-with list and Default apps for MP3, FLAC, M4A, OGG, WAV and the other formats it plays. Windows then lets you pick it as the default."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="pill" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Center" Margin="12,0,0,0"
+                                Command="{Binding RegisterFileTypesCommand}">
+                            <Panel>
+                                <TextBlock Text="Register" IsVisible="{Binding !IsRegisteredForAudioFiles}"/>
+                                <TextBlock Text="Unregister" IsVisible="{Binding IsRegisteredForAudioFiles}"/>
+                            </Panel>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="{Binding FileTypesStatus}"
+                               IsVisible="{Binding FileTypesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
             <!-- Startup & window behaviour -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
@@ -1115,6 +1140,98 @@
                                           IsChecked="{Binding MergeFeaturedFromTitles}"
                                           VerticalAlignment="Center"/>
                 </Grid>
+            </Border>
+
+            <!-- Group artists by (GitHub #51). Both cards change the Artists section's
+                 aggregation immediately; the index regroups in the background. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Group Artists By" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Which tag the Artists section files a song under. Album Artist keeps compilations together and ignores per-track features."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="ArtistGroupMode"
+                                     IsChecked="{Binding IsArtistGroupByArtist, Mode=TwoWay}"
+                                     ToolTip.Tip="The first credited artist of each song's Artist tag">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Artist" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Song's artist tag" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="ArtistGroupMode"
+                                     IsChecked="{Binding IsArtistGroupByAlbumArtist, Mode=TwoWay}"
+                                     ToolTip.Tip="The Album Artist tag; songs without one fall back to their artist">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Album Artist" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Release's album artist tag" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Artist tag separators (GitHub #51): the strings that split "A / B" or
+                 "A feat. B" into credited names, for both artist and album-artist tags. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Artist Tag Separators" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Text that splits one artist tag into several credited artists. Remove a separator to keep names like &quot;Simon &amp; Garfunkel&quot; whole."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="pill" Content="Reset" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Top" Margin="12,0,0,0"
+                                Command="{Binding ResetArtistSeparatorsCommand}"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ArtistTagSeparators}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Border Padding="12,4,6,4" Margin="0,0,6,6" CornerRadius="14"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Content="&#x2715;"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveArtistSeparatorCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontSize="11"
+                                                Opacity="0.5"
+                                                Cursor="Hand"
+                                                Padding="4,2"
+                                                ToolTip.Tip="Remove separator"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Classes="settings-search"
+                                 Text="{Binding NewArtistSeparator, Mode=TwoWay}"
+                                 Watermark="Add a separator, e.g. feat. or /"
+                                 Padding="14,6"
+                                 MaxWidth="320" HorizontalAlignment="Left" MinWidth="220">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding AddArtistSeparatorCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="pill" Content="Add" FontSize="13" Padding="16,6"
+                                Command="{Binding AddArtistSeparatorCommand}"/>
+                    </Grid>
+                </StackPanel>
             </Border>
 
             </StackPanel>
@@ -2005,6 +2122,120 @@
                 </StackPanel>
             </Border>
 
+            <!-- Player Island Buttons: podcast / audiobook controls on the bottom bar
+                 (Discord, Luwi, 08-26). All off by default — Noctis stays a music player
+                 first; the buttons ride the same transport row when switched on. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Player Island Buttons" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Add extra controls to the player island: skip a few seconds, change the playback speed, set a sleep timer, shuffle."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Skip back and forward" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Jump a few seconds either way without leaving the track." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowSkipButtons}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8"
+                          IsVisible="{Binding PlaybackBarShowSkipButtons}">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="IslandSkipSeconds"
+                                     IsChecked="{Binding IsSkipSeconds10, Mode=TwoWay}">
+                            <TextBlock Text="10 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="IslandSkipSeconds"
+                                     IsChecked="{Binding IsSkipSeconds15, Mode=TwoWay}">
+                            <TextBlock Text="15 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     GroupName="IslandSkipSeconds"
+                                     IsChecked="{Binding IsSkipSeconds30, Mode=TwoWay}">
+                            <TextBlock Text="30 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </RadioButton>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Playback speed" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="A 1× button that opens a speed menu from 0.75× to 2×. Speed resets to normal on the next launch." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowPlaybackSpeed}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Sleep timer" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="The sleep timer one click away instead of inside the options menu." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowSleepTimer}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Shuffle" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="A shuffle button after Repeat. Shuffle also stays in the queue panel." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowShuffle}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Player island width (GitHub #50): the seek track spans the pill, so a wider
+                 island means finer mouse scrubbing. Same value the edge-grip drag sets;
+                 the window caps it live (PlaybackBarView.UpdateIslandMaxWidth). -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Player Island Width" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="How wide the player island at the bottom is. Wider gives the seek bar more room for precise scrubbing. You can also drag the island's rounded edges. Double-click the slider knob to go back to the default."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="Narrower"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <Slider Grid.Column="1"
+                                Classes="accent-slider"
+                                Minimum="340" Maximum="1400"
+                                x:Name="IslandWidthSlider"
+                                Value="{Binding PlaybackBarIslandWidth, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Wider"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding PlaybackBarIslandWidth, StringFormat='{}{0:0} px'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="52" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Taskbar progress (GitHub #53, Windows only): song position painted on the
+                 taskbar button. Opt-in. -->
+            <Border Classes="setting-card" IsVisible="{Binding IsTaskbarProgressSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Song Progress on Taskbar" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show how far along the current song is as a progress bar on the Noctis taskbar button. Turns amber while paused."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding TaskbarProgressEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Album cover size (Albums / Favorites grids). Automatic = classic five per
                  row; custom size derives the column count from the window width instead,
                  so covers stay near the chosen size on ultrawide and small windows alike. -->
@@ -2096,6 +2327,7 @@
                         <Slider Grid.Column="0"
                                 Classes="accent-slider"
                                 Minimum="0" Maximum="1"
+                                x:Name="PlayerBarOpacitySlider"
                                 Value="{Binding PlaybackBarBackgroundOpacity, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
@@ -2119,6 +2351,7 @@
                         <Slider Grid.Column="0"
                                 Classes="accent-slider"
                                 Minimum="0" Maximum="1"
+                                x:Name="MiniPlayerOpacitySlider"
                                 Value="{Binding MiniPlayerBackgroundOpacity, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
@@ -2662,6 +2895,22 @@
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="2"
                                           IsChecked="{Binding DiscordRichPresenceEnabled}"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Discord card detail: the album line under the artist. Only meaningful
+                 while presence is on, so it hides with the parent toggle. -->
+            <Border Classes="setting-card" IsVisible="{Binding DiscordRichPresenceEnabled}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Show Album on Discord" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Add the album name under the artist on your Discord card. Off keeps the card to title and artist."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding DiscordShowAlbum}"
                                           VerticalAlignment="Center"
                                           Margin="12,0,0,0"/>
                 </Grid>

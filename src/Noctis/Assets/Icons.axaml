@@ -51,6 +51,7 @@
     <!-- ═══ Cross-Platform Icon Replacements (replacing Segoe Fluent Icons) ═══ -->
 
     <!-- Heart filled — favorites (was &#xE0A5;) -->
+    <StreamGeometry x:Key="HeartOutlineIcon">m12.82 5.58l-.82.822l-.824-.824a5.375 5.375 0 1 0-7.601 7.602l7.895 7.895a.75.75 0 0 0 1.06 0l7.902-7.897a5.376 5.376 0 0 0-.001-7.599a5.38 5.38 0 0 0-7.611 0m6.548 6.54L12 19.485L4.635 12.12a3.875 3.875 0 1 1 5.48-5.48l1.358 1.357a.75.75 0 0 0 1.073-.012L13.88 6.64a3.88 3.88 0 0 1 5.487 5.48</StreamGeometry>
     <StreamGeometry x:Key="HeartFillIcon">M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z</StreamGeometry>
 
     <!-- Delete / trash (was &#xE74D;) -->

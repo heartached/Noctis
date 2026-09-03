@@ -21,8 +21,6 @@ public class ArtistImageService
     /// sweep comfortably inside the budget.
     /// </summary>
     private const int RequestPacingMs = 120;
-    private static readonly Regex ArtistSplitRegex = new(@"\s*(?:,|;|/|&|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\band\b|\bwith\b|\bx\b)\s*",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     public ArtistImageService(HttpClient http, IPersistenceService persistence)
     {
@@ -455,10 +453,9 @@ public class ArtistImageService
 
         yield return normalized;
 
-        var primary = ArtistSplitRegex
-            .Split(normalized)
-            .Select(t => t.Trim())
-            .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
+        // Same separators as the artist index, so the portrait lookup for a grouped
+        // name tries exactly the name the grid shows.
+        var primary = Track.GetPrimaryArtist(normalized);
 
         if (!string.IsNullOrWhiteSpace(primary) &&
             !string.Equals(primary, normalized, StringComparison.OrdinalIgnoreCase))

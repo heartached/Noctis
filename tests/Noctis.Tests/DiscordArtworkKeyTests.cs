@@ -6,6 +6,20 @@ namespace Noctis.Tests;
 public class DiscordArtworkKeyTests
 {
     [Fact]
+    public void LargeImageText_ShowsAlbumByDefault_AndDropsItWhenOff()
+    {
+        Assert.Equal("Memoirs of an Imperfect Angel",
+            DiscordPresenceService.BuildLargeImageText("https://relay/x", "Memoirs of an Imperfect Angel", "Mariah Carey", showAlbum: true));
+        // Falls back to the artist when the file has no album, so the hover text isn't blank.
+        Assert.Equal("Mariah Carey",
+            DiscordPresenceService.BuildLargeImageText("https://relay/x", "", "Mariah Carey", showAlbum: true));
+        // "Show album" off removes the line entirely rather than repeating the artist.
+        Assert.Null(DiscordPresenceService.BuildLargeImageText("https://relay/x", "Memoirs of an Imperfect Angel", "Mariah Carey", showAlbum: false));
+        // Text on a missing image is never sent.
+        Assert.Null(DiscordPresenceService.BuildLargeImageText(null, "Album", "Artist", showAlbum: true));
+    }
+
+    [Fact]
     public void PrefersFreshUrlWhenAvailable()
     {
         var key = DiscordPresenceService.ResolveArtworkKey(

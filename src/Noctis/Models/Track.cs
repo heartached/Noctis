@@ -510,8 +510,46 @@ public partial class Track : ObservableObject
     /// The Artist setter invalidates, covering the Merge Featured toggle rewriting
     /// Artist at runtime.</summary>
     [JsonIgnore]
-    public string PrimaryArtist => _primaryArtist ??= GetPrimaryArtist(Artist);
+    public string PrimaryArtist
+    {
+        get
+        {
+            var version = ArtistCredit.Version;
+            if (_primaryArtist == null || _primaryArtistVersion != version)
+            {
+                _primaryArtist = GetPrimaryArtist(Artist);
+                _primaryArtistVersion = version;
+            }
+            return _primaryArtist;
+        }
+    }
     private string? _primaryArtist;
+    private int _primaryArtistVersion;
+
+    /// <summary>
+    /// The name the Artists section files this track under, per the "Group Artists By"
+    /// setting (GitHub #51): the primary track artist, or in album-artist mode the primary
+    /// album artist (a compilation's "Various Artists"), falling back to the track artist
+    /// when the file carries no album-artist tag. Never empty — untagged files land on
+    /// "Unknown Artist" so the index has one bucket for them.
+    /// </summary>
+    [JsonIgnore]
+    public string GroupingArtist => GetGroupingArtist(ArtistCredit.GroupMode);
+
+    public string GetGroupingArtist(ArtistGroupMode mode)
+    {
+        if (mode == ArtistGroupMode.AlbumArtist && !string.IsNullOrWhiteSpace(AlbumArtist))
+        {
+            var albumPrimary = GetPrimaryArtist(AlbumArtist);
+            if (!string.IsNullOrWhiteSpace(albumPrimary))
+                return albumPrimary;
+        }
+
+        var primary = PrimaryArtist;
+        if (!string.IsNullOrWhiteSpace(primary))
+            return primary;
+        return string.IsNullOrWhiteSpace(Artist) ? "Unknown Artist" : Artist.Trim();
+    }
 
     // Everything below this point is computed from the persisted fields above. All of it
     // is [JsonIgnore]d: none of these have setters, so they can never round-trip, and
@@ -726,21 +764,9 @@ public partial class Track : ObservableObject
         return tokens.Length > 0 ? tokens[0] : value.Trim();
     }
 
-    internal static string[] ParseArtistTokens(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Array.Empty<string>();
-
-        return Regex
-            .Split(
-                value,
-                @"\s*(?:,|;|/|&|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\band\b|\bwith\b|\bx\b)\s*",
-                RegexOptions.IgnoreCase)
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
+    /// <summary>Splits a credit into its distinct names using the separators configured in
+    /// Settings → Library (see <see cref="ArtistCredit"/>).</summary>
+    internal static string[] ParseArtistTokens(string? value) => ArtistCredit.Split(value);
 
     /// <summary>
     /// Artist text to show in list views. When ShowComposerInAllViews is set and a Composer exists,

@@ -1603,6 +1603,34 @@ public partial class MetadataViewModel : ViewModelBase
             HasCustomSyncedLyrics = true;
     }
 
+    /// <summary>Seconds the "Shift all" buttons move every timestamp by (GitHub #57).
+    /// Free text so "1", "0.25" and "1,5" all work; anything unparseable is ignored.</summary>
+    [ObservableProperty] private string _shiftAllSeconds = "0.5";
+
+    [RelayCommand]
+    private void ShiftAllEarlier() => ShiftAllTimestamps(-1);
+
+    [RelayCommand]
+    private void ShiftAllLater() => ShiftAllTimestamps(+1);
+
+    private void ShiftAllTimestamps(int direction)
+    {
+        if (!TryParseShiftSeconds(ShiftAllSeconds, out var seconds) || seconds <= 0) return;
+        if (!LyricsTextHelper.ContainsTimestamps(SyncedLyrics)) return;
+
+        SyncedLyrics = LyricsTextHelper.ShiftAllTimestamps(SyncedLyrics, TimeSpan.FromSeconds(seconds * direction));
+        HasCustomSyncedLyrics = true;
+        RebuildSyncedLinesFromText();
+    }
+
+    internal static bool TryParseShiftSeconds(string? text, out double seconds)
+    {
+        var t = (text ?? string.Empty).Trim().Replace(',', '.');
+        return double.TryParse(t, System.Globalization.NumberStyles.Float,
+                   System.Globalization.CultureInfo.InvariantCulture, out seconds)
+               && double.IsFinite(seconds);
+    }
+
     [RelayCommand]
     private void NudgeSyncedLineBack(SyncedLyricEditorLine? line) => line?.Nudge(forward: false);
 
@@ -1611,6 +1639,76 @@ public partial class MetadataViewModel : ViewModelBase
 
     [RelayCommand]
     private void ClearSyncedLineTimestamp(SyncedLyricEditorLine? line) => line?.ClearTimestamp();
+
+    /// <summary>
+    /// "Import file" on the lyrics tabs (Discord ask, 2026-08-31): pick an .lrc or .txt
+    /// and load it as the track's lyrics, for the many songs no provider has. Nothing is
+    /// written until Save, which then takes the usual sidecar/tag path.
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportLyricsFile(Avalonia.Visual visual)
+    {
+        var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(visual);
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import Lyrics",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Lyrics") { Patterns = new[] { "*.lrc", "*.txt" } },
+                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
+            }
+        });
+        if (files.Count == 0) return;
+
+        string text;
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            // StreamReader strips a UTF-8/UTF-16 BOM, which a raw byte decode would leave
+            // in front of the first timestamp and break the parser.
+            using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
+            text = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            SyncedLyricsSearchStatus = $"Couldn't read file: {ex.Message}";
+            return;
+        }
+
+        ImportLyricsText(text, files[0].Name);
+    }
+
+    /// <summary>
+    /// Routes imported text by content, not extension: timestamped lines become the synced
+    /// lyrics (a .txt full of [mm:ss] tags is still LRC), anything else becomes the plain
+    /// lyrics. Both tabs' Enable toggles flip on so the Save gate sees the import.
+    /// </summary>
+    internal void ImportLyricsText(string text, string fileName)
+    {
+        var normalized = (text ?? string.Empty).Replace("\r\n", "\n").Trim();
+        if (normalized.Length == 0)
+        {
+            SyncedLyricsSearchStatus = $"{fileName} is empty.";
+            return;
+        }
+
+        if (LyricsTextHelper.ContainsTimestamps(normalized))
+        {
+            SyncedLyrics = normalized;
+            HasCustomSyncedLyrics = true;
+            SyncedLyricsSearchStatus = $"Imported {fileName}";
+            RebuildSyncedLinesFromText();
+        }
+        else
+        {
+            Lyrics = normalized;
+            HasCustomLyrics = true;
+            SyncedLyricsSearchStatus = $"Imported {fileName} as plain lyrics (no timestamps found).";
+        }
+    }
 
     [RelayCommand]
     private async Task SearchSyncedLyrics()

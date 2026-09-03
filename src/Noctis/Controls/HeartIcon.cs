@@ -46,15 +46,23 @@ public sealed class HeartIcon : Panel
     public static readonly StyledProperty<bool> ShowWhenOffProperty =
         AvaloniaProperty.Register<HeartIcon, bool>(nameof(ShowWhenOff), true);
 
+    /// <summary>Draw the off state as a hollow outline instead of a dimmed solid heart —
+    /// the "blank heart" a toggle wants, so favorited and not read as fill vs. ring.
+    /// On by default (2026-09-03) so every site, mini player included, matches.</summary>
+    public static readonly StyledProperty<bool> OutlineWhenOffProperty =
+        AvaloniaProperty.Register<HeartIcon, bool>(nameof(OutlineWhenOff), true);
+
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
     public double Size { get => GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
     public IBrush? OnBrush { get => GetValue(OnBrushProperty); set => SetValue(OnBrushProperty, value); }
     public IBrush? OffBrush { get => GetValue(OffBrushProperty); set => SetValue(OffBrushProperty, value); }
     public double OffOpacity { get => GetValue(OffOpacityProperty); set => SetValue(OffOpacityProperty, value); }
     public bool ShowWhenOff { get => GetValue(ShowWhenOffProperty); set => SetValue(ShowWhenOffProperty, value); }
+    public bool OutlineWhenOff { get => GetValue(OutlineWhenOffProperty); set => SetValue(OutlineWhenOffProperty, value); }
 
     /// <summary>Resource key of the shared heart geometry (Assets/Icons.axaml).</summary>
     private const string GeometryKey = "HeartFillIcon";
+    private const string OutlineGeometryKey = "HeartOutlineIcon";
 
     /// <summary>State changes this soon after a DataContext change are a re-bind, not a click.</summary>
     private const long RebindWindowMs = 150;
@@ -62,6 +70,7 @@ public sealed class HeartIcon : Panel
     private static readonly TransformOperations Rest = TransformOperations.Parse("scale(1)");
     private static readonly TransformOperations Small = TransformOperations.Parse("scale(0.7)");
     private static Geometry? s_heart;
+    private static Geometry? s_heartOutline;
 
     private readonly PathIcon _on = new();
     private readonly PathIcon _off = new();
@@ -77,6 +86,7 @@ public sealed class HeartIcon : Panel
         OnBrushProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyBrushes());
         OffBrushProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyBrushes());
         OffOpacityProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyState(animate: false));
+        OutlineWhenOffProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
     }
 
     public HeartIcon()
@@ -111,8 +121,15 @@ public sealed class HeartIcon : Panel
         _contextChangedAt = Environment.TickCount64;
         if (s_heart == null && this.TryFindResource(GeometryKey, out var res) && res is Geometry g)
             s_heart = g;
+        if (s_heartOutline == null && this.TryFindResource(OutlineGeometryKey, out var outline) && outline is Geometry og)
+            s_heartOutline = og;
+        ApplyGeometry();
+    }
+
+    private void ApplyGeometry()
+    {
         _on.Data = s_heart;
-        _off.Data = s_heart;
+        _off.Data = OutlineWhenOff && s_heartOutline != null ? s_heartOutline : s_heart;
     }
 
     private static Transitions CreatePop() => new()

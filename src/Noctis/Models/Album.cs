@@ -258,6 +258,32 @@ public class Album : ObservableObject
     /// <summary>Whether release date info is available.</summary>
     public bool HasReleaseDate => !string.IsNullOrWhiteSpace(ReleaseDateFormatted);
 
+    /// <summary>
+    /// Kicker above the album title ("ALBUM" / "SINGLE" / "EP" …), from the resolved
+    /// <see cref="ReleaseType"/>: an explicit RELEASETYPE / MusicBrainz tag or user
+    /// override first, then the iTunes "- Single" / "- EP" title suffix, then the
+    /// track count (1–2 Single, 3–6 EP, 7+ Album). "Other" reads as a plain album.
+    /// </summary>
+    public string ReleaseKindLabel => ReleaseType switch
+    {
+        ReleaseType.Single => "SINGLE",
+        ReleaseType.EP => "EP",
+        ReleaseType.Compilation => "COMPILATION",
+        ReleaseType.Live => "LIVE ALBUM",
+        ReleaseType.Remix => "REMIX ALBUM",
+        ReleaseType.Soundtrack => "SOUNDTRACK",
+        _ => "ALBUM",
+    };
+
+    /// <summary>"12 tracks" / "1 track" for the album header's facts line.</summary>
+    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
+
+    /// <summary>Header duration with seconds ("55m 51s"), hours when long ("1h 12m").</summary>
+    public string HeaderDurationFormatted =>
+        TotalDuration.TotalHours >= 1
+            ? $"{(int)TotalDuration.TotalHours}h {TotalDuration.Minutes}m"
+            : $"{(int)TotalDuration.TotalMinutes}m {TotalDuration.Seconds:00}s";
+
     public override string ToString() => $"{Artist} - {Name}";
 
     /// <summary>

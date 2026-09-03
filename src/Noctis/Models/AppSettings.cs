@@ -288,6 +288,23 @@ public class AppSettings
     /// see <see cref="CoverFlowLayout"/>. Also stepped by the top-bar pill segment.</summary>
     public string CoverFlowLayout { get; set; } = CoverFlowLayouts.DefaultSetting;
 
+    /// <summary>Player island extras (Settings → Appearance → Player Island Buttons) for
+    /// podcast / audiobook listening: skip back/forward by <see cref="PlaybackBarSkipSeconds"/>,
+    /// a playback-speed button and a sleep-timer button. All off by default so the bar stays
+    /// the music-first transport.</summary>
+    public bool PlaybackBarShowSkipButtons { get; set; }
+
+    /// <summary>Seconds the island's skip buttons jump: 10, 15 or 30.</summary>
+    public int PlaybackBarSkipSeconds { get; set; } = 15;
+
+    public bool PlaybackBarShowPlaybackSpeed { get; set; }
+
+    public bool PlaybackBarShowSleepTimer { get; set; }
+
+    /// <summary>GitHub #59: a shuffle button on the island, after Repeat. Off by default —
+    /// shuffle already lives in the Queue panel header.</summary>
+    public bool PlaybackBarShowShuffle { get; set; }
+
     /// <summary>Whether tracks marked explicit (ITUNESADVISORY=1) may play automatically.
     /// On by default. When off they are skipped on queue advance, excluded from shuffle,
     /// Autoplay and Radio, and pruned from the queue — but a track the user plays
@@ -321,12 +338,25 @@ public class AppSettings
     /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>
     public bool CollapseAlbumEditions { get; set; } = false;
 
+    /// <summary>Windows only (GitHub #53): paint the current song's progress on the app's
+    /// taskbar button. Off by default — it is a visible change to the taskbar the user
+    /// should opt into.</summary>
+    public bool TaskbarProgressEnabled { get; set; } = false;
+
     /// <summary>When true (default), "feat./ft." credits found in track titles — or file names,
     /// which stand in for the title on untagged files — are merged into the artist credit at
     /// scan time so collaborations show the full credit. Off: artist tags are used exactly as
     /// written. Flipping the toggle re-applies to already-indexed tracks right away
     /// (LibraryService.ApplyMergeFeaturedFromTitlesAsync).</summary>
     public bool MergeFeaturedFromTitles { get; set; } = true;
+
+    /// <summary>Which tag the Artists section groups by (GitHub #51): "Artist" (default, the
+    /// first credited track artist) or "AlbumArtist". Parsed by name via ArtistGroupModes.Parse.</summary>
+    public string ArtistGroupMode { get; set; } = ArtistGroupModes.DefaultSetting;
+
+    /// <summary>Separators that split a multi-artist tag into credited names ("/", ",", "feat.").
+    /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
+    public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
 
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
@@ -367,6 +397,10 @@ public class AppSettings
 
     /// <summary>Whether Discord Rich Presence is enabled.</summary>
     public bool DiscordRichPresenceEnabled { get; set; }
+
+    /// <summary>Whether the Discord card shows the album name under the artist (the large
+    /// image's hover text). Off drops that line for a leaner card (Discord ask, 2026-09-03).</summary>
+    public bool DiscordShowAlbum { get; set; } = true;
 
     /// <summary>Loon server URL for Discord cover art (e.g. "wss://loon.example.com").</summary>
     public string LoonServerUrl { get; set; } = "https://noctis-loon.duckdns.org";
@@ -517,5 +551,6 @@ public class AppSettings
         // stored 590 is the untouched OLD default, not a choice — move it along so existing
         // installs keep the full layout instead of dropping to the narrowed "bar-mid" shape.
         if (PlaybackBarWidth == 590) PlaybackBarWidth = 626;
+        PlaybackBarSkipSeconds = PlaybackBarSkipSeconds is 10 or 15 or 30 ? PlaybackBarSkipSeconds : 15;
     }
 }

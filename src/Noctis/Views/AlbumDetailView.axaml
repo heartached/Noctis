@@ -65,6 +65,18 @@
         <Style Selector="Button.no-hover-scale:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
+        <!-- Header heart / dots: bare glyph buttons — no hover box, no scale; a
+             slight dim on press is the only feedback. -->
+        <Style Selector="Button.header-icon-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.header-icon-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.header-icon-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
         <Style Selector="Button.related-album-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -193,7 +205,7 @@
                 Margin="0,0,0,115">
 
         <!-- Album header -->
-        <Grid ColumnDefinitions="Auto,*,40"
+        <Grid ColumnDefinitions="Auto,*,Auto"
               Margin="16,12,28,20">
 
             <!-- Large album art -->
@@ -227,6 +239,14 @@
             <StackPanel Grid.Column="1"
                         VerticalAlignment="Center"
                         Spacing="6">
+                <!-- Release kind kicker: ALBUM / SINGLE / EP … (Album.ReleaseKindLabel) -->
+                <TextBlock Text="{Binding Album.ReleaseKindLabel}"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           LetterSpacing="1.5"
+                           Opacity="0.55"
+                           Margin="1,0,0,-2"
+                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                 <Grid ColumnDefinitions="Auto,Auto"
                       HorizontalAlignment="Left"
                       MaxWidth="1400">
@@ -238,9 +258,15 @@
                                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                HorizontalAlignment="Left"
                                MaxWidth="1320" />
+                    <!-- Anchored to the TOP of the title, not centred on it: the title's
+                         measured height grows with descender ink ("Single" vs "EP"), so a
+                         centred badge drifts per title. For 36px Inter the cap centre sits
+                         ~22px below the line top; 16px badge → 14px top margin. -->
                     <Border Grid.Column="1"
                             Classes="explicit-badge"
-                            Margin="8,0,0,0"
+                            VerticalAlignment="Top"
+                            RenderTransform="none"
+                            Margin="8,14,0,0"
                             IsVisible="{Binding Album.IsExplicit}"
                             ToolTip.Tip="Explicit">
                         <TextBlock Text="E"
@@ -271,7 +297,9 @@
                         <TextBlock.Text>
                             <MultiBinding Converter="{StaticResource MetadataLine}">
                                 <Binding Path="Album.Genre" />
-                                <Binding Path="Album.Year" />
+                                <Binding Path="Album.ReleaseDateFormatted" />
+                                <Binding Path="Album.TrackCountText" />
+                                <Binding Path="Album.HeaderDurationFormatted" />
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
@@ -414,13 +442,72 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    <Button Command="{Binding AddAlbumToQueueCommand}"
+                            Classes="accent-btn album-header-action"
+                            Padding="22,8"
+                            CornerRadius="999"
+                            Background="{DynamicResource AccentButtonBackground}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            BorderBrush="{DynamicResource AccentBorderBrush}"
+                            BorderThickness="1"
+                            FontWeight="Bold"
+                            Cursor="Hand"
+                            ToolTip.Tip="Add the whole album to the end of the queue">
+                        <Panel>
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding !AlbumAddedToQueue}">
+                                <Border Width="16" Height="16" VerticalAlignment="Center"
+                                        Background="{DynamicResource AccentForegroundBrush}"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                                <TextBlock Text="Add to Queue"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <!-- Same width as the resting label so the pill doesn't jump. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        HorizontalAlignment="Center"
+                                        IsVisible="{Binding AlbumAddedToQueue}">
+                                <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                          Width="15" Height="15"
+                                          Foreground="{DynamicResource AccentForegroundBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Added to Queue"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Panel>
+                    </Button>
                 </StackPanel>
 
             </StackPanel>
 
-            <!-- Album-level 3-dots menu (bottom, aligned with track dots) -->
-            <Button Grid.Column="2"
-                    x:Name="AlbumOptionsButton"
+            <!-- Album-level favorite heart + 3-dots menu (bottom, aligned with track dots) -->
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="4"
+                        VerticalAlignment="Bottom">
+            <Button Classes="header-icon-btn"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    Width="32" Height="32"
+                    Cursor="Hand"
+                    Command="{Binding ToggleAlbumFavoritesCommand}">
+                <ToolTip.Tip>
+                    <TextBlock Text="Favorite every song on this album" />
+                </ToolTip.Tip>
+                <controls:HeartIcon Size="15"
+                                    OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" OffOpacity="0.7"
+                                    IsFavorite="{Binding IsAlbumFavorited}" />
+            </Button>
+            <Button x:Name="AlbumOptionsButton"
+                    Classes="header-icon-btn"
                     Background="Transparent"
                     BorderThickness="0"
                     Padding="0"
@@ -469,20 +556,6 @@
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="Favorites"
-                                  Command="{Binding ToggleAlbumFavoritesCommand}"
-                                  IsVisible="{Binding !Album.IsAllTracksFavorite}">
-                            <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Favorites%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Remove from Favorites"
-                                  Command="{Binding ToggleAlbumFavoritesCommand}"
-                                  IsVisible="{Binding Album.IsAllTracksFavorite}">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                            </MenuItem.Icon>
-                        </MenuItem>
                         <MenuItem Header="Metadata"
                                   Command="{Binding OpenAlbumMetadataCommand}">
                             <MenuItem.Icon>
@@ -523,6 +596,7 @@
                     </MenuFlyout>
                 </Button.Flyout>
             </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Track list + related sections + album footer (all scroll with the header above) -->

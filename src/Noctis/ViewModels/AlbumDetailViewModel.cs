@@ -642,11 +642,22 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
+    /// <summary>True for a moment after the header's Add to Queue: the button reads
+    /// "Added" so the click visibly did something (the queue panel may be closed).</summary>
+    [ObservableProperty] private bool _albumAddedToQueue;
+    private int _albumAddedGeneration;
+
     [RelayCommand]
-    private void AddAlbumToQueue()
+    private async Task AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
         _player.AddRangeToQueue(InAlbumOrder(Tracks));
+
+        var generation = ++_albumAddedGeneration;
+        AlbumAddedToQueue = true;
+        await Task.Delay(1500);
+        if (generation == _albumAddedGeneration)
+            AlbumAddedToQueue = false;
     }
 
     /// <summary>Tracks Ctrl-selected in the album track list. Set by the view's code-behind.</summary>

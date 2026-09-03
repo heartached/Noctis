@@ -231,9 +231,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 Assets = new Assets
                 {
                     LargeImageKey = artworkKey,
-                    LargeImageText = artworkKey == null
-                        ? null
-                        : Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128),
+                    LargeImageText = BuildLargeImageText(artworkKey, album, artist, track.ShowAlbum),
                 },
             };
 
@@ -336,6 +334,19 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     /// the application has no uploaded art assets to fall back on, so naming one only
     /// produced a broken-image placeholder.
     /// </summary>
+    /// <summary>
+    /// The large image's hover text, which Discord's "Listening to" card renders as the
+    /// third line under the artist. Album by default; with "Show album" off the line is
+    /// dropped entirely rather than repeating the artist. Always null without an image
+    /// key — Discord ignores text on an asset that isn't there.
+    /// </summary>
+    internal static string? BuildLargeImageText(string? artworkKey, string? album, string artist, bool showAlbum)
+    {
+        if (artworkKey == null) return null;
+        if (!showAlbum) return null;
+        return Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128);
+    }
+
     public static string? ResolveArtworkKey(string? incomingUrl, string identity, string? lastKey, string? lastIdentity)
     {
         if (!string.IsNullOrWhiteSpace(incomingUrl)) return incomingUrl;
