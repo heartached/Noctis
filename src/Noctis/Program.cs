@@ -266,6 +266,7 @@ internal class Program
         services.AddSingleton<ILastFmService, LastFmService>();
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
+        services.AddSingleton<ArtistInfoService>();
         services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ShortcutService>();

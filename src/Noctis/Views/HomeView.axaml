@@ -37,6 +37,19 @@
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Opacity" Value="0.32"/>
         </Style>
+        <!-- Podium: #1 gold, #2 silver, #3 bronze (brushes in Styles.axaml). -->
+        <Style Selector="TextBlock.rank-num.gold">
+            <Setter Property="Foreground" Value="{DynamicResource RankGoldBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="TextBlock.rank-num.silver">
+            <Setter Property="Foreground" Value="{DynamicResource RankSilverBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="TextBlock.rank-num.bronze">
+            <Setter Property="Foreground" Value="{DynamicResource RankBronzeBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
 
         <!-- Recently Played: a play button fades in on hover -->
         <Style Selector="Button.recent-play">
@@ -178,6 +191,9 @@
                                             </Border>
                                             <TextBlock Grid.Column="1"
                                                        Classes="rank-num"
+                                                       Classes.gold="{Binding IsTop}"
+                                                       Classes.silver="{Binding IsSecond}"
+                                                       Classes.bronze="{Binding IsThird}"
                                                        Text="{Binding Rank}"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />

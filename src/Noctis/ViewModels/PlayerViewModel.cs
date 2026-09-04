@@ -137,6 +137,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>Looping video/GIF the lyrics page paints behind the lyrics (empty = none).
+    /// Driven by Settings like the flags above; the page's VideoBackdrop binds it.</summary>
+    [ObservableProperty] private string _lyricsBackgroundMediaPath = string.Empty;
     /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
     /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;

@@ -34,12 +34,39 @@ public static class WindowsFileAssociations
 
     /// <summary>True when the ProgID exists and points at this executable.</summary>
     public static bool IsRegistered(string exePath)
+        => FileAssociationCommand.PointsAt(ReadRecordedCommand(), exePath);
+
+    /// <summary>The <c>shell\open\command</c> value this user's registration recorded,
+    /// or null when Noctis was never registered (or the key is unreadable).</summary>
+    public static string? ReadRecordedCommand()
     {
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey($@"Software\Classes\{ProgId}\shell\open\command");
-            var command = key?.GetValue(null) as string;
-            return command != null && command.Contains(exePath, StringComparison.OrdinalIgnoreCase);
+            return key?.GetValue(null) as string;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Silent self-heal for a registration that went stale: the user registered once,
+    /// then moved/renamed/updated the app, so Windows' Open-with entry points at an exe
+    /// that no longer exists and every double-click fails. Re-writes the same keys for
+    /// the running copy — HKCU only, no prompt, no Default-apps page. Does nothing when
+    /// Noctis was never registered or the recorded exe still exists (see
+    /// <see cref="FileAssociationCommand.ShouldRepoint"/>). Returns true when it re-registered.
+    /// </summary>
+    public static bool TryRepointToCurrentExe(string exePath)
+    {
+        try
+        {
+            if (!FileAssociationCommand.ShouldRepoint(ReadRecordedCommand(), exePath, System.IO.File.Exists))
+                return false;
+            Register(exePath);
+            return true;
         }
         catch
         {
@@ -60,7 +87,7 @@ public static class WindowsFileAssociations
             using var icon = prog.CreateSubKey("DefaultIcon");
             icon.SetValue(null, $"{quotedExe},0");
             using var command = prog.CreateSubKey(@"shell\open\command");
-            command.SetValue(null, $"{quotedExe} \"%1\"");
+            command.SetValue(null, FileAssociationCommand.Format(exePath));
             using var open = prog.CreateSubKey(@"shell\open");
             open.SetValue(null, "Play with Noctis");
         }

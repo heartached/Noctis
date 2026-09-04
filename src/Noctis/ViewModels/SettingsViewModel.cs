@@ -236,7 +236,24 @@ public partial class SettingsViewModel : ViewModelBase
 
     // Back-compat mirror only: no UI binds this; SongTransitions* are the source of truth.
     [ObservableProperty] private bool _crossfadeEnabled;
-    [ObservableProperty] private double _crossfadeDuration = 6;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCrossfade3s))]
+    [NotifyPropertyChangedFor(nameof(IsCrossfade6s))]
+    [NotifyPropertyChangedFor(nameof(IsCrossfade10s))]
+    private double _crossfadeDuration = 6;
+
+    // Preset chips beside the slider (3s / 6s / 10s); the slider keeps the fine control.
+    public bool IsCrossfade3s => Math.Abs(CrossfadeDuration - 3) < 0.5;
+    public bool IsCrossfade6s => Math.Abs(CrossfadeDuration - 6) < 0.5;
+    public bool IsCrossfade10s => Math.Abs(CrossfadeDuration - 10) < 0.5;
+
+    [RelayCommand]
+    private void SetCrossfadePreset(string? seconds)
+    {
+        if (double.TryParse(seconds, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var s))
+            CrossfadeDuration = Math.Clamp(s, 1, 12);
+    }
 
     // ── Song Transitions (Apple-style; drives the player's AutoMix engine) ──
     [ObservableProperty] private bool _songTransitionsEnabled;
@@ -257,6 +274,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+    /// <summary>Album pages tinted by the cover's edge colour (Appearance tab). Album
+    /// detail view-models watch this and rebuild their background live.</summary>
+    [ObservableProperty] private bool _albumPageTintEnabled = true;
 
     /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
     /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
@@ -312,6 +332,15 @@ public partial class SettingsViewModel : ViewModelBase
     /// automatically; see <see cref="AppSettings.AllowExplicitContent"/>.</summary>
     [ObservableProperty] private bool _allowExplicitContent = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>Looping video/GIF behind the lyrics page (Appearance tab); empty = none.
+    /// The file lives under the data root — SettingsView copies the pick there.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLyricsBackgroundMedia))]
+    [NotifyPropertyChangedFor(nameof(LyricsBackgroundMediaName))]
+    private string _lyricsBackgroundMediaPath = string.Empty;
+    public bool HasLyricsBackgroundMedia => !string.IsNullOrEmpty(LyricsBackgroundMediaPath);
+    public string LyricsBackgroundMediaName =>
+        string.IsNullOrEmpty(LyricsBackgroundMediaPath) ? "None" : Path.GetFileName(LyricsBackgroundMediaPath);
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
 
@@ -636,7 +665,62 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (!OperatingSystem.IsWindows() || CurrentExePath is not { } exe) { IsRegisteredForAudioFiles = false; return; }
         IsRegisteredForAudioFiles = WindowsFileAssociations.IsRegistered(exe);
+        if (!IsRegisteredForAudioFiles && !_fileAssociationRepointAttempted)
+        {
+            // A registration the user made earlier may point at an exe that no longer
+            // exists (app moved/renamed/updated in place). Quietly move it to this copy —
+            // HKCU only, no prompt — so "Open with Noctis" keeps working. Off the UI
+            // thread: the registry walk is a dozen key writes and SHChangeNotify.
+            _fileAssociationRepointAttempted = true;
+            _ = Task.Run(() =>
+            {
+                if (!WindowsFileAssociations.TryRepointToCurrentExe(exe)) return;
+                DebugLogger.Info(DebugLogger.Category.UI, "FileTypes.Repoint", $"exe={exe}");
+                Dispatcher.UIThread.Post(() => IsRegisteredForAudioFiles = WindowsFileAssociations.IsRegistered(exe));
+            });
+        }
     }
+
+    /// <summary>Stores a user-picked lyrics background video/GIF: copies it into the data
+    /// root (so the setting survives the source moving) and points the setting at the copy.
+    /// Runs the copy off the UI thread — the picker admits large files on slow shares.</summary>
+    public async Task SetLyricsBackgroundMediaAsync(string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath)) return;
+        var dir = Path.Combine(AppPaths.DataRoot, "lyrics_background");
+        var ext = Path.GetExtension(sourcePath).ToLowerInvariant();
+        var target = Path.Combine(dir, "background" + ext);
+        await Task.Run(() =>
+        {
+            Directory.CreateDirectory(dir);
+            // One background at a time: drop a previous pick with a different extension.
+            foreach (var existing in Directory.EnumerateFiles(dir, "background.*"))
+            {
+                if (!string.Equals(existing, target, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(existing); } catch { }
+                }
+            }
+            File.Copy(sourcePath, target, overwrite: true);
+        });
+        // Same path twice must still re-play the new file: bounce through empty so the
+        // player-side property change fires and the lyrics backdrop restarts.
+        if (string.Equals(LyricsBackgroundMediaPath, target, StringComparison.OrdinalIgnoreCase))
+            LyricsBackgroundMediaPath = string.Empty;
+        LyricsBackgroundMediaPath = target;
+    }
+
+    /// <summary>Removes the lyrics background video/GIF and its copy under the data root.</summary>
+    [RelayCommand]
+    private void ClearLyricsBackgroundMedia()
+    {
+        var path = LyricsBackgroundMediaPath;
+        LyricsBackgroundMediaPath = string.Empty;
+        if (string.IsNullOrEmpty(path)) return;
+        _ = Task.Run(() => { try { File.Delete(path); } catch { } });
+    }
+
+    private bool _fileAssociationRepointAttempted;
 
     /// <summary>Registers (or unregisters) Noctis as an Open-with / Default-apps choice for
     /// its audio formats, then opens Windows' Default apps page so the user can pick it —
@@ -1251,6 +1335,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            AlbumPageTintEnabled = _settings.AlbumPageTintEnabled;
             // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
@@ -1262,6 +1347,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = _settings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
+            LyricsBackgroundMediaPath = File.Exists(_settings.LyricsBackgroundMediaPath)
+                ? _settings.LyricsBackgroundMediaPath
+                : string.Empty;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             MinimizeToTray = _settings.MinimizeToTray;
@@ -1623,6 +1711,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.AlbumPageTintEnabled = AlbumPageTintEnabled;
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
@@ -1632,6 +1721,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowSleepTimer = PlaybackBarShowSleepTimer;
         _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.MinimizeToTray = MinimizeToTray;
@@ -1865,6 +1955,7 @@ public partial class SettingsViewModel : ViewModelBase
         // SetPlaybackBarWidth writes the same value into _settings first.
         _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _player.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
@@ -2707,6 +2798,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnEnableAnimatedCoversChanged(bool value)
     {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnAlbumPageTintEnabledChanged(bool value)
+    {
+        // No Apply* step: AlbumDetailViewModel subscribes to this VM's PropertyChanged.
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsBackgroundMediaPathChanged(string value)
+    {
+        ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -4375,6 +4478,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
@@ -4385,6 +4489,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = defaultSettings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
+            LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             FfmpegPath = defaultSettings.FfmpegPath;

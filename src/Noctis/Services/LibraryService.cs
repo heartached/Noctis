@@ -2652,7 +2652,9 @@ public class LibraryService : ILibraryService
         return Track.GetPrimaryArtist(artist);
     }
 
-    private static Guid ComputeArtistId(string artistName)
+    /// <summary>Stable artist id from the name (MD5 of the trimmed, lower-cased name) —
+    /// the key the artist portrait cache is filed under.</summary>
+    public static Guid ComputeArtistId(string artistName)
     {
         var hash = System.Security.Cryptography.MD5.HashData(
             System.Text.Encoding.UTF8.GetBytes(artistName.Trim().ToLowerInvariant()));

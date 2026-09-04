@@ -470,6 +470,25 @@
             <Rectangle Fill="#99000000"/>
         </Grid>
 
+        <!-- Optional looping video/GIF background (Settings → Appearance → Lyrics
+             Background Video). Sits over the artwork backdrop (same ZIndex, later in
+             document order) so the blurred cover stays visible until the first decoded
+             frame lands — no black flash. Its own scrim keeps the lyrics legible on
+             bright clips. Decoding runs only while this page is attached and the window
+             isn't minimized (VideoBackdrop). -->
+        <Grid x:Name="LyricsMediaBackdrop"
+              Grid.ColumnSpan="2"
+              Grid.RowSpan="2"
+              ZIndex="-1"
+              ClipToBounds="True"
+              IsHitTestVisible="False"
+              IsVisible="{Binding Player.LyricsBackgroundMediaPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <controls:VideoBackdrop x:Name="MediaBackdrop"
+                                    Source="{Binding Player.LyricsBackgroundMediaPath}"
+                                    IsActive="{Binding $self.IsVisible}" />
+            <Rectangle Fill="#8C000000"/>
+        </Grid>
+
 
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- LEFT PANEL: Cover Art + Track Info + Controls         -->

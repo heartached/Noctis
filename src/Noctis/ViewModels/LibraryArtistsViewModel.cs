@@ -334,6 +334,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ApplyFilter(_currentFilter);
     }
 
+    /// <summary>Whether the artist is favourited — the artist page reads the same
+    /// in-memory set this grid stamps its tiles from, so the two never disagree.</summary>
+    public bool IsFavoriteArtist(string? artistName) => _favoriteArtists.IsFavorite(artistName);
+
     /// <summary>
     /// Sets a user-picked image as the artist's portrait. Evicts any stale cached
     /// bitmap and rebuilds the row so the tile (bound to a non-observable Artist)

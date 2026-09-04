@@ -149,6 +149,36 @@
         </Style>
 
         <!-- Setting card -->
+        <!-- Preset chips (crossfade 3s / 6s / 10s): pill toggles, selected = accent. -->
+        <Style Selector="Button.preset-chip">
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="11,3"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.preset-chip:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.preset-chip:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.preset-chip.selected">
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.preset-chip.selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.preset-chip.selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
         <Style Selector="Border.setting-card">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
             <Setter Property="CornerRadius" Value="24"/>
@@ -1930,6 +1960,21 @@
                 </Grid>
             </Border>
 
+            <!-- Album page colour (Apple Music parity): the album page takes the cover's
+                 edge colour as its background and flips its text dark on light covers. -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Album Page Colour" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Tint each album's page with the colour of its cover, like Apple Music. Off keeps the plain theme background."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding AlbumPageTintEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Now-playing artwork costume (Discord suggestion): the Lyrics-page cover
                  can be printed on a CD, a vinyl sleeve or a cassette label instead of
                  the plain square. Discs and reels spin while music plays. -->
@@ -2287,6 +2332,40 @@
                 </Grid>
             </Border>
 
+            <!-- Lyrics background video / GIF: a looping clip painted behind the lyrics on
+                 the lyrics page (any background mode). Decoded once at a capped size by
+                 LibVLC into a bitmap — see Controls/VideoBackdrop. -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Lyrics Background Video" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Loop a video or GIF behind the lyrics on the lyrics page instead of the blurred cover. Plays only while the lyrics page is open."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding LyricsBackgroundMediaName}"
+                                   FontSize="12" Opacity="0.7" Margin="0,4,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding HasLyricsBackgroundMedia}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Classes="accent-btn"
+                                Content="Choose"
+                                Padding="16,6"
+                                CornerRadius="999"
+                                Background="{DynamicResource AccentButtonBackground}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Click="OnPickLyricsBackgroundClick"/>
+                        <Button Content="Remove"
+                                Padding="14,6"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Command="{Binding ClearLyricsBackgroundMediaCommand}"
+                                IsVisible="{Binding HasLyricsBackgroundMedia}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Fullscreen lyrics focus -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
@@ -2427,7 +2506,19 @@
 
                         <!-- Crossfade Duration (only for the Crossfade style) -->
                         <StackPanel Classes="sub-setting" Spacing="6" Margin="2,4,0,0" IsVisible="{Binding IsCrossfadeStyle}">
-                            <TextBlock Text="Crossfade Duration" FontSize="13" FontWeight="SemiBold"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Crossfade Duration" FontSize="13" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                                <!-- Quick presets; the slider below still allows any 1–12 s. -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                    <Button Classes="preset-chip" Classes.selected="{Binding IsCrossfade3s}"
+                                            Content="3s" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="3"/>
+                                    <Button Classes="preset-chip" Classes.selected="{Binding IsCrossfade6s}"
+                                            Content="6s" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="6"/>
+                                    <Button Classes="preset-chip" Classes.selected="{Binding IsCrossfade10s}"
+                                            Content="10s" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="10"/>
+                                </StackPanel>
+                            </Grid>
                             <Grid ColumnDefinitions="*,Auto">
                                 <Slider Grid.Column="0"
                                         Classes="accent-slider"

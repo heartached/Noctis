@@ -675,13 +675,18 @@ public partial class LyricsView : UserControl
     // breathes on the beat, only while this page is attached, the Artwork background
     // mode is on and the Settings toggle is on.
 
+    // A video/GIF background covers the artwork stack entirely, so its drift loop is
+    // parked too — no point animating layers nobody can see.
     private void UpdateFlowAnimationState(LyricsViewModel vm)
-        => _flow.Enabled = vm.IsColorModeArtwork && vm.Player.LyricsFlowingLightEnabled;
+        => _flow.Enabled = vm.IsColorModeArtwork
+                           && vm.Player.LyricsFlowingLightEnabled
+                           && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath);
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         // The layers' visibility is bound in XAML; this only parks/resumes the loop.
-        if (e.PropertyName == nameof(PlayerViewModel.LyricsFlowingLightEnabled) &&
+        if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
+                or nameof(PlayerViewModel.LyricsBackgroundMediaPath) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
     }

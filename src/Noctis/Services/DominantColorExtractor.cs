@@ -614,6 +614,105 @@ public static class DominantColorExtractor
         return new SolidColorBrush(color);
     }
 
+    /// <summary>sRGB relative luminance (WCAG), 0 = black … 1 = white. Used to decide
+    /// whether page text over a tint must flip dark.</summary>
+    public static double GetRelativeLuminance(Color color)
+    {
+        static double Lin(byte c)
+        {
+            var v = c / 255.0;
+            return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * Lin(color.R) + 0.7152 * Lin(color.G) + 0.0722 * Lin(color.B);
+    }
+
+    private static readonly ConcurrentDictionary<string, Color> EdgeFileCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Path-based twin of <see cref="ExtractEdgeBackgroundColor(Bitmap?)"/> that decodes
+    /// with SkiaSharp instead of an Avalonia RenderTargetBitmap, so it is safe to run
+    /// on a worker thread (the RTB path must run on the UI thread and visibly stalled
+    /// page opens). Same algorithm: outer 1-px ring of a 50×50 downscale, 4-bit
+    /// histogram, weighted average of the winning non-noise bucket, gentle saturation
+    /// floor, natural lightness kept. Cached per path; null when the file can't be read.
+    /// </summary>
+    public static Color? ExtractEdgeBackgroundColorFromFile(string? artworkPath)
+    {
+        if (string.IsNullOrEmpty(artworkPath)) return null;
+        if (EdgeFileCache.TryGetValue(artworkPath, out var cached)) return cached;
+
+        const int sampleSize = 50;
+        try
+        {
+            using var codec = SkiaSharp.SKCodec.Create(artworkPath);
+            if (codec == null) return null;
+            var info = codec.Info;
+            // Ask the codec for a subsampled decode so a huge cover never allocates at
+            // native size (same guard as ShareCardRenderer.LoadArtwork).
+            var longest = Math.Max(info.Width, info.Height);
+            var sample = 1;
+            while (longest / sample > 512) sample *= 2;
+            using var raw = SkiaSharp.SKBitmap.Decode(codec, new SkiaSharp.SKImageInfo(
+                Math.Max(1, info.Width / sample), Math.Max(1, info.Height / sample),
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
+            if (raw == null) return null;
+            using var small = raw.Resize(new SkiaSharp.SKImageInfo(sampleSize, sampleSize,
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), SkiaSharp.SKFilterQuality.Medium);
+            if (small == null) return null;
+
+            var pixels = small.Pixels;
+            var counts = new Dictionary<int, int>(256);
+            var sums = new Dictionary<int, (long R, long G, long B)>(256);
+
+            void Sample(int x, int y)
+            {
+                var px = pixels[y * sampleSize + x];
+                int key = ((px.Red >> 4) << 8) | ((px.Green >> 4) << 4) | (px.Blue >> 4);
+                counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
+                var s = sums.TryGetValue(key, out var v) ? v : (0L, 0L, 0L);
+                sums[key] = (s.Item1 + px.Red, s.Item2 + px.Green, s.Item3 + px.Blue);
+            }
+
+            for (int x = 0; x < sampleSize; x++) { Sample(x, 0); Sample(x, sampleSize - 1); }
+            for (int y = 1; y < sampleSize - 1; y++) { Sample(0, y); Sample(sampleSize - 1, y); }
+            if (counts.Count == 0) return null;
+
+            int bestKey = -1, bestCount = -1, bestKeyAny = -1, bestCountAny = -1;
+            foreach (var kv in counts)
+            {
+                var (sr, sg, sb) = sums[kv.Key];
+                int n = kv.Value;
+                int ar = (int)(sr / n), ag = (int)(sg / n), ab = (int)(sb / n);
+                int luma = (ar * 299 + ag * 587 + ab * 114) / 1000;
+                if (n > bestCountAny) { bestCountAny = n; bestKeyAny = kv.Key; }
+                if (luma < 6 || luma > 250) continue;
+                if (n > bestCount) { bestCount = n; bestKey = kv.Key; }
+            }
+
+            int chosen = bestKey >= 0 ? bestKey : bestKeyAny;
+            var (tr, tg, tb) = sums[chosen];
+            int total = counts[chosen];
+            var (h, s2, l) = RgbToHsl((byte)(tr / total), (byte)(tg / total), (byte)(tb / total));
+            if (s2 > 0.05 && s2 < 0.10) s2 = 0.10;
+            var color = HslToColor(h, s2, l);
+
+            if (EdgeFileCache.Count >= MaxCacheSize) EdgeFileCache.Clear();
+            EdgeFileCache.TryAdd(artworkPath, color);
+            return color;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Drops the cached edge colour for a path (artwork replaced in place).</summary>
+    public static void InvalidateEdgeColor(string? artworkPath)
+    {
+        if (!string.IsNullOrEmpty(artworkPath)) EdgeFileCache.TryRemove(artworkPath, out _);
+    }
+
     /// <summary>
     /// Returns the average color of the bitmap by downscaling it to a single pixel.
     /// Useful for predicting the apparent tint of a heavily-blurred cover image, where

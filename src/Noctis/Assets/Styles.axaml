@@ -90,6 +90,10 @@
                     <!-- Home card pills -->
                     <SolidColorBrush x:Key="HomeCardBackground" Color="#18FFFFFF" />
                     <SolidColorBrush x:Key="HomeCardHoverBackground" Color="#28FFFFFF" />
+                    <!-- Podium tints for ranked-list numerals: gold / silver / bronze. -->
+                    <SolidColorBrush x:Key="RankGoldBrush" Color="#F2C14E" />
+                    <SolidColorBrush x:Key="RankSilverBrush" Color="#C9CED6" />
+                    <SolidColorBrush x:Key="RankBronzeBrush" Color="#D68A4F" />
 
                     <!-- Filter chips (release type, etc.) -->
                     <SolidColorBrush x:Key="ChipBackground" Color="#1AFFFFFF" />
@@ -205,6 +209,10 @@
                     <!-- Home card pills -->
                     <SolidColorBrush x:Key="HomeCardBackground" Color="#18000000" />
                     <SolidColorBrush x:Key="HomeCardHoverBackground" Color="#28000000" />
+                    <!-- Podium tints, deepened for a white page. -->
+                    <SolidColorBrush x:Key="RankGoldBrush" Color="#C9960C" />
+                    <SolidColorBrush x:Key="RankSilverBrush" Color="#8E949C" />
+                    <SolidColorBrush x:Key="RankBronzeBrush" Color="#A8622A" />
 
                     <!-- Filter chips (release type, etc.) -->
                     <SolidColorBrush x:Key="ChipBackground" Color="#14000000" />

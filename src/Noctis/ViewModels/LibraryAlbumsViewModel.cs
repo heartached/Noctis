@@ -1261,7 +1261,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// Both sides are tokenised so that filtering by "A &amp; B" matches fields
     /// containing either "A" or "B", and vice versa.
     /// </summary>
-    private static bool ContainsArtistToken(string? artistField, string artistName)
+    internal static bool ContainsArtistToken(string? artistField, string artistName)
     {
         if (string.IsNullOrWhiteSpace(artistField))
             return false;

@@ -1242,13 +1242,15 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             PlaylistFeaturedArtistsViewModel => "Search in Featured Artists",
             MoreByArtistViewModel => "Search in Albums",
+            ArtistDetailViewModel artistPage => $"Search in {artistPage.ArtistName}",
             _ => $"Search in {TopBar.CurrentTabName}"
         };
 
         // Search visibility follows the tab name (hidden on Home/Settings/Lyrics and
-        // in Cover Flow), except the More By page which is searchable regardless of
-        // the tab it was opened from (the tab name doesn't change on detail pages).
-        TopBar.IsSearchVisible = CurrentView is MoreByArtistViewModel
+        // in Cover Flow), except the More By and Artist pages which are searchable
+        // regardless of the tab they were opened from (the tab name doesn't change on
+        // detail pages).
+        TopBar.IsSearchVisible = CurrentView is MoreByArtistViewModel or ArtistDetailViewModel
             || (!_isCoverFlowMode && TopBar.CurrentTabName is not ("Home" or "Settings" or "Lyrics"));
 
         // Cover Flow is an overlay on the current section, so Back leaves it (the only
@@ -1262,6 +1264,13 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView is MoreByArtistViewModel mbaVm)
         {
             TopBar.ShowBackButton("Back", GoBackInHistoryCommand, mbaVm.Title);
+            return;
+        }
+
+        if (CurrentView is ArtistDetailViewModel)
+        {
+            // No context title: the hero already carries the artist's name.
+            TopBar.ShowBackButton("Back", GoBackInHistoryCommand);
             return;
         }
 
@@ -2013,19 +2022,32 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenArtistDiscography(string artistName)
     {
+        // Dedicated artist page (hero, Popular, Releases, Appears On) — replaces the
+        // artist-filtered Albums grid. Long-lived per visit; disposed when it leaves
+        // history (DisposeViewIfTransient).
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
-        SetupGlobalViewModeToggle();
-        _albumsVm.SetArtistFilter(artistName);
+        IsLyricsPanelOpen = false;
+        _isCoverFlowMode = false;
+        TopBar.IsCoverFlowMode = false;
+        _preCoverFlowView = null;
+        // The originating page's query is captured in history for back-restore.
+        TopBar.SearchText = string.Empty;
 
-        if (!ReferenceEquals(CurrentView, _albumsVm))
-            CurrentView = _albumsVm;
+        // About-the-artist facts (MusicBrainz + Wikipedia); resolved lazily so the
+        // long-lived shell constructor doesn't grow another parameter.
+        var artistInfo = App.Services?.GetService(typeof(ArtistInfoService)) as ArtistInfoService;
+        var page = new ArtistDetailViewModel(artistName, _library, Player, _albumsVm, _artistsVm, _artistImageService, Sidebar, artistInfo);
+        page.BackRequested += (_, _) =>
+        {
+            if (ReferenceEquals(CurrentView, page))
+                GoBackInHistory();
+        };
+        page.AlbumOpened += (_, album) => OpenAlbumDetail(album, backButtonText: page.ArtistName);
+        page.SearchLyricsRequested += (_, track) => SearchLyricsForTrack(track);
+        CurrentView = page;
         HighlightSidebarSection("artists");
-
-        TopBar.ShowArtistActions(
-            _albumsVm.ShuffleAllArtistTracksCommand,
-            _albumsVm.PlayAllArtistTracksCommand);
-
+        // No top-bar Play/Shuffle pills: the page's own hero carries them.
         RefreshBackButton();
     }
 

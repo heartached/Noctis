@@ -216,6 +216,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
                         OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
                         OnPropertyChanged(nameof(ShowAnimatedCover));
                     });
+                else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintEnabled))
+                    Dispatcher.UIThread.Post(RebuildBackgroundBrush);
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
         }
@@ -345,13 +347,85 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         RebuildBackgroundBrush();
     }
 
+    // The header art path is set synchronously in the ctor and again on library
+    // refresh; the tint follows it (the Bitmap-based AlbumArt is never assigned now).
+    partial void OnHeaderArtPathChanged(string? value) => RebuildBackgroundBrush();
+
     private void RebuildBackgroundBrush()
     {
-        BackgroundBrush = null;
-        IsLightTint = false;
-        PageForegroundBrush = Brushes.White;
-        PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-        PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+        // Apple-Music-style page tint (docs/superpowers/specs/2026-05-04-album-page-tint-design.md):
+        // the cover's edge colour becomes the page background and the page text flips
+        // dark on light covers. Extraction is a Skia decode + ring histogram, so it runs
+        // on a worker and lands via the generation guard — a page that navigated on
+        // before its colour arrived never gets the previous album's tint.
+        var generation = ++_tintGeneration;
+        var artPath = HeaderArtPath;
+        if (artPath == null || _settings?.AlbumPageTintEnabled != true)
+        {
+            ApplyTint(null);
+            return;
+        }
+
+        _ = Task.Run(() =>
+        {
+            var color = DominantColorExtractor.ExtractEdgeBackgroundColorFromFile(artPath);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation != _tintGeneration) return;
+                ApplyTint(color);
+            });
+        });
+    }
+
+    private int _tintGeneration;
+
+    /// <summary>Luminance above which the page text goes dark (spec §2).</summary>
+    public const double LightTintThreshold = 0.55;
+
+    /// <summary>Applies a tint colour (or clears it) and derives the page foreground family.
+    /// Public for tests; callers on the UI thread only.</summary>
+    public void ApplyTint(Color? tint)
+    {
+        if (tint is not { } color)
+        {
+            BackgroundBrush = null;
+            IsLightTint = false;
+            PageForegroundBrush = Brushes.White;
+            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+            return;
+        }
+
+        BackgroundBrush = BuildTintBrush(color);
+        var light = DominantColorExtractor.GetRelativeLuminance(color) > LightTintThreshold;
+        IsLightTint = light;
+        PageForegroundBrush = light ? new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x11)) : Brushes.White;
+        PageSubtleForegroundBrush = new SolidColorBrush(light
+            ? Color.FromArgb(0x66, 0x00, 0x00, 0x00)
+            : Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+        PageDividerBrush = new SolidColorBrush(light
+            ? Color.FromArgb(0x1F, 0x00, 0x00, 0x00)
+            : Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+    }
+
+    /// <summary>The page background for a tint: the colour itself at the top, easing
+    /// ~18% darker toward the bottom so a long track list doesn't read as one flat
+    /// slab (Apple's desktop album page has the same gentle fall-off).</summary>
+    public static LinearGradientBrush BuildTintBrush(Color color)
+    {
+        static byte Darken(byte c) => (byte)(c * 0.82);
+        var bottom = Color.FromRgb(Darken(color.R), Darken(color.G), Darken(color.B));
+        return new LinearGradientBrush
+        {
+            StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative),
+            EndPoint = new Avalonia.RelativePoint(0, 1, Avalonia.RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(color, 0),
+                new GradientStop(color, 0.35),
+                new GradientStop(bottom, 1),
+            }
+        };
     }
 
     private void BuildRelatedSections()

@@ -151,6 +151,11 @@ public class AppSettings
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>Album pages take their background colour from the cover's edge colour,
+    /// Apple-Music style, with the page text flipping dark on light covers. Ships on;
+    /// the Appearance toggle turns it off for users who want the flat theme page.</summary>
+    public bool AlbumPageTintEnabled { get; set; } = true;
+
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
 
@@ -457,6 +462,11 @@ public class AppSettings
     /// while the artwork mode is active.
     /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
     public bool LyricsFlowingLightEnabled { get; set; }
+
+    /// <summary>Optional looping video/GIF the lyrics page paints behind the lyrics
+    /// (copied into the data root by Settings → Appearance). Empty = none; the blurred
+    /// artwork background shows as usual.</summary>
+    public string LyricsBackgroundMediaPath { get; set; } = "";
 
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>

@@ -11,6 +11,9 @@ public sealed class TopSongRow
     /// <summary>1-based rank by play count.</summary>
     public int Rank { get; init; }
 
-    /// <summary>True for the #1 track — used to tint its rank numeral with the accent.</summary>
+    /// <summary>Podium tints for the rank numeral (Home, Albums artist rows, Artist page):
+    /// #1 gold, #2 silver, #3 bronze; everything below stays the dim default.</summary>
     public bool IsTop => Rank == 1;
+    public bool IsSecond => Rank == 2;
+    public bool IsThird => Rank == 3;
 }
