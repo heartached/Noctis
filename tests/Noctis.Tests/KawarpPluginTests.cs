@@ -63,4 +63,24 @@ public class KawarpPluginTests
         Assert.Equal(2, clamped.Saturation);
         Directory.Delete(dir, true);
     }
+
+    [Fact]
+    public void SharedImage_LivesUntilTheLastHolderReleases()
+    {
+        // Crash repro shape: the UI thread swaps/drops the cover (its one reference) while a
+        // queued draw op still holds it; the SKImage must survive until that op is disposed.
+        using var bmp = new SKBitmap(4, 4);
+        var shared = new SharedImage(SKImage.FromBitmap(bmp));
+
+        Assert.True(shared.TryRetain());   // draw op #1
+        shared.Release();                  // UI thread lets go (track change / detach)
+        Assert.True(shared.IsAlive);
+        Assert.NotNull(shared.Image);
+        Assert.Equal(4, shared.Width);
+
+        shared.Release();                  // draw op #1 retired by the compositor
+        Assert.False(shared.IsAlive);
+        Assert.Null(shared.Image);
+        Assert.False(shared.TryRetain());  // a late op gets nothing and draws nothing
+    }
 }

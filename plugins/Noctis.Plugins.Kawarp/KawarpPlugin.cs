@@ -190,7 +190,7 @@ internal sealed class KawarpControl : Control
     private readonly IPluginHost _host;
     private readonly KawarpSettings _settings;
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
-    private SKImage? _art;
+    private SharedImage? _art;
     private string? _artPath;
     private int _artGeneration;
     private double _beat;
@@ -220,7 +220,7 @@ internal sealed class KawarpControl : Control
     {
         _host.NowPlaying.TrackChanged -= OnTrackChanged;
         _running = false;
-        _art?.Dispose();
+        _art?.Release();
         _art = null;
         base.OnDetachedFromVisualTree(e);
     }
@@ -232,7 +232,7 @@ internal sealed class KawarpControl : Control
         if (path == _artPath) return;
         _artPath = path;
         var generation = ++_artGeneration;
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) { _art?.Dispose(); _art = null; InvalidateVisual(); return; }
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) { _art?.Release(); _art = null; InvalidateVisual(); return; }
         var passes = _settings.BlurPasses;
         _ = Task.Run(() =>
         {
@@ -241,11 +241,11 @@ internal sealed class KawarpControl : Control
                 using var decoded = SKBitmap.Decode(path);
                 if (decoded is null) return;
                 using var prepared = KawarpShader.PrepareArtwork(decoded, ArtSize, passes);
-                var image = SKImage.FromBitmap(prepared);
+                var image = new SharedImage(SKImage.FromBitmap(prepared));
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (generation != _artGeneration) { image.Dispose(); return; }
-                    _art?.Dispose();
+                    if (generation != _artGeneration) { image.Release(); return; }
+                    _art?.Release();
                     _art = image;
                     InvalidateVisual();
                 });
@@ -272,26 +272,74 @@ internal sealed class KawarpControl : Control
     }
 }
 
+/// <summary>
+/// A Skia image shared between the UI thread (which swaps covers and tears the control down)
+/// and the compositor's render thread (which draws queued <see cref="KawarpDrawOp"/>s a frame
+/// or two later). Disposing the <see cref="SKImage"/> the moment the UI thread was done with it
+/// crashed the process in native <c>sk_image_make_shader</c> whenever a frame was still in
+/// flight — so the image now lives until its last holder lets go. Starts with one reference
+/// for the creator; every draw op retains it and releases it in its own Dispose.
+/// </summary>
+public sealed class SharedImage
+{
+    private SKImage? _image;
+    private int _refs = 1;
+
+    public SharedImage(SKImage image) => _image = image;
+
+    /// <summary>The image, or null once every reference is gone.</summary>
+    public SKImage? Image => _image;
+    public int Width => _image?.Width ?? 0;
+    public int Height => _image?.Height ?? 0;
+    public bool IsAlive => Volatile.Read(ref _refs) > 0;
+
+    /// <summary>Adds a holder. False (nothing retained) when the image has already been freed.</summary>
+    public bool TryRetain()
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _refs);
+            if (current <= 0) return false;
+            if (Interlocked.CompareExchange(ref _refs, current + 1, current) == current) return true;
+        }
+    }
+
+    /// <summary>Drops a holder; the last one out disposes the Skia image.</summary>
+    public void Release()
+    {
+        if (Interlocked.Decrement(ref _refs) != 0) return;
+        var img = Interlocked.Exchange(ref _image, null);
+        img?.Dispose();
+    }
+}
+
 /// <summary>Draws the shader through Avalonia's Skia lease; a no-op on renderers without one.</summary>
 internal sealed class KawarpDrawOp : ICustomDrawOperation
 {
-    private readonly SKImage _art;
+    private readonly SharedImage? _art;
     private readonly float _time;
     private readonly KawarpSettings _settings;
     private readonly float _beat;
 
-    public KawarpDrawOp(Rect bounds, SKImage art, float time, KawarpSettings settings, float beat)
+    public KawarpDrawOp(Rect bounds, SharedImage art, float time, KawarpSettings settings, float beat)
     {
-        Bounds = bounds; _art = art; _time = time; _settings = settings; _beat = beat;
+        Bounds = bounds; _time = time; _settings = settings; _beat = beat;
+        // Hold the cover for as long as this op can still be rendered; a retain that fails means
+        // the UI thread already freed it, and Render then simply draws nothing.
+        _art = art.TryRetain() ? art : null;
     }
 
     public Rect Bounds { get; }
     public bool HitTest(Point p) => false;
     public bool Equals(ICustomDrawOperation? other) => false;
-    public void Dispose() { }
+
+    /// <summary>Called by the compositor once the op is retired — the render thread is done with the image.</summary>
+    public void Dispose() => _art?.Release();
 
     public void Render(ImmediateDrawingContext context)
     {
+        var image = _art?.Image;
+        if (image is null) return;
         var lease = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
         if (lease is null) return;
         var effect = KawarpShader.Get(out _);
@@ -300,11 +348,11 @@ internal sealed class KawarpDrawOp : ICustomDrawOperation
         using var api = lease.Lease();
         var canvas = api.SkCanvas;
 
-        using var artShader = _art.ToShader(SKShaderTileMode.Mirror, SKShaderTileMode.Mirror);
+        using var artShader = image.ToShader(SKShaderTileMode.Mirror, SKShaderTileMode.Mirror);
         var uniforms = new SKRuntimeEffectUniforms(effect)
         {
             ["iResolution"] = new[] { (float)Bounds.Width, (float)Bounds.Height },
-            ["iArtSize"] = new[] { (float)_art.Width, (float)_art.Height },
+            ["iArtSize"] = new[] { (float)image.Width, (float)image.Height },
             ["iTime"] = _time,
             ["iWarp"] = (float)_settings.WarpIntensity,
             ["iSaturation"] = (float)_settings.Saturation,
