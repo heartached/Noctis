@@ -23,6 +23,9 @@ public class AppSettings
     /// <summary>UI language: a culture name shipped in Localization/ ("es") or "" to follow the OS.</summary>
     public string Language { get; set; } = "";
 
+    /// <summary>Plugin folders (names under data/plugins) the user switched off in Settings → Plugins.</summary>
+    public List<string> DisabledPlugins { get; set; } = new();
+
     /// <summary>
     /// Marker for the v2 theme migration. In v1, "Dark" denoted today's Gray colours.
     /// On first load post-upgrade, a stored "Dark" with this flag false is rewritten to "Gray"

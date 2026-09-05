@@ -41,6 +41,10 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Noctis.Tests" />
   </ItemGroup>
+  <!-- Plugin SDK: the public surface plugins compile against (Settings → Plugins). -->
+  <ItemGroup>
+    <ProjectReference Include="..\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj" />
+  </ItemGroup>
 
   <!-- Avalonia UI -->
   <ItemGroup>

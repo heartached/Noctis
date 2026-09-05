@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Noctis.Localization;
 using Noctis.Models;
+using Noctis.Services.Plugins;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.Services.MediaServer;
@@ -202,6 +203,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly AudioCdViewModel _audioCdVm;
     private readonly VisualizerViewModel _visualizerVm;
 
+    /// <summary>Plugin host (Settings → Plugins; lyrics-page visual layers).</summary>
+    public PluginHost Plugins { get; }
+
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
     private readonly StatisticsViewModel _statisticsVm;
@@ -301,6 +305,13 @@ public partial class MainWindowViewModel : ViewModelBase
         // service polls for drive/disc changes once the shell is up.
         _audioCdVm = new AudioCdViewModel(audioCd, Player);
         _visualizerVm = new VisualizerViewModel(Player, Settings);
+
+        // Plugins load once settings are read so the disabled list is honoured on the first pass.
+        Plugins = new PluginHost(Player, persistence.DataDirectory, () => Settings.GetSettings(),
+            () => _ = Settings.SaveAsync(), UpdateService.CurrentVersionDisplay);
+        Settings.Plugins = Plugins;
+        if (Settings.IsSettingsLoaded) Plugins.LoadAll();
+        else Settings.SettingsLoaded += (_, _) => Plugins.LoadAll();
         Loc.Instance.CultureChanged += (_, _) =>
         {
             TopBar.RefreshLocalizedTitles();

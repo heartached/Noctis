@@ -1347,4 +1347,12 @@
   <!-- ShortcutKeyChip.axaml (auto-migrated) -->
   <data name="ShortcutKeyChip.ClickChangeTip" xml:space="preserve"><value>Click to change</value><comment>ToolTip.Tip in ShortcutKeyChip.axaml</comment></data>
   <data name="ShortcutKeyChip.PressKeys" xml:space="preserve"><value>Press keys…</value><comment>Text in ShortcutKeyChip.axaml</comment></data>
+
+  <!-- Settings → Plugins -->
+  <data name="Plugins.Title" xml:space="preserve"><value>Plugins</value></data>
+  <data name="Plugins.Description" xml:space="preserve"><value>Extend Noctis with community plugins. Drop a plugin's folder into the plugins directory and reload; switch any plugin off here without deleting it.</value></data>
+  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins run with the same access as Noctis itself. Only install plugins from people you trust.</value></data>
+  <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
+  <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
+  <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
 </root>

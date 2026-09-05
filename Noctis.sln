@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis", "src\Noctis\Noctis
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Tests", "tests\Noctis.Tests\Noctis.Tests.csproj", "{B2C3D4E5-F607-890A-BCDE-F01234567890}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.Abstractions", "src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj", "{C3D4E5F6-0718-49AB-CDEF-012345678901}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.SamplePlugin", "samples\Noctis.SamplePlugin\Noctis.SamplePlugin.csproj", "{D4E5F607-1829-4ABC-DEF0-123456789012}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,5 +25,13 @@ Global
 		{B2C3D4E5-F607-890A-BCDE-F01234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2C3D4E5-F607-890A-BCDE-F01234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2C3D4E5-F607-890A-BCDE-F01234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D4E5F6-0718-49AB-CDEF-012345678901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D4E5F6-0718-49AB-CDEF-012345678901}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D4E5F6-0718-49AB-CDEF-012345678901}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D4E5F6-0718-49AB-CDEF-012345678901}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4E5F607-1829-4ABC-DEF0-123456789012}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4E5F607-1829-4ABC-DEF0-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4E5F607-1829-4ABC-DEF0-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4E5F607-1829-4ABC-DEF0-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

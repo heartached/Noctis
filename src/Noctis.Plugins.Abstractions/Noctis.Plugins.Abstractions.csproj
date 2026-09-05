@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins</RootNamespace>
+    <AssemblyName>Noctis.Plugins.Abstractions</AssemblyName>
+    <Version>1.0.0</Version>
+    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, storage) and the visual-layer extension point.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Visual plugins return Avalonia controls; keep the version in step with the app. -->
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+  </ItemGroup>
+</Project>

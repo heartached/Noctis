@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Reference plugin. Build, then copy the output folder to <Noctis data>/plugins/Noctis.SamplePlugin/
+    (Settings → Plugins → "Open plugins folder" shows where). Only the plugin DLL is needed there:
+    Noctis.Plugins.Abstractions and Avalonia come from the app itself.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.SamplePlugin</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

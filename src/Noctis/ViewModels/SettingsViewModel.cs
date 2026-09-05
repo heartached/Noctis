@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
+using Noctis.Services.Plugins;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.Services.MediaServer;
@@ -61,6 +62,7 @@ public partial class SettingsViewModel : ViewModelBase
     public const string TabShortcuts = "Shortcuts";
     public const string TabStatistics = "Statistics";
     public const string TabIntegrations = "Integrations";
+    public const string TabPlugins = "Plugins";
     public const string TabAbout = "About";
 
     [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
@@ -74,6 +76,7 @@ public partial class SettingsViewModel : ViewModelBase
         new SettingsSection(TabLibrary, "FolderIcon"),
         new SettingsSection(TabShortcuts, "KeyboardIcon"),
         new SettingsSection(TabIntegrations, "PlugIcon"),
+        new SettingsSection(TabPlugins, "PuzzleIcon"),
         new SettingsSection(TabStatistics, "StatisticsIcon"),
         new SettingsSection(TabAbout, "InfoIcon"),
     };
@@ -88,7 +91,28 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsShortcutsTabSelected => SelectedSettingsTab == TabShortcuts;
     public bool IsStatisticsTabSelected => SelectedSettingsTab == TabStatistics;
     public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
+    public bool IsPluginsTabSelected => SelectedSettingsTab == TabPlugins;
+    public bool IsPluginsTabVisible => IsPluginsTabSelected;
     public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
+
+    // ── Plugins tab ──
+    /// <summary>The plugin host, attached by MainWindowViewModel once the player exists.</summary>
+    [ObservableProperty] private PluginHost? _plugins;
+
+    /// <summary>True once settings are read from disk; the plugin host waits for this so the disabled list is honoured.</summary>
+    public bool IsSettingsLoaded => _settingsLoaded;
+    public event EventHandler? SettingsLoaded;
+
+    [RelayCommand]
+    private void OpenPluginsFolder()
+    {
+        if (Plugins is null) return;
+        try { Directory.CreateDirectory(Plugins.PluginsDirectory); } catch { /* shown by the OS if it fails */ }
+        PlatformHelper.OpenUrl(Plugins.PluginsDirectory);
+    }
+
+    [RelayCommand]
+    private void ReloadPlugins() => Plugins?.LoadAll();
 
     public bool IsGeneralTabVisible => IsGeneralTabSelected;
     public bool IsAppearanceTabVisible => IsAppearanceTabSelected;
@@ -111,6 +135,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsShortcutsTabSelected));
         OnPropertyChanged(nameof(IsStatisticsTabSelected));
         OnPropertyChanged(nameof(IsIntegrationsTabSelected));
+        OnPropertyChanged(nameof(IsPluginsTabSelected));
+        OnPropertyChanged(nameof(IsPluginsTabVisible));
         OnPropertyChanged(nameof(IsAboutTabSelected));
         OnPropertyChanged(nameof(IsGeneralTabVisible));
         OnPropertyChanged(nameof(IsAppearanceTabVisible));
@@ -1601,6 +1627,7 @@ public partial class SettingsViewModel : ViewModelBase
             ViewStateLoaded?.Invoke(this, EventArgs.Empty);
 
             _settingsLoaded = true;
+            SettingsLoaded?.Invoke(this, EventArgs.Empty);
         }
         finally
         {

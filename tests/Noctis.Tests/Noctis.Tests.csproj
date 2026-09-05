@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Noctis\Noctis.csproj" />
+    <!-- The sample plugin is the plugin host's integration fixture (PluginHostTests). -->
+    <ProjectReference Include="..\..\samples\Noctis.SamplePlugin\Noctis.SamplePlugin.csproj" />
   </ItemGroup>
 </Project>
 

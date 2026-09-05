@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:plugins="using:Noctis.Services.Plugins"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
@@ -1292,6 +1293,71 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- PLUGINS                                             -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Plugins.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Plugins.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{loc:T Plugins.Warning}" FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="pill-action" Command="{Binding OpenPluginsFolderCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.OpenFolder}" FontSize="13"/>
+                        </Button>
+                        <Button Classes="pill-action" Command="{Binding ReloadPluginsCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand">
+                            <TextBlock Text="{loc:T Plugins.Reload}" FontSize="13"/>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Plugins.PluginsDirectory}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{loc:T Plugins.None}" FontSize="12" Opacity="0.5" Margin="22,8"
+                       IsVisible="{Binding !Plugins.Plugins.Count}"/>
+
+            <ItemsControl ItemsSource="{Binding Plugins.Plugins}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="4"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="plugins:LoadedPlugin">
+                        <Border Classes="setting-card">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
+                                        <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Status}" FontSize="10.5" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"
+                                               IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.4"
+                                               IsVisible="{Binding Author, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Text="{Binding Extensions}" FontSize="11" Opacity="0.6"
+                                               IsVisible="{Binding Extensions, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                               IsVisible="{Binding HasError}"/>
+                                </StackPanel>
+                                <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host (start/stop + persist). -->
+                                <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                      VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->

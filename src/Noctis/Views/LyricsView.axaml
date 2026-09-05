@@ -511,6 +511,15 @@
                                      IsActive="{Binding $self.IsVisible}"
                                      IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>
 
+        <!-- Plugin visual layers (Settings → Plugins): controls from IVisualLayerProvider,
+             filled by code-behind from the plugin host; behind the lyrics, above the backdrop. -->
+        <Panel x:Name="PluginLayerHost"
+               Grid.ColumnSpan="2"
+               Grid.RowSpan="2"
+               ZIndex="-1"
+               ClipToBounds="True"
+               IsHitTestVisible="False"/>
+
 
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- LEFT PANEL: Cover Art + Track Info + Controls         -->

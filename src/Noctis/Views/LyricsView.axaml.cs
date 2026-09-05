@@ -9,8 +9,10 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -76,6 +78,8 @@ public partial class LyricsView : UserControl
         LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
 
         _flow = new FlowingArtworkAnimator(this, FlowBackdrop, FlowLayer1, FlowLayer2, BeatGlow, GetBeatContext);
+        AttachedToVisualTree += (_, _) => HookPluginLayers();
+        DetachedFromVisualTree += (_, _) => UnhookPluginLayers();
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerReleasedEvent, OnTimelineSeekEnd, RoutingStrategies.Tunnel);
@@ -689,6 +693,47 @@ public partial class LyricsView : UserControl
                 or nameof(PlayerViewModel.LyricsBackgroundMediaPath) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
+    }
+
+    // ── Plugin visual layers ──
+    // Each running plugin's IVisualLayerProvider gets one control in PluginLayerHost while
+    // this page is attached; the host's VisualLayersChanged (enable/disable/reload) rebuilds
+    // them. A misbehaving plugin layer is skipped, never allowed to break the page.
+    private Services.Plugins.PluginHost? _pluginHost;
+
+    private void HookPluginLayers()
+    {
+        _pluginHost = App.Services?.GetService<MainWindowViewModel>()?.Plugins;
+        if (_pluginHost is null) return;
+        _pluginHost.VisualLayersChanged += OnPluginLayersChanged;
+        RebuildPluginLayers();
+    }
+
+    private void UnhookPluginLayers()
+    {
+        if (_pluginHost is not null) _pluginHost.VisualLayersChanged -= OnPluginLayersChanged;
+        _pluginHost = null;
+        PluginLayerHost.Children.Clear();
+    }
+
+    private void OnPluginLayersChanged(object? sender, EventArgs e) => RebuildPluginLayers();
+
+    private void RebuildPluginLayers()
+    {
+        PluginLayerHost.Children.Clear();
+        if (_pluginHost is null) return;
+        foreach (var provider in _pluginHost.VisualLayers)
+        {
+            try
+            {
+                var layer = provider.CreateLayer();
+                if (layer is not null) PluginLayerHost.Children.Add(layer);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"layer '{provider.Name}' failed: {ex.Message}");
+            }
+        }
     }
 
     private BeatContext GetBeatContext()
