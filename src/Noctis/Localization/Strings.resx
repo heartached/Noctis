@@ -48,10 +48,10 @@
 
   <!-- Import Playlist dialog -->
   <data name="Import.Title" xml:space="preserve"><value>Import Playlist</value></data>
-  <data name="Import.Subtitle" xml:space="preserve"><value>Import an M3U playlist, Exportify CSV or TuneMyMusic JSON export, or paste a Deezer playlist link, and match it against your library.</value></data>
+  <data name="Import.Subtitle" xml:space="preserve"><value>Import an M3U playlist, Exportify CSV or TuneMyMusic JSON export, or paste a Deezer or TIDAL playlist link, and match it against your library.</value></data>
   <data name="Import.ChooseFile" xml:space="preserve"><value>Choose file…</value></data>
   <data name="Import.DropHint" xml:space="preserve"><value>or drop a .csv / .json / .m3u file anywhere on this window</value></data>
-  <data name="Import.LinkLabel" xml:space="preserve"><value>Or paste a playlist link (Deezer imports directly)</value></data>
+  <data name="Import.LinkLabel" xml:space="preserve"><value>Or paste a playlist link (Deezer and TIDAL import directly)</value></data>
   <data name="Import.LinkButton" xml:space="preserve"><value>Import link</value></data>
   <data name="Import.PlaylistName" xml:space="preserve"><value>Playlist name</value></data>
   <data name="Import.Matched" xml:space="preserve"><value>Matched</value></data>

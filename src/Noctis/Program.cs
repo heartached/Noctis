@@ -301,6 +301,9 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings(),
                 sp.GetRequiredService<DeezerMetadataService>()));
+        services.AddSingleton<ITidalAuthService>(sp => new TidalAuthService(
+            sp.GetRequiredService<HttpClient>(),
+            sp.GetRequiredService<IPersistenceService>().DataDirectory));
         services.AddSingleton<IPlaylistImportService, PlaylistImportService>();
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process

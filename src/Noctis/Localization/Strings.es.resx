@@ -38,10 +38,10 @@
   <data name="Visualizer.Style.Wave" xml:space="preserve"><value>Onda</value></data>
 
   <data name="Import.Title" xml:space="preserve"><value>Importar lista</value></data>
-  <data name="Import.Subtitle" xml:space="preserve"><value>Importa una lista M3U, un CSV de Exportify o un JSON de TuneMyMusic, o pega un enlace de una lista de Deezer, y se buscará en tu biblioteca.</value></data>
+  <data name="Import.Subtitle" xml:space="preserve"><value>Importa una lista M3U, un CSV de Exportify o un JSON de TuneMyMusic, o pega un enlace de una lista de Deezer o TIDAL, y se buscará en tu biblioteca.</value></data>
   <data name="Import.ChooseFile" xml:space="preserve"><value>Elegir archivo…</value></data>
   <data name="Import.DropHint" xml:space="preserve"><value>o arrastra un archivo .csv / .json / .m3u a esta ventana</value></data>
-  <data name="Import.LinkLabel" xml:space="preserve"><value>O pega un enlace de lista (Deezer se importa directamente)</value></data>
+  <data name="Import.LinkLabel" xml:space="preserve"><value>O pega un enlace de lista (Deezer y TIDAL se importan directamente)</value></data>
   <data name="Import.LinkButton" xml:space="preserve"><value>Importar enlace</value></data>
   <data name="Import.PlaylistName" xml:space="preserve"><value>Nombre de la lista</value></data>
   <data name="Import.Matched" xml:space="preserve"><value>Encontradas</value></data>

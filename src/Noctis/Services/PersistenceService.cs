@@ -387,7 +387,7 @@ public class PersistenceService : IPersistenceService
         }
     }
 
-    private static string ProtectSecret(string value)
+    internal static string ProtectSecret(string value)
     {
         if (string.IsNullOrEmpty(value) || !OperatingSystem.IsWindows() ||
             value.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
@@ -405,7 +405,7 @@ public class PersistenceService : IPersistenceService
         }
     }
 
-    private static string UnprotectSecret(string value)
+    internal static string UnprotectSecret(string value)
     {
         if (string.IsNullOrEmpty(value) || !value.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
             return value;

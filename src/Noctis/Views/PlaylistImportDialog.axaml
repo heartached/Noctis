@@ -59,14 +59,15 @@
                                        FontSize="12" Opacity="0.55" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- Link import: public Deezer playlists/albums via the keyless api.deezer.com.
+                        <!-- Link import: public Deezer playlists/albums via the keyless api.deezer.com, and
+                             TIDAL playlists/albums through the user's own TIDAL sign-in (PKCE, TidalAuthService).
                              Spotify/Apple links are not accepted — their APIs no longer allow reading
                              other users' playlists without a per-app quota this app can't get. -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="{loc:T Import.LinkLabel}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <TextBox Grid.Column="0" Text="{Binding LinkText}"
-                                         Watermark="https://www.deezer.com/en/playlist/…" />
+                                         Watermark="https://www.deezer.com/en/playlist/…  ·  https://tidal.com/playlist/…" />
                                 <Button Grid.Column="1" Content="{loc:T Import.LinkButton}" Command="{Binding ImportLinkCommand}"
                                         IsEnabled="{Binding CanImportLink}"
                                         Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center" />

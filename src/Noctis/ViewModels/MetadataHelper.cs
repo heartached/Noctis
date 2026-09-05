@@ -86,7 +86,7 @@ public static class MetadataHelper
     public static async Task OpenPlaylistImportDialog()
     {
         var service = App.Services!.GetRequiredService<IPlaylistImportService>();
-        var vm = new PlaylistImportViewModel(service);
+        var vm = new PlaylistImportViewModel(service, App.Services!.GetRequiredService<ITidalAuthService>());
         var window = new PlaylistImportDialog(vm);
         await ShowDialogOwned(window);
     }
