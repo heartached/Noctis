@@ -21,147 +21,147 @@
   </resheader>
   <!-- Sidebar sections -->
   <data name="Nav.Home" xml:space="preserve">
-    <value>Inicio</value>
+    <value>Home</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Songs" xml:space="preserve">
-    <value>Canciones</value>
+    <value>Songs</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Albums" xml:space="preserve">
-    <value>Álbumes</value>
+    <value>Albums</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Artists" xml:space="preserve">
-    <value>Artistas</value>
+    <value>Artists</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Folders" xml:space="preserve">
-    <value>Carpetas</value>
+    <value>Folders</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Playlists" xml:space="preserve">
-    <value>Listas</value>
+    <value>Playlists</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Visualizer" xml:space="preserve">
-    <value>Visualizador</value>
+    <value>Visualizer</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Settings" xml:space="preserve">
-    <value>Ajustes</value>
+    <value>Settings</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Favorites" xml:space="preserve">
-    <value>Favoritos</value>
+    <value>Favorites</value>
     <comment>Sidebar</comment>
   </data>
   <data name="Nav.Server" xml:space="preserve">
-    <value>Servidor</value>
+    <value>Server</value>
     <comment>Sidebar, media server section</comment>
   </data>
   <data name="Nav.AudioCd" xml:space="preserve">
-    <value>CD de audio</value>
+    <value>Audio CD</value>
     <comment>Sidebar, optical drive section</comment>
   </data>
   <!-- Settings → General → Language -->
   <data name="Settings.Language.Title" xml:space="preserve">
-    <value>Idioma</value>
+    <value>Language</value>
   </data>
   <data name="Settings.Language.Description" xml:space="preserve">
-    <value>El idioma de los menús y etiquetas de la app. Las traducciones las hace la comunidad; ayuda en el enlace de abajo.</value>
+    <value>The language of the app's menus and labels. Translations are community-made; help at the link below.</value>
   </data>
   <data name="Settings.Language.System" xml:space="preserve">
-    <value>Idioma del sistema</value>
+    <value>System language</value>
     <comment>Picker entry: follow the OS language</comment>
   </data>
   <data name="Settings.Language.Help" xml:space="preserve">
-    <value>Ayuda a traducir Noctis</value>
+    <value>Help translate Noctis</value>
     <comment>Button</comment>
   </data>
   <!-- Visualizer page -->
   <data name="Visualizer.Title" xml:space="preserve">
-    <value>Visualizador</value>
+    <value>Visualizer</value>
   </data>
   <data name="Visualizer.Empty" xml:space="preserve">
-    <value>Reproduce algo para verlo moverse.</value>
+    <value>Play something to see it move.</value>
   </data>
   <data name="Visualizer.Style.Bars" xml:space="preserve">
-    <value>Barras</value>
+    <value>Bars</value>
   </data>
   <data name="Visualizer.Style.Mirror" xml:space="preserve">
-    <value>Espejo</value>
+    <value>Mirror</value>
   </data>
   <data name="Visualizer.Style.Wave" xml:space="preserve">
-    <value>Onda</value>
+    <value>Wave</value>
   </data>
   <!-- Import Playlist dialog -->
   <data name="Import.Title" xml:space="preserve">
-    <value>Importar lista</value>
+    <value>Import Playlist</value>
   </data>
   <data name="Import.Subtitle" xml:space="preserve">
-    <value>Importa una lista M3U, un CSV de Exportify o un JSON de TuneMyMusic, o pega un enlace de una lista de Deezer, y se buscará en tu biblioteca.</value>
+    <value>Import an M3U playlist, Exportify CSV or TuneMyMusic JSON export, or paste a Deezer playlist link, and match it against your library.</value>
   </data>
   <data name="Import.ChooseFile" xml:space="preserve">
-    <value>Elegir archivo…</value>
+    <value>Choose file…</value>
   </data>
   <data name="Import.DropHint" xml:space="preserve">
-    <value>o arrastra un archivo .csv / .json / .m3u a esta ventana</value>
+    <value>or drop a .csv / .json / .m3u file anywhere on this window</value>
   </data>
   <data name="Import.LinkLabel" xml:space="preserve">
-    <value>O pega un enlace de lista (Deezer se importa directamente)</value>
+    <value>Or paste a playlist link (Deezer imports directly)</value>
   </data>
   <data name="Import.LinkButton" xml:space="preserve">
-    <value>Importar enlace</value>
+    <value>Import link</value>
   </data>
   <data name="Import.PlaylistName" xml:space="preserve">
-    <value>Nombre de la lista</value>
+    <value>Playlist name</value>
   </data>
   <data name="Import.Matched" xml:space="preserve">
-    <value>Encontradas</value>
+    <value>Matched</value>
   </data>
   <data name="Import.Missing" xml:space="preserve">
-    <value>No encontradas</value>
+    <value>Missing</value>
   </data>
   <data name="Import.MissingHeader" xml:space="preserve">
-    <value>Canciones no encontradas en tu biblioteca</value>
+    <value>Missing tracks (not found in your library)</value>
   </data>
   <data name="Common.Close" xml:space="preserve">
-    <value>Cerrar</value>
+    <value>Close</value>
   </data>
   <data name="Common.Create" xml:space="preserve">
-    <value>Crear</value>
+    <value>Create</value>
   </data>
   <!-- Top bar -->
   <data name="Tab.Library" xml:space="preserve">
-    <value>Biblioteca</value>
+    <value>Library</value>
     <comment>Header before any section is chosen</comment>
   </data>
   <data name="Tab.Playlist" xml:space="preserve">
-    <value>Lista</value>
+    <value>Playlist</value>
     <comment>Header while inside a playlist</comment>
   </data>
   <data name="Tab.Statistics" xml:space="preserve">
-    <value>Estadísticas</value>
+    <value>Statistics</value>
   </data>
   <data name="Tab.Queue" xml:space="preserve">
-    <value>Cola</value>
+    <value>Queue</value>
   </data>
   <data name="Tab.Lyrics" xml:space="preserve">
-    <value>Letras</value>
+    <value>Lyrics</value>
   </data>
   <data name="TopBar.CoverFlow" xml:space="preserve">
     <value>Cover Flow</value>
   </data>
   <data name="TopBar.CoverCollage" xml:space="preserve">
-    <value>Collage de portadas</value>
+    <value>Cover Collage</value>
   </data>
   <data name="TopBar.SearchIn" xml:space="preserve">
-    <value>Buscar en {0}</value>
+    <value>Search in {0}</value>
     <comment>Search box watermark; {0} = section or artist name</comment>
   </data>
   <data name="TopBar.FeaturedArtists" xml:space="preserve">
-    <value>Artistas destacados</value>
+    <value>Featured Artists</value>
   </data>
   <!-- SettingsView.axaml (auto-migrated) -->
   <data name="Settings.ChangePictureTip" xml:space="preserve">
