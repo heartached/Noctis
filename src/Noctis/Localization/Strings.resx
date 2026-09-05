@@ -215,7 +215,7 @@
   <data name="Settings.Smaller" xml:space="preserve"><value>Smaller</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Larger</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Flowing Lyrics Background</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>The blurred album artwork drifts and pulses with the beat behind the lyrics on the lyrics page, the lyrics panel and the mini player. Artwork background only.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Off keeps the still blurred cover. Drift lets it wander and pulse with the beat on the lyrics page, the lyrics panel and the mini player. Styles from plugins (Settings → Plugins) replace it on the lyrics page. Artwork background only.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AudioVisualizer" xml:space="preserve"><value>Audio Visualizer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Draw a live spectrum of the music along the bottom of the lyrics page. Follows the sound as it is heard; rests flat while paused.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork colour</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1379,6 +1379,6 @@
   <data name="Settings.TidalTitle" xml:space="preserve"><value>TIDAL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TidalDescription" xml:space="preserve"><value>Sign in to import your TIDAL playlists by link. Noctis only asks to read playlists.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TidalConnected" xml:space="preserve"><value>Signed in — tidal.com links import directly.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.FlowingStyle" xml:space="preserve"><value>Style</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.FlowingStyleHint" xml:space="preserve"><value>Drift is built in. Other styles come from plugins (Settings → Plugins) and replace it on the lyrics page.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FlowingOff" xml:space="preserve"><value>Off</value><comment>Flowing-background picker row</comment></data>
+  <data name="Settings.FlowingDrift" xml:space="preserve"><value>Drift</value><comment>Flowing-background picker row (built-in style)</comment></data>
 </root>

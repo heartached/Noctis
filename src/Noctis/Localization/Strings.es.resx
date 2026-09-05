@@ -62,6 +62,6 @@
   <data name="Settings.TidalTitle" xml:space="preserve"><value>TIDAL</value></data>
   <data name="Settings.TidalDescription" xml:space="preserve"><value>Inicia sesión para importar tus listas de TIDAL por enlace. Noctis solo pide leer listas.</value></data>
   <data name="Settings.TidalConnected" xml:space="preserve"><value>Sesión iniciada: los enlaces de tidal.com se importan directamente.</value></data>
-  <data name="Settings.FlowingStyle" xml:space="preserve"><value>Estilo</value></data>
-  <data name="Settings.FlowingStyleHint" xml:space="preserve"><value>Drift viene integrado. Los demás estilos los aportan los plugins (Ajustes → Plugins) y lo sustituyen en la página de letras.</value></data>
+  <data name="Settings.FlowingOff" xml:space="preserve"><value>Desactivado</value></data>
+  <data name="Settings.FlowingDrift" xml:space="preserve"><value>Deriva</value></data>
 </root>

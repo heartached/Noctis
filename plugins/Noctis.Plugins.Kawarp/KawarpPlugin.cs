@@ -27,7 +27,12 @@ public sealed class KawarpPlugin : INoctisPlugin
     public void Initialize(IPluginHost host)
     {
         var settings = KawarpSettings.Load(Path.Combine(host.DataDirectory, "settings.json"));
-        host.RegisterVisualLayer(new Layer(host, settings));
+        host.RegisterVisualLayer(new Layer(host, settings, "Kawarp background"));
+        // Same flow without the beat swell — offered as its own style because the pulse can
+        // read as the page bouncing (user request), and a picker row beats a hidden file knob.
+        var calm = settings.Clamped();
+        calm.BeatReactive = false;
+        host.RegisterVisualLayer(new Layer(host, calm, "Kawarp background (no beat)"));
         host.Log($"initialized (warp {settings.WarpIntensity}, blur {settings.BlurPasses}, speed {settings.AnimationSpeed}, saturation {settings.Saturation})");
     }
 
@@ -37,8 +42,8 @@ public sealed class KawarpPlugin : INoctisPlugin
     {
         private readonly IPluginHost _host;
         private readonly KawarpSettings _settings;
-        public Layer(IPluginHost host, KawarpSettings settings) { _host = host; _settings = settings; }
-        public string Name => "Kawarp background";
+        public Layer(IPluginHost host, KawarpSettings settings, string name) { _host = host; _settings = settings; Name = name; }
+        public string Name { get; }
         public Control CreateLayer() => new KawarpControl(_host, _settings);
     }
 }

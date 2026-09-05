@@ -1402,6 +1402,7 @@ public partial class SettingsViewModel : ViewModelBase
         ShortcutService = shortcuts ?? new ShortcutService();
         ShortcutService.Changed += (_, _) => { if (_settingsLoaded) QueueSettingsSave(); };
         Shortcuts = new ShortcutsSettingsViewModel(ShortcutService);
+        RefreshFlowingStyleOptions();
 
         _library.ScanProgress += (_, count) =>
         {
@@ -3206,23 +3207,57 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnLyricsFlowingLightEnabledChanged(bool value)
     {
+        OnPropertyChanged(nameof(SelectedFlowingOption));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
 
-    // ── Flowing background style (Drift + plugin visual layers) ──
-    /// <summary>Selected style: "Drift" or a plugin layer name. Bound to the picker's SelectedItem.</summary>
+    // ── Flowing background (Off / Drift / plugin visual layers) ──
+    // One picker replaces the old on/off toggle + style pair: "off" and "on with Drift" looked
+    // near-identical to users, so the choice is now explicit. Storage stays the two fields
+    // (LyricsFlowingLightEnabled + LyricsFlowingStyle) so older settings files still load.
+
+    /// <summary>Selected style: "Drift" or a plugin layer name (kept even while Off).</summary>
     [ObservableProperty] private string _lyricsFlowingStyle = FlowingStyles.Drift;
 
-    /// <summary>"Drift" first, then every visual layer the loaded, enabled plugins offer.</summary>
-    public ObservableCollection<string> FlowingStyleOptions { get; } = new() { FlowingStyles.Drift };
+    /// <summary>One row of the flowing-background picker. Key is what is stored; Label is what is shown.</summary>
+    public sealed record FlowingOption(string Key, string Label)
+    {
+        public override string ToString() => Label;
+    }
 
-    /// <summary>The picker only appears once a plugin actually adds a style — no plugins, no extra row.</summary>
-    public bool HasFlowingStyleOptions => FlowingStyleOptions.Count > 1;
+    /// <summary>Key of the "Off" row — not a style, it clears <see cref="LyricsFlowingLightEnabled"/>.</summary>
+    public const string FlowingOff = "__off";
+
+    /// <summary>Off, Drift, then every visual layer the loaded, enabled plugins offer.</summary>
+    public ObservableCollection<FlowingOption> FlowingOptions { get; } = new();
+
+    /// <summary>The picker's selection: Off, or the active style. Setting it writes both stored fields.</summary>
+    public FlowingOption? SelectedFlowingOption
+    {
+        get
+        {
+            var key = LyricsFlowingLightEnabled ? LyricsFlowingStyle : FlowingOff;
+            return FlowingOptions.FirstOrDefault(o => o.Key == key) ?? FlowingOptions.FirstOrDefault();
+        }
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            if (value.Key == FlowingOff) LyricsFlowingLightEnabled = false;
+            else
+            {
+                LyricsFlowingStyle = value.Key;
+                LyricsFlowingLightEnabled = true;
+            }
+            OnPropertyChanged();
+        }
+    }
 
     partial void OnLyricsFlowingStyleChanged(string value)
     {
         if (value is null) { LyricsFlowingStyle = FlowingStyles.Drift; return; }
+        OnPropertyChanged(nameof(SelectedFlowingOption));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -3241,21 +3276,24 @@ public partial class SettingsViewModel : ViewModelBase
     {
         // Keep the current selection even when its plugin is off right now: the lyrics page
         // falls back to Drift on its own, and the choice comes back with the plugin.
-        var keep = LyricsFlowingStyle;
-        var names = new List<string> { FlowingStyles.Drift };
+        var options = new List<FlowingOption>
+        {
+            new(FlowingOff, Loc.T("Settings.FlowingOff")),
+            new(FlowingStyles.Drift, Loc.T("Settings.FlowingDrift")),
+        };
         if (Plugins is not null)
             foreach (var layer in Plugins.VisualLayers)
-                if (!string.IsNullOrWhiteSpace(layer.Name) && !names.Contains(layer.Name)) names.Add(layer.Name);
-        if (keep != FlowingStyles.Drift && !names.Contains(keep)) names.Add(keep);
+                if (!string.IsNullOrWhiteSpace(layer.Name) && options.All(o => o.Key != layer.Name))
+                    options.Add(new FlowingOption(layer.Name, layer.Name));
+        if (options.All(o => o.Key != LyricsFlowingStyle))
+            options.Add(new FlowingOption(LyricsFlowingStyle, LyricsFlowingStyle));
 
-        if (!names.SequenceEqual(FlowingStyleOptions))
+        if (!options.SequenceEqual(FlowingOptions))
         {
-            FlowingStyleOptions.Clear();
-            foreach (var n in names) FlowingStyleOptions.Add(n);
-            // Rebuilding the items momentarily nulls a ComboBox's SelectedItem; put it back.
-            LyricsFlowingStyle = keep;
+            FlowingOptions.Clear();
+            foreach (var o in options) FlowingOptions.Add(o);
         }
-        OnPropertyChanged(nameof(HasFlowingStyleOptions));
+        OnPropertyChanged(nameof(SelectedFlowingOption));
     }
 
     partial void OnLyricsVisualizerEnabledChanged(bool value)

@@ -2417,29 +2417,16 @@
                  every animated artwork background; the Style row (only when a plugin such as
                  Kawarp adds a visual layer, issue #58) picks which one draws on the lyrics page. -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.BlurredAlbumArtworkDrifts}"
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LyricsFlowingLightEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasFlowingStyleOptions}"
-                          IsEnabled="{Binding LyricsFlowingLightEnabled}">
-                        <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="{loc:T Settings.FlowingStyle}" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.FlowingStyleHint}"
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <ComboBox Grid.Column="1" MinWidth="160" VerticalAlignment="Center"
-                                  ItemsSource="{Binding FlowingStyleOptions}"
-                                  SelectedItem="{Binding LyricsFlowingStyle, Mode=TwoWay}"/>
-                    </Grid>
-                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BlurredAlbumArtworkDrifts}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
+                              ItemsSource="{Binding FlowingOptions}"
+                              SelectedItem="{Binding SelectedFlowingOption, Mode=TwoWay}"/>
+                </Grid>
             </Border>
 
             <!-- Live audio visualizer behind the lyrics page (Discord feature request).
