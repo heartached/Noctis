@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.SpectrogramWindow"
         x:DataType="vm:SpectrogramViewModel"
-        Title="Spectrogram"
+        Title="{loc:T Spectrogram.Spectrogram}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -33,7 +34,7 @@
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding InfoLine}" FontSize="12" Opacity="0.5" Margin="0,4,0,0" />
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="Spectrogram" FontSize="12" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="1" Text="{loc:T Spectrogram.Spectrogram}" FontSize="12" FontWeight="SemiBold"
                                Opacity="0.4" VerticalAlignment="Top" />
                 </Grid>
 
@@ -43,7 +44,7 @@
                         <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" TextWrapping="Wrap" />
                         <Button Grid.Column="1"
-                                Content="Close"
+                                Content="{loc:T Spectrogram.Close}"
                                 Command="{Binding CloseCommand}"
                                 Width="110"
                                 Padding="0,8"
@@ -77,7 +78,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     IsVisible="{Binding IsBusy}">
-                            <TextBlock Text="Analyzing audio…" FontSize="14" FontWeight="SemiBold"
+                            <TextBlock Text="{loc:T Spectrogram.AnalyzingAudio}" FontSize="14" FontWeight="SemiBold"
                                        Foreground="#DDFFFFFF" HorizontalAlignment="Center"
                                        IsVisible="{Binding !HasError}" />
                             <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}"

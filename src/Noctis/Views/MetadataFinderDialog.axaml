@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.MetadataFinderDialog"
         x:DataType="vm:MetadataFinderViewModel"
-        Title="Find Metadata"
+        Title="{loc:T MetadataFinder.FindMetadata}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -23,8 +24,8 @@
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="Find Metadata" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Identify poorly-tagged tracks and review the proposed tags before applying them."
+                    <TextBlock Text="{loc:T MetadataFinder.FindMetadata}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{loc:T MetadataFinder.IdentifyPoorlyTaggedTracks}"
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding SourceHint}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
@@ -33,17 +34,17 @@
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="Identify all" Command="{Binding IdentifyAllCommand}"
+                        <Button Grid.Column="1" Content="{loc:T MetadataFinder.IdentifyAll}" Command="{Binding IdentifyAllCommand}"
                                 IsEnabled="{Binding !IsBusy}"
                                 Width="110" Padding="0,8" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="Close" Command="{Binding CancelCommand}"
+                        <Button Grid.Column="2" Content="{loc:T MetadataFinder.Close}" Command="{Binding CancelCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
                                 Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="3" Content="Apply" Command="{Binding ApplySelectedCommand}"
+                        <Button Grid.Column="3" Content="{loc:T MetadataFinder.Apply}" Command="{Binding ApplySelectedCommand}"
                                 IsEnabled="{Binding HasSelection}"
                                 Width="100" Padding="0,8"
                                 Classes="accent-btn"
@@ -70,14 +71,14 @@
                                             </Grid>
                                             <Grid ColumnDefinitions="*,16,*">
                                                 <StackPanel Grid.Column="0" Spacing="1">
-                                                    <TextBlock Text="Current" FontSize="10" Opacity="0.5" />
+                                                    <TextBlock Text="{loc:T MetadataFinder.Current}" FontSize="10" Opacity="0.5" />
                                                     <TextBlock Text="{Binding CurrentTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding CurrentArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding CurrentAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" Opacity="0.5" />
                                                 <StackPanel Grid.Column="2" Spacing="1">
-                                                    <TextBlock Text="Proposed" FontSize="10" Opacity="0.5" />
+                                                    <TextBlock Text="{loc:T MetadataFinder.Proposed}" FontSize="10" Opacity="0.5" />
                                                     <TextBlock Text="{Binding ProposedTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding ProposedArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding ProposedAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />

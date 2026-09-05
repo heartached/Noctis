@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
@@ -342,7 +343,7 @@
                                     HorizontalAlignment="Left"
                                     HorizontalContentAlignment="Left"
                                     Cursor="Hand"
-                                    ToolTip.Tip="Rename playlist"
+                                    ToolTip.Tip="{loc:T Playlist.RenamePlaylistTip}"
                                     Command="{Binding StartRenameCommand}"
                                     IsVisible="{Binding !IsRenamingName}">
                                 <TextBlock Text="{Binding Name}"
@@ -368,7 +369,7 @@
                         <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="9,3"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding IsSmartPlaylist}">
-                            <TextBlock Text="Smart" FontSize="10" Foreground="{DynamicResource AccentForegroundBrush}"
+                            <TextBlock Text="{loc:T Playlist.Smart}" FontSize="10" Foreground="{DynamicResource AccentForegroundBrush}"
                                        FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
@@ -403,7 +404,7 @@
                             Cursor="Hand"
                             Margin="0,8,0,0"
                             Command="{Binding OpenDescriptionCommand}"
-                            ToolTip.Tip="View playlist description"
+                            ToolTip.Tip="{loc:T Playlist.ViewPlaylistDescriptionTip}"
                             IsVisible="{Binding HasDescription}">
                         <TextBlock Text="{Binding PlaylistDescription}"
                                    FontSize="12.5"
@@ -424,7 +425,7 @@
                             Margin="0,8,0,0"
                             Command="{Binding AddDescriptionCommand}"
                             IsVisible="{Binding !HasDescription}">
-                        <TextBlock Text="Add a description…"
+                        <TextBlock Text="{loc:T Playlist.AddDescription}"
                                    FontSize="12.5"
                                    FontStyle="Italic"
                                    Opacity="0.45" />
@@ -441,13 +442,13 @@
                                 Padding="24,8"
                                 FontWeight="Bold"
                                 Cursor="Hand"
-                                ToolTip.Tip="Play">
+                                ToolTip.Tip="{loc:T Playlist.PlayTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <PathIcon Data="{StaticResource PlaySolidIcon}"
                                           Width="13" Height="13"
                                           Foreground="{DynamicResource AccentForegroundBrush}"
                                           VerticalAlignment="Center" />
-                                <TextBlock Text="Play" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
+                                <TextBlock Text="{loc:T Playlist.PlayTip}" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
                             </StackPanel>
                         </Button>
                         <!-- Shuffle: solid accent pill matching the Albums/Singles header (layered icon) -->
@@ -460,7 +461,7 @@
                                 Padding="20,8"
                                 FontWeight="Bold"
                                 Cursor="Hand"
-                                ToolTip.Tip="Shuffle">
+                                ToolTip.Tip="{loc:T Playlist.ShuffleTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid Width="16" Height="16" VerticalAlignment="Center">
                                     <PathIcon Data="{StaticResource ShuffleIcon}"
@@ -472,7 +473,7 @@
                                               Opacity="0.85"
                                               Margin="0.6,0,0,0" />
                                 </Grid>
-                                <TextBlock Text="Shuffle" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
+                                <TextBlock Text="{loc:T Playlist.ShuffleTip}" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
                             </StackPanel>
                         </Button>
                         <Button Classes="glass-pill"
@@ -481,41 +482,41 @@
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
                                 Cursor="Hand"
-                                ToolTip.Tip="Options">
+                                ToolTip.Tip="{loc:T Playlist.OptionsTip}">
                             <PathIcon Data="{StaticResource MoreDotsIcon}"
                                       Width="13" Height="13" />
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedLeft"
                                             PlacementConstraintAdjustment="None"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                    <MenuItem Header="Play Next"
+                                    <MenuItem Header="{loc:T Playlist.PlayNext}"
                                               Command="{Binding PlayNextAllCommand}">
                                         <MenuItem.Icon>
                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="Add to Queue"
+                                    <MenuItem Header="{loc:T Playlist.AddQueue}"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
                                             <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Add Songs"
+                                    <MenuItem Header="{loc:T Playlist.AddSongs}"
                                               Command="{Binding AddSongsCommand}"
                                               IsVisible="{Binding IsManualPlaylist}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="M11 5H13V11H19V13H13V19H11V13H5V11H11V5Z" Width="13" Height="13" />
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="Edit Playlist"
+                                    <MenuItem Header="{loc:T Playlist.EditPlaylist}"
                                               Command="{Binding EditPlaylistCommand}">
                                         <MenuItem.Icon>
                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Delete Playlist" Classes="danger"
+                                    <MenuItem Header="{loc:T Playlist.DeletePlaylist}" Classes="danger"
                                               Command="{Binding DeletePlaylistCommand}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
@@ -532,25 +533,25 @@
                             Padding="12,6"
                             HorizontalAlignment="Left"
                             Cursor="Hand"
-                            ToolTip.Tip="Change the displayed order. Manual is your saved playlist order.">
+                            ToolTip.Tip="{loc:T Playlist.ChangeDisplayedOrderManualTip}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding SortLabel, StringFormat='Sort: {0}'}"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBlock Text="&#xE70D;"
+                            <TextBlock Text="{loc:T Playlist.Text}"
                                        FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
                                        FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
                         </StackPanel>
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedLeft"
                                         helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                <MenuItem Header="Manual (playlist order)" Command="{Binding SetSortCommand}" CommandParameter="Manual" />
-                                <MenuItem Header="Title" Command="{Binding SetSortCommand}" CommandParameter="Title" />
-                                <MenuItem Header="Artist" Command="{Binding SetSortCommand}" CommandParameter="Artist" />
-                                <MenuItem Header="Album" Command="{Binding SetSortCommand}" CommandParameter="Album" />
-                                <MenuItem Header="Duration" Command="{Binding SetSortCommand}" CommandParameter="Duration" />
-                                <MenuItem Header="Recently Added" Command="{Binding SetSortCommand}" CommandParameter="RecentlyAdded" />
-                                <MenuItem Header="Release Date (Oldest)" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateOldest" />
-                                <MenuItem Header="Release Date (Newest)" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateNewest" />
+                                <MenuItem Header="{loc:T Playlist.ManualPlaylistOrder}" Command="{Binding SetSortCommand}" CommandParameter="Manual" />
+                                <MenuItem Header="{loc:T Playlist.Title}" Command="{Binding SetSortCommand}" CommandParameter="Title" />
+                                <MenuItem Header="{loc:T Playlist.Artist}" Command="{Binding SetSortCommand}" CommandParameter="Artist" />
+                                <MenuItem Header="{loc:T Playlist.Album}" Command="{Binding SetSortCommand}" CommandParameter="Album" />
+                                <MenuItem Header="{loc:T Playlist.Duration}" Command="{Binding SetSortCommand}" CommandParameter="Duration" />
+                                <MenuItem Header="{loc:T Playlist.RecentlyAdded}" Command="{Binding SetSortCommand}" CommandParameter="RecentlyAdded" />
+                                <MenuItem Header="{loc:T Playlist.ReleaseDateOldest}" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateOldest" />
+                                <MenuItem Header="{loc:T Playlist.ReleaseDateNewest}" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateNewest" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -567,12 +568,12 @@
                                 Cursor="Hand"
                                 Command="{Binding OpenFeaturedArtistsCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="FEATURED ARTISTS"
+                                <TextBlock Text="{loc:T Playlist.FEATUREDARTISTS}"
                                            FontSize="11"
                                            FontWeight="Bold"
                                            Opacity="0.6"
                                            LetterSpacing="1" />
-                                <TextBlock Text="&#xE76C;"
+                                <TextBlock Text="{loc:T Playlist.Text2}"
                                            FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
                                            FontSize="10"
                                            Opacity="0.55"
@@ -640,14 +641,14 @@
                                 IsVisible="{Binding HasSuggestions}">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0"
-                                       Text="SUGGESTED"
+                                       Text="{loc:T Playlist.SUGGESTED}"
                                        FontSize="11"
                                        FontWeight="Bold"
                                        Opacity="0.6"
                                        LetterSpacing="1"
                                        Margin="2,0,0,0"
                                        VerticalAlignment="Center"
-                                       ToolTip.Tip="From your library, based on the artists in this playlist" />
+                                       ToolTip.Tip="{loc:T Playlist.FromLibraryBasedArtistsTip}" />
                             <Button Grid.Column="1"
                                     Classes="featured-header"
                                     Background="Transparent"
@@ -655,9 +656,9 @@
                                     Padding="4,2"
                                     MinHeight="0"
                                     Cursor="Hand"
-                                    ToolTip.Tip="Refresh suggestions"
+                                    ToolTip.Tip="{loc:T Playlist.RefreshSuggestionsTip}"
                                     Command="{Binding RefreshSuggestionsCommand}">
-                                <TextBlock Text="&#xE72C;"
+                                <TextBlock Text="{loc:T Playlist.Text3}"
                                            FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
                                            FontSize="11"
                                            Opacity="0.55" />
@@ -711,7 +712,7 @@
                                                         Classes="explicit-badge compact"
                                                         Margin="6,0,0,0"
                                                         IsVisible="{Binding IsExplicit}"
-                                                        ToolTip.Tip="Explicit">
+                                                        ToolTip.Tip="{loc:T Playlist.ExplicitTip}">
                                                     <TextBlock Text="E"
                                                                Classes="explicit-badge-text compact"
                                                                FontSize="9"
@@ -733,7 +734,7 @@
                                                 VerticalContentAlignment="Center"
                                                 VerticalAlignment="Center"
                                                 Cursor="Hand"
-                                                ToolTip.Tip="Add to this playlist"
+                                                ToolTip.Tip="{loc:T Playlist.AddPlaylistTip}"
                                                 Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).AddSuggestedCommand}"
                                                 CommandParameter="{Binding}">
                                             <PathIcon Data="{StaticResource AddIcon}"
@@ -763,18 +764,18 @@
                     <TextBlock Grid.Column="0" Text="#"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="Title"
+                    <TextBlock Grid.Column="2" Text="{loc:T Playlist.Title}"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                Margin="12,0,0,0" />
-                    <TextBlock Grid.Column="3" Text="Album"
+                    <TextBlock Grid.Column="3" Text="{loc:T Playlist.Album}"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
-                    <TextBlock Grid.Column="4" Text="Added"
+                    <TextBlock Grid.Column="4" Text="{loc:T Playlist.Added}"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Center" />
-                    <TextBlock Grid.Column="5" Text="Favorite"
+                    <TextBlock Grid.Column="5" Text="{loc:T Playlist.Favorite}"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Center" />
-                    <TextBlock Grid.Column="6" Text="Time"
+                    <TextBlock Grid.Column="6" Text="{loc:T Playlist.Time}"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Left" />
                     <TextBlock Grid.Column="7" />
@@ -830,7 +831,7 @@
                                                    Opacity="0.4"
                                                    HorizontalAlignment="Center" />
                                         <TextBlock Classes="row-grip"
-                                                   Text="&#xE784;"
+                                                   Text="{loc:T Playlist.Text4}"
                                                    FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
                                                    FontSize="12"
                                                    Opacity="0"
@@ -867,7 +868,7 @@
                                                     HorizontalContentAlignment="Center"
                                                     VerticalContentAlignment="Center"
                                                     Cursor="Hand"
-                                                    ToolTip.Tip="Play from here"
+                                                    ToolTip.Tip="{loc:T Playlist.PlayFromHereTip}"
                                                     Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).PlayFromCommand}"
                                                     CommandParameter="{Binding}">
                                                 <PathIcon Data="{StaticResource PlaySolidIcon}"
@@ -911,7 +912,7 @@
                                                     Classes="explicit-badge compact"
                                                     Margin="6,0,0,0"
                                                     IsVisible="{Binding IsExplicit}"
-                                                    ToolTip.Tip="Explicit">
+                                                    ToolTip.Tip="{loc:T Playlist.ExplicitTip}">
                                                 <TextBlock Text="E"
                                                            Classes="explicit-badge-text compact"
                                                            FontSize="9"
@@ -925,8 +926,8 @@
                                                     BorderThickness="1"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
                                                     IsVisible="{Binding DateAdded, Converter={StaticResource RecentAdded}}"
-                                                    ToolTip.Tip="Added in the last 7 days">
-                                                <TextBlock Text="NEW"
+                                                    ToolTip.Tip="{loc:T Playlist.AddedLast7DaysTip}">
+                                                <TextBlock Text="{loc:T Playlist.NEW}"
                                                            FontSize="8"
                                                            FontWeight="Bold"
                                                            Foreground="{DynamicResource AccentTextExactBrush}" />
@@ -979,7 +980,7 @@
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Cursor="Hand"
-                                            ToolTip.Tip="Favorite"
+                                            ToolTip.Tip="{loc:T Playlist.Favorite}"
                                             Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ToggleFavoriteSingleCommand}"
                                             CommandParameter="{Binding}">
                                         <!-- Shared HeartIcon (pops both ways); the faint-heart styles
@@ -1008,7 +1009,7 @@
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             Cursor="Hand"
-                                            ToolTip.Tip="Options"
+                                            ToolTip.Tip="{loc:T Playlist.OptionsTip}"
                                             Tag="{Binding}"
                                             Click="OnOptionsButtonClick">
                                         <PathIcon Classes="row-dots-icon"
@@ -1094,17 +1095,17 @@
                                 VerticalAlignment="Center"
                                 Spacing="8"
                                 IsVisible="{Binding ShowEmptyManual}">
-                        <TextBlock Text="This playlist is empty"
+                        <TextBlock Text="{loc:T Playlist.PlaylistEmpty}"
                                    FontSize="16"
                                    Opacity="0.5"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
-                        <TextBlock Text="Drag tracks here from the library"
+                        <TextBlock Text="{loc:T Playlist.DragTracksHereFrom}"
                                    FontSize="13"
                                    Opacity="0.3"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
-                        <Button Content="Add Songs"
+                        <Button Content="{loc:T Playlist.AddSongs}"
                                 Command="{Binding AddSongsCommand}"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentButtonBackground}"
@@ -1123,12 +1124,12 @@
                                 VerticalAlignment="Center"
                                 Spacing="8"
                                 IsVisible="{Binding ShowEmptySmart}">
-                        <TextBlock Text="No tracks match the current rules"
+                        <TextBlock Text="{loc:T Playlist.NoTracksMatchCurrent}"
                                    FontSize="16"
                                    Opacity="0.5"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
-                        <TextBlock Text="Try adjusting the smart playlist rules"
+                        <TextBlock Text="{loc:T Playlist.TryAdjustingSmartPlaylist}"
                                    FontSize="13"
                                    Opacity="0.3"
                                    HorizontalAlignment="Center"
@@ -1140,12 +1141,12 @@
                                 VerticalAlignment="Center"
                                 Spacing="8"
                                 IsVisible="{Binding ShowNoResults}">
-                        <TextBlock Text="No results"
+                        <TextBlock Text="{loc:T Playlist.NoResults}"
                                    FontSize="16"
                                    Opacity="0.5"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
-                        <TextBlock Text="No tracks in this playlist match your search"
+                        <TextBlock Text="{loc:T Playlist.NoTracksPlaylistMatch}"
                                    FontSize="13"
                                    Opacity="0.3"
                                    HorizontalAlignment="Center"
@@ -1171,22 +1172,22 @@
                                        VerticalAlignment="Center"
                                        Margin="0,0,8,0" />
                             <Button Click="OnSelectionAddToPlaylistClick"
-                                    ToolTip.Tip="Add the selected tracks to a playlist">
-                                <TextBlock Text="Add to playlist" FontSize="12" FontWeight="SemiBold" />
+                                    ToolTip.Tip="{loc:T Playlist.AddSelectedTracksPlaylistTip}">
+                                <TextBlock Text="{loc:T Playlist.AddPlaylist}" FontSize="12" FontWeight="SemiBold" />
                             </Button>
                             <Button Click="OnSelectionFavoriteClick"
-                                    ToolTip.Tip="Toggle favorite on the selected tracks">
-                                <TextBlock Text="Favorite" FontSize="12" FontWeight="SemiBold" />
+                                    ToolTip.Tip="{loc:T Playlist.ToggleFavoriteSelectedTracksTip}">
+                                <TextBlock Text="{loc:T Playlist.Favorite}" FontSize="12" FontWeight="SemiBold" />
                             </Button>
                             <Button Click="OnSelectionRemoveClick"
                                     IsVisible="{Binding IsManualPlaylist}"
-                                    ToolTip.Tip="Remove the selected tracks from this playlist">
-                                <TextBlock Text="Remove" FontSize="12" FontWeight="SemiBold" />
+                                    ToolTip.Tip="{loc:T Playlist.RemoveSelectedTracksFromTip}">
+                                <TextBlock Text="{loc:T Playlist.Remove}" FontSize="12" FontWeight="SemiBold" />
                             </Button>
                             <Button Click="OnSelectionClearClick"
                                     Padding="8,5"
-                                    ToolTip.Tip="Clear selection">
-                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.6" />
+                                    ToolTip.Tip="{loc:T Playlist.ClearSelectionTip}">
+                                <TextBlock Text="{loc:T Playlist.Text5}" FontSize="11" Opacity="0.6" />
                             </Button>
                         </StackPanel>
                     </Border>

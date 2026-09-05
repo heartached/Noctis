@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:svc="using:Noctis.Services"
         x:Class="Noctis.Views.WrapDialog"
         x:DataType="vm:WrapViewModel"
-        Title="Noctis Wrap"
+        Title="{loc:T Wrap.NoctisWrap}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -102,7 +103,7 @@
                 <!-- Header -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="14">
                     <TextBlock FontSize="22" FontWeight="Bold" VerticalAlignment="Center">
-                        <Run Text="Noctis Wrap"/>
+                        <Run Text="{loc:T Wrap.NoctisWrap}"/>
                         <Run Text="{Binding PeriodLabel}" Foreground="{DynamicResource AccentTextBrush}"/>
                     </TextBlock>
                 </StackPanel>
@@ -133,16 +134,16 @@
                                           SelectedItem="{Binding SelectedYear}"
                                           MinWidth="96"
                                           VerticalAlignment="Center"
-                                          ToolTip.Tip="Browse your saved Wrap years"/>
+                                          ToolTip.Tip="{loc:T Wrap.BrowseSavedWrapYearsTip}"/>
                                 <Button Classes="share-pill" Classes.active="{Binding IsYearMode}"
-                                        Content="Full year" Command="{Binding SelectYearCommand}"
+                                        Content="{loc:T Wrap.FullYear}" Command="{Binding SelectYearCommand}"
                                         IsVisible="{Binding IsCurrentYear}"/>
                                 <Button Classes="share-pill" Classes.active="{Binding IsMonthMode}"
-                                        Content="This month" Command="{Binding SelectMonthCommand}"
+                                        Content="{loc:T Wrap.Month}" Command="{Binding SelectMonthCommand}"
                                         IsVisible="{Binding IsCurrentYear}"/>
                             </StackPanel>
 
-                            <TextBlock Text="No plays recorded for this period yet. Listen to some music (or use Test data to preview)."
+                            <TextBlock Text="{loc:T Wrap.NoPlaysRecordedPeriod}"
                                        FontSize="13" Opacity="0.6" TextWrapping="Wrap"
                                        IsVisible="{Binding !HasData}"/>
 
@@ -151,25 +152,25 @@
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding TotalMinutesText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Minutes listened"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.MinutesListened}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding TotalPlaysText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Tracks played"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.TracksPlayed}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueArtistsText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Different artists"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.DifferentArtists}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueAlbumsText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Albums explored"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.AlbumsExplored}"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
@@ -177,25 +178,25 @@
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueTracksText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Unique tracks"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.UniqueTracks}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding LosslessText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Lossless plays"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.LosslessPlays}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding HiResText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Hi-Res plays"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.HiResPlays}"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="wrap-stat-card">
                                     <StackPanel Spacing="2">
                                         <TextBlock Classes="wrap-stat-value" Text="{Binding TopGenreText}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="Top genre"/>
+                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.TopGenre}"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
@@ -203,7 +204,7 @@
                             <!-- Top lists -->
                             <Grid ColumnDefinitions="*,12,*" IsVisible="{Binding HasData}">
                                 <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Classes="wrap-list-header" Text="TOP ARTISTS"/>
+                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPARTISTS}"/>
                                     <ItemsControl ItemsSource="{Binding TopArtists}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="svc:WrapEntry">
@@ -216,7 +217,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <TextBlock Classes="wrap-list-header" Text="TOP ALBUMS" Margin="0,10,0,6"/>
+                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPALBUMS}" Margin="0,10,0,6"/>
                                     <ItemsControl ItemsSource="{Binding TopAlbums}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="svc:WrapEntry">
@@ -235,7 +236,7 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Spacing="2">
-                                    <TextBlock Classes="wrap-list-header" Text="TOP SONGS"/>
+                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPSONGS}"/>
                                     <ItemsControl ItemsSource="{Binding TopTracks}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="svc:WrapEntry">
@@ -252,7 +253,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <TextBlock Classes="wrap-list-header" Text="TOP GENRES" Margin="0,10,0,6"/>
+                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPGENRES}" Margin="0,10,0,6"/>
                                     <ItemsControl ItemsSource="{Binding TopGenres}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="svc:WrapEntry">
@@ -275,7 +276,7 @@
                             Background="#18000000"
                             CornerRadius="8">
                         <Panel>
-                            <TextBlock Text="No data to preview"
+                            <TextBlock Text="{loc:T Wrap.NoDataPreview}"
                                        FontSize="13" Opacity="0.5"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -313,13 +314,13 @@
                             Margin="0,0,8,0"
                             Click="OnCopyClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="Copy" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Wrap.Copy}" VerticalAlignment="Center"/>
                     </Button>
                     <Button Grid.Column="4"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="Save" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Wrap.Save}" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Grid>

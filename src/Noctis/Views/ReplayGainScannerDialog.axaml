@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.ReplayGainScannerDialog"
         x:DataType="vm:ReplayGainScannerViewModel"
-        Title="Scan ReplayGain"
+        Title="{loc:T ReplayGainScanner.ScanReplayGain}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -24,7 +25,7 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
                     <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Measure each track's loudness (EBU R128) and write ReplayGain tags."
+                    <TextBlock Text="{loc:T ReplayGainScanner.MeasureEachTrackS}"
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -32,7 +33,7 @@
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}"
+                        <Button Grid.Column="1" Content="{loc:T ReplayGainScanner.Cancel}" Command="{Binding CancelCommand}"
                                 IsVisible="{Binding ShowCancel}"
                                 Width="100" Padding="0,8" FontWeight="Bold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
@@ -53,11 +54,11 @@
                     <StackPanel Spacing="14">
                         <CheckBox Classes="metadata-pill-checkbox"
                                   IsChecked="{Binding AlbumMode}"
-                                  Content="Compute album gain (group by AlbumId)" />
+                                  Content="{loc:T ReplayGainScanner.ComputeAlbumGainGroup}" />
 
                         <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
 
-                        <TextBlock Text="Queue" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBlock Text="{loc:T ReplayGainScanner.Queue}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="380">
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Jobs}">

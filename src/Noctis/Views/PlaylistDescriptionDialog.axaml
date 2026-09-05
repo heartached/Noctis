@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.PlaylistDescriptionDialog"
         x:DataType="vm:PlaylistViewModel"
-        Title="Playlist Description"
+        Title="{loc:T PlaylistDescription.PlaylistDescription}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -135,32 +136,32 @@
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
                             <Border Grid.Row="0" Grid.Column="0" Classes="playlist-desc-fact" Margin="0,0,4,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="playlist-desc-fact-label" Text="CREATED" />
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="{loc:T PlaylistDescription.CREATED}" />
                                     <TextBlock Classes="playlist-desc-fact-value" Text="{Binding CreatedDateValue}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="0" Grid.Column="1" Classes="playlist-desc-fact" Margin="4,0,0,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="playlist-desc-fact-label" Text="UPDATED" />
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="{loc:T PlaylistDescription.UPDATED}" />
                                     <TextBlock Classes="playlist-desc-fact-value" Text="{Binding ModifiedDateValue}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="1" Grid.Column="0" Classes="playlist-desc-fact" Margin="0,0,4,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="playlist-desc-fact-label" Text="TRACKS" />
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="{loc:T PlaylistDescription.TRACKS}" />
                                     <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TrackCount}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="1" Grid.Column="1" Classes="playlist-desc-fact" Margin="4,0,0,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="playlist-desc-fact-label" Text="DURATION" />
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="{loc:T PlaylistDescription.DURATION}" />
                                     <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TotalDuration}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Classes="playlist-desc-fact"
                                     IsVisible="{Binding TotalSize, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="playlist-desc-fact-label" Text="SIZE" />
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="{loc:T PlaylistDescription.SIZE}" />
                                     <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TotalSize}" />
                                 </StackPanel>
                             </Border>
@@ -190,7 +191,7 @@
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Cursor="Hand"
-                                ToolTip.Tip="Edit description"
+                                ToolTip.Tip="{loc:T PlaylistDescription.EditDescriptionTip}"
                                 Command="{Binding StartDescriptionEditCommand}"
                                 IsVisible="{Binding !IsDescriptionEditing}">
                             <PathIcon Data="{StaticResource EditIcon}"
@@ -248,7 +249,7 @@
                                 Spacing="8"
                                 Margin="0,14,0,16"
                                 IsVisible="{Binding IsDescriptionEditing}">
-                        <Button Content="Cancel"
+                        <Button Content="{loc:T PlaylistDescription.Cancel}"
                                 Command="{Binding CancelDescriptionEditCommand}"
                                 Padding="12,6"
                                 FontSize="12"
@@ -258,7 +259,7 @@
                                 Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 Classes="album-desc-btn" />
-                        <Button Content="Save"
+                        <Button Content="{loc:T PlaylistDescription.Save}"
                                 Command="{Binding SaveDescriptionEditCommand}"
                                 Padding="12,6"
                                 FontSize="12"

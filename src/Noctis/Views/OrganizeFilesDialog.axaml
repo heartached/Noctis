@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.OrganizeFilesDialog"
         x:DataType="vm:OrganizeFilesViewModel"
-        Title="Organize Files"
+        Title="{loc:T OrganizeFiles.OrganizeFiles}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -23,8 +24,8 @@
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="Organize Files" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Rename and move files into a tag-derived folder structure. Review every move before applying."
+                    <TextBlock Text="{loc:T OrganizeFiles.OrganizeFiles}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{loc:T OrganizeFiles.RenameMoveFilesInto}"
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -32,17 +33,17 @@
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="Undo last" Command="{Binding UndoLastCommand}"
+                        <Button Grid.Column="1" Content="{loc:T OrganizeFiles.UndoLast}" Command="{Binding UndoLastCommand}"
                                 IsEnabled="{Binding CanUndo}"
                                 Width="100" Padding="0,8" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
+                        <Button Grid.Column="2" Content="{loc:T OrganizeFiles.Close}" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
                                 Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="3" Content="Apply" Command="{Binding ApplyCommand}"
+                        <Button Grid.Column="3" Content="{loc:T OrganizeFiles.Apply}" Command="{Binding ApplyCommand}"
                                 IsEnabled="{Binding HasApplicableMoves}"
                                 Width="100" Padding="0,8"
                                 Classes="accent-btn"
@@ -57,25 +58,25 @@
                      mouse wheel always works on one predictable scroll region. -->
                 <StackPanel DockPanel.Dock="Top" Margin="24,4,24,0" Spacing="12">
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Folder pattern" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBlock Text="{loc:T OrganizeFiles.FolderPattern}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
                         <TextBox Text="{Binding Pattern}" Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}"
                                  CornerRadius="999" Padding="14,8" />
-                        <TextBlock Text="Tokens: {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}"
+                        <TextBlock Text="{loc:T OrganizeFiles.TokensAlbumArtistArtistAlbum}"
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
                     </StackPanel>
 
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Destination folder (blank = first media folder)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                        <TextBox Text="{Binding TargetRoot}" Watermark="First media folder"
+                        <TextBlock Text="{loc:T OrganizeFiles.DestinationFolderBlankFirst}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBox Text="{Binding TargetRoot}" Watermark="{loc:T OrganizeFiles.FirstMediaFolder}"
                                  CornerRadius="999" Padding="14,8" />
                     </StackPanel>
 
-                    <Button Content="Update preview" Command="{Binding PreviewCommand}"
+                    <Button Content="{loc:T OrganizeFiles.UpdatePreview}" Command="{Binding PreviewCommand}"
                             HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
 
-                    <TextBlock Text="Preview" FontSize="13" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                    <TextBlock Text="{loc:T OrganizeFiles.Preview}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
                 </StackPanel>
 
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"

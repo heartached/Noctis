@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.DuplicateFinderDialog"
         x:DataType="vm:DuplicateFinderViewModel"
-        Title="Find Duplicates"
+        Title="{loc:T DuplicateFinder.FindDuplicates}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -23,8 +24,8 @@
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="Find Duplicates" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Grouped by artist + title with matching duration. The best copy is kept by default; review before deleting."
+                    <TextBlock Text="{loc:T DuplicateFinder.FindDuplicates}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{loc:T DuplicateFinder.GroupedByArtistTitle}"
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -32,12 +33,12 @@
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="Rescan" Command="{Binding RescanCommand}"
+                        <Button Grid.Column="1" Content="{loc:T DuplicateFinder.Rescan}" Command="{Binding RescanCommand}"
                                 IsEnabled="{Binding !IsBusy}"
                                 Width="90" Padding="0,8" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
+                        <Button Grid.Column="2" Content="{loc:T DuplicateFinder.Close}" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
                                 Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
@@ -49,7 +50,7 @@
                                 FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
                             <TextBlock>
-                                <Run Text="Delete" /><Run Text=" " /><Run Text="{Binding SelectedCount}" />
+                                <Run Text="{loc:T DuplicateFinder.Delete}" /><Run Text=" " /><Run Text="{Binding SelectedCount}" />
                             </TextBlock>
                         </Button>
                     </Grid>
@@ -78,7 +79,7 @@
                                                                 IsVisible="{Binding IsSuggestedKeep}"
                                                                 Background="{DynamicResource AccentColorBrush}"
                                                                 CornerRadius="999" Padding="8,3" Margin="8,0,0,0">
-                                                            <TextBlock Text="Keep" FontSize="10" FontWeight="SemiBold"
+                                                            <TextBlock Text="{loc:T DuplicateFinder.Keep}" FontSize="10" FontWeight="SemiBold"
                                                                        Foreground="{DynamicResource AccentForegroundBrush}" />
                                                         </Border>
                                                         <StackPanel Spacing="1" Margin="0,0,8,0">

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -129,9 +130,9 @@
                 <StackPanel IsVisible="{Binding TopSongRows.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsTopSongsExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="TopSongs"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="Most Listened To"
+                            <TextBlock Text="{loc:T Home.MostListened}"
                                        FontSize="30"
                                        FontWeight="Bold" />
                             <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
@@ -177,7 +178,7 @@
                                                     ClipToBounds="True"
                                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;"
+                                                    <TextBlock Text="{loc:T Home.Text}"
                                                                FontSize="16"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
@@ -211,7 +212,7 @@
                                                         <Border Classes="explicit-badge compact"
                                                                 Margin="6,0,0,0"
                                                                 IsVisible="{Binding Track.IsExplicit}"
-                                                                ToolTip.Tip="Explicit">
+                                                                ToolTip.Tip="{loc:T Home.ExplicitTip}">
                                                             <TextBlock Text="E"
                                                                        Classes="explicit-badge-text compact"
                                                                        FontSize="9"
@@ -228,13 +229,13 @@
                                                         Spacing="3"
                                                         VerticalAlignment="Center"
                                                         Margin="0,0,14,0"
-                                                        ToolTip.Tip="Listen count">
+                                                        ToolTip.Tip="{loc:T Home.ListenCountTip}">
                                                 <TextBlock Text="{Binding Track.PlayCount}"
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
                                                            Opacity="0.75"
                                                            VerticalAlignment="Center" />
-                                                <TextBlock Text="plays"
+                                                <TextBlock Text="{loc:T Home.Plays}"
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
                                                            Opacity="0.55"
@@ -252,9 +253,9 @@
                 <StackPanel IsVisible="{Binding TopArtists.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsTopArtistsExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="TopArtists"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Top Artists"
+                            <TextBlock Text="{loc:T Home.TopArtists}"
                                        FontSize="22"
                                        FontWeight="Bold" />
                             <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
@@ -349,9 +350,9 @@
                 <StackPanel IsVisible="{Binding RecentlyPlayedAlbums.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsRecentlyPlayedExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="RecentlyPlayed"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Recently Played"
+                            <TextBlock Text="{loc:T Home.RecentlyPlayed}"
                                        FontSize="22"
                                        FontWeight="Bold" />
                             <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
@@ -389,7 +390,7 @@
                                                     </Style>
                                                 </Border.Styles>
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;"
+                                                    <TextBlock Text="{loc:T Home.Text}"
                                                                FontSize="48"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
@@ -414,7 +415,7 @@
                                                              BorderThickness="0"
                                                              Cursor="Hand"
                                                              Opacity="0"
-                                                             ToolTip.Tip="Play"
+                                                             ToolTip.Tip="{loc:T Home.PlayTip}"
                                                              Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
                                                              CommandParameter="{Binding}">
                                                          <PathIcon Data="{StaticResource PlayIcon}"
@@ -435,7 +436,7 @@
                                                     <Border Classes="explicit-badge compact"
                                                             Margin="4,0,0,0"
                                                             IsVisible="{Binding IsExplicit}"
-                                                            ToolTip.Tip="Explicit">
+                                                            ToolTip.Tip="{loc:T Home.ExplicitTip}">
                                                         <TextBlock Text="E"
                                                                    Classes="explicit-badge-text compact"
                                                                    FontSize="9"
@@ -464,7 +465,7 @@
                 <StackPanel IsVisible="{Binding TimeRotationTracks.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsTimeRotationExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="TimeRotation"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="{Binding TimeRotationTitle}" FontSize="22" FontWeight="Bold" />
                             <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
@@ -490,7 +491,7 @@
                                                     ClipToBounds="True"
                                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                    <TextBlock Text="{loc:T Home.Text}" FontSize="16" Opacity="0.2"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                                                     <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
@@ -517,14 +518,14 @@
                 <StackPanel IsVisible="{Binding HeavyRotationTracks.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsHeavyRotationExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="HeavyRotation"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Heavy rotation" FontSize="22" FontWeight="Bold" />
+                                <TextBlock Text="{loc:T Home.HeavyRotation}" FontSize="22" FontWeight="Bold" />
                                 <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
                                           Width="14" Height="14" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Text="On repeat these past two weeks" FontSize="12" Opacity="0.5"
+                            <TextBlock Text="{loc:T Home.RepeatThesePastTwo}" FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Left" />
                         </StackPanel>
                     </Button>
@@ -547,7 +548,7 @@
                                                     ClipToBounds="True"
                                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                    <TextBlock Text="{loc:T Home.Text}" FontSize="16" Opacity="0.2"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                                                     <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
@@ -574,14 +575,14 @@
                 <StackPanel IsVisible="{Binding RediscoveredTracks.Count}">
                     <Button Classes="section-toggle" Classes.expanded="{Binding IsRediscoveredExpanded}"
                             Command="{Binding ToggleSectionCommand}" CommandParameter="Rediscovered"
-                            ToolTip.Tip="Hide or show this section">
+                            ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Recently rediscovered" FontSize="22" FontWeight="Bold" />
+                                <TextBlock Text="{loc:T Home.RecentlyRediscovered}" FontSize="22" FontWeight="Bold" />
                                 <PathIcon Classes="section-chevron" Data="{StaticResource ChevronRightIcon}"
                                           Width="14" Height="14" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Text="Back in your ears after a long break" FontSize="12" Opacity="0.5"
+                            <TextBlock Text="{loc:T Home.BackEarsAfterLong}" FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Left" />
                         </StackPanel>
                     </Button>
@@ -604,7 +605,7 @@
                                                     ClipToBounds="True"
                                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                    <TextBlock Text="{loc:T Home.Text}" FontSize="16" Opacity="0.2"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                                                     <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"

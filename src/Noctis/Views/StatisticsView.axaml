@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -49,25 +50,25 @@
 
         <!-- Header: title + tab strip -->
         <Grid Grid.Row="0" Margin="24,24,36,12" ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0" Text="Listening Statistics"
+            <TextBlock Grid.Column="0" Text="{loc:T Statistics.ListeningStatistics}"
                        FontSize="28" FontWeight="Bold" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <Button Classes="stats-tab"
                         Command="{Binding OpenWrapCommand}"
-                        ToolTip.Tip="Your listening recap — top tracks, artists and minutes, with a shareable card">
+                        ToolTip.Tip="{loc:T Statistics.ListeningRecapTopTracksTip}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource CameraIcon}" Width="13" Height="13" VerticalAlignment="Center"/>
-                        <TextBlock Text="Noctis Wrap" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Statistics.NoctisWrap}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
                 <Border Width="1" Height="18" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Center" Margin="2,0"/>
                 <Button Classes="stats-tab" Classes.active="{Binding IsOverviewTabSelected}"
                         Command="{Binding SelectTabCommand}" CommandParameter="Overview">
-                    <TextBlock Text="Overview" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:T Statistics.Overview}" FontSize="13" FontWeight="SemiBold"/>
                 </Button>
                 <Button Classes="stats-tab" Classes.active="{Binding IsHistoryTabSelected}"
                         Command="{Binding SelectTabCommand}" CommandParameter="History">
-                    <TextBlock Text="Play History" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:T Statistics.PlayHistory}" FontSize="13" FontWeight="SemiBold"/>
                 </Button>
             </StackPanel>
         </Grid>
@@ -85,25 +86,25 @@
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding TotalTracks}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Tracks" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.Tracks}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding TotalAlbums}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Albums" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.Albums}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding TotalArtists}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Artists" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.Artists}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding TotalDuration}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Total Duration" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.TotalDuration}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
@@ -114,28 +115,28 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding TotalPlays}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Total Plays" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.TotalPlays}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding ListeningTime}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Listening Time" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.ListeningTime}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding AvgTrackLength}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Avg Track Length" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.AvgTrackLength}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding LikedTracks}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Liked Tracks" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.LikedTracks}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
@@ -146,7 +147,7 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding CurrentStreakText}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Current Streak" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.CurrentStreak}" FontSize="12" Opacity="0.5"/>
                                 <TextBlock Text="{Binding LongestStreakSubText}" FontSize="11" Opacity="0.35"/>
                             </StackPanel>
                         </Border>
@@ -154,7 +155,7 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding PlaysThisWeekText}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Plays This Week" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.PlaysWeek}" FontSize="12" Opacity="0.5"/>
                                 <TextBlock Text="{Binding WeekDeltaText}" FontSize="11" Opacity="0.35"/>
                             </StackPanel>
                         </Border>
@@ -164,8 +165,8 @@
                     <Grid ColumnDefinitions="*,16,*">
                         <Border Grid.Column="0" Classes="stats-section" VerticalAlignment="Top">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Top Artists" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="Play some tracks to see your top artists"
+                                <TextBlock Text="{loc:T Statistics.TopArtists}" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="{loc:T Statistics.PlaySomeTracksSee}"
                                            FontSize="13" Opacity="0.4"
                                            IsVisible="{Binding !TopArtists.Count}"/>
                                 <ItemsControl ItemsSource="{Binding TopArtists}">
@@ -194,8 +195,8 @@
 
                         <Border Grid.Column="2" Classes="stats-section" VerticalAlignment="Top">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Top Albums" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="Play some tracks to see your top albums"
+                                <TextBlock Text="{loc:T Statistics.TopAlbums}" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="{loc:T Statistics.PlaySomeTracksSee2}"
                                            FontSize="13" Opacity="0.4"
                                            IsVisible="{Binding !TopAlbums.Count}"/>
                                 <ItemsControl ItemsSource="{Binding TopAlbums}">
@@ -224,13 +225,13 @@
                     </Grid>
 
                     <!-- Audio quality (merged in from the former Quality Report tab) -->
-                    <TextBlock Text="Audio Quality" FontSize="16" FontWeight="Bold" Margin="2,8,0,0"/>
+                    <TextBlock Text="{loc:T Statistics.AudioQuality}" FontSize="16" FontWeight="Bold" Margin="2,8,0,0"/>
                     <UniformGrid Columns="4">
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding LosslessPercentText}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Lossless" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.Lossless}" FontSize="12" Opacity="0.5"/>
                                 <TextBlock Text="{Binding LosslessSubText}" FontSize="11" Opacity="0.35"/>
                             </StackPanel>
                         </Border>
@@ -238,28 +239,28 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding HiResPercentText}" FontSize="26" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="Hi-Res Lossless" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.HiResLossless}" FontSize="12" Opacity="0.5"/>
                                 <TextBlock Text="{Binding HiResSubText}" FontSize="11" Opacity="0.35"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding AvgSampleRateText}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Avg Sample Rate" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.AvgSampleRate}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="stat-card">
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{Binding AvgBitDepthText}" FontSize="26" FontWeight="Bold"/>
-                                <TextBlock Text="Avg Bit Depth" FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="{loc:T Statistics.AvgBitDepth}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
 
                     <Border Classes="stats-section">
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Format Breakdown" FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="No tracks in library"
+                            <TextBlock Text="{loc:T Statistics.FormatBreakdown}" FontSize="16" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:T Statistics.NoTracksLibrary}"
                                        FontSize="13" Opacity="0.4"
                                        IsVisible="{Binding !FormatBreakdown.Count}"/>
                             <ItemsControl ItemsSource="{Binding FormatBreakdown}">
@@ -292,7 +293,7 @@
                     <!-- Hour-of-day heatmap -->
                     <Border Classes="stats-section">
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Listening by Hour" FontSize="16" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:T Statistics.ListeningByHour}" FontSize="16" FontWeight="Bold"/>
                             <ItemsControl ItemsSource="{Binding HourlyHeatmap}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -319,8 +320,8 @@
                         <!-- Most skipped -->
                         <Border Grid.Column="0" Classes="stats-section" VerticalAlignment="Top">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Most Skipped" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="No skips recorded yet"
+                                <TextBlock Text="{loc:T Statistics.MostSkipped}" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="{loc:T Statistics.NoSkipsRecordedYet}"
                                            FontSize="13" Opacity="0.4"
                                            IsVisible="{Binding !SkipRates.Count}"/>
                                 <ItemsControl ItemsSource="{Binding SkipRates}">
@@ -354,8 +355,8 @@
                         <!-- Forgotten favorites -->
                         <Border Grid.Column="2" Classes="stats-section" VerticalAlignment="Top">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Forgotten Favorites" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="Loved or highly rated tracks you haven't played in 6+ months show up here"
+                                <TextBlock Text="{loc:T Statistics.ForgottenFavorites}" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="{loc:T Statistics.LovedHighlyRatedTracks}"
                                            FontSize="13" Opacity="0.4" TextWrapping="Wrap"
                                            IsVisible="{Binding !ForgottenFavorites.Count}"/>
                                 <ItemsControl ItemsSource="{Binding ForgottenFavorites}">
@@ -382,8 +383,8 @@
                     <!-- Chronological play log -->
                     <Border Classes="stats-section">
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Recent Plays" FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="No plays recorded yet — playback history is logged from now on"
+                            <TextBlock Text="{loc:T Statistics.RecentPlays}" FontSize="16" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:T Statistics.NoPlaysRecordedYet}"
                                        FontSize="13" Opacity="0.4"
                                        IsVisible="{Binding !PlayLog.Count}"/>
                             <ItemsControl ItemsSource="{Binding PlayLog}">
@@ -400,7 +401,7 @@
                                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                                     VerticalAlignment="Center" Margin="8,0"
                                                     IsVisible="{Binding Skipped}">
-                                                <TextBlock Text="Skipped" FontSize="10" Opacity="0.7"/>
+                                                <TextBlock Text="{loc:T Statistics.Skipped}" FontSize="10" Opacity="0.7"/>
                                             </Border>
                                             <TextBlock Grid.Column="2" Text="{Binding TimeLabel}"
                                                        FontSize="12" Opacity="0.5" VerticalAlignment="Center"

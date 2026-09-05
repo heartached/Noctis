@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         x:Class="Noctis.Views.TextPromptDialog"
-        Title="Enter a name"
+        Title="{loc:T TextPrompt.EnterName}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -48,7 +49,7 @@
                 <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T TextPrompt.Cancel}"
                                 Click="OnCancelClick"
                                 Width="100"
                                 Padding="0,8"
@@ -75,7 +76,7 @@
 
                 <StackPanel Margin="24,18,24,8" Spacing="10">
                     <TextBlock x:Name="TitleText"
-                               Text="Name"
+                               Text="{loc:T TextPrompt.Name}"
                                FontSize="16"
                                FontWeight="SemiBold" />
                     <TextBox x:Name="InputBox"

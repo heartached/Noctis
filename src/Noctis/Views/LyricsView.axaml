@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -574,7 +575,7 @@
                         <controls:MarqueeTextBlock.InlineContent>
                             <Border Classes="lyrics-explicit"
                                     IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                    ToolTip.Tip="Explicit">
+                                    ToolTip.Tip="{loc:T Lyrics.ExplicitTip}">
                                 <TextBlock Text="E"
                                            FontSize="9"
                                            FontWeight="Bold"
@@ -786,20 +787,20 @@
                                                     Background="Transparent"
                                                     BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
                                                     Opacity="{Binding IsColorModeArtwork, Converter={StaticResource BoolToOpacity}}"
-                                                    ToolTip.Tip="Show blurred album artwork as background">
-                                                <TextBlock Text="Artwork" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                                    ToolTip.Tip="{loc:T Lyrics.ShowBlurredAlbumArtworkTip}">
+                                                <TextBlock Text="{loc:T Lyrics.Artwork}" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                             </Button>
                                             <Button Command="{Binding SelectColorModeSolidCommand}"
                                                     Background="Transparent"
                                                     BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
                                                     Opacity="{Binding IsColorModeSolid, Converter={StaticResource BoolToOpacity}}">
-                                                <TextBlock Text="Solid" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                                <TextBlock Text="{loc:T Lyrics.Solid}" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                             </Button>
                                             <Button Command="{Binding SelectColorModeGradientCommand}"
                                                     Background="Transparent"
                                                     BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
                                                     Opacity="{Binding IsColorModeGradient, Converter={StaticResource BoolToOpacity}}">
-                                                <TextBlock Text="Gradient" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                                <TextBlock Text="{loc:T Lyrics.Gradient}" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                             </Button>
                                         </StackPanel>
                                     </Border>
@@ -935,7 +936,7 @@
                         CornerRadius="22"
                         Command="{Binding SearchLyricsCommand}"
                         HorizontalAlignment="Center">
-                    <TextBlock Text="Search Lyrics"
+                    <TextBlock Text="{loc:T Lyrics.SearchLyrics}"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="White"
@@ -999,7 +1000,7 @@
                     <Ellipse Classes="dot2" Width="9" Height="9" Fill="{Binding LyricsPrimaryFg}" Opacity="0.25"/>
                     <Ellipse Classes="dot3" Width="9" Height="9" Fill="{Binding LyricsPrimaryFg}" Opacity="0.25"/>
                 </StackPanel>
-                <TextBlock Text="Searching for Lyrics"
+                <TextBlock Text="{loc:T Lyrics.SearchingLyrics}"
                            FontSize="14"
                            Foreground="{Binding LyricsSubtleFg}"
                            HorizontalAlignment="Center"/>
@@ -1234,7 +1235,7 @@
                                HorizontalAlignment="Left"
                                MaxWidth="{Binding #LyricsItemsControl.MaxWidth}"
                                Margin="2,44,0,0"
-                               IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                               IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{loc:T Lyrics.WrittenBy}" FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -1253,7 +1254,7 @@
                     <PathIcon Data="{StaticResource ClipboardIcon}"
                              Width="14" Height="14"
                              VerticalAlignment="Center"/>
-                    <TextBlock Text="Follow" VerticalAlignment="Center"/>
+                    <TextBlock Text="{loc:T Lyrics.Follow}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
         </Grid>

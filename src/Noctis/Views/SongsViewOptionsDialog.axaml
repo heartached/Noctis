@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.SongsViewOptionsDialog"
         x:DataType="vm:SongsViewOptionsViewModel"
-        Title="View Options"
+        Title="{loc:T SongsViewOptions.ViewOptions}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -158,7 +159,7 @@
                 <!-- Header -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="24,20,16,0">
                     <TextBlock Grid.Column="0"
-                               Text="View Options"
+                               Text="{loc:T SongsViewOptions.ViewOptions}"
                                FontSize="20"
                                FontWeight="Bold"
                                VerticalAlignment="Center" />
@@ -168,7 +169,7 @@
                             Width="32" Height="32"
                             Padding="0"
                             Cursor="Hand"
-                            ToolTip.Tip="Close"
+                            ToolTip.Tip="{loc:T SongsViewOptions.CloseTip}"
                             Click="OnCloseClick">
                         <PathIcon Data="{StaticResource DismissIcon}"
                                   Width="15" Height="15"
@@ -186,7 +187,7 @@
 
                         <!-- Sort by -->
                         <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,12">
-                            <TextBlock Grid.Column="0" Classes="view-opt-label" Text="Sort by:" Margin="0,0,12,0" />
+                            <TextBlock Grid.Column="0" Classes="view-opt-label" Text="{loc:T SongsViewOptions.SortBy}" Margin="0,0,12,0" />
                             <!-- Explicit ItemTemplate rather than DisplayMemberBinding: the
                                  project compiles bindings by default, and an item-scoped
                                  binding needs its own x:DataType to resolve against the
@@ -207,10 +208,10 @@
                         <Border Classes="view-opt-segment" Margin="0,0,0,4">
                             <StackPanel Orientation="Horizontal" Spacing="2">
                                 <Button Classes="view-opt-seg" Classes.on="{Binding IsAscending}"
-                                        Content="Ascending"
+                                        Content="{loc:T SongsViewOptions.Ascending}"
                                         Command="{Binding SetAscendingCommand}" />
                                 <Button Classes="view-opt-seg" Classes.on="{Binding IsDescending}"
-                                        Content="Descending"
+                                        Content="{loc:T SongsViewOptions.Descending}"
                                         Command="{Binding SetDescendingCommand}" />
                             </StackPanel>
                         </Border>
@@ -218,14 +219,14 @@
                         <Border Classes="view-opt-rule" />
 
                         <!-- Show -->
-                        <TextBlock Classes="view-opt-label" Text="Show:" Margin="0,0,0,8" />
+                        <TextBlock Classes="view-opt-label" Text="{loc:T SongsViewOptions.Show}" Margin="0,0,0,8" />
                         <Border Classes="view-opt-segment">
                             <StackPanel Orientation="Horizontal" Spacing="2">
                                 <Button Classes="view-opt-seg" Classes.on="{Binding ShowAllSongs}"
-                                        Content="All Songs"
+                                        Content="{loc:T SongsViewOptions.AllSongs}"
                                         Command="{Binding SetAllSongsCommand}" />
                                 <Button Classes="view-opt-seg" Classes.on="{Binding ShowOnlyFavorites}"
-                                        Content="Only Favorites"
+                                        Content="{loc:T SongsViewOptions.OnlyFavorites}"
                                         Command="{Binding SetOnlyFavoritesCommand}" />
                             </StackPanel>
                         </Border>
@@ -234,48 +235,48 @@
 
                         <!-- Columns. Grouped the way Apple Music groups them: what the track
                              is, what you did with it, what the file is. -->
-                        <TextBlock Classes="view-opt-section" Text="MUSIC" />
+                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.MUSIC}" />
                         <Grid ColumnDefinitions="*,*">
                             <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Artwork"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Artwork}"
                                           IsChecked="{Binding Settings.ShowArtworkColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Artist"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Artist}"
                                           IsChecked="{Binding Settings.ShowArtistColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Album"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Album}"
                                           IsChecked="{Binding Settings.ShowAlbumColumn, Mode=TwoWay}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Genre"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Genre}"
                                           IsChecked="{Binding Settings.ShowGenreColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Time"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Time}"
                                           IsChecked="{Binding Settings.ShowTimeColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Classes="view-opt-section" Text="PERSONAL" Margin="0,8,0,10" />
+                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.PERSONAL}" Margin="0,8,0,10" />
                         <Grid ColumnDefinitions="*,*">
                             <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Favorite"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Favorite}"
                                           IsChecked="{Binding Settings.ShowFavoritesColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Plays"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Plays}"
                                           IsChecked="{Binding Settings.ShowPlaysColumn, Mode=TwoWay}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Rating"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Rating}"
                                           IsChecked="{Binding Settings.ShowRatingColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Classes="view-opt-section" Text="FILE" Margin="0,8,0,10" />
+                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.FILE}" Margin="0,8,0,10" />
                         <Grid ColumnDefinitions="*,*">
                             <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="BPM"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.BPM}"
                                           IsChecked="{Binding Settings.ShowBpmColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Sample Rate"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.SampleRate}"
                                           IsChecked="{Binding Settings.ShowSampleRateColumn, Mode=TwoWay}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="Bitrate"
+                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Bitrate}"
                                           IsChecked="{Binding Settings.ShowBitrateColumn, Mode=TwoWay}" />
                             </StackPanel>
                         </Grid>
@@ -289,13 +290,13 @@
                             Spacing="8"
                             Margin="24,18,24,20">
                     <Button Classes="view-opt-footer"
-                            Content="Restore Defaults"
+                            Content="{loc:T SongsViewOptions.RestoreDefaults}"
                             Background="Transparent"
                             BorderThickness="1"
                             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                             Command="{Binding RestoreDefaultsCommand}" />
                     <Button Classes="view-opt-footer accent-btn"
-                            Content="Done"
+                            Content="{loc:T SongsViewOptions.Done}"
                             Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             BorderThickness="0"

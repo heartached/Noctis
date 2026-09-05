@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         x:Class="Noctis.Views.RemoveFromLibraryDialog"
-        Title="Remove from Library"
+        Title="{loc:T RemoveFromLibrary.RemoveFromLibrary}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -54,7 +55,7 @@
                 <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                     <Button Grid.Column="1"
                             x:Name="TrashButton"
-                            Content="Move to Recycle Bin"
+                            Content="{loc:T RemoveFromLibrary.MoveRecycleBin}"
                             Click="OnTrashClick"
                             Padding="14,8"
                             FontWeight="Bold"
@@ -63,7 +64,7 @@
                             Margin="0,0,8,0"
                             Cursor="Hand" />
                     <Button Grid.Column="2"
-                            Content="Keep Files"
+                            Content="{loc:T RemoveFromLibrary.KeepFiles}"
                             Click="OnKeepClick"
                             Padding="14,8"
                             FontWeight="Bold"
@@ -72,7 +73,7 @@
                             Margin="0,0,8,0"
                             Cursor="Hand" />
                     <Button Grid.Column="3"
-                            Content="Cancel"
+                            Content="{loc:T RemoveFromLibrary.Cancel}"
                             Click="OnCancelClick"
                             Padding="14,8"
                             Classes="accent-btn"
@@ -88,7 +89,7 @@
             <!-- Message -->
             <StackPanel Margin="24,16,24,8" VerticalAlignment="Center" Spacing="6">
                 <TextBlock x:Name="MessageText"
-                           Text="Remove from your library?"
+                           Text="{loc:T RemoveFromLibrary.RemoveFromLibrary2}"
                            FontSize="15"
                            FontWeight="SemiBold"
                            TextWrapping="Wrap" />

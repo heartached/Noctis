@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         x:Class="Noctis.Views.ConfirmationDialog"
-        Title="Confirm"
+        Title="{loc:T Confirmation.Confirm}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -53,7 +54,7 @@
                     Padding="24,12,24,16">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1"
-                            Content="Cancel"
+                            Content="{loc:T Confirmation.Cancel}"
                             Click="OnCancelClick"
                             Width="100"
                             Padding="0,8"
@@ -63,7 +64,7 @@
                             Margin="0,0,8,0"
                             Cursor="Hand" />
                     <Button Grid.Column="2"
-                            Content="Confirm"
+                            Content="{loc:T Confirmation.Confirm}"
                             Click="OnConfirmClick"
                             Width="100"
                             Padding="0,8"
@@ -80,7 +81,7 @@
             <!-- Message -->
             <StackPanel Margin="24,16,24,8" VerticalAlignment="Center">
                 <TextBlock x:Name="MessageText"
-                           Text="Are you sure?"
+                           Text="{loc:T Confirmation.AreYouSure}"
                            FontSize="14"
                            TextWrapping="Wrap" />
             </StackPanel>

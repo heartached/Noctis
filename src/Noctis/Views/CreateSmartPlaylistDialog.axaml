@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:svc="using:Noctis.Services"
         xmlns:conv="using:Noctis.Converters"
         x:Class="Noctis.Views.CreateSmartPlaylistDialog"
         x:DataType="vm:CreateSmartPlaylistDialogViewModel"
-        Title="Create Smart Playlist"
+        Title="{loc:T CreateSmartPlaylist.CreateSmartPlaylist}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -86,7 +87,7 @@
                             </TextBlock.Text>
                         </TextBlock>
                         <Button Grid.Column="2"
-                                Content="Cancel"
+                                Content="{loc:T CreateSmartPlaylist.Cancel}"
                                 Command="{Binding CancelCommand}"
                                 BorderThickness="0"
                                 Width="100"
@@ -97,7 +98,7 @@
                                 Margin="0,0,8,0"
                                 Cursor="Hand" />
                         <Button Grid.Column="3"
-                                Content="Create"
+                                Content="{loc:T CreateSmartPlaylist.Create}"
                                 Command="{Binding CreateCommand}"
                                 Width="100"
                                 Padding="0,8"
@@ -116,7 +117,7 @@
                     <StackPanel Margin="24,20,24,16" Spacing="14">
 
                         <!-- Title -->
-                        <TextBlock Text="Create Smart Playlist"
+                        <TextBlock Text="{loc:T CreateSmartPlaylist.CreateSmartPlaylist}"
                                    FontSize="20"
                                    FontWeight="Bold"
                                    HorizontalAlignment="Center" />
@@ -125,17 +126,17 @@
                         <StackPanel Spacing="10" Margin="0,4,0,0">
                             <TextBox Text="{Binding PlaylistName}"
                                      Classes="crisp-input"
-                                     Watermark="Playlist name"
+                                     Watermark="{loc:T CreateSmartPlaylist.PlaylistName}"
                                      CornerRadius="999"
                                      Padding="14,8"
                                      x:Name="NameTextBox" />
-                            <TextBlock Text="Name is required"
+                            <TextBlock Text="{loc:T CreateSmartPlaylist.NameRequired}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
                                        IsVisible="{Binding ShowNameRequiredError}" />
                             <TextBox Text="{Binding PlaylistDescription}"
                                      Classes="crisp-input"
-                                     Watermark="Description (optional)"
+                                     Watermark="{loc:T CreateSmartPlaylist.DescriptionOptional}"
                                      CornerRadius="999"
                                      Padding="14,8" />
                         </StackPanel>
@@ -143,12 +144,12 @@
                         <!-- Rules header with the match mode inline on the right -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
                             <TextBlock Grid.Column="0"
-                                       Text="Rules"
+                                       Text="{loc:T CreateSmartPlaylist.Rules}"
                                        FontSize="16"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Match"
+                                <TextBlock Text="{loc:T CreateSmartPlaylist.Match}"
                                            VerticalAlignment="Center"
                                            FontSize="13"
                                            Opacity="0.7" />
@@ -203,7 +204,7 @@
                                                 <TextBox Text="{Binding Value}"
                                                          Classes="crisp-input"
                                                          IsVisible="{Binding ShowValueInput}"
-                                                         Watermark="Value..."
+                                                         Watermark="{loc:T CreateSmartPlaylist.Value}"
                                                          MinWidth="100"
                                                          CornerRadius="999"
                                                          Padding="12,6"
@@ -213,7 +214,7 @@
                                                 <TextBox Text="{Binding Value2}"
                                                          Classes="crisp-input"
                                                          IsVisible="{Binding ShowValue2Input}"
-                                                         Watermark="To..."
+                                                         Watermark="{loc:T CreateSmartPlaylist.To}"
                                                          Width="80"
                                                          CornerRadius="999"
                                                          Padding="12,6"
@@ -251,13 +252,13 @@
                                 Cursor="Hand">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
-                                <TextBlock Text="Add Rule" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:T CreateSmartPlaylist.AddRule}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Limit section -->
                         <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding HasLimit}" Content="Limit to" VerticalAlignment="Center" Padding="4,0,0,0" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding HasLimit}" Content="{loc:T CreateSmartPlaylist.Limit}" VerticalAlignment="Center" Padding="4,0,0,0" />
                             <NumericUpDown Value="{Binding LimitCount}"
                                            Minimum="1" Maximum="1000"
                                            IsEnabled="{Binding HasLimit}"
@@ -272,7 +273,7 @@
                                            HorizontalContentAlignment="Center"
                                            VerticalAlignment="Center"
                                            VerticalContentAlignment="Center" />
-                            <TextBlock Text="tracks, sorted by" VerticalAlignment="Center" FontSize="13" />
+                            <TextBlock Text="{loc:T CreateSmartPlaylist.TracksSortedBy}" VerticalAlignment="Center" FontSize="13" />
                             <ComboBox ItemsSource="{Binding AllSortOptions}"
                                       SelectedItem="{Binding SortBy}"
                                       IsEnabled="{Binding HasLimit}"

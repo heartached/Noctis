@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.AudioConverterDialog"
         x:DataType="vm:AudioConverterViewModel"
-        Title="Convert"
+        Title="{loc:T AudioConverter.Convert}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -54,7 +55,7 @@
                     <TextBlock Text="{Binding TitleText}"
                                FontSize="20" FontWeight="Bold"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="Transcode selected tracks to another audio format."
+                    <TextBlock Text="{loc:T AudioConverter.TranscodeSelectedTracksAnother}"
                                FontSize="12" Opacity="0.6"
                                HorizontalAlignment="Center" />
                 </StackPanel>
@@ -66,7 +67,7 @@
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" />
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T AudioConverter.Cancel}"
                                 Command="{Binding CancelCommand}"
                                 Width="100" Padding="0,8"
                                 FontWeight="Bold"
@@ -75,7 +76,7 @@
                                 Margin="0,0,8,0"
                                 Cursor="Hand" />
                         <Button Grid.Column="2"
-                                Content="Convert"
+                                Content="{loc:T AudioConverter.Convert}"
                                 Command="{Binding StartCommand}"
                                 IsEnabled="{Binding !IsConverting}"
                                 Width="100" Padding="0,8"
@@ -96,7 +97,7 @@
 
                         <!-- Format + bitrate -->
                         <Grid ColumnDefinitions="140,*">
-                            <TextBlock Grid.Column="0" Text="Format" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.Format}" VerticalAlignment="Center" />
                             <ComboBox Grid.Column="1" Classes="pill"
                                       ItemsSource="{Binding FormatOptions}"
                                       SelectedItem="{Binding SelectedFormat}"
@@ -104,7 +105,7 @@
                         </Grid>
 
                         <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitrateApplies}">
-                            <TextBlock Grid.Column="0" Text="Bitrate (kbps)" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.BitrateKbps}" VerticalAlignment="Center" />
                             <ComboBox Grid.Column="1" Classes="pill"
                                       ItemsSource="{Binding BitrateOptions}"
                                       SelectedItem="{Binding SelectedBitrate}"
@@ -112,7 +113,7 @@
                         </Grid>
 
                         <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitDepthApplies}">
-                            <TextBlock Grid.Column="0" Text="Bit depth" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.BitDepth}" VerticalAlignment="Center" />
                             <ComboBox Grid.Column="1" Classes="pill"
                                       ItemsSource="{Binding BitDepthOptions}"
                                       SelectedItem="{Binding SelectedBitDepth}"
@@ -123,14 +124,14 @@
 
                         <!-- Output folder -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Output folder" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="Leave blank to write next to the source file."
+                            <TextBlock Text="{loc:T AudioConverter.OutputFolder}" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:T AudioConverter.LeaveBlankWriteNext}"
                                        FontSize="11" Opacity="0.55" />
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBox Grid.Column="0" Classes="pill"
                                          Text="{Binding OutputFolder}"
-                                         Watermark="(beside source file)" />
-                                <Button Grid.Column="1" Content="Browse"
+                                         Watermark="{loc:T AudioConverter.BesideSourceFile}" />
+                                <Button Grid.Column="1" Content="{loc:T AudioConverter.Browse}"
                                         Click="OnBrowseOutputClick"
                                         Padding="14,8"
                                         CornerRadius="999"
@@ -141,24 +142,24 @@
 
                         <!-- Filename pattern -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Filename pattern" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="Tokens: %artist% %albumartist% %album% %title% %tracknumber% %tracknumber2% %discnumber% %year% %genre% %composer%"
+                            <TextBlock Text="{loc:T AudioConverter.FilenamePattern}" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:T AudioConverter.TokensArtistAlbumartistAlbum}"
                                        FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
                             <TextBox Classes="pill" Text="{Binding FilenamePattern}" />
                         </StackPanel>
 
                         <!-- Options -->
                         <StackPanel Spacing="6">
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding CopyTags}" Content="Copy tags from source" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding EmbedArtwork}" Content="Embed source artwork" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding OverwriteExisting}" Content="Overwrite existing output files" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding AddToLibrary}" Content="Add to library (show in app)" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding CopyTags}" Content="{loc:T AudioConverter.CopyTagsFromSource}" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding EmbedArtwork}" Content="{loc:T AudioConverter.EmbedSourceArtwork}" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding OverwriteExisting}" Content="{loc:T AudioConverter.OverwriteExistingOutputFiles}" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding AddToLibrary}" Content="{loc:T AudioConverter.AddLibraryShowApp}" />
                         </StackPanel>
 
                         <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
 
                         <!-- Job list -->
-                        <TextBlock Text="Queue" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBlock Text="{loc:T AudioConverter.Queue}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="220">
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Jobs}">

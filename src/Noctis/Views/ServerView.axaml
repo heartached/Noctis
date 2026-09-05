@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:ctrl="using:Noctis.Controls"
@@ -14,10 +15,10 @@
         <StackPanel IsVisible="{Binding !IsConfigured}"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Spacing="10" MaxWidth="420">
-            <TextBlock Text="No server connected"
+            <TextBlock Text="{loc:T Server.NoServerConnected}"
                        FontSize="20" FontWeight="SemiBold"
                        HorizontalAlignment="Center"/>
-            <TextBlock Text="Connect a Jellyfin or Subsonic-compatible server (Navidrome, Airsonic, Gonic…) in Settings → Integrations to stream its music here."
+            <TextBlock Text="{loc:T Server.ConnectJellyfinSubsonicCompatible}"
                        FontSize="13" Opacity="0.6" TextWrapping="Wrap"
                        TextAlignment="Center"/>
         </StackPanel>
@@ -26,7 +27,7 @@
         <Grid IsVisible="{Binding ShowAlbumGrid}" RowDefinitions="Auto,*">
             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10,2,0,10">
                 <TextBlock Text="{Binding ServerLabel}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
-                <TextBlock Text="Loading…" FontSize="12" Opacity="0.5" VerticalAlignment="Center"
+                <TextBlock Text="{loc:T Server.Loading}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"
                            IsVisible="{Binding IsLoading}"/>
             </StackPanel>
 
@@ -65,7 +66,7 @@
                                             CommandParameter="{Binding}">
                                         <Button.ContextMenu>
                                             <ContextMenu>
-                                                <MenuItem Header="Play"
+                                                <MenuItem Header="{loc:T Server.Play}"
                                                           Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayServerAlbumCommand}"
                                                           CommandParameter="{Binding}"/>
                                             </ContextMenu>
@@ -73,7 +74,7 @@
                                         <StackPanel Spacing="6">
                                             <Border Width="164" Height="164" CornerRadius="6" ClipToBounds="True" Background="#1AFFFFFF">
                                                 <Panel>
-                                                    <TextBlock Text="&#x266A;" FontSize="40" Opacity="0.15"
+                                                    <TextBlock Text="{loc:T Server.Text}" FontSize="40" Opacity="0.15"
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                                                     <!-- Async artwork: cache hits instant, misses load on background thread -->
@@ -104,7 +105,7 @@
                                        TextWrapping="Wrap" MaxWidth="420"
                                        IsVisible="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
-                            <Button Content="Load more albums"
+                            <Button Content="{loc:T Server.LoadMoreAlbums}"
                                     Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).LoadMoreAlbumsCommand}"
                                     IsVisible="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).HasMoreAlbums}"
                                     IsEnabled="{Binding !$parent[UserControl].((vm:ServerViewModel)DataContext).IsLoadingMore}"
@@ -120,14 +121,14 @@
         <!-- ── Album detail ── -->
         <Grid IsVisible="{Binding ShowAlbumDetail}" RowDefinitions="Auto,*">
             <StackPanel Grid.Row="0" Spacing="12" Margin="10,2,10,12">
-                <Button Content="‹ Albums"
+                <Button Content="{loc:T Server.Albums}"
                         Command="{Binding CloseServerAlbumCommand}"
                         Padding="12,6" CornerRadius="999" Cursor="Hand"
                         HorizontalAlignment="Left"/>
                 <Grid ColumnDefinitions="Auto,*">
                     <Border Grid.Column="0" Width="140" Height="140" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF">
                         <Panel>
-                            <TextBlock Text="&#x266A;" FontSize="36" Opacity="0.15"
+                            <TextBlock Text="{loc:T Server.Text}" FontSize="36" Opacity="0.15"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             <ctrl:CachedImage SourcePath="{Binding OpenAlbum.ArtworkPath}"
                                               DecodeWidth="512"
@@ -139,7 +140,7 @@
                         <TextBlock Text="{Binding OpenAlbum.Name}" FontSize="24" FontWeight="Bold"
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding OpenAlbumMeta}" FontSize="13" Opacity="0.6"/>
-                        <Button Content="Play"
+                        <Button Content="{loc:T Server.Play}"
                                 Command="{Binding PlayAlbumFromDetailCommand}"
                                 Padding="22,8" CornerRadius="999" Cursor="Hand"
                                 HorizontalAlignment="Left" Margin="0,6,0,0">
@@ -157,7 +158,7 @@
                         </Button>
                     </StackPanel>
                 </Grid>
-                <TextBlock Text="Loading…" FontSize="12" Opacity="0.5" IsVisible="{Binding IsLoading}"/>
+                <TextBlock Text="{loc:T Server.Loading}" FontSize="12" Opacity="0.5" IsVisible="{Binding IsLoading}"/>
                 <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.6"
                            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
@@ -172,13 +173,13 @@
                         <Grid ColumnDefinitions="32,*,Auto" Margin="6,4">
                             <Grid.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="Play"
+                                    <MenuItem Header="{loc:T Server.Play}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayAlbumTrackCommand}"
                                               CommandParameter="{Binding}"/>
-                                    <MenuItem Header="Play Next"
+                                    <MenuItem Header="{loc:T Server.PlayNext}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
                                               CommandParameter="{Binding}"/>
-                                    <MenuItem Header="Add to Queue"
+                                    <MenuItem Header="{loc:T Server.AddQueue}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
                                               CommandParameter="{Binding}"/>
                                 </ContextMenu>
@@ -200,10 +201,10 @@
         <!-- ── Search results ── -->
         <ScrollViewer IsVisible="{Binding ShowSearchResults}" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="10,2,10,115" Spacing="8">
-                <TextBlock Text="No results on this server." FontSize="13" Opacity="0.6"
+                <TextBlock Text="{loc:T Server.NoResultsServer}" FontSize="13" Opacity="0.6"
                            IsVisible="{Binding SearchCameUpEmpty}"/>
 
-                <TextBlock Text="Albums" FontSize="17" FontWeight="SemiBold"
+                <TextBlock Text="{loc:T Server.Albums2}" FontSize="17" FontWeight="SemiBold"
                            IsVisible="{Binding HasSearchAlbums}"/>
                 <ItemsControl ItemsSource="{Binding SearchAlbums}" IsVisible="{Binding HasSearchAlbums}">
                     <ItemsControl.ItemsPanel>
@@ -223,7 +224,7 @@
                                 <StackPanel Spacing="6">
                                     <Border Width="126" Height="126" CornerRadius="6" ClipToBounds="True" Background="#1AFFFFFF">
                                         <Panel>
-                                            <TextBlock Text="&#x266A;" FontSize="32" Opacity="0.15"
+                                            <TextBlock Text="{loc:T Server.Text}" FontSize="32" Opacity="0.15"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                                             <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
@@ -243,7 +244,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="Songs" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"
+                <TextBlock Text="{loc:T Server.Songs}" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"
                            IsVisible="{Binding HasSearchTracks}"/>
                 <ListBox Classes="track-list"
                          ItemsSource="{Binding SearchTracks}"
@@ -255,13 +256,13 @@
                             <Grid ColumnDefinitions="*,Auto" Margin="6,4">
                                 <Grid.ContextMenu>
                                     <ContextMenu>
-                                        <MenuItem Header="Play"
+                                        <MenuItem Header="{loc:T Server.Play}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlaySearchTrackCommand}"
                                                   CommandParameter="{Binding}"/>
-                                        <MenuItem Header="Play Next"
+                                        <MenuItem Header="{loc:T Server.PlayNext}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
                                                   CommandParameter="{Binding}"/>
-                                        <MenuItem Header="Add to Queue"
+                                        <MenuItem Header="{loc:T Server.AddQueue}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
                                                   CommandParameter="{Binding}"/>
                                     </ContextMenu>

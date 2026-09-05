@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
         xmlns:ctrl="using:Noctis.Controls"
         x:Class="Noctis.Views.EditPlaylistDialog"
         x:DataType="vm:EditPlaylistDialogViewModel"
-        Title="Edit Playlist"
+        Title="{loc:T EditPlaylist.EditPlaylist}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -92,7 +93,7 @@
 
             <!-- Header -->
             <TextBlock DockPanel.Dock="Top"
-                       Text="Edit Playlist"
+                       Text="{loc:T EditPlaylist.EditPlaylist}"
                        FontSize="20"
                        FontWeight="Bold"
                        Margin="24,20,24,0" />
@@ -102,7 +103,7 @@
                     Padding="24,12,24,16">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1"
-                            Content="Cancel"
+                            Content="{loc:T EditPlaylist.Cancel}"
                             Command="{Binding CancelCommand}"
                             Width="100"
                             Padding="0,8"
@@ -112,7 +113,7 @@
                             Margin="0,0,8,0"
                             Cursor="Hand" />
                     <Button Grid.Column="2"
-                            Content="Save"
+                            Content="{loc:T EditPlaylist.Save}"
                             Command="{Binding SaveCommand}"
                             Width="100"
                             Padding="0,8"
@@ -138,7 +139,7 @@
                             Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}">
                         <Panel>
                             <!-- Fallback icon -->
-                            <TextBlock Text="&#x266B;"
+                            <TextBlock Text="{loc:T EditPlaylist.Text}"
                                        FontSize="48"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -168,7 +169,7 @@
                                               IsVisible="{Binding HasCustomArt}" />
                         </Panel>
                     </Border>
-                    <Button Content="Set Cover Art"
+                    <Button Content="{loc:T EditPlaylist.SetCoverArt}"
                             Command="{Binding SetCoverArtCommand}"
                             CommandParameter="{Binding $parent[Window]}"
                             Padding="0,6"
@@ -181,7 +182,7 @@
                             Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             Cursor="Hand" />
-                    <Button Content="Remove Cover Art"
+                    <Button Content="{loc:T EditPlaylist.RemoveCoverArt}"
                             Command="{Binding RemoveCoverArtCommand}"
                             Padding="0,6"
                             FontSize="11.5"
@@ -199,13 +200,13 @@
 
                     <!-- Playlist Name -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Name" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:T EditPlaylist.Name}" FontSize="13" FontWeight="SemiBold" />
                         <TextBox Text="{Binding PlaylistName}"
                                  Classes="crisp-input"
-                                 Watermark="Enter playlist name..."
+                                 Watermark="{loc:T EditPlaylist.EnterPlaylistName}"
                                  CornerRadius="999"
                                  x:Name="NameTextBox" />
-                        <TextBlock Text="Name is required"
+                        <TextBlock Text="{loc:T EditPlaylist.NameRequired}"
                                    FontSize="11"
                                    Foreground="{DynamicResource AccentColorBrush}"
                                    IsVisible="{Binding ShowNameRequiredError}" />
@@ -213,10 +214,10 @@
 
                     <!-- Playlist Description -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:T EditPlaylist.Description}" FontSize="13" FontWeight="SemiBold" />
                         <TextBox Text="{Binding PlaylistDescription}"
                                  Classes="crisp-input"
-                                 Watermark="Enter playlist description..."
+                                 Watermark="{loc:T EditPlaylist.EnterPlaylistDescription}"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  MinHeight="88" />
@@ -224,21 +225,21 @@
 
                     <!-- Sidebar folder -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Sidebar Folder" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:T EditPlaylist.SidebarFolder}" FontSize="13" FontWeight="SemiBold" />
                         <AutoCompleteBox Text="{Binding PlaylistFolder, Mode=TwoWay}"
                                          ItemsSource="{Binding ExistingFolders}"
                                          Classes="folder-input"
-                                         Watermark="No folder"
+                                         Watermark="{loc:T EditPlaylist.NoFolder}"
                                          FilterMode="ContainsOrdinal"
                                          MinimumPrefixLength="0" />
-                        <TextBlock Text="Pick an existing folder or type a new name to group playlists in the sidebar."
+                        <TextBlock Text="{loc:T EditPlaylist.PickExistingFolderType}"
                                    FontSize="10" Opacity="0.5"
                                    TextWrapping="Wrap" />
                     </StackPanel>
 
                     <!-- Star -->
                     <CheckBox Classes="metadata-pill-checkbox"
-                              Content="Star — keep at the top of the sidebar"
+                              Content="{loc:T EditPlaylist.StarKeepAtTop}"
                               IsChecked="{Binding IsPinned}"
                               HorizontalAlignment="Left" />
                 </StackPanel>

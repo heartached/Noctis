@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:ctrl="using:Noctis.Controls"
@@ -78,14 +79,14 @@
                                                 <!-- Favorite toggle (GitHub #41). IsFavorite isn't observable;
                                                      the rows re-materialize after every toggle, so the next
                                                      open shows the right item — same deal as Remove Picture. -->
-                                                <MenuItem Header="Set as Favorite" Click="OnToggleFavoriteArtistClick"
+                                                <MenuItem Header="{loc:T LibraryArtists.SetAsFavorite}" Click="OnToggleFavoriteArtistClick"
                                                           IsVisible="{Binding !IsFavorite}" />
-                                                <MenuItem Header="Remove from Favorites" Click="OnToggleFavoriteArtistClick"
+                                                <MenuItem Header="{loc:T LibraryArtists.RemoveFromFavorites}" Click="OnToggleFavoriteArtistClick"
                                                           IsVisible="{Binding IsFavorite}" />
                                                 <Separator />
-                                                <MenuItem Header="Choose from File" Click="OnChangeArtistImageClick" />
-                                                <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick" />
-                                                <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemoveArtistImageClick"
+                                                <MenuItem Header="{loc:T LibraryArtists.ChooseFromFile}" Click="OnChangeArtistImageClick" />
+                                                <MenuItem Header="{loc:T LibraryArtists.FindPictureOnline}" Click="OnSearchArtistImageClick" />
+                                                <MenuItem Header="{loc:T LibraryArtists.RemovePicture}" Classes="danger" Click="OnRemoveArtistImageClick"
                                                           IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </ContextMenu>
                                         </Button.ContextMenu>
@@ -151,12 +152,12 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
-                <TextBlock Text="No artists found"
+                <TextBlock Text="{loc:T LibraryArtists.NoArtistsFound}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
-                <TextBlock Text="Add music folders in Settings to get started"
+                <TextBlock Text="{loc:T LibraryArtists.AddMusicFoldersSettings}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

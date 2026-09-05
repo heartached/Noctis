@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.LyricShareDialog"
         x:DataType="vm:LyricShareViewModel"
-        Title="Share lyrics"
+        Title="{loc:T LyricShare.ShareLyrics}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -155,7 +156,7 @@
             <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
 
                 <!-- Header -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Share lyrics" FontSize="22" FontWeight="Bold"
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T LyricShare.ShareLyrics}" FontSize="22" FontWeight="Bold"
                            VerticalAlignment="Center"/>
 
                 <Button Grid.Row="0" Grid.Column="1"
@@ -220,7 +221,7 @@
                             Background="#18000000"
                             CornerRadius="8">
                         <Panel>
-                            <TextBlock Text="Select lines to preview"
+                            <TextBlock Text="{loc:T LyricShare.SelectLinesPreview}"
                                        FontSize="13" Opacity="0.5"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -248,7 +249,7 @@
                     <!-- Card options: layout, format, text colour & sync collapsed into one dropdown -->
                     <Button Grid.Column="0" Classes="share-pill" VerticalAlignment="Center"
                             Width="270" HorizontalContentAlignment="Stretch"
-                            ToolTip.Tip="Card layout, format, text colour &amp; sync">
+                            ToolTip.Tip="{loc:T LyricShare.CardLayoutFormatTextTip}">
                         <!-- Hard-fixed width (text left, chevron pinned right) so toggling
                              Layout/Format/Text/Sync/Karaoke can't resize the pill and shift
                              the anchored flyout. MinWidth wasn't enough: "· Karaoke" pushed
@@ -266,19 +267,19 @@
                                 <StackPanel x:DataType="vm:LyricShareViewModel" Width="250" Spacing="14">
                                     <!-- Layout -->
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Layout" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.Layout}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
                                             <Button Classes="share-pill" Classes.active="{Binding IsPanelLayout}"
-                                                    Content="Card" Command="{Binding SelectPanelLayoutCommand}"
-                                                    ToolTip.Tip="Rounded card with an artwork header panel"/>
+                                                    Content="{loc:T LyricShare.Card}" Command="{Binding SelectPanelLayoutCommand}"
+                                                    ToolTip.Tip="{loc:T LyricShare.RoundedCardArtworkHeaderTip}"/>
                                             <Button Classes="share-pill" Classes.active="{Binding IsPosterLayout}"
-                                                    Content="Poster" Command="{Binding SelectPosterLayoutCommand}"
-                                                    ToolTip.Tip="Big centered artwork with centered lyrics"/>
+                                                    Content="{loc:T LyricShare.Poster}" Command="{Binding SelectPosterLayoutCommand}"
+                                                    ToolTip.Tip="{loc:T LyricShare.BigCenteredArtworkCenteredTip}"/>
                                         </StackPanel>
                                     </Grid>
                                     <!-- Format -->
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Format" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.Format}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
                                             <Button Classes="share-pill" Classes.active="{Binding IsSquare}"
                                                     Content="1:1" Command="{Binding SelectSquareCommand}"/>
@@ -288,30 +289,30 @@
                                     </Grid>
                                     <!-- Text colour -->
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Text" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.Text}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
                                             <Button Classes="share-pill" Classes.active="{Binding IsAutoText}"
-                                                    Content="Auto" Command="{Binding UseAutoTextCommand}"/>
+                                                    Content="{loc:T LyricShare.Auto}" Command="{Binding UseAutoTextCommand}"/>
                                             <Button Classes="share-pill" Classes.active="{Binding IsWhiteText}"
-                                                    Content="White" Command="{Binding UseWhiteTextCommand}"/>
+                                                    Content="{loc:T LyricShare.White}" Command="{Binding UseWhiteTextCommand}"/>
                                             <Button Classes="share-pill" Classes.active="{Binding IsBlackText}"
-                                                    Content="Black" Command="{Binding UseBlackTextCommand}"/>
+                                                    Content="{loc:T LyricShare.Black}" Command="{Binding UseBlackTextCommand}"/>
                                         </StackPanel>
                                     </Grid>
                                     <!-- Sync (only when synced lyrics are available) -->
                                     <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding SyncAvailable}">
-                                        <TextBlock Text="Sync to playback" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.SyncPlayback}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <Button Grid.Column="1" Classes="share-pill" Classes.active="{Binding SyncEnabled}"
                                                 HorizontalAlignment="Right"
-                                                Content="Sync" Command="{Binding ToggleSyncCommand}"/>
+                                                Content="{loc:T LyricShare.Sync}" Command="{Binding ToggleSyncCommand}"/>
                                     </Grid>
                                     <!-- Karaoke word sweep on Save Video (only when ELRC word timings exist) -->
                                     <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding KaraokeAvailable}">
-                                        <TextBlock Text="Karaoke video" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.KaraokeVideo}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <Button Grid.Column="1" Classes="share-pill" Classes.active="{Binding KaraokeEnabled}"
                                                 HorizontalAlignment="Right"
-                                                Content="Karaoke" Command="{Binding ToggleKaraokeCommand}"
-                                                ToolTip.Tip="Save Video renders moving word-by-word lyrics"/>
+                                                Content="{loc:T LyricShare.Karaoke}" Command="{Binding ToggleKaraokeCommand}"
+                                                ToolTip.Tip="{loc:T LyricShare.SaveVideoRendersMovingTip}"/>
                                     </Grid>
                                 </StackPanel>
                             </Flyout>
@@ -321,7 +322,7 @@
                     <!-- Background: Artwork/Solid mode + the solid color swatches, in one dropdown -->
                     <Button Grid.Column="1" Classes="share-pill" VerticalAlignment="Center"
                             Margin="8,0,0,0" Width="150" HorizontalContentAlignment="Stretch"
-                            ToolTip.Tip="Card background: blurred artwork or a solid color">
+                            ToolTip.Tip="{loc:T LyricShare.CardBackgroundBlurredArtworkTip}">
                         <!-- Same hard-fixed width contract as the Card options pill, so the
                              anchored flyout never shifts when the summary changes. -->
                         <Grid ColumnDefinitions="*,Auto">
@@ -336,12 +337,12 @@
                                 <StackPanel x:DataType="vm:LyricShareViewModel" Width="250" Spacing="14">
                                     <!-- Mode -->
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:T LyricShare.Background}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
                                             <Button Classes="share-pill" Classes.active="{Binding IsArtworkBg}"
-                                                    Content="Artwork" Command="{Binding UseArtworkBgCommand}"/>
+                                                    Content="{loc:T LyricShare.Artwork}" Command="{Binding UseArtworkBgCommand}"/>
                                             <Button Classes="share-pill" Classes.active="{Binding IsSolidBg}"
-                                                    Content="Solid" Command="{Binding UseSolidBgCommand}"/>
+                                                    Content="{loc:T LyricShare.Solid}" Command="{Binding UseSolidBgCommand}"/>
                                         </StackPanel>
                                     </Grid>
                                     <!-- Solid colors: Auto (artwork-derived) first, then curated.
@@ -407,12 +408,12 @@
                             Margin="0,0,8,0"
                             Click="OnSaveVideoClick"
                             IsEnabled="{Binding CanExportVideo}"
-                            Content="Save Video"
-                            ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio"/>
+                            Content="{loc:T LyricShare.SaveVideo}"
+                            ToolTip.Tip="{loc:T LyricShare.SaveMP4ClipLyricTip}"/>
                     <Button Grid.Column="4"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
-                            Content="Save Card"
+                            Content="{loc:T LyricShare.SaveCard}"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </Grid>
             </Grid>

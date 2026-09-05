@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
@@ -183,7 +184,7 @@
                                             Margin="6,0,0,0"
                                             VerticalAlignment="Center"
                                             IsVisible="{Binding IsExplicit}"
-                                            ToolTip.Tip="Explicit">
+                                            ToolTip.Tip="{loc:T LibraryFolders.ExplicitTip}">
                                         <TextBlock Text="E"
                                                    Classes="explicit-badge-text compact"
                                                    FontSize="9"

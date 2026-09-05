@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -34,11 +35,11 @@
             <Setter Property="ContextMenu">
                 <ContextMenu x:DataType="m:PlaylistNavItem">
                     <!-- Playlist rows -->
-                    <MenuItem Header="Edit Playlist…"
+                    <MenuItem Header="{loc:T Sidebar.EditPlaylist}"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).EditPlaylistItemCommand}"
                               CommandParameter="{Binding}" />
-                    <MenuItem Header="Star in Sidebar"
+                    <MenuItem Header="{loc:T Sidebar.StarSidebar}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.IsVisible>
@@ -48,7 +49,7 @@
                             </MultiBinding>
                         </MenuItem.IsVisible>
                     </MenuItem>
-                    <MenuItem Header="Unstar from Sidebar"
+                    <MenuItem Header="{loc:T Sidebar.UnstarFromSidebar}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.IsVisible>
@@ -58,11 +59,11 @@
                             </MultiBinding>
                         </MenuItem.IsVisible>
                     </MenuItem>
-                    <MenuItem Header="Move to Folder…"
+                    <MenuItem Header="{loc:T Sidebar.MoveFolder}"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).MoveToFolderCommand}"
                               CommandParameter="{Binding}" />
-                    <MenuItem Header="Remove from Folder"
+                    <MenuItem Header="{loc:T Sidebar.RemoveFromFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RemoveFromFolderCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.IsVisible>
@@ -73,22 +74,22 @@
                         </MenuItem.IsVisible>
                     </MenuItem>
                     <Separator IsVisible="{Binding !IsFolder}" />
-                    <MenuItem Header="Delete Playlist" Classes="danger"
+                    <MenuItem Header="{loc:T Sidebar.DeletePlaylist}" Classes="danger"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DeletePlaylistItemCommand}"
                               CommandParameter="{Binding}" />
 
                     <!-- Folder headers -->
-                    <MenuItem Header="New Playlist in Folder…"
+                    <MenuItem Header="{loc:T Sidebar.NewPlaylistFolder}"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).NewPlaylistInFolderCommand}"
                               CommandParameter="{Binding}" />
-                    <MenuItem Header="Rename Folder…"
+                    <MenuItem Header="{loc:T Sidebar.RenameFolder}"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RenameFolderCommand}"
                               CommandParameter="{Binding}" />
                     <Separator IsVisible="{Binding IsFolder}" />
-                    <MenuItem Header="Remove Folder (keep playlists)" Classes="danger"
+                    <MenuItem Header="{loc:T Sidebar.RemoveFolderKeepPlaylists}" Classes="danger"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DissolveFolderCommand}"
                               CommandParameter="{Binding}" />
@@ -140,7 +141,7 @@
                         Classes.expanded="{Binding IsExpanded}"
                         Command="{Binding TopBar.BackCommand}"
                         IsEnabled="{Binding TopBar.IsBackButtonVisible, FallbackValue=False}"
-                        ToolTip.Tip="Back">
+                        ToolTip.Tip="{loc:T Sidebar.BackTip}">
                     <StackPanel Orientation="Horizontal" Spacing="14"
                                 HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid Width="28" Height="28">
@@ -154,7 +155,7 @@
                             </PathIcon>
                         </Grid>
                         <TextBlock x:Name="BackLabel"
-                                   Text="Back"
+                                   Text="{loc:T Sidebar.BackTip}"
                                    FontSize="15"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
@@ -166,7 +167,7 @@
                         Classes.expanded="{Binding IsExpanded}"
                         IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
-                        ToolTip.Tip="Search (Ctrl+F)">
+                        ToolTip.Tip="{loc:T Sidebar.SearchCtrlFTip}">
                     <StackPanel Orientation="Horizontal" Spacing="14"
                                 HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid x:Name="SearchIconHost" Width="28" Height="28">
@@ -182,7 +183,7 @@
                                      IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"/>
                         </Grid>
                         <TextBlock x:Name="SearchLabel"
-                                   Text="Search"
+                                   Text="{loc:T Sidebar.Search}"
                                    FontSize="15"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
@@ -266,7 +267,7 @@
                                         IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
                                         Background="Transparent" BorderThickness="0"
                                         Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                    <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                    <TextBlock Text="{loc:T Sidebar.Text}" FontSize="11" Opacity="0.5"/>
                                 </Button>
                             </Grid>
                         </Grid>
@@ -393,17 +394,17 @@
                     <!-- Playlists header (only visible when expanded) -->
                     <TextBlock Margin="18,4,12,4"
                                IsVisible="{Binding IsExpanded}"
-                               Text="PLAYLISTS"
+                               Text="{loc:T Sidebar.PLAYLISTS}"
                                FontSize="12"
                                FontWeight="SemiBold"
                                Opacity="0.5"
                                VerticalAlignment="Center"
                                Background="Transparent"
-                               ToolTip.Tip="Right-click for New Playlist">
+                               ToolTip.Tip="{loc:T Sidebar.RightClickNewPlaylistTip}">
                         <TextBlock.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="New Playlist…" Command="{Binding CreatePlaylistCommand}" />
-                                <MenuItem Header="New Smart Playlist…" Command="{Binding CreateSmartPlaylistFromSidebarCommand}" />
+                                <MenuItem Header="{loc:T Sidebar.NewPlaylist}" Command="{Binding CreatePlaylistCommand}" />
+                                <MenuItem Header="{loc:T Sidebar.NewSmartPlaylist}" Command="{Binding CreateSmartPlaylistFromSidebarCommand}" />
                             </ContextMenu>
                         </TextBlock.ContextMenu>
                     </TextBlock>

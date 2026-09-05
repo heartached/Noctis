@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.AlbumDescriptionDialog"
         x:DataType="vm:AlbumDetailViewModel"
-        Title="Album Description"
+        Title="{loc:T AlbumDescription.AlbumDescription}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -92,7 +93,7 @@
                                 Background="{DynamicResource ChipBackground}"
                                 BoxShadow="0 10 30 0 #55000000">
                             <Panel>
-                                <TextBlock Text="&#x266A;"
+                                <TextBlock Text="{loc:T AlbumDescription.Text}"
                                            FontSize="48"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
@@ -109,33 +110,33 @@
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
                             <Border Grid.Row="0" Grid.Column="0" Classes="album-desc-fact" Margin="0,0,4,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="album-desc-fact-label" Text="RELEASED" />
+                                    <TextBlock Classes="album-desc-fact-label" Text="{loc:T AlbumDescription.RELEASED}" />
                                     <TextBlock Classes="album-desc-fact-value" Text="{Binding Album.ReleaseDateShortFormatted}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="0" Grid.Column="1" Classes="album-desc-fact" Margin="4,0,0,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="album-desc-fact-label" Text="GENRE" />
+                                    <TextBlock Classes="album-desc-fact-label" Text="{loc:T AlbumDescription.GENRE}" />
                                     <TextBlock Classes="album-desc-fact-value" Text="{Binding Album.Genre}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="1" Grid.Column="0" Classes="album-desc-fact" Margin="0,0,4,8">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="album-desc-fact-label" Text="TRACKS" />
+                                    <TextBlock Classes="album-desc-fact-label" Text="{loc:T AlbumDescription.TRACKS}" />
                                     <TextBlock Classes="album-desc-fact-value" Text="{Binding Album.TrackCount}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="1" Grid.Column="1" Classes="album-desc-fact" Margin="4,0,0,8"
                                     IsVisible="{Binding Album.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="album-desc-fact-label" Text="QUALITY" />
+                                    <TextBlock Classes="album-desc-fact-label" Text="{loc:T AlbumDescription.QUALITY}" />
                                     <TextBlock Classes="album-desc-fact-value" Text="{Binding Album.AudioQualityBadge}" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Classes="album-desc-fact"
                                     IsVisible="{Binding Album.HasLabelName}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="album-desc-fact-label" Text="LABEL" />
+                                    <TextBlock Classes="album-desc-fact-label" Text="{loc:T AlbumDescription.LABEL}" />
                                     <TextBlock Classes="album-desc-fact-value" Text="{Binding Album.LabelName}" />
                                 </StackPanel>
                             </Border>
@@ -161,7 +162,7 @@
                                                                                                                                                                                                                                   FontWeight="Bold" /><Border Classes="explicit-badge"
                                         IsVisible="{Binding Album.IsExplicit}"
                                         VerticalAlignment="Center"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T AlbumDescription.ExplicitTip}">
                                     <TextBlock Text="E"
                                                Classes="explicit-badge-text"
                                                FontSize="10"
@@ -178,7 +179,7 @@
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Cursor="Hand"
-                                ToolTip.Tip="Edit description"
+                                ToolTip.Tip="{loc:T AlbumDescription.EditDescriptionTip}"
                                 Command="{Binding StartAlbumDescriptionEditCommand}"
                                 IsVisible="{Binding !IsAlbumDescriptionEditing}">
                             <PathIcon Data="{StaticResource EditIcon}"
@@ -236,7 +237,7 @@
                                 Spacing="8"
                                 Margin="0,14,0,16"
                                 IsVisible="{Binding IsAlbumDescriptionEditing}">
-                        <Button Content="Cancel"
+                        <Button Content="{loc:T AlbumDescription.Cancel}"
                                 Command="{Binding CancelAlbumDescriptionEditCommand}"
                                 Padding="12,6"
                                 FontSize="12"
@@ -246,7 +247,7 @@
                                 Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 Classes="album-desc-btn" />
-                        <Button Content="Save"
+                        <Button Content="{loc:T AlbumDescription.Save}"
                                 Command="{Binding SaveAlbumDescriptionEditCommand}"
                                 Padding="12,6"
                                 FontSize="12"

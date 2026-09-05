@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.CommandPaletteDialog"
         x:DataType="vm:CommandPaletteViewModel"
-        Title="Command palette"
+        Title="{loc:T CommandPalette.CommandPalette}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -35,7 +36,7 @@
             <StackPanel>
                 <TextBox x:Name="QueryBox"
                          Text="{Binding Query, Mode=TwoWay}"
-                         Watermark="Search songs, albums, artists, pages and actions…"
+                         Watermark="{loc:T CommandPalette.SearchSongsAlbumsArtists}"
                          FontSize="15"
                          BorderThickness="0"
                          Background="Transparent"
@@ -76,7 +77,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
-                <TextBlock Text="↑↓ navigate · Enter run · Esc close"
+                <TextBlock Text="{loc:T CommandPalette.NavigateEnterRunEsc}"
                            FontSize="10" Opacity="0.4"
                            Margin="16,8,16,10"/>
             </StackPanel>

@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.AddSongsDialog"
         x:DataType="vm:AddSongsDialogViewModel"
-        Title="Add Songs"
+        Title="{loc:T AddSongs.AddSongs}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -91,12 +92,12 @@
 
                 <!-- Header: title + search -->
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="12">
-                    <TextBlock Text="Add Songs"
+                    <TextBlock Text="{loc:T AddSongs.AddSongs}"
                                FontSize="20" FontWeight="Bold"
                                HorizontalAlignment="Center" />
                     <TextBox Text="{Binding SearchText}"
                              Classes="crisp-input"
-                             Watermark="Search your library…"
+                             Watermark="{loc:T AddSongs.SearchLibrary}"
                              CornerRadius="999"
                              x:Name="SearchBox" />
 
@@ -104,7 +105,7 @@
                     <Grid ColumnDefinitions="*,Auto"
                           IsVisible="{Binding IsShuffleMode}">
                         <TextBlock Grid.Column="0"
-                                   Text="Shuffled from your library"
+                                   Text="{loc:T AddSongs.ShuffledFromLibrary}"
                                    FontSize="11"
                                    FontWeight="Bold"
                                    Opacity="0.55"
@@ -117,9 +118,9 @@
                                 Padding="10,3"
                                 MinHeight="0"
                                 Cursor="Hand"
-                                ToolTip.Tip="Shuffle again"
+                                ToolTip.Tip="{loc:T AddSongs.ShuffleAgainTip}"
                                 Command="{Binding ReshuffleCommand}">
-                            <TextBlock Text="Shuffle"
+                            <TextBlock Text="{loc:T AddSongs.Shuffle}"
                                        FontSize="11"
                                        FontWeight="SemiBold"
                                        Opacity="0.6"
@@ -159,7 +160,7 @@
                                        VerticalAlignment="Center" />
                         </Button>
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T AddSongs.Cancel}"
                                 Command="{Binding CancelCommand}"
                                 Width="100" Padding="0,8"
                                 FontWeight="Bold"
@@ -219,7 +220,7 @@
                                                             Classes="explicit-badge compact"
                                                             Margin="6,0,0,0"
                                                             IsVisible="{Binding Track.IsExplicit}"
-                                                            ToolTip.Tip="Explicit">
+                                                            ToolTip.Tip="{loc:T AddSongs.ExplicitTip}">
                                                         <TextBlock Text="E"
                                                                    Classes="explicit-badge-text compact"
                                                                    FontSize="9"
@@ -233,7 +234,7 @@
 
                                             <!-- Added (already in playlist) -->
                                             <TextBlock Grid.Column="2"
-                                                       Text="Added"
+                                                       Text="{loc:T AddSongs.Added}"
                                                        FontSize="11" FontWeight="SemiBold"
                                                        Opacity="0.55"
                                                        VerticalAlignment="Center"
@@ -285,10 +286,10 @@
                     <!-- Prompt (nothing to shuffle and no search) -->
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Spacing="6" IsVisible="{Binding ShowPrompt}">
-                        <TextBlock Text="Nothing left to add"
+                        <TextBlock Text="{loc:T AddSongs.NothingLeftAdd}"
                                    FontSize="15" Opacity="0.5"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
-                        <TextBlock Text="Every song in your library is already in this playlist"
+                        <TextBlock Text="{loc:T AddSongs.EverySongLibraryAlready}"
                                    FontSize="12" Opacity="0.3"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
                     </StackPanel>
@@ -296,10 +297,10 @@
                     <!-- No results -->
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Spacing="6" IsVisible="{Binding ShowNoResults}">
-                        <TextBlock Text="No matches"
+                        <TextBlock Text="{loc:T AddSongs.NoMatches}"
                                    FontSize="15" Opacity="0.5"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
-                        <TextBlock Text="Nothing in your library matches that search"
+                        <TextBlock Text="{loc:T AddSongs.NothingLibraryMatchesSearch}"
                                    FontSize="12" Opacity="0.3"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
                     </StackPanel>

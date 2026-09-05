@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.CreatePlaylistDialog"
         x:DataType="vm:CreatePlaylistDialogViewModel"
-        Title="Create New Playlist"
+        Title="{loc:T CreatePlaylist.CreateNewPlaylist}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -56,7 +57,7 @@
                         Padding="24,12,24,16">
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T CreatePlaylist.Cancel}"
                                 Command="{Binding CancelCommand}"
                                 Width="100"
                                 Padding="0,8"
@@ -66,7 +67,7 @@
                                 Margin="0,0,8,0"
                                 Cursor="Hand" />
                         <Button Grid.Column="2"
-                                Content="Create"
+                                Content="{loc:T CreatePlaylist.Create}"
                                 Command="{Binding CreateCommand}"
                                 Width="100"
                                 Padding="0,8"
@@ -84,7 +85,7 @@
                 <StackPanel Margin="24,20,24,16" Spacing="14">
 
                     <!-- Title -->
-                    <TextBlock Text="Create New Playlist"
+                    <TextBlock Text="{loc:T CreatePlaylist.CreateNewPlaylist}"
                                FontSize="20"
                                FontWeight="Bold"
                                HorizontalAlignment="Center" />
@@ -92,17 +93,17 @@
                     <StackPanel Spacing="10" Margin="0,4,0,0">
                         <TextBox Text="{Binding PlaylistName}"
                                  Classes="crisp-input"
-                                 Watermark="Playlist name"
+                                 Watermark="{loc:T CreatePlaylist.PlaylistName}"
                                  CornerRadius="999"
                                  Padding="14,8"
                                  x:Name="NameTextBox" />
-                        <TextBlock Text="Name is required"
+                        <TextBlock Text="{loc:T CreatePlaylist.NameRequired}"
                                    FontSize="11"
                                    Foreground="{DynamicResource AccentColorBrush}"
                                    IsVisible="{Binding ShowNameRequiredError}" />
                         <TextBox Text="{Binding PlaylistDescription}"
                                  Classes="crisp-input"
-                                 Watermark="Description (optional)"
+                                 Watermark="{loc:T CreatePlaylist.DescriptionOptional}"
                                  CornerRadius="999"
                                  Padding="14,8" />
                     </StackPanel>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:ctrl="using:Noctis.Controls"
@@ -158,36 +159,36 @@
                     CommandParameter="{Binding}">
                 <Button.ContextMenu>
                     <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
-                        <MenuItem Header="Play"
+                        <MenuItem Header="{loc:T ArtistDetail.Play}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.PlayAlbumCommand}"
                                   CommandParameter="{Binding}">
                             <MenuItem.Icon>
                                 <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Shuffle"
+                        <MenuItem Header="{loc:T ArtistDetail.Shuffle}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ShuffleAlbumCommand}"
                                   CommandParameter="{Binding}">
                             <MenuItem.Icon>
                                 <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Play Next"
+                        <MenuItem Header="{loc:T ArtistDetail.PlayNext}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.PlayNextCommand}"
                                   CommandParameter="{Binding}" />
-                        <MenuItem Header="Add to Queue"
+                        <MenuItem Header="{loc:T ArtistDetail.AddQueue}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.AddToQueueCommand}"
                                   CommandParameter="{Binding}" />
                         <Separator />
-                        <MenuItem Header="Add to Playlist"
+                        <MenuItem Header="{loc:T ArtistDetail.AddPlaylist}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.AddToNewPlaylistCommand}"
                                   CommandParameter="{Binding}" />
                         <Separator />
-                        <MenuItem Header="Favorites"
+                        <MenuItem Header="{loc:T ArtistDetail.Favorites}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ToggleAlbumFavoritesCommand}"
                                   CommandParameter="{Binding}"
                                   IsVisible="{Binding !IsAllTracksFavorite}" />
-                        <MenuItem Header="Remove from Favorites"
+                        <MenuItem Header="{loc:T ArtistDetail.RemoveFromFavorites}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ToggleAlbumFavoritesCommand}"
                                   CommandParameter="{Binding}"
                                   IsVisible="{Binding IsAllTracksFavorite}">
@@ -195,14 +196,14 @@
                                 <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Metadata"
+                        <MenuItem Header="{loc:T ArtistDetail.Metadata}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.OpenMetadataCommand}"
                                   CommandParameter="{Binding}" />
-                        <MenuItem Header="Show Folder"
+                        <MenuItem Header="{loc:T ArtistDetail.ShowFolder}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ShowInExplorerCommand}"
                                   CommandParameter="{Binding}" />
                         <Separator />
-                        <MenuItem Header="Remove from Library" Classes="danger"
+                        <MenuItem Header="{loc:T ArtistDetail.RemoveFromLibrary}" Classes="danger"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.RemoveFromLibraryCommand}"
                                   CommandParameter="{Binding}">
                             <MenuItem.Icon>
@@ -221,7 +222,7 @@
                             ClipToBounds="True"
                             Background="#1AFFFFFF">
                         <Panel>
-                            <TextBlock Text="&#x266A;"
+                            <TextBlock Text="{loc:T ArtistDetail.Text}"
                                        FontSize="40"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -245,7 +246,7 @@
                                 <Border Classes="explicit-badge compact"
                                         Margin="4,0,0,0"
                                         IsVisible="{Binding IsExplicit}"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T ArtistDetail.ExplicitTip}">
                                     <TextBlock Text="E"
                                                Classes="explicit-badge-text compact"
                                                FontSize="9"
@@ -300,7 +301,7 @@
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <Panel>
-                            <TextBlock Text="&#x266A;"
+                            <TextBlock Text="{loc:T ArtistDetail.Text}"
                                        FontSize="16"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
@@ -334,7 +335,7 @@
                                     <Border Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
                                             IsVisible="{Binding Track.IsExplicit}"
-                                            ToolTip.Tip="Explicit">
+                                            ToolTip.Tip="{loc:T ArtistDetail.ExplicitTip}">
                                         <TextBlock Text="E"
                                                    Classes="explicit-badge-text compact"
                                                    FontSize="9"
@@ -357,11 +358,11 @@
                                 Spacing="3"
                                 VerticalAlignment="Center"
                                 Margin="0,0,14,0"
-                                ToolTip.Tip="Listen count">
+                                ToolTip.Tip="{loc:T ArtistDetail.ListenCountTip}">
                         <TextBlock Text="{Binding Track.PlayCount}"
                                    FontSize="11" FontWeight="SemiBold" Opacity="0.75"
                                    VerticalAlignment="Center" />
-                        <TextBlock Text="plays"
+                        <TextBlock Text="{loc:T ArtistDetail.Plays}"
                                    FontSize="11" FontWeight="SemiBold" Opacity="0.55"
                                    VerticalAlignment="Center" />
                     </StackPanel>
@@ -455,13 +456,13 @@
                                     BorderThickness="1"
                                     FontWeight="Bold"
                                     Cursor="Hand"
-                                    ToolTip.Tip="Play everything by this artist">
+                                    ToolTip.Tip="{loc:T ArtistDetail.PlayEverythingByArtistTip}">
                                 <StackPanel Orientation="Horizontal" Spacing="3">
                                     <PathIcon Data="{StaticResource PlaySolidIcon}"
                                               Width="13" Height="13"
                                               Foreground="{DynamicResource AccentForegroundBrush}"
                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="Play" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:T ArtistDetail.Play}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding ShuffleAllCommand}"
@@ -474,13 +475,13 @@
                                     BorderThickness="1"
                                     FontWeight="Bold"
                                     Cursor="Hand"
-                                    ToolTip.Tip="Shuffle everything by this artist">
+                                    ToolTip.Tip="{loc:T ArtistDetail.ShuffleEverythingByArtistTip}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <PathIcon Data="{StaticResource ShuffleIcon}"
                                               Width="16" Height="16"
                                               Foreground="{DynamicResource AccentForegroundBrush}"
                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="Shuffle" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:T ArtistDetail.Shuffle}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
 
@@ -492,7 +493,7 @@
                                     Width="34" Height="34"
                                     Cursor="Hand"
                                     Command="{Binding ToggleFavoriteCommand}"
-                                    ToolTip.Tip="Favorite artist">
+                                    ToolTip.Tip="{loc:T ArtistDetail.FavoriteArtistTip}">
                                 <Panel>
                                     <PathIcon Data="{StaticResource StarIcon}"
                                               Width="18" Height="18"
@@ -512,22 +513,22 @@
                                     Padding="0"
                                     Width="34" Height="34"
                                     Cursor="Hand"
-                                    ToolTip.Tip="Options">
+                                    ToolTip.Tip="{loc:T ArtistDetail.OptionsTip}">
                                 <PathIcon Data="{StaticResource MoreDotsIcon}"
                                           Width="14" Height="14"
                                           Foreground="{DynamicResource AccentTextExactBrush}" />
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedLeft"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                        <MenuItem Header="Play Next" Command="{Binding PlayNextAllCommand}" />
-                                        <MenuItem Header="Add to Queue" Command="{Binding AddAllToQueueCommand}" />
-                                        <MenuItem Header="Shuffle Popular" Command="{Binding ShufflePopularCommand}" />
-                                        <MenuItem Header="Shuffle Favorites" Command="{Binding ShuffleFavoritesCommand}"
+                                        <MenuItem Header="{loc:T ArtistDetail.PlayNext}" Command="{Binding PlayNextAllCommand}" />
+                                        <MenuItem Header="{loc:T ArtistDetail.AddQueue}" Command="{Binding AddAllToQueueCommand}" />
+                                        <MenuItem Header="{loc:T ArtistDetail.ShufflePopular}" Command="{Binding ShufflePopularCommand}" />
+                                        <MenuItem Header="{loc:T ArtistDetail.ShuffleFavorites}" Command="{Binding ShuffleFavoritesCommand}"
                                                   IsVisible="{Binding HasFavorites}" />
                                         <Separator />
-                                        <MenuItem Header="Choose Picture from File" Click="OnChangePictureClick" />
-                                        <MenuItem Header="Find Picture Online" Click="OnSearchPictureClick" />
-                                        <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemovePictureClick"
+                                        <MenuItem Header="{loc:T ArtistDetail.ChoosePictureFromFile}" Click="OnChangePictureClick" />
+                                        <MenuItem Header="{loc:T ArtistDetail.FindPictureOnline}" Click="OnSearchPictureClick" />
+                                        <MenuItem Header="{loc:T ArtistDetail.RemovePicture}" Classes="danger" Click="OnRemovePictureClick"
                                                   IsVisible="{Binding HasImage}" />
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -542,17 +543,17 @@
                 <!-- Latest release card (by release date) -->
                 <StackPanel Grid.Column="0" Spacing="8" Width="360" Margin="0,0,28,0"
                             IsVisible="{Binding HasLatestRelease}">
-                    <TextBlock Text="Latest Release" Classes="section-title" Margin="2,0,0,4" />
+                    <TextBlock Text="{loc:T ArtistDetail.LatestRelease}" Classes="section-title" Margin="2,0,0,4" />
                     <Button Classes="latest-cover"
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Cursor="Hand"
                             HorizontalAlignment="Left"
                             Command="{Binding OpenAlbumCommand}"
                             CommandParameter="{Binding LatestRelease}"
-                            ToolTip.Tip="Open album">
+                            ToolTip.Tip="{loc:T ArtistDetail.OpenAlbumTip}">
                         <Border Width="290" Height="290" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF">
                             <Panel>
-                                <TextBlock Text="&#x266A;" FontSize="40" Opacity="0.15"
+                                <TextBlock Text="{loc:T ArtistDetail.Text}" FontSize="40" Opacity="0.15"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            IsVisible="{Binding LatestRelease.ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}, FallbackValue=True}" />
                                 <ctrl:CachedImage SourcePath="{Binding LatestRelease.ArtworkPath, FallbackValue={x:Null}}"
@@ -577,7 +578,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="5">
                                 <PathIcon Data="{StaticResource PlaySolidIcon}" Width="10" Height="10"
                                           Foreground="{DynamicResource AccentTextExactBrush}" VerticalAlignment="Center" />
-                                <TextBlock Text="Play" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:T ArtistDetail.Play}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -589,10 +590,10 @@
                     <StackPanel Spacing="8" IsVisible="{Binding HasFavorites}">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Top Favorites" Classes="section-title" VerticalAlignment="Center" />
+                                <TextBlock Text="{loc:T ArtistDetail.TopFavorites}" Classes="section-title" VerticalAlignment="Center" />
                                 <ctrl:HeartIcon Size="15" IsFavorite="True" VerticalAlignment="Center" Margin="0,3,0,0" />
                             </StackPanel>
-                            <Button Grid.Column="1" Classes="text-link" Content="Shuffle"
+                            <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.Shuffle}"
                                     Command="{Binding ShuffleFavoritesCommand}" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding FavoriteSongs}" ItemTemplate="{StaticResource SongPill}">
@@ -605,8 +606,8 @@
                     </StackPanel>
                     <StackPanel Spacing="8" IsVisible="{Binding ShowPopularBesideLatest}">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
-                            <TextBlock Grid.Column="0" Text="Popular" Classes="section-title" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Classes="text-link" Content="Shuffle"
+                            <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Popular}" Classes="section-title" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.Shuffle}"
                                     Command="{Binding ShufflePopularCommand}" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding PopularSongs}" ItemTemplate="{StaticResource SongPill}">
@@ -623,8 +624,8 @@
             <!-- ── Popular (full width, when Top Favorites took the slot above) ── -->
             <StackPanel Margin="26,26,26,0" Spacing="8" IsVisible="{Binding ShowPopularBelow}">
                 <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
-                    <TextBlock Grid.Column="0" Text="Popular" Classes="section-title" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Classes="text-link" Content="Shuffle"
+                    <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Popular}" Classes="section-title" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.Shuffle}"
                             Command="{Binding ShufflePopularCommand}" VerticalAlignment="Center" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding PopularSongs}" ItemTemplate="{StaticResource SongPill}">
@@ -639,16 +640,16 @@
             <!-- ── Releases ─────────────────────────────────────────── -->
             <StackPanel Margin="26,26,26,0" Spacing="8">
                 <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
-                    <TextBlock Grid.Column="0" Text="Releases" Classes="section-title" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Releases}" Classes="section-title" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                         <Button Classes="artist-chip" Classes.selected="{Binding IsFilterAll}"
-                                Content="All"
+                                Content="{loc:T ArtistDetail.All}"
                                 Command="{Binding SetReleaseFilterCommand}" CommandParameter="all" />
                         <Button Classes="artist-chip" Classes.selected="{Binding IsFilterAlbums}"
-                                Content="Albums"
+                                Content="{loc:T ArtistDetail.Albums}"
                                 Command="{Binding SetReleaseFilterCommand}" CommandParameter="albums" />
                         <Button Classes="artist-chip" Classes.selected="{Binding IsFilterSingles}"
-                                Content="Singles &amp; EPs"
+                                Content="{loc:T ArtistDetail.SinglesEPs}"
                                 Command="{Binding SetReleaseFilterCommand}" CommandParameter="singles" />
                     </StackPanel>
                 </Grid>
@@ -661,14 +662,14 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
-                <TextBlock Text="No releases match."
+                <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}"
                            FontSize="13" Opacity="0.5" Margin="2,4,0,0"
                            IsVisible="{Binding !HasReleases}" />
             </StackPanel>
 
             <!-- ── Appears On ───────────────────────────────────────── -->
             <StackPanel Margin="26,26,26,0" Spacing="8" IsVisible="{Binding HasAppearsOn}">
-                <TextBlock Text="Appears On" Classes="section-title" Margin="2,0,0,4" />
+                <TextBlock Text="{loc:T ArtistDetail.Appears}" Classes="section-title" Margin="2,0,0,4" />
                 <ItemsControl ItemsSource="{Binding AppearsOn}"
                               ItemTemplate="{StaticResource AlbumTile}">
                     <ItemsControl.ItemsPanel>
@@ -692,7 +693,7 @@
                     <Grid ColumnDefinitions="3*,40,2*">
                         <StackPanel Grid.Column="0" Spacing="8">
                             <TextBlock Classes="section-title">
-                                <Run Text="About " /><Run Text="{Binding ArtistName}" />
+                                <Run Text="{loc:T ArtistDetail.About}" /><Run Text="{Binding ArtistName}" />
                             </TextBlock>
                             <TextBlock Text="{Binding About.ShortDescription, FallbackValue=''}"
                                        FontSize="13" FontWeight="SemiBold" Opacity="0.6"
@@ -714,7 +715,7 @@
                                         Command="{Binding ToggleBioCommand}"
                                         IsVisible="{Binding ShowBioToggle}" />
                             </StackPanel>
-                            <TextBlock Text="No biography found for this artist yet."
+                            <TextBlock Text="{loc:T ArtistDetail.NoBiographyFoundArtist}"
                                        FontSize="13" Opacity="0.5"
                                        IsVisible="{Binding !About.HasBio, FallbackValue=True}" />
                         </StackPanel>
@@ -725,7 +726,7 @@
                                     IsVisible="{Binding HasAboutFacts}">
                             <UniformGrid Columns="2">
                                 <StackPanel Spacing="3" Margin="0,0,16,14" IsVisible="{Binding About.HasFrom, FallbackValue=False}">
-                                    <TextBlock Classes="fact-label" Text="FROM" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.FROM}" />
                                     <TextBlock Classes="fact-value" Text="{Binding About.FromDisplay, FallbackValue=''}" />
                                 </StackPanel>
                                 <StackPanel Spacing="3" Margin="0,0,16,14" IsVisible="{Binding About.HasBegin, FallbackValue=False}">
@@ -737,12 +738,12 @@
                                     <TextBlock Classes="fact-value" Text="{Binding About.EndDisplay, FallbackValue=''}" />
                                 </StackPanel>
                                 <StackPanel Spacing="3" Margin="0,0,16,14" IsVisible="{Binding About.HasActive, FallbackValue=False}">
-                                    <TextBlock Classes="fact-label" Text="ACTIVE" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.ACTIVE}" />
                                     <TextBlock Classes="fact-value" Text="{Binding About.ActiveDisplay, FallbackValue=''}" />
                                 </StackPanel>
                             </UniformGrid>
                             <StackPanel Spacing="3" Margin="0,-10,0,0" IsVisible="{Binding About.HasGenres, FallbackValue=False}">
-                                <TextBlock Classes="fact-label" Text="GENRES" />
+                                <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.GENRES}" />
                                 <TextBlock Classes="fact-value" Text="{Binding About.GenresDisplay, FallbackValue=''}" />
                             </StackPanel>
                         </StackPanel>
@@ -750,44 +751,44 @@
 
                     <!-- In your library: one row of stat tiles -->
                     <StackPanel Spacing="8">
-                        <TextBlock Classes="fact-label" Text="IN YOUR LIBRARY" />
+                        <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.LIBRARY}" />
                         <UniformGrid Rows="1">
                             <Border Classes="library-stat">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="RELEASES" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.RELEASES}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold" Text="{Binding ReleaseCount}" />
                                 </StackPanel>
                             </Border>
                             <Border Classes="library-stat">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="SONGS" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.SONGS}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold" Text="{Binding SongCount}" />
                                 </StackPanel>
                             </Border>
                             <Border Classes="library-stat">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="TOTAL LENGTH" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.TOTALLENGTH}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold" Text="{Binding TotalLengthDisplay}" />
                                 </StackPanel>
                             </Border>
                             <Border Classes="library-stat" IsVisible="{Binding HasMostPlayed}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="MOST PLAYED" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.MOSTPLAYED}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold" Text="{Binding MostPlayedTitle}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1" />
                                 </StackPanel>
                             </Border>
                             <Border Classes="library-stat" IsVisible="{Binding !!FavoriteCount}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="FAVORITED" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.FAVORITED}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold">
-                                        <Run Text="{Binding FavoriteCount}" /><Run Text=" songs" />
+                                        <Run Text="{Binding FavoriteCount}" /><Run Text="{loc:T ArtistDetail.Songs}" />
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
                             <Border Classes="library-stat" Margin="0" IsVisible="{Binding HasInLibrarySince}">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="fact-label" Text="SINCE" />
+                                    <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.SINCE}" />
                                     <TextBlock Classes="fact-value" FontWeight="SemiBold" Text="{Binding InLibrarySince}" />
                                 </StackPanel>
                             </Border>

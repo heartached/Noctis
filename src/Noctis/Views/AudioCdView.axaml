@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              x:Class="Noctis.Views.AudioCdView"
@@ -25,7 +26,7 @@
                 <TextBlock Text="{Binding StatusText}" FontSize="13" Opacity="0.6"
                            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                    <Button Content="Play"
+                    <Button Content="{loc:T AudioCd.Play}"
                             Command="{Binding PlayAllCommand}"
                             IsVisible="{Binding ShowTracks}"
                             Padding="22,8" CornerRadius="999" Cursor="Hand">
@@ -41,7 +42,7 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                    <Button Content="Re-read disc"
+                    <Button Content="{loc:T AudioCd.ReReadDisc}"
                             Command="{Binding RefreshCommand}"
                             IsEnabled="{Binding !IsReading}"
                             IsVisible="{Binding HasDrive}"
@@ -65,13 +66,13 @@
                     <Grid ColumnDefinitions="32,*,Auto" Margin="6,4">
                         <Grid.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="Play"
+                                <MenuItem Header="{loc:T AudioCd.Play}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackCommand}"
                                           CommandParameter="{Binding}"/>
-                                <MenuItem Header="Play Next"
+                                <MenuItem Header="{loc:T AudioCd.PlayNext}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackNextCommand}"
                                           CommandParameter="{Binding}"/>
-                                <MenuItem Header="Add to Queue"
+                                <MenuItem Header="{loc:T AudioCd.AddQueue}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).AddTrackToQueueCommand}"
                                           CommandParameter="{Binding}"/>
                             </ContextMenu>

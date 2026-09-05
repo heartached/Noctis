@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -45,7 +46,7 @@
                                                   CommandParameter="{Binding}"
                                                   MaxWidth="400">
                                             <MenuItem.Header>
-                                                <TextBlock Text="Play"
+                                                <TextBlock Text="{loc:T LibraryPlaylists.Play}"
                                                            TextTrimming="CharacterEllipsis"
                                                            FontWeight="Normal"
                                                            FontSize="14"
@@ -55,21 +56,21 @@
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Shuffle"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.Shuffle}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).ShufflePlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Play Next"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.PlayNext}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).PlayNextPlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Add to Queue"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.AddQueue}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).AddPlaylistToQueueCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
@@ -77,28 +78,28 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="View Playlist"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.ViewPlaylist}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).OpenPlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Edit Playlist"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.EditPlaylist}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).EditPlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Export Playlist"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.ExportPlaylist}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).ExportPlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource SaveDiskIcon}" Width="14" Height="14" />
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Star in Sidebar"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.StarSidebar}"
                                                   IsVisible="{Binding !IsPinned}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
                                                   CommandParameter="{Binding}">
@@ -106,7 +107,7 @@
                                                 <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="#F1C40F" />
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Unstar from Sidebar"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.UnstarFromSidebar}"
                                                   IsVisible="{Binding IsPinned}"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
                                                   CommandParameter="{Binding}">
@@ -115,7 +116,7 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="Delete Playlist" Classes="danger"
+                                        <MenuItem Header="{loc:T LibraryPlaylists.DeletePlaylist}" Classes="danger"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).DeletePlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
@@ -201,12 +202,12 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
-                <TextBlock Text="No playlists yet"
+                <TextBlock Text="{loc:T LibraryPlaylists.NoPlaylistsYet}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
-                <TextBlock Text="Create a new playlist to get started"
+                <TextBlock Text="{loc:T LibraryPlaylists.CreateNewPlaylistGet}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"
@@ -218,12 +219,12 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
-                <TextBlock Text="No results"
+                <TextBlock Text="{loc:T LibraryPlaylists.NoResults}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
-                <TextBlock Text="No playlists match your search"
+                <TextBlock Text="{loc:T LibraryPlaylists.NoPlaylistsMatchSearch}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

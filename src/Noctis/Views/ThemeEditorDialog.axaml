@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.ThemeEditorDialog"
         x:DataType="vm:ThemeEditorViewModel"
-        Title="Theme Editor"
+        Title="{loc:T ThemeEditor.ThemeEditor}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -87,7 +88,7 @@
                         BorderThickness="0,1,0,0">
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T ThemeEditor.Cancel}"
                                 Command="{Binding CancelCommand}"
                                 Width="100"
                                 Padding="0,10"
@@ -97,7 +98,7 @@
                                 Margin="0,0,8,0"
                                 Cursor="Hand"/>
                         <Button Grid.Column="2"
-                                Content="Save"
+                                Content="{loc:T ThemeEditor.Save}"
                                 Command="{Binding SaveCommand}"
                                 Width="100"
                                 Padding="0,10"
@@ -118,28 +119,28 @@
                         <TextBlock Text="{Binding DialogTitle}" FontSize="20" FontWeight="Bold"/>
 
                         <StackPanel Spacing="5">
-                            <TextBlock Text="Name" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T ThemeEditor.Name}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBox x:Name="NameTextBox"
                                      Text="{Binding Name, Mode=TwoWay}"
                                      Classes="crisp-input"
-                                     Watermark="My Theme"
+                                     Watermark="{loc:T ThemeEditor.MyTheme}"
                                      CornerRadius="999"
                                      Padding="14,8"/>
-                            <TextBlock Text="A theme with this name already exists"
+                            <TextBlock Text="{loc:T ThemeEditor.ThemeNameAlreadyExists}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
                                        IsVisible="{Binding HasDuplicateName}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Base mode" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T ThemeEditor.BaseMode}" FontSize="13" FontWeight="SemiBold"/>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="Dark"
+                                <Button Content="{loc:T ThemeEditor.Dark}"
                                         Classes="mode-pill"
                                         Classes.active="{Binding IsDarkMode}"
                                         Command="{Binding SetBaseModeCommand}"
                                         CommandParameter="Dark"/>
-                                <Button Content="Light"
+                                <Button Content="{loc:T ThemeEditor.Light}"
                                         Classes="mode-pill"
                                         Classes.active="{Binding !IsDarkMode}"
                                         Command="{Binding SetBaseModeCommand}"
@@ -148,7 +149,7 @@
                         </StackPanel>
 
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Colors" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T ThemeEditor.Colors}" FontSize="13" FontWeight="SemiBold"/>
                             <Border CornerRadius="14"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                     Padding="12,4">
@@ -161,7 +162,7 @@
                                                                     SwatchSize="26"
                                                                     Margin="-3"
                                                                     VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="Main background"
+                                        <TextBlock Grid.Column="1" Text="{loc:T ThemeEditor.MainBackground}"
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding MainHex}"
@@ -177,7 +178,7 @@
                                                                     SwatchSize="26"
                                                                     Margin="-3"
                                                                     VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="Sidebar selection"
+                                        <TextBlock Grid.Column="1" Text="{loc:T ThemeEditor.SidebarSelection}"
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding SidebarHex}"
@@ -193,7 +194,7 @@
                                                                     SwatchSize="26"
                                                                     Margin="-3"
                                                                     VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="Accent"
+                                        <TextBlock Grid.Column="1" Text="{loc:T ThemeEditor.Accent}"
                                                    FontSize="13" Margin="10,0,8,0"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="2" Text="{Binding AccentHex}"
@@ -220,12 +221,12 @@
                                 <StackPanel Margin="10,16" Spacing="6">
                                     <Border CornerRadius="8" Padding="10,7"
                                             Background="{Binding PreviewSidebarSelected}">
-                                        <TextBlock Text="Home" FontSize="12"
+                                        <TextBlock Text="{loc:T ThemeEditor.Home}" FontSize="12"
                                                    Foreground="{Binding PreviewPrimaryText}"/>
                                     </Border>
-                                    <TextBlock Text="Library" FontSize="12" Margin="10,4"
+                                    <TextBlock Text="{loc:T ThemeEditor.Library}" FontSize="12" Margin="10,4"
                                                Foreground="{Binding PreviewSecondaryText}"/>
-                                    <TextBlock Text="Playlists" FontSize="12" Margin="10,4"
+                                    <TextBlock Text="{loc:T ThemeEditor.Playlists}" FontSize="12" Margin="10,4"
                                                Foreground="{Binding PreviewSecondaryText}"/>
                                 </StackPanel>
                             </Border>
@@ -234,19 +235,19 @@
                             <Border Grid.Column="1" Grid.Row="0"
                                     Background="{Binding PreviewMain}">
                                 <StackPanel Margin="18,16" Spacing="10">
-                                    <TextBlock Text="Preview" FontSize="17" FontWeight="Bold"
+                                    <TextBlock Text="{loc:T ThemeEditor.Preview}" FontSize="17" FontWeight="Bold"
                                                Foreground="{Binding PreviewPrimaryText}"/>
 
                                     <!-- Accent buttons -->
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Border CornerRadius="999" Padding="14,5"
                                                 Background="{Binding PreviewAccent}">
-                                            <TextBlock Text="Play" FontSize="12" FontWeight="SemiBold"
+                                            <TextBlock Text="{loc:T ThemeEditor.Play}" FontSize="12" FontWeight="SemiBold"
                                                        Foreground="{Binding PreviewAccentFg}"/>
                                         </Border>
                                         <Border CornerRadius="999" Padding="14,5"
                                                 Background="{Binding PreviewSidebarHover}">
-                                            <TextBlock Text="Shuffle" FontSize="12" FontWeight="SemiBold"
+                                            <TextBlock Text="{loc:T ThemeEditor.Shuffle}" FontSize="12" FontWeight="SemiBold"
                                                        Foreground="{Binding PreviewPrimaryText}"/>
                                         </Border>
                                     </StackPanel>
@@ -259,9 +260,9 @@
                                                 <Border Grid.Column="0" Width="30" Height="30"
                                                         CornerRadius="4" Background="{Binding PreviewAccent}"/>
                                                 <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="Track title" FontSize="13"
+                                                    <TextBlock Text="{loc:T ThemeEditor.TrackTitle}" FontSize="13"
                                                                Foreground="{Binding PreviewPrimaryText}" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="Artist · Album" FontSize="11"
+                                                    <TextBlock Text="{loc:T ThemeEditor.ArtistAlbum}" FontSize="11"
                                                                Foreground="{Binding PreviewSecondaryText}"/>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="3:24" FontSize="12"
@@ -274,9 +275,9 @@
                                                 <Border Grid.Column="0" Width="30" Height="30"
                                                         CornerRadius="4" Background="{Binding PreviewSidebarHover}"/>
                                                 <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="Another song" FontSize="13"
+                                                    <TextBlock Text="{loc:T ThemeEditor.AnotherSong}" FontSize="13"
                                                                Foreground="{Binding PreviewPrimaryText}"/>
-                                                    <TextBlock Text="Artist" FontSize="11"
+                                                    <TextBlock Text="{loc:T ThemeEditor.Artist}" FontSize="11"
                                                                Foreground="{Binding PreviewSecondaryText}"/>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="2:58" FontSize="12"
@@ -288,9 +289,9 @@
                                                 <Border Grid.Column="0" Width="30" Height="30"
                                                         CornerRadius="4" Background="{Binding PreviewSidebarHover}"/>
                                                 <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="Third track" FontSize="13"
+                                                    <TextBlock Text="{loc:T ThemeEditor.ThirdTrack}" FontSize="13"
                                                                Foreground="{Binding PreviewPrimaryText}"/>
-                                                    <TextBlock Text="Artist" FontSize="11"
+                                                    <TextBlock Text="{loc:T ThemeEditor.Artist}" FontSize="11"
                                                                Foreground="{Binding PreviewSecondaryText}"/>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" Text="4:12" FontSize="12"
@@ -312,9 +313,9 @@
                                     <Border Grid.Column="0" Width="28" Height="28"
                                             CornerRadius="4" Background="{Binding PreviewAccent}"/>
                                     <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Now Playing" FontSize="12"
+                                        <TextBlock Text="{loc:T ThemeEditor.NowPlaying}" FontSize="12"
                                                    Foreground="{Binding PreviewIslandFg}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Artist" FontSize="11"
+                                        <TextBlock Text="{loc:T ThemeEditor.Artist}" FontSize="11"
                                                    Foreground="{Binding PreviewIslandFgSecondary}"/>
                                     </StackPanel>
                                     <Border Grid.Column="2" Width="26" Height="26" CornerRadius="13"

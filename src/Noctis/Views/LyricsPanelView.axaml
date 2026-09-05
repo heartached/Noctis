@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
@@ -290,7 +291,7 @@
                     VerticalAlignment="Center"
                     Spacing="6"
                     IsVisible="{Binding ShowSearchButton}">
-            <TextBlock Text="No lyrics for this track"
+            <TextBlock Text="{loc:T LyricsPanel.NoLyricsTrack}"
                        FontSize="14"
                        Foreground="{Binding LyricsPrimaryFg}"
                        Opacity="0.55"
@@ -457,7 +458,7 @@
                            HorizontalAlignment="Left"
                            MaxWidth="292"
                            Margin="1,24,0,10"
-                           IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                           IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{loc:T LyricsPanel.WrittenBy}" FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -475,7 +476,7 @@
                 Padding="0"
                 CornerRadius="14"
                 Cursor="Hand"
-                ToolTip.Tip="Close lyrics panel">
+                ToolTip.Tip="{loc:T LyricsPanel.CloseLyricsPanelTip}">
             <Path Data="M 0,0 L 9,9 M 9,0 L 0,9"
                   Stroke="White"
                   StrokeThickness="1.6"

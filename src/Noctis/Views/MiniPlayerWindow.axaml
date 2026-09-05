@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:controls="using:Noctis.Controls"
@@ -7,7 +8,7 @@
         xmlns:helpers="using:Noctis.Helpers"
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:MiniPlayerViewModel"
-        Title="Noctis Mini Player"
+        Title="{loc:T MiniPlayer.NoctisMiniPlayer}"
         Width="420" Height="188"
         MinWidth="160" MinHeight="140"
         MaxWidth="960" MaxHeight="840"
@@ -750,7 +751,7 @@
                         <Button Classes="mini-transport" Width="26" Height="26"
                                 HorizontalAlignment="Right" VerticalAlignment="Top"
                                 Margin="8"
-                                ToolTip.Tip="Back to full view"
+                                ToolTip.Tip="{loc:T MiniPlayer.BackFullViewTip}"
                                 ToolTip.Placement="Left"
                                 Click="OnCloseClick">
                             <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" Foreground="White"/>
@@ -807,7 +808,7 @@
                             <controls:MarqueeTextBlock.InlineContent>
                                 <Border Classes="mini-explicit"
                                         IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                     <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                VerticalAlignment="Center" TextAlignment="Center"
                                                Foreground="Black"/>
@@ -827,7 +828,7 @@
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Margin="4,0,-4,0"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="Favorites">
+                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
                             <Panel Classes="mini-heart-glyph">
                                 <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
                                 <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
@@ -835,7 +836,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                             <Viewbox Width="15" Height="15">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
@@ -860,7 +861,7 @@
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
                     <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
+                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                         <Panel>
                             <Viewbox Width="18" Height="18" IsVisible="{Binding !Player.IsShuffleEnabled}">
                                 <Canvas Width="24" Height="24">
@@ -875,7 +876,7 @@
                         </Panel>
                     </Button>
                     <Button Classes="mini-transport" Width="34" Height="34"
-                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                         <Viewbox Width="19" Height="19">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
@@ -901,7 +902,7 @@
                         </Panel>
                     </Button>
                     <Button Classes="mini-transport" Width="34" Height="34"
-                            Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                            Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                         <Viewbox Width="19" Height="19">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="White" Data="{StaticResource NextIcon}"/>
@@ -909,7 +910,7 @@
                         </Viewbox>
                     </Button>
                     <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
                         <Panel>
                             <Viewbox Width="18" Height="18"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -962,7 +963,7 @@
                             <controls:MarqueeTextBlock.InlineContent>
                                 <Border Classes="mini-explicit"
                                         IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                     <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                VerticalAlignment="Center" TextAlignment="Center"
                                                Foreground="Black"/>
@@ -981,7 +982,7 @@
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="Favorites">
+                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
                             <Panel Classes="mini-heart-glyph">
                                 <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
                                 <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
@@ -989,7 +990,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                             <Viewbox Width="15" Height="15">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
@@ -1044,7 +1045,7 @@
                 <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
                     <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
+                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19" IsVisible="{Binding !Player.IsShuffleEnabled}">
                                 <Canvas Width="24" Height="24">
@@ -1061,7 +1062,7 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
                         <Button Classes="mini-transport" Width="40" Height="40"
-                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                             <Viewbox Width="21" Height="21">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
@@ -1087,7 +1088,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport" Width="40" Height="40"
-                                Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                             <Viewbox Width="21" Height="21">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="White" Data="{StaticResource NextIcon}"/>
@@ -1099,7 +1100,7 @@
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding Player.CycleRepeatCommand}"
-                            ToolTip.Tip="Repeat">
+                            ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1213,7 +1214,7 @@
                             <controls:MarqueeTextBlock.InlineContent>
                                 <Border Classes="mini-explicit"
                                         IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                     <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                VerticalAlignment="Center" TextAlignment="Center" Foreground="Black"/>
                                 </Border>
@@ -1227,7 +1228,7 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="Favorites">
+                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
                             <Panel Classes="mini-heart-glyph">
                                 <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
                                 <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
@@ -1235,7 +1236,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                             <Viewbox Width="15" Height="15">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
@@ -1288,7 +1289,7 @@
                 <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
                     <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
+                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19" IsVisible="{Binding !Player.IsShuffleEnabled}">
                                 <Canvas Width="24" Height="24">
@@ -1304,7 +1305,7 @@
                     </Button>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
                     <Button Classes="mini-transport" Width="40" Height="40"
-                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                         <Viewbox Width="21" Height="21">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
@@ -1330,7 +1331,7 @@
                         </Panel>
                     </Button>
                     <Button Classes="mini-transport" Width="40" Height="40"
-                            Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                            Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                         <Viewbox Width="21" Height="21">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="White" Data="{StaticResource NextIcon}"/>
@@ -1340,7 +1341,7 @@
                     </StackPanel>
                     <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
+                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
                         <Panel>
                             <Viewbox Width="19" Height="19"
                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1367,7 +1368,7 @@
                 <!-- Bottom volume bar (Liqoria large-icon look) -->
                 <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" Margin="2,6,2,0">
                     <Button Grid.Column="0" Classes="mini-transport" Width="26" Height="26"
-                            Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="Mute">
+                            Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="{loc:T MiniPlayer.MuteTip}">
                         <Panel>
                             <Viewbox Width="13" Height="13" Opacity="0.75" IsVisible="{Binding !Player.IsMuted}">
                                 <Canvas Width="24" Height="24">
@@ -1474,7 +1475,7 @@
                                 <controls:MarqueeTextBlock.InlineContent>
                                     <Border Classes="mini-explicit"
                                             IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                            ToolTip.Tip="Explicit">
+                                            ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                         <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                    VerticalAlignment="Center" TextAlignment="Center"
                                                    Foreground="Black"/>
@@ -1489,7 +1490,7 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                             <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                     Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                    ToolTip.Tip="Favorites">
+                                    ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
                                 <Panel Classes="mini-heart-glyph">
                                 <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
                                 <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
@@ -1497,7 +1498,7 @@
                             </Panel>
                             </Button>
                             <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                    ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                    ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                                 <Viewbox Width="15" Height="15">
                                     <Canvas Width="24" Height="24">
                                         <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
@@ -1541,7 +1542,7 @@
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,2,0,0">
                         <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
+                                Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
                             <Panel>
                                 <Viewbox Width="16" Height="16" IsVisible="{Binding !Player.IsShuffleEnabled}">
                                     <Canvas Width="24" Height="24">
@@ -1556,7 +1557,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport" Width="32" Height="32"
-                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                             <Viewbox Width="17" Height="17">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
@@ -1582,7 +1583,7 @@
                             </Panel>
                         </Button>
                         <Button Classes="mini-transport" Width="32" Height="32"
-                                Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                             <Viewbox Width="17" Height="17">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="White" Data="{StaticResource NextIcon}"/>
@@ -1590,7 +1591,7 @@
                             </Viewbox>
                         </Button>
                         <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
+                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{loc:T MiniPlayer.RepeatTip}">
                             <Panel>
                                 <Viewbox Width="16" Height="16"
                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
@@ -1811,10 +1812,10 @@
                             <TextBlock Margin="8,18,0,0"
                                        FontSize="12"
                                        TextWrapping="Wrap"
-                                       IsVisible="{Binding Lyrics.WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="#B3FFFFFF"/><Run Text="{Binding Lyrics.WrittenByText}" Foreground="#80FFFFFF"/></TextBlock>
+                                       IsVisible="{Binding Lyrics.WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{loc:T MiniPlayer.WrittenBy}" FontWeight="SemiBold" Foreground="#B3FFFFFF"/><Run Text="{Binding Lyrics.WrittenByText}" Foreground="#80FFFFFF"/></TextBlock>
                         </StackPanel>
                     </ScrollViewer>
-                    <TextBlock Text="No lyrics available"
+                    <TextBlock Text="{loc:T MiniPlayer.NoLyricsAvailable}"
                                FontSize="13" Foreground="#80FFFFFF"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsVisible="{Binding HasNoLyrics}"/>
@@ -1861,7 +1862,7 @@
                                         <controls:MarqueeTextBlock.InlineContent>
                                             <Border Classes="design-explicit"
                                                     IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                                    ToolTip.Tip="Explicit">
+                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                            VerticalAlignment="Center" TextAlignment="Center"
                                                            Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
@@ -1875,7 +1876,7 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top" Margin="6,-2,0,0">
                                     <Button Classes="mini-transport design-circle" Width="24" Height="24"
-                                            ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                            ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                                         <Viewbox Width="14" Height="14">
                                             <Canvas Width="24" Height="24">
                                                 <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
@@ -1899,7 +1900,7 @@
                             <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="26"
                                         HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0">
                                 <Button Classes="mini-transport" Width="30" Height="30"
-                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                                     <Viewbox Width="17" Height="17">
                                         <Canvas Width="24" Height="24">
                                             <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PreviousIcon}"/>
@@ -1925,7 +1926,7 @@
                                     </Panel>
                                 </Button>
                                 <Button Classes="mini-transport" Width="30" Height="30"
-                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                                     <Viewbox Width="17" Height="17">
                                         <Canvas Width="24" Height="24">
                                             <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource NextIcon}"/>
@@ -1983,7 +1984,7 @@
                                                IsSpinning="{Binding Player.IsPlaying}"/>
                         <Button Grid.Row="0" Classes="mini-transport design-circle" Width="28" Height="28"
                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,14,0"
-                                ToolTip.Tip="More" Click="OnMoreMenuClick">
+                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
                             <Viewbox Width="15" Height="15">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
@@ -2008,7 +2009,7 @@
                                            MaxWidth="240" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                                 <Border Grid.Column="1" Classes="design-explicit" Margin="6,0,0,0"
                                         IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
+                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                     <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                VerticalAlignment="Center" TextAlignment="Center"
                                                Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
@@ -2029,7 +2030,7 @@
                             </Grid>
                             <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" Margin="0,8,0,0">
                                 <Button Classes="mini-transport" Width="32" Height="32"
-                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="Previous">
+                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
                                     <Viewbox Width="18" Height="18">
                                         <Canvas Width="24" Height="24">
                                             <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource PreviousIcon}"/>
@@ -2055,7 +2056,7 @@
                                     </Panel>
                                 </Button>
                                 <Button Classes="mini-transport" Width="32" Height="32"
-                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="Forward">
+                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
                                     <Viewbox Width="18" Height="18">
                                         <Canvas Width="24" Height="24">
                                             <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Data="{StaticResource NextIcon}"/>
@@ -2128,12 +2129,12 @@
                                           Foreground="{DynamicResource MiniDrawerTextSoft}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" x:Name="SearchBox" Classes="mini-search"
                                          Text="{Binding SearchQuery, Mode=TwoWay}"
-                                         Watermark="Search Library"
+                                         Watermark="{loc:T MiniPlayer.SearchLibrary}"
                                          Margin="8,0,4,0"/>
                                 <Button Grid.Column="2" Classes="mini-transport" Width="20" Height="20"
                                         Command="{Binding ClearSearchCommand}"
                                         IsVisible="{Binding SearchQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        ToolTip.Tip="Clear">
+                                        ToolTip.Tip="{loc:T MiniPlayer.ClearTip}">
                                     <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10" Foreground="{DynamicResource MiniDrawerTextSoft}"/>
                                 </Button>
                             </Grid>
@@ -2171,7 +2172,7 @@
                                                         <controls:MarqueeTextBlock.InlineContent>
                                                             <Border Classes="mini-explicit"
                                                                     IsVisible="{Binding IsExplicit, FallbackValue=False}"
-                                                                    ToolTip.Tip="Explicit">
+                                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                                            VerticalAlignment="Center" TextAlignment="Center"
                                                                            Foreground="{DynamicResource MiniDrawerBadgeText}"/>
@@ -2188,7 +2189,7 @@
                                                 <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlaySearchResultCommand}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Play">
+                                                        ToolTip.Tip="{loc:T MiniPlayer.PlayTip}">
                                                     <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
@@ -2202,9 +2203,9 @@
                     <!-- Queue layer -->
                     <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsQueueDrawer}">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,0,6,6">
-                            <TextBlock Grid.Column="0" Text="Up Next" FontSize="12" FontWeight="SemiBold"
+                            <TextBlock Grid.Column="0" Text="{loc:T MiniPlayer.UpNext}" FontSize="12" FontWeight="SemiBold"
                                        Foreground="{DynamicResource MiniDrawerTextHeader}"/>
-                            <TextBlock Grid.Column="1" Text="showing first 100" FontSize="10"
+                            <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.ShowingFirst100}" FontSize="10"
                                        Foreground="{DynamicResource MiniDrawerTextFaint}" VerticalAlignment="Center"
                                        IsVisible="{Binding QueuePreviewTruncated}"/>
                         </Grid>
@@ -2239,7 +2240,7 @@
                                                         <controls:MarqueeTextBlock.InlineContent>
                                                             <Border Classes="mini-explicit"
                                                                     IsVisible="{Binding IsExplicit, FallbackValue=False}"
-                                                                    ToolTip.Tip="Explicit">
+                                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
                                                                 <TextBlock Text="E" FontSize="9" FontWeight="Bold"
                                                                            VerticalAlignment="Center" TextAlignment="Center"
                                                                            Foreground="{DynamicResource MiniDrawerBadgeText}"/>
@@ -2253,7 +2254,7 @@
                                                 <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlayFromQueueCommand}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Play">
+                                                        ToolTip.Tip="{loc:T MiniPlayer.PlayTip}">
                                                     <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
@@ -2267,7 +2268,7 @@
                     <!-- Volume layer -->
                     <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding IsVolumeDrawer}" Margin="4,6">
                         <Button Grid.Column="0" Classes="mini-transport" Width="26" Height="26"
-                                Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="Mute">
+                                Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="{loc:T MiniPlayer.MuteTip}">
                             <Panel>
                                 <Viewbox Width="13" Height="13" Opacity="0.75" IsVisible="{Binding !Player.IsMuted}">
                                     <Canvas Width="24" Height="24">
@@ -2350,7 +2351,7 @@
                                 Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="Search" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Search}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Command="{Binding ToggleQueueDrawerCommand}"
@@ -2368,7 +2369,7 @@
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform"/>
                                     </Border.OpacityMask>
                                 </Border>
-                                <TextBlock Text="Queue" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Queue}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- The large-icon form has its own always-visible volume bar -->
@@ -2382,7 +2383,7 @@
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Volume%20ICON.png" Stretch="Uniform"/>
                                     </Border.OpacityMask>
                                 </Border>
-                                <TextBlock Text="Volume" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Volume}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- The fixed designs have no heart button on the card, so the menu carries it. -->
@@ -2391,7 +2392,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <controls:HeartIcon Size="14" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
                                                     IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <TextBlock Text="Favorites" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.FavoritesTip}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Stays in the list while lyrics are open: it is the only way back
@@ -2414,7 +2415,7 @@
                                 Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
                         <Border CornerRadius="999" Padding="2" Margin="4,2,4,2"
                                 Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                                ToolTip.Tip="Mini player design">
+                                ToolTip.Tip="{loc:T MiniPlayer.MiniPlayerDesignTip}">
                             <Panel x:Name="DesignSegmentPanel">
                                 <!-- The highlight slides under the picked design (code-behind sizes it to
                                      a third of the row and translates it by the index). -->
@@ -2432,13 +2433,13 @@
                                 </Border>
                                 <Grid ColumnDefinitions="*,*,*">
                                     <Button Grid.Column="0" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStyleClassic}"
-                                            Content="Classic" Command="{Binding SetDesignCommand}" CommandParameter="Classic"
+                                            Content="{loc:T MiniPlayer.Classic}" Command="{Binding SetDesignCommand}" CommandParameter="Classic"
                                             Click="OnMenuItemClick"/>
                                     <Button Grid.Column="1" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStylePill}"
-                                            Content="Pill" Command="{Binding SetDesignCommand}" CommandParameter="Pill"
+                                            Content="{loc:T MiniPlayer.Pill}" Command="{Binding SetDesignCommand}" CommandParameter="Pill"
                                             Click="OnMenuItemClick"/>
                                     <Button Grid.Column="2" Classes="mini-segment" Classes.active="{Binding Settings.IsMiniStyleSleeve}"
-                                            Content="Sleeve" Command="{Binding SetDesignCommand}" CommandParameter="Sleeve"
+                                            Content="{loc:T MiniPlayer.Sleeve}" Command="{Binding SetDesignCommand}" CommandParameter="Sleeve"
                                             Click="OnMenuItemClick"/>
                                 </Grid>
                             </Panel>
@@ -2450,7 +2451,7 @@
                         <Button Classes="mini-menu-item" Click="OnCloseClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="Back to full view" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.BackFullViewTip}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

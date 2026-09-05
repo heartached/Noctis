@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
@@ -45,52 +46,52 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="42" />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
+            <Button Grid.Column="0" Content="{loc:T LibrarySongs.Title}" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Border Grid.Column="1" Width="80"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowTimeColumn, FallbackValue=True}">
-                <Button Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
+                <Button Content="{loc:T LibrarySongs.Time}" Command="{Binding SortCommand}" CommandParameter="Time"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
-            <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
+            <Button Grid.Column="2" Content="{loc:T LibrarySongs.Artist}" Command="{Binding SortCommand}" CommandParameter="Artist"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-            <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
+            <Button Grid.Column="3" Content="{loc:T LibrarySongs.Album}" Command="{Binding SortCommand}" CommandParameter="Album"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Border Grid.Column="4" Width="110"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
-                <Button Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
+                <Button Content="{loc:T LibrarySongs.Genre}" Command="{Binding SortCommand}" CommandParameter="Genre"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             </Border>
             <Border Grid.Column="5" Width="80"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
-                <Button Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
+                <Button Content="{loc:T LibrarySongs.Favorites}" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                         Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Border Grid.Column="6" Width="84"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
-                <Button Content="Rating" Command="{Binding SortCommand}" CommandParameter="Rating"
+                <Button Content="{loc:T LibrarySongs.Rating}" Command="{Binding SortCommand}" CommandParameter="Rating"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Border Grid.Column="7" Width="55"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowPlaysColumn, FallbackValue=True}">
-                <Button Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
+                <Button Content="{loc:T LibrarySongs.Plays}" Command="{Binding SortCommand}" CommandParameter="Plays"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Border Grid.Column="8" Width="48"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, FallbackValue=False}">
-                <Button Content="BPM" Command="{Binding SortCommand}" CommandParameter="Bpm"
+                <Button Content="{loc:T LibrarySongs.BPM}" Command="{Binding SortCommand}" CommandParameter="Bpm"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Border Grid.Column="9" Width="72"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBitrateColumn, FallbackValue=False}">
-                <Button Content="Bitrate" Command="{Binding SortCommand}" CommandParameter="Bitrate"
+                <Button Content="{loc:T LibrarySongs.Bitrate}" Command="{Binding SortCommand}" CommandParameter="Bitrate"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Border Grid.Column="10" Width="68"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowSampleRateColumn, FallbackValue=False}">
-                <Button Content="Sample" Command="{Binding SortCommand}" CommandParameter="SampleRate"
+                <Button Content="{loc:T LibrarySongs.Sample}" Command="{Binding SortCommand}" CommandParameter="SampleRate"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
         </Grid>
@@ -304,7 +305,7 @@
                                     Classes="explicit-badge compact"
                                     Margin="6,0,4,0"
                                     IsVisible="{Binding IsExplicit}"
-                                    ToolTip.Tip="Explicit">
+                                    ToolTip.Tip="{loc:T LibrarySongs.ExplicitTip}">
                                 <TextBlock Text="E"
                                            Classes="explicit-badge-text compact"
                                            FontSize="9"
@@ -369,7 +370,7 @@
                                     Classes.is-favorite="{Binding IsFavorite}"
                                     Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ToggleFavoriteCommand}"
                                     CommandParameter="{Binding}"
-                                    ToolTip.Tip="Favorite"
+                                    ToolTip.Tip="{loc:T LibrarySongs.FavoriteTip}"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
                                 <controls:HeartIcon Size="12" IsFavorite="{Binding IsFavorite}" />
@@ -427,7 +428,7 @@
                                 VerticalAlignment="Center"
                                 Cursor="Hand"
                                 Tag="{Binding}"
-                                ToolTip.Tip="Options"
+                                ToolTip.Tip="{loc:T LibrarySongs.OptionsTip}"
                                 Click="OnOptionsButtonClick">
                             <PathIcon Classes="row-dots-icon"
                                      Data="{StaticResource MoreDotsIcon}"
@@ -446,12 +447,12 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
-                <TextBlock Text="No songs found"
+                <TextBlock Text="{loc:T LibrarySongs.NoSongsFound}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
-                <TextBlock Text="Add music folders in Settings to get started"
+                <TextBlock Text="{loc:T LibrarySongs.AddMusicFoldersSettings}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

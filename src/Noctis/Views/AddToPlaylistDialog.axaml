@@ -1,12 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:conv="using:Noctis.Converters"
         xmlns:ctrl="using:Noctis.Controls"
         x:Class="Noctis.Views.AddToPlaylistDialog"
         x:DataType="vm:AddToPlaylistDialogViewModel"
-        Title="Add to Playlist"
+        Title="{loc:T AddToPlaylist.AddPlaylist}"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -79,7 +80,7 @@
                             </TextBlock.Text>
                         </TextBlock>
                         <Button Grid.Column="1"
-                                Content="Cancel"
+                                Content="{loc:T AddToPlaylist.Cancel}"
                                 IsVisible="{Binding !IsCreatingNew}"
                                 Command="{Binding CancelCommand}"
                                 Width="100"
@@ -104,7 +105,7 @@
                         <!-- Create new: collapsed pill -->
                         <Button Command="{Binding ShowCreateCommand}"
                                 IsVisible="{Binding !IsCreatingNew}"
-                                Content="Create New Playlist"
+                                Content="{loc:T AddToPlaylist.CreateNewPlaylist}"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
@@ -123,21 +124,21 @@
                             <StackPanel Spacing="10">
                                 <TextBox Text="{Binding NewPlaylistName}"
                                          Classes="crisp-input"
-                                         Watermark="Playlist name"
+                                         Watermark="{loc:T AddToPlaylist.PlaylistName}"
                                          CornerRadius="999"
                                          Padding="14,8"
                                          x:Name="NewNameTextBox" />
-                                <TextBlock Text="Name is required"
+                                <TextBlock Text="{loc:T AddToPlaylist.NameRequired}"
                                            FontSize="11"
                                            Foreground="{DynamicResource AccentColorBrush}"
                                            IsVisible="{Binding ShowNameRequiredError}" />
                                 <TextBox Text="{Binding NewPlaylistDescription}"
                                          Classes="crisp-input"
-                                         Watermark="Description (optional)"
+                                         Watermark="{loc:T AddToPlaylist.DescriptionOptional}"
                                          CornerRadius="999"
                                          Padding="14,8" />
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                    <Button Content="Back"
+                                    <Button Content="{loc:T AddToPlaylist.Back}"
                                             Command="{Binding CancelCreateCommand}"
                                             Width="90"
                                             Padding="0,7"
@@ -145,7 +146,7 @@
                                             HorizontalContentAlignment="Center"
                                             CornerRadius="999"
                                             Cursor="Hand" />
-                                    <Button Content="Create"
+                                    <Button Content="{loc:T AddToPlaylist.Create}"
                                             Command="{Binding ConfirmCreateCommand}"
                                             Width="90"
                                             Padding="0,7"
@@ -161,14 +162,14 @@
                         </Border>
 
                         <!-- Existing playlists header -->
-                        <TextBlock Text="Your Playlists"
+                        <TextBlock Text="{loc:T AddToPlaylist.Playlists}"
                                    FontSize="16"
                                    FontWeight="SemiBold"
                                    Margin="0,4,0,0"
                                    IsVisible="{Binding ShowPlaylistList}" />
 
                         <!-- Empty state -->
-                        <TextBlock Text="No playlists yet — create one above."
+                        <TextBlock Text="{loc:T AddToPlaylist.NoPlaylistsYetCreate}"
                                    FontSize="13"
                                    Opacity="0.55"
                                    HorizontalAlignment="Center"

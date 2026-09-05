@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:helpers="using:Noctis.Helpers"
@@ -51,7 +52,7 @@
     <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
             <!-- Now Playing section -->
-            <TextBlock Text="Now Playing"
+            <TextBlock Text="{loc:T Queue.NowPlaying}"
                        Grid.Row="0"
                        FontSize="24"
                        FontWeight="Bold"
@@ -86,7 +87,7 @@
                                     Classes="explicit-badge compact"
                                     Margin="6,0,0,0"
                                     IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                    ToolTip.Tip="Explicit">
+                                    ToolTip.Tip="{loc:T Queue.ExplicitTip}">
                                 <TextBlock Text="E"
                                            Classes="explicit-badge-text compact"
                                            FontSize="9"
@@ -101,7 +102,7 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="No track playing"
+            <TextBlock Text="{loc:T Queue.NoTrackPlaying}"
                        Grid.Row="2"
                        FontSize="14"
                        Opacity="0.4"
@@ -113,7 +114,7 @@
                 <!-- Title + Shuffle/Repeat toggles. These live here (not in the slim Home
                      playback bar) so set-once controls stay out of the bar's way. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock Text="Up Next"
+                    <TextBlock Text="{loc:T Queue.UpNext}"
                                FontSize="18"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center" />
@@ -129,7 +130,7 @@
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
-                            ToolTip.Tip="Shuffle">
+                            ToolTip.Tip="{loc:T Queue.ShuffleTip}">
                         <Panel Width="27" Height="23">
                             <Border CornerRadius="6"
                                     Background="{DynamicResource AccentColorBrush}"
@@ -150,7 +151,7 @@
                             Background="Transparent" BorderThickness="0" Padding="0"
                             Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
-                            ToolTip.Tip="Repeat">
+                            ToolTip.Tip="{loc:T Queue.RepeatTip}">
                         <Panel Width="27" Height="23">
                             <Border CornerRadius="6"
                                     Background="{DynamicResource AccentColorBrush}"
@@ -178,14 +179,14 @@
                         Padding="6,3"
                         Margin="0,0,8,0"
                         Cursor="Hand"
-                        ToolTip.Tip="Save the current queue as a playlist"
+                        ToolTip.Tip="{loc:T Queue.SaveCurrentQueueAsTip}"
                         IsVisible="{Binding !!UpNext.Count}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <PathIcon Data="{StaticResource PlaylistsIcon}"
                                   Width="13" Height="13"
                                   Opacity="0.6"
                                   VerticalAlignment="Center" />
-                        <TextBlock Text="Save as playlist"
+                        <TextBlock Text="{loc:T Queue.SaveAsPlaylist}"
                                    FontSize="12"
                                    Opacity="0.6"
                                    VerticalAlignment="Center" />
@@ -208,7 +209,7 @@
                                 <ImageBrush Source="avares://Noctis/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
                             </Border.OpacityMask>
                         </Border>
-                        <TextBlock Text="Clear"
+                        <TextBlock Text="{loc:T Queue.Clear}"
                                    FontSize="12"
                                    Opacity="0.6"
                                    VerticalAlignment="Center" />
@@ -235,7 +236,7 @@
                                             Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
                                             IsVisible="{Binding IsExplicit}"
-                                            ToolTip.Tip="Explicit">
+                                            ToolTip.Tip="{loc:T Queue.ExplicitTip}">
                                         <TextBlock Text="E"
                                                    Classes="explicit-badge-text compact"
                                                    FontSize="9"
@@ -259,7 +260,7 @@
             </ListBox>
 
             <!-- History section -->
-            <TextBlock Text="History"
+            <TextBlock Text="{loc:T Queue.History}"
                        Grid.Row="5"
                        FontSize="18"
                        FontWeight="SemiBold"
@@ -286,7 +287,7 @@
                                             Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
                                             IsVisible="{Binding IsExplicit}"
-                                            ToolTip.Tip="Explicit">
+                                            ToolTip.Tip="{loc:T Queue.ExplicitTip}">
                                         <TextBlock Text="E"
                                                    Classes="explicit-badge-text compact"
                                                    FontSize="9"

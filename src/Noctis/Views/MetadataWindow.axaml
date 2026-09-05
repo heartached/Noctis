@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
         xmlns:presenters="using:Avalonia.Controls.Presenters"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
-        Title="Metadata"
+        Title="{loc:T Metadata.Metadata}"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -337,7 +338,7 @@
                         ClipToBounds="True"
                         Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                     <Panel>
-                        <TextBlock Text="Album"
+                        <TextBlock Text="{loc:T Metadata.Album}"
                                    FontSize="11"
                                    Opacity="0.35"
                                    HorizontalAlignment="Center"
@@ -369,7 +370,7 @@
                                 Classes="explicit-badge"
                                 Margin="8,0,0,0"
                                 IsVisible="{Binding HeaderIsExplicit}"
-                                ToolTip.Tip="Explicit">
+                                ToolTip.Tip="{loc:T Metadata.ExplicitTip}">
                             <TextBlock Text="E"
                                        Classes="explicit-badge-text"
                                        FontSize="9"
@@ -421,7 +422,7 @@
                 <controls:HeartIcon Grid.Column="3" Size="20" ShowWhenOff="False"
                                 VerticalAlignment="Center" HorizontalAlignment="Right"
                                 IsFavorite="{Binding HeaderIsFavorite}"
-                                ToolTip.Tip="Favorited" />
+                                ToolTip.Tip="{loc:T Metadata.FavoritedTip}" />
             </Grid>
         </Border>
 
@@ -446,7 +447,7 @@
                                IsVisible="{Binding HasSaveError}" />
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="Cancel"
+                        Content="{loc:T Metadata.Cancel}"
                         Command="{Binding CancelCommand}"
                         Width="100"
                         Padding="0,10"
@@ -467,7 +468,7 @@
                         CornerRadius="999"
                         Cursor="Hand">
                     <Panel>
-                        <TextBlock Text="Save"
+                        <TextBlock Text="{loc:T Metadata.Save}"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding !IsSaving}" />
@@ -476,7 +477,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     IsVisible="{Binding IsSaving}">
-                            <TextBlock Text="Saving" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Metadata.Saving}" VerticalAlignment="Center" />
                             <!-- Own IsVisible mirrors the parent's so the
                                  [IsVisible=True] animation gate can see it. -->
                             <Ellipse Classes="loading-spinner"
@@ -497,7 +498,7 @@
                     SelectionChanged="OnMetaTabSelectionChanged">
 
             <!-- ═══════════ DETAILS TAB ═══════════ -->
-            <TabItem Header="Details" FontSize="14" FontWeight="SemiBold">
+            <TabItem Header="{loc:T Metadata.Details}" FontSize="14" FontWeight="SemiBold">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
@@ -511,7 +512,7 @@
                                     CornerRadius="999"
                                     FontWeight="SemiBold"
                                     Cursor="Hand"
-                                    Content="Search metadata" />
+                                    Content="{loc:T Metadata.SearchMetadata}" />
                             <StackPanel Orientation="Horizontal" Spacing="8"
                                         IsVisible="{Binding ShowSearchMetadataStatusRow}"
                                         VerticalAlignment="Center">
@@ -528,7 +529,7 @@
                                     CornerRadius="12" Padding="18,14,18,14">
                                 <StackPanel Spacing="12">
                                     <StackPanel Spacing="1">
-                                        <TextBlock Text="Found metadata"
+                                        <TextBlock Text="{loc:T Metadata.FoundMetadata}"
                                                    FontWeight="Bold" FontSize="13.5" />
                                         <TextBlock Text="{Binding SearchMetadataStatus}"
                                                    FontSize="11.5" Opacity="0.55" TextWrapping="Wrap" />
@@ -546,10 +547,10 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                        <Button Content="Cancel" Command="{Binding CloseSearchMetadataCommand}"
+                                        <Button Content="{loc:T Metadata.Cancel}" Command="{Binding CloseSearchMetadataCommand}"
                                                 Padding="12,4" FontSize="12" CornerRadius="999"
                                                 FontWeight="Bold" Cursor="Hand" />
-                                        <Button Content="Apply" Command="{Binding ApplySearchMetadataCommand}"
+                                        <Button Content="{loc:T Metadata.Apply}" Command="{Binding ApplySearchMetadataCommand}"
                                                 Classes="accent-pill"
                                                 Padding="12,4" FontSize="12" CornerRadius="999"
                                                 FontWeight="Bold" Cursor="Hand" />
@@ -560,18 +561,18 @@
 
                         <!-- Title (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
-                            <TextBlock Text="title" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Title}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Use Work & Movement -->
                         <CheckBox Classes="metadata-pill-checkbox"
-                                  Content="Use Work &amp; Movement"
+                                  Content="{loc:T Metadata.UseWorkMovement}"
                                   IsChecked="{Binding UseWorkAndMovement}" />
 
                         <!-- Work Name (visible only when Work & Movement is enabled) -->
                         <StackPanel Spacing="4" IsVisible="{Binding UseWorkAndMovement}">
-                            <TextBlock Text="work name" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.WorkName}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding WorkName, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
@@ -579,7 +580,7 @@
                         <Grid ColumnDefinitions="Auto,8,Auto,16,*"
                               IsVisible="{Binding UseWorkAndMovement}">
                             <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="movement" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.Movement}" FontSize="12" Opacity="0.5" />
                                 <TextBox Classes="metadata-info-field" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
@@ -587,20 +588,20 @@
                                 <TextBox Classes="metadata-info-field" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                             </StackPanel>
                             <StackPanel Grid.Column="4" Spacing="4">
-                                <TextBlock Text="title" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.Title}" FontSize="12" Opacity="0.5" />
                                 <TextBox Classes="metadata-info-field" Text="{Binding MovementName, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
 
                         <!-- Album -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="album" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Album2}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Album, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumWatermark}" />
                         </StackPanel>
 
                         <!-- Album is compilation -->
                         <CheckBox Classes="metadata-pill-checkbox"
-                                  Content="Album is compilation"
+                                  Content="{loc:T Metadata.AlbumCompilation}"
                                   IsChecked="{Binding IsCompilation}" />
 
                         <!-- Whole-album dialog only: writes ITUNESADVISORY to every track on Save.
@@ -609,46 +610,46 @@
                                   Content="{Binding ExplicitCheckboxLabel}"
                                   IsChecked="{Binding IsExplicit}"
                                   IsVisible="{Binding ShowExplicitCheckbox}"
-                                  ToolTip.Tip="Marks the content as explicit (iTunes advisory tag). The Explicit Content setting uses this to skip songs." />
+                                  ToolTip.Tip="{loc:T Metadata.MarksContentAsExplicitTip}" />
 
                         <!-- Artist -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="artist" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Artist}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Artist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ArtistWatermark}" />
                         </StackPanel>
 
                         <!-- Album Artist -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="album artist" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.AlbumArtist}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumArtistWatermark}" />
                         </StackPanel>
 
                         <!-- Performer (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
-                            <TextBlock Text="performer" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Performer}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Performer, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Composer -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="composer" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Composer}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Composer, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ComposerWatermark}" />
                         </StackPanel>
 
                         <!-- Show composer in all views -->
                         <CheckBox Classes="metadata-pill-checkbox"
-                                  Content="Show composer in all views"
+                                  Content="{loc:T Metadata.ShowComposerAllViews}"
                                   IsChecked="{Binding ShowComposerInAllViews}" />
 
                         <!-- Grouping -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="grouping" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Grouping}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Grouping, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding GroupingWatermark}" />
                         </StackPanel>
 
                         <!-- Genre -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="genre" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Genre}" FontSize="12" Opacity="0.5" />
                             <ComboBox x:Name="GenreCombo"
                                       Classes="metadata-info-field"
                                       FontWeight="Normal"
@@ -660,13 +661,13 @@
 
                         <!-- Year -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="year" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Year}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding YearWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Track number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <TextBlock Text="track" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
+                            <TextBlock Text="{loc:T Metadata.Track}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
                             <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <TextBox Classes="metadata-info-field" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" Width="80" />
@@ -674,7 +675,7 @@
 
                         <!-- Disc number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <TextBlock Text="disc" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
+                            <TextBlock Text="{loc:T Metadata.Disc}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
                             <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <TextBox Classes="metadata-info-field" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" Width="80" />
@@ -682,7 +683,7 @@
 
                         <!-- Rating (per-track; hidden for album-scoped edits) -->
                         <StackPanel Spacing="6" IsVisible="{Binding ShowTrackFields}">
-                            <TextBlock Text="rating" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Rating}" FontSize="12" Opacity="0.5" />
                             <StackPanel Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
                                 <controls:RatingStars Value="{Binding Rating, Mode=TwoWay}"
                                                       IsInteractive="True"
@@ -692,7 +693,7 @@
                                                       Foreground="{DynamicResource AccentColorBrush}"
                                                       VerticalAlignment="Center" />
                                 <CheckBox Classes="metadata-pill-checkbox"
-                                          Content="Not Liked"
+                                          Content="{loc:T Metadata.NotLiked}"
                                           IsChecked="{Binding IsDisliked}"
                                           VerticalAlignment="Center" />
                             </StackPanel>
@@ -700,16 +701,16 @@
 
                         <!-- BPM -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="bpm" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Bpm}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Bpm, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding BpmWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Play Count -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="play count" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.PlayCount}" FontSize="12" Opacity="0.5" />
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <TextBlock Text="{Binding PlayCountDisplay}" FontSize="14" VerticalAlignment="Center" />
-                                <Button Content="Reset" Command="{Binding ResetPlayCountCommand}"
+                                <Button Content="{loc:T Metadata.Reset}" Command="{Binding ResetPlayCountCommand}"
                                         Classes="accent-btn"
                                         Padding="14,5" FontSize="12" FontWeight="Bold" Cursor="Hand" VerticalAlignment="Center"
                                         Foreground="{DynamicResource AccentForegroundBrush}" Background="{DynamicResource AccentButtonBackground}"
@@ -719,7 +720,7 @@
 
                         <!-- Song comment -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="comment" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Comment}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field"
                                      Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding CommentWatermark}" />
                         </StackPanel>
@@ -728,82 +729,82 @@
             </TabItem>
 
             <!-- ═══════════ ADVANCED DETAILS TAB ═══════════ -->
-            <TabItem Header="Advanced Details" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAdvancedTab}">
+            <TabItem Header="{loc:T Metadata.AdvancedDetails}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAdvancedTab}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
 
                         <!-- ── Sorting ── -->
-                        <TextBlock Text="SORTING" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
+                        <TextBlock Text="{loc:T Metadata.SORTING}" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="title sort" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.TitleSort}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding TitleSort}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="artist sort" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.ArtistSort}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding ArtistSort}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="album sort" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.AlbumSort}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AlbumSort}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="album artist sort" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.AlbumArtistSort}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtistSort}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="composer sort" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.ComposerSort}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding ComposerSort}" />
                         </StackPanel>
 
                         <Separator Opacity="0.15" Margin="0,4" />
 
                         <!-- ── People & Credits ── -->
-                        <TextBlock Text="PEOPLE &amp; CREDITS" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
+                        <TextBlock Text="{loc:T Metadata.PEOPLECREDITS}" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="conductor" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Conductor}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Conductor}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="lyricist" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Lyricist}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Lyricist}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="publisher / label" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.PublisherLabel}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Publisher}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="encoded by" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.EncodedBy}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding EncodedBy}" />
                         </StackPanel>
 
                         <Separator Opacity="0.15" Margin="0,4" />
 
                         <!-- ── Identification ── -->
-                        <TextBlock Text="IDENTIFICATION" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
+                        <TextBlock Text="{loc:T Metadata.IDENTIFICATION}" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="ISRC" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.ISRC}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Isrc}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="catalog number" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.CatalogNumber}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding CatalogNumber}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="barcode / UPC" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.BarcodeUPC}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Barcode}" />
                         </StackPanel>
 
                         <Separator Opacity="0.15" Margin="0,4" />
 
                         <!-- ── Content Descriptors ── -->
-                        <TextBlock Text="CONTENT" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
+                        <TextBlock Text="{loc:T Metadata.CONTENT}" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="iTunes advisory" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.ITunesAdvisory}" FontSize="12" Opacity="0.5" />
                             <ComboBox Classes="metadata-info-field"
                                       ItemsSource="{x:Static vm:MetadataViewModel.AdvisoryOptions}"
                                       SelectedItem="{Binding SelectedAdvisory}"
@@ -825,51 +826,51 @@
                             </ComboBox>
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="language" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Language}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Language}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="mood" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Mood}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Mood}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="description" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Description}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AdvDescription}" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="release date" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.ReleaseDate}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AdvReleaseDate}" Width="200" HorizontalAlignment="Left" />
                         </StackPanel>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="copyright" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Copyright}" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Copyright}" />
                         </StackPanel>
 
                         <Separator Opacity="0.15" Margin="0,4" />
 
                         <!-- ── Technical / Encoding ── -->
-                        <TextBlock Text="TECHNICAL" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
+                        <TextBlock Text="{loc:T Metadata.TECHNICAL}" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="0,0,0,-8" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="encoder" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Encoder}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Encoder}" FontSize="14" Opacity="0.9" />
                         </StackPanel>
 
                         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding ReplayGainTrackGain, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2" Margin="0,0,12,8">
-                                <TextBlock Text="track gain" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.TrackGain}" FontSize="12" Opacity="0.5" />
                                 <TextBlock Text="{Binding ReplayGainTrackGain}" FontSize="14" Opacity="0.9" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="1" Spacing="2" Margin="0,0,0,8">
-                                <TextBlock Text="track peak" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.TrackPeak}" FontSize="12" Opacity="0.5" />
                                 <TextBlock Text="{Binding ReplayGainTrackPeak}" FontSize="14" Opacity="0.9" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Spacing="2" Margin="0,0,12,0">
-                                <TextBlock Text="album gain" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.AlbumGain}" FontSize="12" Opacity="0.5" />
                                 <TextBlock Text="{Binding ReplayGainAlbumGain}" FontSize="14" Opacity="0.9" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2">
-                                <TextBlock Text="album peak" FontSize="12" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Metadata.AlbumPeak}" FontSize="12" Opacity="0.5" />
                                 <TextBlock Text="{Binding ReplayGainAlbumPeak}" FontSize="14" Opacity="0.9" />
                             </StackPanel>
                         </Grid>
@@ -878,9 +879,9 @@
 
                         <!-- ── Custom Tags ── -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="CUSTOM TAGS" FontSize="11" FontWeight="Bold" Opacity="0.4" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T Metadata.CUSTOMTAGS}" FontSize="11" FontWeight="Bold" Opacity="0.4" VerticalAlignment="Center" />
                             <Button Grid.Column="1"
-                                    Content="+ Add"
+                                    Content="{loc:T Metadata.Add}"
                                     Command="{Binding AddCustomTagCommand}"
                                     Padding="10,4"
                                     FontSize="11"
@@ -895,11 +896,11 @@
                                         <TextBox Grid.Column="0"
                                                  Classes="metadata-info-field"
                                                  Text="{Binding Key}"
-                                                 Watermark="Key" />
+                                                 Watermark="{loc:T Metadata.Key}" />
                                         <TextBox Grid.Column="2"
                                                  Classes="metadata-info-field"
                                                  Text="{Binding Value}"
-                                                 Watermark="Value" />
+                                                 Watermark="{loc:T Metadata.Value}" />
                                         <Button Grid.Column="4"
                                                 Content="✕"
                                                 Command="{Binding $parent[ItemsControl].((vm:MetadataViewModel)DataContext).RemoveCustomTagCommand}"
@@ -914,7 +915,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Text="Tags not covered by other tabs are shown here. Add custom key-value pairs to store any metadata."
+                        <TextBlock Text="{loc:T Metadata.TagsNotCoveredBy}"
                                    FontSize="11"
                                    Opacity="0.3"
                                    TextWrapping="Wrap"
@@ -925,11 +926,11 @@
             </TabItem>
 
             <!-- ═══════════ ARTWORK TAB ═══════════ -->
-            <TabItem Header="Artwork" FontSize="14" FontWeight="SemiBold">
+            <TabItem Header="{loc:T Metadata.Artwork}" FontSize="14" FontWeight="SemiBold">
                 <DockPanel Margin="24,16">
                     <!-- Toolbar: tab title (actions live in the stack beside the preview) -->
                     <TextBlock DockPanel.Dock="Top"
-                               Text="Artwork"
+                               Text="{loc:T Metadata.Artwork}"
                                FontSize="14.5"
                                FontWeight="Bold"
                                Margin="2,0,0,12" />
@@ -983,9 +984,9 @@
                                             IsVisible="{Binding HasArtworkSearchResults}">
                                     <StackPanel Spacing="14">
                                         <StackPanel Spacing="1">
-                                            <TextBlock Text="Choose Artwork"
+                                            <TextBlock Text="{loc:T Metadata.ChooseArtwork}"
                                                        FontSize="14" FontWeight="Bold"/>
-                                            <TextBlock Text="From Apple Music"
+                                            <TextBlock Text="{loc:T Metadata.FromAppleMusic}"
                                                        FontSize="11" Opacity="0.5"/>
                                         </StackPanel>
                                         <ScrollViewer MaxHeight="340" HorizontalScrollBarVisibility="Disabled">
@@ -1020,7 +1021,7 @@
                                                             </StackPanel>
                                                             <Grid ColumnDefinitions="*,6,*">
                                                                 <Button Grid.Column="0"
-                                                                        Content="Standard"
+                                                                        Content="{loc:T Metadata.Standard}"
                                                                         Background="#1AFFFFFF"
                                                                         HorizontalAlignment="Stretch"
                                                                         HorizontalContentAlignment="Center"
@@ -1032,7 +1033,7 @@
                                                                         Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
                                                                         CommandParameter="{Binding}" />
                                                                 <Button Grid.Column="2"
-                                                                        Content="Max"
+                                                                        Content="{loc:T Metadata.Max}"
                                                                         HorizontalAlignment="Stretch"
                                                                         HorizontalContentAlignment="Center"
                                                                         Padding="0,4"
@@ -1062,7 +1063,7 @@
                                             <Ellipse Classes="loading-spinner"
                                                      VerticalAlignment="Center"
                                                      IsVisible="{Binding IsDownloadingArtwork}"/>
-                                            <TextBlock Text="Downloading…"
+                                            <TextBlock Text="{loc:T Metadata.Downloading}"
                                                        FontSize="11"
                                                        Opacity="0.75"
                                                        VerticalAlignment="Center"/>
@@ -1082,7 +1083,7 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                Content="Search Artwork" />
+                                Content="{loc:T Metadata.SearchArtwork}" />
                         <Button Command="{Binding AddArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 HorizontalAlignment="Stretch"
@@ -1091,7 +1092,7 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                Content="Add from file" />
+                                Content="{loc:T Metadata.AddFromFile}" />
                         <Button Command="{Binding DownloadArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 IsVisible="{Binding HasArtwork}"
@@ -1101,7 +1102,7 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                Content="Download" />
+                                Content="{loc:T Metadata.Download}" />
                         <Button Classes="danger-ghost-pill"
                                 Command="{Binding RemoveArtworkCommand}"
                                 IsVisible="{Binding HasArtwork}"
@@ -1111,7 +1112,7 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                Content="Remove" />
+                                Content="{loc:T Metadata.Remove}" />
                     </StackPanel>
 
                     <!-- Artwork preview centered in the space left of the action stack.
@@ -1124,7 +1125,7 @@
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <Panel>
-                            <TextBlock Text="No Artwork"
+                            <TextBlock Text="{loc:T Metadata.NoArtwork}"
                                        FontSize="18"
                                        Opacity="0.3"
                                        HorizontalAlignment="Center"
@@ -1140,11 +1141,11 @@
             </TabItem>
 
             <!-- ═══════════ ANIMATED ARTWORK TAB ═══════════ -->
-            <TabItem Header="Animated Artwork" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAnimatedArtworkTab}">
+            <TabItem Header="{loc:T Metadata.AnimatedArtwork}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAnimatedArtworkTab}">
                 <DockPanel Margin="24,16">
                     <!-- Toolbar: tab title (actions live in the stack beside the preview) -->
                     <TextBlock DockPanel.Dock="Top"
-                               Text="Animated Artwork"
+                               Text="{loc:T Metadata.AnimatedArtwork}"
                                FontSize="14.5"
                                FontWeight="Bold"
                                Margin="2,0,0,12" />
@@ -1167,7 +1168,7 @@
                                 FontSize="12"
                                 ToolTip.Tip="{Binding AnimatedSearchStatus}">
                             <!-- Wraps: the label no longer fits the 168px column on one line. -->
-                            <TextBlock Text="Search Animated Artwork"
+                            <TextBlock Text="{loc:T Metadata.SearchAnimatedArtwork}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center" />
                         </Button>
@@ -1176,19 +1177,19 @@
                         <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
                             <TextBox Classes="metadata-info-field"
                                      Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
-                                     Watermark="Album name, or Apple Music URL"
+                                     Watermark="{loc:T Metadata.AlbumNameAppleMusic}"
                                      FontSize="12">
                                 <TextBox.KeyBindings>
                                     <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
                                 </TextBox.KeyBindings>
                             </TextBox>
-                            <TextBlock Text="type an album name and press Enter, or paste an Apple Music link"
+                            <TextBlock Text="{loc:T Metadata.TypeAlbumNamePress}"
                                        FontSize="10"
                                        Opacity="0.55"
                                        TextWrapping="Wrap" />
                         </StackPanel>
 
-                        <Button Content="Add from file"
+                        <Button Content="{loc:T Metadata.AddFromFile}"
                                 Command="{Binding AddAnimatedCoverCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 HorizontalAlignment="Stretch"
@@ -1197,7 +1198,7 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12" />
-                        <Button Content="Download"
+                        <Button Content="{loc:T Metadata.Download}"
                                 Command="{Binding DownloadAnimatedCoverCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 IsVisible="{Binding HasAnimatedCover}"
@@ -1208,7 +1209,7 @@
                                 FontWeight="SemiBold"
                                 FontSize="12" />
                         <Button Classes="danger-ghost-pill"
-                                Content="Remove"
+                                Content="{loc:T Metadata.Remove}"
                                 Command="{Binding RemoveAnimatedCoverCommand}"
                                 IsVisible="{Binding HasAnimatedCover}"
                                 HorizontalAlignment="Stretch"
@@ -1274,9 +1275,9 @@
                                             IsVisible="{Binding HasAnimatedArtworkSearchResults}">
                                         <StackPanel Spacing="12">
                                             <StackPanel Spacing="1">
-                                                <TextBlock Text="Choose Animated Artwork"
+                                                <TextBlock Text="{loc:T Metadata.ChooseAnimatedArtwork}"
                                                            FontSize="14" FontWeight="Bold"/>
-                                                <TextBlock Text="From Apple Music"
+                                                <TextBlock Text="{loc:T Metadata.FromAppleMusic}"
                                                            FontSize="11" Opacity="0.5"/>
                                             </StackPanel>
 
@@ -1342,7 +1343,7 @@
                                                 <Ellipse Classes="loading-spinner"
                                                          VerticalAlignment="Center"
                                                          IsVisible="{Binding IsDownloadingAnimatedCover}"/>
-                                                <TextBlock Text="Downloading…"
+                                                <TextBlock Text="{loc:T Metadata.Downloading}"
                                                            FontSize="11"
                                                            Opacity="0.75"
                                                            VerticalAlignment="Center"/>
@@ -1366,7 +1367,7 @@
                             </Flyout>
                         </FlyoutBase.AttachedFlyout>
                         <Panel>
-                            <TextBlock Text="No Animated Artwork"
+                            <TextBlock Text="{loc:T Metadata.NoAnimatedArtwork}"
                                        FontSize="18"
                                        Opacity="0.3"
                                        HorizontalAlignment="Center"
@@ -1389,14 +1390,14 @@
             </TabItem>
 
             <!-- ═══════════ LYRICS TAB ═══════════ -->
-            <TabItem Header="Plain Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
+            <TabItem Header="{loc:T Metadata.PlainLyrics}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
                 <DockPanel Margin="24,16">
                     <!-- Toolbar: title left, Enable switch right -->
                     <Grid DockPanel.Dock="Top"
                           ColumnDefinitions="Auto,*,Auto"
                           Margin="0,0,0,12">
                         <TextBlock Grid.Column="0"
-                                   Text="Plain Lyrics"
+                                   Text="{loc:T Metadata.PlainLyrics}"
                                    FontSize="14.5"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
@@ -1405,7 +1406,7 @@
                                     Orientation="Horizontal"
                                     Spacing="10"
                                     VerticalAlignment="Center">
-                            <TextBlock Text="Enable"
+                            <TextBlock Text="{loc:T Metadata.Enable}"
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
@@ -1420,17 +1421,17 @@
                                 HorizontalAlignment="Right"
                                 Spacing="10"
                                 Margin="0,12,0,0">
-                        <Button Content="Import file"
+                        <Button Content="{loc:T Metadata.ImportFile}"
                                 Command="{Binding ImportLyricsFileCommand}"
                                 CommandParameter="{Binding $self}"
-                                ToolTip.Tip="Load a .txt (plain) or .lrc (synced) lyrics file from disk"
+                                ToolTip.Tip="{loc:T Metadata.LoadTxtPlainLrcTip}"
                                 Padding="14,6"
                                 CornerRadius="999"
                                 FontWeight="SemiBold"
                                 FontSize="12"
                                 VerticalAlignment="Center"
                                 Cursor="Hand" />
-                        <Button Content="Share lyrics"
+                        <Button Content="{loc:T Metadata.ShareLyrics}"
                                 Command="{Binding ShareLyricsCommand}"
                                 Padding="14,6"
                                 CornerRadius="999"
@@ -1453,14 +1454,14 @@
             </TabItem>
 
             <!-- ═══════════ SYNCED LYRICS TAB ═══════════ -->
-            <TabItem Header="Synced Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
+            <TabItem Header="{loc:T Metadata.SyncedLyrics}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
                 <DockPanel Margin="24,16">
                     <!-- Toolbar: title + line-count chip left, Formatted/Raw toggle + Enable switch right -->
                     <Grid DockPanel.Dock="Top"
                           ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto"
                           Margin="0,0,0,12">
                         <TextBlock Grid.Column="0"
-                                   Text="Synced Lyrics"
+                                   Text="{loc:T Metadata.SyncedLyrics}"
                                    FontSize="14.5"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
@@ -1484,28 +1485,28 @@
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding HasWordTimedLines}"
-                                ToolTip.Tip="Lines carry per-word timing tags; switch to Raw to see them">
-                            <TextBlock Text="word timing"
+                                ToolTip.Tip="{loc:T Metadata.LinesCarryPerWordTip}">
+                            <TextBlock Text="{loc:T Metadata.WordTiming}"
                                        FontSize="10.5"
                                        FontWeight="Bold"
                                        Opacity="0.75" />
                         </Border>
                         <ToggleButton Grid.Column="4"
                                       x:Name="SyncedRawToggle"
-                                      Content="Raw"
+                                      Content="{loc:T Metadata.Raw}"
                                       FontSize="11.5"
                                       FontWeight="SemiBold"
                                       Padding="13,4"
                                       CornerRadius="999"
                                       Cursor="Hand"
                                       VerticalAlignment="Center"
-                                      ToolTip.Tip="Show the raw LRC text with timing tags" />
+                                      ToolTip.Tip="{loc:T Metadata.ShowRawLRCTextTip}" />
                         <StackPanel Grid.Column="5"
                                     Orientation="Horizontal"
                                     Spacing="10"
                                     Margin="16,0,0,0"
                                     VerticalAlignment="Center">
-                            <TextBlock Text="Enable"
+                            <TextBlock Text="{loc:T Metadata.Enable}"
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
@@ -1530,30 +1531,30 @@
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
                                     Spacing="10">
-                            <TextBlock Text="Copied!"
+                            <TextBlock Text="{loc:T Metadata.Copied}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding SyncedLyricsCopied}" />
-                            <Button Content="Copy lyrics"
+                            <Button Content="{loc:T Metadata.CopyLyrics}"
                                     Command="{Binding CopySyncedLyricsCommand}"
                                     IsEnabled="{Binding HasSyncedLines}"
-                                    ToolTip.Tip="Copy the synced lyrics (LRC with timestamps) to the clipboard"
+                                    ToolTip.Tip="{loc:T Metadata.CopySyncedLyricsLRCTip}"
                                     Padding="14,6"
                                     CornerRadius="999"
                                     Cursor="Hand"
                                     FontWeight="SemiBold"
                                     FontSize="12" />
-                            <Button Content="Import file"
+                            <Button Content="{loc:T Metadata.ImportFile}"
                                     Command="{Binding ImportLyricsFileCommand}"
                                     CommandParameter="{Binding $self}"
-                                    ToolTip.Tip="Load an .lrc (synced) or .txt (plain) lyrics file from disk"
+                                    ToolTip.Tip="{loc:T Metadata.LoadLrcSyncedTxtTip}"
                                     Padding="14,6"
                                     CornerRadius="999"
                                     Cursor="Hand"
                                     FontWeight="SemiBold"
                                     FontSize="12" />
-                            <Button Content="Search lyrics"
+                            <Button Content="{loc:T Metadata.SearchLyrics}"
                                     Command="{Binding SearchSyncedLyricsCommand}"
                                     Padding="14,6"
                                     CornerRadius="999"
@@ -1561,7 +1562,7 @@
                                     FontWeight="SemiBold"
                                     FontSize="12" />
                             <Button Classes="danger-ghost-pill"
-                                    Content="Remove"
+                                    Content="{loc:T Metadata.Remove}"
                                     Command="{Binding RemoveSyncedLyricsCommand}"
                                     IsEnabled="{Binding HasCustomSyncedLyrics}"
                                     Padding="14,6"
@@ -1591,7 +1592,7 @@
                             </Style>
                         </Border.Styles>
                         <Panel MinHeight="300">
-                            <TextBlock Text="No synced lyrics yet. Use “Search lyrics” to add them."
+                            <TextBlock Text="{loc:T Metadata.NoSyncedLyricsYet}"
                                        IsVisible="{Binding !HasSyncedLines}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"
@@ -1657,14 +1658,14 @@
             <!-- ═══════════ TIMESTAMP LYRICS TAB ═══════════ -->
             <!-- Inline twin of the roomy pop-out editor. Binds the same MetadataViewModel,
                  so per-line edits flow through SyncedLyricLines and persist on Save. -->
-            <TabItem Header="Timestamp Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
+            <TabItem Header="{loc:T Metadata.TimestampLyrics}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
                 <DockPanel Margin="24,16">
                     <!-- Toolbar: title + status chips left, nudge hint right -->
                     <Grid DockPanel.Dock="Top"
                           ColumnDefinitions="Auto,Auto,Auto,*"
                           Margin="0,0,0,12">
                         <TextBlock Grid.Column="0"
-                                   Text="Timestamp Lyrics"
+                                   Text="{loc:T Metadata.TimestampLyrics}"
                                    FontSize="14.5"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
@@ -1688,14 +1689,14 @@
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding HasWordTimedLines}"
-                                ToolTip.Tip="Lines carry per-word timing tags; they are preserved on Save">
-                            <TextBlock Text="word timing"
+                                ToolTip.Tip="{loc:T Metadata.LinesCarryPerWordTip2}">
+                            <TextBlock Text="{loc:T Metadata.WordTiming}"
                                        FontSize="10.5"
                                        FontWeight="Bold"
                                        Opacity="0.75" />
                         </Border>
                         <TextBlock Grid.Column="3"
-                                   Text="Hover over a line to nudge its timing."
+                                   Text="{loc:T Metadata.HoverOverLineNudge}"
                                    FontSize="12" Opacity="0.5"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Center"
@@ -1712,12 +1713,12 @@
                                     HorizontalAlignment="Right"
                                     Margin="0,0,2,12"
                                     IsVisible="{Binding HasSyncedLines}">
-                            <TextBlock Text="Shift all"
+                            <TextBlock Text="{loc:T Metadata.ShiftAll}"
                                        FontSize="12" FontWeight="SemiBold" Opacity="0.75"
                                        VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <Button Content="Earlier"
+                            <Button Content="{loc:T Metadata.Earlier}"
                                     Command="{Binding ShiftAllEarlierCommand}"
-                                    ToolTip.Tip="Move every line's timestamp earlier by this many seconds"
+                                    ToolTip.Tip="{loc:T Metadata.MoveEveryLineSTip}"
                                     Padding="12,4" CornerRadius="999" Cursor="Hand"
                                     FontWeight="SemiBold" FontSize="12"/>
                             <TextBox Text="{Binding ShiftAllSeconds, Mode=TwoWay}"
@@ -1725,11 +1726,11 @@
                                      FontSize="12" CornerRadius="999"
                                      HorizontalContentAlignment="Center"
                                      VerticalAlignment="Center"
-                                     ToolTip.Tip="Seconds to shift by"/>
+                                     ToolTip.Tip="{loc:T Metadata.SecondsShiftByTip}"/>
                             <TextBlock Text="s" FontSize="12" Opacity="0.6" VerticalAlignment="Center"/>
-                            <Button Content="Later"
+                            <Button Content="{loc:T Metadata.Later}"
                                     Command="{Binding ShiftAllLaterCommand}"
-                                    ToolTip.Tip="Move every line's timestamp later by this many seconds"
+                                    ToolTip.Tip="{loc:T Metadata.MoveEveryLineSTip2}"
                                     Padding="12,4" CornerRadius="999" Cursor="Hand"
                                     FontWeight="SemiBold" FontSize="12"/>
                         </StackPanel>
@@ -1739,7 +1740,7 @@
                                 CornerRadius="6"
                                 Background="#18000000">
                             <Panel MinHeight="300">
-                                <TextBlock Text="No synced lyrics yet. Use “Search lyrics” on the Synced Lyrics tab to add them."
+                                <TextBlock Text="{loc:T Metadata.NoSyncedLyricsYet2}"
                                            IsVisible="{Binding !HasSyncedLines}"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
@@ -1792,7 +1793,7 @@
                                                                  VerticalAlignment="Center"
                                                                  VerticalContentAlignment="Center"
                                                                  HorizontalContentAlignment="Center"
-                                                                 ToolTip.Tip="Type a timestamp (mm:ss.xx); blank clears it" />
+                                                                 ToolTip.Tip="{loc:T Metadata.TypeTimestampMmSsTip}" />
                                                         <TextBlock Grid.Column="2"
                                                                    Text="{Binding DisplayText}"
                                                                    FontSize="14"
@@ -1807,19 +1808,19 @@
                                                                     VerticalAlignment="Center">
                                                             <Button Classes="synced-nudge"
                                                                     Content="−"
-                                                                    ToolTip.Tip="Nudge 0.1s earlier"
+                                                                    ToolTip.Tip="{loc:T Metadata.Nudge01sEarlierTip}"
                                                                     IsEnabled="{Binding HasTimestamp}"
                                                                     Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).NudgeSyncedLineBackCommand}"
                                                                     CommandParameter="{Binding}" />
                                                             <Button Classes="synced-nudge"
                                                                     Content="+"
-                                                                    ToolTip.Tip="Nudge 0.1s later"
+                                                                    ToolTip.Tip="{loc:T Metadata.Nudge01sLaterTip}"
                                                                     IsEnabled="{Binding HasTimestamp}"
                                                                     Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).NudgeSyncedLineForwardCommand}"
                                                                     CommandParameter="{Binding}" />
                                                             <Button Classes="synced-nudge"
                                                                     Content="✕"
-                                                                    ToolTip.Tip="Clear timestamp"
+                                                                    ToolTip.Tip="{loc:T Metadata.ClearTimestampTip}"
                                                                     IsEnabled="{Binding HasTimestamp}"
                                                                     Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).ClearSyncedLineTimestampCommand}"
                                                                     CommandParameter="{Binding}" />
@@ -1836,12 +1837,12 @@
             </TabItem>
 
             <!-- OPTIONS TAB -->
-            <TabItem Header="Options" FontSize="14" FontWeight="SemiBold">
+            <TabItem Header="{loc:T Metadata.Options}" FontSize="14" FontWeight="SemiBold">
                 <StackPanel Margin="24,14" Spacing="10">
 
                     <!-- Media Kind (Music, Podcast, Audiobook, ...) -->
                     <StackPanel Spacing="2">
-                        <TextBlock Text="media kind" FontSize="12" Opacity="0.5" />
+                        <TextBlock Text="{loc:T Metadata.MediaKind}" FontSize="12" Opacity="0.5" />
                         <ComboBox Classes="metadata-info-field"
                                   ItemsSource="{x:Static vm:MetadataViewModel.AvailableMediaKinds}"
                                   SelectedItem="{Binding MediaKind}"
@@ -1853,7 +1854,7 @@
 
                     <!-- Release type override (Auto, Album, Single, EP, ...) -->
                     <StackPanel Spacing="2">
-                        <TextBlock Text="release type" FontSize="12" Opacity="0.5" />
+                        <TextBlock Text="{loc:T Metadata.ReleaseType}" FontSize="12" Opacity="0.5" />
                         <ComboBox Classes="metadata-info-field"
                                   ItemsSource="{x:Static vm:MetadataViewModel.AvailableReleaseTypes}"
                                   SelectedItem="{Binding ReleaseTypeOverride}"
@@ -1866,7 +1867,7 @@
                     <!-- Start / Stop Time (inline) -->
                     <Grid ColumnDefinitions="Auto,24,Auto" HorizontalAlignment="Left">
                         <Grid Grid.Column="0" ColumnDefinitions="34,30,130" HorizontalAlignment="Left" VerticalAlignment="Center">
-                            <TextBlock Grid.Column="0" Text="start" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T Metadata.Start}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <CheckBox Classes="metadata-pill-checkbox"
                                       Grid.Column="1"
                                       IsChecked="{Binding HasStartTime}"
@@ -1882,7 +1883,7 @@
                                      VerticalAlignment="Center" />
                         </Grid>
                         <Grid Grid.Column="2" ColumnDefinitions="34,30,130" HorizontalAlignment="Left" VerticalAlignment="Center">
-                            <TextBlock Grid.Column="0" Text="stop" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="{loc:T Metadata.Stop}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <CheckBox Classes="metadata-pill-checkbox"
                                       Grid.Column="1"
                                       IsChecked="{Binding HasStopTime}"
@@ -1903,19 +1904,19 @@
 
                     <!-- Remember playback position -->
                     <CheckBox Classes="metadata-pill-checkbox"
-                              Content="Remember playback position"
+                              Content="{loc:T Metadata.RememberPlaybackPosition}"
                               IsChecked="{Binding RememberPlaybackPosition}" />
 
                     <!-- Skip when shuffling -->
                     <CheckBox Classes="metadata-pill-checkbox"
-                              Content="Skip when shuffling"
+                              Content="{loc:T Metadata.SkipWhenShuffling}"
                               IsChecked="{Binding SkipWhenShuffling}" />
 
                     <Separator Opacity="0.15" Margin="0,2" />
 
                     <!-- Volume Adjust -->
                     <StackPanel Spacing="2">
-                        <TextBlock Text="volume adjust" FontSize="12" Opacity="0.5" />
+                        <TextBlock Text="{loc:T Metadata.VolumeAdjust}" FontSize="12" Opacity="0.5" />
                         <Grid ColumnDefinitions="*,52">
                             <Grid Grid.Column="0" Height="20" ClipToBounds="False">
                                 <Canvas x:Name="VolumeAdjustVisual"
@@ -1961,7 +1962,7 @@
 
                     <!-- Equalizer Preset -->
                     <StackPanel Spacing="2">
-                        <TextBlock Text="equalizer" FontSize="12" Opacity="0.5" Margin="8,0,0,0" />
+                        <TextBlock Text="{loc:T Metadata.Equalizer}" FontSize="12" Opacity="0.5" Margin="8,0,0,0" />
                         <ComboBox Classes="metadata-info-field"
                                   ItemsSource="{x:Static vm:MetadataViewModel.OptionsEqPresets}"
                                   SelectedItem="{Binding SelectedEqPreset}"
@@ -1973,9 +1974,9 @@
                     <StackPanel Spacing="8" IsVisible="{Binding ShowRenameSection}">
                         <Separator Opacity="0.15" Margin="0,2" />
                         <CheckBox Classes="metadata-pill-checkbox"
-                                  Content="Rename files by pattern"
+                                  Content="{loc:T Metadata.RenameFilesByPattern}"
                                   IsChecked="{Binding ApplyRename}" />
-                        <TextBlock Text="Tokens: %artist% %albumartist% %album% %title% %tracknumber% %tracknumber2% %discnumber% %year% %genre% %composer%"
+                        <TextBlock Text="{loc:T Metadata.TokensArtistAlbumartistAlbum}"
                                    FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
                         <TextBox Classes="metadata-info-field"
                                  Text="{Binding RenamePattern}"
@@ -1983,7 +1984,7 @@
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10"
                                 IsVisible="{Binding ApplyRename}">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Preview (first 8 tracks)" FontSize="11" Opacity="0.6" Margin="0,0,0,4" />
+                                <TextBlock Text="{loc:T Metadata.PreviewFirst8Tracks}" FontSize="11" Opacity="0.6" Margin="0,0,0,4" />
                                 <ItemsControl ItemsSource="{Binding RenamePreviews}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:MetadataViewModel+RenamePreview">
@@ -1991,7 +1992,7 @@
                                                 <TextBlock Grid.Column="0" Text="{Binding OriginalName}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
                                                 <TextBlock Grid.Column="1" Text="→" FontSize="11" Opacity="0.5" Margin="0,0,8,0" />
                                                 <TextBlock Grid.Column="2" Text="{Binding NewName}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Grid.Column="3" Text="conflict" FontSize="10"
+                                                <TextBlock Grid.Column="3" Text="{loc:T Metadata.Conflict}" FontSize="10"
                                                            Foreground="#E74856" FontWeight="SemiBold"
                                                            Margin="8,0,0,0"
                                                            IsVisible="{Binding Conflict}" />
@@ -2007,61 +2008,61 @@
             </TabItem>
 
             <!-- ═══════════ FILE TAB ═══════════ -->
-            <TabItem Header="File" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowFileTab}">
+            <TabItem Header="{loc:T Metadata.File}" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowFileTab}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="14" Margin="24,16,24,24">
                         <!-- Format -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Format" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Format}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding FileFormat}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Duration -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="duration" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Duration}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Duration}" FontSize="14" />
                         </StackPanel>
 
                         <!-- File Size -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="size" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Size}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding FileSize}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Bitrate -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Bitrate" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Bitrate}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Bitrate}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Bit Depth -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Bit Depth" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.BitDepth}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding BitsPerSample}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Sample Rate -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="sample rate" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.SampleRate}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding SampleRate}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Channels -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="channels" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Channels}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Channels}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Codec -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Codec" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Codec}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Codec}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Lossless / Lossy -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="quality" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Quality}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding LosslessOrLossy}" FontSize="14" />
                         </StackPanel>
 
@@ -2069,13 +2070,13 @@
 
                         <!-- Date Modified -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="date modified" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.DateModified}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding DateModified}" FontSize="14" />
                         </StackPanel>
 
                         <!-- Date Added -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="date added" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.DateAdded}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding DateAdded}" FontSize="14" />
                         </StackPanel>
 
@@ -2083,7 +2084,7 @@
 
                         <!-- Folder name -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="folder name" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.FolderName}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding FolderName}"
                                        FontSize="13"
                                        TextWrapping="Wrap"
@@ -2093,7 +2094,7 @@
                         <!-- Copyright -->
                         <StackPanel Spacing="2"
                                     IsVisible="{Binding Copyright, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                            <TextBlock Text="copyright" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{loc:T Metadata.Copyright}" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Copyright}"
                                        FontSize="13"
                                        TextWrapping="Wrap"

@@ -1,11 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              x:Class="Noctis.Controls.ShortcutKeyChip"
              x:DataType="vm:ShortcutRowViewModel"
              Focusable="True"
              Cursor="Hand"
-             ToolTip.Tip="Click to change">
+             ToolTip.Tip="{loc:T ShortcutKeyChip.ClickChangeTip}">
     <UserControl.Styles>
         <!-- Key caps: one per part of the gesture ("Ctrl", "→"). -->
         <Style Selector="Border.key-cap">
@@ -93,7 +94,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Text="Press keys…"
+                <TextBlock Text="{loc:T ShortcutKeyChip.PressKeys}"
                            IsVisible="{Binding IsRecording}"
                            FontSize="11"
                            FontWeight="Bold"
