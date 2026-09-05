@@ -332,6 +332,18 @@ public partial class SettingsViewModel : ViewModelBase
     /// automatically; see <see cref="AppSettings.AllowExplicitContent"/>.</summary>
     [ObservableProperty] private bool _allowExplicitContent = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>Live spectrum visualizer behind the lyrics page (Appearance tab).</summary>
+    [ObservableProperty] private bool _lyricsVisualizerEnabled;
+    /// <summary>Visualizer look, stored as a <see cref="VisualizerStyle"/> name; the picker
+    /// binds the Is* flags below like the Now Playing Artwork cards.</summary>
+    [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
+    /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
+    [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+
+    public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
+    public bool IsVisualizerStyleBars { get => LyricsVisualizerStyleMode == VisualizerStyle.Bars; set { if (value) LyricsVisualizerStyle = nameof(VisualizerStyle.Bars); } }
+    public bool IsVisualizerStyleMirror { get => LyricsVisualizerStyleMode == VisualizerStyle.Mirror; set { if (value) LyricsVisualizerStyle = nameof(VisualizerStyle.Mirror); } }
+    public bool IsVisualizerStyleWave { get => LyricsVisualizerStyleMode == VisualizerStyle.Wave; set { if (value) LyricsVisualizerStyle = nameof(VisualizerStyle.Wave); } }
     /// <summary>Looping video/GIF behind the lyrics page (Appearance tab); empty = none.
     /// The file lives under the data root — SettingsView copies the pick there.</summary>
     [ObservableProperty]
@@ -1347,6 +1359,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = _settings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
+            LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
+            LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
+            LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
             LyricsBackgroundMediaPath = File.Exists(_settings.LyricsBackgroundMediaPath)
                 ? _settings.LyricsBackgroundMediaPath
                 : string.Empty;
@@ -1721,6 +1736,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowSleepTimer = PlaybackBarShowSleepTimer;
         _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
+        _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
+        _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -1955,6 +1973,9 @@ public partial class SettingsViewModel : ViewModelBase
         // SetPlaybackBarWidth writes the same value into _settings first.
         _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
+        _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
+        _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _player.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -2885,6 +2906,28 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnLyricsFlowingLightEnabledChanged(bool value)
     {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsVisualizerEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsVisualizerArtworkColorChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsVisualizerStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(LyricsVisualizerStyleMode));
+        OnPropertyChanged(nameof(IsVisualizerStyleBars));
+        OnPropertyChanged(nameof(IsVisualizerStyleMirror));
+        OnPropertyChanged(nameof(IsVisualizerStyleWave));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -4489,6 +4532,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = defaultSettings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
+            LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
+            LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
+            LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;

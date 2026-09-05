@@ -1,3 +1,8 @@
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Noctis.Services;
 using Xunit;
 
@@ -62,5 +67,41 @@ public class DeezerEnrichmentTests
     {
         Assert.Null(DeezerApi.ParseTrack("not json"));
         Assert.Null(DeezerApi.ParseTrack("{}"));
+    }
+
+    // Deezer localises genre names from the request locale and falls back to IP geolocation when
+    // no Accept-Language is sent (a Spanish user got "Alternativo" while the genre picker says
+    // "Alternative"). Every Deezer request must pin English so genres match the picker.
+    [Fact]
+    public async Task EnrichAsync_PinsEnglishAcceptLanguage_OnEveryDeezerRequest()
+    {
+        var handler = new RecordingHandler();
+        var svc = new DeezerMetadataService(new HttpClient(handler));
+
+        var hit = await svc.EnrichAsync("Juice WRLD", "Lucid Dreams", "Goodbye & Good Riddance");
+
+        Assert.NotNull(hit);
+        Assert.Equal("Rap/Hip Hop", hit!.Genre);
+        Assert.Equal(3, handler.Requests.Count); // search, track, album
+        Assert.All(handler.Requests, r =>
+            Assert.Equal("en", Assert.Single(r.Headers.AcceptLanguage).Value));
+    }
+
+    private sealed class RecordingHandler : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Requests { get; } = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Requests.Add(request);
+            var path = request.RequestUri!.AbsolutePath;
+            string body = path.StartsWith("/search") ? """{ "data": [ { "id": 142986206 } ] }"""
+                : path.StartsWith("/track/") ? TrackJson
+                : AlbumJson;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
+            });
+        }
     }
 }

@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:conv="using:Noctis.Converters"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Views.VisualizerView"
+             x:DataType="vm:VisualizerViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Look pills (same shape as the Statistics tabs) -->
+        <Style Selector="RadioButton.viz-pill">
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="PillBorder"
+                            Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.viz-pill:checked /template/ Border#PillBorder">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="RadioButton.viz-pill:checked">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ClipToBounds="True">
+        <!-- Backdrop: the current cover, pre-blurred once per artwork (no live BlurEffect),
+             under a dark scrim so the spectrum and text stay legible on bright art. -->
+        <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+               Stretch="UniformToFill"
+               RenderOptions.BitmapInterpolationMode="HighQuality"
+               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Image.RenderTransform>
+                <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
+            </Image.RenderTransform>
+        </Image>
+        <Rectangle Fill="#A6000000"/>
+
+        <!-- The spectrum itself: fills the pane, leaves room for the header and the
+             playback bar. Runs only while this view is visible (SpectrumVisualizer parks). -->
+        <controls:SpectrumVisualizer x:Name="PaneSpectrum"
+                                     Margin="32,96,32,130"
+                                     BandCount="64"
+                                     Fill="{DynamicResource AccentColorBrush}"
+                                     ArtworkColor="{Binding Player.ArtworkAccentColor}"
+                                     UseArtworkColor="{Binding Player.LyricsVisualizerArtworkColor}"
+                                     Opacity="0.92"
+                                     IsHitTestVisible="False"
+                                     StyleName="{Binding Player.LyricsVisualizerStyle}"
+                                     IsActive="{Binding $self.IsVisible}"/>
+
+        <!-- Header: what is playing + look picker -->
+        <Grid ColumnDefinitions="*,Auto" Margin="32,28,32,0" VerticalAlignment="Top">
+            <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="Visualizer" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                <TextBlock FontSize="13" Opacity="0.7" Foreground="White" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Run Text="{Binding Player.CurrentTrack.Title}"/>
+                    <Run Text=" — "/>
+                    <Run Text="{Binding Player.CurrentTrack.Artist}"/>
+                </TextBlock>
+                <TextBlock Text="Play something to see it move." FontSize="13" Opacity="0.7" Foreground="White"
+                           IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <RadioButton Classes="viz-pill" Content="Bars" GroupName="VisualizerPageStyle"
+                             IsChecked="{Binding Settings.IsVisualizerStyleBars, Mode=TwoWay}"/>
+                <RadioButton Classes="viz-pill" Content="Mirror" GroupName="VisualizerPageStyle"
+                             IsChecked="{Binding Settings.IsVisualizerStyleMirror, Mode=TwoWay}"/>
+                <RadioButton Classes="viz-pill" Content="Wave" GroupName="VisualizerPageStyle"
+                             IsChecked="{Binding Settings.IsVisualizerStyleWave, Mode=TwoWay}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

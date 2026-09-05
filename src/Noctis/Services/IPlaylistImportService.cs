@@ -11,13 +11,18 @@ public sealed class PlaylistImportPreview
 }
 
 /// <summary>
-/// Imports streaming-service playlist exports (Exportify CSV / TuneMyMusic JSON), fuzzy-matches
-/// the entries against the local library, and creates a playlist from the matches.
+/// Imports streaming-service playlist exports (Exportify CSV / TuneMyMusic JSON / m3u) or a
+/// pasted Deezer playlist/album link, fuzzy-matches the entries against the local library,
+/// and creates a playlist from the matches.
 /// </summary>
 public interface IPlaylistImportService
 {
     /// <summary>Parses and matches the file off the UI thread, returning a preview.</summary>
     Task<PlaylistImportPreview> AnalyzeAsync(string filePath, CancellationToken ct = default);
+
+    /// <summary>Fetches a public Deezer playlist/album by share link and matches it.
+    /// Throws <see cref="ArgumentException"/> when the text is not a Deezer link.</summary>
+    Task<PlaylistImportPreview> AnalyzeLinkAsync(string url, CancellationToken ct = default);
 
     /// <summary>Creates and persists a playlist from the matched track IDs. Returns its ID.</summary>
     Task<Guid> CreateAsync(string name, IReadOnlyList<Guid> matchedTrackIds, CancellationToken ct = default);

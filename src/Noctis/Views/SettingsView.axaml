@@ -2332,6 +2332,75 @@
                 </Grid>
             </Border>
 
+            <!-- Live audio visualizer behind the lyrics page (Discord feature request).
+                 Spectrum of the rendered samples via SpectrumMeter; three looks. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Audio Visualizer" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Draw a live spectrum of the music along the bottom of the lyrics page. Follows the sound as it is heard; rests flat while paused."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsVisualizerEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Artwork colour" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Tint the bars with the current cover's colour, on the Visualizer page and the lyrics page. Off paints them white."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsVisualizerArtworkColor}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" IsVisible="{Binding LyricsVisualizerEnabled}">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card"
+                                     GroupName="LyricsVisualizerStyle"
+                                     IsChecked="{Binding IsVisualizerStyleBars, Mode=TwoWay}"
+                                     ToolTip.Tip="Frequency bars rising from the bottom">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="16" Width="4" Height="10" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="8" Canvas.Top="6" Width="4" Height="20" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="14" Canvas.Top="11" Width="4" Height="15" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="20" Canvas.Top="2" Width="4" Height="24" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Bars" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card"
+                                     GroupName="LyricsVisualizerStyle"
+                                     IsChecked="{Binding IsVisualizerStyleMirror, Mode=TwoWay}"
+                                     ToolTip.Tip="Bars mirrored about the centre line">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Rectangle Canvas.Left="2" Canvas.Top="10" Width="4" Height="8" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="8" Canvas.Top="4" Width="4" Height="20" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="14" Canvas.Top="7" Width="4" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <Rectangle Canvas.Left="20" Canvas.Top="2" Width="4" Height="24" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </Canvas>
+                                <TextBlock Text="Mirror" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card"
+                                     GroupName="LyricsVisualizerStyle"
+                                     IsChecked="{Binding IsVisualizerStyleWave, Mode=TwoWay}"
+                                     ToolTip.Tip="A smooth filled curve">
+                            <StackPanel Spacing="8">
+                                <Canvas Classes="medium-glyph">
+                                    <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                          Data="M2,26 L2,18 C6,16 8,6 12,8 C16,10 18,20 22,12 L26,10 L26,26 Z"/>
+                                </Canvas>
+                                <TextBlock Text="Wave" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Lyrics background video / GIF: a looping clip painted behind the lyrics on
                  the lyrics page (any background mode). Decoded once at a capped size by
                  LibVLC into a bitmap — see Controls/VideoBackdrop. -->
@@ -3553,7 +3622,7 @@
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
                             <TextBlock Text="Import Playlist" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Import an Exportify CSV or TuneMyMusic JSON export and match tracks to your library."
+                            <TextBlock Text="Import an M3U, Exportify CSV or TuneMyMusic JSON export, or a Deezer playlist link, and match tracks to your library."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>

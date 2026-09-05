@@ -2,14 +2,15 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Helpers;
 using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// Drives the playlist-import dialog: read an Exportify CSV / TuneMyMusic JSON export,
-/// fuzzy-match its entries against the library, then create a playlist from the matches and
-/// show a report of the tracks that couldn't be found.
+/// Drives the playlist-import dialog: read an Exportify CSV / TuneMyMusic JSON / m3u export or
+/// a pasted Deezer link, fuzzy-match its entries against the library, then create a playlist
+/// from the matches and show a report of the tracks that couldn't be found.
 /// </summary>
 public partial class PlaylistImportViewModel : ViewModelBase
 {
@@ -18,7 +19,17 @@ public partial class PlaylistImportViewModel : ViewModelBase
     private CancellationTokenSource? _analyzeCts;
 
     [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private string _statusMessage = "Choose an Exportify CSV or TuneMyMusic JSON export.";
+    [ObservableProperty] private string _statusMessage = "Choose an export file or paste a Deezer link.";
+    /// <summary>Pasted share link (Deezer playlist/album). Import runs on the button, not per keystroke.</summary>
+    [ObservableProperty] private string _linkText = string.Empty;
+    public bool CanImportLink => !IsBusy && DeezerPlaylistLink.TryParse(LinkText, out _, out _);
+
+    /// <summary>Guidance shown when the pasted link is a service Noctis can't fetch (Spotify,
+    /// Apple Music, …): what to do instead, with a button to the exporter site.</summary>
+    [ObservableProperty] private string _linkHelp = string.Empty;
+    [ObservableProperty] private string _linkHelpLabel = string.Empty;
+    private string _linkHelpUrl = string.Empty;
+    public bool HasLinkHelp => LinkHelp.Length > 0;
     [ObservableProperty] private string _playlistName = string.Empty;
     [ObservableProperty] private bool _hasPreview;
     [ObservableProperty] private bool _canCreate;
@@ -32,12 +43,56 @@ public partial class PlaylistImportViewModel : ViewModelBase
 
     public PlaylistImportViewModel(IPlaylistImportService service) => _service = service;
 
+    partial void OnLinkTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(CanImportLink));
+
+        var hint = StreamingLinkHints.For(value);
+        LinkHelp = hint?.Message ?? string.Empty;
+        LinkHelpLabel = hint?.HelpLabel ?? string.Empty;
+        _linkHelpUrl = hint?.HelpUrl ?? string.Empty;
+        OnPropertyChanged(nameof(HasLinkHelp));
+
+        // A complete Deezer link is unambiguous: import as soon as it lands (paste, prefill,
+        // typing the last digit) instead of asking for a second click.
+        if (CanImportLink) _ = ImportLink();
+    }
+
+    /// <summary>Pre-fills a link the dialog found on the clipboard when it opened.</summary>
+    public void OfferClipboardText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || LinkText.Length > 0) return;
+        var t = text.Trim();
+        if (DeezerPlaylistLink.TryParse(t, out _, out _) || StreamingLinkHints.For(t) is not null)
+            LinkText = t;
+    }
+
+    [RelayCommand]
+    private void OpenLinkHelp()
+    {
+        if (_linkHelpUrl.Length > 0) PlatformHelper.OpenUrl(_linkHelpUrl);
+    }
+    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(CanImportLink));
+
     /// <summary>Called by the dialog after the user picks a file.</summary>
-    public async Task LoadFileAsync(string path)
+    public Task LoadFileAsync(string path)
+        => AnalyzeAsync("Reading and matching…", "No tracks found in that file.", "Could not read file",
+            ct => _service.AnalyzeAsync(path, ct));
+
+    [RelayCommand]
+    private Task ImportLink()
+    {
+        if (!CanImportLink) return Task.CompletedTask;
+        return AnalyzeAsync("Fetching from Deezer and matching…", "That Deezer link has no tracks (private, or removed).",
+            "Could not fetch link", ct => _service.AnalyzeLinkAsync(LinkText, ct));
+    }
+
+    private async Task AnalyzeAsync(string busyMessage, string emptyMessage, string errorPrefix,
+        Func<CancellationToken, Task<PlaylistImportPreview>> analyze)
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Reading and matching…";
+        StatusMessage = busyMessage;
         MissingTracks.Clear();
         HasPreview = false;
         CanCreate = false;
@@ -48,7 +103,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
 
         try
         {
-            var preview = await _service.AnalyzeAsync(path, _analyzeCts.Token);
+            var preview = await analyze(_analyzeCts.Token);
             _preview = preview;
             PlaylistName = preview.SuggestedName;
             MatchedCount = preview.MatchedTrackIds.Count;
@@ -59,7 +114,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
             CanCreate = MatchedCount > 0;
             StatusMessage = HasPreview
                 ? $"{MatchedCount} matched · {MissingCount} missing of {preview.TotalEntries}"
-                : "No tracks found in that file.";
+                : emptyMessage;
         }
         catch (OperationCanceledException)
         {
@@ -67,7 +122,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Could not read file: {ex.Message}";
+            StatusMessage = $"{errorPrefix}: {ex.Message}";
         }
         finally
         {

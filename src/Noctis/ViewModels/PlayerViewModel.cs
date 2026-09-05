@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Threading;
@@ -137,6 +138,16 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>Live spectrum visualizer behind the lyrics page. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsVisualizerEnabled;
+    /// <summary>Visualizer look (a VisualizerStyle name). Driven by Settings.</summary>
+    [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
+    /// <summary>Visualizer paints with the artwork's colour (else white/accent). Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>The current cover's vibrant colour (ShareCardRenderer's path-cached hue-bucket
+    /// vote, computed off the UI thread when the track changes); null without artwork.
+    /// The visualizer surfaces tint their bars with it.</summary>
+    [ObservableProperty] private Color? _artworkAccentColor;
     /// <summary>Looping video/GIF the lyrics page paints behind the lyrics (empty = none).
     /// Driven by Settings like the flags above; the page's VideoBackdrop binds it.</summary>
     [ObservableProperty] private string _lyricsBackgroundMediaPath = string.Empty;
@@ -2018,9 +2029,24 @@ public partial class PlayerViewModel : ViewModelBase
         if (!hasArtFile)
         {
             AlbumArt = null;
+            ArtworkAccentColor = null;
             CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
             return;
         }
+
+        // Vibrant colour for the visualizer tint: SkiaSharp file decode, path-cached after
+        // the first call, so it runs off the UI thread and lands only if still current.
+        _ = Task.Run(() =>
+        {
+            Color? accent = null;
+            try { accent = Color.Parse(ShareCardRenderer.GetVibrantColorHex(artPath)); }
+            catch { /* no tint for this cover */ }
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation == Volatile.Read(ref _albumArtGeneration))
+                    ArtworkAccentColor = accent;
+            });
+        });
 
         // Fast path: a cache hit returns synchronously — no I/O or decode on the UI thread.
         var cached = ArtworkCache.TryGet(artPath, PlayerArtDecodeWidth);

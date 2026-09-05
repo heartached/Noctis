@@ -112,7 +112,12 @@ public sealed class DeezerMetadataService
 
     private async Task<string?> GetStringAsync(string url, CancellationToken ct)
     {
-        using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
+        // Deezer localises genre names (and album/genre labels) from Accept-Language and falls back
+        // to IP geolocation when none is sent, so a Spanish user got "Alternativo" while the genre
+        // picker lists "Alternative". Pin English so suggestions match the picker's fixed list.
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.AcceptLanguage.ParseAdd("en");
+        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode) return null;
         return await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
     }

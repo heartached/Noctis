@@ -463,6 +463,17 @@ public class AppSettings
     /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
     public bool LyricsFlowingLightEnabled { get; set; }
 
+    /// <summary>Live audio visualizer (spectrum) drawn behind the lyrics on the lyrics page.
+    /// Reads the samples the app renders, so it needs an output chain with a sample tap
+    /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
+    public bool LyricsVisualizerEnabled { get; set; }
+
+    /// <summary>Visualizer look: a <see cref="VisualizerStyle"/> name ("Bars", "Mirror", "Wave").</summary>
+    public string LyricsVisualizerStyle { get; set; } = VisualizerStyles.DefaultSetting;
+
+    /// <summary>Visualizer bars take the current artwork's colour (default) instead of white/accent.</summary>
+    public bool LyricsVisualizerArtworkColor { get; set; } = true;
+
     /// <summary>Optional looping video/GIF the lyrics page paints behind the lyrics
     /// (copied into the data root by Settings → Appearance). Empty = none; the blurred
     /// artwork background shows as usual.</summary>

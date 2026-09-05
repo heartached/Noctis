@@ -489,6 +489,27 @@
             <Rectangle Fill="#8C000000"/>
         </Grid>
 
+        <!-- Live audio visualizer (Settings → Appearance → Audio Visualizer): the spectrum
+             of what is being heard, drawn along the bottom of the page over every background
+             mode and under the lyrics. Reads SpectrumMeter, which the output chains feed
+             from the same post-gain tap as the beat pulse; runs only while this page is
+             visible and the toggle is on (SpectrumVisualizer parks itself otherwise). -->
+        <controls:SpectrumVisualizer x:Name="LyricsSpectrum"
+                                     Grid.ColumnSpan="2"
+                                     Grid.RowSpan="2"
+                                     ZIndex="-1"
+                                     VerticalAlignment="Bottom"
+                                     Height="220"
+                                     Margin="24,0,24,0"
+                                     Opacity="0.55"
+                                     IsHitTestVisible="False"
+                                     Fill="White"
+                                     ArtworkColor="{Binding Player.ArtworkAccentColor}"
+                                     UseArtworkColor="{Binding Player.LyricsVisualizerArtworkColor}"
+                                     StyleName="{Binding Player.LyricsVisualizerStyle}"
+                                     IsActive="{Binding $self.IsVisible}"
+                                     IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>
+
 
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- LEFT PANEL: Cover Art + Track Info + Controls         -->

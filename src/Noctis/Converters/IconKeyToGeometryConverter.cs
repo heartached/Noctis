@@ -31,6 +31,7 @@ public class IconKeyToGeometryConverter : IValueConverter
             ["SettingsIcon"] = "avares://Noctis/Assets/Icons/Settings%20ICON.png",
             ["ServerIcon"] = "avares://Noctis/Assets/Icons/Server%20ICON.png",
             ["CdIcon"] = "avares://Noctis/Assets/Icons/Albums%20ICON.png",
+            ["VisualizerIcon"] = "avares://Noctis/Assets/Icons/Lyrics%20ICON.png",
             // Fallback for smart playlist rows in sidebar.
             ["SmartPlaylistIcon"] = "avares://Noctis/Assets/Icons/Playlist%20icon.png"
         };

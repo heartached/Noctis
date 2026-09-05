@@ -199,6 +199,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryFoldersViewModel _foldersVm;
     private readonly ServerViewModel _serverVm;
     private readonly AudioCdViewModel _audioCdVm;
+    private readonly VisualizerViewModel _visualizerVm;
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
@@ -298,6 +299,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // The Audio CD entry only exists in the rail while an optical drive does; the
         // service polls for drive/disc changes once the shell is up.
         _audioCdVm = new AudioCdViewModel(audioCd, Player);
+        _visualizerVm = new VisualizerViewModel(Player, Settings);
         Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
         audioCd.DriveStateChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
@@ -1251,7 +1253,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // regardless of the tab they were opened from (the tab name doesn't change on
         // detail pages).
         TopBar.IsSearchVisible = CurrentView is MoreByArtistViewModel or ArtistDetailViewModel
-            || (!_isCoverFlowMode && TopBar.CurrentTabName is not ("Home" or "Settings" or "Lyrics"));
+            || (!_isCoverFlowMode && TopBar.CurrentTabName is not ("Home" or "Settings" or "Lyrics" or "Visualizer"));
 
         // Cover Flow is an overlay on the current section, so Back leaves it (the only
         // exit used to be the "Library" segment in the top bar, which read as a trap).
@@ -1575,6 +1577,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return GetSectionBackButtonText("server");
         if (ReferenceEquals(view, _audioCdVm))
             return GetSectionBackButtonText("cd");
+        if (ReferenceEquals(view, _visualizerVm))
+            return GetSectionBackButtonText("visualizer");
         if (ReferenceEquals(view, Settings))
             return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
@@ -1633,6 +1637,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return "server";
         if (ReferenceEquals(view, _audioCdVm))
             return "cd";
+        if (ReferenceEquals(view, _visualizerVm))
+            return "visualizer";
         if (ReferenceEquals(view, Settings))
             return "settings";
 
@@ -1759,6 +1765,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
                 "server" => RefreshAndReturnServer(_serverVm),
                 "cd" => RefreshAndReturnAudioCd(_audioCdVm),
+                "visualizer" => _visualizerVm,
                 "settings" => RefreshAndReturnSettings(),
                 _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
                 _ => _homeVm
@@ -1798,6 +1805,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "lyrics" => "Lyrics",
             "server" => "Server",
             "cd" => "Audio CD",
+            "visualizer" => "Visualizer",
             "settings" => "Settings",
             _ when key.StartsWith("playlist:") => "Playlist",
             _ => "Library"
@@ -2358,6 +2366,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _statisticsVm) return "statistics";
         if (CurrentView == _serverVm) return "server";
         if (CurrentView == _audioCdVm) return "cd";
+        if (CurrentView == _visualizerVm) return "visualizer";
         if (CurrentView == Settings) return "settings";
         if (CurrentView is AlbumDetailViewModel) return "albums";
         if (CurrentView is MoreByArtistViewModel) return "artists";

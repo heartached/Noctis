@@ -24,7 +24,7 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
                     <TextBlock Text="Import Playlist" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Import an M3U playlist, Exportify CSV, or TuneMyMusic JSON export and match it against your library."
+                    <TextBlock Text="Import an M3U playlist, Exportify CSV or TuneMyMusic JSON export, or paste a Deezer playlist link, and match it against your library."
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -51,8 +51,38 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                               Padding="24,4,24,8">
                     <StackPanel Spacing="12">
-                        <Button x:Name="ChooseFileButton" Content="Choose file…"
-                                HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button x:Name="ChooseFileButton" Content="Choose file…"
+                                    HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
+                            <TextBlock Text="or drop a .csv / .json / .m3u file anywhere on this window"
+                                       FontSize="12" Opacity="0.55" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Link import: public Deezer playlists/albums via the keyless api.deezer.com.
+                             Spotify/Apple links are not accepted — their APIs no longer allow reading
+                             other users' playlists without a per-app quota this app can't get. -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Or paste a playlist link (Deezer imports directly)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBox Grid.Column="0" Text="{Binding LinkText}"
+                                         Watermark="https://www.deezer.com/en/playlist/…" />
+                                <Button Grid.Column="1" Content="Import link" Command="{Binding ImportLinkCommand}"
+                                        IsEnabled="{Binding CanImportLink}"
+                                        Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center" />
+                            </Grid>
+                            <!-- Spotify / Apple / TIDAL / YouTube / Amazon link: say exactly what works instead. -->
+                            <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" IsVisible="{Binding HasLinkHelp}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <TextBlock Grid.Column="0" Text="{Binding LinkHelp}" FontSize="12" Opacity="0.85"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Content="{Binding LinkHelpLabel}" Command="{Binding OpenLinkHelpCommand}"
+                                            Padding="12,6" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center"
+                                            Classes="accent-btn"
+                                            Background="{DynamicResource AccentButtonBackground}"
+                                            Foreground="{DynamicResource AccentForegroundBrush}" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <StackPanel Spacing="4" IsVisible="{Binding HasPreview}">
                             <TextBlock Text="Playlist name" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />

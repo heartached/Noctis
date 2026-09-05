@@ -37,7 +37,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// </summary>
     public ObservableCollection<PlaylistNavItem> SidebarRows { get; } = new();
 
-    /// <summary>Main navigation items (Home, Songs, Albums, Artists, Playlists, Settings).</summary>
+    /// <summary>Main navigation items (Home, Songs, Albums, Artists, Folders, Playlists, Visualizer, Settings).</summary>
     public ObservableCollection<NavItem> NavItems { get; } = new()
     {
         new NavItem { Key = "home", Label = "Home", IconGlyph = "HomeIcon" },
@@ -46,6 +46,7 @@ public partial class SidebarViewModel : ViewModelBase
         new NavItem { Key = "artists", Label = "Artists", IconGlyph = "ArtistsIcon" },
         new NavItem { Key = "folders", Label = "Folders", IconGlyph = "FoldersIcon" },
         new NavItem { Key = "playlists", Label = "Playlists", IconGlyph = "PlaylistsIcon" },
+        new NavItem { Key = "visualizer", Label = "Visualizer", IconGlyph = "VisualizerIcon" },
         new NavItem { Key = "settings", Label = "Settings", IconGlyph = "SettingsIcon" },
     };
 

@@ -5,12 +5,19 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Threading;
+using Noctis.Services;
 
 namespace Noctis.Controls;
 
 /// <summary>
 /// Compact row EQ indicator for the currently playing track.
-/// Five bars oscillate while playing and ease to flat on pause (Apple Music feel).
+/// Five bars keep the old free-running oscillation (so they always move) and bounce
+/// together on every beat of what is being heard (<see cref="BeatMeter"/>, the same
+/// latency-aligned pulse that breathes the lyrics background), with a little per-bar
+/// tonal colour from the live spectrum (bass left, treble right). Raw spectrum levels
+/// alone read as stuck: five bands three octaves wide are always loud, so the bars sat
+/// pinned near the top. Where no sample tap is flowing (engines without one, or the first
+/// frames of a track) the oscillation alone runs, as before. Eases to flat on pause.
 /// </summary>
 public class EqVisualizer : TemplatedControl
 {
@@ -45,6 +52,23 @@ public class EqVisualizer : TemplatedControl
     // Slightly different frequencies per bar for an organic feel (Hz).
     private static readonly double[] Frequencies = { 1.6, 2.0, 1.4, 1.8, 1.7 };
     private static readonly TimeSpan FlattenDuration = TimeSpan.FromMilliseconds(420);
+
+    // Live state: one spectrum band per bar for tonal colour, the beat pulse for the
+    // bounce; smoothed per bar with a fast attack and a release short enough to fall
+    // between beats.
+    private readonly float[] _bands = new float[5];
+    private readonly float[] _liveTarget = new float[5];
+    private readonly float[] _liveShown = new float[5];
+    private DateTime _lastTick;
+
+    private const double LiveAttackMs = 25;
+    private const double LiveReleaseMs = 120;
+    // Level = Rest + Sway·osc + Bounce·pulse + Tone·(band − mean band). Sway keeps the
+    // idle motion, Bounce lifts every bar on the beat, Tone makes bars differ by content.
+    private const double LiveRest = 0.12;
+    private const double LiveSway = 0.28;
+    private const double LiveBounce = 0.60;
+    private const double LiveTone = 0.60;
 
     static EqVisualizer()
     {
@@ -135,6 +159,7 @@ public class EqVisualizer : TemplatedControl
     private void StartAnimating()
     {
         _animStart = DateTime.UtcNow;
+        _lastTick = _animStart;
         EnsureTimer().Start();
     }
 
@@ -190,12 +215,60 @@ public class EqVisualizer : TemplatedControl
             return;
         }
 
-        var t = (DateTime.UtcNow - _animStart).TotalSeconds;
+        var now = DateTime.UtcNow;
+        var dtMs = Math.Clamp((now - _lastTick).TotalMilliseconds, 0, 100);
+        _lastTick = now;
+
+        var t = (now - _animStart).TotalSeconds;
+        var beat = BeatMeter.Shared;
+        if (beat.TryRead(beat.NowMs, out var pulse))
+        {
+            var spectrum = SpectrumMeter.Shared;
+            if (!spectrum.TryRead(spectrum.NowMs, _bands)) Array.Clear(_bands);
+            LiveLevels(t, pulse, _bands, _liveTarget);
+            SpectrumVisualizer.Smooth(_liveShown, _liveTarget, dtMs, LiveAttackMs, LiveReleaseMs);
+            SetBarLevel(_bar1, _liveShown[0]);
+            SetBarLevel(_bar2, _liveShown[1]);
+            SetBarLevel(_bar3, _liveShown[2]);
+            SetBarLevel(_bar4, _liveShown[3]);
+            SetBarLevel(_bar5, _liveShown[4]);
+            return;
+        }
+
+        Array.Clear(_liveShown);
         SetBar(_bar1, t, 0);
         SetBar(_bar2, t, 1);
         SetBar(_bar3, t, 2);
         SetBar(_bar4, t, 3);
         SetBar(_bar5, t, 4);
+    }
+
+    /// <summary>Bar height for a 0..1 level — the same range the oscillation uses.</summary>
+    public static double HeightForLevel(double level)
+        => BarMin + (BarMax - BarMin) * Math.Clamp(level, 0, 1);
+
+    /// <summary>
+    /// Target 0..1 levels for the five bars at time <paramref name="t"/> from the beat
+    /// <paramref name="pulse"/> (0..1) and five spectrum bands (0..1, bass→treble).
+    /// Pure; exposed for tests.
+    /// </summary>
+    public static void LiveLevels(double t, double pulse, ReadOnlySpan<float> bands, Span<float> levels)
+    {
+        double mean = 0;
+        for (var i = 0; i < 5; i++) mean += bands[i];
+        mean /= 5;
+        for (var i = 0; i < 5; i++)
+        {
+            var osc = Math.Sin(2 * Math.PI * Frequencies[i] * t + Phases[i]) * 0.5 + 0.5;
+            var level = LiveRest + LiveSway * osc + LiveBounce * pulse + LiveTone * (bands[i] - mean);
+            levels[i] = (float)Math.Clamp(level, 0, 1);
+        }
+    }
+
+    private static void SetBarLevel(Rectangle? bar, float level)
+    {
+        if (bar == null) return;
+        bar.Height = HeightForLevel(level);
     }
 
     private static void SetBarLerp(Rectangle? bar, double from, double eased)
