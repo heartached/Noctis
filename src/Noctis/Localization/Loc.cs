@@ -21,8 +21,32 @@ public sealed class Loc : INotifyPropertyChanged
     /// <summary>Setting value meaning "follow the OS language".</summary>
     public const string SystemLanguage = "";
 
-    /// <summary>Cultures that ship a translation, English first. Update when adding a resx.</summary>
-    public static readonly IReadOnlyList<string> Supported = new[] { "en", "es" };
+    /// <summary>
+    /// Cultures that ship a translation, English first — discovered from the satellite
+    /// assemblies next to the app (<c>&lt;culture&gt;/Noctis.resources.dll</c>), so a translation
+    /// merged from Crowdin (https://crowdin.com/project/noctis) appears in the Language picker
+    /// with no code change.
+    /// </summary>
+    public static IReadOnlyList<string> Supported => _supported ??= DiscoverSupported();
+    private static IReadOnlyList<string>? _supported;
+
+    private static IReadOnlyList<string> DiscoverSupported()
+    {
+        var found = new List<string> { "en" };
+        try
+        {
+            var baseDir = AppContext.BaseDirectory;
+            foreach (var dir in Directory.EnumerateDirectories(baseDir))
+            {
+                if (!File.Exists(Path.Combine(dir, "Noctis.resources.dll"))) continue;
+                var name = Path.GetFileName(dir);
+                try { _ = CultureInfo.GetCultureInfo(name); } catch (CultureNotFoundException) { continue; }
+                if (!found.Contains(name, StringComparer.OrdinalIgnoreCase)) found.Add(name);
+            }
+        }
+        catch (IOException) { /* unreadable install dir: English only */ }
+        return found.Skip(1).OrderBy(c => CultureInfo.GetCultureInfo(c).NativeName, StringComparer.CurrentCultureIgnoreCase).Prepend("en").ToList();
+    }
 
     private readonly ResourceManager _resources = new("Noctis.Localization.Strings", typeof(Loc).Assembly);
     private CultureInfo _culture = CultureInfo.CurrentUICulture;

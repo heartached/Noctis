@@ -399,7 +399,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenTranslationHelp() => PlatformHelper.OpenUrl("https://github.com/heartached/Noctis/tree/main/src/Noctis/Localization");
+    private void OpenTranslationHelp() => PlatformHelper.OpenUrl("https://crowdin.com/project/noctis");
 
     public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
     public bool IsVisualizerStyleBars { get => LyricsVisualizerStyleMode == VisualizerStyle.Bars; set { if (value) LyricsVisualizerStyle = nameof(VisualizerStyle.Bars); } }

@@ -50,6 +50,14 @@ public class LocalizationTests : IDisposable
         Assert.NotNull(Loc.Instance.Culture);
     }
 
+    [Fact]
+    public void Supported_IsDiscoveredFromSatelliteAssemblies()
+    {
+        // The test output carries es/Noctis.resources.dll from Strings.es.resx.
+        Assert.Equal("en", Loc.Supported[0]);
+        Assert.Contains("es", Loc.Supported);
+    }
+
     [Theory]
     [InlineData("es", "es")]
     [InlineData("es-MX", "es")]
@@ -85,7 +93,7 @@ public class LocalizationTests : IDisposable
             var stray = ReadKeys(file).Where(k => !english.Contains(k)).ToList();
             Assert.True(stray.Count == 0, $"{Path.GetFileName(file)} has keys not in Strings.resx: {string.Join(", ", stray)}");
             var culture = Path.GetFileNameWithoutExtension(file).Split('.')[1];
-            Assert.Contains(culture, Loc.Supported);
+            Assert.NotNull(System.Globalization.CultureInfo.GetCultureInfo(culture)); // a real culture name, so the satellite loads
         }
     }
 
