@@ -29,6 +29,7 @@ public sealed class NoctisServer : IAsyncDisposable
     private readonly IServerLibrary _library;
     private readonly ServerUserStore _users;
     private readonly string _serverVersion;
+    private readonly LoginThrottle _throttle = new();
     private WebApplication? _app;
 
     public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion)
@@ -109,12 +110,29 @@ public sealed class NoctisServer : IAsyncDisposable
         {
             if (!NoAuthMethods.Contains(method))
             {
+                // Brute-force brake per remote address: after repeated bad logins every
+                // attempt is refused for a while, before credentials are even checked.
+                var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                if (_throttle.IsLocked(client, out var retryAfter))
+                {
+                    ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+                    await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
+                        "Too many failed login attempts. Try again later.", format, _serverVersion), 429).ConfigureAwait(false);
+                    return;
+                }
+
                 var (user, error, errorMessage) = Authenticate(p);
                 if (user is null)
                 {
+                    if (error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
+                    {
+                        if (_throttle.RecordFailure(client))
+                            DebugLogger.Warn(DebugLogger.Category.State, "Server", $"login lockout for {client}");
+                    }
                     await WriteAsync(ctx, SubsonicResponse.Error(error, errorMessage, format, _serverVersion), 200).ConfigureAwait(false);
                     return;
                 }
+                _throttle.RecordSuccess(client);
                 ClientAuthenticated?.Invoke(this, user.Name);
                 ctx.Items["user"] = user;
             }

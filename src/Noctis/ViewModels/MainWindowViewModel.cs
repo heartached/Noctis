@@ -800,6 +800,12 @@ public partial class MainWindowViewModel : ViewModelBase
         try { Player.PauseForShutdown(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
 
+        // Plugins get their Shutdown() (timers, files), and the server releases its port.
+        try { Plugins.UnloadAll(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Plugin shutdown failed: {ex.Message}"); }
+        try { await Settings.StopNoctisServerAsync().WaitAsync(TimeSpan.FromSeconds(2)); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Server stop failed: {ex.Message}"); }
+
         // Stop any in-flight library scan and flush its progress to disk so the next
         // launch resumes where it left off instead of re-scanning from scratch.
         try { await _library.PauseActiveScanForShutdownAsync(TimeSpan.FromSeconds(5)); }

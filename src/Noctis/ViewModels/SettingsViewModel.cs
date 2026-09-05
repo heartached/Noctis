@@ -652,6 +652,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>App exit: stop listening so the port is released and in-flight streams end cleanly.</summary>
+    public async Task StopNoctisServerAsync()
+    {
+        if (_noctisServer is null) return;
+        try { await _noctisServer.StopAsync(); }
+        catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "Server", $"stop: {ex.Message}"); }
+    }
+
     private void OnNoctisServerClient(string user)
     {
         NoctisServerClientSeen = true;

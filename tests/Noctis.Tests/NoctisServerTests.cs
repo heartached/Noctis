@@ -248,6 +248,21 @@ public class NoctisServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RepeatedBadLogins_LockTheClientOut_EvenWithTheRightPassword()
+    {
+        for (var i = 0; i < LoginThrottle.MaxFailures; i++)
+            await _http.GetStringAsync("rest/getLicense.view?f=json&u=alice&p=wrong");
+
+        var locked = await _http.GetAsync("rest/getLicense.view?f=json&u=alice&p=correct%20horse");
+        Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+        Assert.NotNull(locked.Headers.RetryAfter);
+        Assert.Contains("Too many failed login attempts", await locked.Content.ReadAsStringAsync());
+
+        // ping stays reachable (no auth) so clients can still tell the server is alive.
+        Assert.Equal("ok", (await Get("ping", auth: false)).GetProperty("status").GetString());
+    }
+
+    [Fact]
     public void UserStore_HashesPasswords_AndApiKeysAreOneWay()
     {
         var store = new ServerUserStore(Path.Combine(_dir, "users2.db"));
