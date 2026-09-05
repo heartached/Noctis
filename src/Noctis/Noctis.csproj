@@ -41,6 +41,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Noctis.Tests" />
   </ItemGroup>
+  <!-- Built-in Noctis server (Settings → Integrations): OpenSubsonic API over Kestrel.
+       The shared framework is only loaded when the server is switched on. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
   <!-- Plugin SDK: the public surface plugins compile against (Settings → Plugins). -->
   <ItemGroup>
     <ProjectReference Include="..\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj" />

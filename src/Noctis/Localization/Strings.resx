@@ -1355,4 +1355,25 @@
   <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
+
+  <!-- Settings → Integrations → Noctis Server -->
+  <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>
+  <data name="Server.Description" xml:space="preserve"><value>Let your phone and other devices browse and play this library. Works with any Subsonic app (Symfonium, Tempo, DSub…) and the Noctis mobile app. HTTPS with this computer's own certificate; accounts below.</value></data>
+  <data name="Server.Port" xml:space="preserve"><value>Port</value></data>
+  <data name="Server.AddressLabel" xml:space="preserve"><value>SERVER ADDRESS</value></data>
+  <data name="Server.FingerprintLabel" xml:space="preserve"><value>CERTIFICATE FINGERPRINT (SHA-256) — compare when your phone asks to trust it</value></data>
+  <data name="Server.Waiting" xml:space="preserve"><value>Waiting for a device to connect…</value></data>
+  <data name="Server.Connected" xml:space="preserve"><value>Connected:</value></data>
+  <data name="Server.Accounts" xml:space="preserve"><value>Accounts</value></data>
+  <data name="Server.AccountsHelp" xml:space="preserve"><value>Each device logs in with an account. Passwords are stored hashed. Prefer the API key in apps that support it; older apps that only use the classic token login are not supported.</value></data>
+  <data name="Server.NoAccounts" xml:space="preserve"><value>No accounts yet — add one below to allow connections.</value></data>
+  <data name="Server.Admin" xml:space="preserve"><value>admin</value></data>
+  <data name="Server.NewApiKey" xml:space="preserve"><value>New API key</value></data>
+  <data name="Server.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Server.ApiKeyFor" xml:space="preserve"><value>API key for</value></data>
+  <data name="Server.ApiKeyOnce" xml:space="preserve"><value>Copy it now — it is shown only once. Generating a new key replaces this one.</value></data>
+  <data name="Server.Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Server.UserName" xml:space="preserve"><value>User name</value></data>
+  <data name="Server.Password" xml:space="preserve"><value>Password (8+ characters)</value></data>
+  <data name="Server.AddAccount" xml:space="preserve"><value>Add account</value></data>
 </root>

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
              xmlns:plugins="using:Noctis.Services.Plugins"
+             xmlns:server="using:Noctis.Services.Server"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
@@ -3046,6 +3047,122 @@
             <StackPanel x:Name="IntegrationsTabPanel" Classes="tab-page" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
 
             <TextBlock Classes="section-title" Text="{loc:T Settings.REMOTECONTROL}" Margin="0,4,0,10"/>
+
+            <!-- Noctis server: OpenSubsonic API over HTTPS (Services/Server). Phones and
+                 other Subsonic clients browse/stream the library; accounts live here. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Server.Title}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Server.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding NoctisServerEnabled}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Grid Classes="sub-setting" ColumnDefinitions="120,Auto,*">
+                        <TextBlock Grid.Column="0" Text="{loc:T Server.Port}" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1" Value="{Binding NoctisServerPort}" Minimum="1024" Maximum="65535"
+                                       Increment="1" FormatString="0" Width="130" CornerRadius="999"/>
+                    </Grid>
+
+                    <!-- Running -->
+                    <Border Background="#18000000" CornerRadius="8" Padding="12,10"
+                            IsVisible="{Binding NoctisServerUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" CornerRadius="6" ClipToBounds="True" VerticalAlignment="Top"
+                                    IsVisible="{Binding NoctisServerQr, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Image Source="{Binding NoctisServerQr}" Width="84" Height="84"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4" VerticalAlignment="Center">
+                                <TextBlock Text="{loc:T Server.AddressLabel}" FontSize="10" Opacity="0.5"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SelectableTextBlock Text="{Binding NoctisServerUrl}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button Classes="pill-action" Command="{Binding CopyNoctisServerUrlCommand}">
+                                        <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
+                                    </Button>
+                                    <TextBlock Text="{loc:T Settings.Copied}" FontSize="11" Foreground="{DynamicResource AccentColorBrush}"
+                                               VerticalAlignment="Center" IsVisible="{Binding NoctisServerUrlCopied}"/>
+                                </StackPanel>
+                                <TextBlock Text="{loc:T Server.FingerprintLabel}" FontSize="10" Opacity="0.5" Margin="0,4,0,0"/>
+                                <SelectableTextBlock Text="{Binding NoctisServerFingerprint}" FontSize="11" Opacity="0.75" TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !NoctisServerClientSeen}">
+                                    <Ellipse Width="6" Height="6" Fill="#E5A34D" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:T Server.Waiting}" FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding NoctisServerClientSeen}">
+                                    <Ellipse Width="6" Height="6" Fill="#4DC26B" VerticalAlignment="Center"/>
+                                    <TextBlock FontSize="11" Opacity="0.7" VerticalAlignment="Center">
+                                        <Run Text="{loc:T Server.Connected}"/> <Run Text="{Binding NoctisServerLastClient}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
+                               IsVisible="{Binding NoctisServerStartFailed}"/>
+
+                    <!-- Accounts -->
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,4,0,4"/>
+                    <TextBlock Text="{loc:T Server.Accounts}" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:T Server.AccountsHelp}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:T Server.NoAccounts}" FontSize="12" Opacity="0.55" IsVisible="{Binding !HasServerUsers}"/>
+                    <ItemsControl ItemsSource="{Binding ServerUsersList}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="server:ServerUser">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{loc:T Server.Admin}" FontSize="10.5" Opacity="0.5" VerticalAlignment="Center" IsVisible="{Binding IsAdmin}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="pill-action" Margin="0,0,6,0"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RegenerateServerApiKeyCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Server.NewApiKey}" FontSize="11"/>
+                                    </Button>
+                                    <Button Grid.Column="2" Classes="pill-action"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DeleteServerUserCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Server.Remove}" FontSize="11"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Freshly issued key: visible once, never stored in clear -->
+                    <Border Background="#1AFFFFFF" CornerRadius="8" Padding="12,10" IsVisible="{Binding HasIssuedApiKey}">
+                        <StackPanel Spacing="6">
+                            <TextBlock FontSize="12" TextWrapping="Wrap">
+                                <Run Text="{loc:T Server.ApiKeyFor}"/> <Run Text="{Binding IssuedApiKeyUser}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <SelectableTextBlock Text="{Binding IssuedApiKey}" FontSize="12" FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Server.ApiKeyOnce}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="pill-action" Command="{Binding CopyIssuedApiKeyCommand}">
+                                    <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
+                                </Button>
+                                <Button Classes="pill-action" Command="{Binding HideIssuedApiKeyCommand}">
+                                    <TextBlock Text="{loc:T Server.Done}" FontSize="11"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Text="{Binding NewServerUserName}" Watermark="{loc:T Server.UserName}"/>
+                        <TextBox Grid.Column="1" Text="{Binding NewServerUserPassword}" PasswordChar="•" Watermark="{loc:T Server.Password}"/>
+                        <Button Grid.Column="2" Classes="pill-action" Command="{Binding AddServerUserCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                            <TextBlock Text="{loc:T Server.AddAccount}" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="{Binding ServerUserError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
+                               IsVisible="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
 
             <!-- Web remote -->
             <Border Classes="setting-card">

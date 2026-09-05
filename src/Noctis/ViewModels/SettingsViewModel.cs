@@ -10,6 +10,7 @@ using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services.Plugins;
+using Noctis.Services.Server;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.Services.MediaServer;
@@ -555,6 +556,199 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnHomeTimeRotationExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeHeavyRotationExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnHomeRediscoveredExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Noctis server (OpenSubsonic API for phones / other clients) ──
+
+    private NoctisServer? _noctisServer;
+    private ServerUserStore? _serverUsers;
+    private string ServerDataDirectory => Path.Combine(_persistence.DataDirectory, "server");
+    private ServerUserStore ServerUsers => _serverUsers ??= new ServerUserStore(Path.Combine(ServerDataDirectory, "users.db"));
+
+    [ObservableProperty] private bool _noctisServerEnabled;
+    [ObservableProperty] private int _noctisServerPort = 4747;
+    /// <summary>https://ip:port while running; empty when off.</summary>
+    [ObservableProperty] private string _noctisServerUrl = string.Empty;
+    /// <summary>SHA-256 fingerprint of the server certificate — what a phone pins when it accepts the self-signed cert.</summary>
+    [ObservableProperty] private string _noctisServerFingerprint = string.Empty;
+    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _noctisServerQr;
+    [ObservableProperty] private bool _noctisServerStartFailed;
+    [ObservableProperty] private string _noctisServerError = string.Empty;
+    [ObservableProperty] private bool _noctisServerClientSeen;
+    [ObservableProperty] private string _noctisServerLastClient = string.Empty;
+    private int _noctisServerClientGeneration;
+    [ObservableProperty] private bool _noctisServerUrlCopied;
+
+    public ObservableCollection<ServerUser> ServerUsersList { get; } = new();
+    [ObservableProperty] private string _newServerUserName = string.Empty;
+    [ObservableProperty] private string _newServerUserPassword = string.Empty;
+    /// <summary>The API key just issued — shown once, cleared when the user leaves the tab.</summary>
+    [ObservableProperty] private string _issuedApiKey = string.Empty;
+    [ObservableProperty] private string _issuedApiKeyUser = string.Empty;
+    [ObservableProperty] private string _serverUserError = string.Empty;
+    public bool HasIssuedApiKey => IssuedApiKey.Length > 0;
+    public bool HasServerUsers => ServerUsersList.Count > 0;
+    partial void OnIssuedApiKeyChanged(string value) => OnPropertyChanged(nameof(HasIssuedApiKey));
+
+    partial void OnNoctisServerEnabledChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        _ = UpdateNoctisServerStateAsync();
+    }
+
+    partial void OnNoctisServerPortChanged(int value)
+    {
+        if (!_settingsLoaded) return;
+        _settings.NoctisServerPort = value;
+        _ = SaveAsync();
+        if (NoctisServerEnabled) _ = UpdateNoctisServerStateAsync(restart: true);
+    }
+
+    private async Task UpdateNoctisServerStateAsync(bool restart = false)
+    {
+        try
+        {
+            if (restart && _noctisServer is not null) await _noctisServer.StopAsync();
+
+            if (!NoctisServerEnabled)
+            {
+                if (_noctisServer is not null) await _noctisServer.StopAsync();
+                NoctisServerUrl = string.Empty;
+                NoctisServerStartFailed = false;
+                NoctisServerError = string.Empty;
+                _noctisServerClientGeneration++;
+                NoctisServerClientSeen = false;
+                SetNoctisServerQr(null);
+                return;
+            }
+
+            RefreshServerUsers();
+            if (_noctisServer is null)
+            {
+                var adapter = new LibraryServerAdapter(_library, _persistence, _playHistory,
+                    () => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.LoadPlaylistsAsync() ?? Task.CompletedTask);
+                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay);
+                _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
+            }
+            if (!_noctisServer.IsRunning)
+            {
+                var cert = await Task.Run(() => ServerCertificate.LoadOrCreate(ServerDataDirectory));
+                NoctisServerFingerprint = ServerCertificate.Fingerprint(cert);
+                var port = _settings.NoctisServerPort is >= 1024 and <= 65535 ? _settings.NoctisServerPort : 4747;
+                await _noctisServer.StartAsync(port, cert);
+            }
+            var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
+            NoctisServerUrl = $"https://{ip}:{_noctisServer.Port}";
+            NoctisServerStartFailed = false;
+            NoctisServerError = string.Empty;
+            SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
+        }
+        catch (Exception ex)
+        {
+            NoctisServerStartFailed = true;
+            NoctisServerError = ex.Message;
+            NoctisServerUrl = string.Empty;
+            SetNoctisServerQr(null);
+            DebugLogger.Error(DebugLogger.Category.Error, "Server", $"start failed: {ex.Message}");
+        }
+    }
+
+    private void OnNoctisServerClient(string user)
+    {
+        NoctisServerClientSeen = true;
+        NoctisServerLastClient = user;
+        var generation = ++_noctisServerClientGeneration;
+        _ = Task.Delay(WebRemotePhoneQuietMs).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (generation == _noctisServerClientGeneration) NoctisServerClientSeen = false;
+        }));
+    }
+
+    private void SetNoctisServerQr(Avalonia.Media.Imaging.Bitmap? qr)
+    {
+        var old = NoctisServerQr;
+        NoctisServerQr = qr;
+        old?.Dispose();
+    }
+
+    private void RefreshServerUsers()
+    {
+        try
+        {
+            ServerUsersList.Clear();
+            foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
+            OnPropertyChanged(nameof(HasServerUsers));
+        }
+        catch (Exception ex) { ServerUserError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private void AddServerUser()
+    {
+        ServerUserError = string.Empty;
+        try
+        {
+            ServerUsers.Create(NewServerUserName, NewServerUserPassword, isAdmin: ServerUsersList.Count == 0);
+            var key = ServerUsers.RegenerateApiKey(NewServerUserName.Trim());
+            IssuedApiKeyUser = NewServerUserName.Trim();
+            IssuedApiKey = key;
+            NewServerUserName = string.Empty;
+            NewServerUserPassword = string.Empty;
+            RefreshServerUsers();
+        }
+        catch (Exception ex) { ServerUserError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private void DeleteServerUser(ServerUser user)
+    {
+        ServerUserError = string.Empty;
+        try
+        {
+            ServerUsers.Delete(user.Name);
+            if (IssuedApiKeyUser == user.Name) { IssuedApiKey = string.Empty; IssuedApiKeyUser = string.Empty; }
+            RefreshServerUsers();
+        }
+        catch (Exception ex) { ServerUserError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private void RegenerateServerApiKey(ServerUser user)
+    {
+        ServerUserError = string.Empty;
+        try
+        {
+            IssuedApiKey = ServerUsers.RegenerateApiKey(user.Name);
+            IssuedApiKeyUser = user.Name;
+            RefreshServerUsers();
+        }
+        catch (Exception ex) { ServerUserError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private void HideIssuedApiKey() { IssuedApiKey = string.Empty; IssuedApiKeyUser = string.Empty; }
+
+    [RelayCommand]
+    private async Task CopyNoctisServerUrlAsync()
+    {
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null) return;
+        try { await clipboard.SetTextAsync(NoctisServerUrl); } catch { return; }
+        NoctisServerUrlCopied = true;
+        await Task.Delay(1500);
+        NoctisServerUrlCopied = false;
+    }
+
+    [RelayCommand]
+    private async Task CopyIssuedApiKeyAsync()
+    {
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null || IssuedApiKey.Length == 0) return;
+        try { await clipboard.SetTextAsync(IssuedApiKey); } catch { }
+    }
 
     // ── Web remote ──
 
@@ -1436,6 +1630,8 @@ public partial class SettingsViewModel : ViewModelBase
             StartMinimizedToTray = _settings.StartMinimizedToTray;
             RestoreLastTrackOnStartup = _settings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
+            NoctisServerPort = _settings.NoctisServerPort;
+            NoctisServerEnabled = _settings.NoctisServerEnabled;
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -1809,6 +2005,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.StartMinimizedToTray = StartMinimizedToTray;
         _settings.RestoreLastTrackOnStartup = RestoreLastTrackOnStartup;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.NoctisServerEnabled = NoctisServerEnabled;
+        _settings.NoctisServerPort = NoctisServerPort;
         _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;

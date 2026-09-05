@@ -183,6 +183,12 @@ public class AppSettings
     /// <summary>TCP port for the web remote.</summary>
     public int WebRemotePort { get; set; } = 9420;
 
+    /// <summary>Built-in Noctis server (OpenSubsonic API over HTTPS for phones and other clients). Off by default.</summary>
+    public bool NoctisServerEnabled { get; set; }
+
+    /// <summary>Port the Noctis server listens on.</summary>
+    public int NoctisServerPort { get; set; } = 4747;
+
     // ── Songs page optional columns ──
     // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;
@@ -558,6 +564,7 @@ public class AppSettings
         Volume = Math.Clamp(Volume, 0, 100);
         // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
         WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
+        NoctisServerPort = NoctisServerPort is >= 1024 and <= 65535 ? NoctisServerPort : 4747;
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
