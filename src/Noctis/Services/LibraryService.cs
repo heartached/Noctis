@@ -75,13 +75,23 @@ public class LibraryService : ILibraryService
         IMetadataService metadata,
         IPersistenceService persistence,
         ISqliteLibraryIndexService sqliteIndex,
-        IAuditTrailService auditTrail)
+        IAuditTrailService auditTrail,
+        IDeferredTagWriter? tagWriter = null,
+        Sync.ITrackStateRecorder? syncRecorder = null)
     {
         _metadata = metadata;
         _persistence = persistence;
         _sqliteIndex = sqliteIndex;
         _auditTrail = auditTrail;
+        _tagWriter = tagWriter;
+        _syncRecorder = syncRecorder;
     }
+
+    /// <summary>Batches rating/lyrics tag writes until the user is idle (null = write immediately).</summary>
+    private readonly IDeferredTagWriter? _tagWriter;
+
+    /// <summary>Mirrors user-state saves into the sync ledger (null = sync not wired).</summary>
+    private readonly Sync.ITrackStateRecorder? _syncRecorder;
 
     public async Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default)
     {
@@ -1351,6 +1361,18 @@ public class LibraryService : ILibraryService
     {
         if (tracks.Count == 0) return;
 
+        // Sync ledger first (cheap, off the persistence path): the recorder decides
+        // whether sync is on and skips unchanged payloads itself.
+        if (_syncRecorder is { } recorder)
+        {
+            var snapshot = tracks.ToArray();
+            _ = Task.Run(() =>
+            {
+                try { recorder.RecordTrackStates(snapshot); }
+                catch (Exception ex) { DebugLog.Write("Sync", $"record failed: {ex.Message}"); }
+            });
+        }
+
         if (_userStateJournalHealthy)
         {
             try
@@ -1500,6 +1522,15 @@ public class LibraryService : ILibraryService
             .Select(t => (t.FilePath, t.Rating, t.IsDisliked))
             .ToList();
         if (targets.Count == 0) return;
+
+        // Deferred: a run of star clicks becomes one write per file once the user is
+        // quiet, and the playing file waits until it is no longer in use.
+        if (_tagWriter is { } writer)
+        {
+            foreach (var (path, rating, disliked) in targets)
+                writer.Enqueue(path, "rating", () => _metadata.WriteRating(path, rating, disliked));
+            return;
+        }
 
         _ = Task.Run(() =>
         {

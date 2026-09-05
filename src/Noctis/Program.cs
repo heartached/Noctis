@@ -306,6 +306,54 @@ internal class Program
             sp.GetRequiredService<IPersistenceService>().DataDirectory));
         services.AddSingleton<IPlaylistImportService, PlaylistImportService>();
 
+        // Deferred file-tag writes: star clicks and bulk lyrics saves touch each file once,
+        // after the user goes quiet and never while that file is playing. Flushed at shutdown.
+        services.AddSingleton<IDeferredTagWriter>(_ => new DeferredTagWriter());
+
+        // Account & Sync ledger (state-based, last-writer-wins) served by the Noctis server.
+        services.AddSingleton<Services.Sync.ILibrarySyncService>(sp =>
+            new Services.Sync.LibrarySyncService(
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings(),
+                sp.GetRequiredService<IPersistenceService>()));
+        services.AddSingleton<Services.Sync.ITrackStateRecorder>(sp => sp.GetRequiredService<Services.Sync.ILibrarySyncService>());
+
+        // Bulk lyrics (fetch / remove) and Lyrics Studio share one writer so every path
+        // follows the lyrics page's sidecar + registry rules.
+        services.AddSingleton<Services.Lyrics.LyricsWriter>(sp =>
+            new Services.Lyrics.LyricsWriter(sp.GetRequiredService<IMetadataService>(), sp.GetRequiredService<IDeferredTagWriter>()));
+        services.AddSingleton<Services.Lyrics.ILyricsBulkService>(sp =>
+            new Services.Lyrics.LyricsBulkService(
+                sp.GetRequiredService<ILrcLibService>(),
+                sp.GetRequiredService<Services.Lyrics.LyricsWriter>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
+        services.AddSingleton<Services.LyricsStudio.ILyricsStudioEngine>(sp =>
+            new Services.LyricsStudio.LyricsStudioEngine(
+                sp.GetRequiredService<IAudioConverterService>(),
+                sp.GetRequiredService<ILrcLibService>(),
+                sp.GetRequiredService<IPersistenceService>()));
+
+        // Send to Folder (MusicBee-style copy to a drive/folder).
+        services.AddSingleton<ISendToFolderService, SendToFolderService>();
+
+        // YouTube → library: yt-dlp as an external tool, tagged with TagLib, imported like a drop.
+        services.AddSingleton<Services.YouTube.YtDlpTool>(sp =>
+            new Services.YouTube.YtDlpTool(
+                sp.GetRequiredService<HttpClient>(),
+                sp.GetRequiredService<IPersistenceService>().DataDirectory,
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
+        services.AddSingleton<Services.YouTube.IYouTubeImportService>(sp =>
+            new Services.YouTube.YouTubeImportService(
+                sp.GetRequiredService<Services.YouTube.YtDlpTool>(),
+                sp.GetRequiredService<IAudioConverterService>(),
+                sp.GetRequiredService<IMetadataService>(),
+                sp.GetRequiredService<ILibraryService>(),
+                sp.GetRequiredService<HttpClient>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
+
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
         // results cache in library.db and fill Track.Bpm/MusicalKey when missing.

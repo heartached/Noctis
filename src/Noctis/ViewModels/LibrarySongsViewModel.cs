@@ -390,6 +390,48 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         Helpers.PlatformHelper.ShowInFileManager(track.FilePath);
     }
 
+    /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
+    private List<Track> SelectionOr(Track track) =>
+        CtrlSelectedTracks.Count > 0 && CtrlSelectedTracks.Contains(track) ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+
+    /// <summary>Star click on a row, or Rate ▸ in the context menu. Rates the whole selection when the row is in it.</summary>
+    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(SelectionOr(track), stars);
+
+    [RelayCommand]
+    private Task RateTrack(RateRequest request) => RateAsync(request.Track, request.Stars);
+
+    [RelayCommand]
+    private async Task FetchLyrics(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
+    }
+
+    [RelayCommand]
+    private async Task RemoveLyrics(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: true);
+    }
+
+    [RelayCommand]
+    private async Task OpenLyricsStudio(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenLyricsStudio(tracks);
+    }
+
+    [RelayCommand]
+    private async Task SendToFolder(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenSendToFolderDialog(tracks);
+    }
+
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 

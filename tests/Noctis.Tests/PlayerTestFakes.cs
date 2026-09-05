@@ -54,6 +54,10 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void SetGapless(bool enabled) { }
     public double PlaybackRate { get; private set; } = 1.0;
     public void SetPlaybackRate(double rate) => PlaybackRate = rate;
+    public double PitchSemitones { get; private set; }
+    public void SetPitchSemitones(double semitones) => PitchSemitones = semitones;
+    public string UpmixMode { get; private set; } = "Off";
+    public void SetUpmixMode(string mode) => UpmixMode = mode;
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public void CancelPreparedNext() { }
     public void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb) { }

@@ -2105,12 +2105,32 @@ public class VlcAudioPlayer : IAudioPlayer
 
     // ── Playback speed (podcast/audiobook island) ──
     private double _playbackRate = 1.0;
+    private double _pitchRatio = 1.0;
 
     public void SetPlaybackRate(double rate)
     {
         if (_disposed) return;
         Volatile.Write(ref _playbackRate, TempoStretchProvider.ClampRate(rate));
         ApplyPlaybackRateToOwner();
+    }
+
+    /// <summary>Pitch shift (engine only). Applied with the rate so both reach the sink together.</summary>
+    public void SetPitchSemitones(double semitones)
+    {
+        if (_disposed) return;
+        Volatile.Write(ref _pitchRatio, PitchShiftProvider.RatioFromSemitones(semitones));
+        ApplyPlaybackRateToOwner();
+    }
+
+    /// <summary>Speaker-fill upmix for multi-channel devices; a live engine sink is rebuilt in place.</summary>
+    public void SetUpmixMode(string mode)
+    {
+        if (_disposed) return;
+        var parsed = GaplessSink.ParseUpmixMode(mode);
+        if (GaplessSink.UpmixMode == parsed) return;
+        GaplessSink.UpmixMode = parsed;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Upmix.Mode", parsed.ToString());
+        _gaplessSink?.RequestRebuild();
     }
 
     /// <summary>
@@ -2127,6 +2147,7 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_gaplessEngine && _gaplessSink is { } sink)
         {
             sink.Provider.PlaybackRate = rate;
+            sink.Provider.PitchRatio = Volatile.Read(ref _pitchRatio);
             try { _player.SetRate(1f); } catch { }
             try { _standbyPlayer.SetRate(1f); } catch { }
             return;

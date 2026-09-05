@@ -112,4 +112,51 @@ public sealed class LibraryServerAdapter : IServerLibrary
     }
 
     private Task NotifyPlaylists() => _playlistsChanged is null ? Task.CompletedTask : Ui(_playlistsChanged);
+
+    // ── Sync (Account & Sync): remote state that won last-writer-wins lands here ──
+
+    public Task ApplyTrackStateAsync(Guid trackId, Sync.TrackSyncState state)
+        => Ui(async () =>
+        {
+            var track = _library.GetTrackById(trackId);
+            if (track is null) return;
+            var favoriteChanged = track.IsFavorite != state.Favorite;
+            track.IsFavorite = state.Favorite;
+            if (state.FavoritedAt.HasValue) track.FavoritedAt = state.FavoritedAt;
+            // Play counts only ever grow: a device that missed a few plays must not roll them back.
+            if (state.PlayCount > track.PlayCount) track.PlayCount = state.PlayCount;
+            if (state.LastPlayed.HasValue && (track.LastPlayed is null || state.LastPlayed > track.LastPlayed)) track.LastPlayed = state.LastPlayed;
+            await _library.SaveTrackUserStateAsync(new[] { track });
+            if (favoriteChanged) _library.NotifyFavoritesChanged(new[] { track });
+            // Rating/dislike go through the same calls the desktop's star clicks use, so the
+            // file tags get written (deferred) — both are no-ops when nothing changed.
+            await _library.SetTracksRatingAsync(new[] { track }, Math.Clamp(state.Rating, 0, 5));
+            await _library.SetTracksDislikedAsync(new[] { track }, state.Disliked);
+        });
+
+    public async Task ApplyPlaylistStateAsync(Guid playlistId, Sync.PlaylistSyncState state)
+    {
+        var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        var existing = playlists.FirstOrDefault(p => p.Id == playlistId);
+        if (state.Deleted)
+        {
+            if (existing is null) return;
+            playlists.Remove(existing);
+        }
+        else
+        {
+            if (existing is null)
+            {
+                existing = new Playlist { Id = playlistId, CreatedAt = state.ModifiedAt };
+                playlists.Add(existing);
+            }
+            existing.Name = string.IsNullOrWhiteSpace(state.Name) ? existing.Name : state.Name;
+            existing.Description = state.Description ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(state.Color)) existing.Color = state.Color;
+            existing.TrackIds = state.TrackIds?.ToList() ?? new List<Guid>();
+            existing.ModifiedAt = state.ModifiedAt;
+        }
+        await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
+        await NotifyPlaylists().ConfigureAwait(false);
+    }
 }

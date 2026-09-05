@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.BulkLyricsDialog"
+        x:DataType="vm:BulkLyricsViewModel"
+        Title="{loc:T BulkLyrics.Title}"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="Border.job-row">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="#10FFFFFF" />
+        </Style>
+        <Style Selector="TextBlock.status.failed">
+            <Setter Property="Foreground" Value="#FF8A80" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="620"
+                MaxHeight="720"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="4">
+                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding SubtitleText}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <StackPanel Spacing="10">
+                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                                     IsVisible="{Binding IsRunning}" />
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="1" Content="{loc:T BulkLyrics.Close}" Command="{Binding CancelCommand}"
+                                    Width="100" Padding="0,8" FontWeight="Bold" HorizontalContentAlignment="Center"
+                                    CornerRadius="999" Margin="0,0,8,0" Cursor="Hand" />
+                            <Button Grid.Column="2" Content="{Binding ActionText}" Command="{Binding StartCommand}"
+                                    IsEnabled="{Binding CanStart}"
+                                    Width="110" Padding="0,8" Classes="accent-btn"
+                                    Background="{DynamicResource AccentButtonBackground}"
+                                    Foreground="{DynamicResource AccentForegroundBrush}"
+                                    FontWeight="SemiBold" HorizontalContentAlignment="Center"
+                                    CornerRadius="999" Cursor="Hand" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,4,24,8">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BulkLyricsViewModel+Row">
+                                <Border Classes="job-row">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                                      Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

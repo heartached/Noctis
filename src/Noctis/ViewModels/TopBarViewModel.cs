@@ -67,6 +67,9 @@ public partial class TopBarViewModel : ViewModelBase
     // to a page without search).
     [ObservableProperty] private bool _isSearchOpen;
 
+    /// <summary>"Add from YouTube" in the New/Add menu — always available, downloads into the library folder.</summary>
+    public IAsyncRelayCommand AddFromYouTubeCommand { get; } = new AsyncRelayCommand(() => MetadataHelper.OpenYouTubeDownloadDialog());
+
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
     [ObservableProperty] private bool _isBackButtonVisible;
     [ObservableProperty] private bool _isGenericBackButtonVisible;

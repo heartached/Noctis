@@ -270,6 +270,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetListenBrainz(listenBrainz);
         Settings.SetTidal(App.Services!.GetRequiredService<ITidalAuthService>());
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
+        // Deferred tag writes skip the file that is playing; the player knows which one.
+        if (App.Services?.GetService<IDeferredTagWriter>() is { } tagWriter)
+            tagWriter.InUsePath = () => Player.CurrentTrack?.FilePath;
         Settings.SettingsReset += async (_, _) =>
         {
             // Guarded: an unhandled throw from an async-void handler crashes the app.
@@ -826,6 +829,13 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
         try { await _playHistory.FlushAsync(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
+        // Ratings/lyrics waiting for the quiet period (or for the playing file) go to disk now.
+        try
+        {
+            if (App.Services?.GetService<IDeferredTagWriter>() is { } tagWriter)
+                await tagWriter.FlushAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Tag-write flush failed: {ex.Message}"); }
 
         // Snapshot the queue so the next launch restores it.
         try { await Player.SaveQueueStateAsync(); }

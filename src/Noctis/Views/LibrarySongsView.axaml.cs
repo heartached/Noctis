@@ -113,7 +113,19 @@ public partial class LibrarySongsView : UserControl
             convertCommand: vm.ConvertTracksCommand,
             scanReplayGainCommand: vm.ScanReplayGainCommand,
             startRadioCommand: vm.StartRadioCommand,
-            snoozeCommand: vm.SnoozeForMonthCommand);
+            snoozeCommand: vm.SnoozeForMonthCommand,
+            rateCommand: vm.RateTrackCommand,
+            fetchLyricsCommand: vm.FetchLyricsCommand,
+            lyricsStudioCommand: vm.OpenLyricsStudioCommand,
+            removeLyricsCommand: vm.RemoveLyricsCommand,
+            sendToFolderCommand: vm.SendToFolderCommand);
+    }
+
+    /// <summary>Click on a row's stars: rate that track (or the whole Ctrl-selection it belongs to).</summary>
+    private void OnRowRated(object? sender, int stars)
+    {
+        if (sender is RatingStars stars1 && stars1.DataContext is Track track && DataContext is LibrarySongsViewModel vm)
+            _ = vm.RateAsync(track, stars);
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)

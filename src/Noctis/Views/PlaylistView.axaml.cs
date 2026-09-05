@@ -378,7 +378,12 @@ public partial class PlaylistView : UserControl
             convertCommand: vm.ConvertTracksCommand,
             scanReplayGainCommand: vm.ScanReplayGainCommand,
             startRadioCommand: vm.StartRadioCommand,
-            snoozeCommand: vm.SnoozeForMonthCommand);
+            snoozeCommand: vm.SnoozeForMonthCommand,
+            rateCommand: vm.RateTrackCommand,
+            fetchLyricsCommand: vm.FetchLyricsCommand,
+            lyricsStudioCommand: vm.OpenLyricsStudioCommand,
+            removeLyricsCommand: vm.RemoveLyricsCommand,
+            sendToFolderCommand: vm.SendToFolderCommand);
     }
 
     private void DetachMenuFromOwner()

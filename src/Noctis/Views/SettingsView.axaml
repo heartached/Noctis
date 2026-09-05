@@ -3,6 +3,7 @@
              xmlns:loc="using:Noctis.Localization"
              xmlns:plugins="using:Noctis.Services.Plugins"
              xmlns:server="using:Noctis.Services.Server"
+             xmlns:studio="using:Noctis.Services.LyricsStudio"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
@@ -2795,6 +2796,41 @@
                 </Grid>
             </Border>
 
+            <!-- Multi-channel upmix (Windows gapless engine): fill a 5.1/7.1 system from stereo.
+                 Shared-mode WASAPI only — Exclusive Mode keeps the file's own channel layout. -->
+            <Border Classes="setting-card" IsVisible="{Binding IsUpmixSupported}">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Upmix.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Upmix.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Classes="transition-card medium-card" GroupName="UpmixMode"
+                                     IsChecked="{Binding IsUpmixOff, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{loc:T Upmix.Off}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Upmix.OffHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" TextAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="1" Classes="transition-card medium-card" GroupName="UpmixMode"
+                                     IsChecked="{Binding IsUpmixDuplicate, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{loc:T Upmix.Duplicate}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Upmix.DuplicateHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" TextAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Grid.Column="2" Classes="transition-card medium-card" GroupName="UpmixMode"
+                                     IsChecked="{Binding IsUpmixSurround, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{loc:T Upmix.Surround}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Upmix.SurroundHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" TextAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </Grid>
+                    <TextBlock Text="{loc:T Upmix.Note}" FontSize="11" Opacity="0.45" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
             <!-- Audio analysis: tempo & key detection + tag writing -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="14">
@@ -3123,65 +3159,14 @@
                     <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
                                IsVisible="{Binding NoctisServerStartFailed}"/>
 
-                    <!-- Accounts -->
+                    <!-- Accounts moved to Settings → Account & Sync (one place for who signs in and what syncs). -->
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,4,0,4"/>
-                    <TextBlock Text="{loc:T Server.Accounts}" FontSize="13" FontWeight="SemiBold"/>
-                    <TextBlock Text="{loc:T Server.AccountsHelp}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
-                    <TextBlock Text="{loc:T Server.NoAccounts}" FontSize="12" Opacity="0.55" IsVisible="{Binding !HasServerUsers}"/>
-                    <ItemsControl ItemsSource="{Binding ServerUsersList}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="server:ServerUser">
-                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{loc:T Server.Admin}" FontSize="10.5" Opacity="0.5" VerticalAlignment="Center" IsVisible="{Binding IsAdmin}"/>
-                                    </StackPanel>
-                                    <Button Grid.Column="1" Classes="pill-action" Margin="0,0,6,0"
-                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RegenerateServerApiKeyCommand}"
-                                            CommandParameter="{Binding}">
-                                        <TextBlock Text="{loc:T Server.NewApiKey}" FontSize="11"/>
-                                    </Button>
-                                    <Button Grid.Column="2" Classes="pill-action"
-                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DeleteServerUserCommand}"
-                                            CommandParameter="{Binding}">
-                                        <TextBlock Text="{loc:T Server.Remove}" FontSize="11"/>
-                                    </Button>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Freshly issued key: visible once, never stored in clear -->
-                    <Border Background="#1AFFFFFF" CornerRadius="8" Padding="12,10" IsVisible="{Binding HasIssuedApiKey}">
-                        <StackPanel Spacing="6">
-                            <TextBlock FontSize="12" TextWrapping="Wrap">
-                                <Run Text="{loc:T Server.ApiKeyFor}"/> <Run Text="{Binding IssuedApiKeyUser}" FontWeight="SemiBold"/>
-                            </TextBlock>
-                            <SelectableTextBlock Text="{Binding IssuedApiKey}" FontSize="12" FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
-                            <TextBlock Text="{loc:T Server.ApiKeyOnce}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="pill-action" Command="{Binding CopyIssuedApiKeyCommand}">
-                                    <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
-                                </Button>
-                                <Button Classes="pill-action" Command="{Binding HideIssuedApiKeyCommand}">
-                                    <TextBlock Text="{loc:T Server.Done}" FontSize="11"/>
-                                </Button>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
-                        <TextBox Grid.Column="0" Text="{Binding NewServerUserName}" Watermark="{loc:T Server.UserName}"/>
-                        <TextBox Grid.Column="1" Text="{Binding NewServerUserPassword}" PasswordChar="•" Watermark="{loc:T Server.Password}"/>
-                        <Button Grid.Column="2" Classes="pill-action" Command="{Binding AddServerUserCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
-                            <TextBlock Text="{loc:T Server.AddAccount}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T Server.AccountsMoved}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Classes="pill-action" Command="{Binding OpenAccountSyncTabCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                            <TextBlock Text="{loc:T Server.OpenAccountSync}" FontSize="12"/>
                         </Button>
                     </Grid>
-                    <TextBlock Text="{Binding ServerUserError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
-                               IsVisible="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
             </Border>
 
@@ -4252,6 +4237,349 @@
                 </StackPanel>
             </Border>
 
+            <!-- YouTube → library (Discord request): search or paste a link, the file lands
+                 here tagged with cover art and joins the library. yt-dlp is the engine, fetched
+                 on demand like a model — never bundled, never a YouTube section in the app. -->
+            <TextBlock Classes="section-title" Text="{loc:T YouTubeSettings.Section}" Margin="0,20,0,10"/>
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T YouTubeSettings.Title}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T YouTubeSettings.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="pill-action" Command="{Binding OpenYouTubeDownloaderCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T YouTubeSettings.Open}" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                    <Grid Classes="sub-setting" ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="{loc:T YouTubeSettings.Folder}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding YouTubeDownloadFolder}" Watermark="{Binding YouTubeDownloadFolderHint}"
+                                     CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                            <TextBlock Text="{loc:T YouTubeSettings.FolderHint}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="{loc:T Settings.Browse}" Command="{Binding BrowseYouTubeFolderCommand}"
+                                Padding="14,8" CornerRadius="999" Margin="8,22,0,0" Cursor="Hand" VerticalAlignment="Top"/>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4"/>
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="{loc:T YouTubeSettings.Tool}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding YtDlpStatus}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="pill-action" Command="{Binding InstallYtDlpCommand}" IsEnabled="{Binding !IsInstallingYtDlp}"
+                                    Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center">
+                                <TextBlock Text="{loc:T YouTubeSettings.InstallUpdate}" FontSize="12"/>
+                            </Button>
+                        </Grid>
+                        <ProgressBar Value="{Binding YtDlpInstallProgress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2" IsVisible="{Binding IsInstallingYtDlp}"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding YtDlpPath}" Watermark="{loc:T YouTubeSettings.ToolPathHint}"
+                                     CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ACCOUNT & SYNC                                   -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <StackPanel x:Name="AccountSyncTabPanel" Classes="tab-page" IsVisible="{Binding IsAccountSyncTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="{loc:T AccountSync.YourAccount}" Margin="0,4,0,10"/>
+
+            <!-- Your account: create it, pair devices, keep keys. One card, states swap inside it. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="14">
+                    <!-- No account yet -->
+                    <StackPanel Spacing="12" IsVisible="{Binding !HasPrimaryAccount}">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{loc:T AccountSync.CreateTitle}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T AccountSync.CreateHelp}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                            <TextBox Grid.Column="0" Text="{Binding NewServerUserName}" Watermark="{loc:T AccountSync.Name}" CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                            <TextBox Grid.Column="1" Text="{Binding NewServerUserPassword}" PasswordChar="•" Watermark="{loc:T AccountSync.Password}" CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                            <Button Grid.Column="2" Classes="accent-btn" Command="{Binding CreatePrimaryAccountCommand}" Padding="16,8" CornerRadius="999" Cursor="Hand"
+                                    Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                <TextBlock Text="{loc:T AccountSync.Create}" FontSize="13" FontWeight="SemiBold"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Account exists -->
+                    <StackPanel Spacing="14" IsVisible="{Binding HasPrimaryAccount}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                            <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{DynamicResource AccentColorBrush}" Opacity="0.9">
+                                <TextBlock Text="{Binding PrimaryAccountInitial}" FontSize="22" FontWeight="Bold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding PrimaryAccount.Name, FallbackValue=''}" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding PrimaryAccountSince}" FontSize="12" Opacity="0.5"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button Classes="accent-btn" Command="{Binding TogglePairingCommand}" Padding="14,8" CornerRadius="999" Cursor="Hand"
+                                        Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                    <TextBlock Text="{loc:T AccountSync.PairDevice}" FontSize="12" FontWeight="SemiBold"/>
+                                </Button>
+                                <Button Classes="pill-action" Command="{Binding RegenerateServerApiKeyCommand}" CommandParameter="{Binding PrimaryAccount}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                    <TextBlock Text="{loc:T AccountSync.NewApiKey}" FontSize="12"/>
+                                </Button>
+                                <Button Classes="pill-action" Command="{Binding ToggleChangePasswordCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                    <TextBlock Text="{loc:T AccountSync.ChangePassword}" FontSize="12"/>
+                                </Button>
+                                <Button Classes="pill-action" Command="{Binding DeleteServerUserCommand}" CommandParameter="{Binding PrimaryAccount}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                    <TextBlock Text="{loc:T AccountSync.Remove}" FontSize="12" Foreground="#FF6B6B"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Change password (inline) -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding IsChangePasswordVisible}">
+                            <TextBox Grid.Column="0" Text="{Binding ChangePasswordValue}" PasswordChar="•" Watermark="{loc:T AccountSync.NewPassword}" CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                            <Button Grid.Column="1" Classes="pill-action" Command="{Binding ChangePrimaryPasswordCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                <TextBlock Text="{loc:T AccountSync.Save}" FontSize="12"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Pairing: address + QR + fingerprint, or the switch to turn the server on -->
+                        <Border Background="#18000000" CornerRadius="12" Padding="14,12" IsVisible="{Binding IsPairingVisible}">
+                            <StackPanel Spacing="10">
+                                <StackPanel Spacing="10" IsVisible="{Binding NoctisServerUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <TextBlock Text="{loc:T AccountSync.PairHelp}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Grid.Column="0" CornerRadius="8" ClipToBounds="True" VerticalAlignment="Top"
+                                                IsVisible="{Binding NoctisServerQr, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <Image Source="{Binding NoctisServerQr}" Width="96" Height="96"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock Text="{loc:T Server.AddressLabel}" FontSize="10" Opacity="0.5"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <SelectableTextBlock Text="{Binding NoctisServerUrl}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <Button Classes="pill-action" Command="{Binding CopyNoctisServerUrlCommand}">
+                                                    <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
+                                                </Button>
+                                                <TextBlock Text="{loc:T Settings.Copied}" FontSize="11" Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" IsVisible="{Binding NoctisServerUrlCopied}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{loc:T Server.FingerprintLabel}" FontSize="10" Opacity="0.5" Margin="0,4,0,0"/>
+                                            <SelectableTextBlock Text="{Binding NoctisServerFingerprint}" FontSize="11" Opacity="0.75" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Spacing="8" IsVisible="{Binding NoctisServerUrl, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                    <TextBlock Text="{loc:T AccountSync.ServerOffHelp}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                                    <Button Classes="accent-btn" Command="{Binding TurnOnNoctisServerCommand}" Padding="16,8" CornerRadius="999" Cursor="Hand" HorizontalAlignment="Left"
+                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                        <TextBlock Text="{loc:T AccountSync.TurnOnServer}" FontSize="12" FontWeight="SemiBold"/>
+                                    </Button>
+                                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" IsVisible="{Binding NoctisServerStartFailed}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Freshly issued key: visible once, never stored in clear -->
+                    <Border Background="#1AFFFFFF" CornerRadius="8" Padding="12,10" IsVisible="{Binding HasIssuedApiKey}">
+                        <StackPanel Spacing="6">
+                            <TextBlock FontSize="12" TextWrapping="Wrap">
+                                <Run Text="{loc:T Server.ApiKeyFor}"/> <Run Text="{Binding IssuedApiKeyUser}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <SelectableTextBlock Text="{Binding IssuedApiKey}" FontSize="12" FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Server.ApiKeyOnce}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="pill-action" Command="{Binding CopyIssuedApiKeyCommand}">
+                                    <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
+                                </Button>
+                                <Button Classes="pill-action" Command="{Binding HideIssuedApiKeyCommand}">
+                                    <TextBlock Text="{loc:T Server.Done}" FontSize="11"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding ServerUserError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
+                               IsVisible="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="{loc:T AccountSync.SyncSection}" Margin="0,20,0,10"/>
+
+            <!-- Sync: what travels between devices, and who has been here -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Sync.Title}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Sync.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding SyncEnabled}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Border Background="#18000000" CornerRadius="10" Padding="12,10">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding SyncStatusText}" FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding SyncDevices}" IsVisible="{Binding HasSyncDevices}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SettingsViewModel+SyncDeviceRow">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                            <Ellipse Grid.Column="0" Width="6" Height="6" Fill="#4DC26B" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding LastSeenText}" FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Grid Classes="sub-setting" ColumnDefinitions="140,*" IsEnabled="{Binding SyncEnabled}">
+                        <TextBlock Grid.Column="0" Text="{loc:T Sync.DeviceName}" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" Text="{Binding SyncDeviceName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="220"
+                                 CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                    </Grid>
+                    <TextBlock Text="{loc:T Sync.WhatSyncs}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="{loc:T AccountSync.OtherAccounts}" Margin="0,20,0,10"/>
+
+            <!-- Other people who may sign in (family, guests) -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T AccountSync.OtherTitle}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T AccountSync.OtherHelp}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding OtherAccounts}" IsVisible="{Binding HasOtherAccounts}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="server:ServerUser">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{loc:T Server.Admin}" FontSize="10.5" Opacity="0.5" VerticalAlignment="Center" IsVisible="{Binding IsAdmin}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="pill-action" Margin="0,0,6,0"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RegenerateServerApiKeyCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Server.NewApiKey}" FontSize="11"/>
+                                    </Button>
+                                    <Button Grid.Column="2" Classes="pill-action"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DeleteServerUserCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Server.Remove}" FontSize="11"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasPrimaryAccount}">
+                        <TextBox Grid.Column="0" Text="{Binding NewServerUserName}" Watermark="{loc:T Server.UserName}" CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                        <TextBox Grid.Column="1" Text="{Binding NewServerUserPassword}" PasswordChar="•" Watermark="{loc:T Server.Password}" CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
+                        <Button Grid.Column="2" Classes="pill-action" Command="{Binding AddServerUserCommand}" Padding="14,8" CornerRadius="16" Cursor="Hand">
+                            <TextBlock Text="{loc:T Server.AddAccount}" FontSize="13"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- LYRICS STUDIO                                    -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <StackPanel x:Name="LyricsStudioTabPanel" Classes="tab-page" IsVisible="{Binding IsLyricsStudioTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="{loc:T LyricsStudioSettings.ModelSection}" Margin="0,4,0,10"/>
+
+            <!-- Speech model: which Whisper model listens, in which language -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T LyricsStudioSettings.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T LyricsStudioSettings.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid Classes="sub-setting" ColumnDefinitions="140,Auto,*,Auto" ColumnSpacing="10">
+                        <TextBlock Grid.Column="0" Text="{loc:T LyricsStudioSettings.Model}" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" Classes="pill-combo stable-popup" MinWidth="150" VerticalAlignment="Center"
+                                  ItemsSource="{Binding LyricsModelOptions}" SelectedItem="{Binding LyricsStudioModel}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="studio:WhisperModelInfo">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                        <TextBlock Text="{Binding SizeText}" Opacity="0.5" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding LyricsModelStatus}" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/>
+                            <ProgressBar Value="{Binding LyricsModelProgress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2" IsVisible="{Binding IsDownloadingLyricsModel}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="pill-action" Command="{Binding DownloadLyricsModelCommand}" IsVisible="{Binding !IsLyricsModelInstalled}" IsEnabled="{Binding !IsDownloadingLyricsModel}"
+                                    Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                <TextBlock Text="{loc:T LyricsStudioSettings.Download}" FontSize="12"/>
+                            </Button>
+                            <Button Classes="pill-action" Command="{Binding DeleteLyricsModelCommand}" IsVisible="{Binding IsLyricsModelInstalled}"
+                                    Padding="14,8" CornerRadius="16" Cursor="Hand">
+                                <TextBlock Text="{loc:T LyricsStudioSettings.Delete}" FontSize="12"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Classes="sub-setting" ColumnDefinitions="140,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T LyricsStudioSettings.Language}" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" Classes="pill-combo stable-popup" MinWidth="200" VerticalAlignment="Center"
+                                  ItemsSource="{Binding LyricsLanguageOptions}" SelectedItem="{Binding LyricsStudioLanguage}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding LyricsStudioFfmpegStatus}" FontSize="12" Foreground="#E5A34D" TextWrapping="Wrap"
+                               IsVisible="{Binding LyricsStudioFfmpegStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="{loc:T LyricsStudioSettings.OutputSection}" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T LyricsStudioSettings.WordTimings}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T LyricsStudioSettings.WordTimingsHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding LyricsStudioWordTimings}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T LyricsStudioSettings.EmbedTags}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T LyricsStudioSettings.EmbedTagsHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding LyricsStudioEmbedTags}" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="{loc:T LyricsStudioSettings.RunSection}" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T LyricsStudioSettings.OpenTitle}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T LyricsStudioSettings.OpenHelp}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding LyricsStudioStats}" FontSize="12" Opacity="0.7" Margin="0,6,0,0"
+                                   IsVisible="{Binding LyricsStudioStats, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="accent-btn" Command="{Binding OpenLyricsStudioForMissingCommand}" Padding="16,8" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center"
+                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                        <TextBlock Text="{loc:T LyricsStudioSettings.Open}" FontSize="13" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+            </Border>
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->

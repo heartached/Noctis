@@ -91,6 +91,60 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Send to Folder (MusicBee-style copy) for a selection.</summary>
+    public static async Task OpenSendToFolderDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var service = App.Services!.GetRequiredService<ISendToFolderService>();
+        var settings = App.Services!.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        var vm = new SendToFolderViewModel(tracks, service, settings?.OrganizePattern ?? FileOrganizePlanner.DefaultPattern);
+        await ShowDialogOwned(new SendToFolderDialog(vm));
+    }
+
+    /// <summary>Bulk lyrics: fetch from LRCLIB and save, or remove app-written lyrics.</summary>
+    public static async Task OpenBulkLyricsDialog(IReadOnlyList<Track> tracks, bool remove)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
+        var vm = new BulkLyricsViewModel(tracks, service, remove);
+        await ShowDialogOwned(new BulkLyricsDialog(vm));
+    }
+
+    /// <summary>Lyrics Studio: time existing lyrics or transcribe, review, then save.</summary>
+    public static async Task OpenLyricsStudio(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var main = App.Services!.GetService<MainWindowViewModel>();
+        var vm = new LyricsStudioViewModel(
+            tracks,
+            App.Services!.GetRequiredService<Services.LyricsStudio.ILyricsStudioEngine>(),
+            App.Services!.GetRequiredService<Services.Lyrics.LyricsWriter>(),
+            App.Services!.GetRequiredService<ILibraryService>(),
+            main?.Player,
+            () => main?.Settings.GetSettings() ?? new AppSettings(),
+            s => { if (main is not null) main.Settings.ApplyLyricsStudioSettings(s); });
+        await ShowDialogOwned(new LyricsStudioDialog(vm));
+    }
+
+    /// <summary>Lyrics Studio over the songs that have no synced lyrics yet (first 40, so a run stays reviewable).</summary>
+    public static Task OpenLyricsStudioForLibrary(MainWindowViewModel main)
+    {
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var tracks = library.Tracks
+            .Where(t => t.SourceType == SourceType.Local && string.IsNullOrWhiteSpace(t.SyncedLyrics))
+            .Take(40)
+            .ToList();
+        return tracks.Count == 0 ? Task.CompletedTask : OpenLyricsStudio(tracks);
+    }
+
+    /// <summary>Search YouTube / paste a link and download into the library folder.</summary>
+    public static async Task OpenYouTubeDownloadDialog(string? initialQuery = null)
+    {
+        var service = App.Services!.GetRequiredService<Services.YouTube.IYouTubeImportService>();
+        var vm = new YouTubeDownloadViewModel(service, App.Services!.GetRequiredService<HttpClient>(), initialQuery);
+        await ShowDialogOwned(new YouTubeDownloadDialog(vm));
+    }
+
     /// <summary>Opens the Spek-style spectrogram window for one track (decodes via ffmpeg).</summary>
     public static async Task OpenSpectrogramWindow(Track track)
     {

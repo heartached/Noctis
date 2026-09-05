@@ -112,6 +112,18 @@ public interface IAudioPlayer : IDisposable
     /// track changes until changed again; not persisted.</summary>
     void SetPlaybackRate(double rate);
 
+    /// <summary>
+    /// Pitch shift in semitones (−12 … +12) independent of speed. Gapless-engine output
+    /// only: the LibVLC output paths have no pitch stage and ignore it.
+    /// </summary>
+    void SetPitchSemitones(double semitones);
+
+    /// <summary>
+    /// Multi-channel upmix for 5.1/7.1 devices ("Off", "Duplicate" or "Surround" — see
+    /// <see cref="UpmixMode"/>). Shared-mode gapless engine only; Exclusive Mode stays bit-exact.
+    /// </summary>
+    void SetUpmixMode(string mode);
+
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 

@@ -117,6 +117,7 @@ public partial class PlayerViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(PlaybackRate))]
     [NotifyPropertyChangedFor(nameof(PlaybackRateText))]
     [NotifyPropertyChangedFor(nameof(IsPlaybackRateChanged))]
+    [NotifyPropertyChangedFor(nameof(IsSpeedOrPitchChanged))]
     private int _playbackRatePercent = 100;
 
     public double PlaybackRate => PlaybackRatePercent / 100.0;
@@ -127,6 +128,32 @@ public partial class PlayerViewModel : ViewModelBase
     {
         _audioPlayer.SetPlaybackRate(value / 100.0);
         DebugLogger.Info(DebugLogger.Category.Playback, "PlaybackRate", $"percent={value}");
+    }
+
+    /// <summary>Pitch shift in semitones (−12 … +12), independent of speed. Session-only like the speed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PitchText))]
+    [NotifyPropertyChangedFor(nameof(IsPitchChanged))]
+    [NotifyPropertyChangedFor(nameof(IsSpeedOrPitchChanged))]
+    private int _pitchSemitones;
+
+    public string PitchText => PitchSemitones == 0 ? "±0" : (PitchSemitones > 0 ? "+" : "") + PitchSemitones.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    public bool IsPitchChanged => PitchSemitones != 0;
+    /// <summary>Lights the island speed button when either control is off its default.</summary>
+    public bool IsSpeedOrPitchChanged => IsPlaybackRateChanged || IsPitchChanged;
+
+    partial void OnPitchSemitonesChanged(int value)
+    {
+        _audioPlayer.SetPitchSemitones(value);
+        DebugLogger.Info(DebugLogger.Category.Playback, "Pitch", $"semitones={value}");
+    }
+
+    /// <summary>Island pitch menu; parameter is a semitone offset ("-3" … "3") or "0" to reset.</summary>
+    [RelayCommand]
+    private void SetPitch(string? semitones)
+    {
+        if (int.TryParse(semitones, out var st) && st is >= -12 and <= 12)
+            PitchSemitones = st;
     }
     /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
     /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>

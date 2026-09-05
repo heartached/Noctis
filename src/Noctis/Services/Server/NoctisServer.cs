@@ -32,12 +32,19 @@ public sealed class NoctisServer : IAsyncDisposable
     private readonly LoginThrottle _throttle = new();
     private WebApplication? _app;
 
-    public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion)
+    public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion, Sync.ILibrarySyncService? sync = null)
     {
         _library = library;
         _users = users;
         _serverVersion = serverVersion;
+        _sync = sync;
     }
+
+    /// <summary>Account &amp; Sync ledger; null or disabled → the sync endpoints answer error 50.</summary>
+    private readonly Sync.ILibrarySyncService? _sync;
+
+    /// <summary>Largest JSON push a device may send in one call (a seed of a big library is paged by the client).</summary>
+    private const long MaxSyncPushBytes = 32L * 1024 * 1024;
 
     public bool IsRunning => _app is not null;
 
@@ -452,8 +459,109 @@ public sealed class NoctisServer : IAsyncDisposable
                 return new JsonObject { ["internetRadioStations"] = new JsonObject() };
             case "getpodcasts":
                 return new JsonObject { ["podcasts"] = new JsonObject() };
+
+            // ── Noctis extension: Account & Sync ledger (see Services/Sync) ──
+            case "getnoctissyncstatus":
+            {
+                var sync = _sync;
+                var enabled = sync is { IsEnabled: true };
+                var status = new JsonObject
+                {
+                    ["enabled"] = enabled,
+                    ["seq"] = enabled ? sync!.CurrentSeq : 0,
+                    ["device"] = sync?.DeviceId ?? string.Empty,
+                    ["name"] = sync?.DeviceName ?? string.Empty,
+                    ["devices"] = new JsonArray((enabled ? sync!.Devices() : Array.Empty<Sync.SyncDevice>())
+                        .Select(d => (JsonNode)new JsonObject
+                        {
+                            ["id"] = d.Id, ["name"] = d.Name,
+                            ["lastSeen"] = d.LastSeenUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                            ["lastSeq"] = d.LastSeq,
+                        }).ToArray()),
+                };
+                return new JsonObject { ["noctisSync"] = status };
+            }
+            case "getnoctissyncchanges":
+            {
+                var sync = RequireSync();
+                var since = long.TryParse(p.Get("since"), out var s) && s >= 0 ? s : 0;
+                var device = p.Get("device") ?? throw Missing("device");
+                var changes = await sync.GetChangesAsync(since, device, p.Get("name"), ctx.RequestAborted).ConfigureAwait(false);
+                return new JsonObject
+                {
+                    ["noctisSync"] = new JsonObject
+                    {
+                        ["seq"] = changes.Seq,
+                        ["items"] = new JsonArray(changes.Items.Select(SyncItemToJson).ToArray()),
+                    },
+                };
+            }
+            case "pushnoctissyncchanges":
+            {
+                var sync = RequireSync();
+                var body = await ReadJsonBodyAsync(ctx).ConfigureAwait(false) ?? p.Get("payload") ?? throw Missing("payload");
+                JsonNode? root;
+                try { root = JsonNode.Parse(body); }
+                catch (System.Text.Json.JsonException) { throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload"); }
+                var obj = root as JsonObject ?? throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload");
+                var device = obj["device"]?.GetValue<string>() ?? p.Get("device") ?? throw Missing("device");
+                var name = obj["name"]?.GetValue<string>() ?? p.Get("name");
+                var items = new List<Sync.SyncItem>();
+                if (obj["items"] is JsonArray arr)
+                {
+                    foreach (var node in arr)
+                    {
+                        if (node is not JsonObject item) continue;
+                        var kind = item["kind"]?.GetValue<string>();
+                        var id = item["id"]?.GetValue<string>();
+                        if (string.IsNullOrWhiteSpace(kind) || string.IsNullOrWhiteSpace(id)) continue;
+                        var payloadNode = item["payload"];
+                        var payload = payloadNode is null ? "{}" : payloadNode.GetValueKind() == System.Text.Json.JsonValueKind.String ? payloadNode.GetValue<string>() : payloadNode.ToJsonString();
+                        var updated = item["updatedUtc"] is { } u && DateTime.TryParse(u.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? (dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime()) : DateTime.UtcNow;
+                        items.Add(new Sync.SyncItem(kind, id, payload, updated, item["device"]?.GetValue<string>() ?? device, 0));
+                    }
+                }
+                var applied = await sync.PushAsync(device, name, items, _library, ctx.RequestAborted).ConfigureAwait(false);
+                return new JsonObject { ["noctisSync"] = new JsonObject { ["applied"] = applied, ["received"] = items.Count, ["seq"] = sync.CurrentSeq } };
+            }
         }
         return null;
+    }
+
+    private Sync.ILibrarySyncService RequireSync() =>
+        _sync is { IsEnabled: true } sync
+            ? sync
+            : throw new SubsonicException(SubsonicResponse.ErrNotAuthorized, "Sync is turned off on this computer (Settings → Account & Sync).");
+
+    private static JsonNode SyncItemToJson(Sync.SyncItem item)
+    {
+        JsonNode payload;
+        try { payload = JsonNode.Parse(item.Payload) ?? new JsonObject(); }
+        catch (System.Text.Json.JsonException) { payload = JsonValue.Create(item.Payload)!; }
+        return new JsonObject
+        {
+            ["kind"] = item.Kind,
+            ["id"] = item.Id,
+            ["payload"] = payload,
+            ["updatedUtc"] = item.UpdatedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["device"] = item.Device,
+            ["seq"] = item.Seq,
+        };
+    }
+
+    /// <summary>Raw JSON request body for the sync push (form/query posts are handled by <see cref="ReadParamsAsync"/>).</summary>
+    private static async Task<string?> ReadJsonBodyAsync(HttpContext ctx)
+    {
+        if (!HttpMethods.IsPost(ctx.Request.Method) || ctx.Request.HasFormContentType) return null;
+        var contentType = ctx.Request.ContentType ?? string.Empty;
+        if (!contentType.Contains("json", StringComparison.OrdinalIgnoreCase) && !contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase))
+            return null;
+        var sizeFeature = ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+        if (sizeFeature is { IsReadOnly: false }) sizeFeature.MaxRequestBodySize = MaxSyncPushBytes;
+        using var reader = new StreamReader(ctx.Request.Body, System.Text.Encoding.UTF8);
+        var body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(body) ? null : body;
     }
 
     private static JsonObject UserObject(ServerUser user) => new()

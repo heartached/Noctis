@@ -147,12 +147,62 @@ public sealed class GaplessSink : IDisposable
     /// consumed-frame position over the speaker (see VlcAudioPlayer.OutputLatency).</summary>
     public const int OutputLatencyMs = 100;
 
+    // ── Multi-channel upmix (Settings → Audio) ──
+    // Read at output creation, so a change takes effect through the same rebuild
+    // path a device swap uses. Static because the sink is created before any
+    // settings object reaches the player and recreated on device changes.
+    private static int s_upmixMode = (int)Services.UpmixMode.Off;
+
+    /// <summary>Speaker-fill mode for 5.1/7.1 devices; changing it needs <see cref="RequestRebuild"/> on a live sink.</summary>
+    public static UpmixMode UpmixMode
+    {
+        get => (UpmixMode)Volatile.Read(ref s_upmixMode);
+        set => Volatile.Write(ref s_upmixMode, (int)value);
+    }
+
+    /// <summary>Parses the persisted setting name; unknown values mean Off.</summary>
+    public static UpmixMode ParseUpmixMode(string? name) =>
+        Enum.TryParse<UpmixMode>(name, ignoreCase: true, out var mode) ? mode : Services.UpmixMode.Off;
+
+    /// <summary>Recreates the WASAPI output (same device) so a new upmix mode applies. Playback continues from the staged ring.</summary>
+    public void RequestRebuild()
+    {
+        if (_disposed) return;
+        if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
+            Task.Run(RebuildLoop);
+    }
+
+    /// <summary>Channels in the default device's mix format, or 2 when it cannot be read.</summary>
+    private static int DeviceMixChannels()
+    {
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return device.AudioClient.MixFormat.Channels;
+        }
+        catch { return 2; }
+    }
+
     private WasapiOut CreateOutput()
     {
         var wasapiOut = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs);
         try
         {
-            wasapiOut.Init(new SampleToWaveProvider(_renderSource));
+            ISampleProvider render = _renderSource;
+            var mode = UpmixMode;
+            if (mode != Services.UpmixMode.Off)
+            {
+                var deviceChannels = DeviceMixChannels();
+                if (deviceChannels > Channels)
+                {
+                    // Shared mode takes IEEE float at the mix format's channel count natively,
+                    // so the upmixed stream needs no resampler and stays sample-accurate.
+                    render = new UpmixSampleProvider(_renderSource, deviceChannels, mode);
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Upmix", $"mode={mode}, channels={deviceChannels}");
+                }
+            }
+            wasapiOut.Init(new SampleToWaveProvider(render));
         }
         catch
         {

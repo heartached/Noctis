@@ -505,7 +505,7 @@
                                     CornerRadius="8"
                                     Background="{DynamicResource AccentColorBrush}"
                                     Opacity="0.18"
-                                    IsVisible="{Binding IsPlaybackRateChanged}" />
+                                    IsVisible="{Binding IsSpeedOrPitchChanged}" />
                             <TextBlock Text="{Binding PlaybackRateText}"
                                        FontSize="11" FontWeight="SemiBold"
                                        Foreground="{DynamicResource IslandIconFill}"
@@ -556,6 +556,30 @@
                                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                               IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=200}"/>
                                 </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <!-- Pitch (Harmonoid-style, independent of speed): semitones on the
+                                     engine's resampler; the WSOLA stage keeps the tempo. -->
+                                <MenuItem>
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{loc:T PlaybackBar.Pitch}"/>
+                                            <TextBlock Text="{Binding PitchText}" Opacity="0.6"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                    <MenuItem Header="+3" Command="{Binding SetPitchCommand}" CommandParameter="3"/>
+                                    <MenuItem Header="+2" Command="{Binding SetPitchCommand}" CommandParameter="2"/>
+                                    <MenuItem Header="+1" Command="{Binding SetPitchCommand}" CommandParameter="1"/>
+                                    <MenuItem Header="{loc:T PlaybackBar.PitchNormal}" Command="{Binding SetPitchCommand}" CommandParameter="0">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding !IsPitchChanged}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="−1" Command="{Binding SetPitchCommand}" CommandParameter="-1"/>
+                                    <MenuItem Header="−2" Command="{Binding SetPitchCommand}" CommandParameter="-2"/>
+                                    <MenuItem Header="−3" Command="{Binding SetPitchCommand}" CommandParameter="-3"/>
                                 </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>

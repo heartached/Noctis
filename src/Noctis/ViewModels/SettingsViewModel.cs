@@ -65,6 +65,8 @@ public partial class SettingsViewModel : ViewModelBase
     public const string TabIntegrations = "Integrations";
     public const string TabPlugins = "Plugins";
     public const string TabAbout = "About";
+    public const string TabAccountSync = "Account & Sync";
+    public const string TabLyricsStudio = "Lyrics Studio";
 
     [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
 
@@ -75,6 +77,8 @@ public partial class SettingsViewModel : ViewModelBase
         new SettingsSection(TabAppearance, "PaletteIcon"),
         new SettingsSection(TabAudio, "SpeakerHighIcon"),
         new SettingsSection(TabLibrary, "FolderIcon"),
+        new SettingsSection(TabAccountSync, "SyncIcon"),
+        new SettingsSection(TabLyricsStudio, "MicIcon"),
         new SettingsSection(TabShortcuts, "KeyboardIcon"),
         new SettingsSection(TabIntegrations, "PlugIcon"),
         new SettingsSection(TabPlugins, "PuzzleIcon"),
@@ -95,6 +99,10 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsPluginsTabSelected => SelectedSettingsTab == TabPlugins;
     public bool IsPluginsTabVisible => IsPluginsTabSelected;
     public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
+    public bool IsAccountSyncTabSelected => SelectedSettingsTab == TabAccountSync;
+    public bool IsAccountSyncTabVisible => IsAccountSyncTabSelected;
+    public bool IsLyricsStudioTabSelected => SelectedSettingsTab == TabLyricsStudio;
+    public bool IsLyricsStudioTabVisible => IsLyricsStudioTabSelected;
 
     // ── Plugins tab ──
     /// <summary>The plugin host, attached by MainWindowViewModel once the player exists.</summary>
@@ -147,6 +155,11 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStatisticsTabVisible));
         OnPropertyChanged(nameof(IsIntegrationsTabVisible));
         OnPropertyChanged(nameof(IsAboutTabVisible));
+        OnPropertyChanged(nameof(IsAccountSyncTabSelected));
+        OnPropertyChanged(nameof(IsAccountSyncTabVisible));
+        OnPropertyChanged(nameof(IsLyricsStudioTabSelected));
+        OnPropertyChanged(nameof(IsLyricsStudioTabVisible));
+        OnFeatureTabOpened(value);
 
         // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
         // a Connect click, not to persisted state — drop them when navigating tabs so
@@ -626,7 +639,7 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 var adapter = new LibraryServerAdapter(_library, _persistence, _playHistory,
                     () => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.LoadPlaylistsAsync() ?? Task.CompletedTask);
-                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay);
+                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync);
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
             }
             if (!_noctisServer.IsRunning)
@@ -685,6 +698,7 @@ public partial class SettingsViewModel : ViewModelBase
             ServerUsersList.Clear();
             foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
             OnPropertyChanged(nameof(HasServerUsers));
+            RaiseAccountDerivedProperties();
         }
         catch (Exception ex) { ServerUserError = ex.Message; }
     }
@@ -1733,6 +1747,7 @@ public partial class SettingsViewModel : ViewModelBase
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
+            LoadFeatureSettings();
 
             // Equalizer
             _suppressEqNotify = true;
@@ -2098,6 +2113,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.AllowExplicitContent = AllowExplicitContent;
+        SaveFeatureSettings();
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
@@ -2236,6 +2252,7 @@ public partial class SettingsViewModel : ViewModelBase
         ApplyAutoMixToPlayer();
         _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
+        _audioPlayer?.SetUpmixMode(UpmixMode);
         _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
         ApplyEqualizer();
         _player?.RefreshSignalPath();

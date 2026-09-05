@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.SendToFolderDialog"
+        x:DataType="vm:SendToFolderViewModel"
+        Title="{loc:T SendTo.Title}"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Border.plan-row">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="#10FFFFFF" />
+        </Style>
+        <Style Selector="Border.plan-row.skip">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="680"
+                MaxHeight="780"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <!-- Header -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding SubtitleText}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <StackPanel Spacing="10">
+                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                                     IsVisible="{Binding IsCopying}" />
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="1" Content="{loc:T SendTo.Close}" Command="{Binding CancelCommand}"
+                                    Width="100" Padding="0,8" FontWeight="Bold" HorizontalContentAlignment="Center"
+                                    CornerRadius="999" Margin="0,0,8,0" Cursor="Hand" />
+                            <Button Grid.Column="2" Content="{loc:T SendTo.Copy}" Command="{Binding StartCommand}"
+                                    IsEnabled="{Binding CanStart}"
+                                    Width="110" Padding="0,8" Classes="accent-btn"
+                                    Background="{DynamicResource AccentButtonBackground}"
+                                    Foreground="{DynamicResource AccentForegroundBrush}"
+                                    FontWeight="SemiBold" HorizontalContentAlignment="Center"
+                                    CornerRadius="999" Cursor="Hand" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,4,24,8">
+                    <StackPanel Spacing="14">
+                        <!-- Destination -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{loc:T SendTo.Destination}" FontSize="13" FontWeight="SemiBold" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Classes="pill" Text="{Binding Destination}"
+                                         Watermark="{loc:T SendTo.DestinationHint}" />
+                                <Button Grid.Column="1" Content="{loc:T SendTo.Browse}" Click="OnBrowseClick"
+                                        Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Options -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="{loc:T SendTo.Organize}" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock FontSize="11" Opacity="0.55" TextWrapping="Wrap">
+                                    <Run Text="{loc:T SendTo.OrganizeHint}" /> <Run Text="{Binding OrganizePatternText}" FontFamily="Consolas,Menlo,monospace" />
+                                </TextBlock>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OrganizeIntoFolders}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="{loc:T SendTo.IncludeLyrics}" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock Text="{loc:T SendTo.IncludeLyricsHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IncludeLyrics}" OnContent="" OffContent="" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                        <!-- Plan -->
+                        <TextBlock Text="{Binding PlanSummary}" FontSize="12" Opacity="0.7" />
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SendToFolderViewModel+PlanRow">
+                                    <Border Classes="plan-row" Classes.skip="{Binding IsSkip}">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="1">
+                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Target}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <TextBlock Text="♪" FontSize="11" Opacity="0.5" IsVisible="{Binding HasLyrics}" VerticalAlignment="Center" ToolTip.Tip="{loc:T SendTo.LyricsIncluded}" />
+                                                <TextBlock Text="{Binding Action}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" IsVisible="{Binding !Done}" />
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                                          Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

@@ -15,7 +15,7 @@ public sealed record LibrarySnapshot(
 /// implementation (<see cref="LibraryServerAdapter"/>) marshals to the UI thread because
 /// the library collections are owned there.
 /// </summary>
-public interface IServerLibrary
+public interface IServerLibrary : Sync.ISyncApplier
 {
     Task<LibrarySnapshot> SnapshotAsync();
 

@@ -173,6 +173,19 @@
         <Style Selector="Border.row-body:pointerover">
             <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
         </Style>
+        <!-- Row rating stars: hidden until hovered, always visible once rated (same idiom as the Songs page). -->
+        <Style Selector="controls|RatingStars.row-rating">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="controls|RatingStars.row-rating.rated">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating.rated">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
         <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
             <Setter Property="Background" Value="#3FFFFFFF" />
         </Style>
@@ -700,15 +713,18 @@
                               VerticalAlignment="Center"
                               Margin="0,0,10,0">
                             <!-- Col 0: rating stars (collapsed when unrated) -->
+                            <!-- Click-to-rate (see LibrarySongsView): revealed on row hover, always on once rated. -->
                             <controls:RatingStars Grid.Column="0"
                                                   Value="{Binding Rating}"
+                                                  Classes="row-rating"
+                                                  Classes.rated="{Binding !!Rating}"
                                                   StarSize="11"
                                                   StarSpacing="2"
-                                                  IsHitTestVisible="False"
-                                                  Opacity="0.7"
+                                                  IsInteractive="True"
+                                                  Cursor="Hand"
+                                                  UserRated="OnRowRated"
                                                   Margin="0,0,8,0"
-                                                  VerticalAlignment="Center"
-                                                  IsVisible="{Binding !!Rating}" />
+                                                  VerticalAlignment="Center" />
                             <!-- Col 1: heart — always 22px wide so duration never shifts.
                                  Shown for every track including a single's one track: the
                                  metadata-row heart was treated as covering that case, which

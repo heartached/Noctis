@@ -91,7 +91,7 @@ public partial class SettingsView : UserControl
 
     private static readonly string[] TabPanelNames =
     {
-        "General", "Appearance", "Audio", "Library", "Shortcuts", "Integrations", "Statistics", "About",
+        "General", "Appearance", "Audio", "Library", "AccountSync", "LyricsStudio", "Shortcuts", "Integrations", "Statistics", "About",
     };
 
     private SettingsSearchIndex EnsureSearchIndex()

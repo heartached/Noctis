@@ -3,7 +3,7 @@ using Noctis.Services;
 
 namespace Noctis.Tests;
 
-internal sealed class TestPersistenceService : IPersistenceService, IDisposable
+internal class TestPersistenceService : IPersistenceService, IDisposable
 {
     public string DataDirectory { get; }
     private readonly string _root;
@@ -23,7 +23,7 @@ internal sealed class TestPersistenceService : IPersistenceService, IDisposable
     public Task SaveSettingsAsync(AppSettings settings) => Task.CompletedTask;
     public Task<List<Track>?> LoadLibraryAsync() => Task.FromResult<List<Track>?>(new List<Track>());
     public Task SaveLibraryAsync(List<Track> tracks) => Task.CompletedTask;
-    public Task<List<Playlist>> LoadPlaylistsAsync() => Task.FromResult(new List<Playlist>());
+    public virtual Task<List<Playlist>> LoadPlaylistsAsync() => Task.FromResult(new List<Playlist>());
     public Task SavePlaylistsAsync(List<Playlist> playlists) => Task.CompletedTask;
     public Task<QueueState?> LoadQueueStateAsync() => Task.FromResult<QueueState?>(null);
     public Task SaveQueueStateAsync(QueueState state) => Task.CompletedTask;

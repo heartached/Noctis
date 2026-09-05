@@ -223,6 +223,25 @@
                 <Style Selector="Border.row-body:pointerover Button.row-heart.is-favorite">
                     <Setter Property="Opacity" Value="1" />
                 </Style>
+                <!-- Row rating stars: same reveal idiom as the heart — hidden until the row is
+                     hovered, always visible once rated. -->
+                <Style Selector="controls|RatingStars.row-rating">
+                    <Setter Property="Opacity" Value="0" />
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.08" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="controls|RatingStars.row-rating.rated">
+                    <Setter Property="Opacity" Value="0.7" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating">
+                    <Setter Property="Opacity" Value="0.45" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating.rated">
+                    <Setter Property="Opacity" Value="1" />
+                </Style>
                 <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
                     <Setter Property="Background" Value="#3FFFFFFF" />
                 </Style>
@@ -378,14 +397,20 @@
                         </Border>
                         <Border Grid.Column="6" Width="84"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
+                            <!-- Click-to-rate: dim stars appear on row hover for unrated songs;
+                                 rated songs always show them. The click rates the whole
+                                 Ctrl-selection when the row is part of it (OnRowRated). -->
                             <controls:RatingStars Value="{Binding Rating}"
+                                                  Classes="row-rating"
+                                                  Classes.rated="{Binding !!Rating}"
                                                   StarSize="11"
                                                   StarSpacing="2"
-                                                  IsHitTestVisible="False"
-                                                  Opacity="0.7"
+                                                  IsInteractive="True"
+                                                  Cursor="Hand"
+                                                  UserRated="OnRowRated"
+                                                  ToolTip.Tip="{loc:T LibrarySongs.RateTip}"
                                                   HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  IsVisible="{Binding !!Rating}" />
+                                                  VerticalAlignment="Center" />
                         </Border>
 
                         <Border Grid.Column="7" Width="55"

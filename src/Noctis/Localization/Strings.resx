@@ -1385,4 +1385,127 @@
   <data name="Settings.FlowingKawarpCalm" xml:space="preserve"><value>Kawarp (no beat)</value><comment>Flowing-background picker row</comment></data>
   <data name="Settings.KawarpWarp" xml:space="preserve"><value>Warp strength</value><comment>Kawarp slider label</comment></data>
   <data name="Settings.KawarpBlur" xml:space="preserve"><value>Blur</value><comment>Kawarp slider label</comment></data>
+
+  <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
+  <data name="PlaybackBar.Pitch" xml:space="preserve"><value>Pitch</value><comment>Speed menu → pitch submenu header (island)</comment></data>
+  <data name="PlaybackBar.PitchNormal" xml:space="preserve"><value>Normal</value><comment>Pitch submenu: reset to ±0 semitones</comment></data>
+  <data name="LibrarySongs.RateTip" xml:space="preserve"><value>Rate (click a star; click the same star again to clear)</value><comment>ToolTip on the Songs row stars</comment></data>
+
+  <data name="SendTo.Title" xml:space="preserve"><value>Send to Folder</value><comment>Dialog title</comment></data>
+  <data name="SendTo.Destination" xml:space="preserve"><value>Destination</value><comment>Send to Folder dialog</comment></data>
+  <data name="SendTo.DestinationHint" xml:space="preserve"><value>A USB drive, phone or any folder</value><comment>Destination watermark</comment></data>
+  <data name="SendTo.Browse" xml:space="preserve"><value>Browse…</value><comment>Folder picker button</comment></data>
+  <data name="SendTo.Organize" xml:space="preserve"><value>Organize into folders</value><comment>Toggle label</comment></data>
+  <data name="SendTo.OrganizeHint" xml:space="preserve"><value>Artist and album folders using your file pattern:</value><comment>Toggle help, followed by the pattern</comment></data>
+  <data name="SendTo.IncludeLyrics" xml:space="preserve"><value>Include lyrics files</value><comment>Toggle label</comment></data>
+  <data name="SendTo.IncludeLyricsHint" xml:space="preserve"><value>Copies each song's .lrc alongside it when there is one.</value><comment>Toggle help</comment></data>
+  <data name="SendTo.LyricsIncluded" xml:space="preserve"><value>Lyrics file included</value><comment>Row tooltip</comment></data>
+  <data name="SendTo.Copy" xml:space="preserve"><value>Copy</value><comment>Primary button</comment></data>
+  <data name="SendTo.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+
+  <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
+  <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+
+  <data name="Main.AddFromYouTube" xml:space="preserve"><value>Add from YouTube</value><comment>New/Add menu item</comment></data>
+  <data name="Main.AddFromYouTubeHint" xml:space="preserve"><value>Search or paste a link — downloads into your library</value><comment>New/Add menu item subtitle</comment></data>
+
+  <data name="YouTube.Title" xml:space="preserve"><value>Add from YouTube</value><comment>Dialog title</comment></data>
+  <data name="YouTube.Subtitle" xml:space="preserve"><value>Search or paste a link. The song is downloaded, tagged with cover art and added to your library folder.</value><comment>Dialog subtitle</comment></data>
+  <data name="YouTube.SearchHint" xml:space="preserve"><value>Search YouTube or paste a link…</value><comment>Search box watermark</comment></data>
+  <data name="YouTube.Search" xml:space="preserve"><value>Search</value><comment>Search button</comment></data>
+  <data name="YouTube.SetupTitle" xml:space="preserve"><value>One-time setup</value><comment>First-run card title</comment></data>
+  <data name="YouTube.SetupBody" xml:space="preserve"><value>Noctis uses yt-dlp (free, open source) to talk to YouTube. It is downloaded once into Noctis's own folder and updated from here.</value><comment>First-run card body</comment></data>
+  <data name="YouTube.Install" xml:space="preserve"><value>Install yt-dlp</value><comment>First-run card button</comment></data>
+  <data name="YouTube.Download" xml:space="preserve"><value>Download</value><comment>Per-result button</comment></data>
+  <data name="YouTube.SavesTo" xml:space="preserve"><value>Saves to</value><comment>Footer label before the folder</comment></data>
+  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Results appear here. Downloads land in your library folder, tagged and with cover art.</value><comment>Empty state</comment></data>
+  <data name="YouTube.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+
+  <data name="YouTubeSettings.Section" xml:space="preserve"><value>YOUTUBE DOWNLOADS</value><comment>Library tab section title</comment></data>
+  <data name="YouTubeSettings.Title" xml:space="preserve"><value>Add songs from YouTube</value><comment>Card title</comment></data>
+  <data name="YouTubeSettings.Description" xml:space="preserve"><value>Search or paste a link; the song is downloaded into the folder below, tagged with cover art and added to your library. There is no YouTube section in Noctis — this only feeds your own library.</value><comment>Card description</comment></data>
+  <data name="YouTubeSettings.Open" xml:space="preserve"><value>Open downloader</value><comment>Card button</comment></data>
+  <data name="YouTubeSettings.Folder" xml:space="preserve"><value>Download folder</value><comment>Row label</comment></data>
+  <data name="YouTubeSettings.FolderHint" xml:space="preserve"><value>Leave empty to use a "YouTube" folder inside your first music folder.</value><comment>Row help</comment></data>
+  <data name="YouTubeSettings.Tool" xml:space="preserve"><value>yt-dlp</value><comment>Row label</comment></data>
+  <data name="YouTubeSettings.InstallUpdate" xml:space="preserve"><value>Install / update</value><comment>Row button</comment></data>
+  <data name="YouTubeSettings.ToolPathHint" xml:space="preserve"><value>Custom path to yt-dlp (optional)</value><comment>Path watermark</comment></data>
+
+  <data name="Upmix.Title" xml:space="preserve"><value>Multi-channel upmix</value><comment>Audio card title</comment></data>
+  <data name="Upmix.Description" xml:space="preserve"><value>Play stereo music through every speaker of a 5.1 or 7.1 system.</value><comment>Audio card description</comment></data>
+  <data name="Upmix.Off" xml:space="preserve"><value>Off</value><comment>Upmix mode</comment></data>
+  <data name="Upmix.OffHint" xml:space="preserve"><value>Stereo only</value><comment>Upmix mode hint</comment></data>
+  <data name="Upmix.Duplicate" xml:space="preserve"><value>Stereo everywhere</value><comment>Upmix mode</comment></data>
+  <data name="Upmix.DuplicateHint" xml:space="preserve"><value>Same music on every pair, centre and bass filled in</value><comment>Upmix mode hint</comment></data>
+  <data name="Upmix.Surround" xml:space="preserve"><value>Surround</value><comment>Upmix mode</comment></data>
+  <data name="Upmix.SurroundHint" xml:space="preserve"><value>Ambience to the rears, wide stage in front</value><comment>Upmix mode hint</comment></data>
+  <data name="Upmix.Note" xml:space="preserve"><value>Applies to the built-in output engine. Exclusive Mode keeps the file's own channel layout.</value><comment>Upmix footnote</comment></data>
+
+  <data name="Server.AccountsMoved" xml:space="preserve"><value>Accounts and device sync are managed in Account &amp; Sync.</value><comment>Integrations → Noctis Server card footer</comment></data>
+  <data name="Server.OpenAccountSync" xml:space="preserve"><value>Open Account &amp; Sync</value><comment>Integrations → Noctis Server card button</comment></data>
+
+  <data name="AccountSync.YourAccount" xml:space="preserve"><value>YOUR ACCOUNT</value><comment>Account &amp; Sync section title</comment></data>
+  <data name="AccountSync.CreateTitle" xml:space="preserve"><value>Create your account</value><comment>No-account state title</comment></data>
+  <data name="AccountSync.CreateHelp" xml:space="preserve"><value>Your phone and other devices sign in with this to browse, play and sync this library. The password is stored hashed and never leaves this computer.</value><comment>No-account state help</comment></data>
+  <data name="AccountSync.Name" xml:space="preserve"><value>Name</value><comment>Create form watermark</comment></data>
+  <data name="AccountSync.Password" xml:space="preserve"><value>Password (8+ characters)</value><comment>Create form watermark</comment></data>
+  <data name="AccountSync.Create" xml:space="preserve"><value>Create</value><comment>Create form button</comment></data>
+  <data name="AccountSync.PairDevice" xml:space="preserve"><value>Pair a device</value><comment>Account card button</comment></data>
+  <data name="AccountSync.NewApiKey" xml:space="preserve"><value>New API key</value><comment>Account card button</comment></data>
+  <data name="AccountSync.ChangePassword" xml:space="preserve"><value>Change password</value><comment>Account card button</comment></data>
+  <data name="AccountSync.NewPassword" xml:space="preserve"><value>New password (8+ characters)</value><comment>Change password watermark</comment></data>
+  <data name="AccountSync.Save" xml:space="preserve"><value>Save</value><comment>Change password button</comment></data>
+  <data name="AccountSync.Remove" xml:space="preserve"><value>Remove</value><comment>Account card button</comment></data>
+  <data name="AccountSync.PairHelp" xml:space="preserve"><value>On your phone, open the Noctis app (or any Subsonic app), scan the code or type the address, and sign in with your account.</value><comment>Pairing block help</comment></data>
+  <data name="AccountSync.ServerOffHelp" xml:space="preserve"><value>Devices connect through Noctis Server on this computer. It is off right now.</value><comment>Pairing block when the server is off</comment></data>
+  <data name="AccountSync.TurnOnServer" xml:space="preserve"><value>Turn on Noctis Server</value><comment>Pairing block button</comment></data>
+  <data name="AccountSync.SyncSection" xml:space="preserve"><value>SYNC</value><comment>Account &amp; Sync section title</comment></data>
+  <data name="AccountSync.OtherAccounts" xml:space="preserve"><value>OTHER ACCOUNTS</value><comment>Account &amp; Sync section title</comment></data>
+  <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Family and guests</value><comment>Other accounts card title</comment></data>
+  <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in to this library from their own devices.</value><comment>Other accounts card help</comment></data>
+
+  <data name="Sync.Title" xml:space="preserve"><value>Sync between your devices</value><comment>Sync card title</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and playlists stay the same on every device signed in to your account. Changes meet here; the newest one wins.</value><comment>Sync card description</comment></data>
+  <data name="Sync.DeviceName" xml:space="preserve"><value>This device</value><comment>Sync card row label</comment></data>
+  <data name="Sync.WhatSyncs" xml:space="preserve"><value>Music files stay where they are — only what you do with them syncs. Requires Noctis Server (Integrations).</value><comment>Sync card footnote</comment></data>
+
+  <data name="LyricsStudioSettings.ModelSection" xml:space="preserve"><value>SPEECH MODEL</value><comment>Lyrics Studio tab section title</comment></data>
+  <data name="LyricsStudioSettings.Title" xml:space="preserve"><value>Lyrics Studio</value><comment>Card title</comment></data>
+  <data name="LyricsStudioSettings.Description" xml:space="preserve"><value>Listens to a song and times its lyrics word by word — or writes them down when there are none. Everything runs on this computer; you review each song before anything is saved.</value><comment>Card description</comment></data>
+  <data name="LyricsStudioSettings.Model" xml:space="preserve"><value>Model</value><comment>Row label</comment></data>
+  <data name="LyricsStudioSettings.Language" xml:space="preserve"><value>Language</value><comment>Row label</comment></data>
+  <data name="LyricsStudioSettings.Download" xml:space="preserve"><value>Download</value><comment>Model button</comment></data>
+  <data name="LyricsStudioSettings.Delete" xml:space="preserve"><value>Delete</value><comment>Model button</comment></data>
+  <data name="LyricsStudioSettings.OutputSection" xml:space="preserve"><value>OUTPUT</value><comment>Section title</comment></data>
+  <data name="LyricsStudioSettings.WordTimings" xml:space="preserve"><value>Word-by-word timings</value><comment>Toggle title</comment></data>
+  <data name="LyricsStudioSettings.WordTimingsHint" xml:space="preserve"><value>Save enhanced LRC with a time for every word (karaoke sweep). Off saves one time per line.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.EmbedTags" xml:space="preserve"><value>Also write lyrics into the file's tags</value><comment>Toggle title</comment></data>
+  <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>The .lrc file next to the song is always written; this additionally stores the plain lyrics inside the audio file.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>RUN</value><comment>Section title</comment></data>
+  <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Songs without synced lyrics</value><comment>Run card title</comment></data>
+  <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Opens Lyrics Studio with up to 40 songs that have no synced lyrics yet. You can also right-click any songs → Lyrics → Open in Lyrics Studio.</value><comment>Run card help</comment></data>
+  <data name="LyricsStudioSettings.Open" xml:space="preserve"><value>Open Lyrics Studio</value><comment>Run card button</comment></data>
+
+  <data name="LyricsStudio.Title" xml:space="preserve"><value>Lyrics Studio</value><comment>Dialog title</comment></data>
+  <data name="LyricsStudio.Subtitle" xml:space="preserve"><value>Times your lyrics against the recording, or transcribes when there are none. Review each song, fix any word, then save.</value><comment>Dialog subtitle</comment></data>
+  <data name="LyricsStudio.Close" xml:space="preserve"><value>Close</value><comment>Dialog button</comment></data>
+  <data name="LyricsStudio.Model" xml:space="preserve"><value>Model</value><comment>Footer label</comment></data>
+  <data name="LyricsStudio.Language" xml:space="preserve"><value>Language</value><comment>Footer label</comment></data>
+  <data name="LyricsStudio.WordTimings" xml:space="preserve"><value>Word timings (ELRC)</value><comment>Footer checkbox</comment></data>
+  <data name="LyricsStudio.TranscribeOnly" xml:space="preserve"><value>Ignore existing lyrics, transcribe</value><comment>Footer checkbox</comment></data>
+  <data name="LyricsStudio.DownloadModel" xml:space="preserve"><value>Download model</value><comment>Footer button</comment></data>
+  <data name="LyricsStudio.Start" xml:space="preserve"><value>Start</value><comment>Footer button</comment></data>
+  <data name="LyricsStudio.Stop" xml:space="preserve"><value>Stop</value><comment>Footer button</comment></data>
+  <data name="LyricsStudio.NeedsFfmpeg" xml:space="preserve"><value>ffmpeg is needed to decode songs. Set its path under Settings → Audio → Audio tools, then reopen Lyrics Studio.</value><comment>Banner</comment></data>
+  <data name="LyricsStudio.Queue" xml:space="preserve"><value>SONGS</value><comment>Queue column header</comment></data>
+  <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Nothing to review yet</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Press Start. Each finished song shows up here with its timed lines so you can check the words, nudge the timing and save.</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Click a time to hear that line. Edit any text in place. Tinted lines were not heard clearly — check them first.</value><comment>Review pane hint</comment></data>
+  <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>All lines 0.1 s earlier</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>All lines 0.1 s later</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore the found lyrics and write down what is actually sung</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.Save" xml:space="preserve"><value>Save lyrics</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.PlayFromHere" xml:space="preserve"><value>Play from here</value><comment>Time pill tooltip</comment></data>
 </root>

@@ -233,7 +233,19 @@ public partial class AlbumDetailView : UserControl
             convertCommand: vm.ConvertTrackCommand,
             scanReplayGainCommand: vm.ScanTrackReplayGainCommand,
             startRadioCommand: vm.StartRadioCommand,
-            snoozeCommand: vm.SnoozeForMonthCommand);
+            snoozeCommand: vm.SnoozeForMonthCommand,
+            rateCommand: vm.RateTrackCommand,
+            fetchLyricsCommand: vm.FetchLyricsCommand,
+            lyricsStudioCommand: vm.OpenLyricsStudioCommand,
+            removeLyricsCommand: vm.RemoveLyricsCommand,
+            sendToFolderCommand: vm.SendToFolderCommand);
+    }
+
+    /// <summary>Click on a row's stars rates that track.</summary>
+    private void OnRowRated(object? sender, int stars)
+    {
+        if (sender is Noctis.Controls.RatingStars control && control.DataContext is Track track && DataContext is AlbumDetailViewModel vm)
+            _ = vm.RateAsync(track, stars);
     }
 
     private void DetachMenuFromOwner()

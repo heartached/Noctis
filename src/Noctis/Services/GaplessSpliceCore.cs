@@ -369,6 +369,27 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         set => Volatile.Write(ref _playbackRate, TempoStretchProvider.ClampRate(value));
     }
 
+    // Pitch shift (Harmonoid-style, independent of speed): a variable-ratio
+    // resampler ahead of the WSOLA stage. Resampling by p raises the pitch AND
+    // the tempo by p, so the stretch runs at rate/p to land on the chosen speed.
+    // 1.0 is a pass-through, keeping the gapless seam bit-exact.
+    private double _pitchRatio = 1.0;
+
+    /// <summary>Pitch ratio 0.5–2.0 (2^(semitones/12)); 1.0 = untouched.</summary>
+    public double PitchRatio
+    {
+        get => Volatile.Read(ref _pitchRatio);
+        set => Volatile.Write(ref _pitchRatio, PitchShiftProvider.ClampRatio(value));
+    }
+
+    /// <summary>Rate handed to the WSOLA stage so speed stays at <see cref="PlaybackRate"/> after the pitch resample.</summary>
+    private double EffectiveStretchRate()
+    {
+        var rate = Volatile.Read(ref _playbackRate);
+        var pitch = Volatile.Read(ref _pitchRatio);
+        return Math.Abs(pitch - 1.0) < 1e-9 ? rate : TempoStretchProvider.ClampRate(rate / pitch);
+    }
+
     public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
@@ -720,7 +741,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             source = new StereoToMonoSampleProvider(source);
         if (source.WaveFormat.SampleRate != WaveFormat.SampleRate)
             source = new WdlResamplingSampleProvider(source, WaveFormat.SampleRate);
-        source = new TempoStretchProvider(source, () => Volatile.Read(ref _playbackRate));
+        source = new PitchShiftProvider(source, () => Volatile.Read(ref _pitchRatio));
+        source = new TempoStretchProvider(source, EffectiveStretchRate);
         return source;
     }
 

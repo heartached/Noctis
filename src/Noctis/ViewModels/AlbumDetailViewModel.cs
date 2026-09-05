@@ -716,6 +716,31 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
+    /// <summary>Star click on a row or Rate ▸ in its menu.</summary>
+    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(new[] { track }, stars);
+
+    [RelayCommand]
+    private Task RateTrack(RateRequest request) => RateAsync(request.Track, request.Stars);
+
+    [RelayCommand]
+    private Task FetchLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: false);
+
+    [RelayCommand]
+    private Task RemoveLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: true);
+
+    [RelayCommand]
+    private Task OpenLyricsStudio(Track track) => MetadataHelper.OpenLyricsStudio(new[] { track });
+
+    [RelayCommand]
+    private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(new[] { track });
+
+    /// <summary>Whole album → folder / Lyrics Studio (header menu).</summary>
+    [RelayCommand]
+    private Task SendAlbumToFolder() => Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(Tracks.ToList());
+
+    [RelayCommand]
+    private Task OpenAlbumInLyricsStudio() => Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenLyricsStudio(Tracks.ToList());
+
     /// <summary>True for a moment after the header's Add to Queue: the button reads
     /// "Added" so the click visibly did something (the queue panel may be closed).</summary>
     [ObservableProperty] private bool _albumAddedToQueue;

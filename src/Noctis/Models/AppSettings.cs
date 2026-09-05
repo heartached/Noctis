@@ -189,6 +189,44 @@ public class AppSettings
     /// <summary>Port the Noctis server listens on.</summary>
     public int NoctisServerPort { get; set; } = 4747;
 
+    // ── Account & Sync ──
+
+    /// <summary>Sync favorites / ratings / play counts / playlists with devices that log into the Noctis server.</summary>
+    public bool SyncEnabled { get; set; }
+
+    /// <summary>How this computer shows up in other devices' sync status. Empty = machine name.</summary>
+    public string SyncDeviceName { get; set; } = string.Empty;
+
+    /// <summary>Stable id of this installation in the sync ledger (created on first use).</summary>
+    public string SyncDeviceId { get; set; } = string.Empty;
+
+    // ── Multi-channel upmix (Settings → Audio, Windows gapless engine) ──
+
+    /// <summary>"Off" | "Duplicate" | "Surround" — see <see cref="Services.UpmixMode"/>.</summary>
+    public string UpmixMode { get; set; } = "Off";
+
+    // ── YouTube downloads ──
+
+    /// <summary>Where downloaded tracks land. Empty = "&lt;first music folder&gt;/YouTube".</summary>
+    public string YouTubeDownloadFolder { get; set; } = string.Empty;
+
+    /// <summary>Override path to yt-dlp. Empty = the copy Noctis installs, then PATH.</summary>
+    public string YtDlpPath { get; set; } = string.Empty;
+
+    // ── Lyrics Studio ──
+
+    /// <summary>Whisper model: Tiny | Base | Small | Medium.</summary>
+    public string LyricsStudioModel { get; set; } = "Base";
+
+    /// <summary>ISO 639-1 language for the speech model, or "auto".</summary>
+    public string LyricsStudioLanguage { get; set; } = "auto";
+
+    /// <summary>Write word-level (ELRC) timings; false = line-level LRC.</summary>
+    public bool LyricsStudioWordTimings { get; set; } = true;
+
+    /// <summary>Also embed the plain lyrics in the audio file's tags when saving.</summary>
+    public bool LyricsStudioEmbedTags { get; set; }
+
     // ── Songs page optional columns ──
     // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;

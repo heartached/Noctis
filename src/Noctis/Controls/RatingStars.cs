@@ -36,6 +36,13 @@ public class RatingStars : Control
 
     private int _hoverValue = -1;
 
+    /// <summary>
+    /// Raised after a click changed <see cref="Value"/> (the new value, 0 = cleared). Bindings
+    /// see the change too; this exists so a row can persist the rating for its track — and
+    /// for the whole multi-selection — without a two-way binding straight onto the model.
+    /// </summary>
+    public event EventHandler<int>? UserRated;
+
     static RatingStars()
     {
         AffectsRender<RatingStars>(ValueProperty, ForegroundProperty, StarSizeProperty, StarSpacingProperty);
@@ -139,10 +146,12 @@ public class RatingStars : Control
 
         var star = StarFromPosition(e.GetPosition(this).X);
         // Clicking the current rating clears it (same affordance as Apple Music).
-        SetCurrentValue(ValueProperty, star == Value ? 0 : star);
+        var newValue = star == Value ? 0 : star;
+        SetCurrentValue(ValueProperty, newValue);
         _hoverValue = -1;
         InvalidateVisual();
         e.Handled = true;
+        UserRated?.Invoke(this, newValue);
     }
 
     private int StarFromPosition(double x)

@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.YouTubeDownloadDialog"
+        x:DataType="vm:YouTubeDownloadViewModel"
+        Title="{loc:T YouTube.Title}"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Border.result-row">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="#10FFFFFF" />
+        </Style>
+        <Style Selector="Border.result-row:pointerover">
+            <Setter Property="Background" Value="#1AFFFFFF" />
+        </Style>
+        <Style Selector="TextBlock.status.failed">
+            <Setter Property="Foreground" Value="#FF8A80" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="720"
+                MaxHeight="820"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <!-- Header -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,12" Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T YouTube.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{loc:T YouTube.Subtitle}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding !ShowSetup}">
+                        <TextBox Grid.Column="0" Classes="pill" x:Name="QueryBox"
+                                 Text="{Binding Query}"
+                                 Watermark="{loc:T YouTube.SearchHint}">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Command="{Binding SearchCommand}" IsEnabled="{Binding !IsSearching}"
+                                Classes="accent-btn" Padding="18,10" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand"
+                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                            <TextBlock Text="{loc:T YouTube.Search}" FontWeight="SemiBold" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border DockPanel.Dock="Bottom" Padding="24,10,24,16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasDestination}">
+                                <TextBlock Text="{loc:T YouTube.SavesTo}" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding DestinationFolder}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ToolVersionText}" FontSize="11" Opacity="0.4" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="{loc:T YouTube.Close}" Command="{Binding CloseCommand}"
+                                Width="100" Padding="0,8" FontWeight="Bold" HorizontalContentAlignment="Center"
+                                CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,0,24,8">
+                    <StackPanel Spacing="8">
+                        <!-- First run: the downloader itself -->
+                        <Border CornerRadius="14" Padding="16" Background="#14FFFFFF" IsVisible="{Binding ShowSetup}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{loc:T YouTube.SetupTitle}" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="{loc:T YouTube.SetupBody}" FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <ProgressBar Grid.Column="0" Value="{Binding InstallProgress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                                                 VerticalAlignment="Center" Margin="0,0,12,0" IsVisible="{Binding IsInstallingTool}" />
+                                    <Button Grid.Column="1" Command="{Binding InstallToolCommand}" IsEnabled="{Binding !IsInstallingTool}"
+                                            Classes="accent-btn" Padding="16,8" CornerRadius="999" Cursor="Hand"
+                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                        <TextBlock Text="{loc:T YouTube.Install}" FontWeight="SemiBold" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <ProgressBar IsIndeterminate="True" Height="3" CornerRadius="2" IsVisible="{Binding IsSearching}" />
+
+                        <!-- Results -->
+                        <ItemsControl ItemsSource="{Binding Results}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:YouTubeDownloadViewModel+ResultRow">
+                                    <Border Classes="result-row">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                            <Border Grid.Column="0" Width="64" Height="64" CornerRadius="10" ClipToBounds="True" Background="#22000000">
+                                                <Panel>
+                                                    <PathIcon Data="{StaticResource SongsIcon}" Width="18" Height="18" Opacity="0.4"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
+                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                                                </Panel>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                                <StackPanel Spacing="4" IsVisible="{Binding IsBusy}">
+                                                    <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2" />
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="11" Opacity="0.6" />
+                                                </StackPanel>
+                                                <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding StatusText}" FontSize="11" Opacity="0.75"
+                                                           IsVisible="{Binding Failed}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
+                                                <Button Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownload}"
+                                                        Classes="accent-btn" Padding="14,8" CornerRadius="999" Cursor="Hand"
+                                                        Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                                    <TextBlock Text="{loc:T YouTube.Download}" FontSize="12" FontWeight="SemiBold" />
+                                                </Button>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDone}">
+                                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.8" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="{loc:T YouTube.EmptyHint}" FontSize="12" Opacity="0.45" TextAlignment="Center" Margin="0,24"
+                                   IsVisible="{Binding !HasResults}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

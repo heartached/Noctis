@@ -342,5 +342,27 @@ public class NoctisServerTests : IAsyncLifetime
             p.TrackIds.AddRange(add); return Task.FromResult(true);
         }
         public Task<bool> DeletePlaylistAsync(Guid id) => Task.FromResult(Playlists.RemoveAll(x => x.Id == id) > 0);
+
+        public List<(Guid Id, Noctis.Services.Sync.TrackSyncState State)> AppliedTracks { get; } = new();
+        public List<(Guid Id, Noctis.Services.Sync.PlaylistSyncState State)> AppliedPlaylists { get; } = new();
+        public Task ApplyTrackStateAsync(Guid trackId, Noctis.Services.Sync.TrackSyncState state)
+        {
+            AppliedTracks.Add((trackId, state));
+            var t = Tracks.FirstOrDefault(x => x.Id == trackId);
+            if (t is not null) { t.Rating = state.Rating; t.IsFavorite = state.Favorite; }
+            return Task.CompletedTask;
+        }
+        public Task ApplyPlaylistStateAsync(Guid playlistId, Noctis.Services.Sync.PlaylistSyncState state)
+        {
+            AppliedPlaylists.Add((playlistId, state));
+            var p = Playlists.FirstOrDefault(x => x.Id == playlistId);
+            if (state.Deleted) { if (p is not null) Playlists.Remove(p); }
+            else
+            {
+                if (p is null) { p = new Playlist { Id = playlistId }; Playlists.Add(p); }
+                p.Name = state.Name; p.TrackIds = state.TrackIds.ToList(); p.ModifiedAt = state.ModifiedAt;
+            }
+            return Task.CompletedTask;
+        }
     }
 }

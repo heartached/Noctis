@@ -595,6 +595,21 @@
                                             </StackPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
+                                    <Separator />
+                                    <!-- YouTube → library: search or paste a link; the file lands in the
+                                         library folder, tagged, like any import. No YouTube section in the app. -->
+                                    <MenuItem Command="{Binding AddFromYouTubeCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                        </MenuItem.Icon>
+                                        <MenuItem.Header>
+                                            <StackPanel Margin="0,5" Spacing="2">
+                                                <TextBlock Text="{loc:T Main.AddFromYouTube}" FontSize="13" FontWeight="SemiBold" />
+                                                <TextBlock Text="{loc:T Main.AddFromYouTubeHint}" FontSize="11" Opacity="0.55" />
+                                            </StackPanel>
+                                        </MenuItem.Header>
+                                    </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
