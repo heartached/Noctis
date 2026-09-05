@@ -1497,6 +1497,35 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
     public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
 
+    // ── TIDAL (playlist import sign-in) ───────────────────────
+    private ITidalAuthService? _tidal;
+    [ObservableProperty] private bool _isTidalConnected;
+    [ObservableProperty] private bool _isTidalBusy;
+    /// <summary>The card only shows in builds that carry a TIDAL client id.</summary>
+    public bool IsTidalAvailable => TidalOAuth.IsConfigured;
+
+    public void SetTidal(ITidalAuthService tidal)
+    {
+        _tidal = tidal;
+        IsTidalConnected = tidal.IsConnected;
+    }
+
+    [RelayCommand]
+    private async Task ConnectTidal()
+    {
+        if (_tidal is null || IsTidalBusy) return;
+        IsTidalBusy = true;
+        try { IsTidalConnected = await _tidal.LoginAsync(); }
+        finally { IsTidalBusy = false; }
+    }
+
+    [RelayCommand]
+    private void DisconnectTidal()
+    {
+        _tidal?.Disconnect();
+        IsTidalConnected = false;
+    }
+
     public void SetUpdateService(UpdateService updateService) => _updateService = updateService;
 
     /// <summary>Gets the navigation key for the default page.</summary>

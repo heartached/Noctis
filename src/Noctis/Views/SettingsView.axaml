@@ -3478,6 +3478,64 @@
                 </StackPanel>
             </Border>
 
+            <!-- TIDAL: the account used by Import Playlist for tidal.com links (PKCE sign-in in the
+                 browser, refresh token kept in tidal-auth.json). Only offered when the build has a
+                 TIDAL client id. Same tile/title/button geometry as the scrobbler cards above. -->
+            <Border Classes="setting-card" IsVisible="{Binding IsTidalAvailable}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Grid.Column="0"
+                            Width="40" Height="40" CornerRadius="10"
+                            Background="#000000" BorderBrush="#33FFFFFF" BorderThickness="1"
+                            Margin="0,0,14,0"
+                            VerticalAlignment="Top">
+                        <!-- TIDAL's three-diamond mark, drawn as paths so it stays crisp at any scale. -->
+                        <Viewbox Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="16">
+                                <Path Fill="White" Data="M4,0 L8,4 L4,8 L0,4 Z"/>
+                                <Path Fill="White" Data="M12,0 L16,4 L12,8 L8,4 Z"/>
+                                <Path Fill="White" Data="M20,0 L24,4 L20,8 L16,4 Z"/>
+                                <Path Fill="White" Data="M12,8 L16,12 L12,16 L8,12 Z"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.TidalTitle}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{loc:T Settings.TidalDescription}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
+                                   HorizontalAlignment="Left" Margin="-2,0,0,0"/>
+                        <TextBlock Text="{loc:T Settings.TidalConnected}" FontSize="12" Opacity="0.85"
+                                   IsVisible="{Binding IsTidalConnected}" Margin="-2,2,0,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            IsVisible="{Binding !IsTidalConnected}"
+                            IsEnabled="{Binding !IsTidalBusy}"
+                            Content="{loc:T Settings.Connect}"
+                            Classes="pill-action"
+                            Command="{Binding ConnectTidalCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center">
+                        <Button.Template>
+                            <ControlTemplate>
+                                <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                  Foreground="{DynamicResource AccentForegroundBrush}"
+                                                  CornerRadius="16" Padding="14,8"
+                                                  FontSize="13" FontWeight="SemiBold"
+                                                  Content="{TemplateBinding Content}"/>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Button Grid.Column="2"
+                            IsVisible="{Binding IsTidalConnected}"
+                            Command="{Binding DisconnectTidalCommand}"
+                            Classes="pill-action"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.Disconnect}" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
             <TextBlock Classes="section-title" Text="{loc:T Settings.MEDIASERVER}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">

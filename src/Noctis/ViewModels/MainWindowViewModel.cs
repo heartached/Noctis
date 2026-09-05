@@ -268,6 +268,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
         Settings.SetListenBrainz(listenBrainz);
+        Settings.SetTidal(App.Services!.GetRequiredService<ITidalAuthService>());
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         Settings.SettingsReset += async (_, _) =>
         {

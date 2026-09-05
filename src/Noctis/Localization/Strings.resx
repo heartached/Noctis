@@ -1376,4 +1376,7 @@
   <data name="Server.UserName" xml:space="preserve"><value>User name</value></data>
   <data name="Server.Password" xml:space="preserve"><value>Password (8+ characters)</value></data>
   <data name="Server.AddAccount" xml:space="preserve"><value>Add account</value></data>
+  <data name="Settings.TidalTitle" xml:space="preserve"><value>TIDAL</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TidalDescription" xml:space="preserve"><value>Sign in to import your TIDAL playlists by link. Noctis only asks to read playlists.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TidalConnected" xml:space="preserve"><value>Signed in — tidal.com links import directly.</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

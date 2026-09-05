@@ -59,4 +59,7 @@
   <data name="TopBar.CoverCollage" xml:space="preserve"><value>Collage de portadas</value></data>
   <data name="TopBar.SearchIn" xml:space="preserve"><value>Buscar en {0}</value></data>
   <data name="TopBar.FeaturedArtists" xml:space="preserve"><value>Artistas destacados</value></data>
+  <data name="Settings.TidalTitle" xml:space="preserve"><value>TIDAL</value></data>
+  <data name="Settings.TidalDescription" xml:space="preserve"><value>Inicia sesión para importar tus listas de TIDAL por enlace. Noctis solo pide leer listas.</value></data>
+  <data name="Settings.TidalConnected" xml:space="preserve"><value>Sesión iniciada: los enlaces de tidal.com se importan directamente.</value></data>
 </root>
