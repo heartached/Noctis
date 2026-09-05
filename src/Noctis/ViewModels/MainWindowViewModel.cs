@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -300,6 +301,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // service polls for drive/disc changes once the shell is up.
         _audioCdVm = new AudioCdViewModel(audioCd, Player);
         _visualizerVm = new VisualizerViewModel(Player, Settings);
+        Loc.Instance.CultureChanged += (_, _) =>
+        {
+            TopBar.RefreshLocalizedTitles();
+            RefreshBackButton();
+        };
         Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
         audioCd.DriveStateChanged += (_, _) => Dispatcher.UIThread.Post(() =>
         {
@@ -1242,10 +1248,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         TopBar.SearchWatermark = CurrentView switch
         {
-            PlaylistFeaturedArtistsViewModel => "Search in Featured Artists",
-            MoreByArtistViewModel => "Search in Albums",
-            ArtistDetailViewModel artistPage => $"Search in {artistPage.ArtistName}",
-            _ => $"Search in {TopBar.CurrentTabName}"
+            PlaylistFeaturedArtistsViewModel => Loc.T("TopBar.SearchIn", Loc.T("TopBar.FeaturedArtists")),
+            MoreByArtistViewModel => Loc.T("TopBar.SearchIn", Loc.T("Nav.Albums")),
+            ArtistDetailViewModel artistPage => Loc.T("TopBar.SearchIn", artistPage.ArtistName),
+            _ => Loc.T("TopBar.SearchIn", TopBar.CurrentTabTitle)
         };
 
         // Search visibility follows the tab name (hidden on Home/Settings/Lyrics and

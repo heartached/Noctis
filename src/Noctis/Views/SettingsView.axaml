@@ -860,7 +860,7 @@
                         Width="34" Height="34"
                         CornerRadius="999"
                         VerticalAlignment="Center"
-                        ToolTip.Tip="Change picture"
+                        ToolTip.Tip="{loc:T Settings.ChangePictureTip}"
                         Click="OnPickAvatarClick">
                     <Border Width="34" Height="34" CornerRadius="17" ClipToBounds="True">
                         <Panel>
@@ -881,7 +881,7 @@
                 <TextBox Grid.Column="1"
                          Classes="profile-input"
                          Text="{Binding ProfileName, Mode=TwoWay}"
-                         Watermark="Your name"
+                         Watermark="{loc:T Settings.Name}"
                          FontSize="13" FontWeight="SemiBold"
                          Margin="8,0,0,0"
                          VerticalAlignment="Center"
@@ -889,7 +889,7 @@
                          Background="Transparent"
                          BorderThickness="0" Padding="2,0"
                          MinHeight="0"
-                         ToolTip.Tip="Click to edit your name"
+                         ToolTip.Tip="{loc:T Settings.ClickEditNameTip}"
                          KeyDown="OnProfileNameKeyDown"
                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             </Grid>
@@ -898,7 +898,7 @@
             <TextBox DockPanel.Dock="Top"
                      x:Name="SettingsSearchBox"
                      Classes="settings-search"
-                     Watermark="Search settings"
+                     Watermark="{loc:T Settings.SearchSettings}"
                      VerticalContentAlignment="Center"
                      Text="{Binding SearchQuery, Mode=TwoWay}"
                      Margin="0,12,0,10"/>
@@ -998,16 +998,16 @@
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Open Audio Files with Noctis" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Add Noctis to Windows' Open-with list and Default apps for MP3, FLAC, M4A, OGG, WAV and the other formats it plays. Windows then lets you pick it as the default."
+                            <TextBlock Text="{loc:T Settings.OpenAudioFilesNoctis}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AddNoctisWindowsOpen}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Button Grid.Column="1" Classes="pill" FontSize="12" Padding="14,6"
                                 VerticalAlignment="Center" Margin="12,0,0,0"
                                 Command="{Binding RegisterFileTypesCommand}">
                             <Panel>
-                                <TextBlock Text="Register" IsVisible="{Binding !IsRegisteredForAudioFiles}"/>
-                                <TextBlock Text="Unregister" IsVisible="{Binding IsRegisteredForAudioFiles}"/>
+                                <TextBlock Text="{loc:T Settings.Register}" IsVisible="{Binding !IsRegisteredForAudioFiles}"/>
+                                <TextBlock Text="{loc:T Settings.Unregister}" IsVisible="{Binding IsRegisteredForAudioFiles}"/>
                             </Panel>
                         </Button>
                     </Grid>
@@ -1021,12 +1021,12 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Startup &amp; Window Behaviour" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Control how Noctis starts and what the minimize and close buttons do."
+                        <TextBlock Text="{loc:T Settings.StartupWindowBehaviour}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ControlHowNoctisStarts}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Open Noctis when computer starts" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.OpenNoctisWhenComputer}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LaunchAtStartup}"
                                               VerticalAlignment="Center"/>
@@ -1040,27 +1040,27 @@
                                FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
-                        <TextBlock Grid.Column="0" Text="Start minimized to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding StartMinimizedToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Minimize to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.MinimizeTray}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding MinimizeToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Close to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.CloseTray}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding CloseToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Restore last played track" FontSize="13"/>
-                            <TextBlock Text="Reopen with your last track in the playbar, paused where you left off."
+                            <TextBlock Text="{loc:T Settings.RestoreLastPlayedTrack}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.ReopenLastTrackPlaybar}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1074,83 +1074,83 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Text Animation" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Control how long text scrolls in the player bar, Up Next, and menus."
+                        <TextBlock Text="{loc:T Settings.TextAnimation}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ControlHowLongText}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
 
                     <!-- Sub-header: Player Bar -->
-                    <TextBlock Text="PLAYER BAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
+                    <TextBlock Text="{loc:T Settings.PLAYERBAR}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongTrackTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding TrackTitleMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongArtistNames}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding ArtistMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Sub-header: Cover Flow -->
-                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <TextBlock Text="{loc:T Settings.COVERFLOW}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongTrackTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding CoverFlowMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongArtistNames}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongAlbumTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Sub-header: Lyrics Page -->
-                    <TextBlock Text="LYRICS PAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <TextBlock Text="{loc:T Settings.LYRICSPAGE}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongTrackTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LyricsTitleMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongArtistAlbum}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LyricsArtistMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Sub-header: Mini Player -->
-                    <TextBlock Text="MINI PLAYER" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <TextBlock Text="{loc:T Settings.MINIPLAYER}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongTrackTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding MiniPlayerTitleMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongAlbumTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding MiniPlayerAlbumMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Sub-header: Sidebar -->
-                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <TextBlock Text="{loc:T Settings.SIDEBAR}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Keep sidebar expanded" FontSize="13"/>
-                            <TextBlock Text="Pin the sidebar open at all times."
+                            <TextBlock Text="{loc:T Settings.KeepSidebarExpanded}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PinSidebarOpenAt}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1160,8 +1160,8 @@
                     <!-- Hover-expand is moot while the sidebar is pinned open -->
                     <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding !SidebarAlwaysExpanded}">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
-                            <TextBlock Text="Slide the sidebar open on hover."
+                            <TextBlock Text="{loc:T Settings.HoverExpandSidebar}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.SlideSidebarOpenHover}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1176,8 +1176,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show one tile per release; other editions appear under &quot;Other Versions&quot; on the album page."
+                        <TextBlock Text="{loc:T Settings.CollapseAlbumEditions}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowOneTilePer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -1190,8 +1190,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Merge Featured Artists From Titles" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Turn &quot;(feat. X)&quot; in track titles into artist credits."
+                        <TextBlock Text="{loc:T Settings.MergeFeaturedArtistsFrom}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.TurnFeatXTrack}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -1205,27 +1205,27 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Group Artists By" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Which tag the Artists section files a song under. Album Artist keeps compilations together and ignores per-track features."
+                        <TextBlock Text="{loc:T Settings.GroupArtistsBy}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.WhichTagArtistsSection}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="ArtistGroupMode"
                                      IsChecked="{Binding IsArtistGroupByArtist, Mode=TwoWay}"
-                                     ToolTip.Tip="The first credited artist of each song's Artist tag">
+                                     ToolTip.Tip="{loc:T Settings.FirstCreditedArtistEachTip}">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Artist" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Song's artist tag" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Artist}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.SongSArtistTag}" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="ArtistGroupMode"
                                      IsChecked="{Binding IsArtistGroupByAlbumArtist, Mode=TwoWay}"
-                                     ToolTip.Tip="The Album Artist tag; songs without one fall back to their artist">
+                                     ToolTip.Tip="{loc:T Settings.AlbumArtistTagSongsTip}">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Album Artist" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Release's album artist tag" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.AlbumArtist}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.ReleaseSAlbumArtist}" FontSize="11" Opacity="0.55" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -1238,11 +1238,11 @@
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Artist Tag Separators" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Text that splits one artist tag into several credited artists. Remove a separator to keep names like &quot;Simon &amp; Garfunkel&quot; whole."
+                            <TextBlock Text="{loc:T Settings.ArtistTagSeparators}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TextSplitsOneArtist}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <Button Grid.Column="1" Classes="pill" Content="Reset" FontSize="12" Padding="14,6"
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
                                 VerticalAlignment="Top" Margin="12,0,0,0"
                                 Command="{Binding ResetArtistSeparatorsCommand}"/>
                     </Grid>
@@ -1260,7 +1260,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold"
                                                    VerticalAlignment="Center"/>
-                                        <Button Content="&#x2715;"
+                                        <Button Content="{loc:T Settings.Text}"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveArtistSeparatorCommand}"
                                                 CommandParameter="{Binding}"
                                                 Background="Transparent"
@@ -1269,7 +1269,7 @@
                                                 Opacity="0.5"
                                                 Cursor="Hand"
                                                 Padding="4,2"
-                                                ToolTip.Tip="Remove separator"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -1279,14 +1279,14 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <TextBox Grid.Column="0" Classes="settings-search"
                                  Text="{Binding NewArtistSeparator, Mode=TwoWay}"
-                                 Watermark="Add a separator, e.g. feat. or /"
+                                 Watermark="{loc:T Settings.AddSeparatorEG}"
                                  Padding="14,6"
                                  MaxWidth="320" HorizontalAlignment="Left" MinWidth="220">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Enter" Command="{Binding AddArtistSeparatorCommand}"/>
                             </TextBox.KeyBindings>
                         </TextBox>
-                        <Button Grid.Column="1" Classes="pill" Content="Add" FontSize="13" Padding="16,6"
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Add}" FontSize="13" Padding="16,6"
                                 Command="{Binding AddArtistSeparatorCommand}"/>
                     </Grid>
                 </StackPanel>
@@ -1314,7 +1314,7 @@
                                        RenderOptions.BitmapInterpolationMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
-                                <TextBlock Text="Noctis" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="{loc:T Settings.Noctis}" FontSize="16" FontWeight="Bold"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <!-- Click-to-copy version + OS/arch (handy for bug reports) -->
                                     <Button Classes="version-copy"
@@ -1323,13 +1323,13 @@
                                             BorderThickness="0"
                                             Cursor="Hand"
                                             Command="{Binding CopyVersionInfoCommand}"
-                                            ToolTip.Tip="Click to copy version and system info"
+                                            ToolTip.Tip="{loc:T Settings.ClickCopyVersionSystemTip}"
                                             VerticalAlignment="Center">
                                         <TextBlock Text="{Binding AppVersion}"
                                                    FontSize="12" Opacity="0.5"
                                                    VerticalAlignment="Center"/>
                                     </Button>
-                                    <TextBlock Text="Copied!"
+                                    <TextBlock Text="{loc:T Settings.Copied}"
                                                FontSize="11"
                                                Foreground="{DynamicResource AccentColorBrush}"
                                                VerticalAlignment="Center"
@@ -1339,7 +1339,7 @@
                                             CornerRadius="9"
                                             Padding="8,3,8,1"
                                             VerticalAlignment="Center">
-                                        <TextBlock Text="Pre-Release"
+                                        <TextBlock Text="{loc:T Settings.PreRelease}"
                                                    FontSize="10"
                                                    FontWeight="SemiBold"
                                                    Foreground="White"
@@ -1406,7 +1406,7 @@
                                     Padding="16,6"
                                     Background="#E74856"
                                     IsVisible="{Binding IsReadyToInstall}">
-                                <TextBlock Text="Install &amp; Restart" FontSize="12" Foreground="White"/>
+                                <TextBlock Text="{loc:T Settings.InstallRestart}" FontSize="12" Foreground="White"/>
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -1430,7 +1430,7 @@
                                 Classes="pill"
                                 Padding="16,6"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Cancel" FontSize="12" />
+                            <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12" />
                         </Button>
                     </StackPanel>
 
@@ -1443,7 +1443,7 @@
                                 <PathIcon Data="{StaticResource StarIcon}"
                                           Width="14" Height="14"
                                           Foreground="#F1C40F" />
-                                <TextBlock Text="Star on GitHub"
+                                <TextBlock Text="{loc:T Settings.StarGitHub}"
                                            FontSize="12" Opacity="0.85"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -1456,7 +1456,7 @@
                                 <PathIcon Data="{StaticResource DiscordIcon}"
                                           Width="14" Height="14"
                                           Foreground="#5865F2" />
-                                <TextBlock Text="Join Discord"
+                                <TextBlock Text="{loc:T Settings.JoinDiscord}"
                                            FontSize="12" Opacity="0.85"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -1470,7 +1470,7 @@
                                        Width="18" Height="18"
                                        Stretch="Uniform"
                                        RenderOptions.BitmapInterpolationMode="HighQuality" />
-                                <TextBlock Text="Official Website"
+                                <TextBlock Text="{loc:T Settings.OfficialWebsite}"
                                            FontSize="12" Opacity="0.85"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -1485,8 +1485,8 @@
                     <!-- Row 3: pre-release toggle -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Include pre-release updates" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Offer beta builds in the updater. Off = stable releases only."
+                            <TextBlock Text="{loc:T Settings.IncludePreReleaseUpdates}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.OfferBetaBuildsUpdater}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1495,7 +1495,7 @@
                     </Grid>
 
                     <!-- Signature -->
-                    <TextBlock Text="Yours Truly, heartached."
+                    <TextBlock Text="{loc:T Settings.YoursTrulyHeartached}"
                                FontSize="12" Opacity="0.4"/>
                 </StackPanel>
             </Border>
@@ -1506,8 +1506,8 @@
                     <!-- Toggle -->
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Developer Mode" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Show the version manager and debug logs."
+                            <TextBlock Text="{loc:T Settings.DeveloperMode}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ShowVersionManagerDebug}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -1520,7 +1520,7 @@
                         <!-- ── Version manager ── -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
                             <TextBlock Grid.Column="0"
-                                       Text="Download and install any release from GitHub. Installing closes the app."
+                                       Text="{loc:T Settings.DownloadInstallAnyRelease}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"
                                        VerticalAlignment="Center"/>
                             <Ellipse Grid.Column="1"
@@ -1530,7 +1530,7 @@
                                      Margin="8,0,0,0"/>
                         </Grid>
 
-                        <TextBlock Text="No releases found."
+                        <TextBlock Text="{loc:T Settings.NoReleasesFound}"
                                    FontSize="13" Opacity="0.55"
                                    HorizontalAlignment="Center"
                                    Margin="0,8"
@@ -1553,7 +1553,7 @@
                                                         Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
                                                         Padding="7,2" Margin="8,0,0,0"
                                                         VerticalAlignment="Center">
-                                                    <TextBlock Text="Pre-release" FontSize="10" FontWeight="SemiBold"
+                                                    <TextBlock Text="{loc:T Settings.PreRelease2}" FontSize="10" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
                                                 <Border Grid.Column="2"
@@ -1561,7 +1561,7 @@
                                                         Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
                                                         Padding="7,2" Margin="8,0,0,0"
                                                         VerticalAlignment="Center">
-                                                    <TextBlock Text="Latest" FontSize="10" FontWeight="SemiBold"
+                                                    <TextBlock Text="{loc:T Settings.Latest}" FontSize="10" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
                                                 <Border Grid.Column="3"
@@ -1569,7 +1569,7 @@
                                                         Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
                                                         Padding="7,2" Margin="8,0,0,0"
                                                         VerticalAlignment="Center">
-                                                    <TextBlock Text="Installed" FontSize="10" FontWeight="SemiBold"
+                                                    <TextBlock Text="{loc:T Settings.Installed}" FontSize="10" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
                                                 <TextBlock Grid.Column="4"
@@ -1631,7 +1631,7 @@
                                              MinWidth="200"/>
                                 <Button Classes="pill-action"
                                         Command="{Binding CancelDevDownloadCommand}">
-                                    <TextBlock Text="Cancel" FontSize="12"/>
+                                    <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12"/>
                                 </Button>
                             </StackPanel>
                         </StackPanel>
@@ -1643,21 +1643,21 @@
                                    TextWrapping="Wrap"
                                    Margin="0,10,0,0"
                                    IsVisible="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                        <TextBlock Text="Session log for troubleshooting. Share these when reporting bugs."
+                        <TextBlock Text="{loc:T Settings.SessionLogTroubleshootingShare}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"
                                    Margin="0,10,0,0"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Classes="pill-action" Command="{Binding CopyDevLogsCommand}">
-                                <TextBlock Text="Copy Logs" FontSize="12"/>
+                                <TextBlock Text="{loc:T Settings.CopyLogs}" FontSize="12"/>
                             </Button>
                             <Button Classes="pill-action" Command="{Binding ClearDevLogsCommand}">
-                                <TextBlock Text="Clear" FontSize="12"/>
+                                <TextBlock Text="{loc:T Settings.Clear}" FontSize="12"/>
                             </Button>
                             <Button Classes="pill-action" Command="{Binding OpenLogsFolderCommand}"
-                                    ToolTip.Tip="Open the app data folder (also holds crash.log)">
-                                <TextBlock Text="Open Folder" FontSize="12"/>
+                                    ToolTip.Tip="{loc:T Settings.OpenAppDataFolderTip}">
+                                <TextBlock Text="{loc:T Settings.OpenFolder}" FontSize="12"/>
                             </Button>
-                            <TextBlock Text="Copied!"
+                            <TextBlock Text="{loc:T Settings.Copied}"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
                                        VerticalAlignment="Center"
@@ -1688,8 +1688,8 @@
             <Border Classes="setting-card" Padding="22,12">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Themes" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Choose how Noctis looks on your device."
+                        <TextBlock Text="{loc:T Settings.Themes}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ChooseHowNoctisLooks}"
                                    FontSize="12" Opacity="0.5"/>
                     </StackPanel>
 
@@ -1716,7 +1716,7 @@
                                                 Background="#707070" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Dark" FontSize="12"
+                                <TextBlock Text="{loc:T Settings.Dark}" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1738,7 +1738,7 @@
                                                 Background="#333" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Gray" FontSize="12"
+                                <TextBlock Text="{loc:T Settings.Gray}" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1760,7 +1760,7 @@
                                                 Background="#3A4673" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Midnight" FontSize="12"
+                                <TextBlock Text="{loc:T Settings.Midnight}" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1782,7 +1782,7 @@
                                                 Background="#E0E0E0" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Light" FontSize="12"
+                                <TextBlock Text="{loc:T Settings.Light}" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1803,10 +1803,10 @@
                                             Margin="0,0,10,10">
                                         <Button.ContextMenu>
                                             <ContextMenu>
-                                                <MenuItem Header="Edit"
+                                                <MenuItem Header="{loc:T Settings.Edit}"
                                                           Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenThemeEditorCommand}"
                                                           CommandParameter="{Binding Id}"/>
-                                                <MenuItem Header="Delete"
+                                                <MenuItem Header="{loc:T Settings.Delete}"
                                                           Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}"
                                                           CommandParameter="{Binding Id}"/>
                                             </ContextMenu>
@@ -1840,14 +1840,14 @@
                                 Command="{Binding OpenThemeEditorCommand}"
                                 CommandParameter="{x:Null}"
                                 Margin="0,0,10,10"
-                                ToolTip.Tip="Create custom theme">
+                                ToolTip.Tip="{loc:T Settings.CreateCustomThemeTip}">
                             <StackPanel Spacing="8" HorizontalAlignment="Center">
                                 <Border Width="64" Height="40" CornerRadius="6"
                                         BorderBrush="#55FFFFFF" BorderThickness="1">
                                     <TextBlock Text="+" FontSize="22" Opacity="0.7"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
-                                <TextBlock Text="Custom" FontSize="12"
+                                <TextBlock Text="{loc:T Settings.Custom}" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1862,8 +1862,8 @@
                     <!-- Header row -->
                     <Grid>
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Accent Color" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Pick a preset or open the picker for any custom color."
+                            <TextBlock Text="{loc:T Settings.AccentColor}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.PickPresetOpenPicker}"
                                        FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Grid>
@@ -1913,7 +1913,7 @@
                                                             SwatchSize="44"
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"
-                                                            ToolTip.Tip="Custom Color"
+                                                            ToolTip.Tip="{loc:T Settings.CustomColorTip}"
                                                             Cursor="Hand">
                                     <controls:ColorPickerFlyout.SwatchContent>
                                         <Panel Width="44" Height="44">
@@ -1960,12 +1960,12 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LiquidGlass}" FontSize="15" FontWeight="SemiBold"/>
                             <Border Classes="beta-badge">
-                                <TextBlock Classes="beta-badge-text" Text="BETA"/>
+                                <TextBlock Classes="beta-badge-text" Text="{loc:T Settings.BETA}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="Frost the window with translucent, blurred glass surfaces."
+                        <TextBlock Text="{loc:T Settings.FrostWindowTranslucentBlurred}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -1978,8 +1978,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Animated Artwork" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show animated cover art when available."
+                        <TextBlock Text="{loc:T Settings.AnimatedArtwork}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowAnimatedCoverArt}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -1993,8 +1993,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Album Page Colour" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Tint each album's page with the colour of its cover, like Apple Music. Off keeps the plain theme background."
+                        <TextBlock Text="{loc:T Settings.AlbumPageColour}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.TintEachAlbumS}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2009,27 +2009,27 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Now Playing Artwork" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How the cover appears on the Lyrics page. Discs spin while music plays."
+                        <TextBlock Text="{loc:T Settings.NowPlayingArtwork}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowCoverAppearsLyrics}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleCover, Mode=TwoWay}"
-                                     ToolTip.Tip="The album cover as it is">
+                                     ToolTip.Tip="{loc:T Settings.AlbumCoverAsTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="3" Canvas.Top="3" Width="22" Height="22" RadiusX="5" RadiusY="5"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Cover" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Cover}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleCompactDisc, Mode=TwoWay}"
-                                     ToolTip.Tip="A spinning compact disc">
+                                     ToolTip.Tip="{loc:T Settings.SpinningCompactDiscTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Ellipse Canvas.Left="2" Canvas.Top="2" Width="24" Height="24"
@@ -2041,7 +2041,7 @@
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleVinyl, Mode=TwoWay}"
-                                     ToolTip.Tip="A sleeve with the record peeking out">
+                                     ToolTip.Tip="{loc:T Settings.SleeveRecordPeekingOutTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Ellipse Canvas.Left="10" Canvas.Top="6" Width="16" Height="16"
@@ -2049,13 +2049,13 @@
                                     <Rectangle Canvas.Left="2" Canvas.Top="5" Width="18" Height="18" RadiusX="3" RadiusY="3"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Vinyl" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Vinyl}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="3" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleCassette, Mode=TwoWay}"
-                                     ToolTip.Tip="A cassette with the cover on its label">
+                                     ToolTip.Tip="{loc:T Settings.CassetteCoverItsLabelTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="2" Canvas.Top="6" Width="24" Height="16" RadiusX="4" RadiusY="4"
@@ -2065,7 +2065,7 @@
                                     <Ellipse Canvas.Left="16" Canvas.Top="11.5" Width="5" Height="5"
                                              Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Cassette" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Cassette}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -2077,15 +2077,15 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Cover Flow Layout" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How the Cover Flow page arranges the queue's covers."
+                        <TextBlock Text="{loc:T Settings.CoverFlowLayout}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowCoverFlowPage}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="CoverFlowLayout"
                                      IsChecked="{Binding IsCoverFlowCarousel, Mode=TwoWay}"
-                                     ToolTip.Tip="The classic row: playing cover centred, history and up next to each side">
+                                     ToolTip.Tip="{loc:T Settings.ClassicRowPlayingCoverTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="1" Canvas.Top="9" Width="6" Height="10" RadiusX="1.5" RadiusY="1.5" Opacity="0.45"
@@ -2095,13 +2095,13 @@
                                     <Rectangle Canvas.Left="8" Canvas.Top="5" Width="12" Height="18" RadiusX="2.5" RadiusY="2.5"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Carousel" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Carousel}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="CoverFlowLayout"
                                      IsChecked="{Binding IsCoverFlowCascade, Mode=TwoWay}"
-                                     ToolTip.Tip="Tilted covers on a diagonal path with the track details beside them">
+                                     ToolTip.Tip="{loc:T Settings.TiltedCoversDiagonalPathTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="4" Canvas.Top="1" Width="9" Height="9" RadiusX="2" RadiusY="2" Opacity="0.45"
@@ -2113,13 +2113,13 @@
                                     <Rectangle Canvas.Left="11" Canvas.Top="7" Width="14" Height="14" RadiusX="3" RadiusY="3"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Cascade" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Cascade}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
                                      GroupName="CoverFlowLayout"
                                      IsChecked="{Binding IsCoverFlowCollage, Mode=TwoWay}"
-                                     ToolTip.Tip="A mosaic of the queue's covers">
+                                     ToolTip.Tip="{loc:T Settings.MosaicQueueSCoversTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="2" Canvas.Top="2" Width="11" Height="11" RadiusX="2" RadiusY="2"
@@ -2131,7 +2131,7 @@
                                     <Rectangle Canvas.Left="15" Canvas.Top="15" Width="11" Height="11" RadiusX="2" RadiusY="2"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Collage" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Collage}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -2144,15 +2144,15 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Mini Player Design" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How the mini player looks. Classic morphs with its size; Pill and Sleeve are fixed designs."
+                        <TextBlock Text="{loc:T Settings.MiniPlayerDesign}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowMiniPlayerLooks}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="MiniPlayerStyle"
                                      IsChecked="{Binding IsMiniStyleClassic, Mode=TwoWay}"
-                                     ToolTip.Tip="The resizable glass card: icon, bar, card, large icon and lyrics forms">
+                                     ToolTip.Tip="{loc:T Settings.ResizableGlassCardIconTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="5" Canvas.Top="2" Width="18" Height="24" RadiusX="5" RadiusY="5"
@@ -2160,13 +2160,13 @@
                                     <Rectangle Canvas.Left="9" Canvas.Top="6" Width="10" Height="10" RadiusX="3" RadiusY="3" Opacity="0.45"
                                                Fill="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Classic" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Classic}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="MiniPlayerStyle"
                                      IsChecked="{Binding IsMiniStylePill, Mode=TwoWay}"
-                                     ToolTip.Tip="A round cover overlapping a light card with the title and transport">
+                                     ToolTip.Tip="{loc:T Settings.RoundCoverOverlappingLightTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="8" Canvas.Top="8" Width="19" Height="12" RadiusX="6" RadiusY="6" Opacity="0.45"
@@ -2174,13 +2174,13 @@
                                     <Ellipse Canvas.Left="1" Canvas.Top="6" Width="16" Height="16"
                                              Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Pill" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Pill}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
                                      GroupName="MiniPlayerStyle"
                                      IsChecked="{Binding IsMiniStyleSleeve, Mode=TwoWay}"
-                                     ToolTip.Tip="A spinning disc peeking out of the top of a light card">
+                                     ToolTip.Tip="{loc:T Settings.SpinningDiscPeekingOutTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Ellipse Canvas.Left="6" Canvas.Top="1" Width="16" Height="16" Opacity="0.45"
@@ -2188,7 +2188,7 @@
                                     <Rectangle Canvas.Left="3" Canvas.Top="9" Width="22" Height="17" RadiusX="5" RadiusY="5"
                                                Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Sleeve" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Sleeve}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -2201,14 +2201,14 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Player Island Buttons" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Add extra controls to the player island: skip a few seconds, change the playback speed, set a sleep timer, shuffle."
+                        <TextBlock Text="{loc:T Settings.PlayerIslandButtons}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AddExtraControlsPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Skip back and forward" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Jump a few seconds either way without leaving the track." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.SkipBackForward}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.JumpFewSecondsEither}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding PlaybackBarShowSkipButtons}"
@@ -2219,23 +2219,23 @@
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="IslandSkipSeconds"
                                      IsChecked="{Binding IsSkipSeconds10, Mode=TwoWay}">
-                            <TextBlock Text="10 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.10Seconds}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="IslandSkipSeconds"
                                      IsChecked="{Binding IsSkipSeconds15, Mode=TwoWay}">
-                            <TextBlock Text="15 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.15Seconds}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
                                      GroupName="IslandSkipSeconds"
                                      IsChecked="{Binding IsSkipSeconds30, Mode=TwoWay}">
-                            <TextBlock Text="30 seconds" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.30Seconds}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                         </RadioButton>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Playback speed" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="A 1× button that opens a speed menu from 0.75× to 2×. Speed resets to normal on the next launch." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.PlaybackSpeed}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.1ButtonOpensSpeed}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding PlaybackBarShowPlaybackSpeed}"
@@ -2243,8 +2243,8 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Sleep timer" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="The sleep timer one click away instead of inside the options menu." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.SleepTimer}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.SleepTimerOneClick}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding PlaybackBarShowSleepTimer}"
@@ -2252,8 +2252,8 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Shuffle" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="A shuffle button after Repeat. Shuffle also stays in the queue panel." FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.Shuffle}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ShuffleButtonAfterRepeat}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding PlaybackBarShowShuffle}"
@@ -2268,12 +2268,12 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Player Island Width" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How wide the player island at the bottom is. Wider gives the seek bar more room for precise scrubbing. You can also drag the island's rounded edges. Double-click the slider knob to go back to the default."
+                        <TextBlock Text="{loc:T Settings.PlayerIslandWidth}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowWidePlayerIsland}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="Narrower"
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <Slider Grid.Column="1"
@@ -2282,7 +2282,7 @@
                                 x:Name="IslandWidthSlider"
                                 Value="{Binding PlaybackBarIslandWidth, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="Wider"
+                        <TextBlock Grid.Column="2" Text="{loc:T Settings.Wider}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="12,0,0,0"/>
                         <TextBlock Grid.Column="3"
@@ -2299,8 +2299,8 @@
             <Border Classes="setting-card" IsVisible="{Binding IsTaskbarProgressSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Song Progress on Taskbar" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show how far along the current song is as a progress bar on the Noctis taskbar button. Turns amber while paused."
+                        <TextBlock Text="{loc:T Settings.SongProgressTaskbar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowHowFarAlong}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2316,8 +2316,8 @@
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Automatic Album Cover Size" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Five covers per row. Turn off to pick your own cover size."
+                            <TextBlock Text="{loc:T Settings.AutomaticAlbumCoverSize}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.FiveCoversPerRow}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2326,7 +2326,7 @@
                     </Grid>
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto"
                           IsVisible="{Binding !AlbumTileSizeAuto}">
-                        <TextBlock Grid.Column="0" Text="Smaller"
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.Smaller}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="0,0,12,0"/>
                         <Slider Grid.Column="1"
@@ -2334,7 +2334,7 @@
                                 Minimum="140" Maximum="320"
                                 Value="{Binding AlbumTileTargetSize, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="Larger"
+                        <TextBlock Grid.Column="2" Text="{loc:T Settings.Larger}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="12,0,0,0"/>
                         <TextBlock Grid.Column="3"
@@ -2350,8 +2350,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Flowing Lyrics Background" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="The blurred album artwork drifts and pulses with the beat behind the lyrics on the lyrics page, the lyrics panel and the mini player. Artwork background only."
+                        <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BlurredAlbumArtworkDrifts}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2366,8 +2366,8 @@
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Audio Visualizer" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Draw a live spectrum of the music along the bottom of the lyrics page. Follows the sound as it is heard; rests flat while paused."
+                            <TextBlock Text="{loc:T Settings.AudioVisualizer}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.DrawLiveSpectrumMusic}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2376,8 +2376,8 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Artwork colour" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Tint the bars with the current cover's colour, on the Visualizer page and the lyrics page. Off paints them white."
+                            <TextBlock Text="{loc:T Settings.ArtworkColour}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TintBarsCurrentCover}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2388,7 +2388,7 @@
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      GroupName="LyricsVisualizerStyle"
                                      IsChecked="{Binding IsVisualizerStyleBars, Mode=TwoWay}"
-                                     ToolTip.Tip="Frequency bars rising from the bottom">
+                                     ToolTip.Tip="{loc:T Settings.FrequencyBarsRisingFromTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="2" Canvas.Top="16" Width="4" Height="10" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
@@ -2396,13 +2396,13 @@
                                     <Rectangle Canvas.Left="14" Canvas.Top="11" Width="4" Height="15" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                     <Rectangle Canvas.Left="20" Canvas.Top="2" Width="4" Height="24" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Bars" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Bars}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="LyricsVisualizerStyle"
                                      IsChecked="{Binding IsVisualizerStyleMirror, Mode=TwoWay}"
-                                     ToolTip.Tip="Bars mirrored about the centre line">
+                                     ToolTip.Tip="{loc:T Settings.BarsMirroredAboutCentreTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Rectangle Canvas.Left="2" Canvas.Top="10" Width="4" Height="8" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
@@ -2410,19 +2410,19 @@
                                     <Rectangle Canvas.Left="14" Canvas.Top="7" Width="4" Height="14" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                     <Rectangle Canvas.Left="20" Canvas.Top="2" Width="4" Height="24" RadiusX="1.5" RadiusY="1.5" Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                 </Canvas>
-                                <TextBlock Text="Mirror" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Mirror}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
                                      GroupName="LyricsVisualizerStyle"
                                      IsChecked="{Binding IsVisualizerStyleWave, Mode=TwoWay}"
-                                     ToolTip.Tip="A smooth filled curve">
+                                     ToolTip.Tip="{loc:T Settings.SmoothFilledCurveTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                           Data="M2,26 L2,18 C6,16 8,6 12,8 C16,10 18,20 22,12 L26,10 L26,26 Z"/>
                                 </Canvas>
-                                <TextBlock Text="Wave" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.Wave}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </Grid>
@@ -2435,8 +2435,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Lyrics Background Video" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Loop a video or GIF behind the lyrics on the lyrics page instead of the blurred cover. Plays only while the lyrics page is open."
+                        <TextBlock Text="{loc:T Settings.LyricsBackgroundVideo}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LoopVideoGIFBehind}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding LyricsBackgroundMediaName}"
                                    FontSize="12" Opacity="0.7" Margin="0,4,0,0"
@@ -2445,7 +2445,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button Classes="accent-btn"
-                                Content="Choose"
+                                Content="{loc:T Settings.Choose}"
                                 Padding="16,6"
                                 CornerRadius="999"
                                 Background="{DynamicResource AccentButtonBackground}"
@@ -2453,7 +2453,7 @@
                                 FontWeight="SemiBold"
                                 Cursor="Hand"
                                 Click="OnPickLyricsBackgroundClick"/>
-                        <Button Content="Remove"
+                        <Button Content="{loc:T Settings.Remove}"
                                 Padding="14,6"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -2467,8 +2467,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Fullscreen Lyrics Focus" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Dim all but the current line and its neighbors in fullscreen."
+                        <TextBlock Text="{loc:T Settings.FullscreenLyricsFocus}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.DimAllButCurrent}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2481,8 +2481,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Join Split Words" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Keep words whole when TTML lyrics split them into syllables."
+                        <TextBlock Text="{loc:T Settings.JoinSplitWords}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepWordsWholeWhen}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2495,8 +2495,8 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Player Bar Opacity" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How solid the playback bar's background looks."
+                        <TextBlock Text="{loc:T Settings.PlayerBarOpacity}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowSolidPlaybackBar}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -2519,8 +2519,8 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Mini Player Opacity" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="How much of your desktop shows through the mini player's glass."
+                        <TextBlock Text="{loc:T Settings.MiniPlayerOpacity}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HowMuchDesktopShows}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -2546,7 +2546,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="AudioTabPanel" Classes="tab-page" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
 
-            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.PLAYBACK}" Margin="0,4,0,10"/>
 
             <!-- Song Transitions (Apple-style; drives the AutoMix engine).
                  Disabled + grayed while Exclusive Mode is on: every transition style
@@ -2559,14 +2559,14 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.SongTransitions}" FontSize="15" FontWeight="SemiBold"/>
                                 <Border Classes="beta-badge">
-                                    <TextBlock Classes="beta-badge-text" Text="BETA"/>
+                                    <TextBlock Classes="beta-badge-text" Text="{loc:T Settings.BETA}"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Text="Songs blend smoothly into each other. Albums still play without transitions."
+                            <TextBlock Text="{loc:T Settings.SongsBlendSmoothlyInto}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            <TextBlock Text="Unavailable while Exclusive Mode is on."
+                            <TextBlock Text="{loc:T Settings.UnavailableWhileExclusiveMode}"
                                        IsVisible="{Binding ExclusiveAudioEnabled}"
                                        FontSize="12" FontWeight="SemiBold"
                                        Foreground="{DynamicResource AccentColorBrush}"
@@ -2579,14 +2579,14 @@
 
                     <!-- Transition Style picker -->
                     <StackPanel Spacing="6" IsEnabled="{Binding SongTransitionsEnabled}">
-                        <TextBlock Text="TRANSITION STYLE" FontSize="10" Opacity="0.45" Margin="2,4,0,2"/>
+                        <TextBlock Text="{loc:T Settings.TRANSITIONSTYLE}" FontSize="10" Opacity="0.45" Margin="2,4,0,2"/>
 
                         <RadioButton Classes="transition-card"
                                      GroupName="TransitionStyle"
                                      IsChecked="{Binding IsAutoMixStyle, Mode=TwoWay}">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="AutoMix" FontSize="14" FontWeight="SemiBold"/>
-                                <TextBlock Text="Transitions timed using each song's key and tempo."
+                                <TextBlock Text="{loc:T Settings.AutoMix}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.TransitionsTimedUsingEach}"
                                            FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
                             </StackPanel>
                         </RadioButton>
@@ -2595,8 +2595,8 @@
                                      GroupName="TransitionStyle"
                                      IsChecked="{Binding IsCrossfadeStyle, Mode=TwoWay}">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Crossfade" FontSize="14" FontWeight="SemiBold"/>
-                                <TextBlock Text="Simple fade between songs for a set duration."
+                                <TextBlock Text="{loc:T Settings.Crossfade}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.SimpleFadeBetweenSongs}"
                                            FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
                             </StackPanel>
                         </RadioButton>
@@ -2604,7 +2604,7 @@
                         <!-- Crossfade Duration (only for the Crossfade style) -->
                         <StackPanel Classes="sub-setting" Spacing="6" Margin="2,4,0,0" IsVisible="{Binding IsCrossfadeStyle}">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="Crossfade Duration" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Grid.Column="0" Text="{loc:T Settings.CrossfadeDuration}" FontSize="13" FontWeight="SemiBold"
                                            VerticalAlignment="Center"/>
                                 <!-- Quick presets; the slider below still allows any 1–12 s. -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
@@ -2613,7 +2613,7 @@
                                     <Button Classes="preset-chip" Classes.selected="{Binding IsCrossfade6s}"
                                             Content="6s" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="6"/>
                                     <Button Classes="preset-chip" Classes.selected="{Binding IsCrossfade10s}"
-                                            Content="10s" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="10"/>
+                                            Content="{loc:T Settings.10s}" Command="{Binding SetCrossfadePresetCommand}" CommandParameter="10"/>
                                 </StackPanel>
                             </Grid>
                             <Grid ColumnDefinitions="*,Auto">
@@ -2638,8 +2638,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Sound Check" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Keep song volume at a consistent level."
+                        <TextBlock Text="{loc:T Settings.SoundCheck}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepSongVolumeAt}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2652,8 +2652,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Gapless Playback" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Tracks flow into each other without a pause."
+                        <TextBlock Text="{loc:T Settings.GaplessPlayback}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.TracksFlowIntoEach}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2666,8 +2666,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Autoplay" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="When the queue ends, keep playing similar songs from your library."
+                        <TextBlock Text="{loc:T Settings.Autoplay}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.WhenQueueEndsKeep}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2680,8 +2680,8 @@
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Explicit Content" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Allow explicit songs. When off, they're skipped unless you play them directly."
+                        <TextBlock Text="{loc:T Settings.ExplicitContent}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AllowExplicitSongsWhen}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -2694,8 +2694,8 @@
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Bit-perfect output that bypasses the Windows mixer. Other apps go silent and song transitions are off while it's active."
+                        <TextBlock Text="{loc:T Settings.ExclusiveMode}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BitPerfectOutputBypasses}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ExclusiveAudioStatus}"
                                    IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -2712,8 +2712,8 @@
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Analyze Tempo &amp; Key" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Detect BPM and key for AutoMix and Track Radio."
+                            <TextBlock Text="{loc:T Settings.AnalyzeTempoKey}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.DetectBPMKeyAutoMix}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2722,8 +2722,8 @@
                     </Grid>
                     <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding BpmKeyAnalysisEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Save analysis to file tags" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Write BPM/key into the file's tags for newly analyzed tracks. This modifies your files."
+                            <TextBlock Text="{loc:T Settings.SaveAnalysisFileTags}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.WriteBPMKeyInto}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2740,8 +2740,8 @@
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Equalizer" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Parametric EQ — tune each band's frequency, gain, and width (Q)."
+                                <TextBlock Text="{loc:T Settings.Equalizer}" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.ParametricEQTuneEach}"
                                            FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
@@ -2760,7 +2760,7 @@
                                 Padding="14,8"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Reset"
+                            <TextBlock Text="{loc:T Settings.Reset}"
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
@@ -2772,7 +2772,7 @@
                          from clipping — the post-mix volume slider cannot. -->
                     <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,2,0,0">
                         <TextBlock Grid.Column="0"
-                                   Text="Preamp"
+                                   Text="{loc:T Settings.Preamp}"
                                    FontSize="12" FontWeight="SemiBold" Opacity="0.85"
                                    VerticalAlignment="Center"/>
                         <Slider Grid.Column="1"
@@ -2780,7 +2780,7 @@
                                 Minimum="-12" Maximum="6"
                                 Value="{Binding EqPreampDb}"
                                 DoubleTapped="OnEqPreampSliderDoubleTapped"
-                                ToolTip.Tip="Level before the EQ — lower it if boosted bands distort. Double-tap to reset."
+                                ToolTip.Tip="{loc:T Settings.LevelBeforeEQLowerTip}"
                                 Margin="14,0,0,0" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="2"
                                    Text="{Binding EqPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
@@ -2791,8 +2791,8 @@
                     <!-- Parametric band rows: frequency / gain / Q per band -->
                     <StackPanel Spacing="0" Margin="0,4,0,0">
                         <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,0,0,4">
-                            <TextBlock Grid.Column="0" Text="FREQUENCY" FontSize="10" Opacity="0.45"/>
-                            <TextBlock Grid.Column="1" Text="GAIN" FontSize="10" Opacity="0.45" Margin="14,0,0,0"/>
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.FREQUENCY}" FontSize="10" Opacity="0.45"/>
+                            <TextBlock Grid.Column="1" Text="{loc:T Settings.GAIN}" FontSize="10" Opacity="0.45" Margin="14,0,0,0"/>
                             <TextBlock Grid.Column="3" Text="Q" FontSize="10" Opacity="0.45" Margin="10,0,0,0" HorizontalAlignment="Center"/>
                         </Grid>
                         <ItemsControl ItemsSource="{Binding EqBands}">
@@ -2805,7 +2805,7 @@
                                                        Minimum="20" Maximum="20000" Increment="10"
                                                        FormatString="0"
                                                        FontSize="12"
-                                                       ToolTip.Tip="Center frequency (Hz) — type, scroll, or use arrow keys"
+                                                       ToolTip.Tip="{loc:T Settings.CenterFrequencyHzTypeTip}"
                                                        VerticalAlignment="Center"/>
                                         <Slider Grid.Column="1"
                                                 Classes="accent-slider"
@@ -2823,7 +2823,7 @@
                                                        Minimum="0.1" Maximum="10" Increment="0.1"
                                                        FormatString="0.0#"
                                                        FontSize="12"
-                                                       ToolTip.Tip="Q (band width) — higher values affect a narrower range around the frequency"
+                                                       ToolTip.Tip="{loc:T Settings.QBandWidthHigherTip}"
                                                        Margin="10,0,0,0" VerticalAlignment="Center"/>
                                         <Button Grid.Column="4"
                                                 Content="✕" FontSize="11" Padding="7,4"
@@ -2832,7 +2832,7 @@
                                                 IsEnabled="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).CanRemoveEqBand}"
                                                 Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveEqBandCommand}"
                                                 CommandParameter="{Binding}"
-                                                ToolTip.Tip="Remove band"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveBandTip}"/>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -2845,35 +2845,35 @@
                                 Margin="0,8,0,0"
                                 Cursor="Hand"
                                 HorizontalAlignment="Left">
-                            <TextBlock Text="+ Add Band" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AddBand}" FontSize="13" FontWeight="SemiBold"/>
                         </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
 
-            <TextBlock Classes="section-title" Text="AUDIO TOOLS" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.AUDIOTOOLS}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
                     <StackPanel Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="ffmpeg" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.Ffmpeg}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="Used by the audio converter. Leave blank to auto-detect."
+                        <TextBlock Text="{loc:T Settings.UsedByAudioConverter}"
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBox Grid.Column="0"
                                  Text="{Binding FfmpegPath}"
-                                 Watermark="(auto-detect)"
+                                 Watermark="{loc:T Settings.AutoDetect}"
                                  CornerRadius="999"
                                  Padding="14,8"
                                  BorderThickness="1.5"
                                  MinHeight="0"
                                  KeyDown="OnFfmpegPathKeyDown" />
                         <Button Grid.Column="1"
-                                Content="Browse"
+                                Content="{loc:T Settings.Browse}"
                                 Command="{Binding BrowseFfmpegCommand}"
                                 Padding="14,8"
                                 CornerRadius="999"
@@ -2887,20 +2887,20 @@
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
 
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Open File With" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="Right-click a song → open its audio file in this program, e.g. an editor or analyzer. Leave blank to choose a program each time (Windows)."
+                        <TextBlock Text="{loc:T Settings.OpenFile}" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.RightClickSongOpen}"
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBox Grid.Column="0"
                                  Text="{Binding ExternalOpenAppPath}"
-                                 Watermark="(not set)"
+                                 Watermark="{loc:T Settings.NotSet}"
                                  CornerRadius="999"
                                  Padding="14,8"
                                  BorderThickness="1.5"
                                  MinHeight="0" />
                         <Button Grid.Column="1"
-                                Content="Browse"
+                                Content="{loc:T Settings.Browse}"
                                 Command="{Binding BrowseExternalOpenAppCommand}"
                                 Padding="14,8"
                                 CornerRadius="999"
@@ -2912,8 +2912,8 @@
 
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Adjust volume using ReplayGain tags. Scan tracks via right-click → Scan ReplayGain."
+                            <TextBlock Text="{loc:T Settings.ReplayGain}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AdjustVolumeUsingReplayGain}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2921,7 +2921,7 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid Classes="sub-setting" ColumnDefinitions="120,*" IsEnabled="{Binding ReplayGainEnabled}">
-                        <TextBlock Grid.Column="0" Text="Mode" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.Mode}" VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
                                   Classes="pill-list"
                                   ItemsSource="{Binding ReplayGainModeOptions}"
@@ -2931,7 +2931,7 @@
                                   Padding="14,8"/>
                     </Grid>
                     <Grid Classes="sub-setting" ColumnDefinitions="120,*,Auto" IsEnabled="{Binding ReplayGainEnabled}">
-                        <TextBlock Grid.Column="0" Text="Pre-amp (dB)" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.PreAmpDB}" VerticalAlignment="Center"/>
                         <Grid Grid.Column="1" Height="20" ClipToBounds="False"
                               VerticalAlignment="Center" Margin="0,0,12,0">
                             <Canvas x:Name="PreampVisual"
@@ -2979,15 +2979,15 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="IntegrationsTabPanel" Classes="tab-page" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
 
-            <TextBlock Classes="section-title" Text="REMOTE CONTROL" Margin="0,4,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.REMOTECONTROL}" Margin="0,4,0,10"/>
 
             <!-- Web remote -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Web Remote" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Control playback from your phone on your local network. Traffic is unencrypted, so avoid untrusted Wi-Fi."
+                            <TextBlock Text="{loc:T Settings.WebRemote}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ControlPlaybackFromPhone}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -3003,7 +3003,7 @@
                             <Grid ColumnDefinitions="Auto,*"
                                   IsVisible="{Binding WebRemoteQr, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <Button Grid.Column="0" Classes="qr-thumb" Padding="0" Background="Transparent" BorderThickness="0"
-                                        VerticalAlignment="Center" ToolTip.Tip="Tap to enlarge">
+                                        VerticalAlignment="Center" ToolTip.Tip="{loc:T Settings.TapEnlargeTip}">
                                     <Border CornerRadius="6" ClipToBounds="True">
                                         <Image Source="{Binding WebRemoteQr}" Width="84" Height="84"/>
                                     </Border>
@@ -3017,7 +3017,7 @@
                                                 </Border>
                                                 <SelectableTextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7"
                                                                      TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300"/>
-                                                <TextBlock Text="If your phone blocks the link as insecure, choose Continue. The remote uses plain HTTP on your local network."
+                                                <TextBlock Text="{loc:T Settings.IfPhoneBlocksLink}"
                                                            FontSize="11" Opacity="0.45" TextWrapping="Wrap"
                                                            TextAlignment="Center" MaxWidth="300"/>
                                             </StackPanel>
@@ -3025,15 +3025,15 @@
                                     </Button.Flyout>
                                 </Button>
                                 <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4" VerticalAlignment="Center">
-                                    <TextBlock Text="OPEN ON YOUR PHONE" FontSize="10" Opacity="0.5"/>
+                                    <TextBlock Text="{loc:T Settings.OPENPHONE}" FontSize="10" Opacity="0.5"/>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <SelectableTextBlock Text="{Binding WebRemoteDisplayUrl}" FontSize="14" FontWeight="SemiBold"
                                                              VerticalAlignment="Center"/>
                                         <Button Classes="pill-action" Command="{Binding CopyWebRemoteUrlCommand}"
-                                                ToolTip.Tip="Copy the full link, including the access key">
-                                            <TextBlock Text="Copy" FontSize="11"/>
+                                                ToolTip.Tip="{loc:T Settings.CopyFullLinkIncludingTip}">
+                                            <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
                                         </Button>
-                                        <TextBlock Text="Copied!" FontSize="11"
+                                        <TextBlock Text="{loc:T Settings.Copied}" FontSize="11"
                                                    Foreground="{DynamicResource AccentColorBrush}"
                                                    VerticalAlignment="Center"
                                                    IsVisible="{Binding WebRemoteUrlCopied}"/>
@@ -3041,13 +3041,13 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6"
                                                 IsVisible="{Binding !WebRemotePhoneSeen}">
                                         <Ellipse Width="6" Height="6" Fill="#E5A34D" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Waiting for a phone. Scan the code or tap it to enlarge."
+                                        <TextBlock Text="{loc:T Settings.WaitingPhoneScanCode}"
                                                    FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="6"
                                                 IsVisible="{Binding WebRemotePhoneSeen}">
                                         <Ellipse Width="6" Height="6" Fill="#52B788" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Phone connected"
+                                        <TextBlock Text="{loc:T Settings.PhoneConnected}"
                                                    FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -3060,7 +3060,7 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,12,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.ACCOUNTS}" Margin="0,12,0,10"/>
 
             <!-- Discord Rich Presence -->
             <Border Classes="setting-card">
@@ -3077,8 +3077,8 @@
                         </Viewbox>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="Discord Rich Presence" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show your current song on Discord."
+                        <TextBlock Text="{loc:T Settings.DiscordRichPresence}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowCurrentSongDiscord}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="2"
@@ -3093,8 +3093,8 @@
             <Border Classes="setting-card" IsVisible="{Binding DiscordRichPresenceEnabled}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Show Album on Discord" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Add the album name under the artist on your Discord card. Off keeps the card to title and artist."
+                        <TextBlock Text="{loc:T Settings.ShowAlbumDiscord}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AddAlbumNameUnder}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -3124,8 +3124,8 @@
 
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
-                            <TextBlock Text="Last.fm Scrobbling" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Send plays to Last.fm."
+                            <TextBlock Text="{loc:T Settings.LastFmScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="{loc:T Settings.SendPlaysLastFm}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
@@ -3134,7 +3134,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6"
                                         IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                         Margin="-2,2,0,0">
-                                <TextBlock Text="ACCOUNT" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
@@ -3142,7 +3142,7 @@
                         <!-- Not connected state -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding !IsLastFmConnected}"
-                                Content="Connect"
+                                Content="{loc:T Settings.Connect}"
                                 Classes="pill-action"
                                 Command="{Binding LoginLastFmCommand}"
                                 Padding="14,8"
@@ -3173,7 +3173,7 @@
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Logout" FontSize="13"
+                            <TextBlock Text="{loc:T Settings.Logout}" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
@@ -3181,7 +3181,7 @@
                     <!-- Enable Scrobbling (when connected) -->
                     <Grid IsVisible="{Binding IsLastFmConnected}" ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
-                                   Text="Enable Scrobbling"
+                                   Text="{loc:T Settings.EnableScrobbling}"
                                    FontSize="13"
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
@@ -3207,8 +3207,8 @@
 
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
-                            <TextBlock Text="ListenBrainz Scrobbling" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Send plays to ListenBrainz."
+                            <TextBlock Text="{loc:T Settings.ListenBrainzScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="{loc:T Settings.SendPlaysListenBrainz}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
@@ -3218,7 +3218,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6"
                                         IsVisible="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                         Margin="-2,2,0,0">
-                                <TextBlock Text="ACCOUNT" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
 
@@ -3232,7 +3232,7 @@
                                          Classes="metadata-info-field"
                                          Text="{Binding ListenBrainzToken}"
                                          PasswordChar="•"
-                                         Watermark="ListenBrainz user token"
+                                         Watermark="{loc:T Settings.ListenBrainzUserToken}"
                                          FontSize="12"
                                          Width="280"
                                          HorizontalAlignment="Left"/>
@@ -3248,7 +3248,7 @@
                         <!-- Not connected state (top-right, mirrors the Last.fm Connect button) -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding !IsListenBrainzConnected}"
-                                Content="Connect"
+                                Content="{loc:T Settings.Connect}"
                                 Classes="pill-action"
                                 Command="{Binding TestListenBrainzCommand}"
                                 Padding="14,8"
@@ -3278,14 +3278,14 @@
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Logout" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.Logout}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
                     <Grid IsVisible="{Binding IsListenBrainzConnected}" ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
-                                   Text="Enable Scrobbling"
+                                   Text="{loc:T Settings.EnableScrobbling}"
                                    FontSize="13"
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
@@ -3295,29 +3295,29 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Classes="section-title" Text="MEDIA SERVER" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.MEDIASERVER}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
-                            <TextBlock Text="Music Server" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Stream your library from Jellyfin, Navidrome, Airsonic, Gonic, or any other Subsonic-compatible server."
+                            <TextBlock Text="{loc:T Settings.MusicServer}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="{loc:T Settings.StreamLibraryFromJellyfin}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left" Margin="-2,0,0,0"/>
 
                             <!-- Connected summary -->
                             <StackPanel IsVisible="{Binding IsMediaServerConnected}" Spacing="3" Margin="-2,8,0,0">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="TYPE" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.TYPE}" Width="68" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding MediaServerType}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="SERVER" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.SERVER}" Width="68" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding MediaServerUrl}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="ACCOUNT" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.ACCOUNT}" Width="68" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding MediaServerUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </StackPanel>
@@ -3330,7 +3330,7 @@
                                   ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
                                   Width="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
-                                    <TextBlock Classes="server-field-label" Text="SERVER TYPE"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.SERVERTYPE}"/>
                                     <Border Classes="server-pill-shell">
                                         <ComboBox Classes="pill-list server-pill"
                                                   ItemsSource="{Binding MediaServerTypeOptions}"
@@ -3340,10 +3340,10 @@
                                     </Border>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,10">
-                                    <TextBlock Classes="server-field-label" Text="SERVER ADDRESS"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.SERVERADDRESS}"/>
                                     <TextBox Classes="metadata-info-field"
                                              Text="{Binding MediaServerUrl}"
-                                             Watermark="https://music.example.com"
+                                             Watermark="{loc:T Settings.HttpsMusicExampleCom}"
                                              IsEnabled="{Binding !IsMediaServerBusy}"
                                              FontSize="12">
                                         <TextBox.KeyBindings>
@@ -3352,10 +3352,10 @@
                                     </TextBox>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
-                                    <TextBlock Classes="server-field-label" Text="USERNAME"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.USERNAME}"/>
                                     <TextBox Classes="metadata-info-field"
                                              Text="{Binding MediaServerUsername}"
-                                             Watermark="Username"
+                                             Watermark="{loc:T Settings.Username}"
                                              IsEnabled="{Binding !IsMediaServerBusy}"
                                              FontSize="12">
                                         <TextBox.KeyBindings>
@@ -3364,11 +3364,11 @@
                                     </TextBox>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4">
-                                    <TextBlock Classes="server-field-label" Text="PASSWORD"/>
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.PASSWORD}"/>
                                     <TextBox Classes="metadata-info-field"
                                              Text="{Binding MediaServerPassword}"
                                              PasswordChar="•"
-                                             Watermark="Password"
+                                             Watermark="{loc:T Settings.Password}"
                                              IsEnabled="{Binding !IsMediaServerBusy}"
                                              FontSize="12">
                                         <TextBox.KeyBindings>
@@ -3416,8 +3416,8 @@
                                 </ControlTemplate>
                             </Button.Template>
                             <Panel>
-                                <TextBlock Text="Connect" IsVisible="{Binding !IsMediaServerBusy}"/>
-                                <TextBlock Text="Connecting…" IsVisible="{Binding IsMediaServerBusy}"/>
+                                <TextBlock Text="{loc:T Settings.Connect}" IsVisible="{Binding !IsMediaServerBusy}"/>
+                                <TextBlock Text="{loc:T Settings.Connecting}" IsVisible="{Binding IsMediaServerBusy}"/>
                             </Panel>
                         </Button>
 
@@ -3427,22 +3427,22 @@
                                 Classes="pill-action"
                                 Padding="14,8" CornerRadius="16" Cursor="Hand"
                                 VerticalAlignment="Top" Margin="0,4,0,0">
-                            <TextBlock Text="Disconnect" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Settings.Disconnect}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.LYRICS}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Use online lyrics when local lyrics are missing."
+                    <TextBlock Text="{loc:T Settings.UseOnlineLyricsWhen}"
                                FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="{loc:T Settings.LRCLIB}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.CommunityLyricsDatabase}" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LrcLibEnabled}"
@@ -3450,8 +3450,8 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="{loc:T Settings.NetEaseCloudMusic}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LargeSyncedLyricsCatalog}" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding NetEaseEnabled}"
@@ -3460,16 +3460,16 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Classes="section-title" Text="METADATA" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.METADATA}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Tag sources for Search metadata, in order."
+                    <TextBlock Text="{loc:T Settings.TagSourcesSearchMetadata}"
                                FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="Deezer" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Music streaming catalog" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="{loc:T Settings.Deezer}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.MusicStreamingCatalog}" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding DeezerEnabled}"
@@ -3477,8 +3477,8 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="MusicBrainz" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Open music encyclopedia" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="{loc:T Settings.MusicBrainz}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.OpenMusicEncyclopedia}" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding MusicBrainzEnabled}"
@@ -3500,8 +3500,8 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="Media Folder Locations" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Folders where your music is stored."
+                                <TextBlock Text="{loc:T Settings.MediaFolderLocations}" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.FoldersWhereMusicStored}"
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
@@ -3512,7 +3512,7 @@
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Add Folder" FontSize="13"
+                            <TextBlock Text="{loc:T Settings.AddFolder}" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
@@ -3535,7 +3535,7 @@
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <Button Grid.Column="1"
-                                                Content="&#x2715;"
+                                                Content="{loc:T Settings.Text}"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveFolderCommand}"
                                                 CommandParameter="{Binding}"
                                                 Background="Transparent"
@@ -3557,8 +3557,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <StackPanel Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Library Scan" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Find new tracks and update search."
+                            <TextBlock Text="{loc:T Settings.LibraryScan}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.FindNewTracksUpdate}"
                                        FontSize="12" Opacity="0.5"/>
                         </StackPanel>
                     </StackPanel>
@@ -3576,7 +3576,7 @@
                                 Padding="14,8"
                                 CornerRadius="16"
                                 Cursor="Hand">
-                            <TextBlock Text="Scan Library" FontSize="13"
+                            <TextBlock Text="{loc:T Settings.ScanLibrary}" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
@@ -3589,8 +3589,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Organize Files" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Rename and move files into a tag-based folder structure, with a preview first."
+                            <TextBlock Text="{loc:T Settings.OrganizeFiles}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.RenameMoveFilesInto}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3599,7 +3599,7 @@
                             Command="{Binding OpenOrganizeFilesCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Organize" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Settings.Organize}" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -3609,8 +3609,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Find Duplicates" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Find duplicate tracks and remove the copies you don't want."
+                            <TextBlock Text="{loc:T Settings.FindDuplicates}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.FindDuplicateTracksRemove}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3619,7 +3619,7 @@
                             Command="{Binding OpenDuplicateFinderCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -3629,8 +3629,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Find Metadata" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Identify poorly-tagged tracks and review proposed tags before applying."
+                            <TextBlock Text="{loc:T Settings.FindMetadata}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.IdentifyPoorlyTaggedTracks}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3639,7 +3639,7 @@
                             Command="{Binding OpenMetadataFinderCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Settings.Find}" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -3649,8 +3649,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Import Playlist" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Import an M3U, Exportify CSV or TuneMyMusic JSON export, or a Deezer playlist link, and match tracks to your library."
+                            <TextBlock Text="{loc:T Settings.ImportPlaylist}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ImportM3UExportifyCSV}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3659,7 +3659,7 @@
                             Command="{Binding OpenPlaylistImportCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Import" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Settings.Import}" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -3669,8 +3669,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Scan on Startup" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Scan music folders when Noctis starts."
+                            <TextBlock Text="{loc:T Settings.ScanStartup}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ScanMusicFoldersWhen}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3685,8 +3685,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Watch Folders" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Update the library automatically as files change."
+                            <TextBlock Text="{loc:T Settings.WatchFolders}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.UpdateLibraryAutomaticallyAs}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3701,8 +3701,8 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Use Embedded Artwork" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Use artwork embedded in file tags for album covers."
+                            <TextBlock Text="{loc:T Settings.UseEmbeddedArtwork}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.UseArtworkEmbeddedFile}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -3716,12 +3716,12 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Snoozed Tracks" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Hidden from shuffle and radio until their snooze expires."
+                        <TextBlock Text="{loc:T Settings.SnoozedTracks}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HiddenFromShuffleRadio}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
 
-                    <TextBlock Text="No snoozed tracks."
+                    <TextBlock Text="{loc:T Settings.NoSnoozedTracks}"
                                FontSize="13" Opacity="0.45"
                                IsVisible="{Binding !HasSnoozedTracks}"/>
 
@@ -3757,7 +3757,7 @@
                                                 CornerRadius="14"
                                                 Cursor="Hand"
                                                 VerticalAlignment="Center">
-                                            <TextBlock Text="Un-snooze" FontSize="12"
+                                            <TextBlock Text="{loc:T Settings.UnSnooze}" FontSize="12"
                                                        VerticalAlignment="Center"/>
                                         </Button>
                                     </Grid>
@@ -3772,12 +3772,12 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Removed Tracks" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Removed from your library with their files kept on disk. Restore adds them back."
+                        <TextBlock Text="{loc:T Settings.RemovedTracks}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.RemovedFromLibraryTheir}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
 
-                    <TextBlock Text="No removed tracks."
+                    <TextBlock Text="{loc:T Settings.NoRemovedTracks}"
                                FontSize="13" Opacity="0.45"
                                IsVisible="{Binding !HasRemovedTracks}"/>
 
@@ -3809,7 +3809,7 @@
                                                 Cursor="Hand"
                                                 Margin="12,0,0,0"
                                                 VerticalAlignment="Center">
-                                            <TextBlock Text="Restore" FontSize="12"
+                                            <TextBlock Text="{loc:T Settings.Restore}" FontSize="12"
                                                        VerticalAlignment="Center"/>
                                         </Button>
                                     </Grid>
@@ -3823,7 +3823,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- STORAGE                                            -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="STORAGE" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.STORAGE}" Margin="0,20,0,10"/>
 
             <!-- Disk usage -->
             <Border Classes="setting-card">
@@ -3831,8 +3831,8 @@
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Disk Usage" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Space used by Noctis data."
+                                <TextBlock Text="{loc:T Settings.DiskUsage}" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.SpaceUsedByNoctis}"
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
@@ -3843,7 +3843,7 @@
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Open Data Folder" FontSize="13"
+                            <TextBlock Text="{loc:T Settings.OpenDataFolder}" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
@@ -3851,7 +3851,7 @@
                     <StackPanel Spacing="8" Margin="0,4,0,0">
                         <!-- Library size (music files on disk) -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="Library Size"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.LibrarySize}"
                                        FontSize="13" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding TotalFileSize}"
                                        FontSize="13" Opacity="0.6" VerticalAlignment="Center" />
@@ -3860,7 +3860,7 @@
 
                         <!-- Library data -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="Library Data"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.LibraryData}"
                                        FontSize="13" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding StorageLibraryData}"
                                        FontSize="13" Opacity="0.6" VerticalAlignment="Center" />
@@ -3869,7 +3869,7 @@
 
                         <!-- Artwork cache -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="Artwork Cache"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.ArtworkCache}"
                                        FontSize="13" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding StorageArtwork}"
                                        FontSize="13" Opacity="0.6" VerticalAlignment="Center" />
@@ -3878,7 +3878,7 @@
 
                         <!-- Playlists -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="Playlists"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.Playlists}"
                                        FontSize="13" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding StoragePlaylists}"
                                        FontSize="13" Opacity="0.6" VerticalAlignment="Center" />
@@ -3887,7 +3887,7 @@
 
                         <!-- Settings -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="Settings"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.Settings}"
                                        FontSize="13" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding StorageSettings}"
                                        FontSize="13" Opacity="0.6" VerticalAlignment="Center" />
@@ -3896,7 +3896,7 @@
 
                         <!-- Total -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                            <TextBlock Grid.Column="0" Text="Total"
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.Total}"
                                        FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding StorageTotal}"
                                        FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -3910,7 +3910,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- ADVANCED                                           -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="ADVANCED" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.ADVANCED}" Margin="0,20,0,10"/>
 
             <!-- Combined Advanced card (Reset · Fetch Images · Clear Cache) -->
             <Border Classes="setting-card">
@@ -3921,8 +3921,8 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0">
                                 <StackPanel Spacing="2">
-                                    <TextBlock Text="Reset Settings" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Restore defaults and clear saved library data."
+                                    <TextBlock Text="{loc:T Settings.ResetSettings}" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{loc:T Settings.RestoreDefaultsClearSaved}"
                                                FontSize="12" Opacity="0.5"/>
                                 </StackPanel>
                             </StackPanel>
@@ -3934,24 +3934,24 @@
                                     CornerRadius="16"
                                     Cursor="Hand"
                                     VerticalAlignment="Center">
-                                <TextBlock Text="Reset Settings" FontSize="13"
+                                <TextBlock Text="{loc:T Settings.ResetSettings}" FontSize="13"
                                            VerticalAlignment="Center"/>
                             </Button>
                         </Grid>
                         <StackPanel IsVisible="{Binding IsResetConfirmVisible}" Spacing="8">
-                            <TextBlock Text="Are you sure? This action cannot be undone."
+                            <TextBlock Text="{loc:T Settings.AreYouSureAction}"
                                        FontSize="13" Foreground="#E74856"/>
                             <TextBlock Text="{Binding ResetConfirmDetail}"
                                        FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="Cancel"
+                                <Button Content="{loc:T Settings.Cancel}"
                                         Command="{Binding CancelResetCommand}"
                                         Classes="pill-action"
                                         FontWeight="Bold"
                                         Padding="16,10"
                                         CornerRadius="18"
                                         Cursor="Hand"/>
-                                <Button Content="Reset Everything"
+                                <Button Content="{loc:T Settings.ResetEverything}"
                                         Command="{Binding ConfirmResetLibraryCommand}"
                                         Classes="pill-action danger"
                                         FontWeight="Bold"
@@ -3968,10 +3968,10 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Clear Artwork Cache" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Delete cached artwork. It will rebuild on the next scan."
+                                <TextBlock Text="{loc:T Settings.ClearArtworkCache}" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:T Settings.DeleteCachedArtworkWill}"
                                             FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                                <TextBlock Text="Note: This removes all artwork from your library."
+                                <TextBlock Text="{loc:T Settings.NoteRemovesAllArtwork}"
                                            FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
@@ -3982,7 +3982,7 @@
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Clear Cache" FontSize="13"
+                            <TextBlock Text="{loc:T Settings.ClearCache}" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
@@ -4000,12 +4000,12 @@
                 <Border Classes="setting-card">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Keyboard shortcuts" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Click a key to change it. Press Esc while recording to cancel, Backspace to unbind. Media keys on your keyboard always work and are not listed here."
+                            <TextBlock Text="{loc:T Settings.KeyboardShortcuts}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ClickKeyChangePress}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Button Grid.Column="1"
-                                Content="Reset all"
+                                Content="{loc:T Settings.ResetAll}"
                                 FontSize="12" FontWeight="SemiBold"
                                 Padding="14,7"
                                 CornerRadius="999"
@@ -4044,7 +4044,7 @@
                                                             BorderThickness="0"
                                                             CornerRadius="999"
                                                             Cursor="Hand"
-                                                            ToolTip.Tip="Reset to default"
+                                                            ToolTip.Tip="{loc:T Settings.ResetDefaultTip}"
                                                             IsVisible="{Binding !IsDefault}"
                                                             Command="{Binding ResetCommand}">
                                                         <PathIcon Data="M 12.5 8 A 4.5 4.5 0 1 1 11.2 4.8 M 11.5 2 L 11.5 5 L 8.5 5"
@@ -4067,11 +4067,11 @@
             <StackPanel x:Name="StatisticsTabPanel" Classes="tab-page" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
 
             <!-- Library overview (moved from Library tab) -->
-            <TextBlock Classes="section-title" Text="LIBRARY OVERVIEW" Margin="0,4,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.LIBRARYOVERVIEW}" Margin="0,4,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="18">
-                    <TextBlock Text="Your Music Library" FontSize="15" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:T Settings.MusicLibrary}" FontSize="15" FontWeight="SemiBold"/>
 
                     <!-- Primary stats: Songs · Artists · Albums · Total Duration -->
                     <UniformGrid Columns="4" Margin="0,2,0,0">
@@ -4081,7 +4081,7 @@
                                 <TextBlock Text="{Binding TotalSongs}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Songs" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.Songs}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4091,7 +4091,7 @@
                                 <TextBlock Text="{Binding TotalArtists}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Artists" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.Artists}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4101,7 +4101,7 @@
                                 <TextBlock Text="{Binding TotalAlbums}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Albums" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.Albums}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4112,7 +4112,7 @@
                                            FontSize="20" FontWeight="Bold"
                                            HorizontalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="Total Duration" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.TotalDuration}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4120,7 +4120,7 @@
 
                     <!-- Audio Quality: smaller chips, Hi-Res accented -->
                     <StackPanel Spacing="8" Margin="0,4,0,0">
-                        <TextBlock Text="Audio Quality" FontSize="12" Opacity="0.55"
+                        <TextBlock Text="{loc:T Settings.AudioQuality}" FontSize="12" Opacity="0.55"
                                    FontWeight="SemiBold" Classes="section-title"/>
                         <Grid ColumnDefinitions="*,*,*">
                             <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0"
@@ -4129,7 +4129,7 @@
                                     <TextBlock Text="{Binding LosslessCount}"
                                                FontSize="17" FontWeight="SemiBold"
                                                HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossless" FontSize="11" Opacity="0.55"
+                                    <TextBlock Text="{loc:T Settings.Lossless}" FontSize="11" Opacity="0.55"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -4139,7 +4139,7 @@
                                     <TextBlock Text="{Binding HiResCount}"
                                                FontSize="17" FontWeight="SemiBold"
                                                HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Hi-Res Lossless" FontSize="11" Opacity="0.55"
+                                    <TextBlock Text="{loc:T Settings.HiResLossless}" FontSize="11" Opacity="0.55"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -4149,7 +4149,7 @@
                                     <TextBlock Text="{Binding LossyCount}"
                                                FontSize="17" FontWeight="SemiBold"
                                                HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossy" FontSize="11" Opacity="0.55"
+                                    <TextBlock Text="{loc:T Settings.Lossy}" FontSize="11" Opacity="0.55"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
@@ -4160,7 +4160,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
                         <TextBlock Text="{Binding TotalPlaylists}" FontSize="12"
                                    FontWeight="SemiBold" Opacity="0.7"/>
-                        <TextBlock Text="playlists" FontSize="12" Opacity="0.55"/>
+                        <TextBlock Text="{loc:T Settings.Playlists2}" FontSize="12" Opacity="0.55"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -4168,11 +4168,11 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- LISTENING                                          -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="LISTENING" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.LISTENING}" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="18">
-                    <TextBlock Text="Your Listening" FontSize="15" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:T Settings.Listening}" FontSize="15" FontWeight="SemiBold"/>
 
                     <!-- Play stats: Total Plays · Time Listened · Avg Track Length · Liked Songs -->
                     <UniformGrid Columns="4" Margin="0,2,0,0">
@@ -4182,7 +4182,7 @@
                                 <TextBlock Text="{Binding TotalPlays}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Total Plays" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.TotalPlays}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4193,7 +4193,7 @@
                                            FontSize="20" FontWeight="Bold"
                                            HorizontalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="Time Listened" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.TimeListened}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4203,7 +4203,7 @@
                                 <TextBlock Text="{Binding AvgTrackLength}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Avg Track Length" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.AvgTrackLength}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4213,7 +4213,7 @@
                                 <TextBlock Text="{Binding LikedTracks}"
                                            FontSize="24" FontWeight="Bold"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="Liked Songs" FontSize="11" Opacity="0.55"
+                                <TextBlock Text="{loc:T Settings.LikedSongs}" FontSize="11" Opacity="0.55"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -4224,13 +4224,13 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- TOP PLAYED                                         -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="TOP PLAYED" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="{loc:T Settings.TOPPLAYED}" Margin="0,20,0,10"/>
 
             <Grid ColumnDefinitions="*,12,*">
                 <Border Grid.Column="0" Classes="setting-card" VerticalAlignment="Top">
                     <StackPanel Spacing="12">
-                        <TextBlock Text="Top Artists" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Play some tracks to see your top artists"
+                        <TextBlock Text="{loc:T Settings.TopArtists}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaySomeTracksSee}"
                                    FontSize="13" Opacity="0.4"
                                    IsVisible="{Binding !TopArtists.Count}"/>
                         <ItemsControl ItemsSource="{Binding TopArtists}">
@@ -4259,8 +4259,8 @@
 
                 <Border Grid.Column="2" Classes="setting-card" VerticalAlignment="Top">
                     <StackPanel Spacing="12">
-                        <TextBlock Text="Top Albums" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Play some tracks to see your top albums"
+                        <TextBlock Text="{loc:T Settings.TopAlbums}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaySomeTracksSee2}"
                                    FontSize="13" Opacity="0.4"
                                    IsVisible="{Binding !TopAlbums.Count}"/>
                         <ItemsControl ItemsSource="{Binding TopAlbums}">
@@ -4293,7 +4293,7 @@
                     HorizontalAlignment="Center"
                     Margin="0,16,0,0"
                     Padding="16,8">
-                <TextBlock Text="View All Stats  →" FontSize="13"/>
+                <TextBlock Text="{loc:T Settings.ViewAllStats}" FontSize="13"/>
             </Button>
 
             </StackPanel>

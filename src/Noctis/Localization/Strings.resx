@@ -59,4 +59,357 @@
   <data name="Import.MissingHeader" xml:space="preserve"><value>Missing tracks (not found in your library)</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Close</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Create</value></data>
+
+  <!-- Top bar -->
+  <data name="Tab.Library" xml:space="preserve"><value>Library</value><comment>Header before any section is chosen</comment></data>
+  <data name="Tab.Playlist" xml:space="preserve"><value>Playlist</value><comment>Header while inside a playlist</comment></data>
+  <data name="Tab.Statistics" xml:space="preserve"><value>Statistics</value></data>
+  <data name="Tab.Queue" xml:space="preserve"><value>Queue</value></data>
+  <data name="Tab.Lyrics" xml:space="preserve"><value>Lyrics</value></data>
+  <data name="TopBar.CoverFlow" xml:space="preserve"><value>Cover Flow</value></data>
+  <data name="TopBar.CoverCollage" xml:space="preserve"><value>Cover Collage</value></data>
+  <data name="TopBar.SearchIn" xml:space="preserve"><value>Search in {0}</value><comment>Search box watermark; {0} = section or artist name</comment></data>
+  <data name="TopBar.FeaturedArtists" xml:space="preserve"><value>Featured Artists</value></data>
+
+  <!-- SettingsView.axaml (auto-migrated) -->
+  <data name="Settings.ChangePictureTip" xml:space="preserve"><value>Change picture</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Name" xml:space="preserve"><value>Your name</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickEditNameTip" xml:space="preserve"><value>Click to edit your name</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.SearchSettings" xml:space="preserve"><value>Search settings</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenAudioFilesNoctis" xml:space="preserve"><value>Open Audio Files with Noctis</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve"><value>Add Noctis to Windows' Open-with list and Default apps for MP3, FLAC, M4A, OGG, WAV and the other formats it plays. Windows then lets you pick it as the default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Register" xml:space="preserve"><value>Register</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Unregister" xml:space="preserve"><value>Unregister</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StartupWindowBehaviour" xml:space="preserve"><value>Startup &amp; Window Behaviour</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ControlHowNoctisStarts" xml:space="preserve"><value>Control how Noctis starts and what the minimize and close buttons do.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve"><value>Open Noctis when computer starts</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StartMinimizedTray" xml:space="preserve"><value>Start minimized to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MinimizeTray" xml:space="preserve"><value>Minimize to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CloseTray" xml:space="preserve"><value>Close to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RestoreLastPlayedTrack" xml:space="preserve"><value>Restore last played track</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ReopenLastTrackPlaybar" xml:space="preserve"><value>Reopen with your last track in the playbar, paused where you left off.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TextAnimation" xml:space="preserve"><value>Text Animation</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ControlHowLongText" xml:space="preserve"><value>Control how long text scrolls in the player bar, Up Next, and menus.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PLAYERBAR" xml:space="preserve"><value>PLAYER BAR</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimateLongTrackTitles" xml:space="preserve"><value>Animate long track titles</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimateLongArtistNames" xml:space="preserve"><value>Animate long artist names</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.COVERFLOW" xml:space="preserve"><value>COVER FLOW</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimateLongAlbumTitles" xml:space="preserve"><value>Animate long album titles</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LYRICSPAGE" xml:space="preserve"><value>LYRICS PAGE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimateLongArtistAlbum" xml:space="preserve"><value>Animate long artist/album names</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MINIPLAYER" xml:space="preserve"><value>MINI PLAYER</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SIDEBAR" xml:space="preserve"><value>SIDEBAR</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepSidebarExpanded" xml:space="preserve"><value>Keep sidebar expanded</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PinSidebarOpenAt" xml:space="preserve"><value>Pin the sidebar open at all times.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HoverExpandSidebar" xml:space="preserve"><value>Hover to expand sidebar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Slide the sidebar open on hover.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Collapse Album Editions</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>Show one tile per release; other editions appear under &quot;Other Versions&quot; on the album page.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve"><value>Merge Featured Artists From Titles</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TurnFeatXTrack" xml:space="preserve"><value>Turn &quot;(feat. X)&quot; in track titles into artist credits.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GroupArtistsBy" xml:space="preserve"><value>Group Artists By</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WhichTagArtistsSection" xml:space="preserve"><value>Which tag the Artists section files a song under. Album Artist keeps compilations together and ignores per-track features.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FirstCreditedArtistEachTip" xml:space="preserve"><value>The first credited artist of each song's Artist tag</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Artist" xml:space="preserve"><value>Artist</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SongSArtistTag" xml:space="preserve"><value>Song's artist tag</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumArtistTagSongsTip" xml:space="preserve"><value>The Album Artist tag; songs without one fall back to their artist</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumArtist" xml:space="preserve"><value>Album Artist</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ReleaseSAlbumArtist" xml:space="preserve"><value>Release's album artist tag</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistTagSeparators" xml:space="preserve"><value>Artist Tag Separators</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TextSplitsOneArtist" xml:space="preserve"><value>Text that splits one artist tag into several credited artists. Remove a separator to keep names like &quot;Simon &amp; Garfunkel&quot; whole.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Reset" xml:space="preserve"><value>Reset</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.Text" xml:space="preserve"><value>&#x2715;</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.RemoveSeparatorTip" xml:space="preserve"><value>Remove separator</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.AddSeparatorEG" xml:space="preserve"><value>Add a separator, e.g. feat. or /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.Add" xml:space="preserve"><value>Add</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.Noctis" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickCopyVersionSystemTip" xml:space="preserve"><value>Click to copy version and system info</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Copied" xml:space="preserve"><value>Copied!</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PreRelease" xml:space="preserve"><value>Pre-Release</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InstallRestart" xml:space="preserve"><value>Install &amp; Restart</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Cancel" xml:space="preserve"><value>Cancel</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StarGitHub" xml:space="preserve"><value>Star on GitHub</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.JoinDiscord" xml:space="preserve"><value>Join Discord</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OfficialWebsite" xml:space="preserve"><value>Official Website</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.IncludePreReleaseUpdates" xml:space="preserve"><value>Include pre-release updates</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OfferBetaBuildsUpdater" xml:space="preserve"><value>Offer beta builds in the updater. Off = stable releases only.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.YoursTrulyHeartached" xml:space="preserve"><value>Yours Truly, heartached.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeveloperMode" xml:space="preserve"><value>Developer Mode</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowVersionManagerDebug" xml:space="preserve"><value>Show the version manager and debug logs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DownloadInstallAnyRelease" xml:space="preserve"><value>Download and install any release from GitHub. Installing closes the app.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoReleasesFound" xml:space="preserve"><value>No releases found.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PreRelease2" xml:space="preserve"><value>Pre-release</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Latest" xml:space="preserve"><value>Latest</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Installed" xml:space="preserve"><value>Installed</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SessionLogTroubleshootingShare" xml:space="preserve"><value>Session log for troubleshooting. Share these when reporting bugs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CopyLogs" xml:space="preserve"><value>Copy Logs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Clear" xml:space="preserve"><value>Clear</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenAppDataFolderTip" xml:space="preserve"><value>Open the app data folder (also holds crash.log)</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenFolder" xml:space="preserve"><value>Open Folder</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Themes" xml:space="preserve"><value>Themes</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChooseHowNoctisLooks" xml:space="preserve"><value>Choose how Noctis looks on your device.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Dark" xml:space="preserve"><value>Dark</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Gray" xml:space="preserve"><value>Gray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Midnight" xml:space="preserve"><value>Midnight</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Light" xml:space="preserve"><value>Light</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Edit" xml:space="preserve"><value>Edit</value><comment>Header in SettingsView.axaml</comment></data>
+  <data name="Settings.Delete" xml:space="preserve"><value>Delete</value><comment>Header in SettingsView.axaml</comment></data>
+  <data name="Settings.CreateCustomThemeTip" xml:space="preserve"><value>Create custom theme</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Custom" xml:space="preserve"><value>Custom</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AccentColor" xml:space="preserve"><value>Accent Color</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Pick a preset or open the picker for any custom color.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CustomColorTip" xml:space="preserve"><value>Custom Color</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.LiquidGlass" xml:space="preserve"><value>Liquid Glass</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BETA" xml:space="preserve"><value>BETA</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve"><value>Frost the window with translucent, blurred glass surfaces.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimatedArtwork" xml:space="preserve"><value>Animated Artwork</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowAnimatedCoverArt" xml:space="preserve"><value>Show animated cover art when available.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumPageColour" xml:space="preserve"><value>Album Page Colour</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TintEachAlbumS" xml:space="preserve"><value>Tint each album's page with the colour of its cover, like Apple Music. Off keeps the plain theme background.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NowPlayingArtwork" xml:space="preserve"><value>Now Playing Artwork</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowCoverAppearsLyrics" xml:space="preserve"><value>How the cover appears on the Lyrics page. Discs spin while music plays.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumCoverAsTip" xml:space="preserve"><value>The album cover as it is</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Cover" xml:space="preserve"><value>Cover</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SpinningCompactDiscTip" xml:space="preserve"><value>A spinning compact disc</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.SleeveRecordPeekingOutTip" xml:space="preserve"><value>A sleeve with the record peeking out</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>A cassette with the cover on its label</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Cassette" xml:space="preserve"><value>Cassette</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover Flow Layout</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>How the Cover Flow page arranges the queue's covers.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>The classic row: playing cover centred, history and up next to each side</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Carousel" xml:space="preserve"><value>Carousel</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Tilted covers on a diagonal path with the track details beside them</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Cascade" xml:space="preserve"><value>Cascade</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MosaicQueueSCoversTip" xml:space="preserve"><value>A mosaic of the queue's covers</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Collage" xml:space="preserve"><value>Collage</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerDesign" xml:space="preserve"><value>Mini Player Design</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowMiniPlayerLooks" xml:space="preserve"><value>How the mini player looks. Classic morphs with its size; Pill and Sleeve are fixed designs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResizableGlassCardIconTip" xml:space="preserve"><value>The resizable glass card: icon, bar, card, large icon and lyrics forms</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Classic" xml:space="preserve"><value>Classic</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RoundCoverOverlappingLightTip" xml:space="preserve"><value>A round cover overlapping a light card with the title and transport</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Pill" xml:space="preserve"><value>Pill</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SpinningDiscPeekingOutTip" xml:space="preserve"><value>A spinning disc peeking out of the top of a light card</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Sleeve" xml:space="preserve"><value>Sleeve</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayerIslandButtons" xml:space="preserve"><value>Player Island Buttons</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddExtraControlsPlayer" xml:space="preserve"><value>Add extra controls to the player island: skip a few seconds, change the playback speed, set a sleep timer, shuffle.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipBackForward" xml:space="preserve"><value>Skip back and forward</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.JumpFewSecondsEither" xml:space="preserve"><value>Jump a few seconds either way without leaving the track.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.10Seconds" xml:space="preserve"><value>10 seconds</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.15Seconds" xml:space="preserve"><value>15 seconds</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.30Seconds" xml:space="preserve"><value>30 seconds</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackSpeed" xml:space="preserve"><value>Playback speed</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.1ButtonOpensSpeed" xml:space="preserve"><value>A 1× button that opens a speed menu from 0.75× to 2×. Speed resets to normal on the next launch.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimer" xml:space="preserve"><value>Sleep timer</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerOneClick" xml:space="preserve"><value>The sleep timer one click away instead of inside the options menu.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Shuffle" xml:space="preserve"><value>Shuffle</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShuffleButtonAfterRepeat" xml:space="preserve"><value>A shuffle button after Repeat. Shuffle also stays in the queue panel.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player Island Width</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>How wide the player island at the bottom is. Wider gives the seek bar more room for precise scrubbing. You can also drag the island's rounded edges. Double-click the slider knob to go back to the default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Narrower" xml:space="preserve"><value>Narrower</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Wider" xml:space="preserve"><value>Wider</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Song Progress on Taskbar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowHowFarAlong" xml:space="preserve"><value>Show how far along the current song is as a progress bar on the Noctis taskbar button. Turns amber while paused.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve"><value>Automatic Album Cover Size</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Five covers per row. Turn off to pick your own cover size.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Smaller" xml:space="preserve"><value>Smaller</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Larger" xml:space="preserve"><value>Larger</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Flowing Lyrics Background</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>The blurred album artwork drifts and pulses with the beat behind the lyrics on the lyrics page, the lyrics panel and the mini player. Artwork background only.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AudioVisualizer" xml:space="preserve"><value>Audio Visualizer</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Draw a live spectrum of the music along the bottom of the lyrics page. Follows the sound as it is heard; rests flat while paused.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork colour</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Tint the bars with the current cover's colour, on the Visualizer page and the lyrics page. Off paints them white.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Frequency bars rising from the bottom</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Bars" xml:space="preserve"><value>Bars</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>Bars mirrored about the centre line</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Mirror" xml:space="preserve"><value>Mirror</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SmoothFilledCurveTip" xml:space="preserve"><value>A smooth filled curve</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Wave" xml:space="preserve"><value>Wave</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LoopVideoGIFBehind" xml:space="preserve"><value>Loop a video or GIF behind the lyrics on the lyrics page instead of the blurred cover. Plays only while the lyrics page is open.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Choose" xml:space="preserve"><value>Choose</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.Remove" xml:space="preserve"><value>Remove</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Fullscreen Lyrics Focus</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Dim all but the current line and its neighbors in fullscreen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Join Split Words</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Keep words whole when TTML lyrics split them into syllables.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Player Bar Opacity</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How much of your desktop shows through the mini player's glass.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SongTransitions" xml:space="preserve"><value>Song Transitions</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve"><value>Songs blend smoothly into each other. Albums still play without transitions.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UnavailableWhileExclusiveMode" xml:space="preserve"><value>Unavailable while Exclusive Mode is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TRANSITIONSTYLE" xml:space="preserve"><value>TRANSITION STYLE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoMix" xml:space="preserve"><value>AutoMix</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TransitionsTimedUsingEach" xml:space="preserve"><value>Transitions timed using each song's key and tempo.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Crossfade" xml:space="preserve"><value>Crossfade</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SimpleFadeBetweenSongs" xml:space="preserve"><value>Simple fade between songs for a set duration.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CrossfadeDuration" xml:space="preserve"><value>Crossfade Duration</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.10s" xml:space="preserve"><value>10s</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.SoundCheck" xml:space="preserve"><value>Sound Check</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepSongVolumeAt" xml:space="preserve"><value>Keep song volume at a consistent level.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GaplessPlayback" xml:space="preserve"><value>Gapless Playback</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Tracks flow into each other without a pause.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs from your library.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Allow explicit songs. When off, they're skipped unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect output that bypasses the Windows mixer. Other apps go silent and song transitions are off while it's active.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Analyze Tempo &amp; Key</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DetectBPMKeyAutoMix" xml:space="preserve"><value>Detect BPM and key for AutoMix and Track Radio.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SaveAnalysisFileTags" xml:space="preserve"><value>Save analysis to file tags</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WriteBPMKeyInto" xml:space="preserve"><value>Write BPM/key into the file's tags for newly analyzed tracks. This modifies your files.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Equalizer" xml:space="preserve"><value>Equalizer</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ParametricEQTuneEach" xml:space="preserve"><value>Parametric EQ — tune each band's frequency, gain, and width (Q).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Preamp" xml:space="preserve"><value>Preamp</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LevelBeforeEQLowerTip" xml:space="preserve"><value>Level before the EQ — lower it if boosted bands distort. Double-tap to reset.</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.FREQUENCY" xml:space="preserve"><value>FREQUENCY</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GAIN" xml:space="preserve"><value>GAIN</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CenterFrequencyHzTypeTip" xml:space="preserve"><value>Center frequency (Hz) — type, scroll, or use arrow keys</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.QBandWidthHigherTip" xml:space="preserve"><value>Q (band width) — higher values affect a narrower range around the frequency</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.RemoveBandTip" xml:space="preserve"><value>Remove band</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.AddBand" xml:space="preserve"><value>+ Add Band</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AUDIOTOOLS" xml:space="preserve"><value>AUDIO TOOLS</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Ffmpeg" xml:space="preserve"><value>ffmpeg</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UsedByAudioConverter" xml:space="preserve"><value>Used by the audio converter. Leave blank to auto-detect.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoDetect" xml:space="preserve"><value>(auto-detect)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.Browse" xml:space="preserve"><value>Browse</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenFile" xml:space="preserve"><value>Open File With</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Right-click a song → open its audio file in this program, e.g. an editor or analyzer. Leave blank to choose a program each time (Windows).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NotSet" xml:space="preserve"><value>(not set)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Adjust volume using ReplayGain tags. Scan tracks via right-click → Scan ReplayGain.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Mode" xml:space="preserve"><value>Mode</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PreAmpDB" xml:space="preserve"><value>Pre-amp (dB)</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>REMOTE CONTROL</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WebRemote" xml:space="preserve"><value>Web Remote</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control playback from your phone on your local network. Traffic is unencrypted, so avoid untrusted Wi-Fi.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TapEnlargeTip" xml:space="preserve"><value>Tap to enlarge</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.IfPhoneBlocksLink" xml:space="preserve"><value>If your phone blocks the link as insecure, choose Continue. The remote uses plain HTTP on your local network.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OPENPHONE" xml:space="preserve"><value>OPEN ON YOUR PHONE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CopyFullLinkIncludingTip" xml:space="preserve"><value>Copy the full link, including the access key</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.Copy" xml:space="preserve"><value>Copy</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WaitingPhoneScanCode" xml:space="preserve"><value>Waiting for a phone. Scan the code or tap it to enlarge.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PhoneConnected" xml:space="preserve"><value>Phone connected</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ACCOUNTS" xml:space="preserve"><value>ACCOUNTS</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscordRichPresence" xml:space="preserve"><value>Discord Rich Presence</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowCurrentSongDiscord" xml:space="preserve"><value>Show your current song on Discord.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowAlbumDiscord" xml:space="preserve"><value>Show Album on Discord</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddAlbumNameUnder" xml:space="preserve"><value>Add the album name under the artist on your Discord card. Off keeps the card to title and artist.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LastFmScrobbling" xml:space="preserve"><value>Last.fm Scrobbling</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SendPlaysLastFm" xml:space="preserve"><value>Send plays to Last.fm.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ACCOUNT" xml:space="preserve"><value>ACCOUNT</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Connect" xml:space="preserve"><value>Connect</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.Logout" xml:space="preserve"><value>Logout</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.EnableScrobbling" xml:space="preserve"><value>Enable Scrobbling</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzScrobbling" xml:space="preserve"><value>ListenBrainz Scrobbling</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SendPlaysListenBrainz" xml:space="preserve"><value>Send plays to ListenBrainz.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzUserToken" xml:space="preserve"><value>ListenBrainz user token</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.MEDIASERVER" xml:space="preserve"><value>MEDIA SERVER</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusicServer" xml:space="preserve"><value>Music Server</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StreamLibraryFromJellyfin" xml:space="preserve"><value>Stream your library from Jellyfin, Navidrome, Airsonic, Gonic, or any other Subsonic-compatible server.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TYPE" xml:space="preserve"><value>TYPE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SERVER" xml:space="preserve"><value>SERVER</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SERVERTYPE" xml:space="preserve"><value>SERVER TYPE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SERVERADDRESS" xml:space="preserve"><value>SERVER ADDRESS</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HttpsMusicExampleCom" xml:space="preserve"><value>https://music.example.com</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.USERNAME" xml:space="preserve"><value>USERNAME</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Username" xml:space="preserve"><value>Username</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.PASSWORD" xml:space="preserve"><value>PASSWORD</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Password" xml:space="preserve"><value>Password</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.Connecting" xml:space="preserve"><value>Connecting…</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Disconnect" xml:space="preserve"><value>Disconnect</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LYRICS" xml:space="preserve"><value>LYRICS</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UseOnlineLyricsWhen" xml:space="preserve"><value>Use online lyrics when local lyrics are missing.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LRCLIB" xml:space="preserve"><value>LRCLIB</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CommunityLyricsDatabase" xml:space="preserve"><value>Community lyrics database</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NetEaseCloudMusic" xml:space="preserve"><value>NetEase Cloud Music</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LargeSyncedLyricsCatalog" xml:space="preserve"><value>Large synced lyrics catalog</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.METADATA" xml:space="preserve"><value>METADATA</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TagSourcesSearchMetadata" xml:space="preserve"><value>Tag sources for Search metadata, in order.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Deezer" xml:space="preserve"><value>Deezer</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusicStreamingCatalog" xml:space="preserve"><value>Music streaming catalog</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusicBrainz" xml:space="preserve"><value>MusicBrainz</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenMusicEncyclopedia" xml:space="preserve"><value>Open music encyclopedia</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MediaFolderLocations" xml:space="preserve"><value>Media Folder Locations</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FoldersWhereMusicStored" xml:space="preserve"><value>Folders where your music is stored.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddFolder" xml:space="preserve"><value>Add Folder</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LibraryScan" xml:space="preserve"><value>Library Scan</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Find new tracks and update search.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanLibrary" xml:space="preserve"><value>Scan Library</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OrganizeFiles" xml:space="preserve"><value>Organize Files</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RenameMoveFilesInto" xml:space="preserve"><value>Rename and move files into a tag-based folder structure, with a preview first.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Organize" xml:space="preserve"><value>Organize</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FindDuplicates" xml:space="preserve"><value>Find Duplicates</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FindDuplicateTracksRemove" xml:space="preserve"><value>Find duplicate tracks and remove the copies you don't want.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Find" xml:space="preserve"><value>Find</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FindMetadata" xml:space="preserve"><value>Find Metadata</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.IdentifyPoorlyTaggedTracks" xml:space="preserve"><value>Identify poorly-tagged tracks and review proposed tags before applying.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportPlaylist" xml:space="preserve"><value>Import Playlist</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportM3UExportifyCSV" xml:space="preserve"><value>Import an M3U, Exportify CSV or TuneMyMusic JSON export, or a Deezer playlist link, and match tracks to your library.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Import" xml:space="preserve"><value>Import</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanStartup" xml:space="preserve"><value>Scan on Startup</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanMusicFoldersWhen" xml:space="preserve"><value>Scan music folders when Noctis starts.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WatchFolders" xml:space="preserve"><value>Watch Folders</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UpdateLibraryAutomaticallyAs" xml:space="preserve"><value>Update the library automatically as files change.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UseEmbeddedArtwork" xml:space="preserve"><value>Use Embedded Artwork</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UseArtworkEmbeddedFile" xml:space="preserve"><value>Use artwork embedded in file tags for album covers.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SnoozedTracks" xml:space="preserve"><value>Snoozed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Hidden from shuffle and radio until their snooze expires.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoSnoozedTracks" xml:space="preserve"><value>No snoozed tracks.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.UnSnooze" xml:space="preserve"><value>Un-snooze</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RemovedTracks" xml:space="preserve"><value>Removed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RemovedFromLibraryTheir" xml:space="preserve"><value>Removed from your library with their files kept on disk. Restore adds them back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoRemovedTracks" xml:space="preserve"><value>No removed tracks.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Restore" xml:space="preserve"><value>Restore</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.STORAGE" xml:space="preserve"><value>STORAGE</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiskUsage" xml:space="preserve"><value>Disk Usage</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SpaceUsedByNoctis" xml:space="preserve"><value>Space used by Noctis data.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OpenDataFolder" xml:space="preserve"><value>Open Data Folder</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LibrarySize" xml:space="preserve"><value>Library Size</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LibraryData" xml:space="preserve"><value>Library Data</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkCache" xml:space="preserve"><value>Artwork Cache</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Playlists" xml:space="preserve"><value>Playlists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Settings" xml:space="preserve"><value>Settings</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Total" xml:space="preserve"><value>Total</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ADVANCED" xml:space="preserve"><value>ADVANCED</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetSettings" xml:space="preserve"><value>Reset Settings</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RestoreDefaultsClearSaved" xml:space="preserve"><value>Restore defaults and clear saved library data.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Are you sure? This action cannot be undone.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetEverything" xml:space="preserve"><value>Reset Everything</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Clear Artwork Cache</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Delete cached artwork. It will rebuild on the next scan.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Note: This removes all artwork from your library.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClearCache" xml:space="preserve"><value>Clear Cache</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Keyboard shortcuts</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Click a key to change it. Press Esc while recording to cancel, Backspace to unbind. Media keys on your keyboard always work and are not listed here.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetAll" xml:space="preserve"><value>Reset all</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetDefaultTip" xml:space="preserve"><value>Reset to default</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.LIBRARYOVERVIEW" xml:space="preserve"><value>LIBRARY OVERVIEW</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusicLibrary" xml:space="preserve"><value>Your Music Library</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Songs" xml:space="preserve"><value>Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Artists" xml:space="preserve"><value>Artists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Albums" xml:space="preserve"><value>Albums</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TotalDuration" xml:space="preserve"><value>Total Duration</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AudioQuality" xml:space="preserve"><value>Audio Quality</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Lossless" xml:space="preserve"><value>Lossless</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiResLossless" xml:space="preserve"><value>Hi-Res Lossless</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Lossy" xml:space="preserve"><value>Lossy</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Playlists2" xml:space="preserve"><value>playlists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LISTENING" xml:space="preserve"><value>LISTENING</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Listening" xml:space="preserve"><value>Your Listening</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TotalPlays" xml:space="preserve"><value>Total Plays</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TimeListened" xml:space="preserve"><value>Time Listened</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AvgTrackLength" xml:space="preserve"><value>Avg Track Length</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LikedSongs" xml:space="preserve"><value>Liked Songs</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TOPPLAYED" xml:space="preserve"><value>TOP PLAYED</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TopArtists" xml:space="preserve"><value>Top Artists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaySomeTracksSee" xml:space="preserve"><value>Play some tracks to see your top artists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TopAlbums" xml:space="preserve"><value>Top Albums</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaySomeTracksSee2" xml:space="preserve"><value>Play some tracks to see your top albums</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ViewAllStats" xml:space="preserve"><value>View All Stats  →</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

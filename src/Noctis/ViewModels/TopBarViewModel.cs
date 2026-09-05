@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Services;
 
 namespace Noctis.ViewModels;
@@ -15,15 +16,44 @@ public partial class TopBarViewModel : ViewModelBase
 {
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isSearchFocused;
+    /// <summary>The current section's ENGLISH tab name — an identifier, compared in several
+    /// places ("Home", "Settings", "Lyrics", …). Never shown directly: the header and the
+    /// search watermark use <see cref="CurrentTabTitle"/>, its localized form.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    [NotifyPropertyChangedFor(nameof(CurrentTabTitle))]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
     private string _currentTabName = "Library";
 
+    /// <summary>Localized display name of the current section.</summary>
+    public string CurrentTabTitle => Loc.T(TabTitleKey(CurrentTabName));
+
+    /// <summary>Resource key for a tab name; unknown names (a playlist's own title) pass through
+    /// unchanged because <see cref="Loc.T(string)"/> returns unknown keys verbatim.</summary>
+    public static string TabTitleKey(string tabName) => tabName switch
+    {
+        "Home" => "Nav.Home", "Songs" => "Nav.Songs", "Albums" => "Nav.Albums", "Artists" => "Nav.Artists",
+        "Folders" => "Nav.Folders", "Playlists" => "Nav.Playlists", "Favorites" => "Nav.Favorites",
+        "Visualizer" => "Nav.Visualizer", "Settings" => "Nav.Settings", "Server" => "Nav.Server", "Audio CD" => "Nav.AudioCd",
+        "Statistics" => "Tab.Statistics", "Queue" => "Tab.Queue", "Lyrics" => "Tab.Lyrics",
+        "Playlist" => "Tab.Playlist", "Library" => "Tab.Library",
+        _ => tabName,
+    };
+
     /// <summary>Header title: reflects the Cover Flow / Collage view when active, otherwise the section name.
     /// Collage is a Cover Flow sub-mode, so its label only applies while Cover Flow is active.</summary>
-    public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
-    [ObservableProperty] private string _searchWatermark = "Search in Library";
+    public string PageTitleDisplay => IsCoverFlowMode
+        ? Loc.T(IsCollageMode ? "TopBar.CoverCollage" : "TopBar.CoverFlow")
+        : CurrentTabTitle;
+    [ObservableProperty] private string _searchWatermark = Loc.T("TopBar.SearchIn", Loc.T("Tab.Library"));
+
+    /// <summary>Re-reads the localized header/watermark after a language switch (the watermark
+    /// is owned by MainWindowViewModel.RefreshBackButton, which listens for the same event).</summary>
+    public void RefreshLocalizedTitles()
+    {
+        OnPropertyChanged(nameof(CurrentTabTitle));
+        OnPropertyChanged(nameof(PageTitleDisplay));
+    }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
     private bool _isSearchVisible = true;

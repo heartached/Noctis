@@ -49,4 +49,14 @@
   <data name="Import.MissingHeader" xml:space="preserve"><value>Canciones no encontradas en tu biblioteca</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Cerrar</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Crear</value></data>
+
+  <data name="Tab.Library" xml:space="preserve"><value>Biblioteca</value></data>
+  <data name="Tab.Playlist" xml:space="preserve"><value>Lista</value></data>
+  <data name="Tab.Statistics" xml:space="preserve"><value>Estadísticas</value></data>
+  <data name="Tab.Queue" xml:space="preserve"><value>Cola</value></data>
+  <data name="Tab.Lyrics" xml:space="preserve"><value>Letras</value></data>
+  <data name="TopBar.CoverFlow" xml:space="preserve"><value>Cover Flow</value></data>
+  <data name="TopBar.CoverCollage" xml:space="preserve"><value>Collage de portadas</value></data>
+  <data name="TopBar.SearchIn" xml:space="preserve"><value>Buscar en {0}</value></data>
+  <data name="TopBar.FeaturedArtists" xml:space="preserve"><value>Artistas destacados</value></data>
 </root>
