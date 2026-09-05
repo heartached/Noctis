@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Kawarp for Noctis: fluid, warped album-art background behind the lyrics (after the
+    better-lyrics/shaders effect of the same name). Build, then copy the output folder to
+    <Noctis data>/plugins/Noctis.Plugins.Kawarp/ — only this DLL is needed; Avalonia, Skia and
+    the SDK come from the app.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.Kawarp</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <!-- Compile-time only: the host already carries these exact versions and shares them. -->
+    <PackageReference Include="Avalonia.Skia" Version="11.3.18" ExcludeAssets="runtime" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.Abstractions
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.SamplePlugin", "samples\Noctis.SamplePlugin\Noctis.SamplePlugin.csproj", "{D4E5F607-1829-4ABC-DEF0-123456789012}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.Kawarp", "plugins\Noctis.Plugins.Kawarp\Noctis.Plugins.Kawarp.csproj", "{E5F60718-293A-4BCD-EF01-234567890123}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,5 +35,9 @@ Global
 		{D4E5F607-1829-4ABC-DEF0-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4E5F607-1829-4ABC-DEF0-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4E5F607-1829-4ABC-DEF0-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5F60718-293A-4BCD-EF01-234567890123}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5F60718-293A-4BCD-EF01-234567890123}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5F60718-293A-4BCD-EF01-234567890123}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5F60718-293A-4BCD-EF01-234567890123}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
