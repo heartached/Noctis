@@ -30,7 +30,7 @@ public static class TidalOAuth
     /// means TIDAL import is not available in this build; <c>NOCTIS_TIDAL_CLIENT_ID</c> in the
     /// environment overrides it for local testing.
     /// </summary>
-    public const string BuiltInClientId = "";
+    public const string BuiltInClientId = "3RGhYqYDtSytglPz";
 
     public static string ClientId
     {
