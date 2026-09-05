@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
@@ -963,6 +964,33 @@
             <!-- GENERAL                                             -->
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="GeneralTabPanel" Classes="tab-page" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
+
+            <!-- Language (Localization/Strings.*.resx; switching re-labels live via {loc:T}). -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.Language.Title}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.Language.Description}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding LanguageOptions}"
+                                  SelectedItem="{Binding LanguageChoice}"
+                                  MinWidth="180"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <Button Classes="pill-action"
+                            Command="{Binding OpenTranslationHelpCommand}"
+                            HorizontalAlignment="Left"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand">
+                        <TextBlock Text="{loc:T Settings.Language.Help}" FontSize="13"/>
+                    </Button>
+                </StackPanel>
+            </Border>
 
             <!-- File types (Windows): advertise Noctis to "Open with" / Default apps.
                  Per-user registry, no elevation; Windows itself owns the final pick. -->

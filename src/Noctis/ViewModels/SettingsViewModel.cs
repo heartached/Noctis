@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -339,6 +340,39 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+
+    /// <summary>One entry of the Language picker: "" = follow the OS, else a shipped culture.</summary>
+    public sealed record LanguageOption(string Code, string Display)
+    {
+        public override string ToString() => Display;
+    }
+
+    /// <summary>System language first, then every shipped translation by its native name.</summary>
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; } = BuildLanguageOptions();
+
+    private static IReadOnlyList<LanguageOption> BuildLanguageOptions()
+    {
+        var list = new List<LanguageOption> { new(Loc.SystemLanguage, Loc.T("Settings.Language.System")) };
+        foreach (var code in Loc.Supported)
+        {
+            var native = System.Globalization.CultureInfo.GetCultureInfo(code).NativeName;
+            list.Add(new(code, char.ToUpperInvariant(native[0]) + native[1..]));
+        }
+        return list;
+    }
+
+    [ObservableProperty] private LanguageOption? _languageChoice;
+
+    partial void OnLanguageChoiceChanged(LanguageOption? value)
+    {
+        if (value is null) return;
+        _settings.Language = value.Code;
+        Loc.Instance.SetCulture(value.Code);
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    [RelayCommand]
+    private void OpenTranslationHelp() => PlatformHelper.OpenUrl("https://github.com/heartached/Noctis/tree/main/src/Noctis/Localization");
 
     public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
     public bool IsVisualizerStyleBars { get => LyricsVisualizerStyleMode == VisualizerStyle.Bars; set { if (value) LyricsVisualizerStyle = nameof(VisualizerStyle.Bars); } }
@@ -1362,6 +1396,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
+            LanguageChoice = LanguageOptions.FirstOrDefault(o => o.Code == (_settings.Language ?? string.Empty)) ?? LanguageOptions[0];
             LyricsBackgroundMediaPath = File.Exists(_settings.LyricsBackgroundMediaPath)
                 ? _settings.LyricsBackgroundMediaPath
                 : string.Empty;
@@ -4535,6 +4570,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
+            LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;

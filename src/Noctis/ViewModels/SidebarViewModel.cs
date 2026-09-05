@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Helpers;
 using Noctis.Services;
@@ -40,21 +41,37 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Main navigation items (Home, Songs, Albums, Artists, Folders, Playlists, Visualizer, Settings).</summary>
     public ObservableCollection<NavItem> NavItems { get; } = new()
     {
-        new NavItem { Key = "home", Label = "Home", IconGlyph = "HomeIcon" },
-        new NavItem { Key = "songs", Label = "Songs", IconGlyph = "SongsIcon" },
-        new NavItem { Key = "albums", Label = "Albums", IconGlyph = "AlbumsIcon" },
-        new NavItem { Key = "artists", Label = "Artists", IconGlyph = "ArtistsIcon" },
-        new NavItem { Key = "folders", Label = "Folders", IconGlyph = "FoldersIcon" },
-        new NavItem { Key = "playlists", Label = "Playlists", IconGlyph = "PlaylistsIcon" },
-        new NavItem { Key = "visualizer", Label = "Visualizer", IconGlyph = "VisualizerIcon" },
-        new NavItem { Key = "settings", Label = "Settings", IconGlyph = "SettingsIcon" },
+        new NavItem { Key = "home", Label = Loc.T("Nav.Home"), IconGlyph = "HomeIcon" },
+        new NavItem { Key = "songs", Label = Loc.T("Nav.Songs"), IconGlyph = "SongsIcon" },
+        new NavItem { Key = "albums", Label = Loc.T("Nav.Albums"), IconGlyph = "AlbumsIcon" },
+        new NavItem { Key = "artists", Label = Loc.T("Nav.Artists"), IconGlyph = "ArtistsIcon" },
+        new NavItem { Key = "folders", Label = Loc.T("Nav.Folders"), IconGlyph = "FoldersIcon" },
+        new NavItem { Key = "playlists", Label = Loc.T("Nav.Playlists"), IconGlyph = "PlaylistsIcon" },
+        new NavItem { Key = "visualizer", Label = Loc.T("Nav.Visualizer"), IconGlyph = "VisualizerIcon" },
+        new NavItem { Key = "settings", Label = Loc.T("Nav.Settings"), IconGlyph = "SettingsIcon" },
     };
 
     /// <summary>Favorites navigation item (below divider).</summary>
     public ObservableCollection<NavItem> FavoritesItems { get; } = new()
     {
-        new NavItem { Key = "favorites", Label = "Favorites", IconGlyph = "FavoritesIcon" },
+        new NavItem { Key = "favorites", Label = Loc.T("Nav.Favorites"), IconGlyph = "FavoritesIcon" },
     };
+
+    /// <summary>Resource key for a section's label, by nav key.</summary>
+    public static string LabelKey(string navKey) => navKey switch
+    {
+        "home" => "Nav.Home", "songs" => "Nav.Songs", "albums" => "Nav.Albums", "artists" => "Nav.Artists",
+        "folders" => "Nav.Folders", "playlists" => "Nav.Playlists", "visualizer" => "Nav.Visualizer",
+        "settings" => "Nav.Settings", "favorites" => "Nav.Favorites", "server" => "Nav.Server", "cd" => "Nav.AudioCd",
+        _ => navKey,
+    };
+
+    /// <summary>Re-labels the section items after a language switch (labels are plain strings, not bindings).</summary>
+    private void RelabelSections()
+    {
+        foreach (var item in NavItems.Concat(FavoritesItems))
+            item.Label = Loc.T(LabelKey(item.Key));
+    }
 
     /// <summary>User-created playlists shown in sidebar with artwork thumbnails.</summary>
     public ObservableCollection<PlaylistNavItem> PlaylistItems { get; } = new();
@@ -72,6 +89,7 @@ public partial class SidebarViewModel : ViewModelBase
         _library = library;
         _library.LibraryUpdated += (_, _) => RefreshFavoritesCount();
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
+        Loc.Instance.CultureChanged += (_, _) => RelabelSections();
     }
 
     /// <summary>
@@ -80,14 +98,14 @@ public partial class SidebarViewModel : ViewModelBase
     /// container doesn't leave a dead gap in the rail.
     /// </summary>
     public void SetServerSectionVisible(bool visible)
-        => SetOptionalSectionVisible(visible, "server", "Server", "ServerIcon", after: null, before: "cd");
+        => SetOptionalSectionVisible(visible, "server", Loc.T("Nav.Server"), "ServerIcon", after: null, before: "cd");
 
     /// <summary>
     /// Shows or hides the "Audio CD" entry. It sits after Server (when present),
     /// otherwise directly above Settings, and only exists while an optical drive does.
     /// </summary>
     public void SetAudioCdSectionVisible(bool visible)
-        => SetOptionalSectionVisible(visible, "cd", "Audio CD", "CdIcon", after: "server", before: null);
+        => SetOptionalSectionVisible(visible, "cd", Loc.T("Nav.AudioCd"), "CdIcon", after: "server", before: null);
 
     /// <summary>Insert order: right after <paramref name="after"/> if present, else right before
     /// <paramref name="before"/> if present, else above Settings.</summary>

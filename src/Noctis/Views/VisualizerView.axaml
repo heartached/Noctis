@@ -3,6 +3,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:conv="using:Noctis.Converters"
              xmlns:controls="using:Noctis.Controls"
+             xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Views.VisualizerView"
              x:DataType="vm:VisualizerViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -68,22 +69,22 @@
         <!-- Header: what is playing + look picker -->
         <Grid ColumnDefinitions="*,Auto" Margin="32,28,32,0" VerticalAlignment="Top">
             <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
-                <TextBlock Text="Visualizer" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="{loc:T Visualizer.Title}" FontSize="24" FontWeight="Bold" Foreground="White"/>
                 <TextBlock FontSize="13" Opacity="0.7" Foreground="White" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Run Text="{Binding Player.CurrentTrack.Title}"/>
                     <Run Text=" — "/>
                     <Run Text="{Binding Player.CurrentTrack.Artist}"/>
                 </TextBlock>
-                <TextBlock Text="Play something to see it move." FontSize="13" Opacity="0.7" Foreground="White"
+                <TextBlock Text="{loc:T Visualizer.Empty}" FontSize="13" Opacity="0.7" Foreground="White"
                            IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <RadioButton Classes="viz-pill" Content="Bars" GroupName="VisualizerPageStyle"
+                <RadioButton Classes="viz-pill" Content="{loc:T Visualizer.Style.Bars}" GroupName="VisualizerPageStyle"
                              IsChecked="{Binding Settings.IsVisualizerStyleBars, Mode=TwoWay}"/>
-                <RadioButton Classes="viz-pill" Content="Mirror" GroupName="VisualizerPageStyle"
+                <RadioButton Classes="viz-pill" Content="{loc:T Visualizer.Style.Mirror}" GroupName="VisualizerPageStyle"
                              IsChecked="{Binding Settings.IsVisualizerStyleMirror, Mode=TwoWay}"/>
-                <RadioButton Classes="viz-pill" Content="Wave" GroupName="VisualizerPageStyle"
+                <RadioButton Classes="viz-pill" Content="{loc:T Visualizer.Style.Wave}" GroupName="VisualizerPageStyle"
                              IsChecked="{Binding Settings.IsVisualizerStyleWave, Mode=TwoWay}"/>
             </StackPanel>
         </Grid>

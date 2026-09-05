@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:loc="using:Noctis.Localization"
         x:Class="Noctis.Views.PlaylistImportDialog"
         x:DataType="vm:PlaylistImportViewModel"
         Title="Import Playlist"
@@ -23,8 +24,8 @@
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="Import Playlist" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Import an M3U playlist, Exportify CSV or TuneMyMusic JSON export, or paste a Deezer playlist link, and match it against your library."
+                    <TextBlock Text="{loc:T Import.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{loc:T Import.Subtitle}"
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -32,12 +33,12 @@
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="Close" Command="{Binding CloseCommand}"
+                        <Button Grid.Column="1" Content="{loc:T Common.Close}" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
                                 Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="Create" Command="{Binding CreateCommand}"
+                        <Button Grid.Column="2" Content="{loc:T Common.Create}" Command="{Binding CreateCommand}"
                                 IsEnabled="{Binding CanCreate}"
                                 Width="110" Padding="0,8"
                                 Classes="accent-btn"
@@ -52,9 +53,9 @@
                               Padding="24,4,24,8">
                     <StackPanel Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button x:Name="ChooseFileButton" Content="Choose file…"
+                            <Button x:Name="ChooseFileButton" Content="{loc:T Import.ChooseFile}"
                                     HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
-                            <TextBlock Text="or drop a .csv / .json / .m3u file anywhere on this window"
+                            <TextBlock Text="{loc:T Import.DropHint}"
                                        FontSize="12" Opacity="0.55" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -62,11 +63,11 @@
                              Spotify/Apple links are not accepted — their APIs no longer allow reading
                              other users' playlists without a per-app quota this app can't get. -->
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Or paste a playlist link (Deezer imports directly)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                            <TextBlock Text="{loc:T Import.LinkLabel}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <TextBox Grid.Column="0" Text="{Binding LinkText}"
                                          Watermark="https://www.deezer.com/en/playlist/…" />
-                                <Button Grid.Column="1" Content="Import link" Command="{Binding ImportLinkCommand}"
+                                <Button Grid.Column="1" Content="{loc:T Import.LinkButton}" Command="{Binding ImportLinkCommand}"
                                         IsEnabled="{Binding CanImportLink}"
                                         Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center" />
                             </Grid>
@@ -85,24 +86,24 @@
                         </StackPanel>
 
                         <StackPanel Spacing="4" IsVisible="{Binding HasPreview}">
-                            <TextBlock Text="Playlist name" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                            <TextBox Text="{Binding PlaylistName}" Watermark="Playlist name" />
+                            <TextBlock Text="{loc:T Import.PlaylistName}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                            <TextBox Text="{Binding PlaylistName}" Watermark="{loc:T Import.PlaylistName}" />
                         </StackPanel>
 
                         <Grid ColumnDefinitions="*,*" IsVisible="{Binding HasPreview}">
                             <StackPanel Grid.Column="0" Spacing="1">
-                                <TextBlock Text="Matched" FontSize="11" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Import.Matched}" FontSize="11" Opacity="0.5" />
                                 <TextBlock Text="{Binding MatchedCount}" FontSize="22" FontWeight="Bold" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Spacing="1">
-                                <TextBlock Text="Missing" FontSize="11" Opacity="0.5" />
+                                <TextBlock Text="{loc:T Import.Missing}" FontSize="11" Opacity="0.5" />
                                 <TextBlock Text="{Binding MissingCount}" FontSize="22" FontWeight="Bold" />
                             </StackPanel>
                         </Grid>
 
                         <StackPanel Spacing="6" IsVisible="{Binding HasMissing}">
                             <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-                            <TextBlock Text="Missing tracks (not found in your library)" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                            <TextBlock Text="{loc:T Import.MissingHeader}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
                             <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="360">
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding MissingTracks}">
