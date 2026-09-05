@@ -1650,6 +1650,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = _settings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
+            LyricsFlowingStyle = FlowingStyles.Normalize(_settings.LyricsFlowingStyle);
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
@@ -2031,6 +2032,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowSleepTimer = PlaybackBarShowSleepTimer;
         _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _settings.LyricsFlowingStyle = LyricsFlowingStyle;
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -2270,6 +2272,7 @@ public partial class SettingsViewModel : ViewModelBase
         // SetPlaybackBarWidth writes the same value into _settings first.
         _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _player.LyricsFlowingStyle = LyricsFlowingStyle;
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -3205,6 +3208,54 @@ public partial class SettingsViewModel : ViewModelBase
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    // ── Flowing background style (Drift + plugin visual layers) ──
+    /// <summary>Selected style: "Drift" or a plugin layer name. Bound to the picker's SelectedItem.</summary>
+    [ObservableProperty] private string _lyricsFlowingStyle = FlowingStyles.Drift;
+
+    /// <summary>"Drift" first, then every visual layer the loaded, enabled plugins offer.</summary>
+    public ObservableCollection<string> FlowingStyleOptions { get; } = new() { FlowingStyles.Drift };
+
+    /// <summary>The picker only appears once a plugin actually adds a style — no plugins, no extra row.</summary>
+    public bool HasFlowingStyleOptions => FlowingStyleOptions.Count > 1;
+
+    partial void OnLyricsFlowingStyleChanged(string value)
+    {
+        if (value is null) { LyricsFlowingStyle = FlowingStyles.Drift; return; }
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPluginsChanged(PluginHost? oldValue, PluginHost? newValue)
+    {
+        if (oldValue is not null) oldValue.VisualLayersChanged -= OnPluginVisualLayersChanged;
+        if (newValue is not null) newValue.VisualLayersChanged += OnPluginVisualLayersChanged;
+        RefreshFlowingStyleOptions();
+    }
+
+    private void OnPluginVisualLayersChanged(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(RefreshFlowingStyleOptions);
+
+    private void RefreshFlowingStyleOptions()
+    {
+        // Keep the current selection even when its plugin is off right now: the lyrics page
+        // falls back to Drift on its own, and the choice comes back with the plugin.
+        var keep = LyricsFlowingStyle;
+        var names = new List<string> { FlowingStyles.Drift };
+        if (Plugins is not null)
+            foreach (var layer in Plugins.VisualLayers)
+                if (!string.IsNullOrWhiteSpace(layer.Name) && !names.Contains(layer.Name)) names.Add(layer.Name);
+        if (keep != FlowingStyles.Drift && !names.Contains(keep)) names.Add(keep);
+
+        if (!names.SequenceEqual(FlowingStyleOptions))
+        {
+            FlowingStyleOptions.Clear();
+            foreach (var n in names) FlowingStyleOptions.Add(n);
+            // Rebuilding the items momentarily nulls a ComboBox's SelectedItem; put it back.
+            LyricsFlowingStyle = keep;
+        }
+        OnPropertyChanged(nameof(HasFlowingStyleOptions));
     }
 
     partial void OnLyricsVisualizerEnabledChanged(bool value)
@@ -4829,6 +4880,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = defaultSettings.PlaybackBarShowShuffle;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
+            LyricsFlowingStyle = defaultSettings.LyricsFlowingStyle;
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;

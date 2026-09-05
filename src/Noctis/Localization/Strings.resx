@@ -1379,4 +1379,6 @@
   <data name="Settings.TidalTitle" xml:space="preserve"><value>TIDAL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TidalDescription" xml:space="preserve"><value>Sign in to import your TIDAL playlists by link. Noctis only asks to read playlists.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TidalConnected" xml:space="preserve"><value>Signed in — tidal.com links import directly.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FlowingStyle" xml:space="preserve"><value>Style</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FlowingStyleHint" xml:space="preserve"><value>Drift is built in. Other styles come from plugins (Settings → Plugins) and replace it on the lyrics page.</value><comment>Text in SettingsView.axaml</comment></data>
 </root>

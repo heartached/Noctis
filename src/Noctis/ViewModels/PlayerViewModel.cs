@@ -138,6 +138,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>See <see cref="AppSettings.LyricsFlowingStyle"/>; the lyrics page picks the layer from it.</summary>
+    [ObservableProperty] private string _lyricsFlowingStyle = FlowingStyles.Drift;
     /// <summary>Live spectrum visualizer behind the lyrics page. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerEnabled;
     /// <summary>Visualizer look (a VisualizerStyle name). Driven by Settings.</summary>

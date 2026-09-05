@@ -448,8 +448,9 @@
                      pre-blurred cover slowly rotate in opposite directions over the static
                      one. Transform/opacity only — no live blur, no layout, so a frame is a
                      handful of property writes on the compositor's own clock. -->
-                <Panel x:Name="FlowLayerHost" IsHitTestVisible="False"
-                       IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
+                <!-- Visibility is set from code-behind (UpdateFlowAnimationState): on only when the
+                     toggle is on AND the style is the built-in Drift — a plugin style replaces it. -->
+                <Panel x:Name="FlowLayerHost" IsHitTestVisible="False" IsVisible="False">
                     <Image x:Name="FlowLayer1"
                            Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
                            Stretch="UniformToFill"
@@ -463,8 +464,7 @@
                 </Panel>
             </Panel>
             <!-- Beat glow: a white wash the animator lifts for a few frames on each beat. -->
-            <Rectangle x:Name="BeatGlow" Fill="White" Opacity="0" IsHitTestVisible="False"
-                       IsVisible="{Binding Player.LyricsFlowingLightEnabled}"/>
+            <Rectangle x:Name="BeatGlow" Fill="White" Opacity="0" IsHitTestVisible="False" IsVisible="False"/>
             <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable.
                  Kept strong enough that bright/near-white covers don't bleed a light
                  halo around the title/artist/album text. -->
@@ -511,8 +511,10 @@
                                      IsActive="{Binding $self.IsVisible}"
                                      IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>
 
-        <!-- Plugin visual layers (Settings → Plugins): controls from IVisualLayerProvider,
-             filled by code-behind from the plugin host; behind the lyrics, above the backdrop. -->
+        <!-- Plugin visual layer: the IVisualLayerProvider picked by Settings → Appearance →
+             Flowing Lyrics Background → Style, filled by code-behind (RebuildPluginLayers) only
+             while the toggle is on and no video background covers the page; behind the lyrics,
+             above the backdrop. Empty (and its RAF loops stopped) otherwise. -->
         <Panel x:Name="PluginLayerHost"
                Grid.ColumnSpan="2"
                Grid.RowSpan="2"

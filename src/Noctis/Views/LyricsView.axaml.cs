@@ -681,15 +681,33 @@ public partial class LyricsView : UserControl
 
     // A video/GIF background covers the artwork stack entirely, so its drift loop is
     // parked too — no point animating layers nobody can see.
+    // The Style setting decides WHICH flowing background draws: the built-in Drift layers,
+    // or one plugin visual layer (Kawarp, …) that replaces them. A selected plugin that is not
+    // loaded/enabled falls back to Drift so the toggle never shows nothing.
     private void UpdateFlowAnimationState(LyricsViewModel vm)
-        => _flow.Enabled = vm.IsColorModeArtwork
-                           && vm.Player.LyricsFlowingLightEnabled
-                           && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath);
+    {
+        var flowing = vm.Player.LyricsFlowingLightEnabled
+                      && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath);
+        var plugin = flowing ? SelectedPluginLayer(vm) : null;
+        var builtIn = flowing && plugin is null;
+
+        FlowLayerHost.IsVisible = builtIn;
+        BeatGlow.IsVisible = builtIn;
+        _flow.Enabled = builtIn && vm.IsColorModeArtwork;
+        RebuildPluginLayers(plugin);
+    }
+
+    private Noctis.Plugins.IVisualLayerProvider? SelectedPluginLayer(LyricsViewModel vm)
+    {
+        var style = FlowingStyles.Normalize(vm.Player.LyricsFlowingStyle);
+        if (style == FlowingStyles.Drift || _pluginHost is null) return null;
+        return _pluginHost.VisualLayers.FirstOrDefault(p => string.Equals(p.Name, style, StringComparison.Ordinal));
+    }
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        // The layers' visibility is bound in XAML; this only parks/resumes the loop.
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
+                or nameof(PlayerViewModel.LyricsFlowingStyle)
                 or nameof(PlayerViewModel.LyricsBackgroundMediaPath) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
@@ -706,7 +724,7 @@ public partial class LyricsView : UserControl
         _pluginHost = App.Services?.GetService<MainWindowViewModel>()?.Plugins;
         if (_pluginHost is null) return;
         _pluginHost.VisualLayersChanged += OnPluginLayersChanged;
-        RebuildPluginLayers();
+        if (DataContext is LyricsViewModel vm) UpdateFlowAnimationState(vm);
     }
 
     private void UnhookPluginLayers()
@@ -716,23 +734,30 @@ public partial class LyricsView : UserControl
         PluginLayerHost.Children.Clear();
     }
 
-    private void OnPluginLayersChanged(object? sender, EventArgs e) => RebuildPluginLayers();
-
-    private void RebuildPluginLayers()
+    private void OnPluginLayersChanged(object? sender, EventArgs e)
     {
+        if (DataContext is LyricsViewModel vm) UpdateFlowAnimationState(vm);
+        else PluginLayerHost.Children.Clear();
+    }
+
+    private Noctis.Plugins.IVisualLayerProvider? _activePluginLayer;
+
+    /// <summary>Hosts exactly <paramref name="provider"/>'s control, or nothing. Re-creating the
+    /// same layer on every property tick would restart its animation, so a no-op is a no-op.</summary>
+    private void RebuildPluginLayers(Noctis.Plugins.IVisualLayerProvider? provider)
+    {
+        if (ReferenceEquals(provider, _activePluginLayer) && (provider is null || PluginLayerHost.Children.Count > 0)) return;
         PluginLayerHost.Children.Clear();
-        if (_pluginHost is null) return;
-        foreach (var provider in _pluginHost.VisualLayers)
+        _activePluginLayer = provider;
+        if (provider is null) return;
+        try
         {
-            try
-            {
-                var layer = provider.CreateLayer();
-                if (layer is not null) PluginLayerHost.Children.Add(layer);
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"layer '{provider.Name}' failed: {ex.Message}");
-            }
+            var layer = provider.CreateLayer();
+            if (layer is not null) PluginLayerHost.Children.Add(layer);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"layer '{provider.Name}' failed: {ex.Message}");
         }
     }
 

@@ -475,6 +475,11 @@ public class AppSettings
     /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
     public bool LyricsFlowingLightEnabled { get; set; }
 
+    /// <summary>Which flowing background draws when <see cref="LyricsFlowingLightEnabled"/> is on:
+    /// <see cref="FlowingStyles.Drift"/> (built in) or the name of a plugin visual layer (e.g. "Kawarp").
+    /// An absent plugin falls back to Drift at render time; the choice is kept for when it returns.</summary>
+    public string LyricsFlowingStyle { get; set; } = FlowingStyles.Drift;
+
     /// <summary>Live audio visualizer (spectrum) drawn behind the lyrics on the lyrics page.
     /// Reads the samples the app renders, so it needs an output chain with a sample tap
     /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
@@ -587,4 +592,13 @@ public class AppSettings
         if (PlaybackBarWidth == 590) PlaybackBarWidth = 626;
         PlaybackBarSkipSeconds = PlaybackBarSkipSeconds is 10 or 15 or 30 ? PlaybackBarSkipSeconds : 15;
     }
+}
+
+/// <summary>Names of the flowing-lyrics-background styles. Plugins add their own by layer name.</summary>
+public static class FlowingStyles
+{
+    /// <summary>The built-in drifting, beat-pulsing blurred cover (FlowingArtworkAnimator).</summary>
+    public const string Drift = "Drift";
+
+    public static string Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? Drift : value.Trim();
 }
