@@ -215,7 +215,7 @@
   <data name="Settings.Smaller" xml:space="preserve"><value>Smaller</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Larger</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Flowing Lyrics Background</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Off keeps the still blurred cover. Drift lets it wander and pulse with the beat on the lyrics page, the lyrics panel and the mini player. Styles from plugins (Settings → Plugins) replace it on the lyrics page. Artwork background only.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Off keeps the still blurred cover. Drift lets it wander and pulse with the beat on the lyrics page, the lyrics panel and the mini player. Kawarp melts the cover into a slow liquid flow on the lyrics page, with or without the beat. Plugin styles (Settings → Plugins) appear here too. Artwork background only.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AudioVisualizer" xml:space="preserve"><value>Audio Visualizer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Draw a live spectrum of the music along the bottom of the lyrics page. Follows the sound as it is heard; rests flat while paused.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork colour</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1381,4 +1381,8 @@
   <data name="Settings.TidalConnected" xml:space="preserve"><value>Signed in — tidal.com links import directly.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingOff" xml:space="preserve"><value>Off</value><comment>Flowing-background picker row</comment></data>
   <data name="Settings.FlowingDrift" xml:space="preserve"><value>Drift</value><comment>Flowing-background picker row (built-in style)</comment></data>
+  <data name="Settings.FlowingKawarp" xml:space="preserve"><value>Kawarp</value><comment>Flowing-background picker row (liquid warp, beat-reactive)</comment></data>
+  <data name="Settings.FlowingKawarpCalm" xml:space="preserve"><value>Kawarp (no beat)</value><comment>Flowing-background picker row</comment></data>
+  <data name="Settings.KawarpWarp" xml:space="preserve"><value>Warp strength</value><comment>Kawarp slider label</comment></data>
+  <data name="Settings.KawarpBlur" xml:space="preserve"><value>Blur</value><comment>Kawarp slider label</comment></data>
 </root>

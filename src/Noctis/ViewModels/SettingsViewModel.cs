@@ -1652,6 +1652,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             LyricsFlowingStyle = FlowingStyles.Normalize(_settings.LyricsFlowingStyle);
+            LyricsKawarpWarp = Math.Clamp(_settings.LyricsKawarpWarp, 0, 3);
+            LyricsKawarpBlur = Math.Clamp(_settings.LyricsKawarpBlur, 1, 16);
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
@@ -2034,6 +2036,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFlowingStyle = LyricsFlowingStyle;
+        _settings.LyricsKawarpWarp = LyricsKawarpWarp;
+        _settings.LyricsKawarpBlur = LyricsKawarpBlur;
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -2274,6 +2278,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _player.LyricsFlowingStyle = LyricsFlowingStyle;
+        _player.LyricsKawarpWarp = LyricsKawarpWarp;
+        _player.LyricsKawarpBlur = LyricsKawarpBlur;
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -3208,6 +3214,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnLyricsFlowingLightEnabledChanged(bool value)
     {
         OnPropertyChanged(nameof(SelectedFlowingOption));
+        OnPropertyChanged(nameof(IsKawarpStyle));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -3258,6 +3265,24 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (value is null) { LyricsFlowingStyle = FlowingStyles.Drift; return; }
         OnPropertyChanged(nameof(SelectedFlowingOption));
+        OnPropertyChanged(nameof(IsKawarpStyle));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>Kawarp knobs (warp strength, blur) — only meaningful while a Kawarp style is active.</summary>
+    [ObservableProperty] private double _lyricsKawarpWarp = 1.0;
+    [ObservableProperty] private int _lyricsKawarpBlur = 6;
+    public bool IsKawarpStyle => LyricsFlowingLightEnabled && FlowingStyles.IsKawarp(LyricsFlowingStyle);
+
+    partial void OnLyricsKawarpWarpChanged(double value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsKawarpBlurChanged(int value)
+    {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -3280,6 +3305,8 @@ public partial class SettingsViewModel : ViewModelBase
         {
             new(FlowingOff, Loc.T("Settings.FlowingOff")),
             new(FlowingStyles.Drift, Loc.T("Settings.FlowingDrift")),
+            new(FlowingStyles.Kawarp, Loc.T("Settings.FlowingKawarp")),
+            new(FlowingStyles.KawarpCalm, Loc.T("Settings.FlowingKawarpCalm")),
         };
         if (Plugins is not null)
             foreach (var layer in Plugins.VisualLayers)
@@ -4919,6 +4946,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFlowingStyle = defaultSettings.LyricsFlowingStyle;
+            LyricsKawarpWarp = defaultSettings.LyricsKawarpWarp;
+            LyricsKawarpBlur = defaultSettings.LyricsKawarpBlur;
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;

@@ -2417,16 +2417,35 @@
                  every animated artwork background; the Style row (only when a plugin such as
                  Kawarp adds a visual layer, issue #58) picks which one draws on the lyrics page. -->
             <Border Classes="setting-card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
-                        <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.BlurredAlbumArtworkDrifts}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.BlurredAlbumArtworkDrifts}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
+                                  ItemsSource="{Binding FlowingOptions}"
+                                  SelectedItem="{Binding SelectedFlowingOption, Mode=TwoWay}"/>
+                    </Grid>
+                    <!-- Kawarp knobs (GitHub #58): only while a Kawarp style is chosen. -->
+                    <StackPanel Spacing="8" IsVisible="{Binding IsKawarpStyle}">
+                        <Grid ColumnDefinitions="110,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.KawarpWarp}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                    Value="{Binding LyricsKawarpWarp, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding LyricsKawarpWarp, StringFormat='{}{0:0.0}'}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="28" TextAlignment="Right"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.KawarpBlur}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="1" Maximum="16" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding LyricsKawarpBlur, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding LyricsKawarpBlur}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="28" TextAlignment="Right"/>
+                        </Grid>
                     </StackPanel>
-                    <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
-                              ItemsSource="{Binding FlowingOptions}"
-                              SelectedItem="{Binding SelectedFlowingOption, Mode=TwoWay}"/>
-                </Grid>
+                </StackPanel>
             </Border>
 
             <!-- Live audio visualizer behind the lyrics page (Discord feature request).

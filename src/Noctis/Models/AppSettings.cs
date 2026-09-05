@@ -480,6 +480,12 @@ public class AppSettings
     /// An absent plugin falls back to Drift at render time; the choice is kept for when it returns.</summary>
     public string LyricsFlowingStyle { get; set; } = FlowingStyles.Drift;
 
+    /// <summary>Kawarp styles: 0–3, how far the cover is pushed around (GitHub #58).</summary>
+    public double LyricsKawarpWarp { get; set; } = 1.0;
+
+    /// <summary>Kawarp styles: 1–16 box-blur passes on the cover before warping; more = dreamier.</summary>
+    public int LyricsKawarpBlur { get; set; } = 6;
+
     /// <summary>Live audio visualizer (spectrum) drawn behind the lyrics on the lyrics page.
     /// Reads the samples the app renders, so it needs an output chain with a sample tap
     /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
@@ -599,6 +605,14 @@ public static class FlowingStyles
 {
     /// <summary>The built-in drifting, beat-pulsing blurred cover (FlowingArtworkAnimator).</summary>
     public const string Drift = "Drift";
+
+    /// <summary>Built-in liquid warp of the cover that swells on the beat (Controls/KawarpBackground).</summary>
+    public const string Kawarp = "Kawarp";
+
+    /// <summary>Kawarp without the beat swell — same flow, no bounce.</summary>
+    public const string KawarpCalm = "KawarpCalm";
+
+    public static bool IsKawarp(string? value) => value is Kawarp or KawarpCalm;
 
     public static string Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? Drift : value.Trim();
 }

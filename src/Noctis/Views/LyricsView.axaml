@@ -511,6 +511,18 @@
                                      IsActive="{Binding $self.IsVisible}"
                                      IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>
 
+        <!-- Kawarp (GitHub #58): built-in liquid warp of the cover, one of the Flowing Lyrics
+             Background styles. Code-behind (UpdateFlowAnimationState) shows/activates it in
+             place of the Drift layers; parked (no frame loop) otherwise. -->
+        <controls:KawarpBackground x:Name="KawarpLayer"
+                                   Grid.ColumnSpan="2"
+                                   Grid.RowSpan="2"
+                                   ZIndex="-1"
+                                   IsVisible="False"
+                                   ArtworkPath="{Binding Player.CurrentArtPath}"
+                                   WarpIntensity="{Binding Player.LyricsKawarpWarp}"
+                                   BlurPasses="{Binding Player.LyricsKawarpBlur}"/>
+
         <!-- Plugin visual layer: the IVisualLayerProvider picked by Settings → Appearance →
              Flowing Lyrics Background → Style, filled by code-behind (RebuildPluginLayers) only
              while the toggle is on and no video background covers the page; behind the lyrics,

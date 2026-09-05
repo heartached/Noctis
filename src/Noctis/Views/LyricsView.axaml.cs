@@ -688,12 +688,17 @@ public partial class LyricsView : UserControl
     {
         var flowing = vm.Player.LyricsFlowingLightEnabled
                       && string.IsNullOrEmpty(vm.Player.LyricsBackgroundMediaPath);
-        var plugin = flowing ? SelectedPluginLayer(vm) : null;
-        var builtIn = flowing && plugin is null;
+        var style = FlowingStyles.Normalize(vm.Player.LyricsFlowingStyle);
+        var kawarp = flowing && vm.IsColorModeArtwork && FlowingStyles.IsKawarp(style);
+        var plugin = flowing && !kawarp ? SelectedPluginLayer(vm) : null;
+        var builtIn = flowing && !kawarp && plugin is null;
 
         FlowLayerHost.IsVisible = builtIn;
         BeatGlow.IsVisible = builtIn;
         _flow.Enabled = builtIn && vm.IsColorModeArtwork;
+        KawarpLayer.BeatReactive = style == FlowingStyles.Kawarp;
+        KawarpLayer.IsVisible = kawarp;
+        KawarpLayer.IsActive = kawarp;
         RebuildPluginLayers(plugin);
     }
 

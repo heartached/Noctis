@@ -64,4 +64,9 @@
   <data name="Settings.TidalConnected" xml:space="preserve"><value>Sesión iniciada: los enlaces de tidal.com se importan directamente.</value></data>
   <data name="Settings.FlowingOff" xml:space="preserve"><value>Desactivado</value></data>
   <data name="Settings.FlowingDrift" xml:space="preserve"><value>Deriva</value></data>
+  <data name="Settings.FlowingKawarp" xml:space="preserve"><value>Kawarp</value></data>
+  <data name="Settings.FlowingKawarpCalm" xml:space="preserve"><value>Kawarp (sin ritmo)</value></data>
+  <data name="Settings.KawarpWarp" xml:space="preserve"><value>Intensidad</value></data>
+  <data name="Settings.KawarpBlur" xml:space="preserve"><value>Desenfoque</value></data>
+  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Desactivado mantiene la portada difuminada quieta. Deriva la hace flotar y latir con el ritmo en la página de letras, el panel de letras y el minirreproductor. Kawarp funde la portada en un flujo líquido lento en la página de letras, con o sin ritmo. Los estilos de plugins (Ajustes → Plugins) también aparecen aquí. Solo con fondo de portada.</value></data>
 </root>

@@ -140,6 +140,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
     /// <summary>See <see cref="AppSettings.LyricsFlowingStyle"/>; the lyrics page picks the layer from it.</summary>
     [ObservableProperty] private string _lyricsFlowingStyle = FlowingStyles.Drift;
+    [ObservableProperty] private double _lyricsKawarpWarp = 1.0;
+    [ObservableProperty] private int _lyricsKawarpBlur = 6;
     /// <summary>Live spectrum visualizer behind the lyrics page. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerEnabled;
     /// <summary>Visualizer look (a VisualizerStyle name). Driven by Settings.</summary>
