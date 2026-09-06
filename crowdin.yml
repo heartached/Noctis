@@ -1,3 +1,14 @@
 files:
   - source: /src/Noctis/Localization/Strings.resx
     translation: /src/Noctis/Localization/Strings.%locale%.resx
+    # Plain codes match the existing Strings.es.resx and .NET's neutral cultures;
+    # Chinese keeps its script so Simplified and Traditional stay separate files.
+    languages_mapping:
+      locale:
+        es: es
+        fr: fr
+        ja: ja
+        ko: ko
+        ar: ar
+        zh-CN: zh-Hans
+        zh-TW: zh-Hant
