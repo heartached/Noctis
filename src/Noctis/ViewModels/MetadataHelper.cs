@@ -122,16 +122,25 @@ public static class MetadataHelper
             App.Services!.GetRequiredService<ILibraryService>(),
             main?.Player,
             () => main?.Settings.GetSettings() ?? new AppSettings(),
-            s => { if (main is not null) main.Settings.ApplyLyricsStudioSettings(s); });
+            s => { if (main is not null) main.Settings.ApplyLyricsStudioSettings(s); },
+            new Services.LyricsStudio.LyricsStudioDraftStore(
+                Path.Combine(App.Services!.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_studio_drafts")));
         await ShowDialogOwned(new LyricsStudioDialog(vm));
     }
 
-    /// <summary>Lyrics Studio over the songs that have no synced lyrics yet (first 40, so a run stays reviewable).</summary>
-    public static Task OpenLyricsStudioForLibrary(MainWindowViewModel main)
+    /// <summary>
+    /// Lyrics Studio over the songs that lack the format the Studio is set to write: with
+    /// word timings on, line-only LRC counts as missing (ELRC and LRC are different things);
+    /// with it off, any timed lyrics count as done. First 40, so a run stays reviewable.
+    /// </summary>
+    public static Task OpenLyricsStudioForLibrary(MainWindowViewModel main) =>
+        OpenLyricsStudioForLibrary(main.Settings.GetSettings().LyricsStudioWordTimings);
+
+    public static Task OpenLyricsStudioForLibrary(bool wordTimings)
     {
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var tracks = library.Tracks
-            .Where(t => t.SourceType == SourceType.Local && string.IsNullOrWhiteSpace(t.SyncedLyrics))
+            .Where(t => t.SourceType == SourceType.Local && !Services.LyricsStudio.LyricsFormatDetector.AlreadyHas(Services.LyricsStudio.LyricsFormatDetector.Detect(t), wordTimings))
             .Take(40)
             .ToList();
         return tracks.Count == 0 ? Task.CompletedTask : OpenLyricsStudio(tracks);

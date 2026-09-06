@@ -224,6 +224,9 @@ public class AppSettings
     /// <summary>Write word-level (ELRC) timings; false = line-level LRC.</summary>
     public bool LyricsStudioWordTimings { get; set; } = true;
 
+    /// <summary>Skip songs that already carry the format being written (ELRC vs LRC are distinct).</summary>
+    public bool LyricsStudioSkipAlreadyTimed { get; set; } = true;
+
     /// <summary>Also embed the plain lyrics in the audio file's tags when saving.</summary>
     public bool LyricsStudioEmbedTags { get; set; }
 

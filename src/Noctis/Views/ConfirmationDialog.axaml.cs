@@ -67,6 +67,15 @@ public partial class ConfirmationDialog : Window
         e.Handled = true;
     }
 
+    /// <summary>Confirmation owned by another dialog (a modal on top of a modal needs its own owner).</summary>
+    public static async Task<bool> ShowAsync(Window owner, string message)
+    {
+        var dialog = new ConfirmationDialog(message);
+        DialogHelper.SizeToOwner(dialog, owner);
+        await dialog.ShowDialog(owner);
+        return dialog.Confirmed;
+    }
+
     public static async Task<bool> ShowAsync(string message)
     {
         var dialog = new ConfirmationDialog(message);

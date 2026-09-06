@@ -271,6 +271,8 @@ public partial class SettingsViewModel
     [ObservableProperty] private SpeechLanguageOption _lyricsStudioLanguage = LyricsStudioViewModel.Languages[0];
     [ObservableProperty] private bool _lyricsStudioWordTimings = true;
     [ObservableProperty] private bool _lyricsStudioEmbedTags;
+    /// <summary>Skip songs that already carry the format being written.</summary>
+    [ObservableProperty] private bool _lyricsStudioSkipAlreadyTimed = true;
     [ObservableProperty] private string _lyricsModelStatus = string.Empty;
     [ObservableProperty] private bool _isLyricsModelInstalled;
     [ObservableProperty] private bool _isDownloadingLyricsModel;
@@ -302,6 +304,13 @@ public partial class SettingsViewModel
         QueueSettingsSave();
     }
 
+    partial void OnLyricsStudioSkipAlreadyTimedChanged(bool value)
+    {
+        if (!_settingsLoaded) return;
+        _settings.LyricsStudioSkipAlreadyTimed = value;
+        QueueSettingsSave();
+    }
+
     partial void OnLyricsStudioEmbedTagsChanged(bool value)
     {
         if (!_settingsLoaded) return;
@@ -315,6 +324,7 @@ public partial class SettingsViewModel
         LyricsStudioModel = WhisperModelManager.Info(WhisperModelManager.Parse(prefs.Model));
         LyricsStudioLanguage = LyricsStudioViewModel.Languages.FirstOrDefault(l => l.Code == prefs.Language) ?? LyricsStudioViewModel.Languages[0];
         LyricsStudioWordTimings = prefs.WordTimings;
+        LyricsStudioSkipAlreadyTimed = prefs.SkipAlreadyTimed;
     }
 
     private void RefreshLyricsModelStatus()
@@ -332,14 +342,18 @@ public partial class SettingsViewModel
     {
         var local = _library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
         if (local.Count == 0) { LyricsStudioStats = string.Empty; return; }
-        var synced = 0; var plain = 0; var none = 0;
+        int elrc = 0, lrc = 0, plain = 0, none = 0;
         foreach (var t in local)
         {
-            if (!string.IsNullOrWhiteSpace(t.SyncedLyrics)) synced++;
-            else if (!string.IsNullOrWhiteSpace(t.Lyrics)) plain++;
-            else none++;
+            switch (LyricsFormatDetector.Detect(t))
+            {
+                case LyricsFormat.Elrc: elrc++; break;
+                case LyricsFormat.Lrc: lrc++; break;
+                case LyricsFormat.Plain: plain++; break;
+                default: none++; break;
+            }
         }
-        LyricsStudioStats = $"{synced} songs with synced lyrics · {plain} with plain lyrics only · {none} without lyrics";
+        LyricsStudioStats = $"{elrc} with word timings (ELRC) · {lrc} with line timings (LRC) · {plain} plain only · {none} without lyrics";
     }
 
     [RelayCommand]
@@ -372,16 +386,9 @@ public partial class SettingsViewModel
         RefreshLyricsModelStatus();
     }
 
-    /// <summary>Opens Lyrics Studio with the songs that have no synced lyrics yet (first 40, so a run stays reviewable).</summary>
+    /// <summary>Opens Lyrics Studio with the songs that lack the chosen format — ELRC when word timings are on, any timed LRC when off (first 40, so a run stays reviewable).</summary>
     [RelayCommand]
-    private Task OpenLyricsStudioForMissing()
-    {
-        var tracks = _library.Tracks
-            .Where(t => t.SourceType == SourceType.Local && string.IsNullOrWhiteSpace(t.SyncedLyrics))
-            .Take(40)
-            .ToList();
-        return tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenLyricsStudio(tracks);
-    }
+    private Task OpenLyricsStudioForMissing() => MetadataHelper.OpenLyricsStudioForLibrary(_settings.LyricsStudioWordTimings);
 
     // ── Load / save hooks (called from the main file) ──
 
@@ -401,6 +408,7 @@ public partial class SettingsViewModel
         LyricsStudioLanguage = LyricsStudioViewModel.Languages.FirstOrDefault(l => l.Code.Equals(_settings.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase))
                                ?? LyricsStudioViewModel.Languages[0];
         LyricsStudioWordTimings = _settings.LyricsStudioWordTimings;
+        LyricsStudioSkipAlreadyTimed = _settings.LyricsStudioSkipAlreadyTimed;
         LyricsStudioEmbedTags = _settings.LyricsStudioEmbedTags;
     }
 
@@ -414,6 +422,7 @@ public partial class SettingsViewModel
         _settings.LyricsStudioModel = LyricsStudioModel.Size.ToString();
         _settings.LyricsStudioLanguage = LyricsStudioLanguage.Code;
         _settings.LyricsStudioWordTimings = LyricsStudioWordTimings;
+        _settings.LyricsStudioSkipAlreadyTimed = LyricsStudioSkipAlreadyTimed;
         _settings.LyricsStudioEmbedTags = LyricsStudioEmbedTags;
     }
 

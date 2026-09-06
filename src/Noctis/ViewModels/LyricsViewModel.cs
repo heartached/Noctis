@@ -1456,13 +1456,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 if (!string.IsNullOrWhiteSpace(trackPath))
                 {
-                    var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
                     // Unregister only once the file is actually gone: the trash move
                     // can fail (file locked/in use), and dropping the registry entry
                     // first left the app's own file on disk permanently looking
                     // user-owned — Remove would then never touch it again.
-                    if (SidecarRegistry.Contains(lrcPath))
+                    foreach (var ext in new[] { ".elrc", ".lrc" })
                     {
+                        var lrcPath = Path.ChangeExtension(trackPath, ext);
+                        if (!SidecarRegistry.Contains(lrcPath)) continue;
                         if (!File.Exists(lrcPath) || TrashSidecarFile(lrcPath))
                             SidecarRegistry.Remove(lrcPath);
                         else
@@ -2042,6 +2043,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var (lines, plain) = TtmlParser.Parse(sidecarTtml, joinSplitWords);
                 if (lines != null && lines.Count > 0)
                     return new LocalLyricsProbe(lines, plain, "Sidecar:Ttml", FromCache: false);
+            }
+        }
+        catch { }
+
+        // Priority 3a: .elrc sidecar (enhanced LRC with word tags — what Lyrics Studio writes).
+        try
+        {
+            var sidecarElrc = TryReadSidecar(track.FilePath, new[] { ".elrc", ".ELRC", ".Elrc" });
+            if (sidecarElrc != null)
+            {
+                var lines = ParseLrcContent(sidecarElrc);
+                if (lines.Count > 0)
+                    return new LocalLyricsProbe(lines, null, "Sidecar:Elrc", FromCache: false);
             }
         }
         catch { }

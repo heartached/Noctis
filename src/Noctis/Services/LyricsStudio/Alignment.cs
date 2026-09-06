@@ -99,6 +99,82 @@ public static class LyricsAligner
         return result.Select(r => r!).ToList();
     }
 
+    /// <summary>
+    /// Alignment when each line's start is already known (upgrading a line-level LRC): every
+    /// line is matched only against the words heard inside its own window — from its start
+    /// to the next line's start, with a little padding — so a repeated chorus cannot be
+    /// pulled to the wrong verse, and a line the model missed is spread inside its window
+    /// instead of between whatever neighbours happened to anchor.
+    /// </summary>
+    public static IReadOnlyList<AlignedLine> AlignWithinLines(
+        IReadOnlyList<string> lines,
+        IReadOnlyList<TimeSpan> lineStarts,
+        IReadOnlyList<RecognizedWord> recognized,
+        TimeSpan? totalDuration = null)
+    {
+        if (lineStarts.Count != lines.Count) return Align(lines, recognized, totalDuration);
+        var pad = TimeSpan.FromMilliseconds(600);
+        var perWord = TimeSpan.FromSeconds(DefaultSecondsPerWord);
+
+        var heard = recognized
+            .Where(w => w is not null && w.End >= w.Start)
+            .Select(w => (Word: w, Norm: Normalize(w.Text)))
+            .Where(x => x.Norm.Length > 0)
+            .OrderBy(x => x.Word.Start)
+            .ToList();
+
+        var result = new AlignedLine?[lines.Count];
+        for (var li = 0; li < lines.Count; li++)
+        {
+            var text = (lines[li] ?? string.Empty).Trim();
+            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var start = lineStarts[li];
+            var nextStart = li + 1 < lines.Count ? lineStarts[li + 1] : (totalDuration is { } d && d > start ? d : start + perWord * Math.Max(1, words.Length));
+            if (nextStart <= start) nextStart = start + perWord * Math.Max(1, words.Length);
+
+            // Pad only backwards: a line may start a touch before its stamp, but anything at
+            // or after the next stamp belongs to the next line (repeated choruses!).
+            var lo = start - pad < TimeSpan.Zero ? TimeSpan.Zero : start - pad;
+            var hi = nextStart;
+            var window = heard.Where(h => h.Word.Start >= lo && h.Word.Start < hi).ToList();
+
+            var lineAnchors = new (RecognizedWord Word, double Sim)?[words.Length];
+            var simSum = 0.0;
+            var anchorCount = 0;
+            if (words.Length > 0 && window.Count > 0)
+            {
+                var norms = words.Select(Normalize).ToList();
+                foreach (var (lyricIdx, heardIdx, sim) in AlignSequences(norms, window.Select(w => w.Norm).ToList()))
+                {
+                    if (norms[lyricIdx].Length == 0) continue;
+                    lineAnchors[lyricIdx] = (window[heardIdx].Word, sim);
+                    simSum += sim;
+                    anchorCount++;
+                }
+            }
+
+            if (anchorCount > 0)
+            {
+                var timed = InterpolateWords(words, lineAnchors);
+                var confidence = Math.Clamp(simSum / words.Length, 0, 1);
+                result[li] = new AlignedLine(text, timed[0].Start, timed[^1].End, timed, confidence, Interpolated: false);
+            }
+            else
+            {
+                // Nothing heard: keep the line where the file had it and spread the words to the next line.
+                var span = nextStart - start;
+                var slice = words.Length == 0 ? span : span / Math.Max(1, words.Length);
+                var timed = new List<AlignedWord>(words.Length);
+                for (var w = 0; w < words.Length; w++)
+                    timed.Add(new AlignedWord(words[w], start + slice * w, start + slice * (w + 1)));
+                result[li] = new AlignedLine(text, start, timed.Count > 0 ? timed[^1].End : nextStart, timed, 0, Interpolated: true);
+            }
+        }
+
+        EnforceMonotonic(result);
+        return result.Select(r => r!).ToList();
+    }
+
     // ── Sequence alignment ────────────────────────────────────────────────────
 
     /// <summary>Returns (lyricIndex, heardIndex, similarity) pairs on the best monotonic path.</summary>

@@ -182,3 +182,51 @@ public class LyricsStudioCoreTests
         Assert.Equal("00:00.00", TimedLyricsBuilder.FormatTimestamp(TimeSpan.FromSeconds(-3)));
     }
 }
+
+public class LyricsFormatDetectorTests
+{
+    private const string Lrc = "[00:08.99]It's fire\n[00:13.05]Huh, as we go on, we remember";
+    private const string Elrc = "[00:10.98]<00:10.98>Yo <00:11.24>la <00:11.39>conocí<00:11.75>\n[00:13.71]<00:13.71>Ella <00:14.07>sabe<00:14.51>";
+
+    [Fact]
+    public void Detect_TellsLrcFromElrc()
+    {
+        Assert.Equal(LyricsFormat.Lrc, LyricsFormatDetector.Detect(null, Lrc));
+        Assert.Equal(LyricsFormat.Elrc, LyricsFormatDetector.Detect(null, Elrc));
+        Assert.Equal(LyricsFormat.Elrc, LyricsFormatDetector.Detect("plain", "[ar:X]\n[00:01.00]<00:01.00>one <00:01.50>two<00:02.00>"));
+    }
+
+    [Fact]
+    public void Detect_PlainAndNone()
+    {
+        Assert.Equal(LyricsFormat.Plain, LyricsFormatDetector.Detect("just words", null));
+        Assert.Equal(LyricsFormat.Plain, LyricsFormatDetector.Detect(null, "untimed text in the synced slot"));
+        Assert.Equal(LyricsFormat.None, LyricsFormatDetector.Detect(" ", null));
+    }
+
+    [Fact]
+    public void Detect_LrcWithStrayAngleTextIsStillLrc()
+    {
+        Assert.Equal(LyricsFormat.Lrc, LyricsFormatDetector.Detect(null, "[00:01.00]she said <hi> to me"));
+    }
+
+    [Fact]
+    public void AlreadyHas_WordTimingsWantElrcOnly_LineTimingsAcceptEither()
+    {
+        Assert.True(LyricsFormatDetector.AlreadyHas(LyricsFormat.Elrc, wordTimings: true));
+        Assert.False(LyricsFormatDetector.AlreadyHas(LyricsFormat.Lrc, wordTimings: true));
+        Assert.True(LyricsFormatDetector.AlreadyHas(LyricsFormat.Lrc, wordTimings: false));
+        Assert.True(LyricsFormatDetector.AlreadyHas(LyricsFormat.Elrc, wordTimings: false));
+        Assert.False(LyricsFormatDetector.AlreadyHas(LyricsFormat.Plain, wordTimings: false));
+        Assert.False(LyricsFormatDetector.AlreadyHas(LyricsFormat.None, wordTimings: true));
+    }
+
+    [Fact]
+    public void StudioOutput_RoundTripsThroughDetector()
+    {
+        var line = new AlignedLine("Hello world", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2),
+            new[] { new AlignedWord("Hello", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1.5)), new AlignedWord("world", TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(2)) }, 1, false);
+        Assert.Equal(LyricsFormat.Elrc, LyricsFormatDetector.Detect(null, TimedLyricsBuilder.BuildElrc(new[] { line })));
+        Assert.Equal(LyricsFormat.Lrc, LyricsFormatDetector.Detect(null, TimedLyricsBuilder.BuildLrc(new[] { line })));
+    }
+}

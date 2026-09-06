@@ -11,13 +11,19 @@ public enum LyricsStudioSource
     Lrclib,
     /// <summary>No lyrics anywhere: the speech model's transcript is the lyrics.</summary>
     Transcription,
+    /// <summary>Not a model run: timed lyrics the track already had, loaded for review.</summary>
+    ExistingFile,
 }
 
 public sealed record LyricsStudioOptions(
     WhisperModelSize Model,
     string Language,
     bool AllowOnlineLyrics = true,
-    bool ForceTranscription = false);
+    bool ForceTranscription = false,
+    /// <summary>Text to time, when the caller already has it (re-sync / upgrade of loaded lyrics).</summary>
+    IReadOnlyList<string>? SourceLines = null,
+    /// <summary>Known start per source line (same count): words are then placed inside each line's own window.</summary>
+    IReadOnlyList<TimeSpan>? SourceLineStarts = null);
 
 public sealed record LyricsStudioProgress(string Stage, double Fraction);
 
@@ -104,7 +110,19 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         progress?.Report(new LyricsStudioProgress("Finding lyrics", 0.02));
         var (lines, source) = options.ForceTranscription
             ? (null, LyricsStudioSource.Transcription)
-            : await ResolveSourceLinesAsync(track, options.AllowOnlineLyrics, ct).ConfigureAwait(false);
+            : options.SourceLines is { Count: > 0 } given
+                ? (given.Select(l => (l ?? string.Empty).Trim()).ToList(), LyricsStudioSource.ExistingLyrics)
+                : await ResolveSourceLinesAsync(track, options.AllowOnlineLyrics, ct).ConfigureAwait(false);
+        // Keep starts and lines paired, then drop blank lines together.
+        List<TimeSpan>? lineStarts = null;
+        if (lines is not null && options.SourceLines is not null && options.SourceLineStarts is { } starts && starts.Count == lines.Count)
+        {
+            var kept = lines.Select((l, i) => (l, s: starts[i])).Where(x => x.l.Length > 0).ToList();
+            lines = kept.Select(x => x.l).ToList();
+            lineStarts = kept.Select(x => x.s).ToList();
+        }
+        else if (lines is not null)
+            lines = lines.Where(l => l.Length > 0).ToList();
 
         // 2. Decode.
         progress?.Report(new LyricsStudioProgress("Decoding", 0.08));
@@ -122,7 +140,9 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         var duration = track.Duration > TimeSpan.Zero ? track.Duration : TimeSpan.FromSeconds(pcm.Length / (double)PcmDecoder16k.SampleRate);
         IReadOnlyList<AlignedLine> aligned;
         if (lines is { Count: > 0 })
-            aligned = LyricsAligner.Align(lines, transcript.Words, duration);
+            aligned = lineStarts is not null
+                ? LyricsAligner.AlignWithinLines(lines, lineStarts, transcript.Words, duration)
+                : LyricsAligner.Align(lines, transcript.Words, duration);
         else
         {
             aligned = TranscriptLines.Group(transcript.Words);
@@ -138,6 +158,10 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
 
     private async Task<(List<string>? Lines, LyricsStudioSource Source)> ResolveSourceLinesAsync(Track track, bool allowOnline, CancellationToken ct)
     {
+        // Sidecars first (.elrc, .lrc), then the stored/embedded text — same order the Studio shows.
+        var sidecar = ExistingLyricsLoader.Load(track);
+        if (sidecar is { Lines.Count: > 0 })
+            return (sidecar.Lines.Select(l => l.Text).ToList(), LyricsStudioSource.ExistingLyrics);
         var own = FirstText(track.Lyrics, track.SyncedLyrics);
         if (own is not null) return (own, LyricsStudioSource.ExistingLyrics);
 
