@@ -11,6 +11,6 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Visual plugins return Avalonia controls; keep the version in step with the app. -->
-    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia" Version="12.1.2" />
   </ItemGroup>
 </Project>
