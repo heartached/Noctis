@@ -1,4 +1,5 @@
 using Android.Content;
+using Android.Database;
 using Android.Provider;
 using Noctis.Services;
 using AUri = Android.Net.Uri;
@@ -96,14 +97,39 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
     {
         var rows = new List<(string? Id, string? Name)>();
         var childrenUri = DocumentsContract.BuildChildDocumentsUriUsingTree(treeScopedUri, parentId)!;
-        using var cursor = _resolver.Query(childrenUri, Projection, null, null, null);
-        if (cursor == null) return rows;
-        while (cursor.MoveToNext())
+        ICursor? cursor = null;
+        try
         {
-            var id = cursor.GetString(0);
-            var name = cursor.GetString(1);
-            if (id != null && name != null) rows.Add((id, name));
+            cursor = _resolver.Query(childrenUri, Projection, null, null, null);
+            if (cursor == null) return rows;
+
+            // By name, not position: a provider that ignores the projection would otherwise
+            // hand back the wrong columns silently (same guard as AndroidFileSystemSource).
+            var idxId = cursor.GetColumnIndexOrThrow(DocumentsContract.Document.ColumnDocumentId);
+            var idxName = cursor.GetColumnIndexOrThrow(DocumentsContract.Document.ColumnDisplayName);
+            while (cursor.MoveToNext())
+            {
+                var id = cursor.GetString(idxId);
+                var name = cursor.GetString(idxName);
+                if (id != null && name != null) rows.Add((id, name));
+            }
+            return rows;
         }
-        return rows;
+        finally
+        {
+            // Close(), not just Dispose(): Dispose() only releases the JNI peer, so without
+            // Close() the provider's CursorWindow (ashmem) stays pinned until the Java GC
+            // finalizes it, and this runs on every track change. A throwing Close() must not
+            // skip Dispose().
+            try
+            {
+                cursor?.Close();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Lyrics", $"SAF cursor close failed for {childrenUri}: {ex.Message}");
+            }
+            cursor?.Dispose();
+        }
     }
 }
