@@ -624,6 +624,14 @@ public class AppSettings
     /// follows each syllable's own timing. Ships off, keeping the authored spacing.</summary>
     public bool LyricsJoinSplitWords { get; set; }
 
+    /// <summary>Phone lyrics page: show the translation layer (TTML x-translation) under
+    /// each line when the file carries one.</summary>
+    public bool LyricsShowTranslation { get; set; } = true;
+
+    /// <summary>Phone lyrics page: show the romanization layer (TTML x-roman) under each
+    /// line when the file carries one.</summary>
+    public bool LyricsShowRomanization { get; set; } = true;
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
