@@ -1,5 +1,6 @@
 using Android.Content;
 using Android.Media;
+using Android.OS;
 using AndroidX.Media3.Common;
 using AndroidX.Media3.ExoPlayer;
 using Avalonia.Threading;
@@ -33,7 +34,14 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private readonly IExoPlayer _player;
     private readonly Listener _listener;
     private readonly SessionForwardingPlayer _sessionPlayer;
-    private readonly DispatcherTimer _positionTimer;
+    // The position poll runs on the main looper's own Handler, not a DispatcherTimer. At
+    // DispatcherPriority.Background Avalonia pumps the timer together with frames, so it
+    // stopped whenever the app drew nothing, screen off included (device run 2026-09-22:
+    // engine at 110 s, UI and the 5 s resume checkpoint frozen at 00:32 until a tap). A
+    // Handler message is delivered whether or not anything renders, on the same thread as
+    // before (the main looper is Avalonia's UI thread here), so no marshalling changes.
+    private readonly Handler _positionHandler = new(Looper.MainLooper!);
+    private int _positionPumpGeneration;
 
     private Dictionary<string, Track>? _byPath;
     private bool _gapless = true;
@@ -97,12 +105,6 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         PlaybackEngine.SessionPlayer = _sessionPlayer;
 
         OutputLatency = EstimateOutputLatency(context);
-        // The 3-arg (interval, priority, callback) constructor auto-starts (confirmed by
-        // disassembling it — it chains to the 4-arg ctor, which calls Start()). We don't want
-        // the poll running before the first Play(), so build with the priority-only ctor and
-        // start it ourselves.
-        _positionTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(PositionPollMs) };
-        _positionTimer.Tick += (_, _) => PollPosition();
         _library.LibraryUpdated += OnLibraryUpdated;
     }
 
@@ -137,7 +139,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             State = PlaybackState.Playing;
             RaiseDurationIfKnown();
             EnsureServiceStarted();
-            _positionTimer.Start();
+            StartPositionPump();
             return;
         }
 
@@ -155,7 +157,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         Position = TimeSpan.Zero;
         State = PlaybackState.Playing;
         EnsureServiceStarted();
-        _positionTimer.Start();
+        StartPositionPump();
     }
 
     public void Pause()
@@ -166,7 +168,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         // Only our own Pause() stops the poll: an externally-caused pause (audio focus,
         // headphone unplug, lock-screen) never calls this, so the timer keeps ticking and
         // OnPlayerPosition's "the tick is where the UI catches up" resync still fires.
-        _positionTimer.Stop();
+        StopPositionPump();
     }
 
     public void Resume()
@@ -174,13 +176,13 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         if (_disposed || State != PlaybackState.Paused) return;
         _player.Play();
         State = PlaybackState.Playing;
-        _positionTimer.Start();
+        StartPositionPump();
     }
 
     public void Stop()
     {
         if (_disposed) return;
-        _positionTimer.Stop();
+        StopPositionPump();
         _player.Stop();
         _player.ClearMediaItems();
         _autoTransitionPending = false;
@@ -253,7 +255,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         {
             // End of the LAST item (an auto-advance to a queued item raises
             // OnMediaItemTransition instead, never Ended).
-            _positionTimer.Stop();
+            StopPositionPump();
             State = PlaybackState.Stopped;
             TrackEnded?.Invoke(this, EventArgs.Empty);
         }
@@ -272,7 +274,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     private void OnPlayerError(PlaybackException error)
     {
-        _positionTimer.Stop();
+        StopPositionPump();
         State = PlaybackState.Stopped;
         PlaybackError?.Invoke(this, $"{error.ErrorCodeName}: {error.Message}");
     }
@@ -303,8 +305,28 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // Without this the UI freezes (no more PositionChanged ticks) and IsPlaying/State
             // silently disagree until the next unrelated tick, if any.
             State = PlaybackState.Playing;
-            _positionTimer.Start();
+            StartPositionPump();
         }
+    }
+
+    /// <summary>
+    /// Starts (or restarts) the 250 ms position poll. Idempotent in effect: a restart orphans
+    /// the running chain, whose next tick sees a stale generation and stops, so there is never
+    /// more than one live chain and no RemoveCallbacks bookkeeping.
+    /// </summary>
+    private void StartPositionPump()
+    {
+        var generation = ++_positionPumpGeneration;
+        _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
+    }
+
+    private void StopPositionPump() => _positionPumpGeneration++;
+
+    private void PositionTick(int generation)
+    {
+        if (_disposed || generation != _positionPumpGeneration) return;
+        PollPosition();
+        _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
     }
 
     private void PollPosition()
@@ -473,7 +495,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         if (_disposed) return;
         _disposed = true;
-        _positionTimer.Stop();
+        StopPositionPump();
         _library.LibraryUpdated -= OnLibraryUpdated;
         _player.RemoveListener(_listener);
         // NoctisPlaybackService may still hold a MediaSession wrapping _sessionPlayer (which
