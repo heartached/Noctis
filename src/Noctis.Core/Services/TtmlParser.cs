@@ -17,6 +17,9 @@ namespace Noctis.Services;
 /// spans, see <see cref="UsesAuthoredSpaces"/>.
 /// Untimed wrapper spans (e.g. Apple background vocals, ttm:role="x-bg") are
 /// recursed into so their timed descendants still contribute.
+/// Translation (<c>x-translation</c>) and romanization (<c>x-roman</c>) spans, inline or in
+/// Apple's <c>&lt;iTunesMetadata&gt;</c> head, become <see cref="LyricLine.Translation"/> /
+/// <see cref="LyricLine.Romanization"/> instead of words.
 /// </summary>
 public static class TtmlParser
 {
@@ -60,12 +63,16 @@ public static class TtmlParser
         var root = doc.Root;
         if (root == null || !LocalNameIs(root, "tt")) return (null, null);
 
-        var ignoreFormattingWhitespace = joinSplitWords && UsesAuthoredSpaces(root);
+        // Only the body's word spans decide the convention: Apple head transliterations and
+        // inline x-roman spans carry their own authored spaces and say nothing about the lyric.
+        var body = root.Elements().FirstOrDefault(e => LocalNameIs(e, "body")) ?? root;
+        var ignoreFormattingWhitespace = joinSplitWords && UsesAuthoredSpaces(body);
+        var head = ReadHeadLayers(root);
 
         var lines = new List<LyricLine>();
         foreach (var p in root.Descendants().Where(e => LocalNameIs(e, "p")))
         {
-            var line = ParseLine(p, ignoreFormattingWhitespace);
+            var line = ParseLine(p, ignoreFormattingWhitespace, head);
             if (line != null)
                 lines.Add(line);
         }
@@ -91,9 +98,10 @@ public static class TtmlParser
     /// picks this branch and over-joins the lines that rely on indentation — the Settings
     /// toggle is the escape hatch.
     /// </summary>
-    private static bool UsesAuthoredSpaces(XElement root) =>
-        root.Descendants().Any(e =>
+    private static bool UsesAuthoredSpaces(XElement scope) =>
+        scope.Descendants().Any(e =>
             LocalNameIs(e, "span")
+            && !e.AncestorsAndSelf().Any(a => AuxiliaryRole(a) != null)
             && e.Attribute("begin") != null
             && !e.Elements().Any()
             && e.Value.Length > 0
@@ -103,7 +111,7 @@ public static class TtmlParser
     private static bool IsFormattingWhitespace(string value) =>
         string.IsNullOrWhiteSpace(value) && (value.Contains('\n') || value.Contains('\r'));
 
-    private static LyricLine? ParseLine(XElement p, bool ignoreFormattingWhitespace)
+    private static LyricLine? ParseLine(XElement p, bool ignoreFormattingWhitespace, HeadLayers head)
     {
         var start = ParseTime(p.Attribute("begin")?.Value);
         var end = ParseTime(p.Attribute("end")?.Value);
@@ -113,7 +121,8 @@ public static class TtmlParser
         var words = new List<WordTiming>();
         var bgText = new StringBuilder();
         var bgWords = new List<WordTiming>();
-        CollectContent(p, text, words, bgText, bgWords, inBackground: false,
+        var layers = new LineLayers();
+        CollectContent(p, text, words, bgText, bgWords, layers, inBackground: false,
             ignoreFormattingWhitespace: ignoreFormattingWhitespace);
 
         var lineText = text.ToString().Trim();
@@ -130,6 +139,8 @@ public static class TtmlParser
             EndTimestamp = end,
             Text = backgroundOnly ? bgLineText : lineText,
             IsBackgroundOnly = backgroundOnly,
+            Translation = layers.Translation ?? LookupHead(head.Translations, p),
+            Romanization = layers.Romanization ?? LookupHead(head.Romanizations, p),
         };
 
         if (words.Count > 0)
@@ -199,6 +210,7 @@ public static class TtmlParser
         XElement parent,
         StringBuilder text, List<WordTiming> words,
         StringBuilder bgText, List<WordTiming> bgWords,
+        LineLayers layers,
         bool inBackground,
         bool ignoreFormattingWhitespace,
         int depth = 0)
@@ -225,6 +237,23 @@ public static class TtmlParser
                     AppendText(" ", targetText, targetWords);
                     break;
 
+                // Translation / romanization spans are layers of the line, not words. The
+                // untimed-wrapper path below used to walk into them, appending the English
+                // to the line and gluing it onto the last Japanese word. First span per
+                // role wins (one language per layer); inside background vocals they
+                // translate the adlib, not the line, and are dropped.
+                case XElement el when LocalNameIs(el, "span") && AuxiliaryRole(el) is { } role:
+                    if (!inBackground)
+                    {
+                        var layerText = CollapseWhitespace(TextWithoutBackground(el));
+                        if (layerText.Length > 0)
+                        {
+                            if (role == LayerRole.Translation) layers.Translation ??= layerText;
+                            else layers.Romanization ??= layerText;
+                        }
+                    }
+                    break;
+
                 case XElement el when LocalNameIs(el, "span"):
                     var isBg = inBackground || IsBackgroundRole(el);
                     var spanText = isBg ? bgText : text;
@@ -249,7 +278,7 @@ public static class TtmlParser
                     {
                         // Untimed or wrapper span — recurse (background wrappers route
                         // their timed descendants into the background buffers).
-                        CollectContent(el, text, words, bgText, bgWords, isBg,
+                        CollectContent(el, text, words, bgText, bgWords, layers, isBg,
                             ignoreFormattingWhitespace, depth + 1);
                     }
                     break;
@@ -261,6 +290,79 @@ public static class TtmlParser
         el.Attributes().Any(a =>
             string.Equals(a.Name.LocalName, "role", StringComparison.OrdinalIgnoreCase)
             && string.Equals(a.Value, "x-bg", StringComparison.OrdinalIgnoreCase));
+
+    private enum LayerRole { Translation, Romanization }
+
+    /// <summary>Inline layer text collected while walking one &lt;p&gt;.</summary>
+    private sealed class LineLayers
+    {
+        public string? Translation;
+        public string? Romanization;
+    }
+
+    /// <summary>Apple head layers: itunes:key → text, first language of each kind.</summary>
+    private sealed record HeadLayers(Dictionary<string, string> Translations, Dictionary<string, string> Romanizations);
+
+    private static LayerRole? AuxiliaryRole(XElement el)
+    {
+        foreach (var a in el.Attributes())
+        {
+            if (!string.Equals(a.Name.LocalName, "role", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(a.Value, "x-translation", StringComparison.OrdinalIgnoreCase)) return LayerRole.Translation;
+            if (string.Equals(a.Value, "x-roman", StringComparison.OrdinalIgnoreCase)) return LayerRole.Romanization;
+        }
+        return null;
+    }
+
+    /// <summary>Text of an element minus any nested x-bg span (background vocals inside a
+    /// translation translate the adlib, not the line). Iterative, so hostile nesting cannot
+    /// recurse the stack (see <see cref="MaxNestingDepth"/>).</summary>
+    private static string TextWithoutBackground(XElement el)
+    {
+        var sb = new StringBuilder();
+        foreach (var t in el.DescendantNodes().OfType<XText>())
+        {
+            if (t.Ancestors().TakeWhile(a => a != el).Any(IsBackgroundRole)) continue;
+            sb.Append(t.Value);
+        }
+        return sb.ToString();
+    }
+
+    private static string CollapseWhitespace(string s) =>
+        string.Join(' ', s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static HeadLayers ReadHeadLayers(XElement root)
+    {
+        var layers = new HeadLayers(new(StringComparer.Ordinal), new(StringComparer.Ordinal));
+        var head = root.Elements().FirstOrDefault(e => LocalNameIs(e, "head"));
+        if (head == null) return layers;
+
+        // First language only, the same rule as inline spans: one translation layer per line.
+        Fill(head.Descendants().FirstOrDefault(e => LocalNameIs(e, "translation")), layers.Translations);
+        Fill(head.Descendants().FirstOrDefault(e => LocalNameIs(e, "transliteration")), layers.Romanizations);
+        return layers;
+
+        static void Fill(XElement? block, Dictionary<string, string> into)
+        {
+            if (block == null) return;
+            foreach (var text in block.Elements().Where(e => LocalNameIs(e, "text")))
+            {
+                var key = text.Attribute("for")?.Value;
+                var value = CollapseWhitespace(TextWithoutBackground(text));
+                if (!string.IsNullOrEmpty(key) && value.Length > 0) into.TryAdd(key, value);
+            }
+        }
+    }
+
+    /// <summary>The head layer for a &lt;p&gt; by its itunes:key (matched on local name, so
+    /// any prefix bound to the iTunes namespace works).</summary>
+    private static string? LookupHead(Dictionary<string, string> layer, XElement p)
+    {
+        if (layer.Count == 0) return null;
+        var key = p.Attributes()
+            .FirstOrDefault(a => string.Equals(a.Name.LocalName, "key", StringComparison.OrdinalIgnoreCase))?.Value;
+        return key != null && layer.TryGetValue(key, out var value) ? value : null;
+    }
 
     private static void AppendText(string value, StringBuilder text, List<WordTiming> words)
     {

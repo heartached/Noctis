@@ -170,6 +170,21 @@ public partial class LyricLine : ObservableObject
     public bool IsBackgroundOnly { get; set; }
 
     /// <summary>
+    /// Translation layer (TTML <c>ttm:role="x-translation"</c>, or Apple's head
+    /// <c>&lt;translations&gt;</c>), shown under the line. Line-level text: it rides the
+    /// line's own timing and is never swept.
+    /// </summary>
+    public string? Translation { get; set; }
+
+    /// <summary>Romanization layer (TTML <c>x-roman</c>, or Apple's head
+    /// <c>&lt;transliterations&gt;</c>). Line-level text, like <see cref="Translation"/>.</summary>
+    public string? Romanization { get; set; }
+
+    public bool HasTranslation => !string.IsNullOrWhiteSpace(Translation);
+
+    public bool HasRomanization => !string.IsNullOrWhiteSpace(Romanization);
+
+    /// <summary>
     /// True when the view should render the per-word karaoke layer. Word-timed lines
     /// render this layer whether active or not, so the wrap geometry never changes
     /// when a line activates (the old TextBlock↔WrapPanel swap caused visible reflow).
