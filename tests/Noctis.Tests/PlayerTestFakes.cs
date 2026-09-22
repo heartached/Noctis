@@ -135,6 +135,25 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
 }
 
+/// <summary>In-memory ITrackFileAccess: sidecars by extension (any path), optional audio bytes.</summary>
+internal sealed class FakeTrackFiles : ITrackFileAccess
+{
+    public Dictionary<string, string> Sidecars { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public byte[]? Audio { get; set; }
+    public int SidecarReads { get; private set; }
+
+    public SidecarFile? ReadSidecar(string trackPath, IReadOnlyList<string> extensions)
+    {
+        SidecarReads++;
+        foreach (var ext in extensions)
+            if (Sidecars.TryGetValue(ext, out var text))
+                return new SidecarFile(ext, System.Text.Encoding.UTF8.GetBytes(text));
+        return null;
+    }
+
+    public Stream? OpenAudio(string trackPath) => Audio == null ? null : new MemoryStream(Audio);
+}
+
 internal sealed class FakeAnimatedCoverService : IAnimatedCoverService
 {
     public string? Resolve(Track track) => null;
