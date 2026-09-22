@@ -1668,7 +1668,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             HasSyncedLyricsAvailable = _hasSyncedLyrics;
 
             if (_hasSyncedLyrics)
-                InsertIntroPlaceholderIfNeeded(parsedLines);
+                LrcParser.InsertIntroPlaceholderIfNeeded(parsedLines);
 
             LyricLines.ReplaceAll(parsedLines);
 
@@ -1680,10 +1680,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         else if (!string.IsNullOrWhiteSpace(result.PlainLyrics))
         {
             var rendered = new List<LyricLine>();
-            var lines = SplitPlainLyrics(result.PlainLyrics);
+            var lines = LrcParser.SplitPlain(result.PlainLyrics);
             foreach (var line in lines)
             {
-                var wrapped = SoftWrapText(line);
+                var wrapped = LrcParser.SoftWrap(line);
                 rendered.Add(new LyricLine { Text = wrapped, IsActive = true });
             }
             LyricLines.ReplaceAll(rendered);
@@ -2153,7 +2153,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var cachedLrc = TryReadCacheFile(track.Id, ".lrc");
             if (cachedLrc != null)
             {
-                if (cachedLrc.Contains('[') && LrcTimestampRegex().IsMatch(cachedLrc))
+                if (cachedLrc.Contains('[') && LrcParser.ContainsTimestamp(cachedLrc))
                 {
                     var lines = ParseLrcContent(cachedLrc);
                     if (lines.Count > 0)
@@ -2184,7 +2184,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                InsertIntroPlaceholderIfNeeded(probe.Lines);
+                LrcParser.InsertIntroPlaceholderIfNeeded(probe.Lines);
             }
 
             LyricLines.ReplaceAll(probe.Lines);
@@ -2215,10 +2215,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (probe.Source == "Cache:Plain" && !string.IsNullOrWhiteSpace(probe.UnsyncedPlain))
         {
             DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:CachePlain", $"trackId={track.Id}");
-            var split = SplitPlainLyrics(probe.UnsyncedPlain);
+            var split = LrcParser.SplitPlain(probe.UnsyncedPlain);
             var rendered = new List<LyricLine>(split.Length);
             foreach (var line in split)
-                rendered.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+                rendered.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
             LyricLines.ReplaceAll(rendered);
             UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
             AutoSelectTab();
@@ -2248,7 +2248,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var plainIsActuallyLrc = hasPlainField
                                  && !hasSyncedField
                                  && track.Lyrics.Contains('[')
-                                 && LrcTimestampRegex().IsMatch(track.Lyrics);
+                                 && LrcParser.ContainsTimestamp(track.Lyrics);
 
         DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:Embedded",
             $"synced={hasSyncedField}, plain={hasPlainField}, lrcInPlain={plainIsActuallyLrc}");
@@ -2265,7 +2265,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             HasSyncedLyricsAvailable = _hasSyncedLyrics;
 
             if (_hasSyncedLyrics)
-                InsertIntroPlaceholderIfNeeded(parsedLines);
+                LrcParser.InsertIntroPlaceholderIfNeeded(parsedLines);
 
             LyricLines.ReplaceAll(parsedLines);
             PopulateUnsyncedLines(parsedLines);
@@ -2273,12 +2273,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (hasPlainField && !plainIsActuallyLrc)
         {
-            var split = SplitPlainLyrics(track.Lyrics);
+            var split = LrcParser.SplitPlain(track.Lyrics);
             if (!hasSyncedField)
             {
                 var rendered = new List<LyricLine>(split.Length);
                 foreach (var line in split)
-                    rendered.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+                    rendered.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
                 LyricLines.ReplaceAll(rendered);
                 UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
             }
@@ -2286,7 +2286,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 var unsynced = new List<LyricLine>(split.Length);
                 foreach (var line in split)
-                    unsynced.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+                    unsynced.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
                 UnsyncedLines.ReplaceAll(unsynced);
             }
         }
@@ -2333,41 +2333,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// timestamped but completely empty lines, with no error anywhere.
     /// </summary>
     private static string ReadTextDetectingEncoding(string path)
-    {
-        var bytes = File.ReadAllBytes(path);
-
-        // A BOM is authoritative — let the framework handle it.
-        if (bytes.Length >= 2 &&
-            ((bytes[0] == 0xFF && bytes[1] == 0xFE) ||
-             (bytes[0] == 0xFE && bytes[1] == 0xFF) ||
-             (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)))
-        {
-            return File.ReadAllText(path);
-        }
-
-        // Strict UTF-8 first: throwOnInvalidBytes turns "not UTF-8" into a signal rather
-        // than a string full of replacement characters.
-        try
-        {
-            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
-                .GetString(bytes);
-        }
-        catch (DecoderFallbackException)
-        {
-            // Not UTF-8. Use the OS default ANSI code page, which is the right guess for
-            // a file authored on the user's own machine; Latin1 elsewhere so every byte
-            // maps to something rather than being dropped.
-            try
-            {
-                var ansi = System.Text.Encoding.GetEncoding(0);
-                return ansi.GetString(bytes);
-            }
-            catch
-            {
-                return System.Text.Encoding.Latin1.GetString(bytes);
-            }
-        }
-    }
+        => LyricsTextDecoder.Decode(File.ReadAllBytes(path));
 
     private void PopulateUnsyncedLines(List<LyricLine> sourceLyrics)
     {
@@ -2384,10 +2350,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Populates the Unsync tab from a Lyricsfile's `plain` block (preserves blank-line spacing).</summary>
     private void PopulateUnsyncedFromPlainText(string plain)
     {
-        var split = SplitPlainLyrics(plain);
+        var split = LrcParser.SplitPlain(plain);
         var batch = new List<LyricLine>(split.Length);
         foreach (var line in split)
-            batch.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+            batch.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
         UnsyncedLines.ReplaceAll(batch);
     }
 
@@ -2405,296 +2371,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>
-    /// If the first synced lyric starts after 2 seconds, inserts a "…" placeholder
-    /// at timestamp zero. This matches Apple Music's "waiting for lyrics" behavior
-    /// during intros — the placeholder becomes the active line until the first
-    /// real lyric is reached.
-    /// </summary>
-    private static void InsertIntroPlaceholderIfNeeded(List<LyricLine> lines)
-    {
-        var firstSynced = lines.FirstOrDefault(l => l.IsSynced);
-        if (firstSynced?.Timestamp != null && firstSynced.Timestamp.Value.TotalSeconds > 2)
-        {
-            lines.Insert(0, new LyricLine
-            {
-                Timestamp = TimeSpan.Zero,
-                Text = "...",
-                IsIntroPlaceholder = true
-            });
-        }
-    }
-
-    /// <summary>
-    /// Splits a long lyric line into balanced halves at the word boundary closest to the midpoint.
-    /// Recursively applies to each half if still too long. Produces clean, cinematic two-line wraps.
-    /// </summary>
-    private static string SoftWrapText(string text, int maxWidth = 25)
-    {
-        // Strip exotic Unicode (NBSP, separators, zero-width, replacement) that render
-        // as empty boxes; this is the common funnel for every displayed lyric line.
-        text = LyricsTextHelper.CleanDisplayText(text);
-        if (text.Length <= maxWidth) return text;
-
-        // Find the space closest to the midpoint for two balanced halves
-        var mid = text.Length / 2;
-        int bestSpace = -1;
-        var bestDist = int.MaxValue;
-
-        for (int i = 1; i < text.Length; i++)
-        {
-            if (text[i] != ' ') continue;
-            var dist = Math.Abs(i - mid);
-            if (dist < bestDist)
-            {
-                bestDist = dist;
-                bestSpace = i;
-            }
-        }
-
-        if (bestSpace <= 0) return text;
-
-        // Single split only — never more than 2 lines per lyric
-        var line1 = text[..bestSpace];
-        var line2 = text[(bestSpace + 1)..];
-
-        // If either half is still too long for the active font size, split it too
-        if (line1.Length > maxWidth)
-            line1 = SoftWrapText(line1, maxWidth);
-        if (line2.Length > maxWidth)
-            line2 = SoftWrapText(line2, maxWidth);
-
-        return line1 + "\n" + line2;
-    }
-
-    /// <summary>
-    /// Parses LRC format content into LyricLine objects.
-    /// Supports: [mm:ss.xx] text, [mm:ss] text, multiple timestamps per line.
-    /// Ignores metadata tags like [ar:], [ti:], [al:], etc.
-    /// </summary>
-    /// <summary>
-    /// Upper bound on lines produced from one file. The lyrics list is not virtualized —
-    /// every line is realized, and a word-timed line is ~7 controls per word plus a
-    /// BlurEffect — so an oversized or hostile sidecar (a 1 MB .lrc, or one line carrying
-    /// thousands of stacked [mm:ss.xx] tags, since each tag emits its own LyricLine) would
-    /// build tens of thousands of controls in a single UI-thread pass. No real song comes
-    /// close to this.
-    /// </summary>
-    private const int MaxLyricLines = 3000;
-
-    /// <summary>Splits plain lyrics into display lines, bounded by <see cref="MaxLyricLines"/>.</summary>
-    private static string[] SplitPlainLyrics(string text)
-    {
-        var split = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-        return split.Length <= MaxLyricLines ? split : split[..MaxLyricLines];
-    }
-
-    // Internal for tests (InternalsVisibleTo Noctis.Tests).
-    internal static List<LyricLine> ParseLrcContent(string content)
-    {
-        var lines = new List<LyricLine>();
-        var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-        var offsetMs = ParseLrcOffsetMilliseconds(rawLines);
-
-        foreach (var rawLine in rawLines)
-        {
-            if (lines.Count >= MaxLyricLines) break;
-
-            var trimmed = rawLine.Trim();
-            if (string.IsNullOrEmpty(trimmed)) continue;
-
-            // Offset is handled once globally before parsing timestamps.
-            if (OffsetTagRegex().IsMatch(trimmed))
-                continue;
-
-            // Skip metadata tags like [ar:Artist], [ti:Title], [al:Album], [offset:], [length:]
-            if (MetadataTagRegex().IsMatch(trimmed))
-                continue;
-
-            // iTunes/Gramophone background vocal: "[bg: <t>word <t>word<t>]" — a line with
-            // no [mm:ss.xx] stamp that belongs to the main line directly above it in the
-            // file. Attach it here, in file order: the timestamp sort below would otherwise
-            // push it (as an "unsynced" line) to the very end of the song, and its raw
-            // "[bg: <00:36.938>(Ah, …]" text would render there as a lyric.
-            if (trimmed.StartsWith(BgLinePrefix, StringComparison.Ordinal))
-            {
-                var lastMain = lines.LastOrDefault(l => l.Timestamp.HasValue);
-                if (lastMain != null)
-                    AttachBackgroundLine(lastMain, trimmed, offsetMs);
-                continue;
-            }
-
-            // Extract all timestamps from the line
-            var matches = LrcTimestampRegex().Matches(trimmed);
-            if (matches.Count > 0)
-            {
-                // Get the text after all timestamps. For enhanced ("A2") LRC this
-                // body carries inline <mm:ss.xx> word tags, which we split into
-                // per-word karaoke timings and strip from the displayed text.
-                var lastMatch = matches[^1];
-                var body = trimmed[(lastMatch.Index + lastMatch.Length)..];
-
-                // Duet voice marker ("v1:"/"v2:"/"v3:", Gramophone syntax) sits between
-                // the timestamp block and any word tags; strip it before word parsing
-                // so it never reaches display text.
-                var (unvoiced, voice) = EnhancedLrcParser.StripVoiceMarker(body);
-                var (text, words) = EnhancedLrcParser.ParseLine(unvoiced);
-
-                // Skip empty timestamp lines — LRC files often end with
-                // [03:24.00] (no text) as an end marker. If parsed, this empty
-                // line becomes the "active" line and deactivates the previous
-                // real lyric, making lyrics appear to stop early.
-                if (string.IsNullOrWhiteSpace(text)) continue;
-
-                // Word timings are absolute; attaching them to a multi-timestamp
-                // (compressed) line would misalign the later occurrences, so only
-                // carry word-level data when the line has a single timestamp.
-                var lineWords = matches.Count == 1 ? words : null;
-
-                // Create a LyricLine for each timestamp (handles multi-timestamp lines)
-                foreach (Match match in matches)
-                {
-                    if (lines.Count >= MaxLyricLines) break;
-
-                    var timestamp = ParseLrcTimestamp(match.Value);
-                    if (timestamp.HasValue)
-                    {
-                        var adjusted = timestamp.Value + TimeSpan.FromMilliseconds(offsetMs);
-                        if (adjusted < TimeSpan.Zero)
-                            adjusted = TimeSpan.Zero;
-
-                        var line = new LyricLine
-                        {
-                            Timestamp = adjusted,
-                            Text = SoftWrapText(text),
-                            Voice = voice
-                        };
-
-                        if (lineWords != null)
-                        {
-                            var shifted = offsetMs == 0 ? lineWords : ShiftWords(lineWords, offsetMs);
-                            // End before Words: the Words setter computes held-note
-                            // emphasis, and the last word's span needs the line end.
-                            line.EndTimestamp = shifted[^1].End;
-                            line.Words = shifted;
-                        }
-
-                        lines.Add(line);
-                    }
-                }
-            }
-            else
-            {
-                // No timestamp — add as unsynced line
-                lines.Add(new LyricLine { Text = SoftWrapText(trimmed) });
-            }
-        }
-
-        // Sort by timestamp for synced lyrics. Stable (OrderBy) so lines sharing a
-        // timestamp — e.g. an adlib synced to the same instant as its main line —
-        // keep their file order, which the background fold below relies on.
-        var sorted = lines
-            .OrderBy(l => l.Timestamp == null ? 1 : 0)
-            .ThenBy(l => l.Timestamp ?? TimeSpan.Zero)
-            .ToList();
-        lines.Clear();
-        lines.AddRange(sorted);
-
-        // Fold parenthesized adlib lines into the preceding line's background layer
-        // (Apple Music-style background vocals).
-        EnhancedLrcParser.FoldBackgroundLines(lines);
-
-        return lines;
-    }
-
-    private const string BgLinePrefix = "[bg:";
-
-    /// <summary>
-    /// Parses a "[bg: …]" line body (prefix and closing bracket stripped) into the
-    /// preceding main line's background layer. A body without word tags becomes one
-    /// word starting at the main line's own timestamp so it still renders.
-    /// </summary>
-    private static void AttachBackgroundLine(LyricLine target, string trimmed, int offsetMs)
-    {
-        var body = trimmed[BgLinePrefix.Length..];
-        if (body.EndsWith(']')) body = body[..^1];
-
-        var (text, words) = EnhancedLrcParser.ParseLine(body);
-        if (string.IsNullOrWhiteSpace(text)) return;
-
-        List<WordTiming> bg = words != null
-            ? (offsetMs == 0 ? words : ShiftWords(words, offsetMs))
-            : [new WordTiming { Text = text, Start = target.Timestamp!.Value }];
-
-        EnhancedLrcParser.AppendBackground(target, bg, bg[^1].End);
-    }
-
-    /// <summary>Applies the global LRC offset to absolute word timings.</summary>
-    private static List<WordTiming> ShiftWords(List<WordTiming> words, int offsetMs)
-    {
-        var delta = TimeSpan.FromMilliseconds(offsetMs);
-        var shifted = new List<WordTiming>(words.Count);
-        foreach (var w in words)
-        {
-            var start = w.Start + delta;
-            if (start < TimeSpan.Zero) start = TimeSpan.Zero;
-            TimeSpan? end = w.End.HasValue ? w.End.Value + delta : null;
-            if (end < TimeSpan.Zero) end = TimeSpan.Zero;
-            shifted.Add(new WordTiming { Text = w.Text, Start = start, End = end });
-        }
-        return shifted;
-    }
-
-    private static int ParseLrcOffsetMilliseconds(string[] rawLines)
-    {
-        foreach (var rawLine in rawLines)
-        {
-            var trimmed = rawLine.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                continue;
-
-            var match = OffsetTagRegex().Match(trimmed);
-            if (match.Success &&
-                int.TryParse(match.Groups["offset"].Value, out var parsed))
-            {
-                return parsed;
-            }
-        }
-
-        return 0;
-    }
-
-    /// <summary>
-    /// Parses a single LRC timestamp like [01:23.45] or [01:23] into a TimeSpan.
-    /// </summary>
-    private static TimeSpan? ParseLrcTimestamp(string timestamp)
-    {
-        // Remove brackets
-        var inner = timestamp.Trim('[', ']').Replace(',', '.');
-        var parts = inner.Split(':');
-        if (parts.Length < 2 || parts.Length > 3) return null;
-
-        if (!int.TryParse(parts[0], out var minutes)) return null;
-
-        if (parts.Length == 2)
-        {
-            // Seconds can be "23.45", "23,45", or "23"
-            if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out var seconds))
-                return null;
-
-            return TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
-        }
-
-        // Supports mm:ss:ff and mm:ss:fff variants.
-        if (!int.TryParse(parts[1], out var wholeSeconds)) return null;
-        if (!int.TryParse(parts[2], out var fractionalUnit)) return null;
-
-        var divisor = Math.Pow(10, parts[2].Length);
-        var fractionalSeconds = fractionalUnit / divisor;
-        return TimeSpan.FromMinutes(minutes) +
-               TimeSpan.FromSeconds(wholeSeconds + fractionalSeconds);
-    }
+    // Internal for tests (InternalsVisibleTo Noctis.Tests); the rules live in Core so the
+    // phone parses LRC identically.
+    internal static List<LyricLine> ParseLrcContent(string content) => LrcParser.Parse(content);
 
     /// <summary>Whether the lyric share-card entry point should be visible.</summary>
     public bool ShareAvailable => _player.CurrentTrack != null && !IsSearching && !ShowSearchButton;
@@ -3050,15 +2729,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         else
             UpdateLineOpacities(-1);
     }
-
-    [GeneratedRegex(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]")]
-    private static partial Regex LrcTimestampRegex();
-
-    [GeneratedRegex(@"^\[(ar|ti|al|by|offset|re|ve|length|id):")]
-    private static partial Regex MetadataTagRegex();
-
-    [GeneratedRegex(@"^\[offset:(?<offset>[+-]?\d+)\]$", RegexOptions.IgnoreCase)]
-    private static partial Regex OffsetTagRegex();
 
     public void Dispose()
     {
