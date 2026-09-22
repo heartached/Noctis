@@ -48,9 +48,10 @@
             <Button Width="48" Height="48" Content="{Binding Player.RepeatMode, Converter={x:Static views:Glyphs.Repeat}}" Command="{Binding Player.CycleRepeatCommand}" />
         </StackPanel>
 
-        <Grid Grid.Row="5" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="5" ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="{Binding Player.ErrorText}" Foreground="#E74856" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <Button Grid.Column="1" Content="Queue" Command="{Binding ToggleQueueCommand}" />
+            <Button Grid.Column="1" Name="LyricsButton" Content="Lyrics" Margin="0,0,8,0" Command="{Binding ToggleLyricsCommand}" />
+            <Button Grid.Column="2" Content="Queue" Command="{Binding ToggleQueueCommand}" />
         </Grid>
     </Grid>
 </UserControl>

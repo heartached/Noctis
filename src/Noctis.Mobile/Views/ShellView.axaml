@@ -47,6 +47,9 @@
                               DataContext="{Binding}"
                               IsVisible="{Binding IsNowPlayingOpen}" />
 
+        <views:LyricsPage Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding}"
+                          IsVisible="{Binding IsLyricsOpen}" />
+
         <views:QueuePage Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding}"
                          IsVisible="{Binding IsQueueOpen}" />
     </Grid>

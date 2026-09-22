@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             x:Class="Noctis.Mobile.Views.LyricsPage"
+             x:DataType="vm:ShellViewModel"
+             Background="#121214">
+
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="LyricsFg" Color="White" />
+        <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg" />
+
+        <!-- The desktop word cell (LyricsView.axaml WordCellTemplate) minus the emphasis glow:
+             a dim base copy of the word, and over it the sung part, whose Foreground is a
+             two-stop gradient driven by WordTiming.Progress (LyricsTimeline writes it per frame). -->
+        <DataTemplate x:Key="WordCell" x:DataType="m:WordTiming">
+            <Panel>
+                <TextBlock Classes="word-base" Text="{Binding Text}" FontWeight="Bold" Foreground="{StaticResource LyricsFg}" />
+                <TextBlock Text="{Binding SweepText}" FontWeight="Bold" HorizontalAlignment="Left">
+                    <TextBlock.Foreground>
+                        <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
+                            <Binding Path="Progress" />
+                            <Binding Source="{StaticResource LyricsFg}" />
+                            <Binding Path="Bounds.Width" RelativeSource="{RelativeSource Self}" />
+                            <Binding Path="FontSize" RelativeSource="{RelativeSource Self}" />
+                        </MultiBinding>
+                    </TextBlock.Foreground>
+                </TextBlock>
+            </Panel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- As on desktop: the unsung part of the active line is dim, so the sweep reads. -->
+        <Style Selector="ItemsControl.word-layer.active TextBlock.word-base">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Margin="0,40,0,0">
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="16,0">
+            <Button Content="⌄" FontSize="24" Background="Transparent" Command="{Binding ToggleLyricsCommand}" />
+            <ToggleButton Grid.Column="2" Name="TranslationToggle" Content="Translation" Margin="0,0,8,0"
+                          IsChecked="{Binding Lyrics.ShowTranslation}" IsVisible="{Binding Lyrics.HasTranslations}" />
+            <ToggleButton Grid.Column="3" Name="RomajiToggle" Content="Romaji"
+                          IsChecked="{Binding Lyrics.ShowRomanization}" IsVisible="{Binding Lyrics.HasRomanizations}" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Name="StatusText" Text="{Binding Lyrics.StatusText}" IsVisible="{Binding !Lyrics.HasLyrics}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Opacity="0.6" />
+
+        <ScrollViewer Grid.Row="1" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:LyricLine">
+                        <Button Background="Transparent" BorderThickness="0" Padding="0" Margin="0,10"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Opacity="{Binding LineOpacity}"
+                                Command="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.SeekToLineCommand}"
+                                CommandParameter="{Binding}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Text}" FontWeight="Bold" TextWrapping="Wrap"
+                                           Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}" />
+                                <ItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsActive}"
+                                              IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer" Classes.active="{Binding IsActive}"
+                                              IsVisible="{Binding ShowBackgroundWords}" ItemTemplate="{StaticResource WordCell}"
+                                              FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding Romanization}" TextWrapping="Wrap" Opacity="0.6"
+                                           Foreground="{StaticResource LyricsFg}"
+                                           FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasRomanization" />
+                                            <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowRomanization" />
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Translation}" TextWrapping="Wrap" Opacity="0.6"
+                                           Foreground="{StaticResource LyricsFg}"
+                                           FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="HasTranslation" />
+                                            <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowTranslation" />
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

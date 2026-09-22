@@ -7,17 +7,20 @@ namespace Noctis.Mobile.ViewModels;
 /// <summary>Root of the phone UI: the Library page, the Now Playing / Queue overlays and the mini bar.</summary>
 public sealed partial class ShellViewModel : ObservableObject
 {
-    public ShellViewModel(LibraryViewModel library, NowPlayingViewModel player)
+    public ShellViewModel(LibraryViewModel library, NowPlayingViewModel player, LyricsPageViewModel lyrics)
     {
         Library = library;
         Player = player;
+        Lyrics = lyrics;
     }
 
     public LibraryViewModel Library { get; }
     public NowPlayingViewModel Player { get; }
+    public LyricsPageViewModel Lyrics { get; }
 
     [ObservableProperty] private bool _isNowPlayingOpen;
     [ObservableProperty] private bool _isQueueOpen;
+    [ObservableProperty] private bool _isLyricsOpen;
 
     [RelayCommand] private void OpenNowPlaying() => IsNowPlayingOpen = true;
 
@@ -27,10 +30,13 @@ public sealed partial class ShellViewModel : ObservableObject
         // The Queue sits above Now Playing, so closing the page must take it down too;
         // otherwise the Queue overlay is left floating over the Library page.
         IsQueueOpen = false;
+        IsLyricsOpen = false;
         IsNowPlayingOpen = false;
     }
 
     [RelayCommand] private void ToggleQueue() => IsQueueOpen = !IsQueueOpen;
+
+    [RelayCommand] private void ToggleLyrics() => IsLyricsOpen = !IsLyricsOpen;
 
     /// <summary>
     /// Android Back: close the topmost overlay, innermost first. Returns whether the press was
@@ -42,6 +48,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool TryHandleBack()
     {
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
+        if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
         return false;
     }
@@ -60,6 +67,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         await Library.InitializeAsync();
+        // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
+        // that track's lyrics with the saved split-word and layer preferences.
+        await Lyrics.InitializeAsync();
         await Player.RestoreStateAsync();
     }
 

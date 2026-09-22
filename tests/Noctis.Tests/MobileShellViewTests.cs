@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
@@ -26,9 +27,32 @@ public class MobileShellViewTests
         library = new FakeLibraryService();
         library.TrackList.AddRange(tracks);
         var persistence = new PersistenceService(root);
+        var player = new FakeAudioPlayer();
+        var nowPlaying = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
         return new ShellViewModel(
             new LibraryViewModel(library, persistence, new NoPicker(), marshal: a => a()),
-            new NowPlayingViewModel(new FakeAudioPlayer(), library, persistence, marshal: a => a()));
+            nowPlaying,
+            new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), persistence, work => Task.FromResult(work())));
+    }
+
+    [Fact]
+    public void TryHandleBack_ClosesLyricsBeforeNowPlaying()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var shell = MakeShell(root, out _);
+
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        Assert.True(shell.IsLyricsOpen);
+
+        Assert.True(shell.TryHandleBack());
+        Assert.False(shell.IsLyricsOpen);
+        Assert.True(shell.IsNowPlayingOpen);
+
+        shell.ToggleLyricsCommand.Execute(null);
+        shell.CloseNowPlayingCommand.Execute(null);        // closing Now Playing closes its overlays
+        Assert.False(shell.IsLyricsOpen);
+        try { Directory.Delete(root, recursive: true); } catch { }
     }
 
     /// <summary>
