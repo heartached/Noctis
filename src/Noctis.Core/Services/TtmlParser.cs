@@ -101,11 +101,14 @@ public static class TtmlParser
     private static bool UsesAuthoredSpaces(XElement scope) =>
         scope.Descendants().Any(e =>
             LocalNameIs(e, "span")
-            && !e.AncestorsAndSelf().Any(a => AuxiliaryRole(a) != null)
             && e.Attribute("begin") != null
             && !e.Elements().Any()
             && e.Value.Length > 0
-            && (char.IsWhiteSpace(e.Value[0]) || char.IsWhiteSpace(e.Value[^1])));
+            && (char.IsWhiteSpace(e.Value[0]) || char.IsWhiteSpace(e.Value[^1]))
+            // Cheap checks above filter out almost every span before this walk runs, so
+            // the ancestor chain (worst case O(depth) per span) stays off the hot path
+            // for ordinary documents — see MaxNestingDepth for why depth is untrusted.
+            && !e.AncestorsAndSelf().Any(a => AuxiliaryRole(a) != null));
 
     /// <summary>Whitespace-only text carrying a line break is XML indentation, not content.</summary>
     private static bool IsFormattingWhitespace(string value) =>
@@ -315,16 +318,41 @@ public static class TtmlParser
     }
 
     /// <summary>Text of an element minus any nested x-bg span (background vocals inside a
-    /// translation translate the adlib, not the line). Iterative, so hostile nesting cannot
-    /// recurse the stack (see <see cref="MaxNestingDepth"/>).</summary>
+    /// translation translate the adlib, not the line), with each &lt;br&gt; contributing a
+    /// single space (matching the main-line walk in <see cref="CollectContent"/>). An
+    /// explicit-stack pre-order walk: linear time (each node visited once, no per-text
+    /// ancestor climb) and non-recursive, so hostile nesting cannot recurse the call stack —
+    /// descent stops past <see cref="MaxNestingDepth"/>.</summary>
     private static string TextWithoutBackground(XElement el)
     {
         var sb = new StringBuilder();
-        foreach (var t in el.DescendantNodes().OfType<XText>())
+        var stack = new Stack<(XNode Node, int Depth)>();
+        foreach (var child in el.Nodes().Reverse())
+            stack.Push((child, 1));
+
+        while (stack.Count > 0)
         {
-            if (t.Ancestors().TakeWhile(a => a != el).Any(IsBackgroundRole)) continue;
-            sb.Append(t.Value);
+            var (node, depth) = stack.Pop();
+            if (depth > MaxNestingDepth) continue;
+
+            switch (node)
+            {
+                case XText t:
+                    sb.Append(t.Value);
+                    break;
+                case XElement e when LocalNameIs(e, "br"):
+                    sb.Append(' ');
+                    break;
+                case XElement e when IsBackgroundRole(e):
+                    // Skip the whole x-bg subtree — it translates the adlib, not the line.
+                    break;
+                case XElement e:
+                    foreach (var grandchild in e.Nodes().Reverse())
+                        stack.Push((grandchild, depth + 1));
+                    break;
+            }
         }
+
         return sb.ToString();
     }
 

@@ -139,4 +139,62 @@ public class TtmlLayerTests
         Assert.False(line.HasTranslation);
         Assert.False(line.HasRomanization);
     }
+
+    [Fact]
+    public void InlineRomanizationAuthoredSpace_DoesNotAffectBodyWordSplitting()
+    {
+        // The only authored-space span in this document sits inside an inline x-roman
+        // span. UsesAuthoredSpaces must exclude it (AncestorsAndSelf guard) so the main
+        // words, separated only by newline+indent, are NOT fused by the "authored spaces"
+        // heuristic. Fix-round-1 review: verified this fails (produces one fused word
+        // instead of two) if the guard clause is removed from UsesAuthoredSpaces.
+        const string doc = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+              <body><div><p begin="1.0" end="3.5">
+                <span begin="1.0" end="2.0">two</span>
+                <span begin="2.0" end="3.0">words</span>
+                <span ttm:role="x-roman"><span begin="3.0" end="3.5">spaced </span></span>
+              </p></div></body>
+            </tt>
+            """;
+
+        var line = TtmlParser.Parse(doc, joinSplitWords: true).Lines![0];
+        Assert.Equal("two words", line.Text);
+        Assert.Equal(2, line.Words!.Count);
+    }
+
+    [Fact]
+    public void BackgroundTextNestedInsideTranslationSpan_IsExcludedFromTranslation()
+    {
+        // The reverse nesting of LayerInsideBackgroundVocals_IsDropped: here the x-bg
+        // span sits INSIDE the translation span. Spec rule: x-bg text nested inside a
+        // layer is excluded from it (it is the adlib, not part of the translation).
+        const string doc = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+              <body><div>
+                <p begin="1.0" end="3.0"><span begin="1.0" end="2.0">main</span><span ttm:role="x-translation">Translated <span ttm:role="x-bg">(ah)</span> text</span></p>
+              </div></body>
+            </tt>
+            """;
+
+        var line = TtmlParser.Parse(doc).Lines![0];
+        Assert.Equal("Translated text", line.Translation);
+    }
+
+    [Fact]
+    public void BrInsideTranslationSpan_ContributesASpace()
+    {
+        // Matches the main-line walk's <br> → space rule (CollectContent), so a
+        // multi-line translation doesn't fuse its lines into one word.
+        const string doc = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+              <body><div>
+                <p begin="1.0" end="3.0"><span begin="1.0" end="2.0">main</span><span ttm:role="x-translation">Line one<br/>Line two</span></p>
+              </div></body>
+            </tt>
+            """;
+
+        var line = TtmlParser.Parse(doc).Lines![0];
+        Assert.Equal("Line one Line two", line.Translation);
+    }
 }
