@@ -157,9 +157,15 @@ public sealed partial class LibraryViewModel : ObservableObject
         return playlist;
     }
 
+    /// <summary>Appends <paramref name="tracks"/> in order, skipping any already in the playlist
+    /// (desktop parity with SidebarViewModel.AddTracksToPlaylist: both apps share playlists.json).</summary>
     public Task AddToPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
     {
-        foreach (var t in tracks) playlist.TrackIds.Add(t.Id);
+        var existing = new HashSet<Guid>(playlist.TrackIds);
+        foreach (var t in tracks)
+        {
+            if (existing.Add(t.Id)) playlist.TrackIds.Add(t.Id);
+        }
         playlist.ModifiedAt = DateTime.UtcNow;
         return SavePlaylistsAsync();
     }

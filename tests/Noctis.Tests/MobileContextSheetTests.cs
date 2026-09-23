@@ -137,9 +137,50 @@ public class MobileContextSheetTests
         Assert.Equal("Road trip", saved.Name);
         Assert.Equal(new[] { a.Id }, saved.TrackIds);
 
+        // Desktop parity (SidebarViewModel.AddTracksToPlaylist): a song already in the playlist is not added twice.
         rig.Shell.OpenTrackSheetCommand.Execute(a);
         await rig.Shell.Sheet!.AddToPlaylistCommand.ExecuteAsync(rig.Shell.Sheet.Playlists.Single());
-        Assert.Equal(new[] { a.Id, a.Id }, (await rig.Persistence.LoadPlaylistsAsync()).Single().TrackIds);
+        Assert.Equal(new[] { a.Id }, (await rig.Persistence.LoadPlaylistsAsync()).Single().TrackIds);
+    }
+
+    [Fact]
+    public async Task AddToPlaylist_SkipsSongsAlreadyThere_AndKeepsTheNewOnesInOrder()
+    {
+        var a = MobileFixtures.Song("A");
+        var b = MobileFixtures.Song("B");
+        var album = MobileFixtures.MakeAlbum("Album", "X", a, b);
+        using var rig = MobileFixtures.MakeRig(new[] { a, b }, new[] { album });
+        var playlist = await rig.Shell.Library.CreatePlaylistAsync("Mix");
+        await rig.Shell.Library.AddToPlaylistAsync(playlist, new[] { b });
+
+        rig.Shell.OpenAlbumSheetCommand.Execute(album);
+        await rig.Shell.Sheet!.AddToPlaylistCommand.ExecuteAsync(playlist);
+
+        Assert.Equal(new[] { b.Id, a.Id }, (await rig.Persistence.LoadPlaylistsAsync()).Single().TrackIds);
+    }
+
+    /// <summary>A hold whose lift never reaches the row (the scroll recogniser captured the
+    /// finger after it slid) must not swallow the next real tap.</summary>
+    [AvaloniaFact]
+    public void AHoldWithoutItsLift_DoesNotSwallowTheNextTap()
+    {
+        var a = MobileFixtures.Song("Alpha");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenSongsCommand.Execute(null);
+        window.UpdateLayout();
+        var row = FirstSongRow(view);
+        var centre = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window)!.Value;
+
+        RaiseHold(row);                                              // no MouseUp reaches the row
+        Assert.True(rig.Shell.IsSheetOpen);
+        rig.Shell.CloseSheet();
+        window.UpdateLayout();
+
+        window.MouseDown(centre, MouseButton.Left, RawInputModifiers.None);
+        window.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
+        Assert.Same(a, rig.Shell.Player.CurrentTrack);
+        window.Close();
     }
 
     [Fact]

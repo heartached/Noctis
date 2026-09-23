@@ -11,7 +11,9 @@ namespace Noctis.Mobile.Views;
 /// (raised by the gesture recogniser for touch after the platform's hold wait). A long press
 /// on a Button must not also click it when the finger lifts, so the release that follows a
 /// fired hold is marked handled on the tunnel route, before the Button's own release
-/// handling runs. The parameter defaults to the control's DataContext.
+/// handling runs. That release may never reach the control (a finger that slides after the
+/// hold is captured by the scroll recogniser), so every new press also starts clean. The
+/// parameter defaults to the control's DataContext.
 /// </summary>
 public static class LongPress
 {
@@ -35,10 +37,12 @@ public static class LongPress
         {
             control.RemoveHandler(InputElement.HoldingEvent, OnHolding);
             control.RemoveHandler(InputElement.PointerReleasedEvent, OnReleased);
+            control.RemoveHandler(InputElement.PointerPressedEvent, OnPressed);
             if (args.NewValue is null) return;
             InputElement.SetIsHoldingEnabled(control, true);
             control.AddHandler(InputElement.HoldingEvent, OnHolding);
             control.AddHandler(InputElement.PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel);
+            control.AddHandler(InputElement.PointerPressedEvent, OnPressed, RoutingStrategies.Tunnel);
         });
     }
 
@@ -57,6 +61,12 @@ public static class LongPress
         control.SetValue(FiredProperty, true);
         command.Execute(parameter);
         return true;
+    }
+
+    /// <summary>A new touch: whatever the last hold left behind, this press is a fresh tap.</summary>
+    private static void OnPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control control) control.SetValue(FiredProperty, false);
     }
 
     private static void OnReleased(object? sender, PointerReleasedEventArgs e)
