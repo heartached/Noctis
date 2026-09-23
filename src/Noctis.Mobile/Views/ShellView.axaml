@@ -44,6 +44,7 @@
     <Grid RowDefinitions="*,Auto">
         <Panel Grid.Row="0" Name="TabContent" Margin="{Binding TopSafePadding}">
             <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
+            <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchRootVisible}" />
             <ContentControl Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding HasPage}"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
         </Panel>
@@ -82,15 +83,15 @@
                         </Button>
                     </Grid>
                 </Border>
-                <!-- The round search button beside the pill (spec §5 item 7); B9 shows it. -->
+                <!-- The round search button beside the pill (spec §5 item 7), shown with the pill. -->
                 <Button Grid.Column="1" Name="MiniSearchButton" Classes="round" Margin="8,0,0,0"
-                        Background="{DynamicResource HomeCardBackground}" IsVisible="False"
+                        Background="{DynamicResource HomeCardBackground}" IsVisible="{Binding IsMiniBarVisible}"
                         Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
                     <PathIcon Data="{DynamicResource SearchIcon}" />
                 </Button>
             </Grid>
 
-            <!-- Home and Search are shown by B10 and B9 when their pages exist. -->
+            <!-- Home is shown by B10 when its page exists. -->
             <Grid Name="TabBar" ColumnDefinitions="*,*,*" Height="56">
                 <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}" IsVisible="False"
                         Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
@@ -106,7 +107,7 @@
                         <TextBlock Text="{loc:T Tab.Library}" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="2" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}" IsVisible="False"
+                <Button Grid.Column="2" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}"
                         Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
                     <StackPanel Spacing="2">
                         <PathIcon Data="{DynamicResource SearchIcon}" />

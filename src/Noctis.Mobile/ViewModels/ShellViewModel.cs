@@ -23,11 +23,13 @@ public sealed partial class ShellViewModel : ObservableObject
         Player = player;
         Lyrics = lyrics;
         Player.PropertyChanged += OnPlayerChanged;
+        Search = new SearchPageViewModel(this);
     }
 
     public LibraryViewModel Library { get; }
     public NowPlayingViewModel Player { get; }
     public LyricsPageViewModel Lyrics { get; }
+    public SearchPageViewModel Search { get; }
 
     /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
     public Func<PageTint> TintFactory { get; init; } = () => new PageTint();

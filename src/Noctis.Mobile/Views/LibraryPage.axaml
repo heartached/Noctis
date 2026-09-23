@@ -20,12 +20,22 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
         <Grid Grid.Row="0" Name="LibraryHeader" ColumnDefinitions="*,Auto" Margin="20,12,12,8">
             <TextBlock Classes="title" Text="{loc:T Tab.Library}" VerticalAlignment="Center" />
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Name="ChipScroll" Margin="0,0,0,8" IsVisible="{Binding Library.HasFolders}"
+        <!-- Looks like a field, is a button: the Search tab owns the query (mockup 1's field under the title). -->
+        <Button Grid.Row="1" Name="LibrarySearchField" Classes="pill" Margin="16,0,16,10" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" CornerRadius="12"
+                Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{DynamicResource SearchIcon}" Width="16" Height="16" Opacity="0.6" />
+                <TextBlock Classes="subtle" FontSize="15" Text="Artists, songs, albums" />
+            </StackPanel>
+        </Button>
+
+        <ScrollViewer Grid.Row="2" Name="ChipScroll" Margin="0,0,0,8" IsVisible="{Binding Library.HasFolders}"
                       HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0">
                 <Button Name="AllMusicChip" Classes="chip" Classes.selected="{Binding IsAllMusicChip}" Content="All Music"
@@ -41,7 +51,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Panel Grid.Row="2">
+        <Panel Grid.Row="3">
             <ScrollViewer Name="LibraryScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsAllMusicChip}">
                 <StackPanel Name="LibraryContent" Margin="20,0,20,24" Spacing="14">
                     <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
