@@ -65,4 +65,15 @@ internal static class MobileLibrary
             .OrderByDescending(a => a.Tracks.Max(t => t.DateAdded))
             .Take(max)
             .ToList();
+
+    /// <summary>The date a release sorts by (the desktop ArtistDetailViewModel.ReleaseSortDate
+    /// rule): the first track's parseable release-date tag, else January 1 of the album year,
+    /// else the epoch so untagged releases sink.</summary>
+    internal static DateTime ReleaseSortDate(Album album)
+    {
+        var tagged = album.Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ReleaseDate))?.ReleaseDate;
+        if (Track.TryParseReleaseDate(tagged, out var date)) return date;
+        if (album.Year is > 0 and < 10000) return new DateTime(album.Year, 1, 1);
+        return DateTime.MinValue;
+    }
 }

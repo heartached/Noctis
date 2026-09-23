@@ -31,6 +31,16 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
     public Func<PageTint> TintFactory { get; init; } = () => new PageTint();
 
+    private FavoriteArtistsService? _favoriteArtists;
+
+    /// <summary>Favourite artists, in the desktop's favorite_artists.json (a set of names) under
+    /// the data root, so the file means the same thing on both.</summary>
+    public FavoriteArtistsService FavoriteArtists
+    {
+        get => _favoriteArtists ??= new FavoriteArtistsService(Path.Combine(Library.Persistence.DataDirectory, "favorite_artists.json"));
+        init => _favoriteArtists = value;
+    }
+
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
@@ -203,12 +213,12 @@ public sealed partial class ShellViewModel : ObservableObject
         Navigate(new AlbumPageViewModel(this, album));
     }
 
-    /// <summary>An artist row or link. Until the artist page (B6) this lists the artist's songs.</summary>
+    /// <summary>An artist row or link: the artist page.</summary>
     [RelayCommand]
     private void OpenArtist(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
-        Navigate(new SongListPageViewModel(this, name, () => MobileLibrary.SongsBy(Library.Service, name)));
+        Navigate(new ArtistPageViewModel(this, name));
     }
 
     [RelayCommand]

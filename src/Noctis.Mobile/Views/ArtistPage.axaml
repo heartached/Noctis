@@ -1,0 +1,169 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.ArtistPage"
+             x:DataType="vm:ArtistPageViewModel"
+             Background="{Binding Tint.Background}"
+             Classes.tinted="{Binding Tint.HasTint}"
+             Classes.light="{Binding Tint.IsLight}">
+
+    <!-- The album page's tint rule (see AlbumPage.axaml). The hero's name and buttons sit on
+         the darkened cover, so they stay white whatever the tint. -->
+    <UserControl.Styles>
+        <Style Selector="views|ArtistPage">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted.light">
+            <Setter Property="Foreground" Value="#111111" />
+        </Style>
+        <Style Selector="views|ArtistPage Button.row, views|ArtistPage Button.icon">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted Button.row, views|ArtistPage.tinted Button.icon">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted.light Button.row, views|ArtistPage.tinted.light Button.icon">
+            <Setter Property="Foreground" Value="#111111" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted TextBlock.subtle, views|ArtistPage.tinted TextBlock.row-sub">
+            <Setter Property="Foreground" Value="#B0FFFFFF" />
+        </Style>
+        <Style Selector="views|ArtistPage.tinted.light TextBlock.subtle, views|ArtistPage.tinted.light TextBlock.row-sub">
+            <Setter Property="Foreground" Value="#80000000" />
+        </Style>
+        <Style Selector="views|ArtistPage Grid#Hero Button.round">
+            <Setter Property="Background" Value="#40FFFFFF" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="views|ArtistPage Grid#Hero Button.icon">
+            <Setter Property="Background" Value="#40000000" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Name="ArtistScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,0,24" Spacing="16">
+            <Grid Name="Hero" Height="340" ClipToBounds="True">
+                <Border Background="{DynamicResource HomeCardBackground}">
+                    <PathIcon Name="HeroPlaceholder" Data="{DynamicResource ArtistsIcon}" Width="96" Height="96" Opacity="0.35"
+                              IsVisible="{Binding !HasHero}" />
+                </Border>
+                <controls:CachedImage Name="HeroImage" SourcePath="{Binding HeroArtworkPath}" DecodeWidth="768"
+                                      ClearOnSourceChange="False" Stretch="UniformToFill" />
+                <Border IsHitTestVisible="False">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,40%" EndPoint="0%,100%">
+                            <GradientStop Color="#00000000" Offset="0" />
+                            <GradientStop Color="#CC000000" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Button Classes="icon" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Command="{Binding Shell.NavigateBackCommand}">
+                    <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+                </Button>
+                <StackPanel VerticalAlignment="Bottom" Margin="20,0,20,16" Spacing="12">
+                    <TextBlock Name="ArtistName" Text="{Binding Name}" FontSize="30" FontWeight="Bold" Foreground="White"
+                               HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
+                        <Button Name="FavouriteButton" Classes="round" Command="{Binding ToggleFavouriteCommand}">
+                            <Panel>
+                                <PathIcon Data="{DynamicResource HeartOutlineIcon}" IsVisible="{Binding !IsFavourite}" />
+                                <PathIcon Data="{DynamicResource HeartFillIcon}" IsVisible="{Binding IsFavourite}" />
+                            </Panel>
+                        </Button>
+                        <Button Name="PlayButton" Classes="round" Command="{Binding PlayCommand}">
+                            <PathIcon Data="{DynamicResource PlayIcon}" />
+                        </Button>
+                        <Button Name="ShuffleButton" Classes="round" Command="{Binding ShuffleCommand}">
+                            <PathIcon Data="{DynamicResource ShuffleIcon}" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <Button Name="FeaturedCard" Classes="row" Margin="16,0" IsVisible="{Binding HasFeatured}" Command="{Binding OpenFeaturedCommand}">
+                <Border Classes="card" Padding="10">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border Classes="art" Width="60" Height="60">
+                            <controls:CachedImage SourcePath="{Binding FeaturedAlbum.ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Classes="subtle" FontSize="11" Text="FEATURED ALBUM" />
+                            <TextBlock Name="FeaturedTitle" Classes="row-title" Text="{Binding FeaturedAlbum.Name}" />
+                            <TextBlock Name="FeaturedSubtitle" Classes="row-sub" Text="{Binding FeaturedSubtitle}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Button>
+
+            <StackPanel Spacing="4" IsVisible="{Binding HasTopSongs}">
+                <TextBlock Classes="section" Text="Top Songs" Margin="20,0" />
+                <ItemsControl Name="TopSongList" ItemsSource="{Binding TopSongs}" Margin="12,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ArtistTopSong">
+                            <Button Classes="row"
+                                    Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).PlayTopSongCommand}"
+                                    CommandParameter="{Binding}"
+                                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                    views:LongPress.CommandParameter="{Binding Track}">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="56" Margin="8,0">
+                                    <Border Classes="art" Width="44" Height="44">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
+                                            <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                        <TextBlock Classes="row-title" Text="{Binding Track.Title}" />
+                                        <TextBlock Classes="row-sub" Text="{Binding Subtitle}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Classes="explicit" IsVisible="{Binding Track.IsExplicit}">
+                                        <TextBlock Text="E" />
+                                    </Border>
+                                    <Button Grid.Column="3" Classes="icon" Width="36" Height="36"
+                                            Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                            CommandParameter="{Binding Track}">
+                                        <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="16" Height="16" />
+                                    </Button>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="8" IsVisible="{Binding HasAlbums}">
+                <TextBlock Classes="section" Text="Albums" Margin="20,0" />
+                <!-- The discography is uncapped, so the rail virtualises horizontally (a prolific
+                     artist would otherwise realise every tile at page open). VirtualizingStackPanel
+                     has no Spacing: each tile carries the 12px gap as a right margin. -->
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl Name="AlbumRail" ItemsSource="{Binding Albums}" Margin="20,0,8,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:Album">
+                                <Button Classes="row" Width="150" Margin="0,0,12,0"
+                                        Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).Shell.OpenAlbumCommand}"
+                                        CommandParameter="{Binding}"
+                                        views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
+                                    <views:AlbumTile />
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
