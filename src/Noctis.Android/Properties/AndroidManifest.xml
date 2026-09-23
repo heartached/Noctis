@@ -18,5 +18,7 @@
 	     only costs the notification and the lock-screen card — the service still runs in the
 	     foreground and playback is unaffected. -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-	<application android:label="Noctis" android:icon="@drawable/icon" />
+	<!-- Adaptive + themed launcher icon (mipmap-anydpi-v26), generated from the logo by
+	     scripts/android/make-icons.py. @drawable/icon (the 2000 px logo) is still the splash icon. -->
+	<application android:label="Noctis" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" />
 </manifest>

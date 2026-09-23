@@ -11,7 +11,8 @@ namespace Noctis.Android;
 [Activity(
     Label = "Noctis",
     Theme = "@style/NoctisTheme.NoActionBar",
-    Icon = "@drawable/icon",
+    Icon = "@mipmap/ic_launcher",
+    RoundIcon = "@mipmap/ic_launcher_round",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTask,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.FontScale)]
