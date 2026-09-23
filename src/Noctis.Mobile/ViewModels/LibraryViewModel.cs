@@ -137,7 +137,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         var settings = await _persistence.LoadSettingsAsync();
         settings.PinnedAlbumIds.RemoveAll(id => id == albumId);
         if (pinned) settings.PinnedAlbumIds.Add(albumId);
-        await _persistence.SaveSettingsAsync(settings);
+        await SaveSettingsAsync(settings, "Pin");
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         AfterUserEdit();
     }
@@ -183,6 +183,23 @@ public sealed partial class LibraryViewModel : ObservableObject
         AfterUserEdit();
     }
 
+    /// <summary>
+    /// A settings write from a user action. Logged, never thrown: these run from async command
+    /// and sheet handlers, and an exception escaping one reaches the UI thread and ends the app.
+    /// The edit still applies for this session, as a failed playlist save does.
+    /// </summary>
+    private async Task SaveSettingsAsync(AppSettings settings, string what)
+    {
+        try
+        {
+            await _persistence.SaveSettingsAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"{what} settings save failed: {ex.Message}");
+        }
+    }
+
     /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
     private void AfterUserEdit()
     {
@@ -220,7 +237,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (!settings.MusicFolders.Contains(picked))
         {
             settings.MusicFolders.Add(picked);
-            await _persistence.SaveSettingsAsync(settings);
+            await SaveSettingsAsync(settings, "Folder");
         }
         SetFolders(settings.MusicFolders);
         await ScanAsync(settings.MusicFolders);

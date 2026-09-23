@@ -16,10 +16,12 @@ public sealed class AndroidLogExporter : ILogExporter
     public async Task<bool> ExportAsync(string suggestedFileName, string text)
     {
         if (MainActivity.Current is not { } activity) return false;
-        var uri = await activity.CreateDocumentAsync(suggestedFileName, "text/plain");
-        if (uri == null) return false;
         try
         {
+            // Inside the try: StartActivityForResult throws ActivityNotFoundException on a
+            // device without a documents UI, and that must be a failed export, not a crash.
+            var uri = await activity.CreateDocumentAsync(suggestedFileName, "text/plain");
+            if (uri == null) return false;
             await using var stream = _context.ContentResolver!.OpenOutputStream(AUri.Parse(uri)!)!;
             await using var writer = new StreamWriter(stream);
             await writer.WriteAsync(text);

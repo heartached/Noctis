@@ -62,6 +62,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // replays what is already buffered, so attaching here loses nothing logged earlier;
         // the reset callback exists for the desktop's disk mirror and has no analogue here.
         DebugLog.AttachSink(line => ALog.Info(LogTag, line), static () => { });
+        HookUnhandledExceptions();
 
         var persistence = new PersistenceService();
         var metadata = new MetadataService();
@@ -110,6 +111,29 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _ = StartAsync(persistence, library, history);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Last-chance logging. AsyncRelayCommand rethrows on the UI thread, so an exception that
+    /// escapes any async command or event handler would otherwise end the process with nothing
+    /// in `adb logcat -s Noctis`. A UI-thread exception is logged and marked handled: the app
+    /// stays up in whatever state the failed action left, which beats vanishing mid-song.
+    /// Exceptions on other threads cannot be survived; they are only logged on the way down.
+    /// </summary>
+    private static void HookUnhandledExceptions()
+    {
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            DebugLog.Write("Crash", $"Unhandled UI-thread exception (kept running): {e.Exception}");
+            e.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            DebugLog.Write("Crash", $"Unhandled exception (terminating: {e.IsTerminating}): {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            DebugLog.Write("Crash", $"Unobserved task exception: {e.Exception}");
+            e.SetObserved();
+        };
     }
 
     /// <summary>Settings → language/theme, then the library and the saved queue. The shell is
