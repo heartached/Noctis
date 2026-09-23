@@ -48,6 +48,10 @@ public partial class LyricsPage : UserControl
     {
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty || !IsVisible) return;
+        // Frames stop while the page is hidden, so the active line is stale on open: catch
+        // up first, so the snap below lands on the current line (and a paused song, which
+        // runs no frame loop, highlights the right one).
+        _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
         EnsureFrameLoop();
         // After layout, so the containers exist and the extent is measured.
         Dispatcher.UIThread.Post(() => ScrollToLine(_lyrics?.ActiveLineIndex ?? -1, animate: false), DispatcherPriority.Loaded);

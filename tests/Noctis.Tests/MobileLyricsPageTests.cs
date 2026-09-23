@@ -113,6 +113,32 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>The index only advances on frames, and frames only run while the page is
+    /// visible, so opening it mid-song must catch up before the first snap — otherwise the
+    /// page snaps to a stale line and then glides (playing) or stays wrong (paused).</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OpeningMidSong_ShowsTheCurrentLine(bool pauseBeforeOpening)
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (_, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);   // lyrics page closed throughout
+        player.RaisePositionChanged(TimeSpan.FromSeconds(5.5));   // second line starts at 5.0 s
+        if (pauseBeforeOpening) shell.Player.TogglePlayPauseCommand.Execute(null);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+        Assert.Equal(1.0, shell.Lyrics.Lines[1].LineOpacity, 6);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     [AvaloniaFact]
     public void ScrollToLine_PutsTheLineOnTheAnchor()
     {
