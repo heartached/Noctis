@@ -17,6 +17,13 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
 {
     private const string ExternalStorageAuthority = "com.android.externalstorage.documents";
 
+    /// <summary>The largest sidecar read. Real lyric files are kilobytes; the whole file is held
+    /// in memory, so a mis-named multi-megabyte file beside a song must not be.</summary>
+    internal const int MaxSidecarBytes = 4 * 1024 * 1024;
+
+    // Oversized sidecars already logged: the lookup runs on every track change. Worker threads.
+    private static readonly HashSet<string> LoggedOversize = new();
+
     private static readonly string[] Projection =
     {
         DocumentsContract.Document.ColumnDocumentId,
@@ -45,9 +52,22 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
             if (SidecarNames.Match(self.Name, children.Select(c => c.Name!), extensions) is not { } hit) return null;
             var sidecarId = children.First(c => c.Name == hit.Name).Id!;
 
-            using var stream = AndroidFileSystemSource.OpenSeekable(_resolver, DocumentsContract.BuildDocumentUriUsingTree(uri, sidecarId)!);
+            var sidecarUri = DocumentsContract.BuildDocumentUriUsingTree(uri, sidecarId)!;
+            using var stream = AndroidFileSystemSource.OpenSeekable(_resolver, sidecarUri);
             using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
+            var chunk = new byte[81920];
+            int read;
+            while ((read = stream.Read(chunk, 0, chunk.Length)) > 0)
+            {
+                if (buffer.Length + read > MaxSidecarBytes)
+                {
+                    bool first;
+                    lock (LoggedOversize) first = LoggedOversize.Add(sidecarUri.ToString()!);
+                    if (first) DebugLog.Write("Lyrics", $"Sidecar {hit.Name} is over {MaxSidecarBytes / (1024 * 1024)} MB; skipped");
+                    return null;
+                }
+                buffer.Write(chunk, 0, read);
+            }
             return new SidecarFile(hit.Extension, buffer.ToArray());
         }
         catch (Exception ex)
