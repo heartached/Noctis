@@ -1,7 +1,7 @@
 Noctis plays the music you already own, from folders on your phone, and shows its lyrics the way they were written: word by word, in time with the song.
 
 WORD-SYNCED LYRICS
-• Apple Music-style TTML with word-level timing, with the translation and romanization lines shown under the original.
+• TTML lyrics with word-level timing, with the translation and romanization lines shown under the original.
 • Enhanced (word-synced) LRC and standard LRC: the current line lights up and the page follows the song.
 • Found automatically: put a .ttml, .elrc or .lrc file with the same name next to the song, or keep lyrics embedded in the file's tags.
 • Turn translation and romanization on or off on the lyrics page. Noctis remembers your choice.
@@ -22,7 +22,7 @@ PLAYBACK
 
 PRIVATE BY DESIGN
 • Works fully offline. No account, no ads, no analytics, no tracking.
-• Nothing about you or your music leaves your phone.
+• Nothing about you or your music is sent to the developer or anyone else.
 
 OPEN SOURCE
 Noctis is free and open source (MIT license) and also available for Windows, macOS and Linux. Source code, bug reports and feature requests: https://github.com/heartached/Noctis
