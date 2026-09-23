@@ -59,22 +59,32 @@ public static class LyricsLoader
 
         // Spec §7: a TTML that would not parse, with nothing else found, still shows its words
         // (unsynced, under "No synced lyrics") rather than "No lyrics".
-        if (unparsedTtml != null && RawTextLines(unparsedTtml) is { Count: > 0 } raw)
+        if (unparsedTtml is { Length: <= MaxRawTextChars } && RawTextLines(unparsedTtml) is { Count: > 0 } raw)
             return Plain(raw, LyricsSource.SidecarUnparsed);
 
         return LoadedLyrics.None;
     }
 
+    /// <summary>A real lyric TTML is tens of KB; past this the raw fallback is not attempted.</summary>
+    private const int MaxRawTextChars = 1_000_000;
+
+    // NonBacktracking: the input is any sidecar a user (or a download) put next to the song,
+    // and with backtracking an unclosed "<head" or "<br" makes each pattern quadratic — 40 KB
+    // took seconds, a few hundred KB minutes of a pool thread with the page on "Loading lyrics…".
+    private const RegexOptions RawOptions = RegexOptions.IgnoreCase | RegexOptions.NonBacktracking;
+
     /// <summary>
-    /// The readable text of a TTML the parser rejected: the head (metadata, Apple's
-    /// translation tables) dropped, line-level tags turned into breaks, every other tag
-    /// removed, entities decoded. Works on malformed XML, which is the point.
+    /// The readable text of a TTML the parser rejected: the doctype and the head (metadata,
+    /// Apple's translation tables) dropped, line-level tags (prefixed or not) turned into
+    /// breaks, every other tag removed, entities decoded. Works on malformed XML, which is
+    /// the point.
     /// </summary>
     internal static List<string> RawTextLines(string markup)
     {
-        var text = Regex.Replace(markup, @"<head\b.*?</head\s*>", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        text = Regex.Replace(text, @"<\s*(br\b[^>]*|/p|/div)\s*>", "\n", RegexOptions.IgnoreCase);
-        text = Regex.Replace(text, @"<[^>]*>", string.Empty);
+        var text = Regex.Replace(markup, @"<!DOCTYPE[^\[>]*(\[[^\]]*\])?[^>]*>", string.Empty, RawOptions);
+        text = Regex.Replace(text, @"<head\b.*?</head\s*>", string.Empty, RawOptions | RegexOptions.Singleline);
+        text = Regex.Replace(text, @"<\s*(br\b[^>]*|/(\w+:)?p|/(\w+:)?div)\s*>", "\n", RawOptions);
+        text = Regex.Replace(text, @"<[^>]*>", string.Empty, RawOptions);
         text = WebUtility.HtmlDecode(text);
         return text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
     }

@@ -256,8 +256,9 @@ public class MobileNavigationTests : IDisposable
 
         var scroll = MobileFixtures.Named<ScrollViewer>(view, "LibraryScroll");
         Assert.True(scroll.AllowAutoHide);
-        foreach (var bar in view.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>())
-            Assert.True(bar.AllowAutoHide);
+        var bars = scroll.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>().ToList();
+        Assert.NotEmpty(bars);   // Fluent's ScrollViewer template always realizes both bars
+        Assert.All(bars, bar => Assert.True(bar.AllowAutoHide));
         window.Close();
     }
 

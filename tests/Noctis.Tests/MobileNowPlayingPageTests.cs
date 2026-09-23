@@ -108,25 +108,37 @@ public class MobileNowPlayingPageTests : IDisposable
         window.Close();
     }
 
-    /// <summary>Review Focus #4: rotating mid-playback keeps the activity, so the portrait
-    /// layout must still fit a 915×412 window.</summary>
+    /// <summary>Review Focus #4: rotating mid-playback keeps the activity, so the page must
+    /// fit a 915×412 window as the device has it — volume row shown, status bar on top and
+    /// the 3-button navigation bar on the right — with the cover still visible, not squeezed
+    /// out by the controls.</summary>
     [AvaloniaFact]
-    public void Landscape_NowPlayingFitsTheWindow()
+    public void Landscape_NowPlayingFitsTheWindow_WithTheCoverStillShown()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
-        var window = MobileFixtures.Mount(rig.Shell, out var view, width: 915, height: 412);
-        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
-        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        var nowPlaying = new NowPlayingViewModel(rig.Player, rig.Library, rig.Persistence, marshal: a => a(), volume: new FakeVolume());
+        var shell = new ShellViewModel(rig.Shell.Library, nowPlaying,
+            new LyricsPageViewModel(rig.Player, nowPlaying, new FakeTrackFiles(), rig.Persistence, work => Task.FromResult(work())));
+        var window = MobileFixtures.Mount(shell, out var view, width: 915, height: 412);
+        view.ApplySafeArea(new Thickness(0, 24, 48, 0));
+        shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
         window.UpdateLayout();
 
         var page = view.FindControl<NowPlayingPage>("NowPlaying")!;
-        foreach (var name in new[] { "PlayPauseButton", "QueueButton", "SeekBar" })
+        Assert.True(MobileFixtures.Named<Control>(page, "VolumeRow").IsVisible);
+        foreach (var name in new[] { "SeekBar", "ShuffleButton", "PreviousButton", "PlayPauseButton", "NextButton", "RepeatButton",
+                     "VolumeSlider", "LyricsButton", "OutputButton", "QueueButton" })
         {
             var control = MobileFixtures.Named<Control>(page, name);
-            var bottom = control.TranslatePoint(new Point(0, control.Bounds.Height), window)!.Value.Y;
-            Assert.True(bottom <= 412.5, $"{name} ends at {bottom}");
+            var topLeft = control.TranslatePoint(new Point(0, 0), window)!.Value;
+            var bottomRight = control.TranslatePoint(new Point(control.Bounds.Width, control.Bounds.Height), window)!.Value;
+            Assert.True(control.Bounds.Width > 0 && control.Bounds.Height > 0, $"{name} has no size");
+            Assert.True(topLeft.X >= -0.5 && topLeft.Y >= -0.5 && bottomRight.X <= 915.5 && bottomRight.Y <= 412.5,
+                $"{name} spans {topLeft}-{bottomRight}");
         }
-        Assert.True(MobileFixtures.Named<Viewbox>(page, "ArtworkBox").Bounds.Height < 206);
+        var cover = MobileFixtures.Named<Viewbox>(page, "ArtworkBox").Bounds.Height;
+        Assert.True(cover >= 96, $"cover is {cover} high");
         window.Close();
     }
 
@@ -152,6 +164,34 @@ public class MobileNowPlayingPageTests : IDisposable
         Assert.True(lyrics.HasLyrics);
         Assert.True(lyrics.IsRawFallback);
         Assert.Equal("No synced lyrics", lyrics.StatusText);
+    }
+
+    /// <summary>
+    /// The raw fallback runs on sidecar text anyone can drop next to a song. A backtracking
+    /// regex over an unclosed &lt;head / &lt;br goes quadratic (40 KB took seconds, a few
+    /// hundred KB minutes of a pinned pool thread with the page stuck on "Loading lyrics…").
+    /// </summary>
+    [Fact]
+    public void RawTextFallback_StaysLinear_OnUnclosedTags()
+    {
+        var hostile = "<tt>" + string.Concat(Enumerable.Repeat("<head <br ", 10_000));   // 100 KB, never closed
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        LyricsLoader.RawTextLines(hostile);
+        clock.Stop();
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(1), $"took {clock.Elapsed}");
+    }
+
+    [Fact]
+    public void RawTextFallback_BreaksOnPrefixedParagraphs_DropsTheDoctype_AndSkipsHugeFiles()
+    {
+        Assert.Equal(new[] { "One", "Two" },
+            LyricsLoader.RawTextLines("<tt:tt><tt:body><tt:p begin='x'>One</tt:p><tt:p>Two</tt:p></tt:body>"));
+        Assert.Equal(new[] { "Words" },
+            LyricsLoader.RawTextLines("<!DOCTYPE tt [ <!ENTITY e \"x\"> ]><tt><body><p>Words</p></body></tt>"));
+
+        var files = new FakeTrackFiles();
+        files.Sidecars[".ttml"] = "<tt><body><p begin='bad'>" + new string('a', 1_100_000) + "</body>";
+        Assert.Equal(LyricsSource.None, LyricsLoader.Load(MobileFixtures.Song("Tone"), files, joinSplitWords: false).Source);
     }
 
     [AvaloniaFact]

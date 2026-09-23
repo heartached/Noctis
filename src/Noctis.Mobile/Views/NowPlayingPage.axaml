@@ -35,7 +35,9 @@
         <Border Background="#99000000" IsHitTestVisible="False" />
 
         <Border Padding="{Binding SafeArea}">
-            <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,4,24,12">
+            <!-- Portrait: one column. Landscape (the code-behind, on resize): the cover on the
+                 left across every row, the controls on the right. -->
+            <Grid Name="Layout" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,4,24,12">
                 <Button Grid.Row="0" Classes="icon" HorizontalAlignment="Left" Command="{Binding CloseNowPlayingCommand}">
                     <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
                 </Button>
