@@ -14,11 +14,11 @@ data. There is no account, no advertising, no analytics and no crash reporting.
 - **Your library index.** Titles, artists, albums, artwork and lyrics read from the tags
   and lyric files in those folders are stored in the app's private storage so the library
   opens quickly.
-- **Your activity in the app.** Favourites, play history, the play queue, a record of
-  library changes and your settings are stored in the app's private storage.
+- **Your activity in the app.** Favourites, playlists, play history, the play queue, a
+  record of library changes and your settings are stored in the app's private storage.
 - **Diagnostics.** Noctis writes diagnostic messages to Android's system log on your
-  device. They are never sent anywhere. If you export the log from Settings, it is saved
-  only to the place you pick.
+  device. They are never sent anywhere. If you use Settings → Export logs, the log is
+  saved only to the file you choose; Noctis never sends it anywhere.
 
 ## Network
 

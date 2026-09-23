@@ -73,7 +73,9 @@ children: No. (Selecting any under-13 group puts the app under the Families poli
 - Does your app collect or share any of the required user data types? **No.**
   - Why this is true: the Android app makes no network requests (no HTTP client, socket
     or web view in any assembly it ships), has no analytics, crash reporting or ads SDK,
-    and keeps the library index, settings, play history and queue in app-private storage.
+    and keeps the library index, settings, favourites, playlists, play history and queue in
+    app-private storage. No log file is written automatically; Settings → Export logs saves
+    one only where the user chooses.
     Android's own device backup (allowBackup) is the user's backup to their Google
     account, not data the developer receives.
 - The Console then skips the data-type questions. If it asks about encryption in transit
