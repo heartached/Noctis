@@ -23,6 +23,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Player = player;
         Lyrics = lyrics;
         Player.PropertyChanged += OnPlayerChanged;
+        Player.PlayRecorded += OnPlayRecorded;
         Search = new SearchPageViewModel(this);
         Home = new HomePageViewModel(this);
     }
@@ -125,11 +126,13 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
             OnPropertyChanged(nameof(IsMiniBarVisible));
-        if (e.PropertyName == nameof(NowPlayingViewModel.CurrentTrack))
-        {
-            Library.RefreshRecents();
-            Home.Refresh();
-        }
+    }
+
+    /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it.</summary>
+    private void OnPlayRecorded(object? sender, EventArgs e)
+    {
+        Library.RefreshRecents();
+        Home.Refresh();
     }
 
     partial void OnSelectedTabChanged(MobileTab value)

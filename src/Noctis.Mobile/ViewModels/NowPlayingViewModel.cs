@@ -39,6 +39,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private bool _seeking;
     private int _seekIdleTicks;
     private bool _disposed;
+    // The started track whose play is not in the log yet, and the position it started from.
+    // See OnPlayerPosition: a track counts as played once its audio moves past that start.
+    private Track? _unrecordedPlay;
+    private TimeSpan _unrecordedFrom;
     private readonly IVolumeControl? _volume;
     private bool _syncingVolume;
 
@@ -365,9 +369,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StartTrack(Track track, TimeSpan? fromPosition)
     {
-        // Before CurrentTrack changes: its PropertyChanged refreshes the Library Shelf and Home
-        // rows from the play log, which must already hold this play.
-        _history?.RecordPlay(track);
+        // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
+        // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
+        _unrecordedPlay = track;
+        _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -429,12 +434,28 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // Only a tick that arrives while actually playing proves the stream is healthy;
         // a timer-driven poll firing while paused/stopped must not clear a live streak.
         if (playing) _consecutiveErrors = 0;
+        // Past the start, not merely Playing: the Android player reports Playing from Play()
+        // on, and a file that never decodes keeps polling at its start position until the error.
+        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)
+            RecordStartedPlay();
         // Position only: the queue *structure* is written by its own mutators, so rewriting it
         // here would re-serialize and fsync the whole queue every five seconds for a value
         // that did not change. See SavePositionNow.
         if ((DateTime.UtcNow - _lastSaveUtc).TotalSeconds >= SaveIntervalSeconds)
             SavePositionNow();
     });
+
+    /// <summary>Raised once a started track's play is in the log (see <see cref="StartTrack"/>);
+    /// the shell refreshes the Library Shelf and the Home rows from the log on it.</summary>
+    public event EventHandler? PlayRecorded;
+
+    private void RecordStartedPlay()
+    {
+        var track = _unrecordedPlay!;
+        _unrecordedPlay = null;
+        _history?.RecordPlay(track);
+        PlayRecorded?.Invoke(this, EventArgs.Empty);
+    }
 
     private void OnPlayerDuration(object? sender, TimeSpan duration) => _marshal(() =>
     {

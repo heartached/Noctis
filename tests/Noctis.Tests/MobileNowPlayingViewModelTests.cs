@@ -469,4 +469,25 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.Equal(RepeatMode.One, vm.RepeatMode);
         Assert.False(vm.HasNext);                          // One does not wrap on a user skip
     }
+    [Fact]
+    public void APlayIsRecorded_OnlyOnceItsAudioAdvances_SoAFailedTrackIsNot()
+    {
+        var t = Tracks(2);
+        var history = new FakeHistoryLog();
+        var player = new FakeAudioPlayer();
+        var library = new FakeLibraryService();
+        library.TrackList.AddRange(t);
+        var vm = new NowPlayingViewModel(player, library, new PersistenceService(_root), history, marshal: a => a());
+
+        vm.PlayTracks(t, 0);
+        player.RaisePositionChanged(TimeSpan.Zero);          // the poll before any audio: not yet a play
+        Assert.Empty(history.Events);
+
+        player.RaisePlaybackError("ERROR_CODE_PARSING_CONTAINER_MALFORMED: broken");   // t0 never played
+        Assert.Same(t[1], vm.CurrentTrack);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(0.5));
+        player.RaisePositionChanged(TimeSpan.FromSeconds(0.75));   // one play, not one per tick
+
+        Assert.Equal(new[] { t[1].Id }, history.Events.Select(e => e.TrackId));
+    }
 }

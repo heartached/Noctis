@@ -80,6 +80,7 @@ public class MobileHomeTests
         Assert.True(view.FindControl<Button>("HomeTab")!.IsVisible);
 
         rig.Shell.Player.PlayTracks(new[] { a, b }, 1);
+        rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(1));   // its audio started: now it is a play
         rig.Shell.SelectTabCommand.Execute(MobileTab.Home);
         window.UpdateLayout();
 

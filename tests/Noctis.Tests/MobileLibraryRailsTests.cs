@@ -55,6 +55,7 @@ public class MobileLibraryRailsTests
         using var rig = MobileFixtures.MakeRig(new[] { a1, c1 }, albums, log: h => h.Seed(a1, Now.AddHours(-1)));
 
         rig.Shell.Player.PlayTracks(new[] { c1 }, 0);
+        rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(1));   // its audio started: now it is a play
 
         Assert.Equal(new[] { "Gamma", "Alpha" }, rig.Shell.Library.Shelf.Select(a => a.Name));
     }
