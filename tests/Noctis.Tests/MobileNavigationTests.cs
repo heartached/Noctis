@@ -310,4 +310,27 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(700, ((ScrollViewer)window.Content!).Offset.Y, 1);
         window.Close();
     }
+    [AvaloniaFact]
+    public void ScrollMemory_ARestoreSupersededWhileDetached_DoesNotBlockSaving()
+    {
+        var first = new NavTestPage("First") { ScrollOffset = new Vector(0, 500) };
+        var second = new NavTestPage("Second");
+        var viewer = new ScrollViewer { DataContext = first, Content = new Border { Height = 3000 } };
+        ScrollMemory.SetIsEnabled(viewer, true);
+        var window = new Window { Width = 400, Height = 300, Content = viewer };
+        window.Show();                        // attached: first's restore is queued
+        window.Content = null;                // detached before it lands...
+        viewer.DataContext = second;          // ...and reused for a page with nothing to restore
+        Dispatcher.UIThread.RunJobs();        // the superseded restore gives up
+
+        window.Content = viewer;
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        viewer.Offset = new Vector(0, 400);
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(400, second.ScrollOffset.Y, 1);
+        window.Close();
+    }
 }
