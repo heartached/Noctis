@@ -115,7 +115,10 @@ try {
     Remove-Item $signedAab -ErrorAction SilentlyContinue
 
     $buildArgs = @(
-        'build', $project, '-c', 'Release', '-nodeReuse:false', '-v:m',
+        # -nodeReuse:false and UseSharedCompilation=false: no MSBuild node or VBCSCompiler
+        # server outlives this build, so none keeps a copy of this process's environment,
+        # which holds the keystore password.
+        'build', $project, '-c', 'Release', '-nodeReuse:false', '-p:UseSharedCompilation=false', '-v:m',
         "-p:JavaSdkDirectory=$jbr", "-p:AndroidSdkDirectory=$sdk",
         '-p:AndroidKeyStore=true',
         "-p:AndroidSigningKeyStore=$Keystore",
@@ -143,6 +146,8 @@ try {
     $vc = (& $java -jar $bundletool dump manifest "--bundle=$signedAab" '--xpath=/manifest/@android:versionCode').Trim()
     $vn = (& $java -jar $bundletool dump manifest "--bundle=$signedAab" '--xpath=/manifest/@android:versionName').Trim()
     $tsdk = (& $java -jar $bundletool dump manifest "--bundle=$signedAab" '--xpath=/manifest/uses-sdk/@android:targetSdkVersion').Trim()
+    if ($tsdk -ne '36') { throw "Bundle targetSdkVersion is '$tsdk'; Play requires 36 for new apps (Noctis.Android.csproj TargetFramework / SupportedOSPlatformVersion?)" }
+    if ($VersionCode -gt 0 -and $vc -ne "$VersionCode") { throw "Bundle versionCode is '$vc' but -VersionCode $VersionCode was passed" }
     $config = (& $java -jar $bundletool dump config "--bundle=$signedAab") -join "`n"
     if ($config -notmatch 'PAGE_ALIGNMENT_16K') { throw 'Bundle config does not request PAGE_ALIGNMENT_16K (src/Noctis.Android/BundleConfig.json not applied?)' }
 
