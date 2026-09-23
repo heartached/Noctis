@@ -61,6 +61,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _hasRomanizations;
     [ObservableProperty] private bool _showTranslation = true;
     [ObservableProperty] private bool _showRomanization = true;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText))] private bool _isRawFallback;
 
     /// <summary>Android's system font scale. Avalonia scales by density only, so the head
     /// passes Configuration.FontScale in and the page sizes lyric text from it.</summary>
@@ -76,7 +77,11 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>True while the page should run its per-frame loop.</summary>
     public bool WantsFrames => IsSynced && _nowPlaying.IsPlaying;
 
-    public string StatusText => IsLoading ? "Loading lyrics…" : HasLyrics ? string.Empty : "No lyrics";
+    public string StatusText =>
+        IsLoading ? "Loading lyrics…"
+        : !HasLyrics ? "No lyrics"
+        : IsRawFallback ? "No synced lyrics"
+        : string.Empty;
 
     public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
@@ -155,6 +160,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         HasLyrics = false;
         HasTranslations = false;
         HasRomanizations = false;
+        IsRawFallback = false;
         if (track == null)
         {
             IsLoading = false;
@@ -179,6 +185,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         Lines.ReplaceAll(result.Lines);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;
+        IsRawFallback = result.Source == LyricsSource.SidecarUnparsed;
         HasTranslations = result.Lines.Any(l => l.HasTranslation);
         HasRomanizations = result.Lines.Any(l => l.HasTransliteration);
         if (IsSynced)

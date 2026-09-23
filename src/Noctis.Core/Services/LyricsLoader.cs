@@ -1,9 +1,11 @@
+using System.Net;
+using System.Text.RegularExpressions;
 using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
 
-public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain }
+public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain, SidecarUnparsed }
 
 /// <summary>What <see cref="LyricsLoader.Load"/> found. Plain lines are pre-activated.</summary>
 public sealed record LoadedLyrics(IReadOnlyList<LyricLine> Lines, bool IsSynced, LyricsSource Source)
@@ -24,6 +26,7 @@ public static class LyricsLoader
     public static LoadedLyrics Load(Track track, ITrackFileAccess files, bool joinSplitWords)
     {
         var remaining = SidecarOrder;
+        string? unparsedTtml = null;
         while (remaining.Length > 0)
         {
             var hit = files.ReadSidecar(track.FilePath, remaining);
@@ -33,6 +36,7 @@ public static class LyricsLoader
                 ? FromTtml(text, joinSplitWords)
                 : FromLrc(text, hit.Extension == ".elrc" ? LyricsSource.SidecarElrc : LyricsSource.SidecarLrc);
             if (parsed != null) return parsed;
+            if (hit.Extension == ".ttml") unparsedTtml ??= text;
             // Unusable (malformed TTML, empty file): try the next format, as the desktop probe does.
             var index = Array.IndexOf(remaining, hit.Extension);
             remaining = index < 0 ? Array.Empty<string>() : remaining[(index + 1)..];
@@ -53,7 +57,26 @@ public static class LyricsLoader
         if (!string.IsNullOrWhiteSpace(plain))
             return Plain(LrcParser.SplitPlain(plain), LyricsSource.EmbeddedPlain);
 
+        // Spec §7: a TTML that would not parse, with nothing else found, still shows its words
+        // (unsynced, under "No synced lyrics") rather than "No lyrics".
+        if (unparsedTtml != null && RawTextLines(unparsedTtml) is { Count: > 0 } raw)
+            return Plain(raw, LyricsSource.SidecarUnparsed);
+
         return LoadedLyrics.None;
+    }
+
+    /// <summary>
+    /// The readable text of a TTML the parser rejected: the head (metadata, Apple's
+    /// translation tables) dropped, line-level tags turned into breaks, every other tag
+    /// removed, entities decoded. Works on malformed XML, which is the point.
+    /// </summary>
+    internal static List<string> RawTextLines(string markup)
+    {
+        var text = Regex.Replace(markup, @"<head\b.*?</head\s*>", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        text = Regex.Replace(text, @"<\s*(br\b[^>]*|/p|/div)\s*>", "\n", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"<[^>]*>", string.Empty);
+        text = WebUtility.HtmlDecode(text);
+        return text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
     }
 
     private static LoadedLyrics? FromTtml(string text, bool joinSplitWords)

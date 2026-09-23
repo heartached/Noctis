@@ -61,19 +61,24 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="0,8,0,0">
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="16,0">
-            <Button Content="⌄" FontSize="24" Background="Transparent" Command="{Binding ToggleLyricsCommand}" />
+            <Button Classes="icon" Foreground="White" Command="{Binding ToggleLyricsCommand}">
+                <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
+            </Button>
             <ToggleButton Grid.Column="2" Name="TranslationToggle" Content="Translation" Margin="0,0,8,0"
                           IsChecked="{Binding Lyrics.ShowTranslation}" IsVisible="{Binding Lyrics.HasTranslations}" />
             <ToggleButton Grid.Column="3" Name="RomajiToggle" Content="Romaji"
                           IsChecked="{Binding Lyrics.ShowRomanization}" IsVisible="{Binding Lyrics.HasRomanizations}" />
         </Grid>
 
-        <TextBlock Grid.Row="1" Name="StatusText" Text="{Binding Lyrics.StatusText}" IsVisible="{Binding !Lyrics.HasLyrics}"
+        <TextBlock Grid.Row="1" Name="FallbackBanner" Text="{Binding Lyrics.StatusText}" IsVisible="{Binding Lyrics.IsRawFallback}"
+                   HorizontalAlignment="Center" Margin="0,8,0,0" FontSize="14" Opacity="0.6" Foreground="White" />
+
+        <TextBlock Grid.Row="2" Name="StatusText" Text="{Binding Lyrics.StatusText}" IsVisible="{Binding !Lyrics.HasLyrics}"
                    HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Opacity="0.6" />
 
-        <ScrollViewer Grid.Row="1" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Grid.Row="2" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
             <ItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

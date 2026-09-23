@@ -1,26 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
-using Avalonia.Data.Converters;
 using Noctis.Mobile.ViewModels;
 
 namespace Noctis.Mobile.Views;
-
-/// <summary>Transport glyphs until the Now Playing redesign (B7) switches to the icon set.</summary>
-public static class Glyphs
-{
-    public static readonly IValueConverter PlayPause =
-        new FuncValueConverter<bool, string>(playing => playing ? "⏸" : "▶");
-    public static readonly IValueConverter Repeat =
-        new FuncValueConverter<Noctis.Models.RepeatMode, string>(m => m switch
-        {
-            Noctis.Models.RepeatMode.All => "🔁",
-            Noctis.Models.RepeatMode.One => "🔂",
-            _ => "↻",
-        });
-    public static readonly IValueConverter ShuffleGlyph =
-        new FuncValueConverter<bool, string>(on => on ? "🔀" : "→");
-}
 
 public partial class ShellView : UserControl
 {

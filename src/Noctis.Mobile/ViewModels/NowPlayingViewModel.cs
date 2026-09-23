@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -36,9 +38,11 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private bool _seeking;
     private int _seekIdleTicks;
     private bool _disposed;
+    private readonly IVolumeControl? _volume;
+    private bool _syncingVolume;
 
     public NowPlayingViewModel(IAudioPlayer player, ILibraryService library, IPersistenceService persistence,
-        IPlayHistoryService? history = null, Action<Action>? marshal = null)
+        IPlayHistoryService? history = null, Action<Action>? marshal = null, IVolumeControl? volume = null)
     {
         _player = player;
         _library = library;
@@ -50,6 +54,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved += OnPlayerDuration;
         _player.TrackEnded += OnPlayerTrackEnded;
         _player.PlaybackError += OnPlayerError;
+
+        _volume = volume;
+        if (_volume != null)
+        {
+            SyncVolume();
+            _volume.Changed += OnVolumeChanged;
+        }
     }
 
     [ObservableProperty]
@@ -59,14 +70,20 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isPlaying;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
     private TimeSpan _position;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
     private TimeSpan _duration;
 
-    [ObservableProperty] private RepeatMode _repeatMode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRepeatOn), nameof(IsRepeatOne))]
+    private RepeatMode _repeatMode;
+
+    public bool IsRepeatOn => RepeatMode != RepeatMode.Off;
+    public bool IsRepeatOne => RepeatMode == RepeatMode.One;
+
     [ObservableProperty] private bool _isShuffleEnabled;
     [ObservableProperty] private string _errorText = string.Empty;
 
@@ -100,6 +117,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     /// <summary>0..1 for the seek bar.</summary>
     public double ProgressFraction => Duration > TimeSpan.Zero ? Math.Clamp(Position / Duration, 0, 1) : 0;
+
+    public string ElapsedText => FormatTime(Position);
+
+    /// <summary>The right-hand seek label, counting down as in the mockup ("-2:04").</summary>
+    public string RemainingText => "-" + FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
+
+    /// <summary>mm:ss, or h:mm:ss past an hour (the previous labels' format, so 1:30 still reads "01:30").</summary>
+    public static string FormatTime(TimeSpan time) =>
+        time.TotalHours >= 1
+            ? time.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
+            : time.ToString(@"mm\:ss", CultureInfo.InvariantCulture);
+
+    /// <summary>The device media volume, 0..1 (see IVolumeControl); inert without one.</summary>
+    [ObservableProperty] private double _volumeLevel;
+
+    public bool HasVolumeControl => _volume != null;
+
+    partial void OnVolumeLevelChanged(double value)
+    {
+        if (_syncingVolume || _volume == null) return;
+        _volume.Level = Math.Clamp(value, 0, 1);
+    }
+
+    private void OnVolumeChanged(object? sender, EventArgs e) => _marshal(() =>
+    {
+        if (!_disposed) SyncVolume();
+    });
+
+    private void SyncVolume()
+    {
+        _syncingVolume = true;
+        VolumeLevel = _volume!.Level;
+        _syncingVolume = false;
+    }
 
     public void SetGapless(bool enabled)
     {
@@ -472,5 +523,6 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved -= OnPlayerDuration;
         _player.TrackEnded -= OnPlayerTrackEnded;
         _player.PlaybackError -= OnPlayerError;
+        if (_volume != null) _volume.Changed -= OnVolumeChanged;
     }
 }

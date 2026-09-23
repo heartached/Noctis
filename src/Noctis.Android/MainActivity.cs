@@ -3,6 +3,7 @@ using Android.Content;
 using Android.Content.PM;
 using Android.Content.Res;
 using Android.OS;
+using Android.Views;
 using Avalonia.Android;
 using Noctis.Services;
 
@@ -15,7 +16,7 @@ namespace Noctis.Android;
     RoundIcon = "@mipmap/ic_launcher_round",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTask,
-    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.FontScale)]
+    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.UiMode | ConfigChanges.FontScale)]
 public class MainActivity : AvaloniaMainActivity
 {
     private const int PickFolderRequest = 4242;
@@ -95,6 +96,25 @@ public class MainActivity : AvaloniaMainActivity
         AndroidApp.Current?.ApplyFontScale(newConfig.FontScale);
     }
 
+    /// <summary>
+    /// The hardware volume keys change STREAM_MUSIC without telling the app; after the key is
+    /// handled, have the Now Playing slider re-read it.
+    /// </summary>
+    public override bool DispatchKeyEvent(KeyEvent e)
+    {
+        var handled = base.DispatchKeyEvent(e);
+        if (e.Action == KeyEventActions.Up && e.KeyCode is Keycode.VolumeUp or Keycode.VolumeDown or Keycode.VolumeMute)
+            AndroidApp.Current?.OnVolumeKey();
+        return handled;
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        // Another app, or the notification shade, may have moved the volume while we were away.
+        AndroidApp.Current?.OnVolumeKey();
+    }
+
     protected override void OnPause()
     {
         base.OnPause();
@@ -106,7 +126,7 @@ public class MainActivity : AvaloniaMainActivity
     protected override void OnDestroy()
     {
         // A config change or low-memory kill while the system picker is foreground (our
-        // ConfigurationChanges only covers orientation/screen size/UI mode; a locale or
+        // ConfigurationChanges covers orientation, screen size and layout, UI mode and font scale; a locale or
         // density change still recreates us) recreates the activity before
         // OnActivityResult fires. That callback lands on the new instance, where
         // _pickFolder is null, so the old completion source would otherwise be abandoned

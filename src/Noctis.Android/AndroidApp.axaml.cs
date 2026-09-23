@@ -22,6 +22,7 @@ public partial class AndroidApp : Avalonia.Application
     private ResourceInclude? _activeThemeOverlay;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
+    private AndroidVolumeControl? _volume;
 
     /// <summary>
     /// The running app, for the activity's lifecycle hooks. Declared <c>new</c> on purpose:
@@ -65,7 +66,8 @@ public partial class AndroidApp : Avalonia.Application
         // (it keeps playing in the background service) and holding the activity leaks it.
         _player = new Media3AudioPlayer(context, library, persistence);
 
-        var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history);
+        _volume = new AndroidVolumeControl(context);
+        var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
         var lyrics = new LyricsPageViewModel(_player, nowPlaying, new SafTrackFileAccess(context), persistence)
         {
             // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
@@ -74,7 +76,10 @@ public partial class AndroidApp : Avalonia.Application
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
             nowPlaying,
-            lyrics);
+            lyrics)
+        {
+            Outputs = new AndroidOutputSwitcher(context),
+        };
         _shell = shell;
 
         // Notification / lock screen / Bluetooth / headset transport. The session player raises
@@ -142,6 +147,9 @@ public partial class AndroidApp : Avalonia.Application
     {
         if (_shell != null) _shell.Lyrics.FontScale = scale;
     }
+
+    /// <summary>A volume key or a resume (MainActivity): the media volume may have moved.</summary>
+    public void OnVolumeKey() => _volume?.NotifyChanged();
 
     /// <summary>
     /// Merge one of the shared theme overlays (Dark, Midnight, Ink, Smoke) on top of the

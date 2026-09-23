@@ -4,6 +4,7 @@ using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -40,6 +41,9 @@ public sealed partial class ShellViewModel : ObservableObject
         get => _favoriteArtists ??= new FavoriteArtistsService(Path.Combine(Library.Persistence.DataDirectory, "favorite_artists.json"));
         init => _favoriteArtists = value;
     }
+
+    /// <summary>The system output picker (Android); null in tests and on hosts without one.</summary>
+    public IOutputSwitcher? Outputs { get; init; }
 
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
@@ -319,6 +323,32 @@ public sealed partial class ShellViewModel : ObservableObject
             DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
         }
         Library.Service.NotifyFavoritesChanged(tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ToggleCurrentFavouriteAsync()
+    {
+        if (Player.CurrentTrack is { } track) await SetFavouriteAsync(new[] { track }, !track.IsFavorite);
+    }
+
+    /// <summary>Now Playing's ⋯: the song's sheet, over the player.</summary>
+    [RelayCommand]
+    private void OpenCurrentTrackSheet()
+    {
+        if (Player.CurrentTrack is { } track) Sheet = ContextSheetViewModel.ForTrack(this, track);
+    }
+
+    /// <summary>Now Playing's artist line: the artist page (Navigate closes the player).</summary>
+    [RelayCommand]
+    private void OpenCurrentArtist()
+    {
+        if (Player.CurrentTrack is { } track) OpenArtist(track.GroupingArtist);
+    }
+
+    [RelayCommand]
+    private void ShowOutput()
+    {
+        if (Outputs?.Show() == false) DebugLog.Write("Android", "No output switcher could be shown");
     }
 
     public async Task InitializeAsync()

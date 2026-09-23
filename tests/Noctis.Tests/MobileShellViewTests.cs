@@ -112,9 +112,8 @@ public class MobileShellViewTests
         Assert.True(nowPlaying.IsVisible);
         Assert.False(miniBar.IsVisible);
 
-        // Pins the TimeSpan format on the seek-bar labels: a mis-escaped format string
-        // throws FormatException at bind time and silently leaves the label empty.
-        Assert.Contains(nowPlaying.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "01:30");
+        // Pins the TimeSpan format on the seek-bar labels (remaining time at position 0).
+        Assert.Contains(nowPlaying.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "-01:30");
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

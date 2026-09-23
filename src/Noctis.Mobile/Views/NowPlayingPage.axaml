@@ -1,57 +1,136 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
-             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Mobile.Views.NowPlayingPage"
              x:DataType="vm:ShellViewModel"
-             Background="#121214" Padding="{Binding SafeArea}">
+             Background="#FF121214"
+             Foreground="White">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="24,8,24,16">
-        <Button Grid.Row="0" Content="⌄" FontSize="24" Background="Transparent" Command="{Binding CloseNowPlayingCommand}" HorizontalAlignment="Left" />
+    <UserControl.Resources>
+        <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
+    </UserControl.Resources>
 
-        <Border Grid.Row="1" Margin="0,24" CornerRadius="20" Background="#26262A" MaxWidth="320" MaxHeight="320" />
+    <!-- Always dark (ruling 8): white controls over the blurred cover and scrim. -->
+    <UserControl.Styles>
+        <Style Selector="Button.icon, Button.round, Button.row">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.round">
+            <Setter Property="Background" Value="#26FFFFFF" />
+        </Style>
+        <Style Selector="Button.dim">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="TextBlock.np-sub">
+            <Setter Property="Foreground" Value="#B3FFFFFF" />
+        </Style>
+    </UserControl.Styles>
 
-        <StackPanel Grid.Row="2" Spacing="2">
-            <TextBlock Text="{Binding Player.CurrentTrack.Title}" FontSize="22" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding Player.CurrentTrack.Artist}" FontSize="16" Opacity="0.65" TextTrimming="CharacterEllipsis" />
-        </StackPanel>
+    <Panel>
+        <!-- Blurred once per cover (PreBlurredArtworkConverter) from the visible cover's own bitmap. -->
+        <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}}"
+               Stretch="UniformToFill" IsHitTestVisible="False" />
+        <Border Background="#99000000" IsHitTestVisible="False" />
 
-        <Grid Grid.Row="3" Margin="0,16,0,0" RowDefinitions="Auto,Auto">
-            <!-- The pointer handlers are registered in the code-behind with Tunnel routing,
-                 not as XAML event attributes; see NowPlayingPage.axaml.cs for why. -->
-            <Slider Name="SeekBar" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
-                    Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}" />
-            <Grid Grid.Row="1" ColumnDefinitions="*,*">
-                <!-- The colon is a reserved character in a custom TimeSpan format string, so it
-                     has to reach the formatter as \: — hence the {} escape and the explicit
-                     {0:...} form rather than a bare StringFormat=mm\:ss. -->
-                <TextBlock FontSize="12" Opacity="0.6">
-                    <TextBlock.Text>
-                        <Binding Path="Player.Position" StringFormat="{}{0:mm\:ss}" />
-                    </TextBlock.Text>
-                </TextBlock>
-                <TextBlock Grid.Column="1" FontSize="12" Opacity="0.6" HorizontalAlignment="Right">
-                    <TextBlock.Text>
-                        <Binding Path="Player.Duration" StringFormat="{}{0:mm\:ss}" />
-                    </TextBlock.Text>
-                </TextBlock>
+        <Border Padding="{Binding SafeArea}">
+            <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,4,24,12">
+                <Button Grid.Row="0" Classes="icon" HorizontalAlignment="Left" Command="{Binding CloseNowPlayingCommand}">
+                    <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
+                </Button>
+
+                <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
+                <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8">
+                    <Border Classes="art" Width="320" Height="320" CornerRadius="14">
+                        <Panel>
+                            <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
+                            <controls:CachedImage Name="Artwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                  DecodeWidth="768" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                        </Panel>
+                    </Border>
+                </Viewbox>
+
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Name="TitleText" Text="{Binding Player.CurrentTrack.Title}" FontSize="21" FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Name="ArtistButton" Classes="row" HorizontalAlignment="Left" Command="{Binding OpenCurrentArtistCommand}">
+                            <TextBlock Classes="np-sub" Text="{Binding Player.CurrentTrack.Artist}" FontSize="16" TextTrimming="CharacterEllipsis" />
+                        </Button>
+                    </StackPanel>
+                    <Button Grid.Column="1" Name="FavouriteButton" Classes="icon" Command="{Binding ToggleCurrentFavouriteCommand}">
+                        <controls:HeartIcon IsFavorite="{Binding Player.CurrentTrack.IsFavorite}" Size="22" />
+                    </Button>
+                    <Button Grid.Column="2" Name="NowPlayingMore" Classes="icon" Command="{Binding OpenCurrentTrackSheetCommand}">
+                        <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="18" Height="18" />
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="3" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+                    <!-- The pointer handlers are registered in the code-behind with Tunnel routing,
+                         not as XAML event attributes; see NowPlayingPage.axaml.cs for why. -->
+                    <Slider Name="SeekBar" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
+                            Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}" />
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                        <TextBlock Name="ElapsedText" Classes="np-sub" FontSize="12" Text="{Binding Player.ElapsedText}" />
+                        <TextBlock Grid.Column="1" Name="RemainingText" Classes="np-sub" FontSize="12" HorizontalAlignment="Right"
+                                   Text="{Binding Player.RemainingText}" />
+                    </Grid>
+                </Grid>
+
+                <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,*" Margin="0,4">
+                    <Button Grid.Column="1" Name="ShuffleButton" Classes="icon" Classes.dim="{Binding !Player.IsShuffleEnabled}"
+                            Command="{Binding Player.ToggleShuffleCommand}">
+                        <PathIcon Data="{DynamicResource ShuffleIcon}" Width="18" Height="18" />
+                    </Button>
+                    <Button Grid.Column="2" Name="PreviousButton" Classes="icon" Width="60" Height="60" Margin="12,0"
+                            Command="{Binding Player.PreviousCommand}">
+                        <PathIcon Data="{DynamicResource PreviousIcon}" Width="28" Height="28" />
+                    </Button>
+                    <Button Grid.Column="3" Name="PlayPauseButton" Classes="icon" Width="72" Height="72" CornerRadius="36"
+                            Command="{Binding Player.TogglePlayPauseCommand}">
+                        <Panel>
+                            <PathIcon Data="{DynamicResource PlayIcon}" Width="34" Height="34" IsVisible="{Binding !Player.IsPlaying}" />
+                            <PathIcon Data="{DynamicResource PauseIcon}" Width="34" Height="34" IsVisible="{Binding Player.IsPlaying}" />
+                        </Panel>
+                    </Button>
+                    <Button Grid.Column="4" Name="NextButton" Classes="icon" Width="60" Height="60" Margin="12,0"
+                            Command="{Binding Player.NextCommand}">
+                        <PathIcon Data="{DynamicResource NextIcon}" Width="28" Height="28" />
+                    </Button>
+                    <Button Grid.Column="5" Name="RepeatButton" Classes="icon" Classes.dim="{Binding !Player.IsRepeatOn}"
+                            Command="{Binding Player.CycleRepeatCommand}">
+                        <Panel>
+                            <PathIcon Data="{DynamicResource RepeatAllIcon}" Width="18" Height="18" IsVisible="{Binding !Player.IsRepeatOne}" />
+                            <PathIcon Data="{DynamicResource RepeatOneIcon}" Width="18" Height="18" IsVisible="{Binding Player.IsRepeatOne}" />
+                        </Panel>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="5" Name="VolumeRow" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Player.HasVolumeControl}">
+                    <PathIcon Data="{DynamicResource SpeakerLowIcon}" Width="16" Height="16" Opacity="0.7" />
+                    <Slider Grid.Column="1" Name="VolumeSlider" Minimum="0" Maximum="1" Margin="10,0"
+                            Value="{Binding Player.VolumeLevel}" />
+                    <PathIcon Grid.Column="2" Data="{DynamicResource SpeakerHighIcon}" Width="16" Height="16" Opacity="0.7" />
+                </Grid>
+
+                <StackPanel Grid.Row="6">
+                    <TextBlock Name="ErrorLine" Text="{Binding Player.ErrorText}" Foreground="#E74856" FontSize="12" TextWrapping="Wrap"
+                               IsVisible="{Binding Player.ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
+                        <Button Grid.Column="0" Name="LyricsButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ToggleLyricsCommand}">
+                            <PathIcon Data="{DynamicResource LyricsIcon}" />
+                        </Button>
+                        <Button Grid.Column="1" Name="OutputButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ShowOutputCommand}">
+                            <PathIcon Data="{DynamicResource SpeakerHighIcon}" />
+                        </Button>
+                        <Button Grid.Column="2" Name="QueueButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
+                            <PathIcon Data="{DynamicResource PlaylistsIcon}" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
             </Grid>
-        </Grid>
-
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="18" Margin="0,16">
-            <Button Width="48" Height="48" Content="{Binding Player.IsShuffleEnabled, Converter={x:Static views:Glyphs.ShuffleGlyph}}" Command="{Binding Player.ToggleShuffleCommand}" />
-            <Button Width="56" Height="56" Content="⏮" FontSize="20" Command="{Binding Player.PreviousCommand}" />
-            <Button Width="72" Height="72" FontSize="26" CornerRadius="36"
-                    Content="{Binding Player.IsPlaying, Converter={x:Static views:Glyphs.PlayPause}}"
-                    Command="{Binding Player.TogglePlayPauseCommand}" />
-            <Button Width="56" Height="56" Content="⏭" FontSize="20" Command="{Binding Player.NextCommand}" />
-            <Button Width="48" Height="48" Content="{Binding Player.RepeatMode, Converter={x:Static views:Glyphs.Repeat}}" Command="{Binding Player.CycleRepeatCommand}" />
-        </StackPanel>
-
-        <Grid Grid.Row="5" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Text="{Binding Player.ErrorText}" Foreground="#E74856" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <Button Grid.Column="1" Name="LyricsButton" Content="Lyrics" Margin="0,0,8,0" Command="{Binding ToggleLyricsCommand}" />
-            <Button Grid.Column="2" Content="Queue" Command="{Binding ToggleQueueCommand}" />
-        </Grid>
-    </Grid>
+        </Border>
+    </Panel>
 </UserControl>
