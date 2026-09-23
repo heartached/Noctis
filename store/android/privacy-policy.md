@@ -33,12 +33,14 @@ up online, and it contains no third-party SDKs that do.
   screen off.
 
 Noctis does not request location, contacts, camera, microphone, phone, storage or media
-permissions.
+permissions. The package also declares the network-state permission (added by the Android
+playback library it uses); this version of Noctis does not use the network.
 
 ## Backups
 
-If you have Android backup turned on, Android may include the app's local data (library
-index and settings) in your device backup to your Google account. Google handles that
+If you have Android backup turned on, Android may include the app's local data (your
+library index and artwork, favourites, playlists, play history, play queue and settings) in
+your device backup to your Google account. Google handles that
 backup under your account; the developer cannot see it. Turn off backup in Android's
 settings to exclude it.
 
