@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
-	<uses-permission android:name="android.permission.INTERNET" />
+	<!-- No INTERNET: the app makes no network requests (privacy policy, Network). Debug builds
+	     add it by themselves for the debugger; Release must not declare it. -->
 	<!-- Background playback: the MediaSessionService runs as a mediaPlayback foreground
 	     service (Android 14+ requires the typed permission) and holds a partial wake lock
 	     through ExoPlayer's WakeMode while the screen is off. -->
