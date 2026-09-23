@@ -15,6 +15,17 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
+    <!-- Overlay scroll bars. Noctis.UI's Styles.axaml pins every ScrollViewer and ScrollBar to
+         AllowAutoHide=False for the desktop's persistent bars, and a bar that never hides
+         reserves its width: every phone page stopped ~16 dp short of the right edge, heroes
+         and rails included. Fluent's auto-hide bar floats over the content instead. -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+    <Style Selector="ScrollBar">
+        <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+
     <!-- Text -->
     <Style Selector="TextBlock.title">
         <Setter Property="FontSize" Value="32" />

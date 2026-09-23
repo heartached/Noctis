@@ -100,8 +100,10 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsLibraryRootVisible => IsLibrarySelected && !HasPage;
     public bool IsSearchRootVisible => IsSearchSelected && !HasPage;
 
-    public Thickness TopSafePadding => new(0, SafeArea.Top, 0, 0);
-    public Thickness BottomSafePadding => new(0, 0, 0, SafeArea.Bottom);
+    // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
+    // right, and without them the content drew under it.
+    public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
+    public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
 
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it.</summary>
     public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen;

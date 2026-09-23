@@ -50,7 +50,12 @@ public partial class ShellView : UserControl
         if (_insets != null) ApplySafeArea(_insets.SafeAreaPadding);
     }
 
-    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e) => ApplySafeArea(e.SafeAreaPadding);
+    /// <summary>Re-reads the manager rather than trusting <see cref="SafeAreaChangedArgs.SafeAreaPadding"/>,
+    /// which can carry the physical-pixel insets described above; one source for both paths.</summary>
+    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e)
+    {
+        if (_insets != null) ApplySafeArea(_insets.SafeAreaPadding);
+    }
 
     /// <summary>Internal for tests, which have no insets manager.</summary>
     internal void ApplySafeArea(Thickness padding)

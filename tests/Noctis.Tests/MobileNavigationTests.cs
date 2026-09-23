@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
@@ -206,6 +207,57 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(24, shell.TopSafePadding.Top);
         Assert.Equal(24, view.FindControl<Panel>("TabContent")!.Margin.Top);
         Assert.Equal(48, view.FindControl<StackPanel>("BottomChrome")!.Margin.Bottom);
+        window.Close();
+    }
+
+    /// <summary>Landscape with 3-button navigation or a side cutout: the bar sits on the left
+    /// or right, and without the side insets the tab content drew under it.</summary>
+    [AvaloniaFact]
+    public void SafeArea_SideInsets_ReachTheTabContentAndTheBottomChrome()
+    {
+        var shell = MakeShell();
+        var (view, window) = Mount(shell);
+
+        view.ApplySafeArea(new Thickness(30, 24, 48, 16));
+        window.UpdateLayout();
+
+        Assert.Equal(new Thickness(30, 24, 48, 0), shell.TopSafePadding);
+        Assert.Equal(new Thickness(30, 0, 48, 16), shell.BottomSafePadding);
+        var content = view.FindControl<Panel>("TabContent")!.Margin;
+        Assert.Equal((30.0, 48.0), (content.Left, content.Right));
+        var chrome = view.FindControl<StackPanel>("BottomChrome")!.Margin;
+        Assert.Equal((30.0, 48.0), (chrome.Left, chrome.Right));
+        window.Close();
+    }
+
+    /// <summary>
+    /// Noctis.UI's Styles.axaml pins every ScrollViewer and ScrollBar to AllowAutoHide=False
+    /// (persistent desktop bars), and a non-auto-hide bar reserves its width, so every phone
+    /// page stopped ~16 dp short of the right edge. The phone styles turn auto-hide back on,
+    /// where Fluent's bar overlays the content. The headless app has no Noctis.UI styles, so
+    /// the desktop rule is recreated on the window, below the shell as it is on the device.
+    /// </summary>
+    [AvaloniaFact]
+    public void PhonePages_AutoHideTheirScrollBars_OverTheDesktopsPersistentBars()
+    {
+        var shell = MakeShell(Song("Tone"));
+        var view = new ShellView { DataContext = shell };
+        var window = new Window { Width = 412, Height = 915, Content = view };
+        window.Styles.Add(new Style(x => x.OfType<ScrollViewer>())
+        {
+            Setters = { new Setter(ScrollViewer.AllowAutoHideProperty, false) },
+        });
+        window.Styles.Add(new Style(x => x.OfType<Avalonia.Controls.Primitives.ScrollBar>())
+        {
+            Setters = { new Setter(Avalonia.Controls.Primitives.ScrollBar.AllowAutoHideProperty, false) },
+        });
+        window.Show();
+        window.UpdateLayout();
+
+        var scroll = MobileFixtures.Named<ScrollViewer>(view, "LibraryScroll");
+        Assert.True(scroll.AllowAutoHide);
+        foreach (var bar in view.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>())
+            Assert.True(bar.AllowAutoHide);
         window.Close();
     }
 
