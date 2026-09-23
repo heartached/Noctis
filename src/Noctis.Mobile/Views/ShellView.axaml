@@ -27,6 +27,9 @@
         <DataTemplate DataType="vm:PlaylistListPageViewModel">
             <views:PlaylistListPage />
         </DataTemplate>
+        <DataTemplate DataType="vm:AlbumPageViewModel">
+            <views:AlbumPage />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating

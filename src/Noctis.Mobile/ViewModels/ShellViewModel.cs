@@ -28,6 +28,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public NowPlayingViewModel Player { get; }
     public LyricsPageViewModel Lyrics { get; }
 
+    /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
+    public Func<PageTint> TintFactory { get; init; } = () => new PageTint();
+
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
@@ -192,12 +195,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
 
-    /// <summary>An album tile or link. Until the album page (B5) this lists the album's songs.</summary>
+    /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
     private void OpenAlbum(Album? album)
     {
         if (album == null) return;
-        Navigate(new SongListPageViewModel(this, album.Name, () => album.Tracks));
+        Navigate(new AlbumPageViewModel(this, album));
     }
 
     /// <summary>An artist row or link. Until the artist page (B6) this lists the artist's songs.</summary>
