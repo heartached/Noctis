@@ -3,7 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.LogicalTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
@@ -151,6 +154,42 @@ public class MobileShellViewTests
         Assert.Equal(columnWidth, title.Bounds.Width, 1);
         Assert.True(title.Bounds.Height >= grid.Bounds.Height - 1,
             $"title button is {title.Bounds.Height} tall in a {grid.Bounds.Height} row");
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>
+    /// Device run B12, 2026-09-23: after touching any slider (Now Playing seek or volume,
+    /// Settings text size) Android Back did nothing. Avalonia turns the Back key into an
+    /// Escape KeyDown on the focused control and raises BackRequested only if nobody handles
+    /// it; a touched Slider keeps focus and marks Escape handled, so the page never closed.
+    /// The shell takes Escape in the tunnel phase, before any focused control, and leaves it
+    /// unhandled at the root so the activity can still finish.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Escape_WithAFocusedSlider_StillGoesBack_AndFallsThroughAtTheRoot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var shell = MakeShell(root, out _);
+        var view = new ShellView { DataContext = shell };
+        var window = new Window { Width = 412, Height = 915, Content = view };
+        window.Show();
+        bool? lastHandled = null;
+        window.AddHandler(InputElement.KeyDownEvent, (_, e) => lastHandled = e.Handled, handledEventsToo: true);
+
+        shell.OpenSettingsCommand.Execute(null);
+        await Assert.IsType<SettingsPageViewModel>(shell.CurrentPage).Loaded;
+        window.UpdateLayout();
+        var slider = view.GetVisualDescendants().OfType<Slider>().Single(s => s.Name == "LyricsSizeSlider");
+        Assert.True(slider.Focus());
+
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Assert.Null(shell.CurrentPage);                    // Settings closed
+        Assert.True(lastHandled);
+
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Assert.False(lastHandled);                         // Library root: left to the system
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

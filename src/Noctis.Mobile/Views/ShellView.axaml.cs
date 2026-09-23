@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Noctis.Mobile.ViewModels;
 
 namespace Noctis.Mobile.Views;
@@ -16,6 +18,21 @@ public partial class ShellView : UserControl
         // layer itself (SafeArea) so the overlays' backgrounds run under the system bars,
         // and both together doubled the gap (~49 dp extra on top, 24 dp at the bottom).
         TopLevel.SetAutoSafeAreaPadding(this, false);
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// Avalonia.Android turns the Back key into an Escape KeyDown on the focused control and
+    /// raises the activity's BackRequested only when nothing handled it. A slider keeps focus
+    /// after a touch and marks Escape handled, so Back did nothing on Now Playing or Settings
+    /// once a slider had been dragged (device run B12). Taking Escape here, in the tunnel
+    /// phase, runs the shell's Back before any focused control sees the key; at the Library
+    /// root it stays unhandled so the activity still falls through to finish.
+    /// </summary>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None) return;
+        if (DataContext is ShellViewModel vm && vm.TryHandleBack()) e.Handled = true;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
