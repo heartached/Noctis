@@ -5,7 +5,7 @@
              xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Mobile.Views.LyricsPage"
              x:DataType="vm:ShellViewModel"
-             Background="#121214">
+             Background="#121214" Padding="{Binding SafeArea}">
 
     <UserControl.Resources>
         <SolidColorBrush x:Key="LyricsFg" Color="White" />
@@ -61,7 +61,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Margin="0,40,0,0">
+    <Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
         <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="16,0">
             <Button Content="⌄" FontSize="24" Background="Transparent" Command="{Binding ToggleLyricsCommand}" />
             <ToggleButton Grid.Column="2" Name="TranslationToggle" Content="Translation" Margin="0,0,8,0"

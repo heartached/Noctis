@@ -5,9 +5,9 @@
              xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.QueuePage"
              x:DataType="vm:ShellViewModel"
-             Background="#121214">
+             Background="#121214" Padding="{Binding SafeArea}">
 
-    <Grid RowDefinitions="Auto,*" Margin="20,40,20,24">
+    <Grid RowDefinitions="Auto,*" Margin="20,8,20,16">
         <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="{loc:T Tab.Queue}" FontSize="28" FontWeight="Bold" />
             <Button Grid.Column="1" Content="Done" Command="{Binding ToggleQueueCommand}" />

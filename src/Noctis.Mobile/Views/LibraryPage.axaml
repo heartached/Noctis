@@ -6,7 +6,7 @@
              x:Class="Noctis.Mobile.Views.LibraryPage"
              x:DataType="vm:ShellViewModel">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20,48,20,0">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20,12,20,0">
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <TextBlock Text="{loc:T Nav.Songs}" FontSize="34" FontWeight="Bold" />
             <Button Grid.Column="1" Content="Rescan" Command="{Binding Library.RescanCommand}"

@@ -2,46 +2,95 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.ShellView"
-             x:DataType="vm:ShellViewModel">
+             x:DataType="vm:ShellViewModel"
+             Background="{DynamicResource AppWindowBackgroundBrush}">
 
-    <!-- Library underneath; Now Playing and Queue slide over it (Phase 4 adds the motion);
-         the mini bar sits at the bottom whenever a track is loaded and Now Playing is closed.
-         Declaration order is z-order: the mini bar belongs to the Library layer, so it is
-         declared before the overlays — after them it would paint over the Queue page the
-         moment anything other than Now Playing opens the queue. -->
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Noctis.Mobile/Views/MobileStyles.axaml" />
+    </UserControl.Styles>
+
+    <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating
+         mini bar above the tab bar. The overlays span both rows and are declared last, in
+         z-order: Now Playing, then Lyrics and Queue above it. The mini bar belongs to the tab
+         layer, so it is declared before the overlays — after them it would paint over the
+         Queue page the moment anything other than Now Playing opens the queue. -->
     <Grid RowDefinitions="*,Auto">
-        <views:LibraryPage Grid.Row="0" DataContext="{Binding}" />
+        <Panel Grid.Row="0" Name="TabContent" Margin="{Binding TopSafePadding}">
+            <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
+            <ContentControl Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding HasPage}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+        </Panel>
 
-        <Border Grid.Row="1" Name="MiniBar" Margin="12,0,12,12" Padding="12,10" CornerRadius="16"
-                Background="#1E1E20">
-            <Border.IsVisible>
-                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                    <Binding Path="Player.HasTrack" />
-                    <Binding Path="!IsNowPlayingOpen" />
-                </MultiBinding>
-            </Border.IsVisible>
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <!-- HorizontalAlignment: Fluent's Button theme sets it to Left, so without
-                     this the button shrinks to the width of the title text and everything
-                     right of it is dead to touch — measured on device at ~190 px of a 730 px
-                     row. A mini player is expected to open Now Playing from anywhere in the
-                     title area, so the button must fill its star column. VerticalAlignment
-                     for the same reason (Fluent sets Center), so the artist line's full
-                     height is tappable too. -->
-                <Button Grid.Column="0" Background="Transparent" Padding="0" HorizontalContentAlignment="Stretch"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                        Command="{Binding OpenNowPlayingCommand}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Player.CurrentTrack.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Player.CurrentTrack.Artist}" Opacity="0.6" FontSize="12" TextTrimming="CharacterEllipsis" />
+        <StackPanel Grid.Row="1" Name="BottomChrome" Margin="{Binding BottomSafePadding}">
+            <Grid ColumnDefinitions="*,Auto" Margin="12,0,12,6">
+                <Border Name="MiniBar" Padding="6,6,8,6" CornerRadius="28" Background="{DynamicResource HomeCardBackground}"
+                        IsVisible="{Binding IsMiniBarVisible}">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
+                             to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
+                        <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
+                                Command="{Binding OpenNowPlayingCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Classes="art" Width="40" Height="40" CornerRadius="20">
+                                    <Panel>
+                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
+                                        <controls:CachedImage Name="MiniArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                              DecodeWidth="128" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                    </Panel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Player.CurrentTrack.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Player.CurrentTrack.Artist}" Classes="subtle" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button Grid.Column="1" Classes="icon" Command="{Binding Player.TogglePlayPauseCommand}">
+                            <Panel>
+                                <PathIcon Data="{DynamicResource PlayIcon}" IsVisible="{Binding !Player.IsPlaying}" />
+                                <PathIcon Data="{DynamicResource PauseIcon}" IsVisible="{Binding Player.IsPlaying}" />
+                            </Panel>
+                        </Button>
+                        <Button Grid.Column="2" Classes="icon" Command="{Binding Player.NextCommand}">
+                            <PathIcon Data="{DynamicResource NextIcon}" />
+                        </Button>
+                    </Grid>
+                </Border>
+                <!-- The round search button beside the pill (spec §5 item 7); B9 shows it. -->
+                <Button Grid.Column="1" Name="MiniSearchButton" Classes="round" Margin="8,0,0,0"
+                        Background="{DynamicResource HomeCardBackground}" IsVisible="False"
+                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
+                    <PathIcon Data="{DynamicResource SearchIcon}" />
+                </Button>
+            </Grid>
+
+            <!-- Home and Search are shown by B10 and B9 when their pages exist. -->
+            <Grid Name="TabBar" ColumnDefinitions="*,*,*" Height="56">
+                <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}" IsVisible="False"
+                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
+                    <StackPanel Spacing="2">
+                        <PathIcon Data="{DynamicResource HomeIcon}" />
+                        <TextBlock Text="{loc:T Nav.Home}" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="1" Width="40" Height="40" Command="{Binding Player.TogglePlayPauseCommand}"
-                        Content="{Binding Player.IsPlaying, Converter={x:Static views:Glyphs.PlayPause}}" />
-                <Button Grid.Column="2" Width="40" Height="40" Content="⏭" Command="{Binding Player.NextCommand}" />
+                <Button Grid.Column="1" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
+                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Library}">
+                    <StackPanel Spacing="2">
+                        <PathIcon Data="{DynamicResource AlbumsIcon}" />
+                        <TextBlock Text="{loc:T Tab.Library}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}" IsVisible="False"
+                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
+                    <StackPanel Spacing="2">
+                        <PathIcon Data="{DynamicResource SearchIcon}" />
+                        <TextBlock Text="Search" />
+                    </StackPanel>
+                </Button>
             </Grid>
-        </Border>
+        </StackPanel>
 
         <views:NowPlayingPage Grid.Row="0" Grid.RowSpan="2" Name="NowPlaying"
                               DataContext="{Binding}"

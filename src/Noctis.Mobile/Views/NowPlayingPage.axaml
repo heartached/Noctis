@@ -4,9 +4,9 @@
              xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.NowPlayingPage"
              x:DataType="vm:ShellViewModel"
-             Background="#121214">
+             Background="#121214" Padding="{Binding SafeArea}">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="24,40,24,32">
+    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="24,8,24,16">
         <Button Grid.Row="0" Content="⌄" FontSize="24" Background="Transparent" Command="{Binding CloseNowPlayingCommand}" HorizontalAlignment="Left" />
 
         <Border Grid.Row="1" Margin="0,24" CornerRadius="20" Background="#26262A" MaxWidth="320" MaxHeight="320" />
