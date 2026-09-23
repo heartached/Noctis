@@ -63,6 +63,12 @@
          is an error). If a Release run shows a trimming crash, keep that one assembly whole
          with a Release-only <TrimmerRootAssembly Include="Name" RootMode="All" /> item. -->
     <TrimMode>partial</TrimMode>
+    <!-- Merged into the bundle's BundleConfig.pb. Asks every bundletool that splits this AAB,
+         Play's included, to store native libraries uncompressed at 16 KB-aligned offsets
+         (PAGE_ALIGNMENT_16K), which Play requires of apps targeting Android 15+. The ELF side
+         is already 16 KB aligned in every .so we ship (scripts/android/check-16kb.py). The SDK
+         skips this file silently if it is missing; build-release.ps1 checks dump config. -->
+    <AndroidBundleConfigurationFile>$(MSBuildThisFileDirectory)BundleConfig.json</AndroidBundleConfigurationFile>
   </PropertyGroup>
 
   <ItemGroup>
