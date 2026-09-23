@@ -29,13 +29,14 @@ internal static class MobileFixtures
         public required FakeLibraryService Library { get; init; }
         public required FakeAudioPlayer Player { get; init; }
         public required PersistenceService Persistence { get; init; }
+        public required FakeHistoryLog History { get; init; }
         public required string Root { get; init; }
         public void Dispose() { try { Directory.Delete(Root, recursive: true); } catch { } }
     }
 
     /// <summary>A shell over the fakes, with the library already initialised. <paramref name="seed"/>
     /// runs against the persistence root first (settings, playlists).</summary>
-    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null)
+    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -43,14 +44,16 @@ internal static class MobileFixtures
         ((List<Album>)library.Albums).AddRange(albums ?? Array.Empty<Album>());
         var persistence = new PersistenceService(root);
         if (seed != null) RunBlocking(() => seed(persistence));
+        var history = new FakeHistoryLog();
+        log?.Invoke(history);
         var player = new FakeAudioPlayer();
-        var nowPlaying = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
+        var nowPlaying = new NowPlayingViewModel(player, library, persistence, history, marshal: a => a());
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new NoPicker(), marshal: a => a()),
+            new LibraryViewModel(library, persistence, new NoPicker(), history, marshal: a => a()),
             nowPlaying,
             new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), persistence, work => Task.FromResult(work())));
         RunBlocking(shell.Library.InitializeAsync);
-        return new Rig { Shell = shell, Library = library, Player = player, Persistence = persistence, Root = root };
+        return new Rig { Shell = shell, Library = library, Player = player, Persistence = persistence, History = history, Root = root };
     }
 
     /// <summary>

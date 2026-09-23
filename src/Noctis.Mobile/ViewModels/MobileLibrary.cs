@@ -1,3 +1,4 @@
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -38,4 +39,30 @@ internal static class MobileLibrary
             if (!string.IsNullOrEmpty(track.AlbumArtworkPath)) map.TryAdd(track.GroupingArtist, track.AlbumArtworkPath);
         return map;
     }
+
+    /// <summary>
+    /// Replace <paramref name="target"/> only when membership or order changed: a Reset tears
+    /// every tile down and re-realises it, felt as a flicker on each refresh (the desktop
+    /// HomeViewModel.ReplaceRowIfChanged rule). Default equality: reference for Album/Track,
+    /// value for RailItem.
+    /// </summary>
+    internal static void ReplaceIfChanged<T>(BulkObservableCollection<T> target, IReadOnlyList<T> next)
+    {
+        if (target.Count == next.Count)
+        {
+            var same = true;
+            for (var i = 0; i < next.Count && same; i++)
+                same = EqualityComparer<T>.Default.Equals(target[i], next[i]);
+            if (same) return;
+        }
+        target.ReplaceAll(next);
+    }
+
+    /// <summary>Albums newest-first by their most recently added track.</summary>
+    internal static List<Album> RecentlyAddedAlbums(ILibraryService library, int max) =>
+        library.Albums
+            .Where(a => a.Tracks.Count > 0)
+            .OrderByDescending(a => a.Tracks.Max(t => t.DateAdded))
+            .Take(max)
+            .ToList();
 }

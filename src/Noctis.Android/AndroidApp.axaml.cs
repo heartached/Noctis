@@ -72,7 +72,7 @@ public partial class AndroidApp : Avalonia.Application
             FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
         };
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker()),
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
             nowPlaying,
             lyrics);
         _shell = shell;

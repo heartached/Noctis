@@ -283,6 +283,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StartTrack(Track track, TimeSpan? fromPosition)
     {
+        // Before CurrentTrack changes: its PropertyChanged refreshes the Library Shelf and Home
+        // rows from the play log, which must already hold this play.
+        _history?.RecordPlay(track);
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -290,7 +293,6 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.PendingSeekMs = fromPosition is { } p && p > TimeSpan.Zero ? (long)p.TotalMilliseconds : -1;
         _player.Play(track.FilePath);
         IsPlaying = true;
-        _history?.RecordPlay(track);
         SyncUpNext();
         PrepareUpcoming();
         SaveStateNow();

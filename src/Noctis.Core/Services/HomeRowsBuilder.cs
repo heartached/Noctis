@@ -99,4 +99,38 @@ public static class HomeRowsBuilder
             .Select(x => x.TrackId)
             .ToList();
     }
+
+    /// <summary>
+    /// The newest <paramref name="scan"/> play-log events (the log is oldest-first) as tracks,
+    /// newest first; unresolved ids are skipped. Duplicates are left in — callers dedupe by
+    /// track or album themselves. Shared by the desktop Home and the phone Library/Home.
+    /// </summary>
+    public static List<Track> BuildRecentFromLog(IReadOnlyList<PlayHistoryEvent> events, Func<Guid, Track?> resolve, int scan)
+    {
+        var result = new List<Track>(Math.Min(scan, events.Count));
+        var floor = Math.Max(0, events.Count - scan);
+        for (var i = events.Count - 1; i >= floor; i--)
+        {
+            var track = resolve(events[i].TrackId);
+            if (track != null) result.Add(track);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The most recent distinct tracks from a newest-first history: a track that was played
+    /// twice keeps only its newest position.
+    /// </summary>
+    public static List<Track> BuildLastPlayed(IEnumerable<Track> historyNewestFirst, int max)
+    {
+        var seen = new HashSet<Guid>();
+        var result = new List<Track>(max);
+        foreach (var t in historyNewestFirst)
+        {
+            if (!seen.Add(t.Id)) continue;
+            result.Add(t);
+            if (result.Count >= max) break;
+        }
+        return result;
+    }
 }

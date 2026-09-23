@@ -9,28 +9,34 @@ using Noctis.Services;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>
-/// The phone Library over the shared Core library: the count tiles, the lists they open
-/// (songs, favourites, recently added, playlists) and the folder flow (SAF pick →
-/// AppSettings.MusicFolders → scan). Library events arrive on scan threads; <c>marshal</c>
-/// hops them to the UI thread (tests pass a direct call). <see cref="Refreshed"/> tells open
-/// pages to re-read, so a rescan or a heart toggle shows up without re-navigating.
+/// The phone Library over the shared Core library: the count tiles, the lists they open, the
+/// Shelf and the three rails (from the library and the persisted play log), and the folder
+/// flow (SAF pick → AppSettings.MusicFolders → scan). Library events arrive on scan threads;
+/// <c>marshal</c> hops them to the UI thread (tests pass a direct call). <see cref="Refreshed"/>
+/// tells open pages to re-read, so a rescan or a heart toggle shows without re-navigating.
 /// </summary>
 public sealed partial class LibraryViewModel : ObservableObject
 {
     private const int RecentlyAddedDays = 30;
+    private const int RailSize = 12;
+    private const int ShelfSize = 10;
+    private const int RecentLogScan = 400;
 
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IFolderPicker _picker;
+    private readonly IPlayHistoryService? _history;
     private readonly Action<Action> _marshal;
     private List<Playlist> _playlists = new();
+    private List<Guid> _pinnedAlbumIds = new();
 
     public LibraryViewModel(ILibraryService library, IPersistenceService persistence, IFolderPicker picker,
-        Action<Action>? marshal = null)
+        IPlayHistoryService? history = null, Action<Action>? marshal = null)
     {
         _library = library;
         _persistence = persistence;
         _picker = picker;
+        _history = history;
         _marshal = marshal ?? (a => Avalonia.Threading.Dispatcher.UIThread.Post(a));
 
         _library.LibraryUpdated += (_, _) => _marshal(RefreshFromLibrary);
@@ -48,7 +54,10 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IPersistenceService Persistence => _persistence;
 
-    /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists).</summary>
+    /// <summary>The persisted play log (null in hosts without one).</summary>
+    public IPlayHistoryService? History => _history;
+
+    /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
     [ObservableProperty] private int _songCount;
@@ -74,8 +83,22 @@ public sealed partial class LibraryViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowStatusLine))]
     private string _statusText = string.Empty;
 
-    /// <summary>First launch: no folder yet, so the only thing to show is the way in.</summary>
-    public bool ShowConnectCard => !HasFolders;
+    /// <summary>InitializeAsync has read the settings: until then HasFolders is unknown, not false.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConnectCard))]
+    private bool _isLoaded;
+
+    [ObservableProperty] private bool _hasShelf;
+    [ObservableProperty] private bool _hasPinned;
+    [ObservableProperty] private bool _hasRecentlyAdded;
+    [ObservableProperty] private bool _hasOnRepeat;
+
+    /// <summary>The Shelf as a horizontal rail of covers (true) or a vertical list (false).</summary>
+    [ObservableProperty] private bool _isShelfGrid = true;
+
+    /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
+    /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
+    public bool ShowConnectCard => IsLoaded && !HasFolders;
 
     /// <summary>The plain status line; the reconnect card carries the text while it is up.</summary>
     public bool ShowStatusLine => !NeedsReconnect && !string.IsNullOrEmpty(StatusText);
@@ -88,6 +111,13 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IReadOnlyList<Playlist> Playlists => _playlists;
 
+    /// <summary>Recently played albums, newest first (the persisted play log).</summary>
+    public BulkObservableCollection<Album> Shelf { get; } = new();
+
+    public BulkObservableCollection<RailItem> PinnedRail { get; } = new();
+    public BulkObservableCollection<RailItem> RecentlyAddedRail { get; } = new();
+    public BulkObservableCollection<RailItem> OnRepeatRail { get; } = new();
+
     public IEnumerable<Track> Favourites() => Songs.Where(t => t.IsFavorite);
 
     public IEnumerable<Track> RecentlyAdded()
@@ -96,13 +126,23 @@ public sealed partial class LibraryViewModel : ObservableObject
         return _library.Tracks.Where(t => t.DateAdded >= cutoff).OrderByDescending(t => t.DateAdded);
     }
 
+    public bool IsAlbumPinned(Guid albumId) => _pinnedAlbumIds.Contains(albumId);
+
+    /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
+    public string? PlaylistArtwork(Playlist playlist) =>
+        playlist.TrackIds.Select(_library.GetTrackById).FirstOrDefault(t => !string.IsNullOrEmpty(t?.AlbumArtworkPath))?.AlbumArtworkPath;
+
     public async Task InitializeAsync()
     {
         var settings = await _persistence.LoadSettingsAsync();
         SetFolders(settings.MusicFolders);
+        _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         await LoadPlaylistsAsync();
         RefreshFromLibrary();
+        IsLoaded = true;
     }
+
+    [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
 
     [RelayCommand]
     private async Task AddFolderAsync()
@@ -183,6 +223,44 @@ public sealed partial class LibraryViewModel : ObservableObject
         var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
         RecentlyAddedCount = tracks.Count(t => t.DateAdded >= cutoff);
         Songs.ReplaceAll(tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase));
+        RefreshRails();
+        RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Pinned and Recently Added: library structure and pins only.</summary>
+    private void RefreshRails()
+    {
+        var pinned = _pinnedAlbumIds.Select(_library.GetAlbumById).OfType<Album>().Select(RailItem.ForAlbum)
+            .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p))))
+            .ToList();
+        MobileLibrary.ReplaceIfChanged(PinnedRail, pinned);
+        HasPinned = PinnedRail.Count > 0;
+
+        var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize).Select(RailItem.ForAlbum).ToList();
+        MobileLibrary.ReplaceIfChanged(RecentlyAddedRail, recent);
+        HasRecentlyAdded = RecentlyAddedRail.Count > 0;
+    }
+
+    /// <summary>
+    /// Shelf and On Repeat: the play log. Called on every library refresh and by the shell
+    /// whenever a track starts (the play is recorded before CurrentTrack changes).
+    /// </summary>
+    public void RefreshRecents()
+    {
+        var events = _history?.Events ?? Array.Empty<PlayHistoryEvent>();
+
+        var recent = HomeRowsBuilder.BuildRecentFromLog(events, _library.GetTrackById, RecentLogScan);
+        var shelf = recent.Select(t => t.AlbumId).Distinct()
+            .Select(_library.GetAlbumById).OfType<Album>()
+            .Take(ShelfSize).ToList();
+        MobileLibrary.ReplaceIfChanged(Shelf, shelf);
+        HasShelf = Shelf.Count > 0;
+
+        var onRepeat = HomeRowsBuilder.BuildHeavyRotation(events, DateTime.Now, top: RailSize)
+            .Select(_library.GetTrackById).OfType<Track>()
+            .Select(RailItem.ForTrack).ToList();
+        MobileLibrary.ReplaceIfChanged(OnRepeatRail, onRepeat);
+        HasOnRepeat = OnRepeatRail.Count > 0;
     }
 }

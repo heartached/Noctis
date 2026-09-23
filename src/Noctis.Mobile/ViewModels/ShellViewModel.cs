@@ -54,6 +54,19 @@ public sealed partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(TopSafePadding), nameof(BottomSafePadding))]
     private Thickness _safeArea;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAllMusicChip), nameof(IsPlaylistsChip), nameof(IsAlbumsChip), nameof(IsArtistsChip), nameof(IsSongsChip))]
+    private LibraryChip _libraryChip = LibraryChip.AllMusic;
+
+    /// <summary>The list shown under a non-"All Music" chip: the same page a tile pushes, embedded.</summary>
+    [ObservableProperty] private MobilePage? _libraryChipPage;
+
+    public bool IsAllMusicChip => LibraryChip == LibraryChip.AllMusic;
+    public bool IsPlaylistsChip => LibraryChip == LibraryChip.Playlists;
+    public bool IsAlbumsChip => LibraryChip == LibraryChip.Albums;
+    public bool IsArtistsChip => LibraryChip == LibraryChip.Artists;
+    public bool IsSongsChip => LibraryChip == LibraryChip.Songs;
+
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
@@ -73,6 +86,8 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
             OnPropertyChanged(nameof(IsMiniBarVisible));
+        if (e.PropertyName == nameof(NowPlayingViewModel.CurrentTrack))
+            Library.RefreshRecents();
     }
 
     /// <summary>Push <paramref name="page"/> over the current tab. A page opened from Now
@@ -190,6 +205,43 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
         playlist.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>();
+
+    [RelayCommand]
+    private void SelectLibraryChip(LibraryChip chip)
+    {
+        if (chip == LibraryChip) return;
+        LibraryChipPage?.OnClosed();
+        LibraryChip = chip;
+        LibraryChipPage = chip switch
+        {
+            LibraryChip.Playlists => new PlaylistListPageViewModel(this) { IsEmbedded = true },
+            LibraryChip.Albums => new AlbumGridPageViewModel(this) { IsEmbedded = true },
+            LibraryChip.Artists => new ArtistListPageViewModel(this) { IsEmbedded = true },
+            LibraryChip.Songs => new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs) { IsEmbedded = true },
+            _ => null,
+        };
+    }
+
+    /// <summary>A rail tile: albums and playlists open, an On Repeat song plays that rail from it.</summary>
+    [RelayCommand]
+    private void OpenRailItem(RailItem? item)
+    {
+        switch (item?.Payload)
+        {
+            case Album album:
+                OpenAlbum(album);
+                break;
+            case Playlist playlist:
+                OpenPlaylist(playlist);
+                break;
+            case Track track:
+                var rail = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
+                var index = rail.IndexOf(track);
+                if (index >= 0) Player.PlayTracks(rail, index);
+                else Player.PlayTracks(new[] { track }, 0);
+                break;
+        }
+    }
 
     public async Task InitializeAsync()
     {

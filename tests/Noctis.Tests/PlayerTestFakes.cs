@@ -161,4 +161,21 @@ internal sealed class FakeAnimatedCoverService : IAnimatedCoverService
     public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
 }
 
+/// <summary>In-memory play log. RecordPlay appends like PlayHistoryService; Seed adds an
+/// event at a chosen time so tests can build history.</summary>
+internal sealed class FakeHistoryLog : IPlayHistoryService
+{
+    public List<PlayHistoryEvent> EventList { get; } = new();
+    public IReadOnlyList<PlayHistoryEvent> Events => EventList;
+    public Task PreloadAsync() => Task.CompletedTask;
+    public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
+    public void RecordSkip(Track track) { }
+    public Task FlushAsync() => Task.CompletedTask;
+
+    public void Seed(Track track, DateTime playedAtUtc) => EventList.Add(new PlayHistoryEvent
+    {
+        TrackId = track.Id, Title = track.Title, Artist = track.Artist, PlayedAtUtc = playedAtUtc,
+    });
+}
+
 #pragma warning restore CS0067

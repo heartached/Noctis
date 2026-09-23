@@ -8,6 +8,10 @@ public class AppSettings
     /// <summary>Directories to scan for music files.</summary>
     public List<string> MusicFolders { get; set; } = new();
 
+    /// <summary>Phone: albums the user pinned from the long-press sheet (Library → Pinned rail).
+    /// Playlists pin through Playlist.IsPinned instead.</summary>
+    public List<Guid> PinnedAlbumIds { get; set; } = new();
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>
