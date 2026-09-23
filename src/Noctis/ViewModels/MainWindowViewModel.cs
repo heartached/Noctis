@@ -858,6 +858,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         // relay has no cover to serve (GetArtworkUrl(null) → no image).
                         if (track != null)
                         {
+                            track.IsExternal = true;
                             var artPath = _persistence.GetArtworkPath(track.AlbumId);
                             if (!File.Exists(artPath))
                             {

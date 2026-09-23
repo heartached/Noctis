@@ -1010,7 +1010,14 @@
                                    FontSize="12" Opacity="0.5"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Center"
-                                   IsVisible="{Binding !IsMultiSelect}" />
+                                   IsVisible="{Binding ShowSharedByAlbumHint}" />
+                        <!-- This track's own embedded cover (per-track covers) -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{loc:T Metadata.ArtworkOwnTrack}"
+                                   FontSize="12" Opacity="0.5"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding ShowsOwnTrackArtwork}" />
                     </Grid>
 
                     <!-- Artwork action buttons (vertical stack right of the preview) -->

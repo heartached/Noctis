@@ -158,17 +158,22 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     /// history hold the very same Track instances.</summary>
     internal static int StepBetween(Track? oldCenter, Track? newCenter,
         Track? oldPrev1, Track? oldPrev2, Track? oldNext1, Track? oldNext2,
-        Track? oldPrev3 = null, Track? oldPrev4 = null, Track? oldNext3 = null, Track? oldNext4 = null)
+        Track? oldPrev3 = null, Track? oldPrev4 = null, Track? oldNext3 = null, Track? oldNext4 = null) =>
+        StepBetween(oldCenter, newCenter,
+            new[] { oldPrev1, oldPrev2, oldPrev3, oldPrev4 },
+            new[] { oldNext1, oldNext2, oldNext3, oldNext4 });
+
+    /// <summary><see cref="StepBetween(Track?, Track?, Track?, Track?, Track?, Track?, Track?, Track?, Track?, Track?)"/>
+    /// over any number of slots: <paramref name="oldPrev"/>[k] / <paramref name="oldNext"/>[k]
+    /// sat k + 1 slots from the old centre.</summary>
+    internal static int StepBetween(Track? oldCenter, Track? newCenter,
+        IReadOnlyList<Track?> oldPrev, IReadOnlyList<Track?> oldNext)
     {
         if (newCenter == null || ReferenceEquals(oldCenter, newCenter)) return 0;
-        if (ReferenceEquals(newCenter, oldNext1)) return 1;
-        if (ReferenceEquals(newCenter, oldNext2)) return 2;
-        if (ReferenceEquals(newCenter, oldNext3)) return 3;
-        if (ReferenceEquals(newCenter, oldNext4)) return 4;
-        if (ReferenceEquals(newCenter, oldPrev1)) return -1;
-        if (ReferenceEquals(newCenter, oldPrev2)) return -2;
-        if (ReferenceEquals(newCenter, oldPrev3)) return -3;
-        if (ReferenceEquals(newCenter, oldPrev4)) return -4;
+        for (var k = 0; k < oldNext.Count; k++)
+            if (ReferenceEquals(newCenter, oldNext[k])) return k + 1;
+        for (var k = 0; k < oldPrev.Count; k++)
+            if (ReferenceEquals(newCenter, oldPrev[k])) return -(k + 1);
         return 0;
     }
 
@@ -246,8 +251,9 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
 
         // Judge the slide BEFORE the slots move: the old neighbours are still in place.
         var centerChanged = !ReferenceEquals(CenterTrack, current);
-        var step = StepBetween(CenterTrack, current, PreviousTrack, FarPreviousTrack, NextTrack, FarNextTrack,
-            EdgePreviousTrack, OffPreviousTrack, EdgeNextTrack, OffNextTrack);
+        var step = StepBetween(CenterTrack, current,
+            new[] { PreviousTrack, FarPreviousTrack, EdgePreviousTrack, OffPreviousTrack, Prev5Track, Prev6Track, Prev7Track },
+            new[] { NextTrack, FarNextTrack, EdgeNextTrack, OffNextTrack, Next5Track, Next6Track, Next7Track });
 
         // Track center track property changes (e.g. IsFavorite toggle)
         if (_subscribedCenterTrack != current)

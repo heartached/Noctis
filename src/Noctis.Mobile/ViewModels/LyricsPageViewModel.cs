@@ -86,7 +86,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         try
         {
             var settings = await _persistence.LoadSettingsAsync();
-            ShowTranslation = settings.LyricsShowTranslation;
+            ShowTranslation = settings.LyricsShowTranslations;
             ShowRomanization = settings.LyricsShowRomanization;
             _minOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60) / 100.0;
             _joinSplitWords = settings.LyricsJoinSplitWords;
@@ -117,7 +117,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         try
         {
             var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsShowTranslation = ShowTranslation;
+            settings.LyricsShowTranslations = ShowTranslation;
             settings.LyricsShowRomanization = ShowRomanization;
             await _persistence.SaveSettingsAsync(settings);
         }
@@ -180,7 +180,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;
         HasTranslations = result.Lines.Any(l => l.HasTranslation);
-        HasRomanizations = result.Lines.Any(l => l.HasRomanization);
+        HasRomanizations = result.Lines.Any(l => l.HasTransliteration);
         if (IsSynced)
         {
             ApplyOpacities(-1);

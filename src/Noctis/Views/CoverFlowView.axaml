@@ -464,10 +464,10 @@
                  to its right. Every slot is a CoverFlowCard (light frosted slab, cover
                  inset on top, title/artist caption inside), all 300px so the caption type
                  matches. The slot GEOMETRY lives in CoverFlowCarouselGeometry and is applied
-                 by the code-behind (SetPose): a 3D tilt toward the centre
-                 (Rotate3DTransform + perspective Depth), a scale-down, a slide out, a dim
-                 and an opacity per slot, each side card tucked BEHIND its inner neighbour
-                 (ZIndex falls with distance). On a skip the content swaps one slot over
+                 by the code-behind (SetPose): a 3D tilt turning each side card's OUTER
+                 edge toward the viewer (Rotate3DTransform + perspective Depth), a
+                 scale-down, a slide out, a dim and an opacity per slot, every card SIDE BY
+                 SIDE with a fixed gap, never overlapping (09-22 mockup). On a skip the content swaps one slot over
                  by binding and the code-behind slides every card from its previous slot's
                  pose to its own (ease-out cubic, ~360ms). Wheel / ← → move the carousel by
                  really changing the track. The artwork is NOT a button (09-17): the caption's
@@ -490,6 +490,55 @@
 
 
 
+
+                    <!-- −7..−5 (history): drawn small, so decoded small -->
+                    <ctrl:CoverFlowCard x:Name="SlotPrev7"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Prev7ArtworkPath}"
+                                        Title="{Binding Prev7Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Prev7Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Prev7Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Prev7Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctrl:CoverFlowCard x:Name="SlotPrev6"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Prev6ArtworkPath}"
+                                        Title="{Binding Prev6Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Prev6Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Prev6Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Prev6Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctrl:CoverFlowCard x:Name="SlotPrev5"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Prev5ArtworkPath}"
+                                        Title="{Binding Prev5Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Prev5Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Prev5Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Prev5Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <!-- −4 (history) -->
+                    <ctrl:CoverFlowCard x:Name="SlotPrev4"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        ArtworkPath="{Binding OffPreviousArtworkPath}"
+                                        Title="{Binding OffPreviousTrack.Title, FallbackValue=''}"
+                                        Artist="{Binding OffPreviousTrack.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding OffPreviousTrack.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding OffPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <!-- −3 (history) -->
+                    <ctrl:CoverFlowCard x:Name="SlotPrev3"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        ArtworkPath="{Binding EdgePreviousArtworkPath}"
+                                        Title="{Binding EdgePreviousTrack.Title, FallbackValue=''}"
+                                        Artist="{Binding EdgePreviousTrack.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding EdgePreviousTrack.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding EdgePreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
                     <!-- −2 (history) -->
                     <ctrl:CoverFlowCard x:Name="SlotPrev2"
@@ -554,6 +603,55 @@
                                         Artist="{Binding FarNextTrack.Artist, FallbackValue=''}"
                                         IsExplicit="{Binding FarNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <!-- +3 (up next) -->
+                    <ctrl:CoverFlowCard x:Name="SlotNext3"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        ArtworkPath="{Binding EdgeNextArtworkPath}"
+                                        Title="{Binding EdgeNextTrack.Title, FallbackValue=''}"
+                                        Artist="{Binding EdgeNextTrack.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding EdgeNextTrack.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <!-- +4 (up next) -->
+                    <ctrl:CoverFlowCard x:Name="SlotNext4"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        ArtworkPath="{Binding OffNextArtworkPath}"
+                                        Title="{Binding OffNextTrack.Title, FallbackValue=''}"
+                                        Artist="{Binding OffNextTrack.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding OffNextTrack.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                    <!-- +5..+7 (up next): drawn small, so decoded small -->
+                    <ctrl:CoverFlowCard x:Name="SlotNext5"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Next5ArtworkPath}"
+                                        Title="{Binding Next5Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Next5Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Next5Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Next5Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctrl:CoverFlowCard x:Name="SlotNext6"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Next6ArtworkPath}"
+                                        Title="{Binding Next6Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Next6Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Next6Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Next6Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctrl:CoverFlowCard x:Name="SlotNext7"
+                                        Classes="flow-card side"
+                                        ArtworkSize="300"
+                                        DecodeWidth="256"
+                                        ArtworkPath="{Binding Next7ArtworkPath}"
+                                        Title="{Binding Next7Track.Title, FallbackValue=''}"
+                                        Artist="{Binding Next7Track.Artist, FallbackValue=''}"
+                                        IsExplicit="{Binding Next7Track.IsExplicit, FallbackValue=False}"
+                                        IsVisible="{Binding Next7Track, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
 
 

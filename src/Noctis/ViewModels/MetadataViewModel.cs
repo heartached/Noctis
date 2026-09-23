@@ -423,15 +423,16 @@ public partial class MetadataViewModel : ViewModelBase
     /// </summary>
     public async Task InitializeAsync()
     {
-        var (info, artwork, advanced) = await Task.Run(() =>
+        var (info, artwork, artworkSize, advanced) = await Task.Run(() =>
         {
             var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
 
             // Multi-select can span albums; don't show one album's art as if shared.
             Bitmap? artworkBitmap = null;
+            Avalonia.PixelSize? artworkSize = null;
             if (!_multiSelect)
             {
-                var artPath = _persistence.GetArtworkPath(_track.AlbumId);
+                var artPath = DisplayedArtworkPath();
 
                 // The persisted cache file is the source of truth for "does this album
                 // have a cover in Noctis." If the user removed it, cachedData is null
@@ -455,6 +456,8 @@ public partial class MetadataViewModel : ViewModelBase
                         // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
                         using var ms = new MemoryStream(cachedData);
                         artworkBitmap = Bitmap.DecodeToWidth(ms, 512);
+                        // The chip reports the real cover, not this 512-wide preview.
+                        artworkSize = SkiaArtworkDecoder.ReadPixelSize(cachedData);
                     }
                     catch { }
                 }
@@ -467,11 +470,13 @@ public partial class MetadataViewModel : ViewModelBase
                 catch { /* Non-fatal — advanced fields are best-effort */ }
             }
 
-            return (fileInfo, artworkBitmap, advancedFields);
+            return (fileInfo, artworkBitmap, artworkSize, advancedFields);
         });
 
         ApplyFileInfo(info);
-        ApplyArtwork(artwork);
+        ApplyArtwork(artwork, artworkSize);
+        ShowsOwnTrackArtwork = artwork != null && !_albumScoped && !_multiSelect
+            && File.Exists(_persistence.GetTrackArtworkPath(_track.Id));
         if (advanced != null)
             ApplyAdvancedFields(advanced);
 
@@ -983,9 +988,23 @@ public partial class MetadataViewModel : ViewModelBase
     public bool ShowMixedHint => _albumTracks is { Count: > 1 };
 
     /// <summary>"3000 × 3000" chip on the Artwork tab; empty while there is no cover.</summary>
-    public string ArtworkDimensions => ArtworkPreview is { } bmp ? $"{bmp.PixelSize.Width} × {bmp.PixelSize.Height}" : string.Empty;
+    public string ArtworkDimensions => ArtworkPreview is { } bmp && (_artworkSourceSize ?? bmp.PixelSize) is var s
+        ? $"{s.Width} × {s.Height}"
+        : string.Empty;
+
+    /// <summary>The cover's real size when the preview was decoded smaller (the saved
+    /// cover loads as a 512-wide preview); null when the preview is full size.</summary>
+    private Avalonia.PixelSize? _artworkSourceSize;
 
     partial void OnArtworkPreviewChanged(Bitmap? value) => OnPropertyChanged(nameof(ArtworkDimensions));
+
+    /// <summary>The preview is this track's OWN embedded cover (it differs from the rest of
+    /// its album). Cleared once the user picks or removes a cover, which applies album-wide.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSharedByAlbumHint))]
+    private bool _showsOwnTrackArtwork;
+
+    public bool ShowSharedByAlbumHint => !_multiSelect && !ShowsOwnTrackArtwork;
 
     [RelayCommand]
     private void ShowInFolder() => PlatformHelper.ShowInFileManager(_track.FilePath);
@@ -1295,11 +1314,12 @@ public partial class MetadataViewModel : ViewModelBase
             : normalized;
     }
 
-    private void ApplyArtwork(Bitmap? artwork)
+    private void ApplyArtwork(Bitmap? artwork, Avalonia.PixelSize? sourceSize)
     {
         if (artwork == null) return;
         // Don't clobber an artwork add/remove the user made while the load was in flight.
         if (_newArtworkData != null || _artworkRemoved) return;
+        _artworkSourceSize = sourceSize;
         ArtworkPreview = artwork;
         HasArtwork = true;
     }
@@ -1348,6 +1368,8 @@ public partial class MetadataViewModel : ViewModelBase
 
             ms.Position = 0;
             var oldArt = ArtworkPreview;
+            _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
+            ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
             oldArt?.Dispose();
             HasArtwork = true;
@@ -1516,6 +1538,8 @@ public partial class MetadataViewModel : ViewModelBase
 
             using var ms = new MemoryStream(data);
             var oldArt = ArtworkPreview;
+            _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
+            ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
             oldArt?.Dispose();
             HasArtwork = true;
@@ -2114,7 +2138,9 @@ public partial class MetadataViewModel : ViewModelBase
     [RelayCommand]
     private void RemoveArtwork()
     {
+        ShowsOwnTrackArtwork = false;
         var oldArt = ArtworkPreview;
+        _artworkSourceSize = null;
         ArtworkPreview = null;
         oldArt?.Dispose();
         HasArtwork = false;
@@ -2158,7 +2184,7 @@ public partial class MetadataViewModel : ViewModelBase
         if (_newArtworkData != null && _newArtworkData.Length > 0)
             return _newArtworkData;
 
-        var artPath = _persistence.GetArtworkPath(_track.AlbumId);
+        var artPath = DisplayedArtworkPath();
         if (File.Exists(artPath))
         {
             try { return File.ReadAllBytes(artPath); }
@@ -2166,6 +2192,31 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         return _metadata.ExtractAlbumArt(_track.FilePath);
+    }
+
+    /// <summary>The cover this dialog shows: a single track with its own embedded cover
+    /// (<see cref="TrackArtwork"/>) shows that; album and multi-track edits show the album's.</summary>
+    private string DisplayedArtworkPath()
+    {
+        if (!_albumScoped && !_multiSelect)
+        {
+            var own = _persistence.GetTrackArtworkPath(_track.Id);
+            if (File.Exists(own)) return own;
+        }
+        return _persistence.GetArtworkPath(_track.AlbumId);
+    }
+
+    /// <summary>A new or removed album cover was just written into every track's tag, so
+    /// no track differs from its album any more: drop their own covers and record the
+    /// new fingerprint (a later rescan would otherwise resurrect the old split).</summary>
+    private void ClearOwnTrackArtwork(IEnumerable<Track> tracks, byte[]? albumArt)
+    {
+        var hash = TrackArtwork.Fingerprint(albumArt);
+        foreach (var t in tracks)
+        {
+            t.ArtworkHash = hash;
+            _persistence.DeleteTrackArtwork(t.Id);
+        }
     }
 
     private static (string Extension, FilePickerFileType FileType) GetArtworkSaveType(byte[] data)
@@ -2442,7 +2493,10 @@ public partial class MetadataViewModel : ViewModelBase
                     try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
                     t.AlbumArtworkPath = null;
                 }
+                ClearOwnTrackArtwork(artTargets, _newArtworkData);
             });
+            foreach (var t in artTargets)
+                ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
         }
         else if (_artworkRemoved)
         {
@@ -2462,7 +2516,10 @@ public partial class MetadataViewModel : ViewModelBase
                     try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
                     t.AlbumArtworkPath = null;
                 }
+                ClearOwnTrackArtwork(albumTracks, null);
             });
+            foreach (var t in albumTracks)
+                ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
 
             // Delete the persisted cache file too — invalidating the in-memory
             // cache alone leaves the PNG on disk, so the next album load reads

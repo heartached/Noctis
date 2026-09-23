@@ -39,6 +39,10 @@ public partial class AlbumDetailView : UserControl
         DiscGroupList.ContainerClearing += OnDiscGroupContainerClearing;
 
         DataContextChanged += OnAlbumDataContextChanged;
+        TrackScrollViewer.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ScrollViewer.ViewportProperty) UpdateAlbumBlockLayout();
+        };
 
         OtherVersionsScroll.ScrollChanged += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
         OtherVersionsScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
@@ -48,6 +52,27 @@ public partial class AlbumDetailView : UserControl
         AddHandler(InputElement.PointerPressedEvent, OnOptionsFlyoutButtonPointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a row.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
+    }
+
+    /// <summary>Space the floating player bar covers at the bottom of the page.</summary>
+    private const double PlayerBarClearance = 115;
+    /// <summary>The footer's own bottom margin (XAML), already part of that clearance.</summary>
+    private const double FooterBottomMargin = 28;
+
+    /// <summary>
+    /// A tinted album block is at least one viewport tall, so the colour runs to the
+    /// bottom of the window and the docked footer facts sit at its foot (Discord NJZ
+    /// 09-22: the colour stopping mid-screen looked awkward). The block also carries the
+    /// player-bar clearance whenever it is tinted or ends the page, so the footer never
+    /// sits under the bar and the colour never gives way to a strip of app background.
+    /// </summary>
+    private void UpdateAlbumBlockLayout()
+    {
+        if (DataContext is not AlbumDetailViewModel vm) return;
+        var hasRelated = vm.HasOtherVersions || vm.HasMoreByArtist;
+        AlbumBlock.MinHeight = vm.HasTint ? TrackScrollViewer.Viewport.Height : 0;
+        AlbumBlockContent.Margin = new Thickness(0, 0, 0,
+            vm.HasTint || !hasRelated ? PlayerBarClearance - FooterBottomMargin : 0);
     }
 
     /// <summary>Ctrl+Click toggles a track row's selection; a plain click clears it.</summary>
@@ -402,6 +427,7 @@ public partial class AlbumDetailView : UserControl
             newVm.PropertyChanged += _bgHandler;
             AlbumTintBg.Opacity = newVm.BackgroundBrush != null ? 1 : 0;
         }
+        UpdateAlbumBlockLayout();
 
         if (newVm.SavedScrollOffset > 0)
         {
@@ -439,8 +465,13 @@ public partial class AlbumDetailView : UserControl
             {
                 if (args.PropertyName == nameof(AlbumDetailViewModel.BackgroundBrush))
                     AlbumTintBg.Opacity = ((AlbumDetailViewModel)DataContext!).BackgroundBrush != null ? 1 : 0;
+                if (args.PropertyName is nameof(AlbumDetailViewModel.HasTint)
+                    or nameof(AlbumDetailViewModel.HasOtherVersions)
+                    or nameof(AlbumDetailViewModel.HasMoreByArtist))
+                    UpdateAlbumBlockLayout();
             };
             vm2.PropertyChanged += _bgHandler;
+            UpdateAlbumBlockLayout();
         }
 
         // Scroll restore/reset is now driven by OnAlbumDataContextChanged so it also

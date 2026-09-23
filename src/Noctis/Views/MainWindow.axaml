@@ -829,6 +829,88 @@
                                     Cursor="Hand" />
                         </Grid>
 
+                        <!-- GitHub #85: the playing track, pinned above the list. Outside the
+                             ListBox so UpNext indices, drag slots and row numbers are unchanged.
+                             Same card as a queue row, marked the way Home marks its playing row
+                             (accent fill, accent-foreground text); duration in the number slot. -->
+                        <StackPanel x:Name="QueueNowPlaying"
+                                    DockPanel.Dock="Top"
+                                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock Text="{loc:T Queue.NowPlaying}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource QueueDrawerForeground}"
+                                       Opacity="0.55"
+                                       Margin="24,0,12,4" />
+                            <Border Margin="12,1,12,1"
+                                    Padding="8,4"
+                                    CornerRadius="10"
+                                    Background="{DynamicResource AccentButtonBackground}"
+                                    DataContext="{Binding Player.CurrentTrack}"
+                                    x:DataType="m:Track">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Height="48">
+                                    <Border Grid.Column="0"
+                                            Width="42" Height="42"
+                                            CornerRadius="7"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,10,0">
+                                        <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                              Stretch="UniformToFill" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Grid ColumnDefinitions="Auto,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding TitleDisplay}"
+                                                       Classes="one-line-explicit-title"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       MaxWidth="165" />
+                                            <Border Grid.Column="1"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="4,0,0,0"
+                                                    IsVisible="{Binding IsExplicit}"
+                                                    ToolTip.Tip="{loc:T Main.ExplicitTip}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="E"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="8"
+                                                           Opacity="0.9" />
+                                            </Border>
+                                        </Grid>
+                                        <Button Classes="queue-link"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,2,0,0"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Border Classes="artist-text-hover"
+                                                    CornerRadius="2"
+                                                    Padding="2,0,3,0">
+                                                <TextBlock Text="{Binding ArtistDisplay}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource AccentForegroundBrush}"
+                                                           Opacity="0.75"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxLines="1" />
+                                            </Border>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding DurationFormatted}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentForegroundBrush}"
+                                               Opacity="0.75"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               Margin="4,0,4,0" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
                         <!-- Queue track list (virtualized, drag-reorder enabled) -->
                         <Grid x:Name="QueueListWrapper">
                             <ListBox x:Name="QueuePopupListBox"
@@ -867,6 +949,11 @@
                                     <Style Selector="Border.queue-row:pointerover">
                                         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}"/>
                                     </Style>
+                                    <!-- GitHub #85: selected rows (click / Ctrl / Shift) carry the track
+                                         lists' multi-select wash; declared after hover so it wins. -->
+                                    <Style Selector="ListBoxItem.ctrl-selected Border.queue-row">
+                                        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}"/>
+                                    </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="m:Track">
@@ -880,7 +967,8 @@
                                                 PointerPressed="OnQueueItemPointerPressed"
                                                 PointerMoved="OnQueueItemPointerMoved"
                                                 PointerReleased="OnQueueItemPointerReleased"
-                                                PointerCaptureLost="OnQueueItemPointerCaptureLost">
+                                                PointerCaptureLost="OnQueueItemPointerCaptureLost"
+                                                ContextRequested="OnQueueRowContextRequested">
                                             <Border.ContextMenu>
                                                 <ContextMenu>
                                                     <MenuItem Header="{loc:T Main.RemoveFromQueue}"
@@ -969,21 +1057,6 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <!-- Drop indicator line for drag reorder -->
-                            <Border x:Name="QueueDropIndicator"
-                                    IsHitTestVisible="False"
-                                    IsVisible="False"
-                                    Height="2"
-                                    VerticalAlignment="Top"
-                                    HorizontalAlignment="Stretch"
-                                    Margin="20,0"
-                                    CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}">
-                                <Border.RenderTransform>
-                                    <TranslateTransform Y="0"/>
-                                </Border.RenderTransform>
-                            </Border>
-
                             <!-- Floating drag preview: follows the pointer Y while reordering.
                                  DataContext starts pinned to null (the state ResetQueueDragState
                                  restores after every drag) so the Track-typed bindings inside never
@@ -1001,9 +1074,15 @@
                                     Background="{DynamicResource AccentColorBrush}"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Top"
-                                    BoxShadow="0 6 22 0 #80000000">
+                                    BoxShadow="0 10 28 0 #80000000"
+                                    RenderTransformOrigin="50%,50%">
+                                <!-- Scale = lift + velocity stretch, Translate = eased position
+                                     (both driven per frame from code-behind). -->
                                 <Border.RenderTransform>
-                                    <TranslateTransform Y="0"/>
+                                    <TransformGroup>
+                                        <ScaleTransform />
+                                        <TranslateTransform />
+                                    </TransformGroup>
                                 </Border.RenderTransform>
                                 <Grid ColumnDefinitions="Auto,*,Auto" Height="48">
                                     <Border Grid.Column="0"
@@ -1278,6 +1357,76 @@
             </Border>
         </Border>
       </Panel>
+    </Border>
+
+    <!-- Drag chip: follows the pointer while tracks / an album are dragged (the OS drag
+         shows no picture of what is moving). Artwork, title, artist, and a count badge
+         when more than one song rides along. Filled and positioned from code-behind
+         (DragFileBehavior.DragPreviewStarted + the window's DragOver). Never hit-testable,
+         so it can't steal the drop from what is under the pointer. -->
+    <Border x:Name="DragChip"
+            IsVisible="False"
+            IsHitTestVisible="False"
+            ZIndex="100"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            MaxWidth="260"
+            Padding="6,6,14,6"
+            CornerRadius="12"
+            Background="{DynamicResource IslandBackground}"
+            BorderBrush="#26FFFFFF"
+            BorderThickness="1"
+            BoxShadow="0 10 30 0 #80000000"
+            Opacity="0">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Border.Transitions>
+        <Border.RenderTransform>
+            <TranslateTransform />
+        </Border.RenderTransform>
+        <Grid ColumnDefinitions="Auto,*">
+            <Panel Width="40" Height="40">
+                <Border CornerRadius="7" ClipToBounds="True" Background="#22FFFFFF">
+                    <controls:CachedImage x:Name="DragChipArt"
+                                          DecodeWidth="128"
+                                          Stretch="UniformToFill"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality" />
+                </Border>
+                <Border x:Name="DragChipCount"
+                        IsVisible="False"
+                        MinWidth="18" Height="18"
+                        Padding="5,0"
+                        CornerRadius="9"
+                        Margin="0,-6,-7,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Background="{DynamicResource AccentColorBrush}">
+                    <TextBlock x:Name="DragChipCountText"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource AccentForegroundBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Panel>
+            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="1">
+                <TextBlock x:Name="DragChipTitle"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource IslandForeground}"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1" />
+                <TextBlock x:Name="DragChipSubtitle"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Opacity="0.55"
+                           Foreground="{DynamicResource IslandForeground}"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1" />
+            </StackPanel>
+        </Grid>
     </Border>
 
     </Panel>

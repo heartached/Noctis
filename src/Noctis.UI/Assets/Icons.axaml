@@ -55,6 +55,11 @@
 
     <StreamGeometry x:Key="MoreDotsIcon">M7.75 12a1.75 1.75 0 1 1-3.5 0a1.75 1.75 0 0 1 3.5 0m6 0a1.75 1.75 0 1 1-3.5 0a1.75 1.75 0 0 1 3.5 0M18 13.75a1.75 1.75 0 1 0 0-3.5a1.75 1.75 0 0 0 0 3.5</StreamGeometry>
 
+    <!-- Mini player: a window outline whose bottom-right corner is broken by a smaller window
+         popping out of it. An open STROKE outline (not a fill), drawn at 1.5 with round caps
+         like the Lyrics / Queue icons beside it on the island. -->
+    <StreamGeometry x:Key="MiniPlayerIcon">M10.5 19.25H5.75a3 3 0 0 1-3-3v-8.5a3 3 0 0 1 3-3h12.5a3 3 0 0 1 3 3V10.5M15 13.25h4.5a1.75 1.75 0 0 1 1.75 1.75v2.5a1.75 1.75 0 0 1-1.75 1.75H15a1.75 1.75 0 0 1-1.75-1.75V15a1.75 1.75 0 0 1 1.75-1.75Z</StreamGeometry>
+
     <!-- ═══ Cross-Platform Icon Replacements (replacing Segoe Fluent Icons) ═══ -->
 
     <!-- Heart filled — favorites (was &#xE0A5;) -->

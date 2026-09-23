@@ -547,26 +547,29 @@ public class PersistenceService : IPersistenceService
         }
     }
 
-    // Serializing large payloads (library.json) is CPU-heavy, and awaits inside
-    // SaveJsonCoreAsync would otherwise resume on the calling (UI) thread —
-    // fire-and-forget saves from the play path measurably stalled rendering.
-    // Task.Run keeps the whole save on the thread pool.
-    private static Task SaveJsonAsync<T>(string path, T data, JsonSerializerOptions? options = null)
-        => Task.Run(() => SaveJsonCoreAsync(path, data, options ?? JsonOptions));
-
     // One writer per target file: two overlapping saves share the fixed ".tmp"
     // name (opened FileShare.None), so the loser threw a sharing violation —
     // unobserved on fire-and-forget paths — or the temp was renamed mid-write.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _writeGates =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private static async Task SaveJsonCoreAsync<T>(string path, T data, JsonSerializerOptions options)
+    // Serializing large payloads (library.json) is CPU-heavy, and awaits inside
+    // SaveJsonSerializedAsync would otherwise resume on the calling (UI) thread —
+    // fire-and-forget saves from the play path measurably stalled rendering.
+    // Task.Run keeps the serialize-and-fsync on the thread pool.
+    //
+    // The gate is entered HERE, on the calling thread, before that hop: SemaphoreSlim
+    // serves async waiters first-in first-out, so saves to one file land in the order
+    // they were issued. Entering it inside the Task.Run let two back-to-back saves race
+    // for the gate, and the older snapshot could be written last (a stale queue.json
+    // over the newer one). ConfigureAwait(false) keeps the continuation off the UI thread.
+    private static async Task SaveJsonAsync<T>(string path, T data, JsonSerializerOptions? options = null)
     {
         var gate = _writeGates.GetOrAdd(path, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync();
+        await gate.WaitAsync().ConfigureAwait(false);
         try
         {
-            await SaveJsonSerializedAsync(path, data, options);
+            await Task.Run(() => SaveJsonSerializedAsync(path, data, options ?? JsonOptions)).ConfigureAwait(false);
         }
         finally
         {

@@ -418,29 +418,114 @@ public class MiniPlayerDesignTests
         finally { win.Close(); }
     }
 
-    [AvaloniaFact]
-    public async Task DesignGround_StaysSolid_WhateverTheOpacitySetting()
+    [AvaloniaTheory]
+    [InlineData("Pill", "PillGround")]
+    [InlineData("Sleeve", "SleeveGround")]
+    public async Task DesignGround_FollowsTheOpacitySetting_AndTheTheme(string design, string groundName)
     {
-        // Mini Player Opacity is the classic glass's knob; the designs are solid cards.
+        // GitHub #76: Mini Player Opacity applies to every style — the designs' ground is
+        // the theme colour at that opacity, and a theme switch repaints it live.
         EnsureAppResources();
         var vm = MakeViewModel();
-        vm.SetDesignCommand.Execute("Pill");
+        vm.SetDesignCommand.Execute(design);
         var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        // Stands in for the theme dictionary (not merged in the headless app).
+        win.Resources["AppMainBackgroundColor"] = Colors.Red;
         win.Show();
         await PumpFor(300);
         try
         {
-            var ground = win.FindControl<Border>("PillGround")!;
-            vm.Settings.MiniPlayerBackgroundOpacity = 0;
+            var ground = win.FindControl<Border>(groundName)!;
+            var brush = Assert.IsAssignableFrom<ISolidColorBrush>(ground.Background);
+            Assert.Equal(vm.Settings.MiniPlayerBackgroundOpacity, brush.Opacity, 3);
+            Assert.Equal(Colors.Red, brush.Color);
+
+            vm.Settings.MiniPlayerBackgroundOpacity = 0.8;
             await PumpFor(50);
-            // AppMainBackground is a theme resource (not merged in the headless app); what
-            // matters is that whatever brush is there ignores the setting.
-            Assert.True(ground.Background is null || Math.Abs(ground.Background.Opacity - 1) < 0.001);
+            Assert.Equal(0.8, ((ISolidColorBrush)ground.Background!).Opacity, 3);
+
+            win.Resources["AppMainBackgroundColor"] = Colors.Blue;
+            await PumpFor(50);
+            Assert.Equal(Colors.Blue, ((ISolidColorBrush)ground.Background!).Color);
+
             Assert.Equal(0x33, ground.BoxShadow[0].Color.A);
             // The classic root fill is hidden under a design, so the ground is the only slab.
             Assert.Equal(Brushes.Transparent, win.FindControl<Border>("RootBorder")!.Background);
         }
         finally { win.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Sleeve", "SleeveCard")]
+    [InlineData("Pill", "PillCard")]
+    [InlineData("Classic", "RootBorder")]
+    public async Task DoubleClickOnTheGlass_ReturnsToTheFullWindow(string design, string target)
+    {
+        // GitHub #80: a double-click on empty glass (any style) closes the mini player,
+        // and MainWindow's Closed handler brings the main window back.
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        if (design != "Classic") vm.SetDesignCommand.Execute(design);
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        var closed = false;
+        win.Closed += (_, _) => closed = true;
+        win.Show();
+        await PumpFor(300);
+        try
+        {
+            var card = win.FindControl<Border>(target)!;
+            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+            var at = new Point(card.Bounds.Width / 2, card.Bounds.Height / 2);
+            PointerPressedEventArgs Press(int clicks) => new(card, pointer, card, at, 0,
+                new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed),
+                KeyModifiers.None, clicks);
+            void Release() => card.RaiseEvent(new PointerReleasedEventArgs(card, pointer, card, at, 0,
+                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
+
+            card.RaiseEvent(Press(1));
+            Release();
+            await PumpFor(300);
+            Assert.False(closed, "a single press closed the mini player");
+
+            var second = Press(2);
+            card.RaiseEvent(second);
+            Assert.True(second.Handled);
+            Assert.False(win.IsDragArmed, "the double-click must not arm a window drag");
+            Release();
+            await PumpFor(400); // the 170ms close animation, then the real close
+            Assert.True(closed, "a double-click on the glass did not close the mini player");
+        }
+        finally { if (!closed) win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task DoubleClickOnAButton_DoesNotClose()
+    {
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        var closed = false;
+        win.Closed += (_, _) => closed = true;
+        win.Show();
+        await PumpFor(300);
+        try
+        {
+            var button = win.GetVisualDescendants().OfType<Button>()
+                .First(b => b.IsEffectivelyVisible && ToolTip.GetTip(b) as string == "Repeat");
+            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+            var at = new Point(button.Bounds.Width / 2, button.Bounds.Height / 2);
+            for (var clicks = 1; clicks <= 2; clicks++)
+            {
+                button.RaiseEvent(new PointerPressedEventArgs(button, pointer, button, at, 0,
+                    new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed),
+                    KeyModifiers.None, clicks));
+                button.RaiseEvent(new PointerReleasedEventArgs(button, pointer, button, at, 0,
+                    new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
+            }
+            await PumpFor(400);
+            Assert.False(closed, "a double-click on a transport button closed the mini player");
+        }
+        finally { if (!closed) win.Close(); }
     }
 
     [AvaloniaTheory]
@@ -479,6 +564,78 @@ public class MiniPlayerDesignTests
             card.RaiseEvent(Press());
             card.RaiseEvent(Move(12));
             Assert.False(win.IsDragArmed, "real movement hands the window to the OS drag");
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task SwitchingStyleInTheBottomRightCorner_KeepsTheCardOnScreen()
+    {
+        // GitHub #75: a style switch used to keep the top-left fixed, so a card parked in
+        // the bottom-right corner grew off the screen. It now keeps its right and bottom
+        // edges (the nearest ones) and stays inside the work area.
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        win.Show();
+        await PumpFor(200);
+        try
+        {
+            var screen = win.Screens.ScreenFromWindow(win);
+            Assert.NotNull(screen); // the headless platform reports one 1920×1280 screen at 100%
+            var area = screen!.WorkingArea;
+            win.Position = new PixelPoint(area.Right - 340 - 20, area.Bottom - 432 - 20);
+            await PumpFor(50);
+            var right = win.Position.X + 340;
+            var bottom = win.Position.Y + 432;
+
+            vm.SetDesignCommand.Execute("Sleeve");
+            await PumpFor(120); // mid-glide: the anchored edges hold while the size eases
+            Assert.Equal(right, win.Position.X + win.Width, 2.0);
+            Assert.Equal(bottom, win.Position.Y + win.Height, 2.0);
+            await PumpFor(500);
+            var (sw, sh) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Sleeve);
+            Assert.Equal(new PixelPoint(right - (int)sw, bottom - (int)sh), win.Position);
+
+            // Back to Classic: same edges, so the card lands exactly where it started.
+            vm.SetDesignCommand.Execute("Classic");
+            await PumpFor(700);
+            Assert.Equal(new PixelPoint(right - 340, bottom - 432), win.Position);
+            Assert.True(area.Contains(new PixelRect(win.Position, new PixelSize(340, 432))));
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task StyleSwitchWithAShiftedDrawerOpen_PersistsWhereTheCardReallyIs()
+    {
+        // The drawer shifts the window up when it would run off the bottom; a style switch
+        // snaps the drawer shut. The shift has to be given back there too, or the saved
+        // placement kept adding it to a window that no longer had it.
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        win.Show();
+        await PumpFor(200);
+        try
+        {
+            var area = win.Screens.ScreenFromWindow(win)!.WorkingArea;
+            win.Position = new PixelPoint(area.X + 100, area.Bottom - 432 - 10);
+            await PumpFor(50);
+            var restY = win.Position.Y;
+
+            vm.ToggleQueueDrawerCommand.Execute(null);
+            await PumpFor(500);
+            Assert.True(win.Position.Y < restY, "the queue drawer should have shifted the card up");
+
+            vm.SetDesignCommand.Execute("Pill");
+            await PumpFor(700);
+            var saved = vm.Settings.GetSettings();
+            Assert.Equal(win.Position.X, saved.MiniPlayerX!.Value, 0.5);
+            Assert.Equal(win.Position.Y, saved.MiniPlayerY!.Value, 0.5);
+            // Bottom half → the Pill keeps the card's collapsed bottom edge.
+            var (_, ph) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Pill);
+            Assert.Equal(restY + 432, win.Position.Y + ph, 1.0);
         }
         finally { win.Close(); }
     }

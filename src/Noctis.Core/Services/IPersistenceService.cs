@@ -73,6 +73,30 @@ public interface IPersistenceService
     /// <summary>Saves raw image bytes as the cached artwork for an album.</summary>
     void SaveArtwork(Guid albumId, byte[] imageData);
 
+    /// <summary>Cache path of a track's OWN cover (<see cref="TrackArtwork"/>): the
+    /// "tracks" folder beside the album covers.</summary>
+    string GetTrackArtworkPath(Guid trackId) =>
+        Path.Combine(Path.GetDirectoryName(GetArtworkPath(Guid.Empty)) ?? string.Empty, "tracks", $"{trackId}.jpg");
+
+    /// <summary>Saves a track's own cover (best effort, like <see cref="SaveArtwork"/>).</summary>
+    void SaveTrackArtwork(Guid trackId, byte[] imageData)
+    {
+        try
+        {
+            var path = GetTrackArtworkPath(trackId);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, imageData);
+        }
+        catch { /* Non-critical: the track just shows its album's cover */ }
+    }
+
+    /// <summary>Drops a track's own cover so it shows its album's again.</summary>
+    void DeleteTrackArtwork(Guid trackId)
+    {
+        try { File.Delete(GetTrackArtworkPath(trackId)); }
+        catch { /* Non-critical */ }
+    }
+
     /// <summary>
     /// Returns the cache path for an animated cover.
     /// Album scope: <DataRoot>/animated_covers/<albumId>.<ext>

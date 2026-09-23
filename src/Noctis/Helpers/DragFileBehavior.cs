@@ -34,6 +34,32 @@ public static class DragFileBehavior
     private static IReadOnlyList<Track>? _tracks;
     private static Guid? _playlistId;
 
+    /// <summary>What the floating drag chip shows while tracks / an album are dragged:
+    /// artwork, a title line, a subtitle line, and how many songs ride along.</summary>
+    public sealed record DragPreview(string Title, string Subtitle, string? ArtworkPath, int Count);
+
+    /// <summary>A track / album drag began in <see cref="TopLevel"/> (the OS drag shows no
+    /// picture of what is being dragged; MainWindow draws a chip that follows the pointer).</summary>
+    public static event Action<TopLevel, DragPreview>? DragPreviewStarted;
+
+    /// <summary>The drag started by <see cref="DragPreviewStarted"/> ended (dropped or cancelled).</summary>
+    public static event Action<TopLevel>? DragPreviewEnded;
+
+    /// <summary>Chip content for a dragged row / tile: an album shows its name, artist and
+    /// song count; a track shows its title and artist.</summary>
+    public static DragPreview? BuildPreview(object? dataContext, IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return null;
+        if (dataContext is Album album)
+            return new DragPreview(
+                album.Name,
+                album.Artist,
+                album.ArtworkPath ?? tracks.FirstOrDefault(t => t.HasAlbumArt)?.AlbumArtworkPath,
+                tracks.Count);
+        var track = tracks[0];
+        return new DragPreview(track.TitleDisplay, track.Artist, track.AlbumArtworkPath, tracks.Count);
+    }
+
     public static readonly AttachedProperty<bool> EnableFileDragProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("EnableFileDrag", typeof(DragFileBehavior));
 
@@ -90,15 +116,6 @@ public static class DragFileBehavior
 
         try
         {
-            // Sidebar playlist row: an in-app reorder / move-to-folder drag. No file
-            // payload — nothing outside the app should receive it.
-            if (ctl.DataContext is PlaylistNavItem { IsFolder: false, PlaylistId: { } playlistId })
-            {
-                using var playlistData = BuildPlaylistTransfer(playlistId);
-                await DragDrop.DoDragDropAsync(pressed, playlistData, DragDropEffects.Move);
-                return;
-            }
-
             var tracks = GetTracks(ctl.DataContext);
             if (tracks == null || tracks.Count == 0) return;
 
@@ -117,7 +134,16 @@ public static class DragFileBehavior
             // The Track objects ride along (via the slot) so in-app drop targets (sidebar
             // playlists) can add them without a path round-trip through the library.
             using var data = BuildTracksTransfer(tracks, items);
-            await DragDrop.DoDragDropAsync(pressed, data, DragDropEffects.Copy);
+            var preview = BuildPreview(ctl.DataContext, tracks);
+            if (preview != null) DragPreviewStarted?.Invoke(topLevel, preview);
+            try
+            {
+                await DragDrop.DoDragDropAsync(pressed, data, DragDropEffects.Copy);
+            }
+            finally
+            {
+                if (preview != null) DragPreviewEnded?.Invoke(topLevel);
+            }
         }
         catch (Exception ex)
         {

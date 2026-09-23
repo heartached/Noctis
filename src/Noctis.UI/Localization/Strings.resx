@@ -228,6 +228,8 @@
   <data name="Settings.RepeatButtonNextToForward" xml:space="preserve"><value>A repeat button after Next: cycles Off → All → One.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FavoriteButton" xml:space="preserve"><value>Favorite</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>A heart on the right to favorite the playing song in one click.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Mini player</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>A button on the right to switch to the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player Island Width</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Wider gives the seek bar more room. You can also drag the island's edges. Double-click the knob to reset.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Narrower</value><comment>Text in SettingsView.axaml</comment></data>
@@ -285,10 +287,18 @@
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Keep every lyric line faintly visible so you can click any line to jump there. 0% hides lines far from the current one.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Join Split Words</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Keep words whole when TTML lyrics split them into syllables.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslations" xml:space="preserve"><value>Show Translations</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Show the translation a TTML lyrics file carries under each line.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanization" xml:space="preserve"><value>Show Romanization</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Show the romanized lyrics a TTML file carries (romaji, pinyin…) under each line.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>Show Background Vocals</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Show background vocals and adlibs in a smaller row under the line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Player Bar Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How much of the desktop shows through the glass.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Song Transitions</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve"><value>Songs blend into each other. Albums play without transitions.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -974,6 +984,7 @@
   <data name="Metadata.CopyPath" xml:space="preserve"><value>Copy path</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.DoubleClickToReset" xml:space="preserve"><value>Double-click the slider to reset</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.ArtworkSharedByAlbum" xml:space="preserve"><value>Shared by the whole album</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.ArtworkOwnTrack" xml:space="preserve"><value>This track's own cover</value><comment>Text in MetadataWindow.axaml: the track's embedded cover differs from its album's</comment></data>
   <data name="Metadata.AnimatedArtworkHint" xml:space="preserve"><value>Per album · plays on the album page and Now Playing</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Save" xml:space="preserve"><value>Save</value><comment>Text in MetadataWindow.axaml</comment></data>

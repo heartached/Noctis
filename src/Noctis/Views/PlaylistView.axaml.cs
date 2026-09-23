@@ -25,14 +25,13 @@ public partial class PlaylistView : UserControl
     private TrackContextMenuBuilder? _menuBuilder;
     private ListBoxItem? _menuOwnerItem;
 
-    // ── Drag-reorder state (pointer-tracked, mirrors Queue's pill preview) ──
+    // ── Drag-reorder state (pointer-tracked, liquid motion shared with the queue) ──
     private const double PlaylistDragThreshold = 6.0;
     private Point _dragStartPos;
     private bool _dragActive;
     private Track? _dragTrack;
     private int _dragSourceIndex = -1;
     private double _dragRowOffsetY;
-    private ListBoxItem? _dragHiddenItem;
 
     public PlaylistView()
     {
@@ -575,12 +574,36 @@ public partial class PlaylistView : UserControl
         }
     }
 
-    // ── Drag-reorder handlers (pointer-tracked, mirrors Queue's pill preview) ──
+    // ── Drag-reorder handlers (pointer-tracked, same liquid motion as the queue) ──
     //
-    // The dragged row is rendered as a floating preview (#PlaylistDragPreview) that
-    // follows the pointer Y. The original row's Opacity is set to 0 while the drag
-    // is active so its slot stays reserved. On release we compute the target index
-    // and call vm.MoveTrack. No DragDrop.DoDragDrop is used.
+    // The dragged row is rendered as a floating card (#PlaylistDragPreview) that lifts and
+    // springs after the pointer; its own slot stays empty and the rows in between slide
+    // apart to open a gap where it will land (LiquidReorder). On release the card glides
+    // into the gap and then vm.MoveTrack / vm.MoveTracks commits. No DragDrop.DoDragDrop.
+
+    private LiquidReorder? _liquid;
+
+    private LiquidReorder? Liquid
+    {
+        get
+        {
+            if (_liquid != null) return _liquid;
+            var preview = this.FindControl<Border>("PlaylistDragPreview");
+            if (preview == null) return null;
+            return _liquid = new LiquidReorder(this, TrackList, preview);
+        }
+    }
+
+    /// <summary>A row's slot is its body: rows that open an album run also carry the run
+    /// header above the body, which must not count toward where the card lands.</summary>
+    private static Rect RowBodySlot(Control container)
+    {
+        var body = container.GetVisualDescendants().OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("row-body"));
+        if (body?.TranslatePoint(new Point(0, 0), container) is not { } p)
+            return new Rect(0, 0, container.Bounds.Width, container.Bounds.Height);
+        return new Rect(0, p.Y, body.Bounds.Width, body.Bounds.Height);
+    }
 
     private void OnTrackRowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -595,16 +618,20 @@ public partial class PlaylistView : UserControl
         if (vm.SortMode != PlaylistSortMode.Manual) return;
         if (item.DataContext is not Track track) return;
 
+        // A new press lands before the last drop's glide finished: commit it now.
+        Liquid?.FinishNow();
+
         _dragTrack = track;
         _dragSourceIndex = vm.Tracks.IndexOf(track);
-        _dragRowOffsetY = e.GetPosition(item).Y;
+        // Grab offset measured from the row BODY, which is what the card mirrors.
+        _dragRowOffsetY = e.GetPosition(item).Y - RowBodySlot(item).Y;
         _dragStartPos = e.GetPosition(this);
         _dragActive = false;
     }
 
     private void OnTrackRowPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_dragTrack == null) return;
+        if (_dragTrack == null || Liquid is not { IsSettling: false } liquid) return;
         if (sender is not ListBoxItem item) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
 
@@ -615,207 +642,105 @@ public partial class PlaylistView : UserControl
                 Math.Abs(pos.Y - _dragStartPos.Y) < PlaylistDragThreshold)
                 return;
 
-            StartPlaylistDrag(item, e);
+            StartPlaylistDrag(item, e, liquid);
         }
 
-        UpdatePlaylistDragPreviewPosition(e);
-        UpdatePlaylistDropIndicator(e);
+        var cardTop = e.GetPosition(TrackListWrapper).Y - _dragRowOffsetY;
+        liquid.MoveCardTo(cardTop);
+        var target = LiquidReorder.NearestSlot(TrackList, TrackListWrapper, cardTop + liquid.Pitch / 2, RowBodySlot);
+        if (target >= 0) liquid.TargetIndex = target;
     }
 
-    private async void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        // async void: an escaped exception would crash the app.
-        try
-        {
-            if (_dragActive)
-            {
-                await CommitPlaylistDropAsync(e);
-                ResetPlaylistDragState();
-                e.Pointer.Capture(null);
-            }
-            else
-            {
-                ResetPlaylistDragState();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Drop commit failed: {ex.Message}");
+        if (_dragActive)
+            BeginPlaylistSettle();
+        else
             ResetPlaylistDragState();
-        }
+        e.Pointer.Capture(null);
     }
 
     private void OnTrackRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        // Treat lost capture as a cancel — restore visuals without performing the move.
+        // Releasing the capture on drop raises this too; the glide owns cleanup then.
+        if (Liquid is { IsSettling: true }) return;
+        // Otherwise lost capture is a cancel: restore visuals without performing the move.
         ResetPlaylistDragState();
     }
 
-    private void StartPlaylistDrag(ListBoxItem rowItem, PointerEventArgs e)
+    private void StartPlaylistDrag(ListBoxItem rowItem, PointerEventArgs e, LiquidReorder liquid)
     {
         _dragActive = true;
         e.Pointer.Capture(rowItem);
 
         var preview = this.FindControl<Border>("PlaylistDragPreview");
-        if (preview != null && _dragTrack != null)
-        {
-            preview.DataContext = _dragTrack;
-            preview.IsVisible = true;
-        }
+        if (preview == null || _dragTrack == null) return;
+        preview.DataContext = _dragTrack;
 
-        if (_dragSourceIndex >= 0)
-        {
-            _dragHiddenItem = TrackList.ContainerFromIndex(_dragSourceIndex) as ListBoxItem;
-            if (_dragHiddenItem != null)
-                _dragHiddenItem.Opacity = 0;
-        }
+        var body = RowBodySlot(rowItem);
+        liquid.Pitch = body.Height;
+        liquid.SourceIndex = liquid.TargetIndex = _dragSourceIndex;
+        // Start exactly over the grabbed row's body so the lift reads as the row rising.
+        var rowTop = rowItem.TranslatePoint(new Point(0, body.Y), TrackListWrapper)?.Y
+                     ?? e.GetPosition(TrackListWrapper).Y - _dragRowOffsetY;
+        liquid.Begin(rowTop);
     }
 
-    private void UpdatePlaylistDragPreviewPosition(PointerEventArgs e)
+    /// <summary>Release: glide the card into the open gap; the move commits when it lands.</summary>
+    private void BeginPlaylistSettle()
     {
-        var wrapper = this.FindControl<Grid>("TrackListWrapper");
-        var preview = this.FindControl<Border>("PlaylistDragPreview");
-        if (wrapper == null || preview == null) return;
-        if (preview.RenderTransform is not TranslateTransform tt) return;
-
-        var pointerInWrapper = e.GetPosition(wrapper).Y;
-        tt.Y = pointerInWrapper - _dragRowOffsetY;
-    }
-
-    private void UpdatePlaylistDropIndicator(PointerEventArgs e)
-    {
-        var indicator = this.FindControl<Border>("PlaylistDropIndicator");
-        var wrapper = this.FindControl<Grid>("TrackListWrapper");
-        if (indicator == null || wrapper == null) return;
-
-        var pointerInWrapper = e.GetPosition(wrapper);
-        double? indicatorY = null;
-
-        // Realized containers only — the list is virtualized, so iterating 0..ItemCount
-        // ran ItemCount lookups per pointer-move event for the ~20 rows that resolve.
-        foreach (var container in TrackList.GetRealizedContainers())
+        if (DataContext is not PlaylistViewModel vm || _dragTrack == null || Liquid is not { } liquid)
         {
-            var itemPos = container.TranslatePoint(new Point(0, 0), wrapper);
-            if (itemPos == null) continue;
-
-            var top = itemPos.Value.Y;
-            var bottom = top + container.Bounds.Height;
-            var mid = (top + bottom) / 2;
-
-            if (pointerInWrapper.Y >= top && pointerInWrapper.Y < mid)
-            {
-                indicatorY = top;
-                break;
-            }
-            if (pointerInWrapper.Y >= mid && pointerInWrapper.Y < bottom)
-            {
-                indicatorY = bottom;
-                break;
-            }
-        }
-
-        if (indicatorY != null)
-        {
-            if (indicator.RenderTransform is TranslateTransform transform)
-                transform.Y = indicatorY.Value;
-            indicator.IsVisible = true;
-        }
-        else
-        {
-            indicator.IsVisible = false;
-        }
-    }
-
-    private async System.Threading.Tasks.Task CommitPlaylistDropAsync(PointerEventArgs e)
-    {
-        if (DataContext is not PlaylistViewModel vm) return;
-        if (_dragSourceIndex < 0) return;
-
-        var posInList = e.GetPosition(TrackList);
-        var insertIndex = GetPlaylistDropInsertIndex(posInList);
-        if (insertIndex < 0) return; // no realized rows to target — treat as cancel
-
-        // GitHub #74: a row dragged out of a multi-selection carries the whole selection.
-        if (_dragTrack != null && _selectedTracks.Count > 1 && _selectedTracks.Contains(_dragTrack))
-        {
-            await vm.MoveTracks(_selectedTracks.ToList(), insertIndex);
+            ResetPlaylistDragState();
             return;
         }
 
-        // Convert an insertion index into a Move destination: removing the source first
-        // shifts everything after it down by one.
-        var toIndex = insertIndex > _dragSourceIndex ? insertIndex - 1 : insertIndex;
-        toIndex = Math.Clamp(toIndex, 0, Math.Max(0, vm.Tracks.Count - 1));
+        var track = _dragTrack;
+        var from = vm.Tracks.IndexOf(track);
+        if (from < 0 || liquid.TargetIndex < 0)
+        {
+            ResetPlaylistDragState();
+            return;
+        }
+        var to = Math.Clamp(liquid.TargetIndex, 0, Math.Max(0, vm.Tracks.Count - 1));
+        liquid.SourceIndex = from;
+        liquid.TargetIndex = to;
 
-        if (_dragSourceIndex != toIndex)
-            await vm.MoveTrack(_dragSourceIndex, toIndex);
+        // GitHub #74: a row dragged out of a multi-selection carries the whole selection.
+        // MoveTracks takes an INSERTION index: past the source, the slot the card took
+        // is one further down once the block is lifted out.
+        List<Track>? block = _selectedTracks.Count > 1 && _selectedTracks.Contains(track)
+            ? _selectedTracks.ToList()
+            : null;
+        var insertIndex = to > from ? to + 1 : to;
+
+        var landing = LiquidReorder.SlotTop(TrackList, to, TrackListWrapper, RowBodySlot) ?? liquid.CardY;
+        _dragActive = false;
+        _dragTrack = null;
+        _dragSourceIndex = -1;
+        liquid.Settle(landing, () => _ = CommitPlaylistMoveAsync(vm, track, from, to, block, insertIndex));
     }
 
-    /// <summary>
-    /// Returns the INSERTION index the drop implies — i for the upper half of row i,
-    /// i+1 for the lower half — matching where UpdatePlaylistDropIndicator draws the line.
-    ///
-    /// It previously returned `i` for anywhere inside the row and that value was passed
-    /// straight to Move(), so the two disagreed on lower-half drops. With [A,B,C,D,E],
-    /// dragging E onto the lower half of B drew the line below B (implying position 2)
-    /// but performed Move(4,1), placing E *above* B. Downward drags happened to line up;
-    /// upward ones were always off by one.
-    /// </summary>
-    private int GetPlaylistDropInsertIndex(Point posInList)
+    private static async System.Threading.Tasks.Task CommitPlaylistMoveAsync(
+        PlaylistViewModel vm, Track track, int from, int to, List<Track>? block, int insertIndex)
     {
-        // Virtualized list: only realized containers are inspectable, so iterate those
-        // rather than 0..ItemCount — the old loop ran ItemCount times per pointer-move
-        // event (10,000 lookups per move in a 10,000-track playlist) for the ~20 rows
-        // that actually resolve.
-        int nearestIndex = -1;
-        double nearestDistance = double.MaxValue;
-
-        foreach (var container in TrackList.GetRealizedContainers())
+        try
         {
-            var i = TrackList.IndexFromContainer(container);
-            if (i < 0) continue;
-
-            var itemPos = container.TranslatePoint(new Point(0, 0), TrackList);
-            if (itemPos == null) continue;
-
-            var top = itemPos.Value.Y;
-            var bottom = top + container.Bounds.Height;
-            var mid = (top + bottom) / 2;
-
-            if (posInList.Y >= top && posInList.Y < bottom)
-                return posInList.Y < mid ? i : i + 1;
-
-            var distance = posInList.Y < top ? top - posInList.Y : posInList.Y - bottom;
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                // Above the nearest row inserts before it; below inserts after.
-                nearestIndex = posInList.Y < top ? i : i + 1;
-            }
+            if (block != null)
+                await vm.MoveTracks(block, insertIndex);
+            else if (from != to && vm.Tracks.IndexOf(track) == from)
+                await vm.MoveTrack(from, to);
         }
-
-        return nearestIndex;
+        catch (Exception ex)
+        {
+            // Fire-and-forget from the animation frame: an escaped exception would be lost.
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Drop commit failed: {ex.Message}");
+        }
     }
 
     private void ResetPlaylistDragState()
     {
-        var preview = this.FindControl<Border>("PlaylistDragPreview");
-        if (preview != null)
-        {
-            preview.IsVisible = false;
-            preview.DataContext = null;
-        }
-
-        if (_dragHiddenItem != null)
-        {
-            _dragHiddenItem.Opacity = 1.0;
-            _dragHiddenItem = null;
-        }
-
-        var indicator = this.FindControl<Border>("PlaylistDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
-
+        Liquid?.Cancel();
         _dragActive = false;
         _dragTrack = null;
         _dragSourceIndex = -1;

@@ -83,9 +83,11 @@ public partial class MiniPlayerWindow : Window
     {
         InitializeComponent();
 
-        // Per-pixel transparency only — OS acrylic (AcrylicBlur) tints the WHOLE
+        // Per-pixel transparency by default — OS acrylic (AcrylicBlur) tints the WHOLE
         // window rect, which painted the transparent corners outside the rounded
         // card as black squares. The simulated glass layers in XAML carry the look.
+        // The opt-in "Frosted background" setting (Windows only) asks for the OS blur
+        // anyway; see ApplyTransparencyHint.
         //
         // Linux is the awkward case: per-pixel transparency needs a running compositor,
         // and Avalonia's X11 backend doesn't track compositor changes
@@ -110,7 +112,7 @@ public partial class MiniPlayerWindow : Window
         }
         else
         {
-            TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
+            ApplyTransparencyHint();
         }
 
         // Seek commits follow the same BeginSeek/EndSeek protocol as the playback bar
@@ -145,12 +147,24 @@ public partial class MiniPlayerWindow : Window
                 (source == MenuCard || MenuCard.IsVisualAncestorOf(source)))
                 return;
 
-            CloseMorePopup();
+            CloseMorePopup($"tunnel source={e.Source?.GetType().Name}");
             e.Handled = true;
         }, RoutingStrategies.Tunnel);
 
         // Clicking another app entirely never reaches the handler above.
-        Deactivated += (_, _) => CloseMorePopup();
+        Deactivated += (_, _) =>
+        {
+            if (MorePopup.IsOpen) LogMenu("Window.Deactivated", MenuState());
+            CloseMorePopup("deactivated");
+        };
+        Activated += (_, _) =>
+        {
+            if (MorePopup.IsOpen) LogMenu("Window.Activated", MenuState());
+        };
+        // GitHub #79 ("…" often shows nothing, Windows 11, not reproducible here): the
+        // popup's own lifecycle, next to the open/close requests logged below.
+        MorePopup.Opened += (_, _) => LogMenu("Popup.Opened", MenuState());
+        MorePopup.Closed += (_, _) => LogMenu("Popup.Closed", MenuState());
 
         // Space toggles play/pause app-wide; a focused Button would otherwise eat the
         // KeyDown and click on KeyUp, so both are tunneled (and the search box excluded).
@@ -301,6 +315,11 @@ public partial class MiniPlayerWindow : Window
                 var (w, h) = MiniPlayerViewModel.CanonicalSize(styled.Form);
                 Width = w;
                 Height = h;
+                // The placement check before Show() measured the classic size; keep the
+                // design's own size on screen too (GitHub #75). No animation at open.
+                if (Screens.ScreenFromWindow(this) is { } screen)
+                    Position = MiniPlayerPlacement.Clamp(Position,
+                        MiniPlayerPlacement.ToPixels(w, h, screen.Scaling), screen.WorkingArea);
             }
             Vm?.UpdateFromSize(ClientSize.Width, ClientSize.Height);
             // The roots all start hidden (the .form-root style), and UpdateFromSize only
@@ -373,6 +392,7 @@ public partial class MiniPlayerWindow : Window
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
         UpdateDesignSegment();
+        ApplyTransparencyHint();
 
         // A DataContext arriving after Opened would otherwise leave every form hidden.
         SyncFormVisual();
@@ -540,10 +560,19 @@ public partial class MiniPlayerWindow : Window
 
         var fromWidth = Width;
         var fromHeight = Height;
+        // Where the top-left has to go so the new size stays on screen (GitHub #75);
+        // null when the screen is unknown, which keeps the old fixed top-left.
+        var fromPosition = Position;
+        var toPosition = AnchoredPosition(
+            double.IsFinite(fromWidth) ? fromWidth : targetWidth,
+            double.IsFinite(fromHeight) ? fromHeight : targetHeight,
+            targetWidth, targetHeight);
+        if (toPosition == fromPosition) toPosition = null;
         if (!double.IsFinite(fromWidth) || !double.IsFinite(fromHeight))
         {
             Width = targetWidth;
             Height = targetHeight;
+            if (toPosition is { } snapTo) Position = snapTo;
             return;
         }
 
@@ -575,12 +604,18 @@ public partial class MiniPlayerWindow : Window
             var eased = 1 - Math.Pow(1 - t, 3);   // CubicEaseOut, matching the card's own curve
             Width = Math.Round(fromWidth + (targetWidth - fromWidth) * eased);
             Height = Math.Round(fromHeight + (targetHeight - fromHeight) * eased);
+            // Same eased value as the size, in the same tick, so an anchored edge holds still.
+            if (toPosition is { } to)
+                Position = new PixelPoint(
+                    (int)Math.Round(fromPosition.X + (to.X - fromPosition.X) * eased),
+                    (int)Math.Round(fromPosition.Y + (to.Y - fromPosition.Y) * eased));
 
             if (t < 1) return;
 
             timer.Stop();
             Width = targetWidth;
             Height = targetHeight;
+            if (toPosition is { } landed) Position = landed;
             _suppressPlacementCapture = false;
             _sizeAnimating = false;
             CapturePlacement();
@@ -592,6 +627,18 @@ public partial class MiniPlayerWindow : Window
 
     /// <summary>Generation of the AnimateSizeTo that owns <see cref="_sizeAnimating"/>.</summary>
     private int _sizeAnimationOwner;
+
+    /// <summary>Top-left that keeps a window of <paramref name="fromWidth"/> ×
+    /// <paramref name="fromHeight"/> DIPs, resized to the target, anchored to its nearest
+    /// screen edge and inside the work area (<see cref="MiniPlayerPlacement.Anchored"/>).
+    /// Null when the window's screen is unknown.</summary>
+    private PixelPoint? AnchoredPosition(double fromWidth, double fromHeight, double targetWidth, double targetHeight)
+    {
+        if (Screens.ScreenFromWindow(this) is not { } screen) return null;
+        var scaling = screen.Scaling <= 0 ? 1 : screen.Scaling;
+        var current = new PixelRect(Position, MiniPlayerPlacement.ToPixels(fromWidth, fromHeight, scaling));
+        return MiniPlayerPlacement.Anchored(current, targetWidth, targetHeight, scaling, screen.WorkingArea);
+    }
 
     /// <summary>
     /// Cross-fades the form layouts. Both are alive for the length of the fade, which is
@@ -868,6 +915,138 @@ public partial class MiniPlayerWindow : Window
     {
         if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerStyle))
             UpdateDesignSegment();
+        else if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerFrostedBackground))
+            ApplyTransparencyHint();
+    }
+
+    // ── Frosted background (GitHub #76) ──
+    // Opt-in OS blur-behind. The OS backdrop fills the whole window RECT, so on its own it
+    // showed as frosted square corners outside Classic's r=28 card and a frosted box around
+    // the Pill's round cover / the Sleeve's slab. While frosted the window is therefore
+    // clipped to the design's own outline with a Win32 window region (SetWindowRgn clips
+    // everything the window presents, the composition backdrop included). Region edges are
+    // not anti-aliased, and the design grounds' drop shadows fall outside it. Mica is left
+    // out on purpose: it tints from the wallpaper instead of blurring what is behind.
+
+    /// <summary>The transparency levels asked for, and what the frost toggle maps to.</summary>
+    internal static WindowTransparencyLevel[] TransparencyLevels(bool frosted) => frosted
+        ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
+        : new[] { WindowTransparencyLevel.Transparent };
+
+    private bool _frosted;
+
+    private void ApplyTransparencyHint()
+    {
+        // The opaque fallback (no compositor / NOCTIS_MINI_OPAQUE) owns the hint.
+        if (_squareCard) return;
+        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true;
+        TransparencyLevelHint = TransparencyLevels(frosted);
+        if (frosted == _frosted) return;
+        _frosted = frosted;
+        if (frosted) LayoutUpdated += OnFrostLayoutUpdated;
+        else LayoutUpdated -= OnFrostLayoutUpdated;
+        _appliedRegion = null;
+        ApplyFrostRegion();
+    }
+
+    /// <summary>One piece of the window's outline, in window DIPs.</summary>
+    internal readonly record struct RegionShape(Rect Rect, double Radius, bool Ellipse);
+
+    /// <summary>The active design's outline: Classic's glass card, the Pill's slab plus its
+    /// round cover, the Sleeve's slab. Layout rects (no render transforms), so the form
+    /// cross-fade's scale pose never leaks in. Empty when nothing is laid out yet.</summary>
+    internal RegionShape[] FrostRegionShapes()
+    {
+        var shapes = new System.Collections.Generic.List<RegionShape>(2);
+        if (Vm is { IsDesignForm: true } vm)
+        {
+            var pill = vm.Form == MiniPlayerForm.Pill;
+            var ground = pill ? PillGround : SleeveGround;
+            if (LayoutRectIn(ground, this) is { Width: > 0, Height: > 0 } slab)
+                shapes.Add(new RegionShape(slab, ground.CornerRadius.TopLeft, false));
+            if (pill && LayoutRectIn(PillCover, this) is { Width: > 0, Height: > 0 } cover)
+                shapes.Add(new RegionShape(cover, cover.Width / 2, true));
+        }
+        else if (LayoutRectIn(RootBorder, this) is { Width: > 0, Height: > 0 } card)
+        {
+            shapes.Add(new RegionShape(card, RootBorder.CornerRadius.TopLeft, false));
+        }
+        return shapes.ToArray();
+    }
+
+    /// <summary>The shapes in whole device pixels (left, top, right, bottom, corner
+    /// diameter) — what CreateRoundRectRgn / CreateEllipticRgn take.</summary>
+    internal static (int L, int T, int R, int B, int D, bool Ellipse)[] RegionPixels(
+        RegionShape[] shapes, double scaling)
+    {
+        var px = new (int, int, int, int, int, bool)[shapes.Length];
+        for (var i = 0; i < shapes.Length; i++)
+        {
+            var (r, radius, ellipse) = shapes[i];
+            // Region rects exclude their right / bottom edge, hence the +1.
+            px[i] = ((int)Math.Floor(r.X * scaling), (int)Math.Floor(r.Y * scaling),
+                     (int)Math.Ceiling(r.Right * scaling) + 1, (int)Math.Ceiling(r.Bottom * scaling) + 1,
+                     (int)Math.Round(radius * 2 * scaling), ellipse);
+        }
+        return px;
+    }
+
+    private (int L, int T, int R, int B, int D, bool Ellipse)[]? _appliedRegion;
+
+    private void OnFrostLayoutUpdated(object? sender, EventArgs e) => ApplyFrostRegion();
+
+    private void ApplyFrostRegion()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        if (TryGetPlatformHandle() is not { HandleDescriptor: "HWND" } handle) return;
+        if (!_frosted)
+        {
+            Win32Region.Set(handle.Handle, null);
+            return;
+        }
+        var shapes = FrostRegionShapes();
+        if (shapes.Length == 0) return;
+        var px = RegionPixels(shapes, RenderScaling);
+        if (_appliedRegion != null && _appliedRegion.AsSpan().SequenceEqual(px)) return;
+        _appliedRegion = px;
+        Win32Region.Set(handle.Handle, px);
+    }
+
+    private static class Win32Region
+    {
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern IntPtr CreateEllipticRgn(int left, int top, int right, int bottom);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern int CombineRgn(IntPtr dest, IntPtr src1, IntPtr src2, int mode);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr obj);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
+        private const int RGN_OR = 2;
+
+        /// <summary>Clips the window to the union of the shapes; null removes the clip.
+        /// The system owns the region once SetWindowRgn succeeds.</summary>
+        public static void Set(IntPtr hwnd, (int L, int T, int R, int B, int D, bool Ellipse)[]? shapes)
+        {
+            if (shapes == null)
+            {
+                SetWindowRgn(hwnd, IntPtr.Zero, true);
+                return;
+            }
+            var region = IntPtr.Zero;
+            foreach (var (l, t, r, b, d, ellipse) in shapes)
+            {
+                var piece = ellipse ? CreateEllipticRgn(l, t, r, b) : CreateRoundRectRgn(l, t, r, b, d, d);
+                if (piece == IntPtr.Zero) continue;
+                if (region == IntPtr.Zero) { region = piece; continue; }
+                CombineRgn(region, region, piece, RGN_OR);
+                DeleteObject(piece);
+            }
+            if (region == IntPtr.Zero) return;
+            if (SetWindowRgn(hwnd, region, true) == 0) DeleteObject(region);
+        }
     }
 
     private void UpdateDesignSegment()
@@ -945,6 +1124,8 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
+            // The settings VM outlives this window; a later toggle must not reach it.
+            _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
             _hookedVm = null;
         }
         base.OnClosed(e);
@@ -965,7 +1146,7 @@ public partial class MiniPlayerWindow : Window
         if (e.Key == Key.Escape)
         {
             if (MorePopup.IsOpen)
-                CloseMorePopup();
+                CloseMorePopup("escape");
             else if (Vm?.IsDrawerOpen == true)
                 Vm.CloseDrawerCommand.Execute(null);
             else
@@ -1018,6 +1199,15 @@ public partial class MiniPlayerWindow : Window
             return;
         if (!ShouldBeginWindowDrag(e.Source))
             return;
+
+        // Double-click on the glass returns to the full window (GitHub #80). Close()
+        // plays the exit animation; MainWindow's Closed handler shows the main window.
+        if (e.ClickCount == 2)
+        {
+            e.Handled = true;
+            Close();
+            return;
+        }
 
         _armedDrag = e;
         _armedDragOrigin = e.GetPosition(this);
@@ -1102,6 +1292,8 @@ public partial class MiniPlayerWindow : Window
     private void OnMoreMenuClick(object? sender, RoutedEventArgs e)
     {
         if (sender is not Control anchor) return;
+        LogMenu("OnMoreMenuClick",
+            $"form={Vm?.Form} style={Vm?.Style} anchor={anchor.Bounds} anchorVisible={anchor.IsEffectivelyVisible} {MenuState()}");
 
         // Pressing the "…" button while its menu is open already closed it in the
         // window's tunnel handler (which swallows the press, so no Click arrives).
@@ -1125,19 +1317,20 @@ public partial class MiniPlayerWindow : Window
         // from the hidden state instead of snapping.
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            if (!MorePopup.IsOpen) return;
+            if (!MorePopup.IsOpen) { LogMenu("ShowSkipped", MenuState()); return; }
             MenuCard.Opacity = 1;
             MenuCard.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
         }, Avalonia.Threading.DispatcherPriority.Render);
     }
 
-    private void OnMenuItemClick(object? sender, RoutedEventArgs e) => CloseMorePopup();
+    private void OnMenuItemClick(object? sender, RoutedEventArgs e) => CloseMorePopup("item");
 
     private void OnDesignSegmentSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateDesignSegment();
 
-    private void CloseMorePopup()
+    private void CloseMorePopup(string reason)
     {
         if (!MorePopup.IsOpen) return;
+        LogMenu("CloseMorePopup", $"reason={reason} {MenuState()}");
 
         var generation = ++_menuCloseGeneration;
         MenuCard.Opacity = 0;
@@ -1147,6 +1340,18 @@ public partial class MiniPlayerWindow : Window
             if (generation == _menuCloseGeneration)
                 MorePopup.IsOpen = false;
         }, TimeSpan.FromMilliseconds(200));
+    }
+
+    private string MenuState() =>
+        $"isOpen={MorePopup.IsOpen} opacity={MenuCard.Opacity:0.##} active={IsActive} gen={_menuCloseGeneration}";
+
+    // GitHub #79 diagnostics. Written straight to the session log behind Settings →
+    // Developer Mode → "Copy Logs" (DebugLogger's UI entries are never shown anywhere),
+    // and only while Developer Mode has the logger on.
+    private static void LogMenu(string action, string metadata)
+    {
+        if (!Noctis.Services.DebugLogger.IsEnabled) return;
+        Noctis.Services.DebugLog.Write("MiniMenu", $"{action} | {metadata}");
     }
 
     // ── Drawer (bottom-sheet layers) ─────────────────────────
@@ -1185,6 +1390,15 @@ public partial class MiniPlayerWindow : Window
         SetDrawerOffset(14);
         if (hadHeight > 0 && double.IsFinite(Height))
             Height = Math.Max(MinHeight, Height - hadHeight);
+        // Give back the upward shift the drawer needed, as its animated close does.
+        // Left set, CapturePlacement kept adding it to a window that no longer had it,
+        // persisting a Y below where the card really was.
+        if (_drawerShiftY != 0)
+        {
+            var shift = _drawerShiftY;
+            _drawerShiftY = 0; // first: the move below raises PositionChanged → CapturePlacement
+            Position = new PixelPoint(Position.X, (int)Math.Round(Position.Y + shift));
+        }
         if (Vm is { IsDrawerOpen: true } vm)
         {
             _suppressDrawerAnimation = true;

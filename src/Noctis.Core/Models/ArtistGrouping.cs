@@ -121,6 +121,22 @@ public static class ArtistCredit
         return list.Length > 0 ? list : DefaultSeparators;
     }
 
+    /// <summary>
+    /// The text that joins names Noctis itself adds to a credit (featured artists merged in
+    /// from a title), built from an ACTIVE separator so the result splits back apart. It
+    /// used to be a hard-coded " &amp; ", which stopped splitting once "&amp;" left the
+    /// defaults in 1.5.1 (Discord Luwi 09-22). Prefers the readable symbols in order.
+    /// </summary>
+    public static string JoinText => JoinTextFor(_separators);
+
+    public static string JoinTextFor(IReadOnlyList<string> separators)
+    {
+        if (separators.Contains(",")) return ", ";
+        if (separators.Contains(";")) return "; ";
+        if (separators.Contains("/")) return " / ";
+        return " " + separators[0] + " ";
+    }
+
     /// <summary>Splits a credit into its distinct trimmed names using the active separators.</summary>
     public static string[] Split(string? value) => Split(value, _splitRegex);
 

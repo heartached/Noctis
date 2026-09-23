@@ -50,6 +50,9 @@ public sealed class WindowKeyForwarder
     {
         // Don't steal Ctrl+A (etc.) while the user is editing text in a box.
         if (e.Source is TextBox) return;
+        // An earlier window-level tunnel handler already took the key (a global shortcut,
+        // or the queue panel's Ctrl+A / Escape / Delete while focus is in it).
+        if (e.Handled) return;
         _handler(sender, e);
     }
 }

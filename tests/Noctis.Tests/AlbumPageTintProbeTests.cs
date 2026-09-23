@@ -113,6 +113,30 @@ public class AlbumPageTintProbeTests
         _out.WriteLine($"row title fg={rowTitle.Foreground} description fg={description.Foreground}");
         Assert.Equal(dark, ((ISolidColorBrush)rowTitle.Foreground!).Color);
         Assert.Equal(dark, ((ISolidColorBrush)description.Foreground!).Color);
-        Assert.True(tintBottom <= relatedTop + 0.5, "panel must end where the related sections begin");
+        // (Hidden when there are no related albums — then nothing follows the panel.)
+        Assert.True(!related.IsVisible || tintBottom <= relatedTop + 0.5, "panel must end where the related sections begin");
+
+        // Discord NJZ 09-22: a short tinted album fills the viewport (no strip of app
+        // background under it) and the footer facts sit at the foot of the colour, above
+        // the floating player bar's clearance.
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+        var scroller = view.FindControl<ScrollViewer>("TrackScrollViewer")!;
+        var block = view.FindControl<Grid>("AlbumBlock")!;
+        _out.WriteLine($"viewport={scroller.Viewport.Height} block={block.Bounds.Height} related visible={related.IsVisible}");
+        Assert.True(scroller.Viewport.Height > 300);
+        Assert.True(block.Bounds.Height >= scroller.Viewport.Height - 0.5, "tinted block must reach the bottom of the viewport");
+        Assert.False(related.IsVisible, "no related albums → no related block");
+        var footer = view.GetVisualDescendants().OfType<TextBlock>()
+            .First(t => t.Text?.Contains("songs,") == true);
+        var footerBottom = footer.TranslatePoint(new Point(0, footer.Bounds.Height), block)!.Value.Y;
+        _out.WriteLine($"footer bottom={footerBottom} block bottom={block.Bounds.Height}");
+        Assert.InRange(block.Bounds.Height - footerBottom, 100, 160); // bar clearance, not mid-page
+
+        // With the accent following the cover, an accent-coloured artist name vanished into
+        // the tint; on a tint the credit takes the page text colour.
+        var credit = view.GetVisualDescendants().OfType<TextBlock>()
+            .First(t => t.Classes.Contains("artist-credit-text") && t.Text == "B");
+        Assert.Equal(dark, ((ISolidColorBrush)credit.Foreground!).Color);
     }
 }

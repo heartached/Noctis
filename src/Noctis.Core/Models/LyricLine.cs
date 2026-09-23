@@ -92,6 +92,36 @@ public partial class LyricLine : ObservableObject
     /// <summary>End of the background vocal; bounds its last word's highlight. Set before <see cref="BackgroundWords"/>.</summary>
     public TimeSpan? BackgroundEndTimestamp { get; set; }
 
+    /// <summary>
+    /// Translation of this line (Apple TTML &lt;iTunesMetadata&gt;&lt;translations&gt;, issue #78) —
+    /// rendered as static small text under the line. Null when the line has none.
+    /// </summary>
+    public string? Translation { get; set; }
+
+    /// <summary>
+    /// Romanization of this line (Apple TTML &lt;transliterations&gt;) when it carries no word
+    /// timing — rendered as static small text under the line. Null when the line has none.
+    /// </summary>
+    public string? Transliteration { get; set; }
+
+    /// <summary>
+    /// Word-timed romanization — rendered as a smaller karaoke row under the line, driven
+    /// like <see cref="BackgroundWords"/>. Null when the line has none.
+    /// </summary>
+    public IReadOnlyList<WordTiming>? TransliterationWords
+    {
+        get => _transliterationWords;
+        set
+        {
+            _transliterationWords = value;
+            ComputeWordEmphasis(_transliterationWords, TransliterationEndTimestamp);
+        }
+    }
+    private IReadOnlyList<WordTiming>? _transliterationWords;
+
+    /// <summary>End of the romanization layer; bounds its last word's highlight. Set before <see cref="TransliterationWords"/>.</summary>
+    public TimeSpan? TransliterationEndTimestamp { get; set; }
+
     /// <summary>AMLL's shouldEmphasize floor: a held note is at least 1s of vocal.</summary>
     private const double EmphasisFloorMs = 1000;
 
@@ -162,27 +192,30 @@ public partial class LyricLine : ObservableObject
     /// <summary>True when the view should render the background-vocal karaoke row.</summary>
     public bool ShowBackgroundWords => HasBackgroundWords && !IsIntroPlaceholder;
 
+    /// <summary>True when the line carries a word-timed romanization.</summary>
+    public bool HasTransliterationWords => TransliterationWords != null && TransliterationWords.Count > 0;
+
+    /// <summary>True when the line carries a romanization, timed or not.</summary>
+    public bool HasTransliteration => HasTransliterationWords || !string.IsNullOrWhiteSpace(Transliteration);
+
+    /// <summary>True when the line carries a translation.</summary>
+    public bool HasTranslation => !string.IsNullOrWhiteSpace(Translation);
+
+    /// <summary>True when the view should render the romanization karaoke row.</summary>
+    public bool ShowTransliterationWords => HasTransliterationWords && !IsIntroPlaceholder;
+
+    /// <summary>True when the view should render the untimed romanization text.</summary>
+    public bool ShowTransliterationText => HasTransliteration && !HasTransliterationWords && !IsIntroPlaceholder;
+
+    /// <summary>True when the view should render the translation text.</summary>
+    public bool ShowTranslation => HasTranslation && !IsIntroPlaceholder;
+
     /// <summary>
     /// True when the line's entire content is a background vocal (e.g. a TTML paragraph
     /// holding only an x-bg span). <see cref="Text"/> then carries the bg text for the
     /// Unsync tab, but the main line layer must not render it — only the small bg row.
     /// </summary>
     public bool IsBackgroundOnly { get; set; }
-
-    /// <summary>
-    /// Translation layer (TTML <c>ttm:role="x-translation"</c>, or Apple's head
-    /// <c>&lt;translations&gt;</c>), shown under the line. Line-level text: it rides the
-    /// line's own timing and is never swept.
-    /// </summary>
-    public string? Translation { get; set; }
-
-    /// <summary>Romanization layer (TTML <c>x-roman</c>, or Apple's head
-    /// <c>&lt;transliterations&gt;</c>). Line-level text, like <see cref="Translation"/>.</summary>
-    public string? Romanization { get; set; }
-
-    public bool HasTranslation => !string.IsNullOrWhiteSpace(Translation);
-
-    public bool HasRomanization => !string.IsNullOrWhiteSpace(Romanization);
 
     /// <summary>
     /// True when the view should render the per-word karaoke layer. Word-timed lines
@@ -205,6 +238,12 @@ public partial class LyricLine : ObservableObject
     private int _backgroundWordIndex = -1;
 
     partial void OnBackgroundWordIndexChanged(int value) => ApplyWordIndex(BackgroundWords, value);
+
+    /// <summary>Index of the currently-singing romanization word. -1 = before, count = after.</summary>
+    [ObservableProperty]
+    private int _transliterationWordIndex = -1;
+
+    partial void OnTransliterationWordIndexChanged(int value) => ApplyWordIndex(TransliterationWords, value);
 
     private static void ApplyWordIndex(IReadOnlyList<WordTiming>? words, int value)
     {

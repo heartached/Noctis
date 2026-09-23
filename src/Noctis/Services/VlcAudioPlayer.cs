@@ -135,8 +135,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // a cold device — the cold open desyncs the output clock into the permanent
     // "playback too late → flushing buffers" stutter on the FIRST play after
     // launch (confirmed by reporter: keeping any other audio app open fully
-    // suppresses it). macOS/Linux use VlcSilenceKeepAlive instead; null only on
-    // NOCTIS_KEEPALIVE=0 / init failure.
+    // suppresses it). macOS/Linux use VlcSilenceKeepAlive instead (default-on only
+    // in the Linux AppImage, opt-in elsewhere); null on NOCTIS_KEEPALIVE=0 / init
+    // failure, or when that one isn't enabled.
     // See WasapiSilenceKeepAlive / VlcSilenceKeepAlive for the idle-park design.
     private readonly IAudioKeepAlive? _keepAlive;
     private MediaPlayer.LibVLCAudioPlayCb? _audioPlayCb;
@@ -4157,6 +4158,40 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    /// <summary>
+    /// Slack on top of <see cref="OutputLatency"/> before a faded pause restores the
+    /// level: the shared-mode engine rounds the 100 ms client buffer up to whole
+    /// device periods (10 ms default) and Thread.Sleep runs on the ~15.6 ms system
+    /// tick, so 50 ms covers both with room while staying short of the 300 ms fade.
+    /// </summary>
+    internal const int PauseDrainMarginMs = 50;
+
+    /// <summary>How long a faded pause waits for the output buffer to play out; 0 when nothing is buffered past the pause.</summary>
+    internal static int PausedOutputDrainMs(TimeSpan outputLatency) =>
+        outputLatency > TimeSpan.Zero ? (int)outputLatency.TotalMilliseconds + PauseDrainMarginMs : 0;
+
+    /// <summary>
+    /// The step order of <see cref="Pause"/>, with the output calls injected so it is
+    /// testable without LibVLC (same seam style as <see cref="RunVolumeFadeIn"/>).
+    /// GitHub #77: on the Windows engine the fade rides the OS session level, but
+    /// NAudio's WasapiOut.Pause() only stops FILLING the stream (see the note on
+    /// WasapiGainOutput.Pause) — the ~100 ms already queued keeps rendering, and the
+    /// session level is applied as it renders. Restoring the level straight after
+    /// the pause played that tail back at full volume: a short burst at the end of
+    /// every faded pause. The restore now waits for the buffer to drain.
+    /// </summary>
+    /// <param name="drainMs">Output still buffered past the pause (see <see cref="PausedOutputDrainMs"/>); 0 skips the wait.</param>
+    public static void RunFadedPause(
+        bool fade, int drainMs,
+        Action fadeOut, Action pauseOutput, Action restoreLevel, Action<int> sleep)
+    {
+        if (fade) fadeOut();
+        pauseOutput();
+        if (!fade) return;
+        if (drainMs > 0) sleep(drainMs);
+        restoreLevel();
+    }
+
     public void Pause()
     {
         if (_disposed) return;
@@ -4181,16 +4216,30 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_player.IsPlaying)
                 {
                     ResetEndReachedPending();
-                    var fade = PlayPauseFadeArmed;
-                    if (fade) FadeOutBeforePause();
-                    _player.Pause();
-                    // Engine: the ring holds seconds of decoded audio — pausing
-                    // only VLC would keep the sink audibly playing it out.
-                    if (_gaplessEngine)
-                        _gaplessSink?.Pause();
-                    _isPaused = true;
-                    _positionTimer.Stop();
-                    if (fade) RestoreLevelWhilePaused();
+                    RunFadedPause(
+                        PlayPauseFadeArmed,
+                        PausedOutputDrainMs(OutputLatency),
+                        FadeOutBeforePause,
+                        () =>
+                        {
+                            _player.Pause();
+                            // Engine: the ring holds seconds of decoded audio — pausing
+                            // only VLC would keep the sink audibly playing it out.
+                            if (_gaplessEngine)
+                                _gaplessSink?.Pause();
+                            _isPaused = true;
+                            _positionTimer.Stop();
+                        },
+                        RestoreLevelWhilePaused,
+                        ms =>
+                        {
+                            // Slider parked for the drain too: a level written now
+                            // would lift the same buffered tail. The setters still
+                            // store the value, and the restore reads it.
+                            _transitionInFlight = true;
+                            try { Thread.Sleep(ms); }
+                            finally { _transitionInFlight = false; }
+                        });
                 }
             }
             catch (ObjectDisposedException) { /* disposed mid-pause */ }

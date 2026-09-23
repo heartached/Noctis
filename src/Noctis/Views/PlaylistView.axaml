@@ -963,22 +963,8 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Drop indicator line for drag reorder -->
-                    <Border x:Name="PlaylistDropIndicator"
-                            IsHitTestVisible="False"
-                            IsVisible="False"
-                            Height="2"
-                            VerticalAlignment="Top"
-                            HorizontalAlignment="Stretch"
-                            Margin="8,0"
-                            CornerRadius="1"
-                            Background="{DynamicResource AccentColorBrush}">
-                        <Border.RenderTransform>
-                            <TranslateTransform Y="0"/>
-                        </Border.RenderTransform>
-                    </Border>
-
-                    <!-- Floating drag preview: follows the pointer Y while reordering. -->
+                    <!-- Floating drag card: lifts and springs after the pointer while
+                         reordering (transforms driven per frame by LiquidReorder). -->
                     <Border x:Name="PlaylistDragPreview"
                             x:DataType="m:Track"
                             IsHitTestVisible="False"
@@ -989,9 +975,13 @@
                             Background="#E62A2A2A"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Top"
-                            BoxShadow="0 6 22 0 #80000000">
+                            BoxShadow="0 10 28 0 #80000000"
+                            RenderTransformOrigin="50%,50%">
                         <Border.RenderTransform>
-                            <TranslateTransform Y="0"/>
+                            <TransformGroup>
+                                <ScaleTransform />
+                                <TranslateTransform />
+                            </TransformGroup>
                         </Border.RenderTransform>
                         <Grid ColumnDefinitions="Auto,*,Auto" Height="48">
                             <Border Grid.Column="0"

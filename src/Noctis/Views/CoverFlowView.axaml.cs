@@ -24,7 +24,7 @@ public partial class CoverFlowView : UserControl
     private bool? _isStacked;
 
     // ── Carousel ───────────────────────────────────────────────────────────────
-    // Slot order −2..+2; each card owns one TransformGroup [Rotate3D, Scale, Translate]
+    // Slot order −7..+7; each card owns one TransformGroup [Rotate3D, Scale, Translate]
     // whose values SetPose writes. Built once; a skip only changes the numbers.
     private readonly CoverFlowCard[] _slots = new CoverFlowCard[2 * CoverFlowCarouselGeometry.SideSlots + 1];
     private readonly (Rotate3DTransform Rotate, ScaleTransform Scale, TranslateTransform Move)[] _transforms =
@@ -71,7 +71,12 @@ public partial class CoverFlowView : UserControl
 
     private void BuildCarousel()
     {
-        CoverFlowCard[] ordered = { SlotPrev2, SlotPrev1, CenterCard, SlotNext1, SlotNext2 };
+        CoverFlowCard[] ordered =
+        {
+            SlotPrev7, SlotPrev6, SlotPrev5, SlotPrev4, SlotPrev3, SlotPrev2, SlotPrev1,
+            CenterCard,
+            SlotNext1, SlotNext2, SlotNext3, SlotNext4, SlotNext5, SlotNext6, SlotNext7,
+        };
         Array.Copy(ordered, _slots, ordered.Length);
 
         for (var i = 0; i < _slots.Length; i++)
@@ -149,7 +154,7 @@ public partial class CoverFlowView : UserControl
     }
 
     /// <summary>Current signed position of the card in slot <paramref name="slot"/>
-    /// (−2..+2), read back off its transform — mid-slide it is fractional.</summary>
+    /// (−7..+7), read back off its transform — mid-slide it is fractional.</summary>
     internal double PositionOf(int slot)
     {
         var i = slot + CoverFlowCarouselGeometry.SideSlots;
@@ -175,9 +180,7 @@ public partial class CoverFlowView : UserControl
         scale.ScaleX = pose.Scale;
         scale.ScaleY = pose.Scale;
         move.X = pose.X;
-        move.Y = pose.Y;
         var card = _slots[index];
-        card.Dim = pose.Dim;
         card.Opacity = pose.Opacity;
         card.ZIndex = CoverFlowCarouselGeometry.ZIndexAt(position);
     }

@@ -53,17 +53,20 @@ public class AudioKeepAliveTests
     }
 
     [Fact]
-    public void TryStart_ReturnsNull_WhenNotOptedIn_OnEveryPlatform()
+    public void TryStart_ReturnsNull_WhenNotOptedIn_OutsideTheAppImage()
     {
-        // Default (no NOCTIS_KEEPALIVE): the silent-loop keep-alive must not
-        // start anywhere. Windows uses WasapiSilenceKeepAlive instead, and on
-        // macOS/Linux the stream is opt-in — on Linux it historically poisoned
-        // PulseAudio/PipeWire stream-restore (playback started muted) and, on
-        // system-libvlc installs with a split plugin set, spammed
+        // Default (no NOCTIS_KEEPALIVE, no NOCTIS_BUNDLED_VLC): the silent-loop
+        // keep-alive must not start. Windows uses WasapiSilenceKeepAlive instead;
+        // on macOS it corrupts CoreAudio output, and on Linux system-libvlc
+        // installs with a split plugin set it spammed
         // "VLC is unable to open the MRL '...silence.wav'" at launch (issue #26).
-        // On the Linux/macOS CI legs this is THE regression test for that gate.
+        // Only the Linux AppImage runs it by default (GitHub #70, see
+        // ShouldStartKeepAlive). On the Linux/macOS CI legs this is THE
+        // regression test for that gate.
         var prev = Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE");
+        var prevBundled = Environment.GetEnvironmentVariable("NOCTIS_BUNDLED_VLC");
         Environment.SetEnvironmentVariable("NOCTIS_KEEPALIVE", null);
+        Environment.SetEnvironmentVariable("NOCTIS_BUNDLED_VLC", null);
         try
         {
             // All gates fire before the LibVLC argument is used, so null is safe.
@@ -72,7 +75,26 @@ public class AudioKeepAliveTests
         finally
         {
             Environment.SetEnvironmentVariable("NOCTIS_KEEPALIVE", prev);
+            Environment.SetEnvironmentVariable("NOCTIS_BUNDLED_VLC", prevBundled);
         }
+    }
+
+    [Theory]
+    [InlineData(false, null, null, false)]  // macOS: opt-in only
+    [InlineData(false, null, "1", false)]
+    [InlineData(false, "1", null, true)]
+    [InlineData(true, null, null, false)]   // Linux system libvlc: opt-in only (issue #26)
+    [InlineData(true, "", "", false)]
+    [InlineData(true, null, "0", false)]
+    [InlineData(true, "1", null, true)]
+    [InlineData(true, null, "1", true)]     // Linux AppImage: on by default (GitHub #70)
+    [InlineData(true, "", "1", true)]
+    [InlineData(true, "0", "1", false)]     // NOCTIS_KEEPALIVE=0 still opts out
+    [InlineData(false, "0", null, false)]
+    public void ShouldStartKeepAlive_MatchesPlatformBundleAndEnv(
+        bool isLinux, string? keepAliveEnv, string? bundledVlcEnv, bool expected)
+    {
+        Assert.Equal(expected, VlcSilenceKeepAlive.ShouldStartKeepAlive(isLinux, keepAliveEnv, bundledVlcEnv));
     }
 
     [Fact]

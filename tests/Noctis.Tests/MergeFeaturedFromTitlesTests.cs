@@ -1,3 +1,4 @@
+using Noctis.Models;
 using Noctis.Services;
 using Xunit;
 
@@ -8,8 +9,12 @@ namespace Noctis.Tests;
 /// whole-word containment (a credited "Maxwell" must not swallow a featured "Max"),
 /// and the un-merge candidate filter the live toggle-off pass relies on.
 /// </summary>
-public class MergeFeaturedFromTitlesTests
+[Collection("ArtistCredit global configuration")]
+public class MergeFeaturedFromTitlesTests : IDisposable
 {
+    public MergeFeaturedFromTitlesTests() => ArtistCredit.ResetToDefaults();
+    public void Dispose() => ArtistCredit.ResetToDefaults();
+
     [Theory]
     [InlineData("Song (feat. Drake)", new[] { "Drake" })]
     [InlineData("Song [ft. Drake]", new[] { "Drake" })]
@@ -25,12 +30,12 @@ public class MergeFeaturedFromTitlesTests
         => Assert.Equal(expected, MetadataService.ExtractFeaturedNamesFromTitle(title));
 
     [Theory]
-    [InlineData("Metro Boomin", "Song (feat. Drake)", "Metro Boomin & Drake")]
+    [InlineData("Metro Boomin", "Song (feat. Drake)", "Metro Boomin, Drake")]
     [InlineData("Metro Boomin & Drake", "Song (feat. Drake)", "Metro Boomin & Drake")] // already credited
-    [InlineData("Maxwell", "Song (feat. Max)", "Maxwell & Max")] // substring is not a credit
+    [InlineData("Maxwell", "Song (feat. Max)", "Maxwell, Max")] // substring is not a credit
     [InlineData("Max Wells", "Song (feat. Max)", "Max Wells")]   // whole word is
     [InlineData("Drake", "Song", "Drake")]
-    [InlineData("Metro Boomin", "Song (feat. Drake & Rihanna)", "Metro Boomin & Drake & Rihanna")]
+    [InlineData("Metro Boomin", "Song (feat. Drake & Rihanna)", "Metro Boomin, Drake, Rihanna")]
     public void EnrichArtistFromTitle_MergesMissingCreditsOnly(string artist, string title, string expected)
         => Assert.Equal(expected, MetadataService.EnrichArtistFromTitle(artist, title));
 
@@ -41,4 +46,32 @@ public class MergeFeaturedFromTitlesTests
     [InlineData("", "Song (feat. Drake)", false)]
     public void MayHaveMergedFeaturedCredit_FlagsOnlyMergedLookingTracks(string artist, string title, bool expected)
         => Assert.Equal(expected, MetadataService.MayHaveMergedFeaturedCredit(artist, title));
+
+    /// <summary>Discord Luwi 09-22: merged credits were joined with " &amp; ", which stopped
+    /// splitting when "&amp;" left the default separators in 1.5.1 — the featured artist
+    /// vanished from the credits. The join now uses an active separator.</summary>
+    [Fact]
+    public void EnrichedCredit_SplitsWithTheDefaultSeparators()
+    {
+        var enriched = MetadataService.EnrichArtistFromTitle("Rihanna", "Work (feat. Drake)");
+        Assert.Equal(new[] { "Rihanna", "Drake" }, ArtistCredit.Split(enriched));
+    }
+
+    [Fact]
+    public void EnrichedCredit_UsesAnActiveSeparator_WhenCommaIsRemoved()
+    {
+        ArtistCredit.Configure(ArtistGroupMode.Artist, new[] { "feat.", "ft." });
+        var enriched = MetadataService.EnrichArtistFromTitle("Rihanna", "Work (feat. Drake)");
+        Assert.Equal(new[] { "Rihanna", "Drake" }, ArtistCredit.Split(enriched));
+    }
+
+    [Theory]
+    [InlineData("Rihanna & Drake", "Work (feat. Drake)", "Rihanna, Drake")]
+    [InlineData("Metro Boomin & Drake & Rihanna", "Song (feat. Drake & Rihanna)", "Metro Boomin, Drake, Rihanna")]
+    [InlineData("Simon & Garfunkel", "The Boxer", "Simon & Garfunkel")]              // a band's own "&"
+    [InlineData("Simon & Garfunkel", "Song (feat. Drake)", "Simon & Garfunkel")]      // & not before a featured name
+    [InlineData("Metro & Drakeo", "Song (feat. Drake)", "Metro & Drakeo")]            // whole name only
+    [InlineData("Rihanna, Drake", "Work (feat. Drake)", "Rihanna, Drake")]            // already split
+    public void RejoinMergedFeaturedCredit_RewritesOnlyMergedAmpersands(string artist, string title, string expected)
+        => Assert.Equal(expected, MetadataService.RejoinMergedFeaturedCredit(artist, title));
 }

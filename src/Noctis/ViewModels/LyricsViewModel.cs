@@ -236,6 +236,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// leave the lower viewport empty at the page's default anchor.</summary>
     public bool IsLyricsFocusActive => IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
 
+    /// <summary>Settings toggles for the TTML translation / romanization rows and the
+    /// background-vocal row (issue #78). Display-only: the line templates AND these with
+    /// each line's own flags, so flipping one never reloads the lyrics.</summary>
+    public bool ShowTranslations => Player.LyricsShowTranslations;
+    public bool ShowRomanization => Player.LyricsShowRomanization;
+    public bool ShowBackgroundVocals => Player.LyricsShowBackgroundVocals;
+
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
     public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
 
@@ -1951,6 +1958,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (_currentTrack is { } track)
                 LoadLyricsForTrack(track);
         }
+        // Layer toggles only change what is drawn — re-evaluate the row bindings, no reload.
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsShowTranslations))
+        {
+            OnPropertyChanged(nameof(ShowTranslations));
+        }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsShowRomanization))
+        {
+            OnPropertyChanged(nameof(ShowRomanization));
+        }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsShowBackgroundVocals))
+        {
+            OnPropertyChanged(nameof(ShowBackgroundVocals));
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -2016,6 +2036,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         // Read the parse-affecting setting here, on the UI thread that owns it.
         var joinSplitWords = _player.LyricsJoinSplitWords;
+        // TTML files may carry several translations; the UI language picks one (issue #78).
+        var uiLanguage = Localization.Loc.Instance.Culture.Name;
 
         // Fade the (still-visible) old lyrics out WHILE the probe runs, not after
         // it. The swap below — a full ItemsControl rebuild plus a scroll snap —
@@ -2042,7 +2064,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // store's LRU for the UI-thread reads in ApplyLocalLyricsResult).
             _loadedLyrics = track.Lyrics;
             _loadedSyncedLyrics = track.SyncedLyrics;
-            return ProbeLocalLyricSources(track, joinSplitWords);
+            return ProbeLocalLyricSources(track, joinSplitWords, uiLanguage);
         });
         // Visible in Settings ▸ About ▸ Developer Mode ▸ Copy Logs: how long the
         // disk probe took on THIS machine (the fade hides up to LyricsSwapFadeOutMs of it).
@@ -2079,7 +2101,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         bool FromCache);
 
     /// <summary>Synchronous probe helper — must only be called off the UI thread.</summary>
-    private static LocalLyricsProbe ProbeLocalLyricSources(Track track, bool joinSplitWords)
+    private static LocalLyricsProbe ProbeLocalLyricSources(Track track, bool joinSplitWords, string uiLanguage)
     {
         // Priority 1: .lyricsfile sidecar (word-level, LRCGET v2.0+).
         try
@@ -2100,7 +2122,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarTtml = TryReadSidecar(track.FilePath, new[] { ".ttml", ".TTML", ".Ttml" });
             if (sidecarTtml != null)
             {
-                var (lines, plain) = TtmlParser.Parse(sidecarTtml, joinSplitWords);
+                var (lines, plain) = TtmlParser.Parse(sidecarTtml, joinSplitWords, uiLanguage);
                 if (lines != null && lines.Count > 0)
                     return new LocalLyricsProbe(lines, plain, "Sidecar:Ttml", FromCache: false);
             }
@@ -2614,7 +2636,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         && IsAnyLyricsSurfaceVisible
         && _player.State == Models.PlaybackState.Playing
         && _lyricsSyncTimer.IsEnabled
-        && (_timeline.ActiveLine?.HasWords == true || _timeline.ActiveLine?.HasBackgroundWords == true);
+        && (_timeline.ActiveLine?.HasWords == true || _timeline.ActiveLine?.HasBackgroundWords == true
+            || _timeline.ActiveLine?.HasTransliterationWords == true);
 
     private void OnWordClockFrame(TimeSpan _)
     {

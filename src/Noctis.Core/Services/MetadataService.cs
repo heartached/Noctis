@@ -321,6 +321,20 @@ public class MetadataService : IMetadataService
         }
     }
 
+    public byte[]? ExtractEmbeddedArt(string filePath)
+    {
+        if (!UseEmbeddedArtwork) return null;
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            return SelectBestEmbeddedPicture(file.Tag.Pictures);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public byte[]? ExtractAlbumArt(string filePath)
     {
         // 1. Try embedded artwork first (most reliable), unless disabled in Settings.
@@ -1112,7 +1126,42 @@ public class MetadataService : IMetadataService
         if (missing.Length == 0)
             return artist;
 
-        return artist + " & " + string.Join(" & ", missing);
+        var join = ArtistCredit.JoinText;
+        return artist + join + string.Join(join, missing);
+    }
+
+    /// <summary>
+    /// Rewrites featured names that an older build merged in with a hard-coded " &amp; "
+    /// ("Rihanna &amp; Drake" from "Work (feat. Drake)") to the active separator, so they
+    /// split into separate credits again now that "&amp;" is no longer a default separator.
+    /// Only a " &amp; " directly in front of a name the TITLE credits as featured is touched;
+    /// a band's own "&amp;" ("Simon &amp; Garfunkel") is left alone.
+    /// </summary>
+    internal static string RejoinMergedFeaturedCredit(string artist, string title)
+    {
+        if (string.IsNullOrWhiteSpace(artist) || !artist.Contains(" & ", StringComparison.Ordinal))
+            return artist;
+
+        var featNames = ExtractFeaturedNamesFromTitle(title);
+        if (featNames.Length == 0)
+            return artist;
+
+        var join = ArtistCredit.JoinText;
+        if (join == " & ")
+            return artist;
+
+        var result = artist;
+        foreach (var name in featNames)
+        {
+            var merged = " & " + name;
+            var idx = result.LastIndexOf(merged, StringComparison.OrdinalIgnoreCase);
+            // Only a whole-name match: "& Drake" must not rewrite "& Drakeo".
+            if (idx < 0) continue;
+            var end = idx + merged.Length;
+            if (end < result.Length && (char.IsLetterOrDigit(result[end]) || result[end] == '_')) continue;
+            result = result[..idx] + join + result[(idx + 3)..];
+        }
+        return result;
     }
 
     /// <summary>

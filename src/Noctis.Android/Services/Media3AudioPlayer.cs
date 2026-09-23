@@ -403,7 +403,10 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // is a private-storage read, so it stays cheap enough for the track-change path;
             // a missing or unreadable file must never take the rest of the metadata down
             // with it, hence the guard and the catch.
-            var art = _persistence.GetArtworkPath(track.AlbumId);
+            // A track with its own embedded cover (TrackArtwork) shows that, not its album's.
+            var art = !string.IsNullOrEmpty(track.AlbumArtworkPath) && File.Exists(track.AlbumArtworkPath)
+                ? track.AlbumArtworkPath
+                : _persistence.GetArtworkPath(track.AlbumId);
             if (File.Exists(art))
             {
                 try

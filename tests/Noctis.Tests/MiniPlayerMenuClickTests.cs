@@ -253,6 +253,74 @@ public class MiniPlayerMenuClickTests
         }
     }
 
+    /// <summary>GitHub #79 ("…" often shows nothing, Windows 11): through the REAL
+    /// press/release path, on every form and design, the menu opens, its card fades all
+    /// the way in inside the popup, and nothing closes it again on its own.</summary>
+    [AvaloniaTheory]
+    [InlineData("Classic", MiniPlayerForm.Bar)]
+    [InlineData("Classic", MiniPlayerForm.Card)]
+    [InlineData("Classic", MiniPlayerForm.LargeIcon)]
+    [InlineData("Classic", MiniPlayerForm.Lyrics)]
+    [InlineData("Pill", MiniPlayerForm.Pill)]
+    [InlineData("Sleeve", MiniPlayerForm.Sleeve)]
+    public async Task MoreButton_OpensTheMenuAndItStaysOpen(string design, MiniPlayerForm form)
+    {
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        if (design != "Classic") vm.SetDesignCommand.Execute(design);
+        var (w, h) = MiniPlayerViewModel.CanonicalSize(form);
+        var win = new MiniPlayerWindow { DataContext = vm, Width = w, Height = h };
+        win.Show();
+        await PumpFor(400);
+        try
+        {
+            Assert.Equal(form, vm.Form);
+            var popup = win.FindControl<Avalonia.Controls.Primitives.Popup>("MorePopup")!;
+            var card = win.FindControl<Border>("MenuCard")!;
+            var more = VisibleButton(win, b => ToolTip.GetTip(b) as string == "More");
+
+            Assert.True(Click(more), "the … button never received the press");
+            await PumpFor(400);   // past the 0.18s fade and the 200ms close delay
+
+            Assert.True(popup.IsOpen, $"{form}: the menu is not open after the click");
+            Assert.Equal(1, card.Opacity, 3);
+            Assert.True(card.IsEffectivelyVisible, $"{form}: the menu card is not visible");
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>GitHub #79 diagnostics must land where a user can copy them: the session
+    /// log behind Developer Mode → "Copy Logs" (DebugLogger's UI entries are never shown).</summary>
+    [AvaloniaFact]
+    public async Task MoreButton_WritesItsDiagnosticsToTheCopyLogsLog_InDeveloperMode()
+    {
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        var win = new MiniPlayerWindow { DataContext = vm };
+        win.Show();
+        await PumpFor(300);
+        var wasEnabled = Noctis.Services.DebugLogger.IsEnabled;
+        Noctis.Services.DebugLogger.IsEnabled = true;
+        try
+        {
+            var more = VisibleButton(win, b => ToolTip.GetTip(b) as string == "More");
+            Assert.True(Click(more), "the … button never received the press");
+            await PumpFor(300);
+
+            var log = Noctis.Services.DebugLog.Snapshot();
+            Assert.Contains("[MiniMenu] OnMoreMenuClick", log);
+            Assert.Contains("[MiniMenu] Popup.Opened", log);
+        }
+        finally
+        {
+            Noctis.Services.DebugLogger.IsEnabled = wasEnabled;
+            win.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void EveryMoreMenuItem_RunsItsCommand()
     {

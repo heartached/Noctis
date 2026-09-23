@@ -20,9 +20,11 @@
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Playlist grid (responsive wrap panel) -->
+            <!-- Playlist grid (responsive wrap panel). Bar pinned Visible like the Albums
+                 page: the square tiles make the grid's height follow its width, so an Auto
+                 bar showed/hid on every layout pass in a narrow window-height band (#83). -->
             <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto">
+                          VerticalScrollBarVisibility="Visible">
                 <ItemsControl ItemsSource="{Binding FilteredPlaylists}"
                               Margin="0,0,0,115">
                     <ItemsControl.ItemsPanel>

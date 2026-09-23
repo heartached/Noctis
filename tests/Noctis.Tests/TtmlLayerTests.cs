@@ -46,9 +46,9 @@ public class TtmlLayerTests
         Assert.Equal("例えば俺が俺じゃないとして", line.Text);
         Assert.Equal("例えば俺が俺じゃないとして", plain);
         Assert.Equal("For example, if I were not myself", line.Translation);
-        Assert.Equal("tatoeba ore ga ore ja nai to shite", line.Romanization);
+        Assert.Equal("tatoeba ore ga ore ja nai to shite", line.Transliteration);
         Assert.True(line.HasTranslation);
-        Assert.True(line.HasRomanization);
+        Assert.True(line.HasTransliteration);
 
         var words = line.Words!;
         Assert.Equal(new[] { "例えば", "俺が", "俺じゃ", "ない", "として" }, words.Select(w => w.Text));
@@ -74,7 +74,7 @@ public class TtmlLayerTests
         var lines = TtmlParser.Parse(HeadDoc).Lines!;
 
         Assert.Equal("For example, if I were not myself", lines[0].Translation);
-        Assert.Equal("tatoeba ore ga", lines[0].Romanization);
+        Assert.Equal("tatoeba ore ga", lines[0].Transliteration);
         Assert.Null(lines[1].Translation);
         Assert.False(lines[1].HasTranslation);
     }
@@ -137,7 +137,7 @@ public class TtmlLayerTests
 
         var line = TtmlParser.Parse(doc).Lines![0];
         Assert.False(line.HasTranslation);
-        Assert.False(line.HasRomanization);
+        Assert.False(line.HasTransliteration);
     }
 
     [Fact]

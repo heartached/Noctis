@@ -8,6 +8,7 @@ using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.ComponentModel;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -28,12 +29,17 @@ public partial class SidebarView : UserControl
         // press so we see it before the ListBoxItem commits the (same) selection.
         foreach (var list in GetNavLists())
             list.AddHandler(PointerPressedEvent, OnNavListPointerPressed, RoutingStrategies.Tunnel);
-        // Drop target: tracks dragged from any list land in a playlist; a dragged
-        // playlist row reorders / moves into a folder. Payloads come from DragFileBehavior.
+        // Drop target: tracks dragged from any list land in a playlist (payload from
+        // DragFileBehavior).
         DragDrop.SetAllowDrop(PlaylistList, true);
         PlaylistList.AddHandler(DragDrop.DragOverEvent, OnPlaylistDragOver);
         PlaylistList.AddHandler(DragDrop.DragLeaveEvent, OnPlaylistDragLeave);
         PlaylistList.AddHandler(DragDrop.DropEvent, OnPlaylistDrop);
+        // Playlist rows reorder / move into folders with an in-app pointer drag.
+        PlaylistList.AddHandler(PointerPressedEvent, OnPlaylistRowPointerPressed, RoutingStrategies.Tunnel);
+        PlaylistList.AddHandler(PointerMovedEvent, OnPlaylistRowPointerMoved, RoutingStrategies.Tunnel);
+        PlaylistList.AddHandler(PointerReleasedEvent, OnPlaylistRowPointerReleased, RoutingStrategies.Tunnel);
+        PlaylistList.AddHandler(PointerCaptureLostEvent, OnPlaylistRowPointerCaptureLost);
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -115,11 +121,11 @@ public partial class SidebarView : UserControl
             _vm.RequestNavigation(pressed);
     }
 
-    // ── Playlist list as a drop target ──
+    // ── Playlist list as a drop target for TRACKS dragged from any list ──
 
     private ListBoxItem? _dropHighlighted;
 
-    private (ListBoxItem? Container, PlaylistNavItem? Item, bool PlaceAfter) HitPlaylistRow(DragEventArgs e)
+    private (ListBoxItem? Container, PlaylistNavItem? Item) HitPlaylistRow(DragEventArgs e)
     {
         var pos = e.GetPosition(PlaylistList);
         foreach (var container in PlaylistList.GetRealizedContainers())
@@ -127,12 +133,13 @@ public partial class SidebarView : UserControl
             if (container is not ListBoxItem row) continue;
             var origin = row.TranslatePoint(new Point(0, 0), PlaylistList);
             if (origin == null) continue;
-            var rect = new Rect(origin.Value, row.Bounds.Size);
-            if (!rect.Contains(pos)) continue;
-            var placeAfter = pos.Y > rect.Y + rect.Height / 2;
-            return (row, row.DataContext as PlaylistNavItem, placeAfter);
+            // Inflated by the rows' 2px vertical margin so the gap between two rows still
+            // hits one of them — otherwise the highlight blinked off between rows.
+            var rect = new Rect(origin.Value, row.Bounds.Size).Inflate(new Thickness(0, 2));
+            if (rect.Contains(pos))
+                return (row, row.DataContext as PlaylistNavItem);
         }
-        return (null, null, false);
+        return (null, null);
     }
 
     private void SetDropHighlight(ListBoxItem? row)
@@ -143,31 +150,31 @@ public partial class SidebarView : UserControl
         _dropHighlighted?.Classes.Set("drop-target", true);
     }
 
-    private static bool CanAccept(PlaylistNavItem? item, IReadOnlyList<Track>? tracks, Guid? playlistId)
-    {
-        if (item == null) return false;
-        if (tracks is { Count: > 0 })
-            return !item.IsFolder && !item.IsSmartPlaylist && item.PlaylistId != null;
-        if (playlistId != null)
-            return item.IsFolder || (item.PlaylistId != null && item.PlaylistId != playlistId);
-        return false;
-    }
+    private static bool CanAcceptTracks(PlaylistNavItem? item)
+        => item is { IsFolder: false, IsSmartPlaylist: false, PlaylistId: not null };
 
     private void OnPlaylistDragOver(object? sender, DragEventArgs e)
     {
         var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer);
-        var playlistId = Helpers.DragFileBehavior.GetDraggedPlaylistId(e.DataTransfer);
-        if (tracks == null && playlistId == null) return; // external file drag — the window handles it
+        if (tracks is not { Count: > 0 }) return; // external file drag — the window handles it
 
-        var (container, item, _) = HitPlaylistRow(e);
-        var ok = CanAccept(item, tracks, playlistId);
+        var (container, item) = HitPlaylistRow(e);
+        var ok = CanAcceptTracks(item);
         SetDropHighlight(ok ? container : null);
-        e.DragEffects = !ok ? DragDropEffects.None
-            : playlistId != null ? DragDropEffects.Move : DragDropEffects.Copy;
+        e.DragEffects = ok ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private void OnPlaylistDragLeave(object? sender, DragEventArgs e) => SetDropHighlight(null);
+    private void OnPlaylistDragLeave(object? sender, DragEventArgs e)
+    {
+        // Avalonia raises DragLeave every time the pointer crosses from one element INSIDE
+        // a row to another (name → art → count) and it bubbles up here. Clearing on those
+        // made the highlighted pill blink off and fade back in on every small move (the
+        // "pill changes shade" report, 09-22). Only a leave out of the whole list clears it.
+        var pos = e.GetPosition(PlaylistList);
+        if (new Rect(PlaylistList.Bounds.Size).Contains(pos)) return;
+        SetDropHighlight(null);
+    }
 
     private async void OnPlaylistDrop(object? sender, DragEventArgs e)
     {
@@ -176,22 +183,190 @@ public partial class SidebarView : UserControl
         {
             SetDropHighlight(null);
             var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer);
-            var playlistId = Helpers.DragFileBehavior.GetDraggedPlaylistId(e.DataTransfer);
-            if (tracks == null && playlistId == null) return;
+            if (tracks is not { Count: > 0 }) return;
 
-            var (_, item, placeAfter) = HitPlaylistRow(e);
-            if (!CanAccept(item, tracks, playlistId) || _vm == null || item == null) return;
+            var (_, item) = HitPlaylistRow(e);
+            if (!CanAcceptTracks(item) || _vm == null || item?.PlaylistId is not { } targetId) return;
             e.Handled = true;
-
-            if (tracks is { Count: > 0 } && item.PlaylistId is { } targetId)
-                await _vm.AddTracksToPlaylist(targetId, tracks);
-            else if (playlistId is { } dragged)
-                await _vm.MovePlaylistAsync(dragged, item, placeAfter);
+            await _vm.AddTracksToPlaylist(targetId, tracks);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SidebarView] Drop failed: {ex.Message}");
         }
+    }
+
+    // ── Playlist reorder (pointer-tracked, same liquid motion as the queue) ──
+    //
+    // A playlist row lifts into a card (#PlaylistDragCard, drawn with the list's own row
+    // template) that springs after the pointer while the other rows slide apart to open a
+    // gap where it will land (LiquidReorder). Over a folder header the gap closes and the
+    // folder lights up instead: dropping there moves the playlist into it. On release the
+    // card glides to its spot and SidebarViewModel.MovePlaylistAsync commits.
+
+    private const double PlaylistDragThreshold = 6;
+    private PlaylistNavItem? _dragItem;
+    private Point _dragStart;
+    private double _dragGrabY;
+    private bool _dragActive;
+    private LiquidReorder? _liquid;
+
+    private LiquidReorder Liquid => _liquid ??= new LiquidReorder(
+        this, PlaylistList, PlaylistDragCard, () => PlaylistDragCardContent.Content = null);
+
+    private static ListBoxItem? RowOf(object? source)
+        => (source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true);
+
+    private void OnPlaylistRowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(PlaylistList).Properties.IsLeftButtonPressed) return;
+        if (RowOf(e.Source) is not { DataContext: PlaylistNavItem { IsFolder: false, PlaylistId: not null } item } row)
+            return;
+
+        // A new press lands before the last drop's glide finished: commit it now.
+        Liquid.FinishNow();
+
+        _dragItem = item;
+        _dragStart = e.GetPosition(PlaylistList);
+        _dragGrabY = e.GetPosition(row).Y;
+        _dragActive = false;
+    }
+
+    private void OnPlaylistRowPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_dragItem == null || _vm == null || Liquid.IsSettling) return;
+        if (!e.GetCurrentPoint(PlaylistList).Properties.IsLeftButtonPressed) return;
+
+        var pos = e.GetPosition(PlaylistList);
+        if (!_dragActive)
+        {
+            if (Math.Abs(pos.X - _dragStart.X) < PlaylistDragThreshold &&
+                Math.Abs(pos.Y - _dragStart.Y) < PlaylistDragThreshold)
+                return;
+            if (!StartPlaylistDrag(e)) return;
+        }
+
+        var cardTop = e.GetPosition(PlaylistListHost).Y - _dragGrabY;
+        Liquid.MoveCardTo(cardTop);
+        var target = LiquidReorder.NearestSlot(PlaylistList, PlaylistListHost, cardTop + Liquid.Pitch / 2);
+        if (target < 0) return;
+
+        // A folder header is a destination, not a slot: close the gap and light it up.
+        if (target < _vm.SidebarRows.Count && _vm.SidebarRows[target].IsFolder)
+        {
+            SetDropHighlight(PlaylistList.ContainerFromIndex(target) as ListBoxItem);
+            Liquid.TargetIndex = Liquid.SourceIndex;
+            _folderTarget = _vm.SidebarRows[target];
+        }
+        else
+        {
+            SetDropHighlight(null);
+            Liquid.TargetIndex = target;
+            _folderTarget = null;
+        }
+        e.Handled = true;
+    }
+
+    private PlaylistNavItem? _folderTarget;
+
+    private bool StartPlaylistDrag(PointerEventArgs e)
+    {
+        if (_vm == null || _dragItem == null) return false;
+        var source = _vm.SidebarRows.IndexOf(_dragItem);
+        if (source < 0 || PlaylistList.ContainerFromIndex(source) is not ListBoxItem row) return false;
+
+        _dragActive = true;
+        e.Pointer.Capture(PlaylistList);
+
+        PlaylistDragCardContent.ContentTemplate = PlaylistList.ItemTemplate;
+        PlaylistDragCardContent.Content = _dragItem;
+        PlaylistDragCard.Height = row.Bounds.Height;
+        Liquid.Pitch = row.Bounds.Height + row.Margin.Top + row.Margin.Bottom;
+        Liquid.SourceIndex = Liquid.TargetIndex = source;
+        // Start exactly over the grabbed row so the lift reads as the row rising.
+        var rowTop = row.TranslatePoint(new Point(0, 0), PlaylistListHost)?.Y ?? 0;
+        Liquid.Begin(rowTop);
+        return true;
+    }
+
+    private void OnPlaylistRowPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_dragActive)
+        {
+            _dragItem = null;
+            return;
+        }
+        e.Handled = true;
+
+        var vm = _vm;
+        var dragged = _dragItem;
+        var folder = _folderTarget;
+        var source = Liquid.SourceIndex;
+        var target = Liquid.TargetIndex;
+        _dragActive = false;
+        _dragItem = null;
+        _folderTarget = null;
+        SetDropHighlight(null);
+        // After _dragActive is cleared: releasing the capture raises CaptureLost, which
+        // would otherwise read this drop as a cancel.
+        e.Pointer.Capture(null);
+
+        if (vm == null || dragged?.PlaylistId is not { } draggedId || source < 0)
+        {
+            Liquid.Cancel();
+            return;
+        }
+
+        PlaylistNavItem? destination;
+        bool placeAfter;
+        int landingIndex;
+        if (folder != null)
+        {
+            destination = folder;
+            placeAfter = false;
+            landingIndex = vm.SidebarRows.IndexOf(folder);
+        }
+        else
+        {
+            destination = target >= 0 && target < vm.SidebarRows.Count && target != source
+                ? vm.SidebarRows[target]
+                : null;
+            // Dropped below its old spot = lands after the row it displaced, above = before.
+            placeAfter = target > source;
+            landingIndex = destination != null ? target : source;
+        }
+
+        var landing = LiquidReorder.SlotTop(PlaylistList, landingIndex, PlaylistListHost) ?? Liquid.CardY;
+        Liquid.Settle(landing, () =>
+        {
+            if (destination != null)
+                _ = MovePlaylistSafeAsync(vm, draggedId, destination, placeAfter);
+        });
+    }
+
+    private static async Task MovePlaylistSafeAsync(SidebarViewModel vm, Guid draggedId, PlaylistNavItem target, bool placeAfter)
+    {
+        try
+        {
+            await vm.MovePlaylistAsync(draggedId, target, placeAfter);
+        }
+        catch (Exception ex)
+        {
+            // Fire-and-forget from the animation frame: an escaped exception would be lost.
+            System.Diagnostics.Debug.WriteLine($"[SidebarView] Playlist move failed: {ex.Message}");
+        }
+    }
+
+    private void OnPlaylistRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        // Releasing the capture on drop raises this too; the glide owns cleanup then.
+        if (!_dragActive) return;
+        // Otherwise lost capture is a cancel: restore visuals without moving anything.
+        _dragActive = false;
+        _dragItem = null;
+        _folderTarget = null;
+        SetDropHighlight(null);
+        Liquid.Cancel();
     }
 
     private void OnNavListSelectionChanged(object? sender, SelectionChangedEventArgs e)

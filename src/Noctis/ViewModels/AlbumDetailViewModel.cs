@@ -62,7 +62,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(ShowAnimatedCover));
 
     public PlayerViewModel Player => _player;
-    [ObservableProperty] private IBrush? _backgroundBrush;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTint))]
+    private IBrush? _backgroundBrush;
+
+    /// <summary>True while the album block is painted with the cover tint.</summary>
+    public bool HasTint => BackgroundBrush != null;
     [ObservableProperty] private bool _isLightTint;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
     [ObservableProperty] private IBrush _pageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));

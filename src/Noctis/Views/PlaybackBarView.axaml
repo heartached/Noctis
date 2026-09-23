@@ -188,6 +188,12 @@
         <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- GitHub #82: the title is disabled for a track with no library album — it keeps
+             the enabled look (Fluent's disabled template would paint a grey fill). -->
+        <Style Selector="Button.artist-link-btn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
         <!-- Highlight tracks the button, which now wraps only the artist text (it lives
              inside the 200px clip viewport), so hover/press only fire over the name. -->
         <Style Selector="Button.artist-link-btn:pointerover Border.artist-text-hover">
@@ -1442,6 +1448,24 @@
                                 </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>
+                    </Button>
+
+                    <!-- Mini player (GitHub #80): unlike the album-art toggle it stays on the
+                         lyrics page and the compact shape. Settings → Player, on by default.
+                         Same toggle as OnAlbumArtPressed. -->
+                    <Button x:Name="MiniPlayerButton"
+                            Classes="secondary-btn"
+                            IsVisible="{Binding IslandShowMiniPlayer}"
+                            Click="OnMiniPlayerButtonClick"
+                            ToolTip.Tip="{loc:T PlaybackBar.MiniPlayerTip}"
+                            Width="34" Height="34">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="{DynamicResource IslandIconFill}" StrokeThickness="1.5"
+                                      StrokeLineCap="Round" StrokeJoin="Round"
+                                      Data="{StaticResource MiniPlayerIcon}" />
+                            </Canvas>
+                        </Viewbox>
                     </Button>
 
                     <!-- Lyrics button -->

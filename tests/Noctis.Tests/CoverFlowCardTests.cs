@@ -69,7 +69,7 @@ public class CoverFlowCardTests
         Assert.Equal((byte)0, shadow.Color.R);
         Assert.Equal((byte)0, shadow.Color.G);
         Assert.Equal((byte)0, shadow.Color.B);
-        // The artist caption carries the app accent colour (it was a muted white).
+        // The artist caption carries the app accent colour.
         Assert.True(Application.Current!.TryGetResource("AccentColorBrush", card.ActualThemeVariant, out var accent));
         var accentColor = Assert.IsAssignableFrom<ISolidColorBrush>(accent).Color;
         Assert.Equal(accentColor, Assert.IsAssignableFrom<ISolidColorBrush>(artist.Foreground).Color);
@@ -106,7 +106,7 @@ public class CoverFlowCardTests
         // tint-only and heavier.
         Assert.Equal(Color.Parse("#808080"), glass.GlassTint);
         Assert.Equal(18, glass.BlurRadius);
-        Assert.Equal(0.40, glass.GlassTintOpacity!.Value, 3);
+        Assert.Equal(0.50, glass.GlassTintOpacity!.Value, 3);
         card.CardBlurRadius = 0;
         Assert.Equal(0, glass.BlurRadius);
         Assert.Equal(0.72, glass.GlassTintOpacity!.Value, 3);
@@ -123,9 +123,9 @@ public class CoverFlowCardTests
         Assert.Equal(Avalonia.Layout.VerticalAlignment.Top, highlight.VerticalAlignment);
         var lit = ((ISolidColorBrush)highlight.Background!).Color;
         Assert.InRange(lit.A, 10, 30);
-        card.ArtworkSize = 360;
-        Assert.Equal(20, card.TitleFontSize);
-        Assert.Equal(16, card.ArtistFontSize);
+        card.ArtworkSize = 300;
+        Assert.Equal(21, card.TitleFontSize);
+        Assert.Equal(20, card.ArtistFontSize);
     }
 
     [AvaloniaFact]
@@ -156,8 +156,8 @@ public class CoverFlowCardTests
         window.UpdateLayout();
 
         var cards = view.GetVisualDescendants().OfType<CoverFlowCard>().Where(c => c.Classes.Contains("flow-card")).ToList();
-        // Centre + 2 each side — only five controls are ever realised.
-        Assert.Equal(5, cards.Count);
+        // Centre + 7 each side — only fifteen controls are ever realised.
+        Assert.Equal(15, cards.Count);
         var centre = view.FindControl<CoverFlowCard>("CenterCard")!;
         Assert.Contains(centre, cards);
         Assert.All(cards, c => Assert.Equal(300, c.ArtworkSize));
@@ -171,31 +171,26 @@ public class CoverFlowCardTests
         Assert.Equal(0, centre.Dim);
         Assert.Equal(1, centre.Opacity);
 
-        var left = Enumerable.Range(1, 2).Select(n => view.FindControl<CoverFlowCard>($"SlotPrev{n}")!).ToArray();
-        var right = Enumerable.Range(1, 2).Select(n => view.FindControl<CoverFlowCard>($"SlotNext{n}")!).ToArray();
-        for (var i = 0; i < 2; i++)
+        var left = Enumerable.Range(1, 7).Select(n => view.FindControl<CoverFlowCard>($"SlotPrev{n}")!).ToArray();
+        var right = Enumerable.Range(1, 7).Select(n => view.FindControl<CoverFlowCard>($"SlotNext{n}")!).ToArray();
+        for (var i = 0; i < 7; i++)
         {
             var l = left[i].RenderTransform!.Value;
             var r = right[i].RenderTransform!.Value;
             Assert.True(l.M31 < 0 && r.M31 > 0);
             Assert.Equal(-l.M31, r.M31, 0.01);
-            // Float arc: both sides lifted by the same few px per slot (M32 = Y translate).
-            Assert.Equal(l.M32, r.M32, 0.01);
-            Assert.Equal(-Noctis.Helpers.CoverFlowCarouselGeometry.ArcRisePerSlot * (i + 1), l.M32, 0.01);
-            Assert.Equal(left[i].Dim, right[i].Dim);
+            // One line: every card on the centre's midline (M32 = Y translate), none dimmed
+            // or faded (equal size is pinned in CoverFlowCarouselGeometryTests).
+            Assert.Equal(0, l.M32, 0.01);
+            Assert.Equal(0, r.M32, 0.01);
+            Assert.Equal(0, left[i].Dim);
+            Assert.Equal(1, left[i].Opacity);
+            Assert.Equal(1, right[i].Opacity);
             Assert.Equal(left[i].ZIndex, right[i].ZIndex);
-            Assert.True(left[i].ZIndex < centre.ZIndex, "the centre card draws on top");
-            if (i > 0)
-            {
-                Assert.True(left[i].Dim > left[i - 1].Dim, "outer cards are dimmer");
-                Assert.True(left[i].ZIndex < left[i - 1].ZIndex, "each card tucks behind its inner neighbour");
-                Assert.True(left[i].Opacity <= left[i - 1].Opacity, "outer cards fade (to a floor)");
-            }
         }
 
-        // Side cards: a perspective matrix. For a card LEFT of centre the edge nearest the
-        // centre (its right edge) must be the closer one, i.e. project LARGER (w < 1 there
-        // and w > 1 on the far edge); mirrored on the right side.
+        // Side cards: a perspective matrix. For a card LEFT of centre its OUTER (left) edge
+        // must be the closer one, i.e. project LARGER (smaller w there); mirrored on the right.
         foreach (var card in left.Concat(right))
         {
             var m = card.RenderTransform!.Value;
@@ -204,9 +199,9 @@ public class CoverFlowCardTests
             var wRight = W(150);
             var wLeft = W(-150);
             if (m.M31 < 0)
-                Assert.True(wRight < wLeft, $"left card: right edge w={wRight} should be nearer than left w={wLeft}");
+                Assert.True(wLeft < wRight, $"left card: outer left edge w={wLeft} should be nearer than right w={wRight}");
             else
-                Assert.True(wLeft < wRight, $"right card: left edge w={wLeft} should be nearer than right w={wRight}");
+                Assert.True(wRight < wLeft, $"right card: outer right edge w={wRight} should be nearer than left w={wLeft}");
         }
     }
 
@@ -221,20 +216,20 @@ public class CoverFlowCardTests
 
         // Forward one: the new centre card (content already swapped by binding) starts
         // where the +1 card was and eases home; the new −1 starts at the centre pose; the
-        // new +2 comes in from the transparent exit slot.
+        // new +7 comes in from the transparent exit slot.
         view.OnCarouselShifted(null, 1);
         Assert.True(view.IsSliding);
         view.ApplySlideFrame(0);
         Assert.Equal(1, view.PositionOf(0), 2);
         Assert.Equal(0, view.PositionOf(-1), 2);
         Assert.Equal(3, view.PositionOf(2), 2);
-        Assert.Equal(3, view.PositionOf(2), 2);
-        Assert.Equal(0, view.FindControl<CoverFlowCard>("SlotNext2")!.Opacity);
+        Assert.Equal(8, view.PositionOf(7), 2);
+        Assert.Equal(0, view.FindControl<CoverFlowCard>("SlotNext7")!.Opacity);
 
         view.ApplySlideFrame(0.5);
         Assert.Equal(0.5, view.PositionOf(0), 2);
         Assert.Equal(-0.5, view.PositionOf(-1), 2);
-        Assert.True(view.FindControl<CoverFlowCard>("SlotNext2")!.Opacity > 0);
+        Assert.True(view.FindControl<CoverFlowCard>("SlotNext7")!.Opacity > 0);
 
         view.ApplySlideFrame(1);
         Assert.Equal(0, view.PositionOf(0), 2);

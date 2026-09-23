@@ -348,6 +348,11 @@ public class AppSettings
     /// the artwork wash and scrim layers carry text legibility over bright wallpapers.</summary>
     public double MiniPlayerBackgroundOpacity { get; set; } = 0.35;
 
+    /// <summary>Settings toggle (Mini Player, Windows only, GitHub #76): the mini player asks
+    /// the OS for a blur-behind backdrop, so the desktop behind the card reads frosted.
+    /// Off by default.</summary>
+    public bool MiniPlayerFrostedBackground { get; set; } = false;
+
     /// <summary>User-chosen width of the floating playback bar island, set by dragging its
     /// edges (double-click a grip resets). 536 is the full layout (626 with the old long
     /// track info, 590 before the favorite heart); 340 is the smallest proven layout (the
@@ -405,6 +410,10 @@ public class AppSettings
     public bool PlaybackBarShowRepeat { get; set; }
 
     public bool PlaybackBarShowFavorite { get; set; }
+
+    /// <summary>GitHub #80: the mini player button in the island's right cluster. On by
+    /// default so the mini player is discoverable; like the heart it adds 36px when shown.</summary>
+    public bool PlaybackBarShowMiniPlayer { get; set; } = true;
 
     /// <summary>Discord (Luwi, 2026-09-21): elapsed / remaining time of the current title in
     /// the island's track box, stacked beside the title. Off by default — the stock LCD
@@ -624,13 +633,14 @@ public class AppSettings
     /// follows each syllable's own timing. Ships off, keeping the authored spacing.</summary>
     public bool LyricsJoinSplitWords { get; set; }
 
-    /// <summary>Phone lyrics page: show the translation layer (TTML x-translation) under
-    /// each line when the file carries one.</summary>
-    public bool LyricsShowTranslation { get; set; } = true;
+    /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
+    public bool LyricsShowTranslations { get; set; } = true;
 
-    /// <summary>Phone lyrics page: show the romanization layer (TTML x-roman) under each
-    /// line when the file carries one.</summary>
+    /// <summary>Show a TTML file's romanization under each lyric line (issue #78).</summary>
     public bool LyricsShowRomanization { get; set; } = true;
+
+    /// <summary>Show the background-vocal (adlib) row under lyric lines.</summary>
+    public bool LyricsShowBackgroundVocals { get; set; } = true;
 
     // ── Lyrics providers ──
 

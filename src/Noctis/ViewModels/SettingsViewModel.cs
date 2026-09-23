@@ -515,6 +515,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playbackBarShowShuffle;
     [ObservableProperty] private bool _playbackBarShowRepeat;
     [ObservableProperty] private bool _playbackBarShowFavorite;
+    [ObservableProperty] private bool _playbackBarShowMiniPlayer = true;
     [ObservableProperty] private bool _playbackBarShowTime;
 
     public bool IsSkipSeconds10 { get => PlaybackBarSkipSeconds == 10; set { if (value) PlaybackBarSkipSeconds = 10; } }
@@ -657,6 +658,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; 0 = default ramp.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
+    [ObservableProperty] private bool _lyricsShowTranslations = true;
+    [ObservableProperty] private bool _lyricsShowRomanization = true;
+    [ObservableProperty] private bool _lyricsShowBackgroundVocals = true;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
@@ -1172,6 +1176,13 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Bound straight to the mini player card's fill brush (no player plumbing —
     /// the mini player's view model exposes this view model directly).</summary>
     [ObservableProperty] private double _miniPlayerBackgroundOpacity = 0.35;
+    /// <summary>OS blur-behind for the mini player (GitHub #76). Mirrors
+    /// <see cref="AppSettings.MiniPlayerFrostedBackground"/>; the open mini player window
+    /// listens to this property and swaps its transparency hint live.</summary>
+    [ObservableProperty] private bool _miniPlayerFrostedBackground;
+    /// <summary>The frost uses Windows' acrylic / blur-behind backdrop; the row is hidden
+    /// elsewhere (same pattern as <see cref="IsTaskbarProgressSupported"/>).</summary>
+    public bool IsMiniPlayerFrostSupported => OperatingSystem.IsWindows();
     /// <summary>Album cover sizing for the Albums/Favorites grids. Auto = classic five per
     /// row; otherwise the grids derive their column count from the target size. The album
     /// and favorites view models react through this view model's PropertyChanged.</summary>
@@ -1925,6 +1936,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = _settings.PlaybackBarShowShuffle;
             PlaybackBarShowRepeat = _settings.PlaybackBarShowRepeat;
             PlaybackBarShowFavorite = _settings.PlaybackBarShowFavorite;
+            PlaybackBarShowMiniPlayer = _settings.PlaybackBarShowMiniPlayer;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
@@ -1947,6 +1959,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
+            LyricsShowTranslations = _settings.LyricsShowTranslations;
+            LyricsShowRomanization = _settings.LyricsShowRomanization;
+            LyricsShowBackgroundVocals = _settings.LyricsShowBackgroundVocals;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             // Reflect the real OS autostart state (not an AppSettings copy) so the
@@ -1986,6 +2001,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             PlaybackBarTrackBoxOpacity = Math.Clamp(_settings.PlaybackBarTrackBoxOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
+            MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -2338,6 +2354,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowShuffle = PlaybackBarShowShuffle;
         _settings.PlaybackBarShowRepeat = PlaybackBarShowRepeat;
         _settings.PlaybackBarShowFavorite = PlaybackBarShowFavorite;
+        _settings.PlaybackBarShowMiniPlayer = PlaybackBarShowMiniPlayer;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFlowingStyle = LyricsFlowingStyle;
@@ -2354,6 +2371,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
+        _settings.LyricsShowTranslations = LyricsShowTranslations;
+        _settings.LyricsShowRomanization = LyricsShowRomanization;
+        _settings.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
@@ -2390,6 +2410,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.PlaybackBarTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
+        _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -2590,6 +2611,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowShuffle = PlaybackBarShowShuffle;
         _player.IslandShowRepeat = PlaybackBarShowRepeat;
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
+        _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _player.IslandTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
@@ -2611,6 +2633,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
+        _player.LyricsShowTranslations = LyricsShowTranslations;
+        _player.LyricsShowRomanization = LyricsShowRomanization;
+        _player.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -3298,6 +3323,13 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
+    partial void OnMiniPlayerFrostedBackgroundChanged(bool value)
+    {
+        // MiniPlayerWindow listens to this property and re-applies its transparency hint.
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnTaskbarProgressEnabledChanged(bool value)
     {
         // MainWindow listens to this property to paint/clear the taskbar overlay.
@@ -3652,6 +3684,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnPlaybackBarShowMiniPlayerChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnMiniPlayerStyleChanged(string value)
     {
         OnPropertyChanged(nameof(MiniPlayerStyleMode));
@@ -3809,6 +3847,24 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsJoinSplitWordsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsShowTranslationsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsShowRomanizationChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsShowBackgroundVocalsChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -5419,6 +5475,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowShuffle = defaultSettings.PlaybackBarShowShuffle;
             PlaybackBarShowRepeat = defaultSettings.PlaybackBarShowRepeat;
             PlaybackBarShowFavorite = defaultSettings.PlaybackBarShowFavorite;
+            PlaybackBarShowMiniPlayer = defaultSettings.PlaybackBarShowMiniPlayer;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
@@ -5433,12 +5490,16 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
+            LyricsShowTranslations = defaultSettings.LyricsShowTranslations;
+            LyricsShowRomanization = defaultSettings.LyricsShowRomanization;
+            LyricsShowBackgroundVocals = defaultSettings.LyricsShowBackgroundVocals;
             FfmpegPath = defaultSettings.FfmpegPath;
             ExternalOpenAppPath = defaultSettings.ExternalOpenAppPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
             PlaybackBarTrackBoxOpacity = defaultSettings.PlaybackBarTrackBoxOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
+            MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings

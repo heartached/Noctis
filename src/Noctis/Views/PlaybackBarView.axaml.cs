@@ -235,6 +235,7 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowShuffle) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowRepeat) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowFavorite) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowMiniPlayer) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -787,6 +788,13 @@ public partial class PlaybackBarView : UserControl
         }
     }
 
+    // The right cluster's mini player button (Settings → Player, on by default): the same toggle.
+    private void OnMiniPlayerButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
+            mainWindow.ToggleMiniPlayer();
+    }
+
     private void ShowVolumeBubble(bool show)
     {
         if (show) UpdateVolumeBubble();
@@ -951,13 +959,13 @@ public partial class PlaybackBarView : UserControl
     // 22 eq + 28 dots + 3 = 266, + 8 margin = 274; island chrome 24 padding + 3 border
     // = 27. Full layout therefore needs 533px; with the viewports narrowed to 110
     // ("bar-mid") it needs 483px; transport + 4 icons alone need 295px — 340 is the
-    // compact layout the lyrics page already uses. Repeat / favorite / the podcast
-    // extras add ExtraTransportButtonWidth each on top (see ExtraTransportWidth).
+    // compact layout the lyrics page already uses. Repeat / favorite / mini player / the
+    // podcast extras add ExtraTransportButtonWidth each on top (see ExtraTransportWidth).
     private const double IslandFullShapeMinWidth = 534; // below: viewports narrow to 110
     private const double IslandMidShapeMinWidth = 484;  // below: track info hidden (compact pill)
     private const double IslandMinUserWidth = IslandLyricsPageWidth;
-    // Each optional island button (repeat / favorite / speed / skip back / skip forward /
-    // sleep / shuffle) is a 34px button plus its row's 2px spacing.
+    // Each optional island button (repeat / favorite / mini player / speed / skip back /
+    // skip forward / sleep / shuffle) is a 34px button plus its row's 2px spacing.
     private const double ExtraTransportButtonWidth = 36;
 
     /// <summary>Width the stacked elapsed / remaining labels add to the track box when
@@ -1180,7 +1188,8 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowSleepTimer ? 1 : 0)
                         + (vm.IslandShowShuffle ? 1 : 0)
                         + (vm.IslandShowRepeat ? 1 : 0)
-                        + (vm.IslandShowFavorite ? 1 : 0);
+                        + (vm.IslandShowFavorite ? 1 : 0)
+                        + (vm.IslandShowMiniPlayer ? 1 : 0);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
         }
     }

@@ -105,6 +105,29 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.Equal(750, reloaded.PlayPauseFadeMs);
     }
 
+    /// <summary>GitHub #78: the lyric layer toggles ship on and survive a restart when off.</summary>
+    [AvaloniaFact]
+    public async Task LyricLayerToggles_DefaultOn_AndSurviveSaveAndReload()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        Assert.True(vm.LyricsShowTranslations);
+        Assert.True(vm.LyricsShowRomanization);
+        Assert.True(vm.LyricsShowBackgroundVocals);
+
+        vm.LyricsShowTranslations = false;
+        vm.LyricsShowRomanization = false;
+        vm.LyricsShowBackgroundVocals = false;
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.False(reloaded.LyricsShowTranslations);
+        Assert.False(reloaded.LyricsShowRomanization);
+        Assert.False(reloaded.LyricsShowBackgroundVocals);
+    }
+
     [AvaloniaFact]
     public async Task FlowingBackgroundPicker_OffersDriftWithoutTheBeat()
     {

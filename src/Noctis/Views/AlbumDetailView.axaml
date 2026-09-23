@@ -99,6 +99,17 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
 
+        <!-- Album artist credits: accent on the plain page. On a cover tint they take the
+             page text colour instead — with "Accent follows album art" the accent IS the
+             cover colour, so the name vanished into the tint (Discord NJZ 09-22). Style
+             setters, not local values: a local Foreground would beat both. -->
+        <Style Selector="TextBlock.artist-credit-text">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+        </Style>
+        <Style Selector="ItemsControl.on-tint TextBlock.artist-credit-text">
+            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+        </Style>
+
         <!-- Row background moves off the ListBoxItem onto the inner row-body Border so the
              hover box and the now-playing box are one element and cannot drift apart. The
              ListBoxItem keeps its hit-testing and layout role but paints nothing. Same
@@ -201,13 +212,17 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   IsHitTestVisible="{Binding !IsAlbumDescriptionOpen}">
-    <StackPanel Margin="0,0,0,115">
+    <StackPanel>
 
         <!-- Album block: header, tracks and footer facts sit on one flat panel of the
              cover's edge colour, the way iTunes' expanded album view did. Other Versions
              and More By below stay on the app background with theme text. The fill is
              its own layer (faded in from code-behind) so the fade never hides content. -->
-        <Grid>
+        <!-- MinHeight / bottom padding are set from code-behind (UpdateAlbumBlockLayout):
+             a tinted block always reaches the bottom of the viewport with the footer facts
+             pinned to its foot (Discord NJZ 09-22), and whichever block ends the page
+             keeps the floating player bar's clearance. -->
+        <Grid x:Name="AlbumBlock">
         <Border x:Name="AlbumTintBg"
                 Background="{Binding BackgroundBrush}"
                 IsHitTestVisible="False"
@@ -220,10 +235,13 @@
                 </Transitions>
             </Border.Transitions>
         </Border>
-        <StackPanel TextElement.Foreground="{Binding PageForegroundBrush}">
+        <DockPanel x:Name="AlbumBlockContent"
+                   LastChildFill="True"
+                   TextElement.Foreground="{Binding PageForegroundBrush}">
 
         <!-- Album header -->
-        <Grid ColumnDefinitions="Auto,*,Auto"
+        <Grid DockPanel.Dock="Top"
+              ColumnDefinitions="Auto,*,Auto"
               Margin="16,12,28,20">
 
             <!-- Large album art -->
@@ -287,7 +305,8 @@
                 </Grid>
                 <!-- Album artist: one link per credited artist ("Rihanna, Kanye West, Paul McCartney"
                      used to be a single button that always opened the first name). -->
-                <ItemsControl ItemsSource="{Binding ArtistTokens}" HorizontalAlignment="Left">
+                <ItemsControl ItemsSource="{Binding ArtistTokens}" HorizontalAlignment="Left"
+                              Classes.on-tint="{Binding HasTint}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal" />
@@ -304,18 +323,18 @@
                                         Cursor="Hand"
                                         Command="{Binding $parent[ItemsControl].((vm:AlbumDetailViewModel)DataContext).ViewArtistFromTrackCommand}"
                                         CommandParameter="{Binding Name}">
-                                    <TextBlock Text="{Binding Name}"
+                                    <TextBlock Classes="artist-credit-text"
+                                               Text="{Binding Name}"
                                                FontSize="20"
                                                LineHeight="24"
-                                               VerticalAlignment="Center"
-                                               Foreground="{DynamicResource AccentTextExactBrush}" />
+                                               VerticalAlignment="Center" />
                                 </Button>
-                                <TextBlock Text=", "
+                                <TextBlock Classes="artist-credit-text"
+                                           Text=", "
                                            FontSize="20"
                                            LineHeight="24"
                                            VerticalAlignment="Center"
                                            Opacity="0.6"
-                                           Foreground="{DynamicResource AccentTextExactBrush}"
                                            IsVisible="{Binding !IsLast}" />
                             </StackPanel>
                         </DataTemplate>
@@ -644,8 +663,34 @@
             </StackPanel>
         </Grid>
 
-        <!-- Track list + related sections + album footer (all scroll with the header above) -->
-        <StackPanel Margin="10,0,16,0">
+        <!-- Album footer: release date, track count + duration, copyright (Apple Music style).
+             Docked to the block's foot, so a tinted block stretched to the viewport carries
+             the facts at the bottom of the colour instead of mid-page. The bottom margin is
+             the coloured panel's breathing room under the facts. -->
+        <StackPanel DockPanel.Dock="Bottom"
+                    Margin="10,24,16,28" Spacing="3"
+                    TextElement.Foreground="{Binding PageForegroundBrush}">
+            <TextBlock Text="{Binding Album.ReleaseDateFormatted}"
+                       FontSize="13"
+                       Opacity="0.45"
+                       IsVisible="{Binding Album.HasReleaseDate}" />
+            <TextBlock FontSize="13" Opacity="0.45">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}{0} songs, {1}">
+                        <Binding Path="Album.TrackCount" />
+                        <Binding Path="Album.TotalDurationFormatted" />
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+            <TextBlock Text="{Binding Album.Copyright}"
+                       FontSize="13"
+                       Opacity="0.45"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Album.HasCopyright}" />
+        </StackPanel>
+
+        <!-- Track list (scrolls with the header above; fills the block between header and footer) -->
+        <StackPanel Margin="10,0,16,0" VerticalAlignment="Top">
         <ItemsControl ItemsSource="{Binding DiscGroups}" x:Name="DiscGroupList">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:DiscGroup">
@@ -804,36 +849,20 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-
-        <!-- Album footer: release date, track count + duration, copyright (Apple Music style).
-             The bottom margin is the coloured panel's breathing room under the facts. -->
-        <StackPanel Margin="0,24,0,28" Spacing="3"
-                    TextElement.Foreground="{Binding PageForegroundBrush}">
-            <TextBlock Text="{Binding Album.ReleaseDateFormatted}"
-                       FontSize="13"
-                       Opacity="0.45"
-                       IsVisible="{Binding Album.HasReleaseDate}" />
-            <TextBlock FontSize="13" Opacity="0.45">
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{0} songs, {1}">
-                        <Binding Path="Album.TrackCount" />
-                        <Binding Path="Album.TotalDurationFormatted" />
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-            <TextBlock Text="{Binding Album.Copyright}"
-                       FontSize="13"
-                       Opacity="0.45"
-                       TextWrapping="Wrap"
-                       IsVisible="{Binding Album.HasCopyright}" />
         </StackPanel>
-
-        </StackPanel>
-        </StackPanel>
+        </DockPanel>
         </Grid>
 
         <!-- Related sections: app background, theme foreground (not the tint's). -->
-        <StackPanel x:Name="RelatedSections" Margin="10,0,16,0">
+        <!-- Carries the player-bar clearance itself when shown; hidden when empty so an
+             album with no related rows ends on its (padded) coloured block. -->
+        <StackPanel x:Name="RelatedSections" Margin="10,0,16,115">
+            <StackPanel.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                    <Binding Path="HasOtherVersions" />
+                    <Binding Path="HasMoreByArtist" />
+                </MultiBinding>
+            </StackPanel.IsVisible>
 
         <!-- Other Versions: same artist, normalized base title (Deluxe/Explicit/Clean/Remaster/etc.) -->
         <StackPanel Margin="0,28,0,0" Spacing="10"

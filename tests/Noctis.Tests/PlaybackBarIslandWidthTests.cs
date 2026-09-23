@@ -19,6 +19,9 @@ public class PlaybackBarIslandWidthTests
 {
     private const double IslandBaseWidth = 536; // 626 with the long track info, 590 before the favorite heart
     private const double IslandLyricsPageWidth = 340;
+    // Every optional island button adds one 34px button + 2px spacing; the mini player
+    // button (#80) is one of them and is on by default.
+    private const double ExtraButtonWidth = 36;
 
     private static PlayerViewModel MakePlayer() => new(
         new FakeAudioPlayer(), new FakeLibraryService(),
@@ -42,7 +45,7 @@ public class PlaybackBarIslandWidthTests
 
             // Read before any render tick: a running transition would still be at (or
             // near) the XAML base width here and glide down over the next 200ms.
-            Assert.Equal(IslandLyricsPageWidth, Island(bar).Width);
+            Assert.Equal(IslandLyricsPageWidth + ExtraButtonWidth, Island(bar).Width);
         }
         finally
         {
@@ -64,7 +67,7 @@ public class PlaybackBarIslandWidthTests
             win.Show();
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(IslandBaseWidth, Island(bar).Width);
+            Assert.Equal(IslandBaseWidth + ExtraButtonWidth, Island(bar).Width);
         }
         finally
         {
@@ -89,7 +92,7 @@ public class PlaybackBarIslandWidthTests
             bar.DataContext = player;
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(IslandLyricsPageWidth, Island(bar).Width);
+            Assert.Equal(IslandLyricsPageWidth + ExtraButtonWidth, Island(bar).Width);
         }
         finally
         {
@@ -143,7 +146,7 @@ public class PlaybackBarIslandWidthTests
             player.PlaybackBarIslandWidth = IslandBaseWidth;
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(IslandBaseWidth, Island(bar).Width);
+            Assert.Equal(IslandBaseWidth + ExtraButtonWidth, Island(bar).Width);
             Assert.True(trackInfo.IsVisible);
         }
         finally
@@ -207,7 +210,7 @@ public class PlaybackBarIslandWidthTests
 
             var heart = bar.FindControl<Button>("FavoriteButton")!;
             Assert.False(heart.IsVisible);
-            Assert.Equal(IslandBaseWidth, Island(bar).Width);
+            Assert.Equal(IslandBaseWidth + ExtraButtonWidth, Island(bar).Width);
 
             // Each extra widens the stock pill by one 34px button + 2px spacing,
             // exactly like shuffle / sleep / speed already do.
@@ -216,7 +219,50 @@ public class PlaybackBarIslandWidthTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.True(heart.IsVisible);
-            Assert.Equal(IslandBaseWidth + 2 * 36, Island(bar).Width);
+            Assert.Equal(IslandBaseWidth + 3 * ExtraButtonWidth, Island(bar).Width);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>GitHub #80: the mini player button is on by default and widens the pill like
+    /// any other extra; Settings → Player can take it off, which hands the 36px back. On the
+    /// lyrics page (where the album-art toggle is hidden with the track box) the whole row
+    /// still fits inside the compact pill.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MiniPlayerButton_ShownByDefault_AndItsSettingRemovesIt(bool lyricsPage)
+    {
+        var player = MakePlayer();
+        player.IsLyricsPageActive = lyricsPage;
+
+        var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = lyricsPage };
+        var win = new Window { Width = 900, Height = 200, Content = bar };
+        try
+        {
+            win.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var stock = lyricsPage ? IslandLyricsPageWidth : IslandBaseWidth;
+            var button = bar.FindControl<Button>("MiniPlayerButton")!;
+            Assert.True(button.IsEffectivelyVisible);
+            Assert.Equal(stock + ExtraButtonWidth, Island(bar).Width);
+
+            // The content row (transport … volume) fits inside the island's chrome (12px
+            // padding each side + the 1.5px ring); wider would overflow the rounded ends.
+            var row = Assert.IsType<Grid>(button.Parent!.Parent);
+            var inner = Island(bar).Width - 24 - 3;
+            Assert.True(row.DesiredSize.Width <= inner + 0.5,
+                $"row needs {row.DesiredSize.Width:F1}px, the island has {inner:F1}");
+
+            player.IslandShowMiniPlayer = false;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.False(button.IsVisible);
+            Assert.Equal(stock, Island(bar).Width);
         }
         finally
         {

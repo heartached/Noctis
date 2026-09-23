@@ -152,7 +152,7 @@ public class MobileLyricsViewModelTests : IDisposable
         await vm.InitializeAsync();
         vm.ShowTranslation = false;
         await vm.PendingSave;       // never read settings.json while a save may be mid-write
-        Assert.False((await persistence.LoadSettingsAsync()).LyricsShowTranslation);
+        Assert.False((await persistence.LoadSettingsAsync()).LyricsShowTranslations);
 
         var (again, _, _, _, _) = Make();
         await again.InitializeAsync();

@@ -42,6 +42,13 @@ public interface IMetadataService
     byte[]? ExtractAlbumArt(string filePath);
 
     /// <summary>
+    /// The file's own embedded cover only (no folder fallback) — what per-track covers
+    /// (<see cref="TrackArtwork"/>) compare. Null when it has none or embedded artwork is
+    /// off in Settings.
+    /// </summary>
+    byte[]? ExtractEmbeddedArt(string filePath) => null;
+
+    /// <summary>
     /// Writes metadata tags back to the audio file.
     /// </summary>
     bool WriteTrackMetadata(Track track);

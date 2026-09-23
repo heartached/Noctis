@@ -4,8 +4,9 @@ using Noctis.Helpers;
 namespace Noctis.Services;
 
 /// <summary>
-/// macOS/Linux counterpart to <see cref="WasapiSilenceKeepAlive"/>, OFF by
-/// default (opt-in via NOCTIS_KEEPALIVE=1 — see TryStart for why). Holds a
+/// macOS/Linux counterpart to <see cref="WasapiSilenceKeepAlive"/>, ON by
+/// default only in the Linux AppImage; elsewhere opt-in via NOCTIS_KEEPALIVE=1
+/// (see <see cref="ShouldStartKeepAlive"/> for why). Holds a
 /// private <see cref="MediaPlayer"/> looping a generated silent WAV so the
 /// native audio device endpoint stays open. The player is deliberately NOT
 /// muted or volume-zeroed: the source is silent anyway, and on PulseAudio /
@@ -40,20 +41,11 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     public static VlcSilenceKeepAlive? TryStart(LibVLC libVlc)
     {
         if (OperatingSystem.IsWindows()) return null; // Windows uses WasapiSilenceKeepAlive
-        // Opt-in only (NOCTIS_KEEPALIVE=1) on BOTH macOS and Linux.
-        // macOS: running this second looping aout stream alongside real playback
-        // corrupts audible output on CoreAudio — repeating channel-alternating
-        // distortion + dropouts (Apple Silicon, VLC.app libvlc, first
-        // real-hardware report 2026-07-16).
-        // Linux: the endpoint is a sound server (PulseAudio/PipeWire) that mixes
-        // clients and doesn't cold-drop first buffers the way WASAPI does, so the
-        // benefit is unproven there too — while the stream has caused real damage
-        // twice: older builds poisoned the app's stream-restore entry (playback
-        // started muted), and on system-libvlc installs with an incomplete plugin
-        // set the looped silence.wav can't even be opened, spamming
-        // "VLC is unable to open the MRL '...silence.wav'" at every launch
-        // (issue #26, Arch's split VLC packaging).
-        if (Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE") != "1") return null;
+        if (!ShouldStartKeepAlive(
+                OperatingSystem.IsLinux(),
+                Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE"),
+                Environment.GetEnvironmentVariable("NOCTIS_BUNDLED_VLC")))
+            return null;
         try { return new VlcSilenceKeepAlive(libVlc); }
         catch (Exception ex)
         {
@@ -62,6 +54,28 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
             return null;
         }
     }
+
+    /// <summary>
+    /// Whether the silent loop runs (non-Windows). NOCTIS_KEEPALIVE=1 forces it on,
+    /// =0 forces it off; otherwise it runs only in the Linux AppImage
+    /// (NOCTIS_BUNDLED_VLC=1, exported by its AppRun).
+    /// Linux AppImage: on PipeWire the audio cut out twice (~500 ms) on the first
+    /// play after startup and again after idle, and NOCTIS_KEEPALIVE=1 fixed both
+    /// (GitHub #70). The two old Linux blockers don't apply there: the
+    /// stream-restore poisoning (playback started muted) was fixed by never writing
+    /// Mute/Volume on this player (see StartSilence), and the bundle ships the full
+    /// plugin set, so silence.wav always opens.
+    /// Linux system libvlc: stays opt-in — with an incomplete plugin set the looped
+    /// silence.wav can't even be opened, spamming "VLC is unable to open the MRL
+    /// '...silence.wav'" at every launch (issue #26, Arch's split VLC packaging).
+    /// macOS: stays opt-in — running this second looping aout stream alongside real
+    /// playback corrupts audible output on CoreAudio — repeating channel-alternating
+    /// distortion + dropouts (Apple Silicon, VLC.app libvlc, first real-hardware
+    /// report 2026-07-16).
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static bool ShouldStartKeepAlive(bool isLinux, string? keepAliveEnv, string? bundledVlcEnv)
+        => keepAliveEnv == "1" || (keepAliveEnv != "0" && isLinux && bundledVlcEnv == "1");
 
     private VlcSilenceKeepAlive(LibVLC libVlc)
     {

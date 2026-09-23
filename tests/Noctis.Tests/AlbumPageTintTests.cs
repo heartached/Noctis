@@ -201,6 +201,86 @@ public class AlbumPageTintTests
         finally { File.Delete(path); }
     }
 
+    // ── Edge picker (09-22 accuracy rework) ──
+
+    private static byte[] Solid(int size, byte r, byte g, byte b)
+    {
+        var rgb = new byte[size * size * 3];
+        for (int i = 0; i < size * size; i++) { rgb[i * 3] = r; rgb[i * 3 + 1] = g; rgb[i * 3 + 2] = b; }
+        return rgb;
+    }
+
+    private static void Paint(byte[] rgb, int size, int x0, int y0, int x1, int y1, byte r, byte g, byte b)
+    {
+        for (int y = y0; y < y1; y++)
+        for (int x = x0; x < x1; x++)
+        {
+            var i = (y * size + x) * 3;
+            rgb[i] = r; rgb[i + 1] = g; rgb[i + 2] = b;
+        }
+    }
+
+    /// <summary>A mostly black-framed cover with one coloured strip touching an edge: the
+    /// old picker ALWAYS skipped near-black and tinted the page with the strip.</summary>
+    [Fact]
+    public void EdgePicker_DominantBlackBorder_StaysBlack()
+    {
+        var rgb = Solid(64, 0x05, 0x05, 0x05);
+        Paint(rgb, 64, 0, 0, 64, 2, 0xE0, 0x20, 0x20); // thin red strip along the top edge
+        var c = DominantColorExtractor.PickEdgeBackgroundColor(rgb, 64, 64)!.Value;
+        Assert.True(c.R < 0x20 && c.G < 0x20 && c.B < 0x20, $"got {c}");
+    }
+
+    /// <summary>A noisy / gradient edge must vote as one colour and beat a smaller flat patch;
+    /// in 4-bit RGB buckets its votes split and the flat patch won.</summary>
+    [Fact]
+    public void EdgePicker_NoisyEdge_BeatsSmallerFlatPatch()
+    {
+        var rgb = Solid(64, 0x20, 0x40, 0xA0);
+        var rnd = new Random(7);
+        for (int i = 0; i < 64 * 64; i++)
+        {
+            var j = rnd.Next(-20, 21);
+            rgb[i * 3] = (byte)(0x20 + j / 2); rgb[i * 3 + 1] = (byte)(0x40 + j); rgb[i * 3 + 2] = (byte)(0xA0 + j);
+        }
+        Paint(rgb, 64, 0, 0, 64, 5, 0x30, 0xC0, 0x40); // flat green band along the top
+        var c = DominantColorExtractor.PickEdgeBackgroundColor(rgb, 64, 64)!.Value;
+        Assert.True(c.B > c.G && c.B > c.R, $"expected blue, got {c}");
+    }
+
+    /// <summary>Only the edge band votes: a cover whose centre is a different colour keeps
+    /// the border colour.</summary>
+    [Fact]
+    public void EdgePicker_IgnoresTheCentre()
+    {
+        var rgb = Solid(64, 0x10, 0x60, 0x30);
+        Paint(rgb, 64, 8, 8, 56, 56, 0xF0, 0xF0, 0x10);
+        var c = DominantColorExtractor.PickEdgeBackgroundColor(rgb, 64, 64)!.Value;
+        Assert.True(c.G > c.R && c.G > c.B, $"expected green, got {c}");
+    }
+
+    /// <summary>Neon covers keep their hue but not full-page highlighter chroma.</summary>
+    [Fact]
+    public void EdgePicker_CapsNeonChroma_KeepsHue()
+    {
+        var rgb = Solid(64, 0xFF, 0x00, 0xFF);
+        var c = DominantColorExtractor.PickEdgeBackgroundColor(rgb, 64, 64)!.Value;
+        var (_, a, b) = DominantColorExtractor.ToOkLab(c.R, c.G, c.B);
+        Assert.InRange(Math.Sqrt(a * a + b * b), 0.10, DominantColorExtractor.EdgeMaxChroma + 0.01);
+        Assert.True(c.R > c.G && c.B > c.G, $"expected magenta, got {c}");
+    }
+
+    /// <summary>Calm colours pass through untouched (within rounding).</summary>
+    [Fact]
+    public void EdgePicker_CalmColour_PassesThrough()
+    {
+        var rgb = Solid(64, 0x2A, 0x1B, 0x14);
+        var c = DominantColorExtractor.PickEdgeBackgroundColor(rgb, 64, 64)!.Value;
+        Assert.InRange(c.R, 0x28, 0x2C);
+        Assert.InRange(c.G, 0x19, 0x1D);
+        Assert.InRange(c.B, 0x12, 0x16);
+    }
+
     [Fact]
     public void Setting_DefaultsOff()
         => Assert.False(new AppSettings().AlbumPageTintEnabled);

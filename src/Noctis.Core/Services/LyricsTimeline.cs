@@ -13,8 +13,9 @@ public readonly record struct LyricsTimelineStep(bool LineChanged, int ActiveInd
 /// sample (O(1) amortised, rewinds on seek), flips <see cref="LyricLine.IsActive"/>
 /// on the outgoing/incoming lines, and drives the word layers of the active line
 /// (<see cref="LyricLine.CurrentWordIndex"/>, <see cref="LyricLine.BackgroundWordIndex"/>,
-/// <see cref="WordTiming.Progress"/>). Lifted verbatim from the desktop LyricsViewModel
-/// so the Android lyrics page and the desktop page share one clock.
+/// <see cref="LyricLine.TransliterationWordIndex"/>, <see cref="WordTiming.Progress"/>).
+/// Lifted verbatim from the desktop LyricsViewModel so the Android lyrics page and the
+/// desktop page share one clock.
 /// The caller owns the line list and feeds the audible position (engine position
 /// minus output latency, smoothed by <see cref="LyricsPlaybackClock"/>).
 /// </summary>
@@ -85,7 +86,7 @@ public sealed class LyricsTimeline
         _lastPosition = position;
 
         TimeSpan AdjustedFor(LyricLine l) =>
-            position + (l.HasWords || l.HasBackgroundWords ? _wordLookahead : _lineLookahead);
+            position + (l.HasWords || l.HasBackgroundWords || l.HasTransliterationWords ? _wordLookahead : _lineLookahead);
 
         // Clamp cursor into range (collection may have shrunk).
         if (_cursor >= _lines.Count) _cursor = _lines.Count - 1;
@@ -156,6 +157,8 @@ public sealed class LyricsTimeline
                     ActiveLine.CurrentWordIndex = ActiveLine.Words!.Count;
                 if (ActiveLine.HasBackgroundWords)
                     ActiveLine.BackgroundWordIndex = ActiveLine.BackgroundWords!.Count;
+                if (ActiveLine.HasTransliterationWords)
+                    ActiveLine.TransliterationWordIndex = ActiveLine.TransliterationWords!.Count;
             }
 
             // Activate new line
@@ -183,7 +186,7 @@ public sealed class LyricsTimeline
     private void UpdateActiveWord(TimeSpan position)
     {
         var line = ActiveLine;
-        if (line == null || (!line.HasWords && !line.HasBackgroundWords)) return;
+        if (line == null || (!line.HasWords && !line.HasBackgroundWords && !line.HasTransliterationWords)) return;
 
         var adjusted = position + _wordLookahead;
 
@@ -195,6 +198,11 @@ public sealed class LyricsTimeline
         if (line.HasBackgroundWords)
             DriveWordLayer(line.BackgroundWords!, adjusted, line.BackgroundEndTimestamp,
                 line.BackgroundWordIndex, i => line.BackgroundWordIndex = i);
+
+        // Word-timed romanization (TTML transliteration) — its own clock, like the adlibs.
+        if (line.HasTransliterationWords)
+            DriveWordLayer(line.TransliterationWords!, adjusted, line.TransliterationEndTimestamp,
+                line.TransliterationWordIndex, i => line.TransliterationWordIndex = i);
     }
 
     /// <summary>Advances one word layer's current-word index and sweeps the active word.</summary>

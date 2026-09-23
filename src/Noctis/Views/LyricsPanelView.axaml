@@ -422,7 +422,6 @@
                                 <ItemsControl ItemsSource="{Binding BackgroundWords}"
                                               Classes="word-layer bg-vocals"
                                               Classes.active="{Binding IsActive}"
-                                              IsVisible="{Binding ShowBackgroundWords}"
                                               Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                               HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                               ClipToBounds="False"
@@ -430,6 +429,12 @@
                                               FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                               MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                               ItemTemplate="{StaticResource WordCellTemplate}">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                            <Binding Path="ShowBackgroundWords"/>
+                                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).ShowBackgroundVocals"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
                                     <ItemsControl.Transitions>
                                         <Transitions>
                                             <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
@@ -441,6 +446,82 @@
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
+
+                                <!-- Romanization, then translation (Apple TTML layers, issue #78),
+                                     mirroring the lyrics page. -->
+                                <ItemsControl ItemsSource="{Binding TransliterationWords}"
+                                              Classes="word-layer romanization"
+                                              Classes.active="{Binding IsActive}"
+                                              Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                              HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                              ClipToBounds="False"
+                                              Margin="0,4,0,0"
+                                              FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                              MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                              ItemTemplate="{StaticResource WordCellTemplate}">
+                                    <ItemsControl.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                            <Binding Path="ShowTransliterationWords"/>
+                                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).ShowRomanization"/>
+                                        </MultiBinding>
+                                    </ItemsControl.IsVisible>
+                                    <ItemsControl.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                        </Transitions>
+                                    </ItemsControl.Transitions>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding Transliteration}"
+                                           Classes="romanization-text"
+                                           FontWeight="Bold"
+                                           Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                           Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                           HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                           TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                           Margin="0,4,0,0"
+                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                            <Binding Path="ShowTransliterationText"/>
+                                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).ShowRomanization"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                    <TextBlock.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                        </Transitions>
+                                    </TextBlock.Transitions>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Translation}"
+                                           Classes="translation-text"
+                                           FontWeight="Bold"
+                                           Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                           Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                           HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                           TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                           Margin="0,4,0,0"
+                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                            <Binding Path="ShowTranslation"/>
+                                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).ShowTranslations"/>
+                                        </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                    <TextBlock.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                        </Transitions>
+                                    </TextBlock.Transitions>
+                                </TextBlock>
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

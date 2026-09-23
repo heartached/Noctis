@@ -18,6 +18,8 @@ public class PlayerIslandSettingsTests
         Assert.False(s.PlaybackBarShowFavorite);
         // Elapsed / remaining time in the track box (Discord, Luwi 09-21) is opt-in too.
         Assert.False(s.PlaybackBarShowTime);
+        // The mini player button (#80) is the one extra that starts on, for discoverability.
+        Assert.True(s.PlaybackBarShowMiniPlayer);
         Assert.Equal(15, s.PlaybackBarSkipSeconds);
         Assert.Equal(0.07, s.PlaybackBarTrackBoxOpacity);
     }

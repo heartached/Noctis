@@ -143,6 +143,51 @@ public class LyricsTimelineTests
         Assert.True(next.IsActive);
     }
 
+    // ── Word-timed romanization (TTML transliteration, GitHub #78) ──
+
+    private static LyricLine RomanizedLine(double startSec, params (string tok, double s, double e)[] romaji)
+    {
+        var line = Line(startSec, "main");
+        line.TransliterationEndTimestamp = TimeSpan.FromSeconds(romaji[^1].e);
+        line.TransliterationWords = romaji.Select(w => new WordTiming
+        {
+            Text = w.tok, Start = TimeSpan.FromSeconds(w.s), End = TimeSpan.FromSeconds(w.e)
+        }).ToList();
+        return line;
+    }
+
+    [Fact]
+    public void Transliteration_index_follows_the_clock_and_parks_past_the_end_on_leaving()
+    {
+        var line = RomanizedLine(10, ("fu", 10, 11), ("ri", 11, 12));
+        var next = Line(20, "next");
+        var t = Make(line, next);
+
+        t.Update(TimeSpan.FromSeconds(11.5 - 0.08));
+        Assert.Equal(1, line.TransliterationWordIndex);
+        Assert.Equal(0.5, line.TransliterationWords![1].Progress, 3);
+        Assert.True(line.TransliterationWords[0].IsPast);
+        Assert.True(line.TransliterationWords[1].IsCurrent);
+
+        t.Update(TimeSpan.FromSeconds(21));
+
+        Assert.False(line.IsActive);
+        Assert.Equal(2, line.TransliterationWordIndex);            // "fully swept" sentinel
+        Assert.All(line.TransliterationWords, w => Assert.True(w.IsPast));
+    }
+
+    [Fact]
+    public void A_line_with_only_romanization_words_activates_on_the_word_lookahead()
+    {
+        var romanized = RomanizedLine(20, ("fu", 20, 21));
+        var t = Make(Line(0, "intro"), romanized);
+
+        t.Update(TimeSpan.FromMilliseconds(20000 - 250));
+        Assert.False(romanized.IsActive);     // the 280 ms line lead would have reached it
+        t.Update(TimeSpan.FromMilliseconds(20000 - 70));
+        Assert.True(romanized.IsActive);
+    }
+
     [Fact]
     public void Reset_forgets_everything()
     {

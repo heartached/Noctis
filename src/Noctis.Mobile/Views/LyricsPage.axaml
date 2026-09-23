@@ -111,12 +111,12 @@
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
-                                <TextBlock Text="{Binding Romanization}" TextWrapping="Wrap" Opacity="0.6"
+                                <TextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6"
                                            Foreground="{StaticResource LyricsFg}"
                                            FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
                                     <TextBlock.IsVisible>
                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                            <Binding Path="HasRomanization" />
+                                            <Binding Path="HasTransliteration" />
                                             <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowRomanization" />
                                         </MultiBinding>
                                     </TextBlock.IsVisible>

@@ -497,19 +497,15 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
-    /// Apple-Music-style background extraction: samples the outer 1-pixel ring of a
-    /// downscaled cover, picks the most common color via a coarse 6-bits-per-channel
-    /// histogram, and returns the weighted average of the winning bucket. Preserves
-    /// the cover's natural lightness — no clamping. Falls back to the cover's
-    /// dominant color if the edge ring is uninformative (e.g., near-uniform black or
-    /// white border).
+    /// Apple-Music-style background extraction from a downscaled cover's edge band; see
+    /// <see cref="PickEdgeBackgroundColor"/> for how the colour is chosen.
     /// </summary>
     public static Color ExtractEdgeBackgroundColor(Bitmap? bitmap)
     {
         if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
             return FallbackColor;
 
-        const int sampleSize = 50;
+        const int sampleSize = EdgeSampleSize;
 
         try
         {
@@ -535,73 +531,166 @@ public static class DominantColorExtractor
             var pixels = new byte[bufferSize];
             Marshal.Copy(fb.Address, pixels, 0, bufferSize);
 
-            // Histogram: 4 bits per channel = 4096 buckets. Keys are packed RRRRGGGGBBBB.
-            var counts = new Dictionary<int, int>(256);
-            var sums = new Dictionary<int, (long R, long G, long B)>(256);
-
-            void Sample(int x, int y)
-            {
-                int offset = y * rowBytes + x * 4;
-                byte b = pixels[offset];
-                byte g = pixels[offset + 1];
-                byte r = pixels[offset + 2];
-                int key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
-                counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
-                (long R, long G, long B) s = sums.TryGetValue(key, out var v) ? v : (0L, 0L, 0L);
-                sums[key] = (s.R + r, s.G + g, s.B + b);
-            }
-
-            // Outer 1-pixel ring (top row, bottom row, left column, right column).
+            var rgb = new byte[width * height * 3];
+            for (int y = 0; y < height; y++)
             for (int x = 0; x < width; x++)
             {
-                Sample(x, 0);
-                Sample(x, height - 1);
+                int src = y * rowBytes + x * 4, dst = (y * width + x) * 3;
+                rgb[dst] = pixels[src + 2];
+                rgb[dst + 1] = pixels[src + 1];
+                rgb[dst + 2] = pixels[src];
             }
-            for (int y = 1; y < height - 1; y++)
-            {
-                Sample(0, y);
-                Sample(width - 1, y);
-            }
-
-            if (counts.Count == 0)
-                return FallbackColor;
-
-            // Prefer non-noise buckets (luminance 6..250). If only black/white remain,
-            // accept them — that genuinely is the cover's color.
-            int bestKey = -1;
-            int bestCount = -1;
-            int bestKeyAny = -1;
-            int bestCountAny = -1;
-            foreach (var kv in counts)
-            {
-                var (sr, sg, sb) = sums[kv.Key];
-                int n = kv.Value;
-                int ar = (int)(sr / n), ag = (int)(sg / n), ab = (int)(sb / n);
-                int luma = (ar * 299 + ag * 587 + ab * 114) / 1000;
-
-                if (n > bestCountAny) { bestCountAny = n; bestKeyAny = kv.Key; }
-                if (luma < 6 || luma > 250) continue;
-                if (n > bestCount) { bestCount = n; bestKey = kv.Key; }
-            }
-
-            int chosen = bestKey >= 0 ? bestKey : bestKeyAny;
-            var (tr, tg, tb) = sums[chosen];
-            int total = counts[chosen];
-            var rawColor = Color.FromRgb(
-                (byte)(tr / total),
-                (byte)(tg / total),
-                (byte)(tb / total));
-
-            // Gentle saturation floor so genuinely grey covers stay grey, but covers
-            // with any hue at all read as tinted rather than washed out.
-            var (h, s, l) = RgbToHsl(rawColor.R, rawColor.G, rawColor.B);
-            if (s > 0.05 && s < 0.10) s = 0.10;
-            return HslToColor(h, s, l);
+            return PickEdgeBackgroundColor(rgb, width, height) ?? FallbackColor;
         }
         catch
         {
             return FallbackColor;
         }
+    }
+
+    /// <summary>Edge extraction downscale (both paths).</summary>
+    private const int EdgeSampleSize = 64;
+
+    /// <summary>OKLab distance under which two colour bins count as the same background.
+    /// ~0.06 merges a gradient's neighbouring shades and JPEG noise, but keeps e.g. a pink
+    /// and a red border apart.</summary>
+    private const double EdgeClusterMergeDistance = 0.06;
+
+    /// <summary>Chroma cap (OKLCH) for the page fill: neon covers are toned down to a
+    /// deeper version of the same hue instead of a full-page highlighter.</summary>
+    internal const double EdgeMaxChroma = 0.15;
+
+    private sealed class EdgeCluster
+    {
+        public double W, L, A, B;
+        public double MeanL => L / W;
+        public double MeanA => A / W;
+        public double MeanB => B / W;
+
+        /// <summary>Near-black or near-white with (almost) no colour.</summary>
+        public bool IsNeutralExtreme
+        {
+            get
+            {
+                var chroma = Math.Sqrt(MeanA * MeanA + MeanB * MeanB);
+                return chroma < 0.035 && (MeanL < 0.18 || MeanL > 0.95);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The album-page background colour from a small downscaled cover (row-major RGB, 3
+    /// bytes per pixel). Replaces the old "1-px outer ring, 4-bit RGB histogram" pick,
+    /// which was often wrong (user report 09-22):
+    /// <list type="bullet">
+    /// <item>a band (outer ~10%) is sampled instead of one pixel ring, weighted toward the
+    /// edge, so thin frame lines and resize fringes no longer decide the colour;</item>
+    /// <item>pixels are grouped in OKLab (perceptual) and neighbouring bins are merged, so a
+    /// gradient or noisy edge votes as ONE colour instead of splitting across dozens of
+    /// RGB buckets and losing to a small flat patch;</item>
+    /// <item>near-black / near-white only lose to a real colour when they hold less than
+    /// ~45% of the band — the old code skipped them always, so a black-bordered cover was
+    /// tinted by whatever stray colour touched its edge;</item>
+    /// <item>chroma is capped (<see cref="EdgeMaxChroma"/>) so neon covers don't paint the
+    /// whole page in highlighter; hue and lightness are kept.</item>
+    /// </list>
+    /// Null when there are no pixels.
+    /// </summary>
+    internal static Color? PickEdgeBackgroundColor(byte[] rgb, int width, int height)
+    {
+        if (width <= 0 || height <= 0 || rgb.Length < width * height * 3) return null;
+
+        var depth = Math.Max(2, Math.Min(width, height) / 10);
+        var bins = new Dictionary<int, EdgeCluster>();
+        double total = 0;
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            var dist = Math.Min(Math.Min(x, y), Math.Min(width - 1 - x, height - 1 - y));
+            if (dist >= depth) continue;
+            var weight = 1.0 - 0.5 * dist / depth;
+            var i = (y * width + x) * 3;
+            var (l, a, b) = ToOkLab(rgb[i], rgb[i + 1], rgb[i + 2]);
+            var key = ((int)(l * 32) << 16) | ((int)((a + 0.5) * 40) << 8) | (int)((b + 0.5) * 40);
+            if (!bins.TryGetValue(key, out var bin)) bins[key] = bin = new EdgeCluster();
+            bin.W += weight; bin.L += l * weight; bin.A += a * weight; bin.B += b * weight;
+            total += weight;
+        }
+        if (bins.Count == 0 || total <= 0) return null;
+
+        // Greedy merge, heaviest bins first: each bin joins the first cluster whose mean is
+        // within the merge distance, else seeds a new one.
+        var clusters = new List<EdgeCluster>();
+        foreach (var bin in bins.Values.OrderByDescending(v => v.W))
+        {
+            EdgeCluster? home = null;
+            foreach (var c in clusters)
+            {
+                double dl = c.MeanL - bin.MeanL, da = c.MeanA - bin.MeanA, db = c.MeanB - bin.MeanB;
+                if (dl * dl + da * da + db * db < EdgeClusterMergeDistance * EdgeClusterMergeDistance)
+                {
+                    home = c;
+                    break;
+                }
+            }
+            if (home == null) clusters.Add(home = new EdgeCluster());
+            home.W += bin.W; home.L += bin.L; home.A += bin.A; home.B += bin.B;
+        }
+        clusters.Sort((p, q) => q.W.CompareTo(p.W));
+
+        var chosen = clusters[0];
+        if (chosen.IsNeutralExtreme && chosen.W / total < 0.45)
+        {
+            var coloured = clusters.FirstOrDefault(c => !c.IsNeutralExtreme && c.W / total >= 0.12);
+            if (coloured != null) chosen = coloured;
+        }
+
+        double okL = chosen.MeanL, okA = chosen.MeanA, okB = chosen.MeanB;
+        var chroma = Math.Sqrt(okA * okA + okB * okB);
+        if (chroma > EdgeMaxChroma)
+        {
+            var k = EdgeMaxChroma / chroma;
+            okA *= k;
+            okB *= k;
+        }
+        return FromOkLab(okL, okA, okB);
+    }
+
+    private static double SrgbToLinear(byte c)
+    {
+        var v = c / 255.0;
+        return v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+    }
+
+    private static byte LinearToSrgb(double v)
+    {
+        v = Math.Clamp(v, 0, 1);
+        var s = v <= 0.0031308 ? v * 12.92 : 1.055 * Math.Pow(v, 1 / 2.4) - 0.055;
+        return (byte)Math.Round(Math.Clamp(s, 0, 1) * 255);
+    }
+
+    /// <summary>sRGB → OKLab (Björn Ottosson's reference matrices).</summary>
+    internal static (double L, double A, double B) ToOkLab(byte r, byte g, byte b)
+    {
+        double lr = SrgbToLinear(r), lg = SrgbToLinear(g), lb = SrgbToLinear(b);
+        var l = Math.Cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+        var m = Math.Cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+        var s = Math.Cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+        return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
+    }
+
+    /// <summary>OKLab → sRGB, clamped into gamut.</summary>
+    internal static Color FromOkLab(double okL, double okA, double okB)
+    {
+        var l = Math.Pow(okL + 0.3963377774 * okA + 0.2158037573 * okB, 3);
+        var m = Math.Pow(okL - 0.1055613458 * okA - 0.0638541728 * okB, 3);
+        var s = Math.Pow(okL - 0.0894841775 * okA - 1.2914855480 * okB, 3);
+        return Color.FromRgb(
+            LinearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+            LinearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+            LinearToSrgb(-0.0041960863 * l - 0.7034186948 * m + 1.7076147010 * s));
     }
 
     /// <summary>
@@ -633,9 +722,8 @@ public static class DominantColorExtractor
     /// Path-based twin of <see cref="ExtractEdgeBackgroundColor(Bitmap?)"/> that decodes
     /// with SkiaSharp instead of an Avalonia RenderTargetBitmap, so it is safe to run
     /// on a worker thread (the RTB path must run on the UI thread and visibly stalled
-    /// page opens). Same algorithm: outer 1-px ring of a 50×50 downscale, 4-bit
-    /// histogram, weighted average of the winning non-noise bucket, gentle saturation
-    /// floor, natural lightness kept. Cached per path; null when the file can't be read.
+    /// page opens). Same algorithm (<see cref="PickEdgeBackgroundColor"/> over a
+    /// 64×64 downscale). Cached per path; null when the file can't be read.
     /// </summary>
     /// <summary>Largest decode the edge extractor will allocate (a codec that cannot
     /// subsample decodes at native size); beyond this the page simply stays untinted.</summary>
@@ -646,7 +734,7 @@ public static class DominantColorExtractor
         if (string.IsNullOrEmpty(artworkPath)) return null;
         if (EdgeFileCache.TryGetValue(artworkPath, out var cached)) return cached;
 
-        const int sampleSize = 50;
+        const int sampleSize = EdgeSampleSize;
         try
         {
             using var codec = SkiaSharp.SKCodec.Create(artworkPath);
@@ -668,44 +756,18 @@ public static class DominantColorExtractor
                 SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
             if (raw == null) return null;
             using var small = raw.Resize(new SkiaSharp.SKImageInfo(sampleSize, sampleSize,
-                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), SkiaSharp.SKFilterQuality.Medium);
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), SkiaSharp.SKFilterQuality.High);
             if (small == null) return null;
 
             var pixels = small.Pixels;
-            var counts = new Dictionary<int, int>(256);
-            var sums = new Dictionary<int, (long R, long G, long B)>(256);
-
-            void Sample(int x, int y)
+            var rgb = new byte[sampleSize * sampleSize * 3];
+            for (int i = 0; i < pixels.Length; i++)
             {
-                var px = pixels[y * sampleSize + x];
-                int key = ((px.Red >> 4) << 8) | ((px.Green >> 4) << 4) | (px.Blue >> 4);
-                counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
-                var s = sums.TryGetValue(key, out var v) ? v : (0L, 0L, 0L);
-                sums[key] = (s.Item1 + px.Red, s.Item2 + px.Green, s.Item3 + px.Blue);
+                rgb[i * 3] = pixels[i].Red;
+                rgb[i * 3 + 1] = pixels[i].Green;
+                rgb[i * 3 + 2] = pixels[i].Blue;
             }
-
-            for (int x = 0; x < sampleSize; x++) { Sample(x, 0); Sample(x, sampleSize - 1); }
-            for (int y = 1; y < sampleSize - 1; y++) { Sample(0, y); Sample(sampleSize - 1, y); }
-            if (counts.Count == 0) return null;
-
-            int bestKey = -1, bestCount = -1, bestKeyAny = -1, bestCountAny = -1;
-            foreach (var kv in counts)
-            {
-                var (sr, sg, sb) = sums[kv.Key];
-                int n = kv.Value;
-                int ar = (int)(sr / n), ag = (int)(sg / n), ab = (int)(sb / n);
-                int luma = (ar * 299 + ag * 587 + ab * 114) / 1000;
-                if (n > bestCountAny) { bestCountAny = n; bestKeyAny = kv.Key; }
-                if (luma < 6 || luma > 250) continue;
-                if (n > bestCount) { bestCount = n; bestKey = kv.Key; }
-            }
-
-            int chosen = bestKey >= 0 ? bestKey : bestKeyAny;
-            var (tr, tg, tb) = sums[chosen];
-            int total = counts[chosen];
-            var (h, s2, l) = RgbToHsl((byte)(tr / total), (byte)(tg / total), (byte)(tb / total));
-            if (s2 > 0.05 && s2 < 0.10) s2 = 0.10;
-            var color = HslToColor(h, s2, l);
+            if (PickEdgeBackgroundColor(rgb, sampleSize, sampleSize) is not { } color) return null;
 
             if (EdgeFileCache.Count >= MaxCacheSize) EdgeFileCache.Clear();
             EdgeFileCache.TryAdd(artworkPath, color);

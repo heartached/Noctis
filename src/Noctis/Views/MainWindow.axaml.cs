@@ -136,6 +136,12 @@ public partial class MainWindow : Window
             var restored = new PixelPoint((int)Math.Round(savedX), (int)Math.Round(savedY));
             if (IsPositionOnAScreen(restored, width * scale, height * scale))
             {
+                // Pull it fully inside the work area of the screen it lands on (#75): a
+                // placement saved half off an edge (or under a taskbar) opens whole.
+                var size = MiniPlayerPlacement.ToPixels(width, height, scale);
+                if (Screens.ScreenFromBounds(new PixelRect(restored, size)) is { } landed)
+                    restored = MiniPlayerPlacement.Clamp(restored,
+                        MiniPlayerPlacement.ToPixels(width, height, landed.Scaling), landed.WorkingArea);
                 mini.Position = restored;
                 return;
             }
@@ -294,15 +300,16 @@ public partial class MainWindow : Window
 
         // Translucent surface variants. The acrylic tint underneath carries most of
         // the readability: in the content area the window, content-grid and page
-        // layers stack (≈73% net), the sidebar pill lands at ≈71% — text always sits
-        // on a solid-enough frosted surface.
+        // layers stack (≈73% net) — text always sits on a solid-enough frosted surface.
+        // AppSidebarBackground stays the theme's own brush: every right-click menu,
+        // flyout and tooltip paints with it, and at 55% they were see-through with no
+        // blur behind them (GitHub #81). The sidebar pill frosts via AppGlass instead.
         _liquidGlassOverlay = new ResourceDictionary
         {
             ["AppMainBackground"] = new SolidColorBrush(main, 0.35),
             // The window root paints AppWindowBackgroundBrush (a gradient on some themes);
             // while glass is on it goes translucent with the content surface.
             ["AppWindowBackgroundBrush"] = new SolidColorBrush(main, 0.35),
-            ["AppSidebarBackground"] = new SolidColorBrush(sidebar, 0.55),
             // Accent action buttons deliberately keep their solid accent fill: frosting
             // them (2026-08-06) read as washed-out, muddy buttons and was reverted 09-07.
         };
@@ -465,10 +472,23 @@ public partial class MainWindow : Window
                 var queueList = this.FindControl<ListBox>("QueuePopupListBox");
                 if (queueList != null)
                 {
-                    queueList.ContainerPrepared += (_, e) => SetQueueRowNumber(e.Container, e.Index);
-                    vm.Player.UpNext.CollectionChanged += (_, _) =>
-                        Dispatcher.UIThread.Post(() => RenumberQueueRows(queueList),
-                            DispatcherPriority.Loaded);
+                    // GitHub #85: the row selection is keyed by index, so it is re-mapped on
+                    // every queue change and re-applied to recycled containers as they prepare.
+                    var queueSelection = _queueSelection = new QueueRowSelection<Track>(vm.Player.UpNext);
+                    queueList.ContainerPrepared += (_, e) =>
+                    {
+                        SetQueueRowNumber(e.Container, e.Index);
+                        e.Container.Classes.Set(QueueSelectedClass, queueSelection.Contains(e.Index));
+                    };
+                    vm.Player.UpNext.CollectionChanged += (_, e) =>
+                    {
+                        queueSelection.Apply(e);
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            RenumberQueueRows(queueList);
+                            SyncQueueSelectionVisuals(queueList);
+                        }, DispatcherPriority.Loaded);
+                    };
                 }
                 _mainVmPropertyChangedHandler = (s, e) =>
                 {
@@ -684,6 +704,9 @@ public partial class MainWindow : Window
         // ShortcutService so Settings › Shortcuts can change any of them at runtime.
         AddHandler(KeyDownEvent, OnGlobalShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnGlobalShortcutKeyUp, RoutingStrategies.Tunnel);
+        // Queue-row keys (GitHub #85). Tunnel at the window and registered before any page's
+        // WindowKeyForwarder, so Ctrl+A / Escape inside the queue don't also hit the page.
+        AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
 
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
@@ -1131,6 +1154,12 @@ public partial class MainWindow : Window
             // Queue popup and lyrics panel share the right edge — mutual exclusion.
             if (vm.Player.IsQueuePopupOpen)
                 vm.IsLyricsPanelOpen = false;
+            else if (_queueSelection is { Count: > 0 } selection)
+            {
+                // A closed panel doesn't keep a selection to reappear with (GitHub #85).
+                selection.Clear();
+                RefreshQueueSelectionVisuals();
+            }
             AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
                 () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
         };
@@ -1236,6 +1265,8 @@ public partial class MainWindow : Window
 
     private void OnWindowDragOver(object? sender, DragEventArgs e)
     {
+        MoveDragChip(e);
+
         // Don't show import overlay for internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
             return;
@@ -1250,6 +1281,69 @@ public partial class MainWindow : Window
     private void OnWindowDragLeave(object? sender, DragEventArgs e)
     {
         ShowDragOverlay(false);
+        // DragLeave also arrives for every element-to-element crossing inside the window;
+        // only a real exit hides the chip (it comes back on the next DragOver in here).
+        if (!new Rect(Bounds.Size).Contains(e.GetPosition(this)))
+            SetDragChipShown(false);
+    }
+
+    // ── Drag chip (a picture of what is being dragged) ──
+
+    private bool _dragChipActive;
+
+    private void OnDragPreviewStarted(TopLevel top, Helpers.DragFileBehavior.DragPreview preview)
+    {
+        if (!ReferenceEquals(top, this)) return;
+        if (this.FindControl<TextBlock>("DragChipTitle") is { } title) title.Text = preview.Title;
+        if (this.FindControl<TextBlock>("DragChipSubtitle") is { } subtitle)
+        {
+            subtitle.Text = preview.Subtitle;
+            subtitle.IsVisible = !string.IsNullOrWhiteSpace(preview.Subtitle);
+        }
+        if (this.FindControl<Controls.CachedImage>("DragChipArt") is { } art) art.SourcePath = preview.ArtworkPath;
+        if (this.FindControl<Border>("DragChipCount") is { } badge) badge.IsVisible = preview.Count > 1;
+        if (this.FindControl<TextBlock>("DragChipCountText") is { } count) count.Text = preview.Count.ToString();
+        // Shown by the first DragOver, which is the first time the pointer position is known.
+        _dragChipActive = true;
+    }
+
+    private void OnDragPreviewEnded(TopLevel top)
+    {
+        if (!ReferenceEquals(top, this)) return;
+        _dragChipActive = false;
+        SetDragChipShown(false);
+    }
+
+    /// <summary>Keeps the chip just below-right of the pointer, like a cursor label.</summary>
+    private void MoveDragChip(DragEventArgs e)
+    {
+        if (!_dragChipActive || this.FindControl<Border>("DragChip") is not { } chip) return;
+        if (chip.GetVisualParent() is not Visual parent) return;
+        var p = e.GetPosition(parent);
+        if (chip.RenderTransform is TranslateTransform tt)
+        {
+            tt.X = p.X + 16;
+            tt.Y = p.Y + 18;
+        }
+        SetDragChipShown(true);
+    }
+
+    private void SetDragChipShown(bool shown)
+    {
+        if (this.FindControl<Border>("DragChip") is not { } chip) return;
+        if (shown)
+        {
+            if (chip.IsVisible && chip.Opacity > 0) return;
+            chip.IsVisible = true;
+            // Next frame, so the opacity transition animates the fade-in.
+            Dispatcher.UIThread.Post(() => { if (_dragChipActive) chip.Opacity = 1; }, DispatcherPriority.Render);
+            return;
+        }
+        chip.Opacity = 0;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (chip.Opacity == 0) chip.IsVisible = false;
+        }, TimeSpan.FromMilliseconds(130));
     }
 
     private async void OnWindowDrop(object? sender, DragEventArgs e)
@@ -1576,19 +1670,103 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel vm) return;
         if (sender is not MenuItem menuItem) return;
 
-        // The MenuItem's DataContext is the Track from the DataTemplate
+        // The MenuItem's DataContext is the Track from the DataTemplate. The row it was
+        // opened on was recorded by index (UpNext.IndexOf resolves a track queued twice to
+        // its first copy); the IndexOf fallback covers a queue that shifted meanwhile.
         if (menuItem.DataContext is not Track track) return;
-        var index = vm.Player.UpNext.IndexOf(track);
-        if (index >= 0)
+        var upNext = vm.Player.UpNext;
+        var index = _queueContextRow >= 0 && _queueContextRow < upNext.Count
+                    && ReferenceEquals(upNext[_queueContextRow], track)
+            ? _queueContextRow
+            : upNext.IndexOf(track);
+        if (index < 0) return;
+
+        // GitHub #85: on a selected row, the menu removes the whole selection.
+        if (_queueSelection is { } selection && selection.Contains(index))
+            vm.Player.RemoveManyFromQueue(selection.Snapshot());
+        else
             vm.Player.RemoveFromQueue(index);
+    }
+
+    // ── Queue row selection (GitHub #85) ──
+    //
+    // Click selects one row, Ctrl+Click toggles, Shift+Click selects the range from the
+    // anchor; Ctrl+A / Delete / Escape act while keyboard focus is inside the panel. The
+    // selection is keyed by row index (QueueRowSelection), shown via the ctrl-selected
+    // class on the row containers.
+
+    private const string QueueSelectedClass = "ctrl-selected";
+    private QueueRowSelection<Track>? _queueSelection;
+    /// <summary>Row pressed without modifiers while part of a multi-selection: the
+    /// selection collapses to it on release, unless the press became a block drag.</summary>
+    private int _queuePendingCollapseRow = -1;
+    /// <summary>Row whose context menu is open (set on ContextRequested).</summary>
+    private int _queueContextRow = -1;
+
+    private static int QueueRowIndex(ListBox listBox, Control rowControl) =>
+        rowControl.FindAncestorOfType<ListBoxItem>() is { } item ? listBox.IndexFromContainer(item) : -1;
+
+    /// <summary>Re-applies the selection class to the realized rows (they are recycled).</summary>
+    private void SyncQueueSelectionVisuals(ListBox listBox)
+    {
+        foreach (var container in listBox.GetRealizedContainers())
+            container.Classes.Set(QueueSelectedClass,
+                _queueSelection?.Contains(listBox.IndexFromContainer(container)) == true);
+    }
+
+    private void RefreshQueueSelectionVisuals()
+    {
+        if (this.FindControl<ListBox>("QueuePopupListBox") is { } listBox)
+            SyncQueueSelectionVisuals(listBox);
+    }
+
+    private void OnQueueRowContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        _queueContextRow = sender is Control row && this.FindControl<ListBox>("QueuePopupListBox") is { } listBox
+            ? QueueRowIndex(listBox, row)
+            : -1;
+    }
+
+    private bool IsFocusInQueuePanel() =>
+        _queuePopupPanel is { IsVisible: true } panel
+        && FocusManager?.GetFocusedElement() is Visual focused
+        && (focused == panel || panel.IsVisualAncestorOf(focused));
+
+    private void OnQueueKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || _queueSelection is not { } selection) return;
+        if (e.Source is TextBox || !IsFocusInQueuePanel()) return;
+
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
+        {
+            // With a selection, Escape clears it; otherwise it falls through and closes the panel.
+            if (selection.Count == 0) return;
+            selection.Clear();
+        }
+        else if (e.Key == Key.A && e.KeyModifiers == KeyModifiers.Control)
+        {
+            selection.SelectAll();
+        }
+        else if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
+        {
+            if (selection.Count == 0) return;
+            vm.Player.RemoveManyFromQueue(selection.Snapshot());
+            selection.Clear();
+        }
+        else
+        {
+            return;
+        }
+        RefreshQueueSelectionVisuals();
+        e.Handled = true;
     }
 
     // ── Queue drag-to-reorder (pointer-tracked, Apple Music style) ──
     //
-    // The dragged row is rendered as a floating preview (#QueueDragPreview) that follows
-    // the pointer's Y position. The original ListBoxItem is hidden via Opacity=0 while the
-    // drag is active so its slot in the list stays reserved (no surrounding shift).
-    // On release we compute the target index and call Player.MoveInQueue.
+    // The dragged row is rendered as a floating preview (#QueueDragPreview) that lifts and
+    // springs after the pointer. Its own slot stays reserved but empty, and the other rows
+    // slide apart to open a gap where it will land. On release the card glides into the
+    // gap and then Player.MoveInQueue commits the move.
     //
     // Notes:
     // - No DragDrop.DoDragDrop. All tracking is via PointerPressed/Moved/Released on the row Border.
@@ -1660,19 +1838,70 @@ public partial class MainWindow : Window
     private Point _queueDragStartPos;
     private bool _queueDragActive;
     private Track? _queueDragTrack;
-    private int _queueDragSourceIndex = -1;
+    /// <summary>The pressed row, so the drag resolves ITS index: IndexOf(_queueDragTrack)
+    /// finds the first copy of a track queued twice (GitHub #85).</summary>
+    private Control? _queueDragRow;
     private double _queueDragRowOffsetY;
-    private ListBoxItem? _queueDragHiddenItem;
+    private LiquidReorder? _queueLiquid;
+
+    /// <summary>The dragged row's current queue index, read from its container (which
+    /// follows a queue that shifted mid-drag); IndexOf only if the container moved on.</summary>
+    private int QueueDragSourceIndex(PlayerViewModel player, ListBox listBox)
+    {
+        if (_queueDragTrack is not { } track) return -1;
+        var upNext = player.UpNext;
+        if (_queueDragRow is { } row && QueueRowIndex(listBox, row) is var i and >= 0
+            && i < upNext.Count && ReferenceEquals(upNext[i], track))
+            return i;
+        return upNext.IndexOf(track);
+    }
+
+    private LiquidReorder? QueueLiquid
+    {
+        get
+        {
+            if (_queueLiquid != null) return _queueLiquid;
+            var listBox = this.FindControl<ListBox>("QueuePopupListBox");
+            var preview = this.FindControl<Border>("QueueDragPreview");
+            if (listBox == null || preview == null) return null;
+            return _queueLiquid = new LiquidReorder(this, listBox, preview, () => preview.DataContext = null);
+        }
+    }
 
     private void OnQueueItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control rowControl) return;
         if (rowControl.Tag is not Track track) return;
         if (!e.GetCurrentPoint(rowControl).Properties.IsLeftButtonPressed) return;
-        if (DataContext is not MainWindowViewModel vm) return;
+        if (DataContext is not MainWindowViewModel) return;
+
+        // A new press lands before the last drop's glide finished: commit it now.
+        QueueLiquid?.FinishNow();
+
+        // GitHub #85: Ctrl / Shift presses only change the selection (no drag, and the
+        // ListBox's own single selection is left alone). A plain press on a row of a
+        // multi-selection keeps it, so the whole block can be dragged; release collapses it.
+        _queuePendingCollapseRow = -1;
+        if (this.FindControl<ListBox>("QueuePopupListBox") is { } listBox
+            && _queueSelection is { } selection
+            && QueueRowIndex(listBox, rowControl) is var row and >= 0)
+        {
+            var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+            var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+            if (shift) selection.SelectRangeTo(row, additive: ctrl);
+            else if (ctrl) selection.Toggle(row);
+            else if (selection.Contains(row) && selection.Count > 1) _queuePendingCollapseRow = row;
+            else selection.SelectOnly(row);
+            SyncQueueSelectionVisuals(listBox);
+            if (ctrl || shift)
+            {
+                e.Handled = true;
+                return;
+            }
+        }
 
         _queueDragTrack = track;
-        _queueDragSourceIndex = vm.Player.UpNext.IndexOf(track);
+        _queueDragRow = rowControl;
         _queueDragRowOffsetY = e.GetPosition(rowControl).Y;
         _queueDragStartPos = e.GetPosition(this);
         _queueDragActive = false;
@@ -1680,9 +1909,10 @@ public partial class MainWindow : Window
 
     private void OnQueueItemPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_queueDragTrack == null) return;
+        if (_queueDragTrack == null || QueueLiquid is not { IsSettling: false } liquid) return;
         if (sender is not Control rowControl) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is not MainWindowViewModel vm) return;
 
         var pos = e.GetPosition(this);
         if (!_queueDragActive)
@@ -1691,31 +1921,54 @@ public partial class MainWindow : Window
                 Math.Abs(pos.Y - _queueDragStartPos.Y) < QueueDragThreshold)
                 return;
 
-            StartQueueDrag(rowControl, e);
+            StartQueueDrag(rowControl, e, liquid);
         }
 
-        UpdateQueueDragPreviewPosition(e);
-        UpdateQueueDropIndicator(e);
+        var wrapper = this.FindControl<Grid>("QueueListWrapper");
+        var listBox = this.FindControl<ListBox>("QueuePopupListBox");
+        if (wrapper == null || listBox == null) return;
+
+        // Re-resolved every move: a track transition (UpNext.RemoveAt(0)) or a radio refill
+        // can shift the dragged track mid-drag.
+        liquid.SourceIndex = QueueDragSourceIndex(vm.Player, listBox);
+        var cardTop = e.GetPosition(wrapper).Y - _queueDragRowOffsetY;
+        liquid.MoveCardTo(cardTop);
+        var target = LiquidReorder.NearestSlot(listBox, wrapper, cardTop + rowControl.Bounds.Height / 2);
+        if (target >= 0) liquid.TargetIndex = target;
     }
 
     private void OnQueueItemPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (_queueDragActive)
         {
-            CommitQueueDrop(e);
+            BeginQueueSettle();
         }
-        ResetQueueDragState();
-        if (sender is Control rowControl)
-            e.Pointer.Capture(null);
+        else
+        {
+            ResetQueueDragState();
+            // A plain click (no drag) on a row of a multi-selection selects just that row.
+            if (_queuePendingCollapseRow >= 0 && _queueSelection is { } selection
+                && sender is Control rowControl
+                && this.FindControl<ListBox>("QueuePopupListBox") is { } listBox
+                && QueueRowIndex(listBox, rowControl) is var row and >= 0)
+            {
+                selection.SelectOnly(row);
+                SyncQueueSelectionVisuals(listBox);
+            }
+        }
+        _queuePendingCollapseRow = -1;
+        e.Pointer.Capture(null);
     }
 
     private void OnQueueItemPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        // Treat lost capture as a cancel — restore visuals without performing the move.
+        // Releasing the capture on drop raises this too; the glide owns cleanup then.
+        if (QueueLiquid is { IsSettling: true }) return;
+        // Otherwise lost capture is a cancel: restore visuals without performing the move.
         ResetQueueDragState();
     }
 
-    private void StartQueueDrag(Control rowControl, PointerEventArgs e)
+    private void StartQueueDrag(Control rowControl, PointerEventArgs e, LiquidReorder liquid)
     {
         _queueDragActive = true;
 
@@ -1723,156 +1976,108 @@ public partial class MainWindow : Window
         // leaves the row's hit area.
         e.Pointer.Capture(rowControl);
 
-        // Populate the floating preview with the dragged track and show it.
-        var preview = this.FindControl<Border>("QueueDragPreview");
-        if (preview != null && _queueDragTrack != null)
-        {
-            preview.DataContext = _queueDragTrack;
-            preview.IsVisible = true;
-        }
-
-        // Hide the original row container so its slot stays reserved without showing
-        // a duplicate of the dragged track.
+        var wrapper = this.FindControl<Grid>("QueueListWrapper");
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
-        if (listBox != null && _queueDragSourceIndex >= 0)
-        {
-            _queueDragHiddenItem = listBox.ContainerFromIndex(_queueDragSourceIndex) as ListBoxItem;
-            if (_queueDragHiddenItem != null)
-                _queueDragHiddenItem.Opacity = 0;
-        }
+        var preview = this.FindControl<Border>("QueueDragPreview");
+        if (wrapper == null || listBox == null || preview == null || _queueDragTrack == null) return;
+
+        preview.DataContext = _queueDragTrack;
+        var first = listBox.GetRealizedContainers().FirstOrDefault();
+        liquid.Pitch = first == null ? 0 : first.Bounds.Height + first.Margin.Top + first.Margin.Bottom;
+        liquid.SourceIndex = liquid.TargetIndex =
+            DataContext is MainWindowViewModel vm ? QueueDragSourceIndex(vm.Player, listBox) : -1;
+        // Start exactly over the grabbed row so the lift reads as the row rising.
+        var rowTop = rowControl.TranslatePoint(new Point(0, 0), wrapper)?.Y
+                     ?? e.GetPosition(wrapper).Y - _queueDragRowOffsetY;
+        liquid.Begin(rowTop);
     }
 
-    private void UpdateQueueDragPreviewPosition(PointerEventArgs e)
+    /// <summary>Release: glide the card into the open gap; the move commits when it lands.</summary>
+    private void BeginQueueSettle()
     {
         var wrapper = this.FindControl<Grid>("QueueListWrapper");
-        var preview = this.FindControl<Border>("QueueDragPreview");
-        if (wrapper == null || preview == null) return;
-        if (preview.RenderTransform is not TranslateTransform tt) return;
-
-        // Track the same point inside the row that the user initially grabbed.
-        var pointerInWrapper = e.GetPosition(wrapper).Y;
-        tt.Y = pointerInWrapper - _queueDragRowOffsetY;
-    }
-
-    private void UpdateQueueDropIndicator(PointerEventArgs e)
-    {
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
-        var indicator = this.FindControl<Border>("QueueDropIndicator");
-        var wrapper = this.FindControl<Grid>("QueueListWrapper");
-        if (listBox == null || indicator == null || wrapper == null) return;
-
-        var pointerInWrapper = e.GetPosition(wrapper);
-        double? indicatorY = null;
-
-        for (int i = 0; i < listBox.ItemCount; i++)
+        if (DataContext is not MainWindowViewModel vm || wrapper == null || listBox == null
+            || _queueDragTrack == null || QueueLiquid is not { } liquid)
         {
-            var container = listBox.ContainerFromIndex(i);
-            if (container == null) continue;
-
-            var itemPos = container.TranslatePoint(new Point(0, 0), wrapper);
-            if (itemPos == null) continue;
-
-            var top = itemPos.Value.Y;
-            var bottom = top + container.Bounds.Height;
-            var mid = (top + bottom) / 2;
-
-            if (pointerInWrapper.Y >= top && pointerInWrapper.Y < mid)
-            {
-                indicatorY = top;
-                break;
-            }
-            if (pointerInWrapper.Y >= mid && pointerInWrapper.Y < bottom)
-            {
-                indicatorY = bottom;
-                break;
-            }
+            ResetQueueDragState();
+            return;
         }
 
-        if (indicatorY != null)
-        {
-            if (indicator.RenderTransform is TranslateTransform transform)
-                transform.Y = indicatorY.Value;
-            indicator.IsVisible = true;
-        }
-        else
-        {
-            indicator.IsVisible = false;
-        }
-    }
-
-    private void CommitQueueDrop(PointerEventArgs e)
-    {
-        if (DataContext is not MainWindowViewModel vm) return;
-        var listBox = this.FindControl<ListBox>("QueuePopupListBox");
-        if (listBox == null) return;
-        if (_queueDragTrack == null) return;
-
-        // Re-resolve the source index from the tracked object at drop time. The
+        // Re-resolve the source index from the dragged row at drop time. The
         // press-time index goes stale: a drag lasts long enough for a track transition
         // (UpNext.RemoveAt(0)) or a queued radio refill to shift everything, and the
         // trusted index then moved the wrong track — the bounds checks prevented a crash
         // but not the wrong move.
-        var fromIndex = vm.Player.UpNext.IndexOf(_queueDragTrack);
-        if (fromIndex < 0) return;
+        var track = _queueDragTrack;
+        var from = QueueDragSourceIndex(vm.Player, listBox);
+        if (from < 0)
+        {
+            ResetQueueDragState();
+            return;
+        }
+        var to = Math.Clamp(liquid.TargetIndex, 0, Math.Max(0, vm.Player.UpNext.Count - 1));
+        liquid.SourceIndex = from;
+        liquid.TargetIndex = to;
 
-        var posInListBox = e.GetPosition(listBox);
-        var toIndex = GetQueueDropTargetIndex(listBox, posInListBox);
-        if (toIndex < 0) toIndex = vm.Player.UpNext.Count - 1;
-        if (toIndex >= vm.Player.UpNext.Count) toIndex = vm.Player.UpNext.Count - 1;
+        // GitHub #85: a row dragged out of a multi-selection carries the whole selection
+        // (the card shows only the grabbed row, as on the playlist page). MoveBlockInQueue
+        // takes an INSERTION index: past the source, one further down once the block is
+        // lifted out. The rows' tracks are snapshotted so a queue that shifted during the
+        // glide (a track advancing) skips the move, as the single-row path does.
+        var selection = _queueSelection;
+        var wasSelected = selection?.Contains(from) == true;
+        var block = wasSelected && selection!.Count > 1 ? selection.Snapshot() : null;
+        var blockTracks = block?.Select(i => vm.Player.UpNext[i]).ToList();
+        var insertIndex = to > from ? to + 1 : to;
 
-        if (fromIndex != toIndex)
-            vm.Player.MoveInQueue(fromIndex, toIndex);
+        // The landing spot is the target slot's layout position (its row is sliding away
+        // from it), plus the row card's own 1px top margin inside the item.
+        var landing = LiquidReorder.SlotTop(listBox, to, wrapper) is { } top ? top + 1 : liquid.CardY;
+        _queueDragActive = false;
+        _queueDragTrack = null;
+        _queueDragRow = null;
+        liquid.Settle(landing, () =>
+        {
+            var upNext = vm.Player.UpNext;
+            if (block != null && blockTracks != null)
+            {
+                var unchanged = Enumerable.Range(0, block.Length)
+                    .All(k => block[k] < upNext.Count && ReferenceEquals(upNext[block[k]], blockTracks[k]));
+                if (!unchanged) return;
+                var landAt = vm.Player.MoveBlockInQueue(block, insertIndex);
+                if (landAt >= 0) selection?.Select(Enumerable.Range(landAt, block.Length));
+            }
+            // By reference at the row, not IndexOf: a track queued twice is two rows.
+            else if (from != to && from < upNext.Count && ReferenceEquals(upNext[from], track))
+            {
+                vm.Player.MoveInQueue(from, to);
+                // The move is a remove + insert, which drops the row from the selection.
+                if (wasSelected) selection?.SelectOnly(to);
+            }
+            RefreshQueueSelectionVisuals();
+        });
     }
 
     private void ResetQueueDragState()
     {
-        var preview = this.FindControl<Border>("QueueDragPreview");
-        if (preview != null)
-        {
-            preview.IsVisible = false;
-            preview.DataContext = null;
-        }
-
-        if (_queueDragHiddenItem != null)
-        {
-            _queueDragHiddenItem.Opacity = 1.0;
-            _queueDragHiddenItem = null;
-        }
-
-        var indicator = this.FindControl<Border>("QueueDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
-
+        QueueLiquid?.Cancel();
         _queueDragActive = false;
         _queueDragTrack = null;
-        _queueDragSourceIndex = -1;
-    }
-
-    private static int GetQueueDropTargetIndex(ListBox listBox, Point posInListBox)
-    {
-        for (int i = 0; i < listBox.ItemCount; i++)
-        {
-            var container = listBox.ContainerFromIndex(i);
-            if (container == null) continue;
-
-            var itemPos = container.TranslatePoint(new Point(0, 0), listBox);
-            if (itemPos == null) continue;
-
-            var top = itemPos.Value.Y;
-            var bottom = top + container.Bounds.Height;
-            var midpoint = top + container.Bounds.Height / 2;
-
-            if (posInListBox.Y < midpoint && posInListBox.Y >= top)
-                return i;
-            if (posInListBox.Y >= midpoint && posInListBox.Y < bottom)
-                return i;
-        }
-        return listBox.ItemCount - 1;
+        _queueDragRow = null;
     }
 
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
+
+        Helpers.DragFileBehavior.DragPreviewStarted += OnDragPreviewStarted;
+        Helpers.DragFileBehavior.DragPreviewEnded += OnDragPreviewEnded;
+        Closed += (_, _) =>
+        {
+            Helpers.DragFileBehavior.DragPreviewStarted -= OnDragPreviewStarted;
+            Helpers.DragFileBehavior.DragPreviewEnded -= OnDragPreviewEnded;
+        };
 
         // Register drag-drop for file import on both the Window and root Panel.
         // AllowDrop must be set on the actual hit-test target, not just the Window.

@@ -142,6 +142,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// track-box layout, so the stock bar is transport + box + lyrics/queue/volume.</summary>
     [ObservableProperty] private bool _islandShowRepeat;
     [ObservableProperty] private bool _islandShowFavorite;
+    /// <summary>GitHub #80: the mini player button in the right cluster (Settings → Player).</summary>
+    [ObservableProperty] private bool _islandShowMiniPlayer = true;
     /// <summary>Elapsed / remaining time inside the island's track box (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowTime;
 
@@ -280,6 +282,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether TTML words split across several timed spans render unbroken
     /// (issue #32). Driven by Settings; the lyrics VM re-parses when it flips.</summary>
     [ObservableProperty] private bool _lyricsJoinSplitWords;
+    /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
+    /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
+    [ObservableProperty] private bool _lyricsShowTranslations = true;
+    [ObservableProperty] private bool _lyricsShowRomanization = true;
+    [ObservableProperty] private bool _lyricsShowBackgroundVocals = true;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 
@@ -998,7 +1005,12 @@ public partial class PlayerViewModel : ViewModelBase
         foreach (var track in History) Sync(track);
     }
 
-    [RelayCommand]
+    // GitHub #82: a dropped file played from outside the library has no album page, so
+    // the island title (and the "…" menu item) must not offer one.
+    private bool CanViewCurrentTrackAlbum() =>
+        CurrentTrack is { } t && _library.GetAlbumById(t.AlbumId) != null;
+
+    [RelayCommand(CanExecute = nameof(CanViewCurrentTrackAlbum))]
     private void ViewCurrentTrackAlbum()
     {
         var track = CurrentTrack;
@@ -1218,6 +1230,54 @@ public partial class PlayerViewModel : ViewModelBase
         var track = UpNext[fromIndex];
         UpNext.RemoveAt(fromIndex);
         UpNext.Insert(toIndex, track);
+    }
+
+    /// <summary>
+    /// GitHub #85: removes the UpNext rows at <paramref name="indices"/> (any order). Rows,
+    /// not tracks: the same track queued twice is two rows, removed only where selected.
+    /// </summary>
+    public void RemoveManyFromQueue(IEnumerable<int> indices)
+    {
+        var rows = indices.Where(i => i >= 0 && i < UpNext.Count).Distinct().OrderByDescending(i => i).ToList();
+        if (rows.Count == 0) return;
+
+        DebugLogger.Info(DebugLogger.Category.Queue, "RemoveManyFromQueue", $"count={rows.Count}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
+        // High → low so the lower indices stay valid.
+        foreach (var i in rows)
+            UpNext.RemoveAt(i);
+    }
+
+    /// <summary>
+    /// GitHub #85: moves the UpNext rows at <paramref name="indices"/> as one block to
+    /// <paramref name="insertIndex"/>, an insertion index in the CURRENT queue (before the
+    /// block is lifted out) — the same contract as PlaylistViewModel.ReorderBlock, but by
+    /// row so a duplicated track moves only where it is selected. The block keeps its queue
+    /// order. Returns the block's first row after the move, or -1 when nothing moved.
+    /// </summary>
+    public int MoveBlockInQueue(IReadOnlyCollection<int> indices, int insertIndex)
+    {
+        var rows = indices.Where(i => i >= 0 && i < UpNext.Count).Distinct().Order().ToList();
+        if (rows.Count == 0) return -1;
+        insertIndex = Math.Clamp(insertIndex, 0, UpNext.Count);
+
+        // Where the block lands once lifted out: the non-block rows before insertIndex.
+        var landAt = insertIndex - rows.Count(i => i < insertIndex);
+        var contiguous = rows[^1] - rows[0] == rows.Count - 1;
+        if (contiguous && landAt == rows[0]) return -1;
+
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
+        // Remove + Insert per block row (as MoveInQueue does) rather than ReplaceAll, so the
+        // virtualized list keeps its realized rows, and the notification count scales with
+        // the block, not with the queue.
+        var block = rows.Select(i => UpNext[i]).ToList();
+        for (var k = rows.Count - 1; k >= 0; k--)
+            UpNext.RemoveAt(rows[k]);
+        for (var k = 0; k < block.Count; k++)
+            UpNext.Insert(landAt + k, block[k]);
+        return landAt;
     }
 
     /// <summary>Plays the track at the given index in UpNext, discarding prior queue items.</summary>
@@ -1462,6 +1522,7 @@ public partial class PlayerViewModel : ViewModelBase
     partial void OnCurrentTrackChanged(Track? value)
     {
         OnPropertyChanged(nameof(HasContent));
+        ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
         ResolveLyricsBackground();
         ResolveMusicVideo();
         // Re-apply ReplayGain so the new track's RG tags take effect. The
@@ -2232,7 +2293,11 @@ public partial class PlayerViewModel : ViewModelBase
     {
         // Bitmaps come from the shared LRU cache, which owns their lifetime — never
         // dispose them here. The cache de-dupes, so track switches no longer leak.
-        var artPath = _persistence.GetArtworkPath(track.AlbumId);
+        // The index points a track with its own embedded cover at that cover
+        // (TrackArtwork); anything else falls back to the album's.
+        var artPath = !string.IsNullOrEmpty(track.AlbumArtworkPath) && File.Exists(track.AlbumArtworkPath)
+            ? track.AlbumArtworkPath
+            : _persistence.GetArtworkPath(track.AlbumId);
         var generation = Interlocked.Increment(ref _albumArtGeneration);
 
         // Drive CachedImage-based surfaces (playback bar) via a path string. They
@@ -2879,8 +2944,11 @@ public partial class PlayerViewModel : ViewModelBase
             if (_library.IsPublishingPartial)
                 return;
 
-            // If library is now empty, stop playback and clear everything
-            if (_library.Tracks.Count == 0)
+            // If library is now empty, stop playback and clear everything — unless dropped
+            // files are playing from outside the library (GitHub #84); the prune below
+            // then drops only the library entries.
+            if (_library.Tracks.Count == 0 &&
+                CurrentTrack?.IsExternal != true && !UpNext.Any(t => t.IsExternal))
             {
                 StopAndClear();
                 return;
@@ -2888,7 +2956,8 @@ public partial class PlayerViewModel : ViewModelBase
 
             // Clean up UpNext and History FIRST so that if we need to advance,
             // we only advance into tracks that still exist in the library.
-            var deletedTracks = UpNext.Where(t => _library.GetTrackById(t.Id) == null).ToList();
+            // External (dropped, non-library) tracks were never indexed — not "deleted".
+            var deletedTracks = UpNext.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
             if (deletedTracks.Count > 0)
             {
                 CancelAutoMixTransition("queue changed");
@@ -2897,12 +2966,12 @@ public partial class PlayerViewModel : ViewModelBase
             foreach (var track in deletedTracks)
                 UpNext.Remove(track);
 
-            var deletedHistory = History.Where(t => _library.GetTrackById(t.Id) == null).ToList();
+            var deletedHistory = History.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
             foreach (var track in deletedHistory)
                 History.Remove(track);
 
             // Check if current track was deleted
-            if (CurrentTrack != null && _library.GetTrackById(CurrentTrack.Id) == null)
+            if (CurrentTrack is { IsExternal: false } && _library.GetTrackById(CurrentTrack.Id) == null)
             {
                 // Current track was deleted, skip to next or stop
                 if (UpNext.Count > 0)
@@ -2922,6 +2991,9 @@ public partial class PlayerViewModel : ViewModelBase
                 // Force converter-based bindings on CurrentTrack.* to re-evaluate
                 OnPropertyChanged(nameof(CurrentTrack));
             }
+
+            // The playing track's album may have just been imported (or removed).
+            ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
         });
     }
 

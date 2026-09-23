@@ -70,8 +70,8 @@ public partial class CoverFlowCard : UserControl
     public static readonly DirectProperty<CoverFlowCard, double> PlaceholderFontSizeProperty =
         AvaloniaProperty.RegisterDirect<CoverFlowCard, double>(nameof(PlaceholderFontSize), o => o.PlaceholderFontSize);
 
-    /// <summary>Caption type scales with the card: title ≈ 5.5% (cap 20) and artist ≈ 4.5%
-    /// (cap 16) of the cover width — 20/16 on the 360px centre card.</summary>
+    /// <summary>Caption type scales with the card: title ≈ 7% (cap 24) and artist ≈ 6.5%
+    /// (cap 22) of the cover width — 21/20 on the 300px card, the mockup's near-equal pair.</summary>
     public static readonly DirectProperty<CoverFlowCard, double> TitleFontSizeProperty =
         AvaloniaProperty.RegisterDirect<CoverFlowCard, double>(nameof(TitleFontSize), o => o.TitleFontSize);
 
@@ -116,7 +116,7 @@ public partial class CoverFlowCard : UserControl
     private Thickness _artworkMargin = new(ArtworkInset);
     private double _cardTintOpacity = TintFor(18);
 
-    private static double TintFor(double blur) => blur > 0 ? 0.40 : 0.72;
+    private static double TintFor(double blur) => blur > 0 ? 0.50 : 0.72;
 
     /// <summary>How much tighter the artwork corners are than the clip radius.</summary>
     public const double ArtworkRadiusStep = 4;
@@ -129,8 +129,8 @@ public partial class CoverFlowCard : UserControl
         System.Math.Max(0, r.TopLeft - RimThickness), System.Math.Max(0, r.TopRight - RimThickness),
         System.Math.Max(0, r.BottomRight - RimThickness), System.Math.Max(0, r.BottomLeft - RimThickness));
 
-    private static double TitleFor(double size) => System.Math.Round(System.Math.Clamp(size * 0.055, 13, 20));
-    private static double ArtistFor(double size) => System.Math.Round(System.Math.Clamp(size * 0.045, 11, 16));
+    private static double TitleFor(double size) => System.Math.Round(System.Math.Clamp(size * 0.07, 14, 24));
+    private static double ArtistFor(double size) => System.Math.Round(System.Math.Clamp(size * 0.065, 13, 22));
 
     static CoverFlowCard()
     {

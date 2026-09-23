@@ -21,11 +21,21 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
-        <!-- Drop target highlight while a track / playlist drag hovers a sidebar row. -->
+        <!-- Drop target highlight while a track drag (or a playlist drag onto a folder)
+             hovers a sidebar row. The 1.5px rim is ALWAYS there, transparent, with the
+             padding trimmed to match (10 - 1.5): toggling BorderThickness on the hovered
+             row re-laid its content out, so every row the drag crossed jumped 1.5px
+             (the "playlists dancing around" report, Discord Luwi 09-22). -->
+        <Style Selector="ListBox#PlaylistList ListBoxItem">
+            <Setter Property="Padding" Value="8.5" />
+        </Style>
+        <Style Selector="ListBox#PlaylistList ListBoxItem /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1.5" />
+        </Style>
         <Style Selector="ListBox#PlaylistList ListBoxItem.drop-target /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SidebarSelectedHoverBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="BorderThickness" Value="1.5" />
         </Style>
 
         <!-- Right-click menu for playlist rows and folder headers. One shared menu; the
@@ -416,15 +426,16 @@
                         </TextBlock.ContextMenu>
                     </TextBlock>
 
-                    <!-- User playlists: pinned first, then folders, then loose playlists -->
+                    <!-- User playlists: pinned first, then folders, then loose playlists.
+                         The Panel hosts the reorder drag card over the list. -->
+                    <Panel x:Name="PlaylistListHost" Margin="6,0,6,4">
                     <ListBox Classes="sidebar"
                              x:Name="PlaylistList"
                              ItemsSource="{Binding SidebarRows}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
                              SelectionChanged="OnNavListSelectionChanged"
                              MaxHeight="528"
-                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
-                             Margin="6,0,6,4">
+                             ScrollViewer.VerticalScrollBarVisibility="Hidden">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:PlaylistNavItem">
                                 <Panel>
@@ -467,13 +478,12 @@
                                     </StackPanel>
                                 </StackPanel>
 
-                                <!-- Playlist row. EnableFileDrag on a PlaylistNavItem starts a playlist
-                                     reorder / move-to-folder drag (see DragFileBehavior). -->
+                                <!-- Playlist row. Reorder / move-to-folder is an in-app pointer drag
+                                     handled by SidebarView (LiquidReorder). -->
                                 <StackPanel Orientation="Horizontal" Spacing="10"
                                             ToolTip.Tip="{Binding Label}"
                                             IsVisible="{Binding !IsFolder}"
                                             Background="Transparent"
-                                            helpers:DragFileBehavior.EnableFileDrag="True"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <!-- Indent for playlists inside an expanded folder. Hidden in the
                                          collapsed rail: with it, the row is 52px (14+10 spacing+28 art)
@@ -569,6 +579,29 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <!-- Floating card for a playlist being reordered: the row's own template
+                         in a lifted pill; LiquidReorder drives its transforms per frame and the
+                         other rows slide apart under it. -->
+                    <Border x:Name="PlaylistDragCard"
+                            IsVisible="False"
+                            IsHitTestVisible="False"
+                            VerticalAlignment="Top"
+                            CornerRadius="999"
+                            Padding="10"
+                            Background="{DynamicResource SidebarSelectedHoverBrush}"
+                            BoxShadow="0 8 22 0 #70000000"
+                            RenderTransformOrigin="50%,50%">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform />
+                                <TranslateTransform />
+                            </TransformGroup>
+                        </Border.RenderTransform>
+                        <ContentControl x:Name="PlaylistDragCardContent"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Center" />
+                    </Border>
+                    </Panel>
 
 
                 </StackPanel>

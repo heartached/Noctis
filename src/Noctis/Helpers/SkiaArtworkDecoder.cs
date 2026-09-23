@@ -118,6 +118,27 @@ public static class SkiaArtworkDecoder
     }
 
     /// <summary>
+    /// The encoded image's real pixel size, read from its header without decoding any
+    /// pixels. Null when <paramref name="imageData"/> is empty or not an image.
+    /// </summary>
+    public static PixelSize? ReadPixelSize(byte[]? imageData)
+    {
+        if (imageData is not { Length: > 0 }) return null;
+        try
+        {
+            using var data = SKData.CreateCopy(imageData);
+            using var codec = SKCodec.Create(data);
+            if (codec == null) return null;
+            var info = codec.Info;
+            return info.Width > 0 && info.Height > 0 ? new PixelSize(info.Width, info.Height) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Skia's own file stream (native, no managed buffer). Should the native open ever
     /// fail for a path the .NET side can read (an exotic encoding), fall back to one
     /// exact-size managed read copied into native memory: plain garbage, not a pooled

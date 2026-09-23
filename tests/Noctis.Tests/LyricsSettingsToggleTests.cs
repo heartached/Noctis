@@ -1,8 +1,10 @@
 using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -347,4 +349,111 @@ public class LyricsSettingsToggleTests
             try { Directory.Delete(dir, recursive: true); } catch { }
         }
     }
+
+    // ── Translation / Romanization / Background Vocals (GitHub #78) ──
+
+    private const string LayeredTtml = """
+        <tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+          <head><metadata><iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+            <translations><translation xml:lang="en"><text for="L1">The heavy rain</text><text for="L2">The end</text></translation></translations>
+            <transliterations><transliteration xml:lang="ja-Latn">
+              <text for="L1"><span begin="00:01.000" end="00:01.400">fu</span><span begin="00:01.400" end="00:02.000">ri</span></text>
+              <text for="L2">owari</text>
+            </transliteration></transliterations>
+          </iTunesMetadata></metadata></head>
+          <body><div>
+            <p begin="00:01.000" end="00:03.000" itunes:key="L1"><span begin="00:01.000" end="00:01.400">ふ</span><span begin="00:01.400" end="00:02.000">り</span><span ttm:role="x-bg"><span begin="00:02.000" end="00:02.800">(ah)</span></span></p>
+            <p begin="00:04.000" end="00:06.000" itunes:key="L2"><span begin="00:04.000" end="00:05.000">終わり</span></p>
+          </div></body>
+        </tt>
+        """;
+
+    [AvaloniaFact]
+    public async Task LyricLayerToggles_HideTheRowsInPlace_WithoutReloading()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "noctis-layers-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var win = new Window { Width = 1400, Height = 800 };
+        try
+        {
+            var trackPath = Path.Combine(dir, "song.mp3");
+            await File.WriteAllTextAsync(Path.Combine(dir, "song.ttml"), LayeredTtml);
+
+            var (vm, player) = MakeViewModel();
+            player.Duration = TimeSpan.FromSeconds(10);
+            player.CurrentTrack = new Track { Title = "Layers", Artist = "Test", FilePath = trackPath };
+            vm.SetLyricsSurfaceVisible(true);
+            vm.EnsureLyricsForCurrentTrack();
+            await WaitUntil(() => vm.IsSynced, "TTML sidecar to load");
+
+            var timed = vm.LyricLines.Single(l => l.Text == "ふり");
+            var untimed = vm.LyricLines.Single(l => l.Text == "終わり");
+            var swaps = 0;
+            vm.LyricsSwapped += (_, _) => swaps++;
+
+            var page = new LyricsView { DataContext = vm };
+            var panel = new LyricsPanelView { DataContext = vm };
+            win.Content = new StackPanel { Children = { page, panel } };
+            win.Show();
+            await Pump(50);
+
+            foreach (var view in new UserControl[] { page, panel })
+            {
+                var t = LineButton(view, timed);
+                var u = LineButton(view, untimed);
+
+                // Order under the line: original → background vocals → romanization → translation.
+                var main = t.GetVisualDescendants().OfType<ItemsControl>().First(c => c.Classes.Contains("word-layer"));
+                var bg = Row<ItemsControl>(t, "bg-vocals");
+                var romaji = Row<ItemsControl>(t, "romanization");
+                var translation = Row<TextBlock>(t, "translation-text");
+                Assert.True(bg.IsVisible && romaji.IsVisible && translation.IsVisible);
+                Assert.False(Row<TextBlock>(t, "romanization-text").IsVisible);   // timed → karaoke row instead
+                Assert.True(Top(bg, t) >= Top(main, t) + main.Bounds.Height - 0.5);
+                Assert.True(Top(romaji, t) >= Top(bg, t) + bg.Bounds.Height - 0.5);
+                Assert.True(Top(translation, t) >= Top(romaji, t) + romaji.Bounds.Height - 0.5);
+                Assert.Equal("The heavy rain", translation.Text);
+
+                Assert.True(Row<TextBlock>(u, "romanization-text").IsVisible);     // untimed → static text
+                Assert.False(Row<ItemsControl>(u, "romanization").IsVisible);
+                Assert.Equal("owari", Row<TextBlock>(u, "romanization-text").Text);
+            }
+
+            player.LyricsShowTranslations = false;
+            player.LyricsShowRomanization = false;
+            player.LyricsShowBackgroundVocals = false;
+            await Pump(50);
+
+            foreach (var view in new UserControl[] { page, panel })
+            {
+                var t = LineButton(view, timed);
+                Assert.False(Row<ItemsControl>(t, "bg-vocals").IsVisible);
+                Assert.False(Row<ItemsControl>(t, "romanization").IsVisible);
+                Assert.False(Row<TextBlock>(t, "translation-text").IsVisible);
+                Assert.False(Row<TextBlock>(LineButton(view, untimed), "romanization-text").IsVisible);
+            }
+
+            player.LyricsShowRomanization = true;
+            await Pump(50);
+            Assert.True(Row<ItemsControl>(LineButton(page, timed), "romanization").IsVisible);
+            Assert.False(Row<TextBlock>(LineButton(page, timed), "translation-text").IsVisible);
+
+            // Display-only: the same line objects stay loaded, no swap ran.
+            Assert.Same(timed, vm.LyricLines.Single(l => l.Text == "ふり"));
+            Assert.Equal(0, swaps);
+        }
+        finally
+        {
+            win.Close();
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
+
+    private static Button LineButton(Control view, LyricLine line) =>
+        view.GetVisualDescendants().OfType<Button>().Single(b => ReferenceEquals(b.DataContext, line));
+
+    private static T Row<T>(Button line, string cls) where T : Control =>
+        line.GetVisualDescendants().OfType<T>().Single(c => c.Classes.Contains(cls));
+
+    private static double Top(Visual v, Visual relativeTo) => v.TranslatePoint(default, relativeTo)!.Value.Y;
 }

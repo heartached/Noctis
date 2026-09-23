@@ -119,8 +119,8 @@
                     <!-- Frosted caption strip: title + artist, every card carries its own -->
                     <!-- Caption: title + artist resting on the slab under the artwork -->
                     <Border Grid.Row="1" x:Name="Caption"
-                            Padding="14,10,14,16">
-                        <StackPanel Spacing="2">
+                            Padding="14,12,14,18">
+                        <StackPanel Spacing="4">
                             <!-- Auto columns, not a horizontal StackPanel: that measures the
                                  title at infinite width and CharacterEllipsis never trims. -->
                             <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center">
@@ -136,7 +136,7 @@
                                         <TextBlock x:Name="TitleText"
                                                    Text="{Binding #Root.Title}"
                                                    FontSize="{Binding #Root.TitleFontSize}"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Medium"
                                                    Foreground="White"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextAlignment="Center"

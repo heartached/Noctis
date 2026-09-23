@@ -637,9 +637,10 @@
          that renders the whole outline at one strength (1.25px is still broken at 100%). -->
     <!-- Genuinely translucent: the fill's alpha is the "Mini Player Opacity" setting, so
          the desktop reads through the card (per-pixel alpha, see the TransparencyLevelHint
-         note in code-behind). The blur behind it can't be an OS backdrop — acrylic paints
+         note in code-behind). By default there is no OS backdrop behind it — acrylic paints
          the whole window rect and brought back black corners outside the rounded card —
-         so the depth comes from the blurred-artwork wash under a light frost instead.
+         so the depth comes from the blurred-artwork wash under a light frost instead; the
+         opt-in "Frosted background" setting (Windows) requests that backdrop anyway.
          Brush-level Opacity (as on the playback bar's island) rather than Border.Opacity:
          the latter would fade the card's contents along with the fill. -->
     <!-- ClipToBounds is OFF so the close badge below can hang over the corner. Measured
@@ -687,10 +688,11 @@
         <Panel x:Name="RootPanel">
 
             <!-- ── Glass stack (bottom → top) ─────────────────────────────── -->
-            <!-- Simulated glass only: OS acrylic (AcrylicBlur) paints the WHOLE window
+            <!-- Simulated glass by default: OS acrylic (AcrylicBlur) paints the WHOLE window
                  rect, so the transparent corners outside the rounded card came back as
                  black squares. Per-pixel transparency + these layers (over the root
-                 border's base fill) keep the rounded outline clean everywhere. -->
+                 border's base fill) keep the rounded outline clean everywhere. (The
+                 opt-in "Frosted background" setting adds the OS blur under them.) -->
 
             <!-- No artwork-wash layer (removed on request): the card's only ground is the
                  root border's base fill at the user's opacity setting, so 0% is genuinely
@@ -1784,7 +1786,6 @@
                                             <ItemsControl ItemsSource="{Binding BackgroundWords}"
                                                           Classes="word-layer bg-vocals"
                                                           Classes.active="{Binding IsActive}"
-                                                          IsVisible="{Binding ShowBackgroundWords}"
                                                           Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                           HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                           ClipToBounds="False"
@@ -1792,6 +1793,12 @@
                                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                           ItemTemplate="{StaticResource MiniWordCellTemplate}">
+                                                <ItemsControl.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                                        <Binding Path="ShowBackgroundWords"/>
+                                                        <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowBackgroundVocals"/>
+                                                    </MultiBinding>
+                                                </ItemsControl.IsVisible>
                                                 <ItemsControl.Transitions>
                                                     <Transitions>
                                                         <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
@@ -1803,6 +1810,82 @@
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                             </ItemsControl>
+
+                                            <!-- Romanization, then translation (Apple TTML layers, issue #78),
+                                                 mirroring the lyrics page. -->
+                                            <ItemsControl ItemsSource="{Binding TransliterationWords}"
+                                                          Classes="word-layer romanization"
+                                                          Classes.active="{Binding IsActive}"
+                                                          Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                          HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                          ClipToBounds="False"
+                                                          Margin="0,3,0,0"
+                                                          FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                                          MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                          ItemTemplate="{StaticResource MiniWordCellTemplate}">
+                                                <ItemsControl.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                                        <Binding Path="ShowTransliterationWords"/>
+                                                        <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowRomanization"/>
+                                                    </MultiBinding>
+                                                </ItemsControl.IsVisible>
+                                                <ItemsControl.Transitions>
+                                                    <Transitions>
+                                                        <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                    </Transitions>
+                                                </ItemsControl.Transitions>
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                            <TextBlock Text="{Binding Transliteration}"
+                                                       Classes="romanization-text"
+                                                       FontWeight="Bold"
+                                                       Foreground="White"
+                                                       Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                       HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                       TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                                       Margin="0,3,0,0"
+                                                       FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                       TextWrapping="Wrap">
+                                                <TextBlock.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                                        <Binding Path="ShowTransliterationText"/>
+                                                        <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowRomanization"/>
+                                                    </MultiBinding>
+                                                </TextBlock.IsVisible>
+                                                <TextBlock.Transitions>
+                                                    <Transitions>
+                                                        <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                    </Transitions>
+                                                </TextBlock.Transitions>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Translation}"
+                                                       Classes="translation-text"
+                                                       FontWeight="Bold"
+                                                       Foreground="White"
+                                                       Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                       HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                       TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                                       Margin="0,3,0,0"
+                                                       FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                       TextWrapping="Wrap">
+                                                <TextBlock.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                                        <Binding Path="ShowTranslation"/>
+                                                        <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowTranslations"/>
+                                                    </MultiBinding>
+                                                </TextBlock.IsVisible>
+                                                <TextBlock.Transitions>
+                                                    <Transitions>
+                                                        <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                    </Transitions>
+                                                </TextBlock.Transitions>
+                                            </TextBlock>
                                             </StackPanel>
                                         </Button>
                                     </DataTemplate>
@@ -1831,9 +1914,10 @@
                  for this form (SyncChrome) because the silhouette isn't a rectangle. -->
             <Grid x:Name="PillFormRoot" Classes="form-root" Margin="6,6,10,6"
                   PointerWheelChanged="OnDesignVolumeWheel">
-                <!-- Design ground: the ONE solid theme-coloured slab the card and its
-                     drawer share (AppMainBackground - the Mini Player Opacity setting is a
-                     classic-glass thing and deliberately does not apply). The card and
+                <!-- Design ground: the ONE theme-coloured slab the card and its drawer
+                     share (AppMainBackgroundColor at the Mini Player Opacity setting, like
+                     the classic glass - GitHub #76; DynamicResource, so a theme switch
+                     repaints it live). The card and
                      the drawer sheet are transparent; opening a drawer just stretches this
                      slab down past the root's bottom edge, the same lockstep glide the
                      classic glass gets from RootBorder, with no corner or margin changes.
@@ -1845,7 +1929,11 @@
                      own stale insets and the wrong measurement became self-consistent).
                      Rect from SyncDesignGround / ApplyDesignGroundRect. -->
                 <Canvas x:Name="PillGroundHost" IsHitTestVisible="False" ClipToBounds="False">
-                    <Border x:Name="PillGround" CornerRadius="24" Background="{DynamicResource AppMainBackground}"/>
+                    <Border x:Name="PillGround" CornerRadius="24">
+                        <Border.Background>
+                            <SolidColorBrush Color="{DynamicResource AppMainBackgroundColor}" Opacity="{Binding Settings.MiniPlayerBackgroundOpacity}"/>
+                        </Border.Background>
+                    </Border>
                 </Canvas>
                 <Panel VerticalAlignment="Center">
                     <!-- Transparent: the fill and shadow are DesignGround's (see the grid above),
@@ -1937,7 +2025,7 @@
                         </Grid>
                     </Border>
                     <!-- Round cover, its centre on the card's left edge. -->
-                    <Border Width="120" Height="120" CornerRadius="60" Background="{DynamicResource AppSidebarBackground}"
+                    <Border x:Name="PillCover" Width="120" Height="120" CornerRadius="60" Background="{DynamicResource AppSidebarBackground}"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
                             BoxShadow="0 6 18 0 #40000000">
                         <!-- PillCoverSpin is rotated about its centre by CoverSpinner (code-behind)
@@ -1965,7 +2053,11 @@
                   PointerWheelChanged="OnDesignVolumeWheel">
                 <!-- Same ground arrangement as the Pill's (see there). -->
                 <Canvas x:Name="SleeveGroundHost" IsHitTestVisible="False" ClipToBounds="False">
-                    <Border x:Name="SleeveGround" CornerRadius="34" Background="{DynamicResource AppMainBackground}"/>
+                    <Border x:Name="SleeveGround" CornerRadius="34">
+                        <Border.Background>
+                            <SolidColorBrush Color="{DynamicResource AppMainBackgroundColor}" Opacity="{Binding Settings.MiniPlayerBackgroundOpacity}"/>
+                        </Border.Background>
+                    </Border>
                 </Canvas>
                 <!-- Transparent (fill and shadow live on DesignGround); ClipToBounds still rounds
                      the disc off at the card's outline. -->

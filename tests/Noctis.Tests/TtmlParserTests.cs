@@ -334,4 +334,210 @@ public class TtmlParserTests
         Assert.Equal(3, lines[0].Words!.Count);
         Assert.Equal("Never gonna give", plain);
     }
+
+    // ── Translation / romanization layers (GitHub #78) ──
+
+    /// <summary>The issue's sample document, verbatim.</summary>
+    private const string Issue78Sample = """
+        <?xml version='1.0' encoding='UTF-8'?>
+        <tt xmlns="http://www.w3.org/ns/ttml"
+            xmlns:itunes="http://music.apple.com/lyric-ttml-internal"
+            xmlns:ttm="http://www.w3.org/ns/ttml#metadata"
+            itunes:timing="Word"
+            xml:lang="ja">
+          <head>
+            <metadata>
+              <ttm:agent type="person" xml:id="v1"/>
+              <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+                <translations>
+                  <translation type="subtitle" xml:lang="en-US">
+                    <text for="L1">The heavy rain pouring down</text>
+                    <text for="L2">The end of the ideal I drew</text>
+                  </translation>
+                </translations>
+                <transliterations>
+                  <transliteration xml:lang="ja-Latn">
+                    <text for="L1">
+                      <span begin="26.250" end="26.430">fu</span><span begin="26.430" end="26.650">ri</span>
+                    </text>
+                  </transliteration>
+                </transliterations>
+              </iTunesMetadata>
+            </metadata>
+          </head>
+          <body dur="4:47.168">
+            <div begin="26.250" end="4:47.168" itunes:songPart="Verse" ttm:agent="v1">
+              <p begin="26.250" end="29.445" itunes:key="L1" ttm:agent="v1">
+                <span begin="26.250" end="26.430">ふ</span><span begin="26.430" end="26.650">り</span>
+              </p>
+            </div>
+          </body>
+        </tt>
+        """;
+
+    [Fact]
+    public void Parse_Issue78Sample_EndToEnd()
+    {
+        var (lines, plain) = TtmlParser.Parse(Issue78Sample);
+
+        var line = Assert.Single(lines!);
+        Assert.Equal("ふり", line.Text);
+        Assert.Equal(2, line.Words!.Count);                       // CJK cells stay separate
+        Assert.Equal("The heavy rain pouring down", line.Translation);
+        Assert.True(line.ShowTranslation);
+
+        // Romaji syllables with no whitespace between them join into one word, which
+        // still sweeps on each syllable's own clock — same as the main line's spans.
+        var romaji = Assert.Single(line.TransliterationWords!);
+        Assert.Equal("furi", romaji.Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(26_250), romaji.Start);
+        Assert.Equal(TimeSpan.FromMilliseconds(26_650), romaji.End);
+        Assert.Equal(2, romaji.Syllables!.Count);
+        Assert.Equal(TimeSpan.FromMilliseconds(26_650), line.TransliterationEndTimestamp);
+        Assert.True(line.ShowTransliterationWords);
+        Assert.False(line.ShowTransliterationText);
+
+        // Header content never becomes a line or reaches the Unsync text.
+        Assert.Equal("ふり", plain);
+    }
+
+    private static string LayeredDoc(string metadata, string body) => $"""
+        <tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+          <head><metadata><iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">{metadata}</iTunesMetadata></metadata></head>
+          <body><div>{body}</div></body>
+        </tt>
+        """;
+
+    [Fact]
+    public void Parse_TranslationAttachesByKey_NotByOrder()
+    {
+        var ttml = LayeredDoc(
+            """
+            <translations><translation xml:lang="en">
+              <text for="L2">second</text>
+              <text for="L1">first</text>
+            </translation></translations>
+            """,
+            """
+            <p begin="1" end="2" itunes:key="L1">eins</p>
+            <p begin="3" end="4" itunes:key="L2">zwei</p>
+            <p begin="5" end="6">drei</p>
+            """);
+
+        var (lines, plain) = TtmlParser.Parse(ttml);
+
+        Assert.Equal("first", lines![0].Translation);
+        Assert.Equal("second", lines[1].Translation);
+        Assert.Null(lines[2].Translation);                          // no key → no layer
+        Assert.False(lines[2].ShowTranslation);
+        Assert.Equal("eins\nzwei\ndrei", plain);
+    }
+
+    [Fact]
+    public void Parse_UnknownKey_GetsNoLayer()
+    {
+        var ttml = LayeredDoc(
+            """
+            <translations><translation xml:lang="en"><text for="L9">orphan</text></translation></translations>
+            <transliterations><transliteration xml:lang="ja-Latn"><text for="L9">orphan</text></transliteration></transliterations>
+            """,
+            """<p begin="1" end="2" itunes:key="L1">line</p>""");
+
+        var line = Assert.Single(TtmlParser.Parse(ttml).Lines!);
+
+        Assert.Null(line.Translation);
+        Assert.Null(line.Transliteration);
+        Assert.Null(line.TransliterationWords);
+        Assert.False(line.HasTranslation);
+        Assert.False(line.HasTransliteration);
+    }
+
+    [Fact]
+    public void Parse_UntimedTransliteration_IsStaticText()
+    {
+        var ttml = LayeredDoc(
+            """<transliterations><transliteration xml:lang="ja-Latn"><text for="L1">furi sosogu</text></transliteration></transliterations>""",
+            """<p begin="1" end="2" itunes:key="L1">降り注ぐ</p>""");
+
+        var line = Assert.Single(TtmlParser.Parse(ttml).Lines!);
+
+        Assert.Equal("furi sosogu", line.Transliteration);
+        Assert.Null(line.TransliterationWords);
+        Assert.True(line.ShowTransliterationText);
+        Assert.False(line.ShowTransliterationWords);
+    }
+
+    [Fact]
+    public void Parse_TimedTransliteration_WhitespaceBetweenSpansSplitsWords()
+    {
+        var ttml = LayeredDoc(
+            """
+            <transliterations><transliteration xml:lang="ja-Latn"><text for="L1"><span begin="1.0" end="1.2">fu</span><span begin="1.2" end="1.4">ri</span> <span begin="1.5" end="1.7">so</span><span begin="1.7" end="1.9">so</span><span begin="1.9">gu</span></text></transliteration></transliterations>
+            """,
+            """<p begin="1" end="2.5" itunes:key="L1">降り注ぐ</p>""");
+
+        var line = Assert.Single(TtmlParser.Parse(ttml).Lines!);
+        var words = line.TransliterationWords!;
+
+        Assert.Equal(2, words.Count);
+        Assert.Equal("furi ", words[0].Text);
+        Assert.Equal("sosogu", words[1].Text);
+        Assert.Equal(TimeSpan.FromSeconds(1.5), words[1].Start);
+        // The open last syllable is bounded by the line end, like main-line words.
+        Assert.Equal(TimeSpan.FromSeconds(2.5), words[1].End);
+        Assert.Equal("furi sosogu", line.Transliteration);
+    }
+
+    [Theory]
+    [InlineData("es", "hola")]
+    [InlineData("es-MX", "hola")]
+    [InlineData("fr-FR", "salut")]
+    [InlineData("de", "hello")]   // no match → first in the file
+    [InlineData(null, "hello")]
+    public void Parse_SeveralTranslations_PicksTheUiLanguage_ElseTheFirst(string? ui, string expected)
+    {
+        var ttml = LayeredDoc(
+            """
+            <translations>
+              <translation xml:lang="en-US"><text for="L1">hello</text></translation>
+              <translation xml:lang="es-ES"><text for="L1">hola</text></translation>
+              <translation xml:lang="fr"><text for="L1">salut</text></translation>
+            </translations>
+            """,
+            """<p begin="1" end="2" itunes:key="L1">konnichiwa</p>""");
+
+        var line = Assert.Single(TtmlParser.Parse(ttml, preferredLanguage: ui).Lines!);
+
+        Assert.Equal(expected, line.Translation);
+    }
+
+    [Fact]
+    public void Parse_SeveralTransliterations_UseTheSameLanguageRule()
+    {
+        var ttml = LayeredDoc(
+            """
+            <transliterations>
+              <transliteration xml:lang="ja-Latn"><text for="L1">romaji</text></transliteration>
+              <transliteration xml:lang="ko-Latn"><text for="L1">romaja</text></transliteration>
+            </transliterations>
+            """,
+            """<p begin="1" end="2" itunes:key="L1">x</p>""");
+
+        Assert.Equal("romaja", TtmlParser.Parse(ttml, preferredLanguage: "ko-KR").Lines![0].Transliteration);
+        Assert.Equal("romaji", TtmlParser.Parse(ttml, preferredLanguage: "en").Lines![0].Transliteration);
+    }
+
+    [Fact]
+    public void Parse_HeaderParagraphs_NeverBecomeLines()
+    {
+        var ttml = """
+            <tt xmlns="http://www.w3.org/ns/ttml"><head><metadata><p begin="0" end="1">header</p></metadata></head>
+            <body><div><p begin="1" end="2">body</p></div></body></tt>
+            """;
+
+        var (lines, plain) = TtmlParser.Parse(ttml);
+
+        Assert.Equal("body", Assert.Single(lines!).Text);
+        Assert.Equal("body", plain);
+    }
 }
