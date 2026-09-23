@@ -24,12 +24,14 @@ public sealed partial class ShellViewModel : ObservableObject
         Lyrics = lyrics;
         Player.PropertyChanged += OnPlayerChanged;
         Search = new SearchPageViewModel(this);
+        Home = new HomePageViewModel(this);
     }
 
     public LibraryViewModel Library { get; }
     public NowPlayingViewModel Player { get; }
     public LyricsPageViewModel Lyrics { get; }
     public SearchPageViewModel Search { get; }
+    public HomePageViewModel Home { get; }
 
     /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
     public Func<PageTint> TintFactory { get; init; } = () => new PageTint();
@@ -115,7 +117,15 @@ public sealed partial class ShellViewModel : ObservableObject
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
             OnPropertyChanged(nameof(IsMiniBarVisible));
         if (e.PropertyName == nameof(NowPlayingViewModel.CurrentTrack))
+        {
             Library.RefreshRecents();
+            Home.Refresh();
+        }
+    }
+
+    partial void OnSelectedTabChanged(MobileTab value)
+    {
+        if (value == MobileTab.Home) Home.Refresh();
     }
 
     /// <summary>Push <paramref name="page"/> over the current tab. A page opened from Now

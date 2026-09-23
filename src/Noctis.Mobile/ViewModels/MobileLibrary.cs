@@ -7,6 +7,17 @@ namespace Noctis.Mobile.ViewModels;
 /// <summary>Library queries the phone pages share. Pure functions of the Core library.</summary>
 internal static class MobileLibrary
 {
+    /// <summary>How many play-log events the recent rows read (Library's Shelf, Home's rails):
+    /// one number, so both pages agree on what "recent" means.</summary>
+    internal const int RecentLogScan = 400;
+
+    /// <summary>The albums of <paramref name="recent"/> (newest-first songs from the play log),
+    /// each once, newest first — the Library Shelf and Home's Recently Played share it.</summary>
+    internal static List<Album> RecentAlbums(ILibraryService library, IEnumerable<Track> recent, int max) =>
+        recent.Select(t => t.AlbumId).Distinct()
+            .Select(library.GetAlbumById).OfType<Album>()
+            .Take(max).ToList();
+
     /// <summary>
     /// An artist's songs: the tracks of albums credited to the name, then every other track
     /// filed under it (Track.GroupingArtist, the key the Artists list itself groups by), each

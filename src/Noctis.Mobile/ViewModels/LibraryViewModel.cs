@@ -20,7 +20,6 @@ public sealed partial class LibraryViewModel : ObservableObject
     private const int RecentlyAddedDays = 30;
     private const int RailSize = 12;
     private const int ShelfSize = 10;
-    private const int RecentLogScan = 400;
 
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
@@ -317,10 +316,8 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         var events = _history?.Events ?? Array.Empty<PlayHistoryEvent>();
 
-        var recent = HomeRowsBuilder.BuildRecentFromLog(events, _library.GetTrackById, RecentLogScan);
-        var shelf = recent.Select(t => t.AlbumId).Distinct()
-            .Select(_library.GetAlbumById).OfType<Album>()
-            .Take(ShelfSize).ToList();
+        var recent = HomeRowsBuilder.BuildRecentFromLog(events, _library.GetTrackById, MobileLibrary.RecentLogScan);
+        var shelf = MobileLibrary.RecentAlbums(_library, recent, ShelfSize);
         MobileLibrary.ReplaceIfChanged(Shelf, shelf);
         HasShelf = Shelf.Count > 0;
 

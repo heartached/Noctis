@@ -44,6 +44,7 @@
     <Grid RowDefinitions="*,Auto">
         <Panel Grid.Row="0" Name="TabContent" Margin="{Binding TopSafePadding}">
             <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
+            <views:HomePage DataContext="{Binding Home}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsHomeRootVisible}" />
             <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchRootVisible}" />
             <ContentControl Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding HasPage}"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
@@ -91,9 +92,8 @@
                 </Button>
             </Grid>
 
-            <!-- Home is shown by B10 when its page exists. -->
             <Grid Name="TabBar" ColumnDefinitions="*,*,*" Height="56">
-                <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}" IsVisible="False"
+                <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}"
                         Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
                     <StackPanel Spacing="2">
                         <PathIcon Data="{DynamicResource HomeIcon}" />
