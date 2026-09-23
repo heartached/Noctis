@@ -81,7 +81,15 @@
                 </Button>
             </Grid>
 
+            <!-- Virtualised like the other lists: a box set would otherwise realise every row at
+                 page open. The panel still virtualises under the header, inside AlbumScroll,
+                 because VirtualizingStackPanel works from the effective viewport. -->
             <ItemsControl Name="TrackList" ItemsSource="{Binding Tracks}" Margin="12,8,12,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:AlbumTrackRow">
                         <Button Classes="row"

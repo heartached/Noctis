@@ -66,6 +66,29 @@ public class MobileAlbumPageTests : IDisposable
         window.Close();
     }
 
+    /// <summary>A box set must not realise all its rows at page open: TrackList virtualises
+    /// even though it sits under the header inside the page's own ScrollViewer.</summary>
+    [AvaloniaFact]
+    public void LongAlbum_RealizesOnlyAScreenfulOfRows()
+    {
+        var tracks = Enumerable.Range(1, 300).Select(i =>
+        {
+            var t = MobileFixtures.Song($"Track {i:D3}");
+            t.TrackNumber = i;
+            return t;
+        }).ToArray();
+        var album = MobileFixtures.MakeAlbum("Box Set", "The Band", tracks);
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+
+        var rows = MobileFixtures.Named<ItemsControl>(MobileFixtures.Find<AlbumPage>(view), "TrackList");
+        Assert.InRange(rows.GetRealizedContainers().Count(), 5, 40);
+        window.Close();
+    }
+
     [Fact]
     public void Play_Shuffle_AndARowTap_QueueTheAlbum()
     {
