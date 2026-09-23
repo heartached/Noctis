@@ -1,7 +1,11 @@
 using System;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
@@ -80,6 +84,64 @@ public class MobileSearchTests
 
         search.OpenArtistCommand.Execute(search.Artists[0]);
         Assert.Equal("Beyoncé", rig.Shell.CurrentPage!.Title);
+    }
+
+    [Fact]
+    public void Search_NonLatinTitlesMatchThemselves()
+    {
+        using var rig = MobileFixtures.MakeRig(new[]
+        {
+            MobileFixtures.Song("夜に駆ける"), MobileFixtures.Song("Кино"), MobileFixtures.Song("사랑해요"),
+        });
+        var search = rig.Shell.Search;
+
+        search.Query = "夜に";
+        Assert.Equal(new[] { "夜に駆ける" }, search.Songs.Select(t => t.Title));
+        search.Query = "кино";
+        Assert.Equal(new[] { "Кино" }, search.Songs.Select(t => t.Title));
+        search.Query = "사랑해요";
+        Assert.Equal(new[] { "사랑해요" }, search.Songs.Select(t => t.Title));
+    }
+
+    /// <summary>The keyboard comes up when the user arrives at Search, not when Back pops a
+    /// page opened from the results (it would cover the results they came back to).</summary>
+    [AvaloniaFact]
+    public void SearchBox_FocusesOnArrival_NotWhenAPageOpenedFromResultsIsPopped()
+    {
+        using var rig = Library();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var page = MobileFixtures.Find<SearchPage>(view);
+
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Search);
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        var box = MobileFixtures.Named<TextBox>(page, "SearchBox");   // templated once shown
+        Assert.True(box.IsFocused);
+
+        // Tap the artist result, as on device: the tap takes focus off the box.
+        rig.Shell.Search.Query = "beyonce";
+        window.UpdateLayout();
+        var result = MobileFixtures.Named<ItemsControl>(page, "ArtistResults").GetVisualDescendants().OfType<Button>().First();
+        var centre = result.TranslatePoint(new Point(result.Bounds.Width / 2, result.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(centre, MouseButton.Left);
+        window.MouseUp(centre, MouseButton.Left);
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Beyoncé", rig.Shell.CurrentPage!.Title);
+
+        rig.Shell.GoBack();
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(page.IsVisible);
+        Assert.False(box.IsFocused);
+
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
+        window.UpdateLayout();
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Search);
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(box.IsFocused);
+        window.Close();
     }
 
     [AvaloniaFact]
