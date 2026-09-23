@@ -12,6 +12,7 @@
         <!-- One rail: a section title over a horizontal strip of RailTiles. -->
         <DataTemplate x:Key="RailTileTemplate" x:DataType="vm:RailItem">
             <Button Classes="row" Width="140"
+                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenRailItemSheetCommand}"
                     Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenRailItemCommand}"
                     CommandParameter="{Binding}">
                 <views:RailTile />
@@ -130,6 +131,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:Album">
                                         <Button Classes="row" Width="160"
+                                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
                                                 Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenAlbumCommand}"
                                                 CommandParameter="{Binding}">
                                             <views:AlbumTile />
@@ -142,6 +144,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row"
+                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
                                             Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenAlbumCommand}"
                                             CommandParameter="{Binding}">
                                         <Grid ColumnDefinitions="Auto,*" Height="64">

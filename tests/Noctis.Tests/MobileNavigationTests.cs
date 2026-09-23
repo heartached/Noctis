@@ -116,6 +116,24 @@ public class MobileNavigationTests : IDisposable
     }
 
     [Fact]
+    public void TryHandleBack_OnTheLibraryTab_ResetsANonAllMusicChip_BeforeLeavingTheApp()
+    {
+        var shell = MakeShell();
+        shell.SelectLibraryChipCommand.Execute(LibraryChip.Songs);
+        shell.Navigate(new NavTestPage("Pushed"));
+
+        Assert.True(shell.TryHandleBack());                // the pushed page first
+        Assert.Null(shell.CurrentPage);
+        Assert.Equal(LibraryChip.Songs, shell.LibraryChip);
+
+        Assert.True(shell.TryHandleBack());                // then the chip returns to All Music
+        Assert.Equal(LibraryChip.AllMusic, shell.LibraryChip);
+        Assert.Null(shell.LibraryChipPage);
+
+        Assert.False(shell.TryHandleBack());               // All Music root: the system finishes the activity
+    }
+
+    [Fact]
     public void SelectTab_ClearsTheStack_AndClosesEveryPage()
     {
         var shell = MakeShell();

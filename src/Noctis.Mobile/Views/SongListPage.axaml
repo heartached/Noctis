@@ -43,6 +43,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:Track">
                         <Button Classes="row"
+                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                                 Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).PlayCommand}"
                                 CommandParameter="{Binding}">
                             <views:SongRow />

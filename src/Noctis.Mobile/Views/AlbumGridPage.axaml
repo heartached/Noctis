@@ -34,6 +34,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row" Margin="6"
+                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
                                             Command="{Binding $parent[views:AlbumGridPage].((vm:AlbumGridPageViewModel)DataContext).Shell.OpenAlbumCommand}"
                                             CommandParameter="{Binding}">
                                         <views:AlbumTile />

@@ -31,7 +31,8 @@
 
     <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating
          mini bar above the tab bar. The overlays span both rows and are declared last, in
-         z-order: Now Playing, then Lyrics and Queue above it. The mini bar belongs to the tab
+         z-order: Now Playing, then Lyrics and Queue above it, then the long-press sheet
+         above everything. The mini bar belongs to the tab
          layer, so it is declared before the overlays — after them it would paint over the
          Queue page the moment anything other than Now Playing opens the queue. -->
     <Grid RowDefinitions="*,Auto">
@@ -118,5 +119,8 @@
 
         <views:QueuePage Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding}"
                          IsVisible="{Binding IsQueueOpen}" />
+
+        <views:ContextSheet Grid.Row="0" Grid.RowSpan="2" Name="Sheet" DataContext="{Binding}"
+                            IsVisible="{Binding IsSheetOpen}" />
     </Grid>
 </UserControl>

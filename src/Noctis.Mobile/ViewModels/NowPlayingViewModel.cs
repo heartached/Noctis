@@ -274,6 +274,26 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }
     public void MoveInQueue(int fromUpNextIndex, int toUpNextIndex) { _queue.Move(fromUpNextIndex, toUpNextIndex); QueueChanged(); }
 
+    /// <summary>"Play Next" for several tracks (an album or playlist from the long-press sheet):
+    /// in their order at the front of Up Next, one save. With nothing loaded there is no "next"
+    /// to insert before, so the tracks simply play.</summary>
+    public void PlayNext(IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        for (var i = tracks.Count - 1; i >= 0; i--) _queue.AddNext(tracks[i]);
+        QueueChanged();
+    }
+
+    /// <summary>"Add to Queue" for several tracks; with nothing loaded they simply play.</summary>
+    public void AddToQueue(IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        _queue.AddRange(tracks);
+        QueueChanged();
+    }
+
     private void QueueChanged()
     {
         SyncUpNext();

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Models;
+using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -61,6 +62,12 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The list shown under a non-"All Music" chip: the same page a tile pushes, embedded.</summary>
     [ObservableProperty] private MobilePage? _libraryChipPage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSheetOpen))]
+    private ContextSheetViewModel? _sheet;
+
+    public bool IsSheetOpen => Sheet != null;
+
     public bool IsAllMusicChip => LibraryChip == LibraryChip.AllMusic;
     public bool IsPlaylistsChip => LibraryChip == LibraryChip.Playlists;
     public bool IsAlbumsChip => LibraryChip == LibraryChip.Albums;
@@ -94,6 +101,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// Playing (the artist link) closes the player first.</summary>
     public void Navigate(MobilePage page)
     {
+        Sheet = null;
         if (IsNowPlayingOpen) CloseNowPlaying();
         Pages.Add(page);
         CurrentPage = page;
@@ -142,17 +150,22 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void ToggleLyrics() => IsLyricsOpen = !IsLyricsOpen;
 
     /// <summary>
-    /// Android Back: the topmost thing closes first — Queue, Lyrics, Now Playing, then pushed
-    /// pages, then a non-start tab returns to Library. Returns whether the press was consumed;
-    /// only at the Library root does the activity fall through to the system default (finish).
+    /// Android Back: the topmost thing closes first — the long-press sheet, Queue, Lyrics, Now
+    /// Playing, then pushed pages, then a non-start tab returns to Library. A Library chip
+    /// other than All Music then returns to All Music. Returns whether the press was consumed;
+    /// only at the All Music root does the activity fall through to the system default (finish).
     /// </summary>
     public bool TryHandleBack()
     {
+        if (IsSheetOpen) { CloseSheet(); return true; }
         if (IsQueueOpen) { IsQueueOpen = false; return true; }
         if (IsLyricsOpen) { IsLyricsOpen = false; return true; }
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
         if (GoBack()) return true;
         if (SelectedTab != MobileTab.Library) { SelectedTab = MobileTab.Library; return true; }
+        // A chip list (Songs, Albums…) reads as a page of its own: Back returns to All Music
+        // rather than leaving the app from it.
+        if (LibraryChip != LibraryChip.AllMusic) { SelectLibraryChip(LibraryChip.AllMusic); return true; }
         return false;
     }
 
@@ -241,6 +254,58 @@ public sealed partial class ShellViewModel : ObservableObject
                 else Player.PlayTracks(new[] { track }, 0);
                 break;
         }
+    }
+
+    [RelayCommand]
+    private void OpenTrackSheet(Track? track)
+    {
+        if (track != null) Sheet = ContextSheetViewModel.ForTrack(this, track);
+    }
+
+    [RelayCommand]
+    private void OpenAlbumSheet(Album? album)
+    {
+        if (album != null) Sheet = ContextSheetViewModel.ForAlbum(this, album);
+    }
+
+    [RelayCommand]
+    private void OpenPlaylistSheet(Playlist? playlist)
+    {
+        if (playlist != null) Sheet = ContextSheetViewModel.ForPlaylist(this, playlist);
+    }
+
+    [RelayCommand]
+    private void OpenRailItemSheet(RailItem? item)
+    {
+        switch (item?.Payload)
+        {
+            case Album album: OpenAlbumSheet(album); break;
+            case Playlist playlist: OpenPlaylistSheet(playlist); break;
+            case Track track: OpenTrackSheet(track); break;
+        }
+    }
+
+    [RelayCommand]
+    public void CloseSheet() => Sheet = null;
+
+    /// <summary>
+    /// Favourite or unfavourite <paramref name="tracks"/>: the flag, one journal write through
+    /// the Core user-state path (not a library.json rewrite), then FavoritesChanged so the
+    /// Library counts, open lists and album hearts follow.
+    /// </summary>
+    public async Task SetFavouriteAsync(IReadOnlyList<Track> tracks, bool favourite)
+    {
+        if (tracks.Count == 0) return;
+        foreach (var t in tracks) t.IsFavorite = favourite;
+        try
+        {
+            await Library.Service.SaveTrackUserStateAsync(tracks.ToList());
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Favourite save failed: {ex.Message}");
+        }
+        Library.Service.NotifyFavoritesChanged(tracks.ToList());
     }
 
     public async Task InitializeAsync()

@@ -202,6 +202,24 @@ public class MobileLibraryRailsTests
         }
     }
 
+    private sealed class ThrowingSettingsPersistence : TestPersistenceService
+    {
+        public override Task<AppSettings> LoadSettingsAsync() => throw new InvalidOperationException("settings unreadable");
+    }
+
+    /// <summary>A throw during the startup load must not leave an empty library with no way in.</summary>
+    [Fact]
+    public async Task InitializeAsync_ThatThrows_StillMarksLoaded_SoTheConnectCardShows()
+    {
+        using var persistence = new ThrowingSettingsPersistence();
+        var library = new LibraryViewModel(new FakeLibraryService(), persistence, new MobileFixtures.NoPicker(), marshal: a => a());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(library.InitializeAsync);
+
+        Assert.True(library.IsLoaded);
+        Assert.True(library.ShowConnectCard);
+    }
+
     [Fact]
     public void BuildLastPlayed_KeepsTheNewestOfEachTrack()
     {

@@ -132,14 +132,75 @@ public sealed partial class LibraryViewModel : ObservableObject
     public string? PlaylistArtwork(Playlist playlist) =>
         playlist.TrackIds.Select(_library.GetTrackById).FirstOrDefault(t => !string.IsNullOrEmpty(t?.AlbumArtworkPath))?.AlbumArtworkPath;
 
-    public async Task InitializeAsync()
+    /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
+    public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
     {
         var settings = await _persistence.LoadSettingsAsync();
-        SetFolders(settings.MusicFolders);
+        settings.PinnedAlbumIds.RemoveAll(id => id == albumId);
+        if (pinned) settings.PinnedAlbumIds.Add(albumId);
+        await _persistence.SaveSettingsAsync(settings);
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
-        await LoadPlaylistsAsync();
-        RefreshFromLibrary();
-        IsLoaded = true;
+        AfterUserEdit();
+    }
+
+    public Task SetPlaylistPinnedAsync(Playlist playlist, bool pinned)
+    {
+        playlist.IsPinned = pinned;
+        return SavePlaylistsAsync();
+    }
+
+    public async Task<Playlist> CreatePlaylistAsync(string name)
+    {
+        var playlist = new Playlist { Name = name };
+        _playlists.Add(playlist);
+        await SavePlaylistsAsync();
+        return playlist;
+    }
+
+    public Task AddToPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
+        foreach (var t in tracks) playlist.TrackIds.Add(t.Id);
+        playlist.ModifiedAt = DateTime.UtcNow;
+        return SavePlaylistsAsync();
+    }
+
+    private async Task SavePlaylistsAsync()
+    {
+        try
+        {
+            await _persistence.SavePlaylistsAsync(_playlists);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Playlist save failed: {ex.Message}");
+        }
+        PlaylistCount = _playlists.Count;
+        AfterUserEdit();
+    }
+
+    /// <summary>A pin or playlist edit: rails and open pages re-read, the library itself is unchanged.</summary>
+    private void AfterUserEdit()
+    {
+        RefreshRails();
+        Refreshed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task InitializeAsync()
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            SetFolders(settings.MusicFolders);
+            _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
+            await LoadPlaylistsAsync();
+            RefreshFromLibrary();
+        }
+        finally
+        {
+            // Even after a failed load: otherwise an empty library would show no connect card
+            // and so no way to add music.
+            IsLoaded = true;
+        }
     }
 
     [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
