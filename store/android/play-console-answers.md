@@ -90,11 +90,11 @@ features. **Health:** My app does not have any health features.
 - Type: **Media playback** (`FOREGROUND_SERVICE_MEDIA_PLAYBACK`).
 - Use case: Media playback.
 - Description: "Noctis is a music player. Its androidx.media3 MediaSessionService runs as
-  a mediaPlayback foreground service only while the user is playing music they started, so
+  a mediaPlayback foreground service while the user is playing music they started, so
   playback continues when they leave the app or turn the screen off, with the standard
-  media notification and lock-screen controls. After the user pauses or stops, Media3
-  keeps it in the foreground for up to 10 minutes so playback can be resumed from the
-  notification, then the service stops."
+  media notification and lock-screen controls. After the user pauses, Media3 keeps it in
+  the foreground for up to 10 minutes so playback can be resumed from the notification,
+  then the service stops."
 - Impact if deferred or interrupted: "The music the user is listening to would stop as
   soon as they switched apps or turned the screen off, which breaks the app's core
   function."
