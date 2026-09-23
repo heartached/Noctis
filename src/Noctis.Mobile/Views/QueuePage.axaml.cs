@@ -6,13 +6,16 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Noctis.Mobile.ViewModels;
+using Noctis.Models;
 
 namespace Noctis.Mobile.Views;
 
 /// <summary>
 /// Up Next: drag a row by its handle to reorder, swipe it left to remove (spec §5 item 6).
 /// Rows are resolved by container index, never by Track: "Add to Queue" of a queued song puts
-/// the same Track in the list twice, and IndexOf would act on the first copy.
+/// the same Track in the list twice, and IndexOf would act on the first copy. The row's Track
+/// is captured too: Up Next can be rebuilt mid-gesture (the track ends, a lock-screen Next), and
+/// the release must then not act on whatever row now sits at the pressed index.
 /// </summary>
 public partial class QueuePage : UserControl
 {
@@ -21,6 +24,7 @@ public partial class QueuePage : UserControl
     private Gesture _gesture;
     private Control? _moving;   // the row (swipe) or its container (drag) being translated
     private int _index = -1;
+    private Track? _track;      // UpNext[_index] at press
     private Point _start;
 
     public QueuePage()
@@ -31,6 +35,12 @@ public partial class QueuePage : UserControl
     private int IndexOf(Control element) =>
         element.FindAncestorOfType<ContentPresenter>() is { } container ? QueueList.IndexFromContainer(container) : -1;
 
+    private Track? TrackAt(int index) =>
+        DataContext is ShellViewModel vm && index >= 0 && index < vm.Player.UpNext.Count ? vm.Player.UpNext[index] : null;
+
+    /// <summary>Whether Up Next still holds <paramref name="pressed"/> at <paramref name="index"/>.</summary>
+    private bool StillAt(int index, Track? pressed) => pressed != null && ReferenceEquals(TrackAt(index), pressed);
+
     private void ResetGesture()
     {
         if (_moving != null)
@@ -40,6 +50,7 @@ public partial class QueuePage : UserControl
         }
         _moving = null;
         _index = -1;
+        _track = null;
         _gesture = Gesture.None;
     }
 
@@ -51,6 +62,7 @@ public partial class QueuePage : UserControl
         ResetGesture();   // a press whose release landed elsewhere left a stale Pending
         _moving = row;
         _index = IndexOf(row);
+        _track = TrackAt(_index);
         _start = e.GetPosition(this);
         _gesture = Gesture.Pending;
     }
@@ -82,9 +94,9 @@ public partial class QueuePage : UserControl
         }
         var dx = e.GetPosition(this).X - _start.X;
         var width = _moving!.Bounds.Width;
-        var index = _index;
+        var (index, track) = (_index, _track);
         ResetGesture();
-        CommitSwipe(index, dx, width);
+        CommitSwipe(index, track, dx, width);
         e.Handled = true;
     }
 
@@ -93,10 +105,11 @@ public partial class QueuePage : UserControl
         if (ReferenceEquals(sender, _moving) && _gesture != Gesture.Drag) ResetGesture();
     }
 
-    /// <summary>The release half of a swipe. Internal for tests.</summary>
-    internal void CommitSwipe(int index, double dx, double rowWidth)
+    /// <summary>The release half of a swipe; a no-op if Up Next no longer holds
+    /// <paramref name="pressed"/> at <paramref name="index"/>. Internal for tests.</summary>
+    internal void CommitSwipe(int index, Track? pressed, double dx, double rowWidth)
     {
-        if (DataContext is ShellViewModel vm && index >= 0 && QueueGesture.ShouldRemove(dx, rowWidth))
+        if (DataContext is ShellViewModel vm && StillAt(index, pressed) && QueueGesture.ShouldRemove(dx, rowWidth))
             vm.Player.RemoveFromQueue(index);
     }
 
@@ -109,6 +122,7 @@ public partial class QueuePage : UserControl
         _gesture = Gesture.Drag;
         _moving = container;
         _index = QueueList.IndexFromContainer(container);
+        _track = TrackAt(_index);
         _start = e.GetPosition(this);
         container.ZIndex = 1;               // drawn above the rows it passes
         e.Pointer.Capture(handle);
@@ -131,9 +145,9 @@ public partial class QueuePage : UserControl
         if (_gesture != Gesture.Drag || _moving == null) return;
         var dy = e.GetPosition(this).Y - _start.Y;
         var rowHeight = _moving.Bounds.Height;
-        var from = _index;
+        var (from, track) = (_index, _track);
         ResetGesture();
-        CommitDrag(from, dy, rowHeight);
+        CommitDrag(from, track, dy, rowHeight);
         e.Handled = true;
     }
 
@@ -142,10 +156,11 @@ public partial class QueuePage : UserControl
         if (_gesture == Gesture.Drag) ResetGesture();
     }
 
-    /// <summary>The release half of a handle drag. Internal for tests.</summary>
-    internal void CommitDrag(int from, double dy, double rowHeight)
+    /// <summary>The release half of a handle drag; a no-op if Up Next no longer holds
+    /// <paramref name="pressed"/> at <paramref name="from"/>. Internal for tests.</summary>
+    internal void CommitDrag(int from, Track? pressed, double dy, double rowHeight)
     {
-        if (DataContext is not ShellViewModel vm || from < 0) return;
+        if (DataContext is not ShellViewModel vm || !StillAt(from, pressed)) return;
         var to = QueueGesture.TargetIndex(from, dy, rowHeight, vm.Player.UpNext.Count);
         if (to != from) vm.Player.MoveInQueue(from, to);
     }

@@ -99,7 +99,7 @@ public class MobileQueueGestureTests
         var (rig, window, view, _) = OpenQueue(new[] { now, x, y, x });
         using var _rig = rig;
 
-        MobileFixtures.Find<QueuePage>(view).CommitSwipe(2, -300, 380);   // the second X
+        MobileFixtures.Find<QueuePage>(view).CommitSwipe(2, x, -300, 380);   // the second X
 
         Assert.Equal(new[] { "X", "Y" }, rig.Shell.Player.UpNext.Select(t => t.Title));
         window.Close();
@@ -125,5 +125,79 @@ public class MobileQueueGestureTests
         Assert.Empty(rig.Shell.Player.UpNext);
         Assert.False(rig.Shell.Player.HasUpNext);
         Assert.Same(songs[0], rig.Shell.Player.CurrentTrack);
+    }
+    [AvaloniaFact]
+    public void UpNextRebuiltMidSwipe_TheReleaseDoesNotRemoveTheNeighbour()
+    {
+        var (rig, window, view, _) = OpenQueue();
+        using var _rig = rig;
+        var row = Row(view, 1);                                     // S2
+        var y = row.TranslatePoint(new Point(0, row.Bounds.Height / 2), window)!.Value.Y;
+
+        window.MouseDown(new Point(250, y), MouseButton.Left, RawInputModifiers.None);
+        window.MouseMove(new Point(200, y), RawInputModifiers.LeftMouseButton);
+        window.MouseMove(new Point(30, y), RawInputModifiers.LeftMouseButton);
+        rig.Shell.Player.NextCommand.Execute(null);                 // lock-screen Next mid-gesture
+        window.UpdateLayout();
+        Assert.Equal(new[] { "S2", "S3", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        window.MouseUp(new Point(30, y), MouseButton.Left, RawInputModifiers.None);
+
+        // Index 1 is now S3: acting on the index captured at press would remove it.
+        Assert.Equal(new[] { "S2", "S3", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void UpNextRebuiltMidDrag_TheReleaseDoesNotMoveTheNeighbour()
+    {
+        var (rig, window, view, _) = OpenQueue();
+        using var _rig = rig;
+        var row = Row(view, 0);                                     // S1
+        var handle = row.GetVisualDescendants().OfType<Border>().First(b => b.Name == "DragHandle");
+        var start = handle.TranslatePoint(new Point(handle.Bounds.Width / 2, handle.Bounds.Height / 2), window)!.Value;
+        var rowHeight = row.Bounds.Height;
+
+        window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
+        window.MouseMove(new Point(start.X, start.Y + rowHeight * 2 + 5), RawInputModifiers.LeftMouseButton);
+        rig.Shell.Player.NextCommand.Execute(null);                 // the track ended mid-gesture
+        window.UpdateLayout();
+        window.MouseUp(new Point(start.X, start.Y + rowHeight * 2 + 5), MouseButton.Left, RawInputModifiers.None);
+
+        Assert.Equal(new[] { "S2", "S3", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        window.Close();
+    }
+    [AvaloniaFact]
+    public void UpNextRebuiltBetweenPressAndSwipe_TheReleaseDoesNotRemoveTheNeighbour()
+    {
+        var (rig, window, view, _) = OpenQueue();
+        using var _rig = rig;
+        var row = Row(view, 1);                                     // S2
+        var y = row.TranslatePoint(new Point(0, row.Bounds.Height / 2), window)!.Value.Y;
+
+        window.MouseDown(new Point(250, y), MouseButton.Left, RawInputModifiers.None);
+        rig.Shell.Player.NextCommand.Execute(null);
+        window.UpdateLayout();
+        window.MouseMove(new Point(200, y), RawInputModifiers.LeftMouseButton);
+        window.MouseMove(new Point(30, y), RawInputModifiers.LeftMouseButton);
+        window.MouseUp(new Point(30, y), MouseButton.Left, RawInputModifiers.None);
+
+        Assert.Equal(new[] { "S2", "S3", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        window.Close();
+    }
+    [AvaloniaFact]
+    public void Commit_AfterUpNextWasRebuilt_ActsOnlyIfThePressedTrackIsStillAtItsIndex()
+    {
+        var (rig, window, view, songs) = OpenQueue();
+        using var _rig = rig;
+        var page = MobileFixtures.Find<QueuePage>(view);
+        rig.Shell.Player.NextCommand.Execute(null);                 // S1 now playing; Up Next S2, S3, S4
+
+        page.CommitSwipe(1, songs[2], -300, 380);                   // pressed S2 at index 1: now S3 there
+        page.CommitDrag(0, songs[1], 200, 60);                      // pressed S1 at index 0: now S2 there
+        Assert.Equal(new[] { "S2", "S3", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+
+        page.CommitSwipe(1, songs[3], -300, 380);                   // S3 really is at index 1
+        Assert.Equal(new[] { "S2", "S4" }, rig.Shell.Player.UpNext.Select(t => t.Title));
+        window.Close();
     }
 }
