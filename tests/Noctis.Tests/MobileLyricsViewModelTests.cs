@@ -123,6 +123,28 @@ public class MobileLyricsViewModelTests : IDisposable
         Assert.Equal(0, vm.ActiveLineIndex);
     }
 
+    /// <summary>Nothing is sung before the first line, so nothing is dimmed (desktop
+    /// UpdateLineOpacities(-1)); the ramp only starts once a line is active.</summary>
+    [Fact]
+    public async Task BeforeTheFirstLine_EveryLineIsAtFullOpacity()
+    {
+        var (vm, np, player, files, _) = Make();
+        files.Sidecars[".lrc"] = "[00:01.00]one\n[00:03.00]two\n[00:05.00]three";
+
+        np.PlayTracks(new[] { NewTrack("a") }, 0);
+        await WaitForAsync(() => vm.HasLyrics);
+        player.RaisePositionChanged(TimeSpan.Zero);
+        vm.OnFrame(1000);
+
+        Assert.Equal(-1, vm.ActiveLineIndex);
+        Assert.All(vm.Lines, l => Assert.Equal(1.0, l.LineOpacity, 6));
+
+        player.RaisePositionChanged(TimeSpan.FromSeconds(1.5));
+        vm.OnFrame(2000);
+        Assert.Equal(0, vm.ActiveLineIndex);
+        Assert.Equal(0.55, vm.Lines[1].LineOpacity, 6);
+    }
+
     [Fact]
     public async Task LayerToggles_AreRemembered()
     {

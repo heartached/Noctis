@@ -213,12 +213,18 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         ApplyOpacities(step.ActiveIndex);
     }
 
-    /// <summary>Before the first line (<paramref name="active"/> = -1) the distance formula
-    /// still works: the top lines are brightest.</summary>
+    /// <summary>Before the first line (<paramref name="active"/> &lt; 0) every line is at full
+    /// opacity, as the desktop's UpdateLineOpacities(-1) does: nothing is sung yet, so nothing
+    /// should read as dimmed.</summary>
     private void ApplyOpacities(int active)
     {
         for (var i = 0; i < Lines.Count; i++)
         {
+            if (active < 0)
+            {
+                Lines[i].LineOpacity = 1.0;
+                continue;
+            }
             var distance = Math.Abs(i - active);
             var ramp = distance < OpacityRamp.Length ? OpacityRamp[distance] : 0;
             Lines[i].LineOpacity = Math.Max(ramp, _minOpacity);
