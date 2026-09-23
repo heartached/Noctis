@@ -23,6 +23,21 @@ pwsh -File scripts/android/create-upload-key.ps1
 
 ## 2. Build the signed bundle
 
+**Smoke-test first.** The upload is a trimmed, fully AOT-compiled Release build, which can
+fail in ways a Debug build never shows. Build the same thing with the debug key and try it
+on the emulator (`emulator-5554` running) or a phone plugged in with USB debugging
+(add `-DeviceSerial <serial from adb devices>`):
+
+```powershell
+pwsh -File scripts/android/build-release.ps1 -UseDebugKey
+```
+
+It ends by printing an `Install:` line; run that line to install the `.apks` it built. A
+phone that has the Play version installed refuses it (different signature): uninstall that
+first, or use the emulator. Then walk the main screens: Home, Library (a list page, an
+album, an artist), Search, Now Playing (seek, volume, lyrics, queue) and Settings. Only if
+nothing crashes or looks broken, build with the real key:
+
 ```powershell
 pwsh -File scripts/android/build-release.ps1
 ```
@@ -143,7 +158,9 @@ continuous days** before applying for production.
 
 ## Every later upload
 
-Bump the version code (it must always go up) and usually the name:
+Smoke-test first, as in step 2 (`build-release.ps1 -UseDebugKey`, run its `Install:`
+line, walk the main screens). Then bump the version code (it must always go up) and
+usually the name:
 
 ```powershell
 pwsh -File scripts/android/build-release.ps1 -VersionCode 2 -VersionName 1.0.1
