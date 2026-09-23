@@ -1,6 +1,7 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using Android.Content.Res;
 using Android.OS;
 using Avalonia.Android;
 using Noctis.Services;
@@ -13,7 +14,7 @@ namespace Noctis.Android;
     Icon = "@drawable/icon",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTask,
-    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
+    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.FontScale)]
 public class MainActivity : AvaloniaMainActivity
 {
     private const int PickFolderRequest = 4242;
@@ -80,6 +81,17 @@ public class MainActivity : AvaloniaMainActivity
             // the activity is already finishing when it lands here.
             DebugLog.Write("Android", $"POST_NOTIFICATIONS request failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// FontScale is in ConfigurationChanges so a system font-size change arrives here instead
+    /// of recreating the activity; the lyrics page resizes from it (Avalonia itself ignores
+    /// the system font scale).
+    /// </summary>
+    public override void OnConfigurationChanged(Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+        AndroidApp.Current?.ApplyFontScale(newConfig.FontScale);
     }
 
     protected override void OnPause()

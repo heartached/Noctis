@@ -65,9 +65,16 @@ public partial class AndroidApp : Avalonia.Application
         // (it keeps playing in the background service) and holding the activity leaks it.
         _player = new Media3AudioPlayer(context, library, persistence);
 
+        var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history);
+        var lyrics = new LyricsPageViewModel(_player, nowPlaying, new SafTrackFileAccess(context), persistence)
+        {
+            // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
+            FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
+        };
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker()),
-            new NowPlayingViewModel(_player, library, persistence, history));
+            nowPlaying,
+            lyrics);
         _shell = shell;
 
         // Notification / lock screen / Bluetooth / headset transport. The session player raises
@@ -129,6 +136,12 @@ public partial class AndroidApp : Avalonia.Application
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes
     /// instead of the activity finishing. See <see cref="ShellViewModel.TryHandleBack"/>.</summary>
     public bool TryHandleBack() => _shell?.TryHandleBack() ?? false;
+
+    /// <summary>The system font size changed (MainActivity.OnConfigurationChanged).</summary>
+    public void ApplyFontScale(float scale)
+    {
+        if (_shell != null) _shell.Lyrics.FontScale = scale;
+    }
 
     /// <summary>
     /// Merge one of the shared theme overlays (Dark, Midnight, Ink, Smoke) on top of the
