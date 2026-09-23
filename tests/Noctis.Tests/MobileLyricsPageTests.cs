@@ -1,7 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Controls.Presenters;
 using Avalonia.LogicalTree;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
@@ -161,6 +164,122 @@ public class MobileLyricsPageTests
         var top = container.TranslatePoint(new Point(0, 0), scroll)!.Value.Y;
         var expected = scroll.Viewport.Height * LyricsPage.AnchorRatio - container.Bounds.Height / 2;
         Assert.InRange(top, expected - 2, expected + 2);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    private static Control LineContainer(LyricsPage page, int index) =>
+        page.FindControl<ItemsControl>("LyricsList")!.ContainerFromIndex(index)!;
+
+    /// <summary>A finished word-timed line has every word at full progress; if its sweep stayed
+    /// visible it would stack on the base under the line's opacity (0.55 read as ~0.80 on the
+    /// device). Only the active line may show the sweep.</summary>
+    [AvaloniaFact]
+    public void FinishedLine_HidesTheSweep_ActiveLineShowsIt()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(5.5));   // line 0 done, line 1 active
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var sungSweeps = LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.Classes.Contains("word-sweep")).ToList();
+        var activeSweeps = LineContainer(page, 1).GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.Classes.Contains("word-sweep")).ToList();
+        Assert.Equal(5, sungSweeps.Count);
+        Assert.All(sungSweeps, t => Assert.False(t.IsEffectivelyVisible));
+        Assert.Contains(LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>(),
+            t => t.Classes.Contains("word-base") && t.Text == "例えば" && t.IsEffectivelyVisible);
+        Assert.Single(activeSweeps);
+        Assert.All(activeSweeps, t => Assert.True(t.IsEffectivelyVisible));
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Tapping a line must not flash Fluent's hover/press box or zoom it (Fluent's
+    /// pressed scale, Noctis.UI's Button:pointerover scale(1.045), loaded here as on Android).
+    /// A plain Button in the same window proves the pseudo-class simulation reaches both.</summary>
+    [AvaloniaTheory]
+    [InlineData(":pointerover")]
+    [InlineData(":pressed")]
+    public void LyricLine_NoChromeAndNoZoom_OnHoverOrPress(string pseudo)
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var view = new ShellView { DataContext = shell };
+        var plain = new Button { Content = "plain" };
+        var window = new Window { Width = 412, Height = 915, Content = new Panel { Children = { view, plain } } };
+        // Styles.axaml resolves this StaticResource at load, from the app (as ArtistDetailViewMountTests).
+        if (!Application.Current!.Resources.ContainsKey("InterSemiBold"))
+            Application.Current.Resources["InterSemiBold"] = FontFamily.Default;
+        window.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/"))
+        {
+            Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml")
+        });
+        window.Styles.Add(new StyleInclude(new Uri("avares://Noctis/"))
+        {
+            Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml")
+        });
+        window.Show();
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var line = LineContainer(page, 0).GetVisualDescendants().OfType<Button>().First();
+        Assert.Contains("lyric-line", line.Classes);
+        foreach (var b in new[] { line, plain }) b.Transitions = null;   // transitions are frame-driven
+        var presenter = line.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        presenter.Transitions = null;
+        var plainPresenter = plain.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        plainPresenter.Transitions = null;
+
+        ((IPseudoClasses)line.Classes).Set(pseudo, true);
+        ((IPseudoClasses)plain.Classes).Set(pseudo, true);
+        window.UpdateLayout();
+
+        Assert.NotEqual(Matrix.Identity, plain.RenderTransform!.Value);   // the simulation bites
+        Assert.NotEqual(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(plainPresenter.Background).Color);
+        Assert.Equal(Matrix.Identity, line.RenderTransform?.Value ?? Matrix.Identity);
+        var bg = presenter.Background;
+        Assert.True(bg is null || (bg is ISolidColorBrush solid && solid.Color.A == 0), $"presenter background {bg}");
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>A long intro gets LrcParser's placeholder line; it must show the dots rather
+    /// than leave the page anchored on a blank slot.</summary>
+    [AvaloniaFact]
+    public void LongIntro_ShowsThreeDots()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:03.00]one\n[00:05.00]two";
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(0.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+
+        Assert.True(shell.Lyrics.Lines[0].IsIntroPlaceholder);
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        Assert.Contains(LineContainer(page, 0).GetVisualDescendants().OfType<TextBlock>(),
+            t => t.Text == "•••" && t.IsEffectivelyVisible);
+        Assert.DoesNotContain(LineContainer(page, 1).GetVisualDescendants().OfType<TextBlock>(),
+            t => t.Text == "•••" && t.IsEffectivelyVisible);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

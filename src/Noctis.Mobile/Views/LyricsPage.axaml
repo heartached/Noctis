@@ -17,7 +17,7 @@
         <DataTemplate x:Key="WordCell" x:DataType="m:WordTiming">
             <Panel>
                 <TextBlock Classes="word-base" Text="{Binding Text}" FontWeight="Bold" Foreground="{StaticResource LyricsFg}" />
-                <TextBlock Text="{Binding SweepText}" FontWeight="Bold" HorizontalAlignment="Left">
+                <TextBlock Classes="word-sweep" Text="{Binding SweepText}" FontWeight="Bold" HorizontalAlignment="Left">
                     <TextBlock.Foreground>
                         <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
                             <Binding Path="Progress" />
@@ -35,6 +35,29 @@
         <!-- As on desktop: the unsung part of the active line is dim, so the sweep reads. -->
         <Style Selector="ItemsControl.word-layer.active TextBlock.word-base">
             <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <!-- A finished line leaves every word at full progress, so the sweep would paint solid
+             white over the solid-white base; the line Button's opacity applies to each layer,
+             and the two stack (0.55 reads as ~0.80). Only the active line shows the sweep. -->
+        <Style Selector="ItemsControl.word-layer:not(.active) TextBlock.word-sweep">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <!-- No hover/press box and no zoom on a lyric line (as LyricsView.axaml does on the
+             desktop): Fluent's template selectors beat Background="Transparent", Fluent presses
+             to scale(0.98) and Noctis.UI Styles.axaml hovers every Button to scale(1.045). -->
+        <Style Selector="Button.lyric-line:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.lyric-line:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.lyric-line:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.lyric-line:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
     </UserControl.Styles>
 
@@ -59,12 +82,16 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="m:LyricLine">
-                        <Button Background="Transparent" BorderThickness="0" Padding="0" Margin="0,10"
+                        <Button Classes="lyric-line" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,10"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Opacity="{Binding LineOpacity}"
                                 Command="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.SeekToLineCommand}"
                                 CommandParameter="{Binding}">
                             <StackPanel Spacing="4">
+                                <!-- The intro placeholder (LrcParser, first line after 2 s) has no text
+                                     or words to show; without this the page anchors on a blank slot. -->
+                                <TextBlock Text="•••" FontWeight="Bold" Foreground="{StaticResource LyricsFg}"
+                                           IsVisible="{Binding IsIntroPlaceholder}" />
                                 <TextBlock Text="{Binding Text}" FontWeight="Bold" TextWrapping="Wrap"
                                            Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}" />
                                 <ItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsActive}"
