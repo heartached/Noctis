@@ -11,6 +11,9 @@ YOUR LIBRARY, YOUR FILES
 • Choose the folders that hold your music. Noctis reads only those folders and asks for no storage or media permission.
 • Your library is built from your files' own tags and embedded cover art.
 • Plays MP3, FLAC, AAC/M4A, Ogg Vorbis, Opus and WAV.
+• Album pages with the full track list, and artist pages with their albums.
+• Search your whole library by song, album or artist.
+• Dark, light and themed looks, with your own accent colour.
 
 PLAYBACK
 • Keeps playing in the background, with controls in the notification and on the lock screen.
