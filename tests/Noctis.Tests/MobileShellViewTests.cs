@@ -98,7 +98,7 @@ public class MobileShellViewTests
 
         var miniBar = view.FindControl<Border>("MiniBar")!;
         Assert.False(miniBar.IsVisible);
-        Assert.Contains(view.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "Mounted Song");
+        Assert.Equal(1, shell.Library.SongCount);   // the Library root shows tiles; the song list is the Songs page
 
         shell.PlaySongCommand.Execute(track);
         window.UpdateLayout();

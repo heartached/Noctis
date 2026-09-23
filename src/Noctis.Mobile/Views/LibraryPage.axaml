@@ -1,64 +1,92 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
-             xmlns:models="using:Noctis.Models"
              xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.LibraryPage"
              x:DataType="vm:ShellViewModel">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20,12,20,0">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-            <TextBlock Text="{loc:T Nav.Songs}" FontSize="34" FontWeight="Bold" />
-            <Button Grid.Column="1" Content="Rescan" Command="{Binding Library.RescanCommand}"
-                    IsVisible="{Binding Library.HasFolders}" VerticalAlignment="Center" />
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" Name="LibraryHeader" ColumnDefinitions="*,Auto" Margin="20,12,12,8">
+            <TextBlock Classes="title" Text="{loc:T Tab.Library}" VerticalAlignment="Center" />
         </Grid>
 
-        <Grid Grid.Row="1" Margin="0,16,0,12" ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto">
-            <Grid.Styles>
-                <Style Selector="Border.tile">
-                    <Setter Property="Background" Value="#1E1E20" />
-                    <Setter Property="CornerRadius" Value="14" />
-                    <Setter Property="Padding" Value="14,12" />
-                    <Setter Property="Height" Value="76" />
-                </Style>
-                <Style Selector="Border.tile TextBlock.count">
-                    <Setter Property="FontSize" Value="24" />
-                    <Setter Property="FontWeight" Value="Bold" />
-                    <Setter Property="HorizontalAlignment" Value="Right" />
-                    <Setter Property="VerticalAlignment" Value="Top" />
-                </Style>
-                <Style Selector="Border.tile TextBlock.label">
-                    <Setter Property="FontSize" Value="15" />
-                    <Setter Property="Opacity" Value="0.8" />
-                    <Setter Property="VerticalAlignment" Value="Bottom" />
-                </Style>
-            </Grid.Styles>
-            <Border Classes="tile" Grid.Row="0" Grid.Column="0"><Grid><TextBlock Classes="count" Text="{Binding Library.SongCount}" /><TextBlock Classes="label" Text="{loc:T Nav.Songs}" /></Grid></Border>
-            <Border Classes="tile" Grid.Row="0" Grid.Column="2"><Grid><TextBlock Classes="count" Text="{Binding Library.AlbumCount}" /><TextBlock Classes="label" Text="{loc:T Nav.Albums}" /></Grid></Border>
-            <Border Classes="tile" Grid.Row="2" Grid.Column="0"><Grid><TextBlock Classes="count" Text="{Binding Library.ArtistCount}" /><TextBlock Classes="label" Text="{loc:T Nav.Artists}" /></Grid></Border>
-            <Border Classes="tile" Grid.Row="2" Grid.Column="2"><Grid><TextBlock Classes="count" Text="{Binding Library.FavoriteCount}" /><TextBlock Classes="label" Text="{loc:T Nav.Favorites}" /></Grid></Border>
-            <Border Classes="tile" Grid.Row="4" Grid.Column="0"><Grid><TextBlock Classes="count" Text="{Binding Library.RecentlyAddedCount}" /><TextBlock Classes="label" Text="Recently Added" /></Grid></Border>
-            <Border Classes="tile" Grid.Row="4" Grid.Column="2">
-                <Button Content="Add folder" Command="{Binding Library.AddFolderCommand}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-            </Border>
-        </Grid>
-
-        <StackPanel Grid.Row="2" Spacing="4" Margin="0,0,0,8">
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding Library.IsScanning}" />
-            <TextBlock Text="{Binding Library.StatusText}" Opacity="0.7" FontSize="12"
-                       IsVisible="{Binding Library.StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-        </StackPanel>
-
-        <ListBox Grid.Row="3" Name="SongList" ItemsSource="{Binding Library.Songs}" Background="Transparent"
-                 SelectionChanged="OnSongSelected">
-            <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="models:Track">
-                    <StackPanel Margin="0,6">
-                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Artist}" Opacity="0.6" FontSize="12" TextTrimming="CharacterEllipsis" />
+        <ScrollViewer Grid.Row="1" Name="LibraryScroll" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Name="LibraryContent" Margin="20,0,20,24" Spacing="14">
+                <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="section" Text="Add your music" />
+                        <TextBlock Classes="subtle" TextWrapping="Wrap"
+                                   Text="Pick the folder your music lives in. Noctis reads it in place and never uploads anything." />
+                        <Button Classes="pill-accent" Content="Choose folder" Command="{Binding Library.AddFolderCommand}" />
                     </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                </Border>
+
+                <Border Name="ReconnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.NeedsReconnect}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="{Binding Library.StatusText}" TextWrapping="Wrap" />
+                        <Button Classes="pill" Content="Reconnect folder" Command="{Binding Library.AddFolderCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
+                    <ProgressBar IsIndeterminate="True" />
+                    <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, StringFormat='Scanning… {0} files'}" />
+                </StackPanel>
+
+                <Grid Name="Tiles" ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto" IsVisible="{Binding Library.HasFolders}">
+                    <Button Grid.Row="0" Grid.Column="0" Name="SongsTile" Classes="tile" Command="{Binding OpenSongsCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource SongsIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.SongCount}" />
+                            <TextBlock Classes="tile-label" Text="{loc:T Nav.Songs}" />
+                        </Grid>
+                    </Button>
+                    <Button Grid.Row="0" Grid.Column="2" Name="AlbumsTile" Classes="tile" Command="{Binding OpenAlbumsCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource AlbumsIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.AlbumCount}" />
+                            <TextBlock Classes="tile-label" Text="{loc:T Nav.Albums}" />
+                        </Grid>
+                    </Button>
+                    <Button Grid.Row="2" Grid.Column="0" Name="ArtistsTile" Classes="tile" Command="{Binding OpenArtistsCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource ArtistsIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.ArtistCount}" />
+                            <TextBlock Classes="tile-label" Text="{loc:T Nav.Artists}" />
+                        </Grid>
+                    </Button>
+                    <Button Grid.Row="2" Grid.Column="2" Name="PlaylistsTile" Classes="tile" Command="{Binding OpenPlaylistsCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource PlaylistsIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.PlaylistCount}" />
+                            <TextBlock Classes="tile-label" Text="{loc:T Nav.Playlists}" />
+                        </Grid>
+                    </Button>
+                    <Button Grid.Row="4" Grid.Column="0" Name="RecentlyAddedTile" Classes="tile" Command="{Binding OpenRecentlyAddedCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource AddIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.RecentlyAddedCount}" />
+                            <TextBlock Classes="tile-label" Text="Recently Added" />
+                        </Grid>
+                    </Button>
+                    <Button Grid.Row="4" Grid.Column="2" Name="FavouritesTile" Classes="tile" Command="{Binding OpenFavouritesCommand}">
+                        <Grid>
+                            <Border Classes="tile-icon"><PathIcon Data="{DynamicResource HeartFillIcon}" /></Border>
+                            <TextBlock Classes="tile-count" Text="{Binding Library.FavoriteCount}" />
+                            <TextBlock Classes="tile-label" Text="{loc:T Nav.Favorites}" />
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <!-- Until Settings (B11) takes them over. -->
+                <StackPanel Name="FolderActions" Orientation="Horizontal" Spacing="8" IsVisible="{Binding Library.HasFolders}">
+                    <Button Classes="pill" Content="Add folder" Command="{Binding Library.AddFolderCommand}" />
+                    <Button Classes="pill" Content="Rescan" Command="{Binding Library.RescanCommand}" />
+                </StackPanel>
+
+                <TextBlock Name="StatusLine" Classes="subtle" TextWrapping="Wrap" Text="{Binding Library.StatusText}"
+                           IsVisible="{Binding Library.ShowStatusLine}" />
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

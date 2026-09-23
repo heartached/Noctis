@@ -3,6 +3,7 @@ using System.ComponentModel;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Mobile.ViewModels;
@@ -150,6 +151,45 @@ public sealed partial class ShellViewModel : ObservableObject
         if (index < 0) return;
         Player.PlayTracks(songs, index);
     }
+
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
+
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites));
+
+    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Recently Added", Library.RecentlyAdded));
+
+    [RelayCommand] private void OpenAlbums() => Navigate(new AlbumGridPageViewModel(this));
+
+    [RelayCommand] private void OpenArtists() => Navigate(new ArtistListPageViewModel(this));
+
+    [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
+
+    /// <summary>An album tile or link. Until the album page (B5) this lists the album's songs.</summary>
+    [RelayCommand]
+    private void OpenAlbum(Album? album)
+    {
+        if (album == null) return;
+        Navigate(new SongListPageViewModel(this, album.Name, () => album.Tracks));
+    }
+
+    /// <summary>An artist row or link. Until the artist page (B6) this lists the artist's songs.</summary>
+    [RelayCommand]
+    private void OpenArtist(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        Navigate(new SongListPageViewModel(this, name, () => MobileLibrary.SongsBy(Library.Service, name)));
+    }
+
+    [RelayCommand]
+    private void OpenPlaylist(Playlist? playlist)
+    {
+        if (playlist == null) return;
+        Navigate(new SongListPageViewModel(this, playlist.Name, () => ResolvePlaylist(playlist)));
+    }
+
+    /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
+    public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
+        playlist.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>();
 
     public async Task InitializeAsync()
     {

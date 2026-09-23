@@ -12,6 +12,23 @@
         <StyleInclude Source="avares://Noctis.Mobile/Views/MobileStyles.axaml" />
     </UserControl.Styles>
 
+    <!-- One template per page view model: PageHost (and B3's Library chip host) resolve the
+         top page's view here. -->
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:SongListPageViewModel">
+            <views:SongListPage />
+        </DataTemplate>
+        <DataTemplate DataType="vm:AlbumGridPageViewModel">
+            <views:AlbumGridPage />
+        </DataTemplate>
+        <DataTemplate DataType="vm:ArtistListPageViewModel">
+            <views:ArtistListPage />
+        </DataTemplate>
+        <DataTemplate DataType="vm:PlaylistListPageViewModel">
+            <views:PlaylistListPage />
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
     <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating
          mini bar above the tab bar. The overlays span both rows and are declared last, in
          z-order: Now Playing, then Lyrics and Queue above it. The mini bar belongs to the tab

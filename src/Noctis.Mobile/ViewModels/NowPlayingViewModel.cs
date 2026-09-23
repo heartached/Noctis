@@ -124,6 +124,26 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         StartTrack(first, fromPosition: null);
     }
 
+    /// <summary>
+    /// Shuffle buttons on lists, albums and artists: start on a random track and shuffle the
+    /// rest. The list is rotated so the start is first before <see cref="PlaybackQueue.ReplaceAll"/>
+    /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
+    /// restores is then the list's own order from that track, wrapping round.
+    /// </summary>
+    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null)
+    {
+        if (tracks.Count == 0) return;
+        rng ??= Random.Shared;
+        var start = rng.Next(tracks.Count);
+        var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
+        var first = _queue.ReplaceAll(rotated, 0);
+        _queue.SetShuffle(true, rng);
+        IsShuffleEnabled = true;
+        if (first == null) return;
+        _consecutiveErrors = 0;
+        StartTrack(first, fromPosition: null);
+    }
+
     [RelayCommand]
     private void TogglePlayPause()
     {

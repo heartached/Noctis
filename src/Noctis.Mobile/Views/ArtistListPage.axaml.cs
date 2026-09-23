@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace Noctis.Mobile.Views;
 
-public partial class LibraryPage : UserControl
+public partial class ArtistListPage : UserControl
 {
-    public LibraryPage()
+    public ArtistListPage()
     {
         InitializeComponent();
     }
