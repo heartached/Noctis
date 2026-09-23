@@ -63,7 +63,11 @@ if ($LASTEXITCODE -ne 0) { throw "keytool -genkeypair failed (exit $LASTEXITCODE
 Write-Host ''
 Write-Host 'Created. keytool now asks for the same password once more to print the certificate:'
 & $keytool -list -v -keystore $full -alias $Alias
-if ($LASTEXITCODE -ne 0) { throw "keytool -list failed (exit $LASTEXITCODE). The keystore exists at $full; check the password." }
+# A warning, not a throw: the keystore already exists, and a mistyped password here must not
+# skip the backup banner below. Every build-release.ps1 run prints the fingerprint too.
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "keytool -list failed (exit $LASTEXITCODE), probably a mistyped password. The keystore was created at $full; build-release.ps1 prints its SHA-256 fingerprint on every run."
+}
 
 Write-Host ''
 Write-Host '============================================================================' -ForegroundColor Yellow
