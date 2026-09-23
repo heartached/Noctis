@@ -1,25 +1,32 @@
+using Android.Content;
+using Android.Content.PM;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Noctis.Android.Services;
 using Noctis.Helpers;
 using Noctis.Localization;
+using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Services;
 using AApplication = Android.App.Application;
+using AResources = Android.Content.Res.Resources;
+using AUiMode = Android.Content.Res.UiMode;
 using ALog = Android.Util.Log;
 
 namespace Noctis.Android;
 
-public partial class AndroidApp : Avalonia.Application
+public partial class AndroidApp : Avalonia.Application, IThemeHost
 {
     /// <summary>logcat tag for the mirrored <see cref="DebugLog"/>: `adb logcat -s Noctis`.</summary>
     private const string LogTag = "Noctis";
 
-    private ResourceInclude? _activeThemeOverlay;
+    private readonly MobileTheme _theme = new();
+    private (string Appearance, string DarkTheme, string Accent) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent);
+    private PlatformThemeVariant? _appliedSystem;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
     private AndroidVolumeControl? _volume;
@@ -79,6 +86,9 @@ public partial class AndroidApp : Avalonia.Application
             lyrics)
         {
             Outputs = new AndroidOutputSwitcher(context),
+            Theme = this,
+            Logs = new AndroidLogExporter(context),
+            VersionText = DescribeVersion(context),
         };
         _shell = shell;
 
@@ -110,7 +120,7 @@ public partial class AndroidApp : Avalonia.Application
         {
             var settings = await persistence.LoadSettingsAsync();
             Loc.Instance.SetCulture(settings.Language);
-            SetTheme(settings.Theme);
+            ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
             _shell!.Player.SetGapless(settings.GaplessPlaybackEnabled);
             await history.PreloadAsync();
             await library.LoadAsync();
@@ -151,33 +161,52 @@ public partial class AndroidApp : Avalonia.Application
     /// <summary>A volume key or a resume (MainActivity): the media volume may have moved.</summary>
     public void OnVolumeKey() => _volume?.NotifyChanged();
 
-    /// <summary>
-    /// Merge one of the shared theme overlays (Dark, Midnight, Ink, Smoke) on top of the
-    /// base styles, replacing the previous one. The same mechanism as the desktop
-    /// App.SetThemeCore; "Gray" is the base look with no overlay.
-    /// </summary>
-    public void SetTheme(string themeName)
+    /// <summary>Settings (and startup, and a system dark-mode switch) re-theme through here.</summary>
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex)
     {
-        if (_activeThemeOverlay != null)
+        _themeChoice = (appearance, darkTheme, accentHex);
+        var system = SystemVariant();
+        _appliedSystem = system;
+        var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
+        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
+        _theme.Apply(this, resolved, accentHex);
+    }
+
+    /// <summary>
+    /// "System" appearance: Android's dark-mode switch arrives as a configuration change
+    /// (UiMode is in MainActivity's ConfigurationChanges, so the activity is kept and this runs
+    /// from its OnConfigurationChanged); re-theme when the device's night mode moved. Avalonia's
+    /// ColorValuesChanged is not used: its CONFIGURATION_CHANGED receiver never fired on the
+    /// API 35 emulator (09-23).
+    /// </summary>
+    public void OnConfigurationChanged()
+    {
+        if (SystemVariant() == _appliedSystem) return;   // rotation, font scale, our own night-mode echo
+        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent);
+    }
+
+    /// <summary>
+    /// The device's night mode, from the system resources. Not the activity's configuration
+    /// (nor PlatformSettings, which reads a context): Avalonia's TopLevelImpl.SetFrameThemeVariant
+    /// pushes the app's own theme into the activity with AppCompat SetLocalNightMode, so after
+    /// picking Light on a dark phone the activity reports "not night" and "System" would stay Light.
+    /// </summary>
+    private static PlatformThemeVariant SystemVariant() =>
+        AResources.System?.Configuration is { } config && (config.UiMode & AUiMode.NightMask) == AUiMode.NightNo
+            ? PlatformThemeVariant.Light
+            : PlatformThemeVariant.Dark;
+
+    private static string DescribeVersion(Context context)
+    {
+        try
         {
-            Resources.MergedDictionaries.Remove(_activeThemeOverlay);
-            _activeThemeOverlay = null;
+            var info = context.PackageManager!.GetPackageInfo(context.PackageName!, (PackageInfoFlags)0)!;
+            return $"Noctis {info.VersionName}";
         }
-
-        var file = themeName switch
+        catch (Exception ex)
         {
-            "Dark" => "Dark",
-            "Midnight" => "Midnight",
-            "Ink" => "Ink",
-            "Smoke" => "Smoke",
-            _ => null,
-        };
-        if (file == null) return;
-
-        _activeThemeOverlay = new ResourceInclude(new Uri("avares://Noctis.UI/"))
-        {
-            Source = new Uri($"avares://Noctis.UI/Assets/Themes/{file}.axaml"),
-        };
-        Resources.MergedDictionaries.Add(_activeThemeOverlay);
+            DebugLog.Write("Android", $"Version lookup failed: {ex.Message}");
+            return "Noctis";
+        }
     }
 }

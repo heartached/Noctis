@@ -21,11 +21,13 @@ public class MainActivity : AvaloniaMainActivity
 {
     private const int PickFolderRequest = 4242;
     private const int PostNotificationsRequest = 4243;
+    private const int CreateDocumentRequest = 4244;
 
     /// <summary>The live activity, for services that need to start system UI (the SAF picker).</summary>
     public static MainActivity? Current { get; private set; }
 
     private TaskCompletionSource<string?>? _pickFolder;
+    private TaskCompletionSource<string?>? _createDocument;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -88,12 +90,14 @@ public class MainActivity : AvaloniaMainActivity
     /// <summary>
     /// FontScale is in ConfigurationChanges so a system font-size change arrives here instead
     /// of recreating the activity; the lyrics page resizes from it (Avalonia itself ignores
-    /// the system font scale).
+    /// the system font scale). UiMode likewise: the dark-mode switch re-themes a "System"
+    /// appearance in place.
     /// </summary>
     public override void OnConfigurationChanged(Configuration newConfig)
     {
         base.OnConfigurationChanged(newConfig);
         AndroidApp.Current?.ApplyFontScale(newConfig.FontScale);
+        AndroidApp.Current?.OnConfigurationChanged();
     }
 
     /// <summary>
@@ -135,6 +139,10 @@ public class MainActivity : AvaloniaMainActivity
         // Resolving with null here — before Current is cleared — keeps that button usable.
         _pickFolder?.TrySetResult(null);
         _pickFolder = null;
+        // Same for a pending log export: its create-document result would land on the new
+        // instance and leave Settings' ExportLogsCommand running forever.
+        _createDocument?.TrySetResult(null);
+        _createDocument = null;
         BackRequested -= OnBackRequested;
         if (ReferenceEquals(Current, this)) Current = null;
         base.OnDestroy();
@@ -151,9 +159,29 @@ public class MainActivity : AvaloniaMainActivity
         return _pickFolder.Task;
     }
 
+    /// <summary>Shows the system "save as" picker; resolves to the new document's URI or null.</summary>
+    public Task<string?> CreateDocumentAsync(string fileName, string mimeType)
+    {
+        _createDocument?.TrySetResult(null);
+        _createDocument = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var intent = new Intent(Intent.ActionCreateDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType(mimeType);
+        intent.PutExtra(Intent.ExtraTitle, fileName);
+        StartActivityForResult(intent, CreateDocumentRequest);
+        return _createDocument.Task;
+    }
+
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
+        if (requestCode == CreateDocumentRequest)
+        {
+            var pendingDocument = _createDocument;
+            _createDocument = null;
+            pendingDocument?.TrySetResult(resultCode == Result.Ok ? data?.Data?.ToString() : null);
+            return;
+        }
         if (requestCode != PickFolderRequest) return;
 
         // Take the field before doing anything else: if the activity was recreated mid-pick,

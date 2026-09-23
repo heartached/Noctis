@@ -25,6 +25,10 @@
                 <TextBlock Name="HomeTitle" Classes="title" Text="{loc:T Nav.Home}" />
                 <TextBlock Name="Greeting" Classes="subtle" FontSize="15" Text="{Binding Greeting}" />
             </StackPanel>
+            <Button Grid.Column="1" Name="HomeProfileButton" Classes="icon" VerticalAlignment="Top"
+                    Command="{Binding Shell.OpenSettingsCommand}">
+                <PathIcon Data="{DynamicResource PersonIcon}" />
+            </Button>
         </Grid>
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">

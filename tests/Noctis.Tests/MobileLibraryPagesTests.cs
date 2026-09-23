@@ -40,7 +40,6 @@ public class MobileLibraryPagesTests
         Assert.True(MobileFixtures.Named<Border>(view, "ConnectCard").IsVisible);
         Assert.False(MobileFixtures.Named<Border>(view, "ReconnectCard").IsVisible);
         Assert.False(MobileFixtures.Named<Grid>(view, "Tiles").IsVisible);
-        Assert.False(MobileFixtures.Named<StackPanel>(view, "FolderActions").IsVisible);
         Assert.False(rig.Shell.IsMiniBarVisible);
         window.Close();
     }

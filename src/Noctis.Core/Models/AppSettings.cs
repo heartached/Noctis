@@ -66,6 +66,13 @@ public class AppSettings
     /// <summary>Accent recolours from the playing track's cover; the chosen accent returns when nothing plays.</summary>
     public bool AccentFollowsArtwork { get; set; }
 
+    /// <summary>Phone: "System" (follow Android's dark/light), "Dark" (the dark theme in
+    /// <see cref="Theme"/>) or "Light".</summary>
+    public string MobileAppearance { get; set; } = "System";
+
+    /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
+    public double MobileLyricsTextScale { get; set; } = 1.0;
+
     /// <summary>User-defined custom themes selectable from the Themes row.</summary>
     public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
 

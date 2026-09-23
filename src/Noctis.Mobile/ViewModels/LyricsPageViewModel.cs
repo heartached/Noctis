@@ -68,7 +68,11 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(LineFontSize), nameof(LayerFontSize))]
     private double _fontScale = 1.0;
 
-    public double LineFontSize => BaseFontSize * FontScale;
+    /// <summary>The user's lyrics text size (Settings), on top of the system font scale.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(LineFontSize), nameof(LayerFontSize))]
+    private double _textScale = 1.0;
+
+    public double LineFontSize => BaseFontSize * FontScale * TextScale;
 
     /// <summary>Translation / romanization / background-vocal rows: 0.6 of the line, the
     /// desktop's background-vocal ratio.</summary>
@@ -95,6 +99,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
             ShowRomanization = settings.LyricsShowRomanization;
             _minOpacity = Math.Clamp(settings.LyricsMinLineOpacity, 0, 60) / 100.0;
             _joinSplitWords = settings.LyricsJoinSplitWords;
+            TextScale = Math.Clamp(settings.MobileLyricsTextScale, 0.8, 1.6);
         }
         catch (Exception ex)
         {

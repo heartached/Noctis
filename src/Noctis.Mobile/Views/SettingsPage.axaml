@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.SettingsPage"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <UserControl.Styles>
+        <!-- Segmented pickers: a ListBox laid out horizontally, each item a pill. -->
+        <Style Selector="ListBox.segments">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.segments ListBoxItem">
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}" />
+        </Style>
+        <Style Selector="ListBox.segments ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.swatches ListBoxItem">
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="CornerRadius" Value="20" />
+        </Style>
+        <Style Selector="ListBox.swatches ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="Border.settings-card">
+            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4">
+            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
+                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+            </Button>
+            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,4,16,32" Spacing="14">
+                <TextBlock Classes="section" FontSize="16" Text="Library" />
+                <Border Classes="settings-card">
+                    <StackPanel Spacing="8">
+                        <ItemsControl Name="FolderList" ItemsSource="{Binding FolderLabels}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4">
+                                        <PathIcon Data="{DynamicResource FolderIcon}" Width="16" Height="16" />
+                                        <TextBlock Text="{Binding}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Name="AddFolderButton" Classes="pill" Content="Add folder" Command="{Binding Shell.Library.AddFolderCommand}" />
+                            <Button Name="RescanButton" Classes="pill" Content="Rescan" Command="{Binding Shell.Library.RescanCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="section" FontSize="16" Text="Appearance" />
+                <Border Classes="settings-card">
+                    <StackPanel Spacing="6">
+                        <ListBox Name="AppearanceList" Classes="segments" ItemsSource="{Binding Appearances}" SelectedItem="{Binding Appearance}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                        </ListBox>
+                        <TextBlock Classes="subtle" Text="Dark theme" />
+                        <ListBox Name="DarkThemeList" Classes="segments" ItemsSource="{Binding DarkThemes}" SelectedItem="{Binding DarkTheme}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                        </ListBox>
+                        <TextBlock Classes="subtle" Text="Accent" />
+                        <ListBox Name="AccentList" Classes="swatches" Background="Transparent"
+                                 ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AccentSwatch">
+                                    <Ellipse Width="30" Height="30" Fill="{Binding Brush}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="section" FontSize="16" Text="Lyrics" />
+                <Border Classes="settings-card">
+                    <StackPanel Spacing="4">
+                        <ToggleSwitch Name="TranslationSwitch" Content="Show translations" IsChecked="{Binding Shell.Lyrics.ShowTranslation}" />
+                        <ToggleSwitch Name="RomajiSwitch" Content="Show romanization" IsChecked="{Binding Shell.Lyrics.ShowRomanization}" />
+                        <TextBlock Classes="subtle" Text="Text size" Margin="0,6,0,0" />
+                        <Slider Name="LyricsSizeSlider" Minimum="0.8" Maximum="1.6" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                Value="{Binding LyricsTextScale}" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="section" FontSize="16" Text="Playback" />
+                <Border Classes="settings-card">
+                    <ToggleSwitch Name="GaplessSwitch" Content="Gapless playback" IsChecked="{Binding Gapless}" />
+                </Border>
+
+                <TextBlock Classes="section" FontSize="16" Text="About" />
+                <Border Classes="settings-card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Name="VersionLabel" Text="{Binding VersionText}" />
+                        <TextBlock Classes="subtle" TextWrapping="Wrap" Text="Your music stays on this phone. Noctis collects nothing." />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button Name="ExportLogsButton" Classes="pill" Content="Export logs" Command="{Binding ExportLogsCommand}" />
+                            <TextBlock Name="ExportStatusLabel" Classes="subtle" VerticalAlignment="Center" Text="{Binding ExportStatus}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -33,6 +33,9 @@
         <DataTemplate DataType="vm:ArtistPageViewModel">
             <views:ArtistPage />
         </DataTemplate>
+        <DataTemplate DataType="vm:SettingsPageViewModel">
+            <views:SettingsPage />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating
@@ -117,15 +120,22 @@
             </Grid>
         </StackPanel>
 
-        <views:NowPlayingPage Grid.Row="0" Grid.RowSpan="2" Name="NowPlaying"
-                              DataContext="{Binding}"
-                              IsVisible="{Binding IsNowPlayingOpen}" />
+        <!-- Always dark (ruling 8), whatever the app theme: the scope makes Fluent's slider
+             tracks and theme-brushed icons resolve their dark resources over the dark scrim.
+             It has no background, so it hit-tests only through a visible page. -->
+        <ThemeVariantScope Grid.Row="0" Grid.RowSpan="2" RequestedThemeVariant="Dark">
+            <Panel>
+                <views:NowPlayingPage Name="NowPlaying"
+                                      DataContext="{Binding}"
+                                      IsVisible="{Binding IsNowPlayingOpen}" />
 
-        <views:LyricsPage Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding}"
-                          IsVisible="{Binding IsLyricsOpen}" />
+                <views:LyricsPage DataContext="{Binding}"
+                                  IsVisible="{Binding IsLyricsOpen}" />
 
-        <views:QueuePage Grid.Row="0" Grid.RowSpan="2" DataContext="{Binding}"
-                         IsVisible="{Binding IsQueueOpen}" />
+                <views:QueuePage DataContext="{Binding}"
+                                 IsVisible="{Binding IsQueueOpen}" />
+            </Panel>
+        </ThemeVariantScope>
 
         <views:ContextSheet Grid.Row="0" Grid.RowSpan="2" Name="Sheet" DataContext="{Binding}"
                             IsVisible="{Binding IsSheetOpen}" />

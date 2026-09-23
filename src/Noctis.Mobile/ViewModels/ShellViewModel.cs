@@ -49,6 +49,15 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The system output picker (Android); null in tests and on hosts without one.</summary>
     public IOutputSwitcher? Outputs { get; init; }
 
+    /// <summary>Re-themes the app for Settings (AndroidApp); null in tests unless injected.</summary>
+    public IThemeHost? Theme { get; init; }
+
+    /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
+    public ILogExporter? Logs { get; init; }
+
+    /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
+    public string VersionText { get; init; } = "Noctis";
+
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
@@ -363,6 +372,15 @@ public sealed partial class ShellViewModel : ObservableObject
     private void ShowOutput()
     {
         if (Outputs?.Show() == false) DebugLog.Write("Android", "No output switcher could be shown");
+    }
+
+    /// <summary>The profile button (Library and Home, top right).</summary>
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        var page = new SettingsPageViewModel(this);
+        Navigate(page);
+        _ = page.LoadAsync();
     }
 
     public async Task InitializeAsync()
