@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
@@ -87,8 +88,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isShuffleEnabled;
     [ObservableProperty] private string _errorText = string.Empty;
 
-    /// <summary>Mirror of the queue's UpNext for the Queue page.</summary>
-    public ObservableCollection<Track> UpNext { get; } = new();
+    /// <summary>Mirror of the queue's UpNext for the Queue page; rebuilt with one Reset per change.</summary>
+    public BulkObservableCollection<Track> UpNext { get; } = new();
+
+    public bool HasUpNext => UpNext.Count > 0;
 
     public bool HasTrack => CurrentTrack != null;
 
@@ -325,6 +328,14 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }
     public void MoveInQueue(int fromUpNextIndex, int toUpNextIndex) { _queue.Move(fromUpNextIndex, toUpNextIndex); QueueChanged(); }
 
+    /// <summary>The Queue page's Clear: Up Next empties, the current track keeps playing.</summary>
+    [RelayCommand]
+    private void ClearUpNext()
+    {
+        _queue.Clear();
+        QueueChanged();
+    }
+
     /// <summary>"Play Next" for several tracks (an album or playlist from the long-press sheet):
     /// in their order at the front of Up Next, one save. With nothing loaded there is no "next"
     /// to insert before, so the tracks simply play.</summary>
@@ -396,8 +407,8 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void SyncUpNext()
     {
-        UpNext.Clear();
-        foreach (var t in _queue.UpNext) UpNext.Add(t);
+        UpNext.ReplaceAll(_queue.UpNext);
+        OnPropertyChanged(nameof(HasUpNext));
     }
 
     private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
