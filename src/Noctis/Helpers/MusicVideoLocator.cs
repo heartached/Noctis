@@ -21,21 +21,37 @@ public static class MusicVideoLocator
         catch { return null; }
         if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(stem)) return null;
 
-        foreach (var ext in Extensions)
-        {
-            var sibling = Path.Combine(folder, stem + ext);
-            if (File.Exists(sibling)) return sibling;
-        }
+        var sibling = FindIn(folder, stem);
+        if (sibling != null) return sibling;
         foreach (var sub in SubFolders)
         {
             var dir = Path.Combine(folder, sub);
             if (!Directory.Exists(dir)) continue;
-            foreach (var ext in Extensions)
-            {
-                var candidate = Path.Combine(dir, stem + ext);
-                if (File.Exists(candidate)) return candidate;
-            }
+            var candidate = FindIn(dir, stem);
+            if (candidate != null) return candidate;
         }
         return null;
+    }
+
+    // One listing matched case-insensitively, in Extensions order: probing exact names
+    // with File.Exists missed song.MP4 / Song.mov on case-sensitive file systems (Linux).
+    private static string? FindIn(string dir, string stem)
+    {
+        string? best = null;
+        var bestRank = Extensions.Length;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(dir))
+            {
+                var ext = Path.GetExtension(file);
+                var rank = Array.FindIndex(Extensions, e => e.Equals(ext, StringComparison.OrdinalIgnoreCase));
+                if (rank < 0 || rank >= bestRank) continue;
+                if (!Path.GetFileNameWithoutExtension(file).Equals(stem, StringComparison.OrdinalIgnoreCase)) continue;
+                best = file;
+                bestRank = rank;
+            }
+        }
+        catch { return null; }
+        return best;
     }
 }
