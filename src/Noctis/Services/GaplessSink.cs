@@ -391,6 +391,8 @@ public sealed class GaplessSink : IDisposable
 
     public void Resume()
     {
+        // The render thread sat idle through the pause; that is not a render stall.
+        if (!_desiredPlaying) _probe.ForgetLastRead();
         _desiredPlaying = true;
         IWavePlayer current;
         lock (_gate) current = _out;
@@ -514,6 +516,8 @@ public sealed class GaplessSink : IDisposable
             _boosted = false;
             _lastReadTick = 0; // don't count the dead-sink gap as a render stall
         }
+
+        public void ForgetLastRead() => _lastReadTick = 0;
 
         public int Read(float[] buffer, int offset, int count)
         {

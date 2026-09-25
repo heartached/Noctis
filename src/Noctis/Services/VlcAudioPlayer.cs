@@ -169,6 +169,10 @@ public class VlcAudioPlayer : IAudioPlayer
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    // VLC clock date (µs) of the slot's pause callback; 0 = not paused. A pause moves
+    // VLC's input clock on by its length, so blocks after the resume are stamped that
+    // much later — not a hole (EngineResume carries the expected pts across it).
+    private readonly long[] _enginePauseDate = new long[2];
 
     // Adaptive input read-ahead (NoteInputGap / ApplyReadAhead). For a local file VLC
     // keeps only file-caching worth of audio decoded ahead of its clock — the demuxer
@@ -696,8 +700,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     {
                         var s = slot;
                         _enginePlayCbs[s] = (data, samples, count, pts) => EnginePlay(s, samples, count, pts);
-                        _enginePauseCbs[s] = (data, pts) => { };
-                        _engineResumeCbs[s] = (data, pts) => { };
+                        _enginePauseCbs[s] = (data, pts) => EnginePause(s, pts);
+                        _engineResumeCbs[s] = (data, pts) => EngineResume(s, pts);
                         _engineFlushCbs[s] = (data, pts) => EngineFlush(s);
                         _engineDrainCbs[s] = data => EngineDrain(s);
                         _enginePlayers[s].SetAudioCallbacks(
@@ -4114,6 +4118,24 @@ public class VlcAudioPlayer : IAudioPlayer
         catch { /* libvlc thread */ }
     }
 
+    // A user pause is not an input stall: without these the first block after every
+    // resume read as a PtsGap of the pause length and raised the session read-ahead.
+    private void EnginePause(int slot, long date)
+    {
+        try { _enginePauseDate[slot] = date; }
+        catch { /* libvlc thread */ }
+    }
+
+    private void EngineResume(int slot, long date)
+    {
+        try
+        {
+            _engineExpectedPts[slot] = ExpectedPtsAfterPause(_engineExpectedPts[slot], _enginePauseDate[slot], date);
+            _enginePauseDate[slot] = 0;
+        }
+        catch { /* libvlc thread */ }
+    }
+
     private void EngineDrain(int slot)
     {
         try { Volatile.Read(ref _engineSegments[slot])?.MarkEndOfStream(); }
@@ -4148,6 +4170,7 @@ public class VlcAudioPlayer : IAudioPlayer
         var slot = EngineSlotOf(player);
         Interlocked.Exchange(ref _enginePendingBaseMs[slot], Math.Max(0, basePositionMs));
         _engineExpectedPts[slot] = 0; // fresh input: next block is a head block
+        _enginePauseDate[slot] = 0;
         var seg = new GaplessTrackSegment(
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
         Volatile.Write(ref _engineSegments[slot], seg);
@@ -4435,6 +4458,9 @@ public class VlcAudioPlayer : IAudioPlayer
                                 _gaplessSink?.Pause();
                             _isPaused = true;
                             _positionTimer.Stop();
+                            // The first tick after a resume would measure the whole
+                            // pause as a stall.
+                            Interlocked.Exchange(ref _lastPositionTickUtcTicks, 0);
                         },
                         RestoreLevelWhilePaused,
                         ms =>
@@ -4838,10 +4864,13 @@ public class VlcAudioPlayer : IAudioPlayer
         // "buffer too late" with the 1000ms cushion exhausted): a tick-to-tick
         // gap far past the 100ms cadence means THIS process/system stalled too.
         // Next occurrence: gap line + VLC lines = system-wide freeze; VLC lines
-        // alone = native input (disk) stall. Gaps right after a pause/seek are
-        // expected — ignore those when reading the log. One line per event.
+        // alone = native input (disk) stall. A pause clears the baseline (see Pause);
+        // gaps right after a seek are expected — ignore those when reading the log.
+        // One line per event.
         var tickNowTicks = DateTime.UtcNow.Ticks;
-        var tickPrevTicks = Interlocked.Exchange(ref _lastPositionTickUtcTicks, tickNowTicks);
+        // A tick landing while paused (one already queued when Pause stopped the timer)
+        // must not re-seed the baseline the pause just cleared.
+        var tickPrevTicks = Interlocked.Exchange(ref _lastPositionTickUtcTicks, _isPaused ? 0 : tickNowTicks);
         if (tickPrevTicks != 0 && !_isPaused && _currentMedia != null)
         {
             var gapMs = (tickNowTicks - tickPrevTicks) / TimeSpan.TicksPerMillisecond;
@@ -5545,6 +5574,18 @@ public class VlcAudioPlayer : IAudioPlayer
         var want = (int)Math.Ceiling((gapMs + 1000) / 500.0) * 500;
         return Math.Max(currentMs, Math.Min(want, MaxReadAheadMs));
     }
+
+    /// <summary>
+    /// Expected pts of the engine's next block after a pause from <paramref name="pauseDate"/>
+    /// to <paramref name="resumeDate"/> (µs, VLC's clock). VLC moves its input clock on by the
+    /// pause length, so the next block is stamped exactly that much later. Unchanged while no
+    /// continuity is tracked (0: head block pending), when no pause was seen, or when the dates
+    /// run backwards. Pure; internal for tests.
+    /// </summary>
+    internal static long ExpectedPtsAfterPause(long expectedPts, long pauseDate, long resumeDate)
+        => expectedPts > 0 && pauseDate > 0 && resumeDate > pauseDate
+            ? expectedPts + (resumeDate - pauseDate)
+            : expectedPts;
 
     /// <summary>Per-media libvlc option carrying a raised read-ahead, or null while the
     /// session value still equals the configured one (the LibVLC-wide --file-caching).</summary>
