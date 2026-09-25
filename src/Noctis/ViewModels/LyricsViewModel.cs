@@ -2717,14 +2717,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// Ignores metadata tags like [ar:], [ti:], [al:], etc.
     /// </summary>
     /// <summary>
-    /// Upper bound on lines produced from one file. The lyrics list is not virtualized —
-    /// every line is realized, and a word-timed line is ~7 controls per word plus a
-    /// BlurEffect — so an oversized or hostile sidecar (a 1 MB .lrc, or one line carrying
-    /// thousands of stacked [mm:ss.xx] tags, since each tag emits its own LyricLine) would
-    /// build tens of thousands of controls in a single UI-thread pass. No real song comes
-    /// close to this.
+    /// Upper bound on lines produced from one file — shared with the Lyricsfile and TTML
+    /// parsers, see <see cref="EnhancedLrcParser.MaxLyricLines"/>.
     /// </summary>
-    private const int MaxLyricLines = 3000;
+    private const int MaxLyricLines = EnhancedLrcParser.MaxLyricLines;
 
     /// <summary>Splits plain lyrics into display lines, bounded by <see cref="MaxLyricLines"/>.</summary>
     private static string[] SplitPlainLyrics(string text)

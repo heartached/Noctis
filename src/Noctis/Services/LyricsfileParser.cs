@@ -53,6 +53,9 @@ public static class LyricsfileParser
         {
             foreach (var raw in dto.Lines)
             {
+                // YAML aliases let a few bytes repeat a whole line, so the list can be far
+                // longer than the file suggests.
+                if (lines.Count >= EnhancedLrcParser.MaxLyricLines) break;
                 if (raw == null) continue;
 
                 var text = raw.Text ?? string.Empty;
@@ -73,7 +76,9 @@ public static class LyricsfileParser
                     Text = text,
                 };
 
-                if (raw.Words != null && raw.Words.Count > 0)
+                // Too many words to be a real karaoke line: keep the text, drop word timing.
+                if (raw.Words != null && raw.Words.Count > 0
+                    && raw.Words.Count <= EnhancedLrcParser.MaxWordsPerLine)
                 {
                     var words = new List<WordTiming>(raw.Words.Count);
                     foreach (var w in raw.Words)
