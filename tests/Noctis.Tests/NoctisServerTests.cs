@@ -257,9 +257,9 @@ public class NoctisServerTests : IAsyncLifetime
         var track = new Track { Id = Guid.NewGuid(), Title = "Delta", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB, FilePath = audio, Duration = TimeSpan.FromSeconds(10), FileSize = 4 };
         _lib.Tracks.Add(track);
 
-        var res = await _http.GetAsync($"rest/download.view?apiKey={_apiKey}&id=tr-{track.Id:N}");
+        var res = await _http.GetAsync($"rest/download.view?apiKey={_apiKey}&id=tr-{track.Id:N}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Equal(new byte[] { 1, 2, 3, 4 }, await res.Content.ReadAsByteArrayAsync());
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, await res.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
         var disposition = res.Content.Headers.ContentDisposition!;
         Assert.Equal("attachment", disposition.DispositionType);
         Assert.Equal(name, disposition.FileNameStar);
@@ -285,10 +285,10 @@ public class NoctisServerTests : IAsyncLifetime
     {
         _users.Create("bob", "battery staple");
         for (var i = 0; i < LoginThrottle.MaxFailures; i++)
-            await _http.GetStringAsync("rest/getLicense.view?f=json&u=alice&p=wrong");
+            await _http.GetStringAsync("rest/getLicense.view?f=json&u=alice&p=wrong", TestContext.Current.CancellationToken);
 
         // The name is matched like the user store does (case-insensitive).
-        var locked = await _http.GetAsync("rest/getLicense.view?f=json&u=ALICE&p=correct%20horse");
+        var locked = await _http.GetAsync("rest/getLicense.view?f=json&u=ALICE&p=correct%20horse", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
 
         // Same address, as every client behind a reverse proxy: other accounts and API keys still work.
@@ -354,14 +354,14 @@ public class NoctisServerTests : IAsyncLifetime
         {
             var fp = ServerCertificate.Fingerprint(cert);
             await using var server = new NoctisServer(_lib, _users, "test");
-            await server.StartAsync(0, cert);
+            await server.StartAsync(0, cert, TestContext.Current.CancellationToken);
             using var handler = new HttpClientHandler
             {
                 // Pin the fingerprint, as the phone does.
                 ServerCertificateCustomValidationCallback = (_, c, _, _) => c is not null && ServerCertificate.Fingerprint(c) == fp,
             };
             using var https = new HttpClient(handler) { BaseAddress = new Uri($"https://127.0.0.1:{server.Port}/") };
-            var json = await https.GetStringAsync("rest/ping.view?f=json");
+            var json = await https.GetStringAsync("rest/ping.view?f=json", TestContext.Current.CancellationToken);
             Assert.Equal("ok", JsonDocument.Parse(json).RootElement.GetProperty("subsonic-response").GetProperty("status").GetString());
         }
     }

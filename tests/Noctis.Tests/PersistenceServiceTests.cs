@@ -160,7 +160,7 @@ public class PersistenceServiceTests : IDisposable
         var svc = Create();
         Assert.False((await svc.LoadSettingsAsync()).CommunityPluginsEnabled); // no file
 
-        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), "<<<not json>>>");
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), "<<<not json>>>", TestContext.Current.CancellationToken);
         Assert.False((await Create().LoadSettingsAsync()).CommunityPluginsEnabled); // corrupt, no backup
     }
 
@@ -169,7 +169,7 @@ public class PersistenceServiceTests : IDisposable
     {
         var svc = Create();
         Directory.CreateDirectory(_root);
-        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), """{"volume":50}""");
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), """{"volume":50}""", TestContext.Current.CancellationToken);
 
         Assert.Null((await svc.LoadSettingsAsync()).CommunityPluginsEnabled);
     }
