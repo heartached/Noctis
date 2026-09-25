@@ -129,17 +129,35 @@ jobs:
           Copy-Item (Get-ChildItem -Recurse ffmpeg-extract -Filter ffmpeg.exe | Select-Object -First 1).FullName "publish/${{ matrix.rid }}/ffmpeg.exe"
           if (-not (Test-Path "publish/${{ matrix.rid }}/ffmpeg.exe")) { throw "ffmpeg.exe missing from payload" }
 
-      - name: Bundle ffmpeg (macOS)
-        if: startsWith(matrix.rid, 'osx-')
+      - name: Bundle ffmpeg (macOS x64)
+        if: matrix.rid == 'osx-x64'
         run: |
           set -euo pipefail
-          # evermeet.cx ships universal2 builds that work on both arm64 and x64.
+          # evermeet.cx builds are Intel-only (thin x86_64 Mach-O, not
+          # universal2), so they ship in the osx-x64 package only.
           curl -sSL https://evermeet.cx/ffmpeg/ffmpeg-8.1.2.zip -o ffmpeg.zip
           echo "e91df72a1ee7c26606f90dd2dd4dcccc6a75140ff9ea6fdd50faae828b82ba69  ffmpeg.zip" | shasum -a 256 -c -
           unzip -q ffmpeg.zip -d ffmpeg-extract
           cp ffmpeg-extract/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
           test -x "publish/${{ matrix.rid }}/ffmpeg"
+          lipo "publish/${{ matrix.rid }}/ffmpeg" -verify_arch x86_64
+
+      - name: Bundle ffmpeg (macOS arm64)
+        if: matrix.rid == 'osx-arm64'
+        run: |
+          set -euo pipefail
+          # Native arm64 static build of the same 8.1.2 release (links only
+          # system frameworks, minimum macOS 12). An x86_64 ffmpeg here fails
+          # with "Bad CPU type in executable" on Apple Silicon without
+          # Rosetta 2, and the bundled copy wins over any PATH/Homebrew ffmpeg.
+          curl -sSL https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip -o ffmpeg.zip
+          echo "ef1aa60006c7b77ce170c1608c08d8e4ba1c30c5746f2ac986ded932d0ac2c3c  ffmpeg.zip" | shasum -a 256 -c -
+          unzip -q ffmpeg.zip -d ffmpeg-extract
+          cp ffmpeg-extract/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+          test -x "publish/${{ matrix.rid }}/ffmpeg"
+          lipo "publish/${{ matrix.rid }}/ffmpeg" -verify_arch arm64
 
       - name: Bundle ffmpeg (Linux x64)
         if: matrix.rid == 'linux-x64'
