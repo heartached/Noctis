@@ -4982,6 +4982,53 @@ OK counts (bindings or handlers present, target exists, behavior matches label o
 
 ## Phase 2 — Logging, runtime verification and fixes
 
+### 2.1 Logging added (commits on `audit/full-pass`)
+
+| Commit | What |
+|---|---|
+| `316bc35` | **Silent test mode** behind the existing diagnostic env var `NOCTIS_AOUT=dummy`. The gapless engine renders into a new `NullWavePlayer`, which pulls the real provider chain at real-time pace with no device behind it. VLC gets `--aout=dummy` on every OS (the plugin `libadummy_plugin.dll` ships in the Windows payload). The keep-alive and both WASAPI sinks (the experimental one and exclusive mode) are off. One `Audio.SilentMode` warning goes to the session log. No behaviour changes when the variable is unset. 14 unit tests. |
+| `185cd9b` | **Logging for the Phase 1 gaps** (table in the commit and in the logging-coverage map above). It covers: player-side `Playback.Pause/Resume` and `Pause/Resume.Ignored`, `VLC.Stop`, `VLC.Play.Aborted`, `Seek.Dropped/Failed`, `GaplessEngine.WriteDropped/PlayCallbackThrew/Underrun/StopIgnored/StoppedUnexpectedly/PauseFailed/ResumeFailed/SinkOpened`, device-change formats, `Exclusive.*`, `ReplayGain.Applied/TagReadFailed`, `Volume.SessionWriteFailed`, `SessionVolume.ReassertGaveUp`, `EQ.Applied`, `Audio.Setting`, `Queue.Restored`, the PlayTrack `seekMs`/`seekSource`, `SeekToPosition`, `Position.Rejected`, `Mute`, `StopAndClear(reason)`, `CurrentTrackRemoved`, `AdvanceQueue.Reentrant`, `Smtc.Button`, `Mpris.Command`, `MacRemote.Command`, a **UI-thread stall watchdog** (`UI.Stall` for blocks over 100 ms; it runs only while Developer Mode is on), and `Slow.<Op>` timings over 100 ms for PlayTrack, Navigate, SettingsSave and the library refreshes. Every line written from the audio or render thread goes through the new `DebugLogger.LogOffThread` and is rate-limited. Command errors already reached the session log through the existing global handlers (App.axaml.cs:73-79, Program.cs:105-115), so no change was needed there. |
+| `bdcbfe3` | **Review fix-up.** Device-format reads on the device-change path are guarded so they only run with logging on. `UI.Stall` is limited to 1 line per second so the watchdog cannot feed itself through the Settings log view. |
+
+Every commit: build exit 0, **zero new warnings** compared with the v1.5.4 baseline (287 instances), and a full suite of 3110 passed, 0 failed, 2 skipped.
+
+### 2.2 Silent runtime test — method
+
+The `wt-audit` Debug build was launched with `NOCTIS_AOUT=dummy`, an isolated scratch data folder (four generated test tracks), the Local API on port 9431 and Developer Mode on. Playback was driven over the Local API (`scratchpad/rt/drive.py`).
+
+**Audio safety, proven twice before any play command:**
+1. The `Audio.SilentMode` line must be in the session log.
+2. `loopcap sessions` must show no audio session for the Noctis process. The engine renders from startup, so a broken null output would already own one.
+
+After every run `loopcap sessions` showed **no Noctis session on the output device** ("noctis pid … absent"). Nothing reached the speakers.
+
+**Test tones:** four slow sine sweeps with different content in L (0.30 amplitude) and R (0.25): FLAC 44.1 kHz, FLAC 48 kHz, MP3 44.1 kHz and FLAC 96 kHz/32-bit. A sweep never repeats and never jumps. So any sample-to-sample jump above the sweep's maximum slope (about 0.035) is a click, any exact 2 ms repeat within 50 ms is replayed audio (the old buzz signature), and R louder than L is a channel swap. The engine's own output was captured with the existing `NOCTIS_ENGINE_TAP` and analysed with `scratchpad/rt/analyze_tap.py`.
+
+**Session 1 actions:** play, seek to 20 s, a volume sweep (40→90→20 in 16 ms steps), pause 2 s, resume, next (cold), seek to B's end minus 6 s so the B→C boundary is crossed naturally, seek, next, previous, seek, pause.
+
+**Session 2 (restore):** relaunch on the saved queue, seek to 15 s **before** play, then play.
+
+The engine ran at **48 kHz stereo** on this machine (the render reads are 960 floats = 10 ms).
+
+### 2.3 Runtime results
+
+| # | Result | Evidence (quoted from `run1/`, `run2/` logs and the tap) |
+|---|---|---|
+| **A26** | **CONFIRMED — this is the "timeline slider desync on restore" bug.** A seek before the first play of a restored track is dropped, while the UI and API already show the new position. Play then starts from the stale restored position. | Restored at 32.0 s: `Queue.Restored … savedPosSec=32.0, resumeMs=31991`. The user seeks to 15 s: API `positionMs: 15000`, `SeekToPosition | targetMs=15000, state=Stopped`, **`Seek.Dropped | reason=noMedia, targetMs=15000`**. Play: **`PlayTrack … seekMs=31991, seekSource=restore`**, and the position 3 s later is 34.9 s instead of about 18 s. |
+| **R1 (new)** | **Any pause is misread as a disk stall and permanently raises VLC's read-ahead to 3.5 s.** After a 2 s pause and resume, the adaptive read-ahead fired. The same misfire is expected with the real `WasapiOut`: its `Pause()` also stops pulling audio, and the pts gap comes from VLC's clock during the pause. | `Playback.Pause | engine=True` … `Playback.Resume` → `Warn: GaplessEngine.RenderStall | gapMs=2030.7, gcPauseMs=0.0` → `Warn: GaplessEngine.PtsGap | slot=0, gapMs=2005` → **`Warn: GaplessEngine.ReadAheadRaised | gapMs=2005, fileCachingMs=1000->3500 (input stalled past the read-ahead window; media opened from now on read further ahead)`** → `position-timer stall: gapMs=2110`. Code: `VlcAudioPlayer.cs:3994` (PtsGap) and `:5511` (ReadAheadRaised). |
+| **R2 (new)** | **The idle memory trim's forced full GC stalls the audio render thread during playback.** The 100 ms buffer absorbed this 39 ms stall, but a slower machine or a larger heap could turn it into a dropout. | `[Memory] trim after startup scan: managed 37 MB -> 34 MB` immediately followed by **`Warn: GaplessEngine.RenderStall | gapMs=39.1, gcPauseMs=34.1, gcs=1/1/1`**. Code: `MemoryTrim.cs:61` `GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true)`, requested after the startup scan while music plays. |
+| **R3 (new)** | **Seeks click: 3 of 4 seek junctions were rendered with no declick ramp.** The pre-seek waveform steps straight to the post-seek audio, which is the butt-splice the Aug-13 fix was meant to prevent. This happened on 44.1 kHz, MP3 and 96 kHz sources. | Tap at 30.004 s (seek in the MP3): `L = -0.1515 → +0.0007` in one sample (the sweep moves at most about 0.035 per sample). Tap at 40.025 s (seek in the 96 kHz file): `L = -0.1386 → +0.0025 → +0.0709`, a direct splice with no ramp and no fade. Tap at 8.897 s (seek in the 44.1 kHz FLAC): `R = +0.0504 → -0.0004 → -0.1548`. The design (`GaplessSpliceCore.cs:525-651`) should ramp `_lastFrame` to zero and then fade in. |
+| **R4 (new)** | **One seek junction attenuates L and R unequally.** This fits the declick ramp indexing channels relative to the run start (`_lastFrame[i % channels]`, `GaplessSpliceCore.cs:569, 648`): an odd run start would swap channels for the ramp. That is the same mechanism as A08, which needs a 44.1 kHz device and could not trigger on this 48 kHz machine. | Tap block at 20.990 s (seek to B's end minus 6 s): `rmsL=0.106 rmsR=0.132` against `0.211 / 0.176` on either side. |
+| Buzz | **Not reproduced.** Zero replayed windows (exact 2 ms repeats within 50 ms) in 42 s of engine output across 4 seeks, 3 track changes and a pause. The Aug-13 `Array.Clear` fix holds. The clicks in R3 are the remaining audible junction defect. | `REPLAYED WINDOWS (exact 2 ms repeat within 50 ms): 0`. |
+| Gapless | **Works.** The B→C boundary was a true splice. The 30 ms of silence after it is C's own MP3 encoder delay (its first 1254 frames have peak 0), not a gap Noctis inserted. | `Gapless.Advance | … remainingMs=403`, **`GaplessEngine.Spliced | path=03 Sweep C.mp3, crossfadeMs=0`**, `GaplessEngine.SegHead | slot=1 … frames=1254, peak=0`. |
+| Track starts | **Clean.** No discontinuity at any cold start (A, B, D, the Previous restart). The 200 ms pre-buffer plus the 5 ms fade-in work. | No flagged jumps at the tap times for play, next or previous. |
+| Pause/resume (A07) | **Resume edge clean in the tap** (20 ms pad, then fade-in). The **pause edge is not observable in silent mode**: on real hardware `WasapiOut.Pause()` lets the device drain its buffer and starve, and that happens below the tap. A07 remains a code-level finding that needs a real-device check. | Tap sound segments `4.91–17.00 s`, `17.02–26.93 s`, with no flagged jump at 17.00/17.02. |
+| Volume | **The volume-static fix could not be verified in silent mode**, because there is no OS audio session to ramp. The volume path was exercised: 60 writes in 1.2 s, all through the ramp, and nothing bypassed it. | `Warn: Volume.SessionWriteFailed | origin=ramp …` and `SessionVolume.ReassertGaveUp` are expected here (no session). Also seen: `SessionVolume.Resolve | matched=0 …` is logged **432 times in about 45 s** when no session exists. It is harmless here, but it would flood the 500-line session log in a real "session lost" state. |
+| UI stalls | Two UI-thread stalls: **437 ms** during startup, before the first play, and **113 ms** at the first play. | `[UI] UI.Stall | blockedMs=437`, `[UI] UI.Stall | blockedMs=113`. |
+| Seek warnings | Every seek logs one VLC `buffer too late (-75…-94 ms): dropped` right after `DEMUX_SET_TIME`. This is VLC discarding one stale pre-seek block; nothing audible was linked to it. | `[VLC] Warning main: buffer too late (-94489 us): dropped`. |
+
+### 2.4 Fixes
+
 _In progress._
 
 ## Phase 3 — Dependencies
