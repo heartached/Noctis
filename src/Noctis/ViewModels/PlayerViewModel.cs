@@ -88,7 +88,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// showed for songs with no video), and stays while the feature is off so it can be
     /// switched back on.</summary>
     [ObservableProperty] private bool _currentTrackHasMusicVideoFile;
-    partial void OnCurrentMusicVideoPathChanged(string? value) => OnPropertyChanged(nameof(HasMusicVideo));
+    partial void OnCurrentMusicVideoPathChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasMusicVideo));
+        OnPropertyChanged(nameof(MusicVideoSyncPosition));
+    }
 
     partial void OnMusicVideosEnabledChanged(bool value)
     {
@@ -109,6 +113,23 @@ public partial class PlayerViewModel : ViewModelBase
         _resolvedMusicVideoPath = found;
         CurrentTrackHasMusicVideoFile = found != null;
         CurrentMusicVideoPath = MusicVideosEnabled ? found : null;
+    }
+
+    /// <summary>What the music video follows: the song's position minus the engine's output
+    /// latency (the gapless engine reports what it has fed, ~100 ms ahead of the speaker),
+    /// so the picture shows what is being heard.</summary>
+    public TimeSpan MusicVideoSyncPosition
+    {
+        get
+        {
+            var position = Position - OutputLatency;
+            return position > TimeSpan.Zero ? position : TimeSpan.Zero;
+        }
+    }
+
+    partial void OnPositionChanged(TimeSpan value)
+    {
+        if (HasMusicVideo) OnPropertyChanged(nameof(MusicVideoSyncPosition));
     }
 
     // ── Music video audio (Discord, aaron): with the setting on, a song whose clip was found

@@ -580,15 +580,23 @@
                             AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
                             AnimatedActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}"
                             Medium="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.NowPlayingArtworkMedium, FallbackValue={x:Static m:ArtworkMedium.Cover}}"
-                            IsSpinning="{Binding Player.IsPlaying}"
-                            IsVisible="{Binding !Player.HasMusicVideo}"
-/>
+                            IsSpinning="{Binding Player.IsPlaying}">
+                            <!-- Also stays up for a clip with no video stream (an audio-only file). -->
+                            <controls:MediaArtwork.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                    <Binding Path="!Player.HasMusicVideo"/>
+                                    <Binding ElementName="MusicVideo" Path="!HasVideoStream"/>
+                                </MultiBinding>
+                            </controls:MediaArtwork.IsVisible>
+                        </controls:MediaArtwork>
                         <!-- Music video (Settings → Lyrics Studio → Music videos): the clip found next
                              to the song plays here in place of the cover, letterboxed to the slot and
-                             kept in step with the song's position; the song's own audio is what plays. -->
+                             kept in step with what is heard (the song's own audio, or the clip's with
+                             Music video audio on). -->
                         <controls:VideoBackdrop x:Name="MusicVideo"
                                                 Source="{Binding Player.CurrentMusicVideoPath}"
-                                                SyncPosition="{Binding Player.Position}"
+                                                SyncPosition="{Binding Player.MusicVideoSyncPosition}"
+                                                TightSync="{Binding Player.IsPlayingMusicVideoAudio}"
                                                 IsPaused="{Binding !Player.IsPlaying}"
                                                 Stretch="Uniform"
                                                 CornerRadius="{Binding Player.MusicVideoCornerRadius}"

@@ -94,7 +94,47 @@ public sealed class VideoBackdrop : Control
         set => SetValue(CornerRadiusProperty, value);
     }
 
+    /// <summary>Music video audio: the clip's own audio is what plays, so the picture is held
+    /// within <see cref="TightSyncToleranceMs"/> (lip-sync) instead of <see cref="SyncToleranceMs"/>.</summary>
+    public static readonly StyledProperty<bool> TightSyncProperty =
+        AvaloniaProperty.Register<VideoBackdrop, bool>(nameof(TightSync));
+    public bool TightSync
+    {
+        get => GetValue(TightSyncProperty);
+        set => SetValue(TightSyncProperty, value);
+    }
+
+    /// <summary>False once the current source turned out to have no video stream (or could
+    /// not be read): the page keeps the cover up instead of an empty frame.</summary>
+    public static readonly DirectProperty<VideoBackdrop, bool> HasVideoStreamProperty =
+        AvaloniaProperty.RegisterDirect<VideoBackdrop, bool>(nameof(HasVideoStream), o => o.HasVideoStream);
+    private bool _hasVideoStream = true;
+    public bool HasVideoStream
+    {
+        get => _hasVideoStream;
+        private set => SetAndRaise(HasVideoStreamProperty, ref _hasVideoStream, value);
+    }
+
     public const int SyncToleranceMs = 350;
+    public const int TightSyncToleranceMs = 150;
+
+    private int CurrentSyncToleranceMs => TightSync ? TightSyncToleranceMs : SyncToleranceMs;
+
+    /// <summary>What a sync request does to the clip.</summary>
+    internal enum SyncAction { None, Seek, Restart }
+
+    /// <summary>
+    /// A sync request against the clip's state: seek when it drifted past the tolerance (or
+    /// when forced); restart when it has ENDED — VLC ignores a seek after the end, so a song
+    /// replayed or sought back would otherwise leave the clip frozen — unless the song is
+    /// already past the clip's end (<paramref name="lengthMs"/>; 0 = unknown, never restart).
+    /// </summary>
+    internal static SyncAction PlanSync(bool ended, long timeMs, long targetMs, long lengthMs, int toleranceMs, bool force)
+    {
+        if (ended)
+            return lengthMs > 0 && targetMs < lengthMs - toleranceMs ? SyncAction.Restart : SyncAction.None;
+        return force || Math.Abs(timeMs - targetMs) > toleranceMs ? SyncAction.Seek : SyncAction.None;
+    }
 
     /// <summary>Long-side cap for the decode buffer.</summary>
     public const int MaxLongSide = 960;
@@ -163,7 +203,7 @@ public sealed class VideoBackdrop : Control
             _session?.SetPaused(IsPaused || _windowMinimized);
         else if (change.Property == SyncPositionProperty)
         {
-            if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds);
+            if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds, CurrentSyncToleranceMs);
         }
         else if (change.Property == StretchProperty || change.Property == CornerRadiusProperty)
             InvalidateVisual();
@@ -206,10 +246,11 @@ public sealed class VideoBackdrop : Control
 
         var generation = _generation;
         var startPaused = _windowMinimized || IsPaused;
-        var syncStart = SyncPosition;
+        var synced = SyncPosition != null;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             Session session;
+            var hasVideo = false;
             try
             {
                 // Probe the clip's dimensions first so the buffer keeps its aspect ratio.
@@ -219,26 +260,29 @@ public sealed class VideoBackdrop : Control
                 foreach (var track in probe.Tracks)
                 {
                     if (track.TrackType != TrackType.Video) continue;
+                    hasVideo = true;
                     vw = (int)track.Data.Video.Width;
                     vh = (int)track.Data.Video.Height;
                     break;
                 }
                 var (bw, bh) = FitBuffer(vw, vh);
-                session = new Session(this, bw, bh);
+                session = new Session(this, bw, bh, probe.Duration);
             }
             catch
             {
-                return; // LibVLC unavailable or unreadable clip — leave the artwork backdrop
+                // LibVLC unavailable or unreadable clip — leave the artwork backdrop
+                Dispatcher.UIThread.Post(() => { if (generation == _generation) HasVideoStream = false; });
+                return;
             }
 
             try
             {
                 // A synced music video plays once and follows the song; a backdrop loops.
-                using var media = syncStart is null
+                // Its start position is applied once it is attached below.
+                using var media = !synced
                     ? new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio", ":input-repeat=65535")
                     : new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio");
                 session.Player.Play(media);
-                if (syncStart is { } start) session.SyncTo((long)start.TotalMilliseconds, force: true);
                 if (startPaused) session.SetPaused(true);
                 DebugLogger.Info(DebugLogger.Category.Playback, "Backdrop.Play", $"src={Path.GetFileName(source)}");
             }
@@ -256,6 +300,12 @@ public sealed class VideoBackdrop : Control
                     return;
                 }
                 _session = session;
+                HasVideoStream = hasVideo;
+                // Line the clip up with the song as it is NOW. The source switches while the
+                // track changes, before the song's position resets, so a position captured at
+                // start-up could still be the previous song's.
+                if (SyncPosition is { } now)
+                    session.SyncTo((long)now.TotalMilliseconds, CurrentSyncToleranceMs, force: true);
             });
         });
     }
@@ -281,14 +331,17 @@ public sealed class VideoBackdrop : Control
         private readonly WriteableBitmap _bitmap;
         private volatile bool _framePending;
         private volatile bool _dead;
+        private volatile bool _paused;
+        private long _lengthMs;
 
         // Delegates must stay alive for the player's lifetime (VLC keeps raw pointers).
         private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
         private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
 
-        public Session(VideoBackdrop owner, int width, int height)
+        public Session(VideoBackdrop owner, int width, int height, long lengthMs)
         {
             _owner = owner;
+            _lengthMs = lengthMs;
             _stride = width * 4;
             _bufferBytes = _stride * height;
             _buffer = Marshal.AllocHGlobal(_bufferBytes);
@@ -305,17 +358,19 @@ public sealed class VideoBackdrop : Control
         public void SetPaused(bool paused)
         {
             if (_dead) return;
+            _paused = paused;
             ThreadPool.QueueUserWorkItem(_ => { try { Player.SetPause(paused); } catch { } });
         }
 
         private int _syncInFlight;
 
         /// <summary>
-        /// Keeps the clip within <see cref="SyncToleranceMs"/> of the song. Reading and
+        /// Keeps the clip within <paramref name="toleranceMs"/> of the song. Reading and
         /// setting the native time happens off the UI thread; at most one check runs at a
-        /// time so a busy position stream cannot queue seeks.
+        /// time so a busy position stream cannot queue seeks. An ended clip is restarted
+        /// (see <see cref="PlanSync"/>).
         /// </summary>
-        public void SyncTo(long targetMs, bool force = false)
+        public void SyncTo(long targetMs, int toleranceMs, bool force = false)
         {
             if (_dead) return;
             if (Interlocked.CompareExchange(ref _syncInFlight, 1, 0) != 0) return;
@@ -323,8 +378,20 @@ public sealed class VideoBackdrop : Control
             {
                 try
                 {
-                    if (force || Math.Abs(Player.Time - targetMs) > SyncToleranceMs)
-                        Player.Time = targetMs;
+                    var length = Player.Length;
+                    if (length > 0) _lengthMs = length; // 0 once ended — keep the last known
+                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, toleranceMs, force))
+                    {
+                        case SyncAction.Seek:
+                            Player.Time = targetMs;
+                            break;
+                        case SyncAction.Restart:
+                            Player.Stop();
+                            Player.Play();
+                            Player.Time = targetMs;
+                            if (_paused) Player.SetPause(true);
+                            break;
+                    }
                 }
                 catch { }
                 finally { Interlocked.Exchange(ref _syncInFlight, 0); }
@@ -351,6 +418,7 @@ public sealed class VideoBackdrop : Control
                 if (_owner._session == this)
                 {
                     _owner._current = _bitmap; // first real frame reveals the clip
+                    _owner.HasVideoStream = true;
                     _owner.InvalidateVisual();
                 }
             }, DispatcherPriority.Render);

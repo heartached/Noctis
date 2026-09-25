@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -456,5 +457,34 @@ public class MusicVideoAudioTests : IDisposable
         Assert.False(VlcAudioPlayer.BorrowsReplayGain((null, -7.1), song));
         // A plain play (no song file behind it) never borrows.
         Assert.False(VlcAudioPlayer.BorrowsReplayGain((null, null), null));
+    }
+
+    // ── Music video sync (existing-bug fixes that ride along) ──
+
+    [Theory]
+    [InlineData(false, 10_000, 10_200, 200_000, 350, false, "None")]    // within tolerance
+    [InlineData(false, 10_000, 10_200, 200_000, 150, false, "Seek")]    // tight (clip audio)
+    [InlineData(false, 10_000, 10_000, 200_000, 350, true, "Seek")]     // forced on attach
+    [InlineData(true, 0, 0, 200_000, 350, false, "Restart")]            // ended, song replayed
+    [InlineData(true, 0, 199_900, 200_000, 350, false, "None")]         // song past the clip's end
+    [InlineData(true, 0, 5_000, 0, 350, false, "None")]                 // length unknown: no loop
+    public void VideoSync_SeeksOrRestartsAnEndedClip(bool ended, long timeMs, long targetMs, long lengthMs,
+        int toleranceMs, bool force, string expected)
+    {
+        Assert.Equal(expected, VideoBackdrop.PlanSync(ended, timeMs, targetMs, lengthMs, toleranceMs, force).ToString());
+    }
+
+    [AvaloniaFact]
+    public void VideoSync_FollowsWhatIsHeard_NotWhatTheEngineFed()
+    {
+        var (vm, engine) = Player(videoAudio: false);
+        engine.OutputLatency = TimeSpan.FromMilliseconds(100);
+        vm.CurrentTrack = Song("Runaway");
+        Assert.True(vm.HasMusicVideo);
+
+        vm.Position = TimeSpan.FromSeconds(30);
+        Assert.Equal(TimeSpan.FromMilliseconds(29_900), vm.MusicVideoSyncPosition);
+        vm.Position = TimeSpan.FromMilliseconds(40);
+        Assert.Equal(TimeSpan.Zero, vm.MusicVideoSyncPosition);
     }
 }
