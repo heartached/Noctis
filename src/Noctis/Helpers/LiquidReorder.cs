@@ -65,7 +65,11 @@ public sealed class LiquidReorder
     /// <summary>Queue index of the dragged row (its slot stays empty), or -1.</summary>
     public int SourceIndex { get; set; } = -1;
 
-    /// <summary>Queue index the dragged row would take if dropped now, or -1.</summary>
+    /// <summary>Rows lifted together from <see cref="SourceIndex"/> (a sidebar folder carries
+    /// its open playlists); all their slots stay empty. Back to 1 when the drag ends.</summary>
+    public int SourceCount { get; set; } = 1;
+
+    /// <summary>Queue index the dragged row (the first of a block) would take if dropped now, or -1.</summary>
     public int TargetIndex { get; set; } = -1;
 
     /// <summary>Height of one slot: how far the rows between source and target move.</summary>
@@ -138,12 +142,13 @@ public sealed class LiquidReorder
     /// <summary>
     /// Gap offset for the row at <paramref name="index"/> while the dragged row (from
     /// <paramref name="source"/>) would land at <paramref name="target"/>: the rows in
-    /// between move one slot toward the source, everything else stays.
+    /// between move one slot toward the source, everything else stays. A block of
+    /// <paramref name="count"/> rows moves as one; <paramref name="pitch"/> is then its height.
     /// </summary>
-    public static double GapOffset(int index, int source, int target, double pitch)
+    public static double GapOffset(int index, int source, int target, double pitch, int count = 1)
     {
-        if (source < 0 || target < 0 || index == source) return 0;
-        if (source < target && index > source && index <= target) return -pitch;
+        if (source < 0 || target < 0 || (index >= source && index < source + count)) return 0;
+        if (source < target && index >= source + count && index < target + count) return -pitch;
         if (target < source && index >= target && index < source) return pitch;
         return 0;
     }
@@ -231,8 +236,8 @@ public sealed class LiquidReorder
             live.Add(item);
             var index = _list.IndexFromContainer(item);
             // Recycled containers are re-evaluated every frame, so the hole follows the row.
-            item.Opacity = IsBusy && index == SourceIndex ? 0 : 1;
-            var goal = IsBusy ? GapOffset(index, SourceIndex, TargetIndex, Pitch) : 0;
+            item.Opacity = IsBusy && index >= SourceIndex && index < SourceIndex + SourceCount ? 0 : 1;
+            var goal = IsBusy ? GapOffset(index, SourceIndex, TargetIndex, Pitch, SourceCount) : 0;
             _rowOffsets.TryGetValue(item, out var current);
             var next = current + (goal - current) * rowStep;
             if (Math.Abs(goal - next) < 0.3) next = goal; else moving = true;
@@ -279,6 +284,7 @@ public sealed class LiquidReorder
         foreach (var item in _rowOffsets.Keys) SetRowOffset(item, 0);
         _rowOffsets.Clear();
         SourceIndex = TargetIndex = -1;
+        SourceCount = 1;
     }
 
     private void HideCard()
