@@ -383,6 +383,13 @@ public class VlcAudioPlayer : IAudioPlayer
     // in-progress fade or parse aborts immediately for instant track switching.
     private CancellationTokenSource _skipCts = new();
 
+    // Open cancellation — PlayInternal's header parse waits on this, and only a newer
+    // Play(), Stop() or Dispose cancels it. Pause, Seek and CancelPreparedNext (every
+    // queue edit) cancel _skipCts; while the parse waited on that, one of them landing
+    // mid-open aborted the new track after the session bump but before the old one was
+    // stopped: the old song played on under the new title (silence on the engine).
+    private CancellationTokenSource _openCts = new();
+
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler<string>? PlaybackError;
@@ -2677,6 +2684,9 @@ public class VlcAudioPlayer : IAudioPlayer
             $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : IsAudioCdPath(filePath) ? filePath : Path.GetFileName(filePath))}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
+        // This track supersedes one still opening: abort its header parse so the
+        // worker below (queued behind it on the lock) isn't held up for up to 8 s.
+        CancelOpenCts();
 
         // Capture on the calling thread so a competing Play() queued right after
         // cannot consume a restart-paused request meant for this call.
@@ -2731,6 +2741,11 @@ public class VlcAudioPlayer : IAudioPlayer
             oldCts.Cancel();
             oldCts.Dispose();
             var cancel = _skipCts.Token;
+            var oldOpenCts = _openCts;
+            _openCts = new CancellationTokenSource();
+            oldOpenCts.Cancel();
+            oldOpenCts.Dispose();
+            var openCancel = _openCts.Token;
 
             ResetEndReachedPending();
             lock (_seekGate) { _latestSeekMs = -1; }
@@ -2905,16 +2920,18 @@ public class VlcAudioPlayer : IAudioPlayer
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
             // Without this, M4A/ALAC/AAC can fail to decode.
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            // Waits on the open token, not the skip token: a pause, seek or queue
+            // edit landing mid-parse must not abort the track being opened.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(openCancel);
             cts.CancelAfter(8000);
             var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             try
             {
                 parseTask.Wait(cts.Token);
             }
-            catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+            catch (OperationCanceledException) when (openCancel.IsCancellationRequested)
             {
-                // Skipped by a new Play() call — abort cleanly
+                // Superseded by a newer Play() or a Stop() — abort cleanly
                 DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play.Aborted",
                     $"session={sessionId}, reason=parseCancelled, path={LogName(filePath)}");
                 media.Dispose();
@@ -4492,6 +4509,7 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_disposed) return;
 
         CancelSkipCts();
+        CancelOpenCts();
         ResetEndReachedPending();
         // Written under _seekGate like every other mutation of this field; Stop() racing
         // a Seek() could otherwise let the seek target survive the clear and be applied
@@ -5154,6 +5172,12 @@ public class VlcAudioPlayer : IAudioPlayer
         catch (ObjectDisposedException) { }
     }
 
+    private void CancelOpenCts()
+    {
+        try { _openCts.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
     private void ReleasePreparedNext()
     {
         if (_gaplessEngine)
@@ -5215,6 +5239,8 @@ public class VlcAudioPlayer : IAudioPlayer
 
         CancelSkipCts();
         _skipCts.Dispose();
+        CancelOpenCts();
+        _openCts.Dispose();
         lock (_volumeWriteLock)
         {
             try { _volumeTrailingCts?.Cancel(); } catch { }
