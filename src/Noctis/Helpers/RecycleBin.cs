@@ -59,18 +59,39 @@ public static class RecycleBin
     // SHFileOperation with FOF_NOERRORUI/FOF_SILENT so a failure can never pop a
     // modal shell dialog from a background thread (Microsoft.VisualBasic's
     // DeleteFile with UIOption.OnlyErrorDialogs did exactly that); failures just
-    // surface as `false` to the caller.
+    // surface as `false` to the caller. The one prompt left is the shell's
+    // "permanently delete?" nuke warning (see FOF_WANTNUKEWARNING below).
     private static bool WindowsRecycle(string path)
     {
+        var fullPath = Path.GetFullPath(path);
+        // FOF_ALLOWUNDO only recycles "if possible": on a volume with no Recycle Bin
+        // (UNC or mapped network share, USB stick) the shell deletes permanently, so
+        // refuse up front and let the caller report "couldn't trash".
+        if (!IsRecyclableVolume(fullPath, root => new DriveInfo(root).DriveType)) return false;
         var op = new SHFILEOPSTRUCT
         {
             wFunc = FO_DELETE,
             // The file list is double-null-terminated; marshaling adds one
             // terminator, the explicit "\0" supplies the second.
-            pFrom = Path.GetFullPath(path) + "\0",
-            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI,
+            pFrom = fullPath + "\0",
+            // FOF_WANTNUKEWARNING: without it FOF_NOCONFIRMATION answers "Yes" to the
+            // shell's permanent-delete prompt (item over the bin quota, bin turned off
+            // for the drive); declining leaves the item and reports false.
+            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_WANTNUKEWARNING | FOF_SILENT | FOF_NOERRORUI,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
+    }
+
+    /// <summary>
+    /// True when <paramref name="fullPath"/> is on a local fixed drive, the only kind
+    /// of volume Windows keeps a Recycle Bin on. UNC paths and network, removable,
+    /// RAM and optical drives have none, so "recycling" there is a permanent delete.
+    /// </summary>
+    internal static bool IsRecyclableVolume(string fullPath, Func<string, DriveType> driveTypeOf)
+    {
+        if (fullPath.StartsWith(@"\\", StringComparison.Ordinal)) return false;
+        var root = Path.GetPathRoot(fullPath);
+        return !string.IsNullOrEmpty(root) && driveTypeOf(root) == DriveType.Fixed;
     }
 
     private const uint FO_DELETE = 3;
@@ -78,6 +99,7 @@ public static class RecycleBin
     private const ushort FOF_ALLOWUNDO = 0x0040;
     private const ushort FOF_SILENT = 0x0004;
     private const ushort FOF_NOERRORUI = 0x0400;
+    private const ushort FOF_WANTNUKEWARNING = 0x4000;
 
     // Note: this unpacked layout is correct for x64/arm64 (the shipped Windows
     // targets); 32-bit x86 would need the Pack=1 variant of the struct.

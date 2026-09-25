@@ -24,4 +24,31 @@ public class RecycleBinTests
         // Safe fallback: a missing file is a no-op, never throws, never deletes anything.
         Assert.False(RecycleBin.TryMoveToTrash(path));
     }
+
+    [Theory]
+    [InlineData(@"\\nas\music\Album\01.flac")]
+    [InlineData(@"\\?\UNC\nas\music\Album\01.flac")]
+    public void IsRecyclableVolume_UncPath_IsRefused(string path)
+    {
+        // UNC shares have no Recycle Bin: the shell would delete permanently.
+        Assert.False(RecycleBin.IsRecyclableVolume(path, _ => DriveType.Fixed));
+    }
+
+    [Theory]
+    [InlineData(DriveType.Network, false)]
+    [InlineData(DriveType.Removable, false)]
+    [InlineData(DriveType.Ram, false)]
+    [InlineData(DriveType.CDRom, false)]
+    [InlineData(DriveType.Fixed, true)]
+    public void IsRecyclableVolume_OnlyFixedDrivesHaveARecycleBin(DriveType type, bool expected)
+    {
+        if (!OperatingSystem.IsWindows())
+            return; // Drive-letter roots are Windows-only.
+
+        string? asked = null;
+        var result = RecycleBin.IsRecyclableVolume(@"Z:\Music\Album\01.flac", root => { asked = root; return type; });
+
+        Assert.Equal(@"Z:\", asked);
+        Assert.Equal(expected, result);
+    }
 }
