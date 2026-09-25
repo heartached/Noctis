@@ -307,6 +307,31 @@ public class NoctisServerTests : IAsyncLifetime
         Assert.Equal(fp, ServerCertificate.Fingerprint(second));
     }
 
+    [Fact]
+    public async Task Https_Handshake_Succeeds_WithFreshAndReloadedCertificate()
+    {
+        // Schannel refuses ephemeral private keys for a server credential: Kestrel still starts,
+        // but every TLS handshake fails. Other platforms' TLS stacks accept either key storage.
+        if (!OperatingSystem.IsWindows()) return;
+        var dir = Path.Combine(_dir, "tls");
+        using var created = ServerCertificate.LoadOrCreate(dir);  // Create() path
+        using var reloaded = ServerCertificate.LoadOrCreate(dir); // stored PFX path
+        foreach (var cert in new[] { created, reloaded })
+        {
+            var fp = ServerCertificate.Fingerprint(cert);
+            await using var server = new NoctisServer(_lib, _users, "test");
+            await server.StartAsync(0, cert);
+            using var handler = new HttpClientHandler
+            {
+                // Pin the fingerprint, as the phone does.
+                ServerCertificateCustomValidationCallback = (_, c, _, _) => c is not null && ServerCertificate.Fingerprint(c) == fp,
+            };
+            using var https = new HttpClient(handler) { BaseAddress = new Uri($"https://127.0.0.1:{server.Port}/") };
+            var json = await https.GetStringAsync("rest/ping.view?f=json");
+            Assert.Equal("ok", JsonDocument.Parse(json).RootElement.GetProperty("subsonic-response").GetProperty("status").GetString());
+        }
+    }
+
     private static bool Contains(byte[] haystack, byte[] needle)
         => Enumerable.Range(0, haystack.Length - needle.Length + 1).Any(i => haystack.Skip(i).Take(needle.Length).SequenceEqual(needle));
 
