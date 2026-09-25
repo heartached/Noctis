@@ -173,6 +173,52 @@ public class MetadataViewModelTests
             Assert.Contains(t.FilePath, meta.WrittenArtPaths);
     }
 
+    // A cover write that fails (the playing file LibVLC holds, a read-only file) used to be
+    // ignored: the dialog closed as saved and the failed track was stamped with the new
+    // cover's fingerprint, so the old cover came back on its next re-read.
+
+    [Fact]
+    public async Task AddArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    {
+        var tracks = Album("A", "X", 3);
+        foreach (var t in tracks) t.ArtworkHash = "OLD";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        meta.FailArtPaths.Add(tracks[1].FilePath);
+        var closed = false;
+        vm.CloseRequested += (_, _) => closed = true;
+
+        var art = new byte[] { 1, 2, 3 };
+        SetNewArtwork(vm, art);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(closed);
+        Assert.Contains(Path.GetFileName(tracks[1].FilePath), vm.SaveErrorMessage);
+        Assert.Equal("OLD", tracks[1].ArtworkHash);
+        Assert.Equal(TrackArtwork.Fingerprint(art), tracks[0].ArtworkHash);
+        Assert.Equal(TrackArtwork.Fingerprint(art), tracks[2].ArtworkHash);
+    }
+
+    [Fact]
+    public async Task RemoveArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    {
+        var tracks = Album("A", "X", 2);
+        foreach (var t in tracks) t.ArtworkHash = "OLD";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        meta.FailArtPaths.Add(tracks[0].FilePath);
+        var closed = false;
+        vm.CloseRequested += (_, _) => closed = true;
+
+        vm.RemoveArtworkCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(closed);
+        Assert.Contains(Path.GetFileName(tracks[0].FilePath), vm.SaveErrorMessage);
+        Assert.Equal("OLD", tracks[0].ArtworkHash);
+        Assert.Null(tracks[1].ArtworkHash);
+    }
+
     // ── Tag writes only happen when a tag actually changed ────────────────────
     // Every save used to rewrite every album track's audio file unconditionally. Saving an
     // animated cover — which is a separate sidecar file and never touches the audio tags —
@@ -663,10 +709,13 @@ public class MetadataViewModelTests
             Noctis.Services.AdvancedTagIO.AdvancedFields original) => true;
         public AudioFileInfo? ReadFileInfo(string filePath) => null;
 
+        /// <summary>Paths whose cover write fails, as SaveTagsAtomically reports it (false).</summary>
+        public HashSet<string> FailArtPaths { get; } = new();
+
         public bool WriteAlbumArt(string filePath, byte[]? imageData)
         {
             lock (_gate) WrittenArtPaths.Add(filePath);
-            return true;
+            return !FailArtPaths.Contains(filePath);
         }
     }
 

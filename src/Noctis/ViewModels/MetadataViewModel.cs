@@ -2242,6 +2242,15 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Records a file the save could not write, once: the playing track often
+    /// fails both its tag and its cover write, and the error should count it as one file.</summary>
+    private static void AddFailedWrite(List<string> failedWrites, string filePath)
+    {
+        var name = Path.GetFileName(filePath);
+        lock (failedWrites)
+            if (!failedWrites.Contains(name)) failedWrites.Add(name);
+    }
+
     private static (string Extension, FilePickerFileType FileType) GetArtworkSaveType(byte[] data)
     {
         if (data.Length >= 8 &&
@@ -2509,14 +2518,21 @@ public partial class MetadataViewModel : ViewModelBase
                 _persistence.SaveArtwork(albumId, _newArtworkData);
                 ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
             }
+            // A failed cover write (the playing track libVLC holds, a read-only file) leaves
+            // the old cover in that file: report it like a failed tag write so the dialog
+            // stays open, and keep that track's fingerprint matching what is still on disk.
             await Task.Run(() =>
             {
+                var written = new List<Track>();
                 foreach (var t in artTargets)
                 {
-                    try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
+                    bool ok;
+                    try { ok = _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { ok = false; }
+                    if (ok) written.Add(t);
+                    else AddFailedWrite(failedWrites, t.FilePath);
                     t.AlbumArtworkPath = null;
                 }
-                ClearOwnTrackArtwork(artTargets, _newArtworkData);
+                ClearOwnTrackArtwork(written, _newArtworkData);
             });
             foreach (var t in artTargets)
                 ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
@@ -2532,14 +2548,19 @@ public partial class MetadataViewModel : ViewModelBase
             var albumTracks = _albumTracks
                 ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
             if (albumTracks.Count == 0) albumTracks = new List<Track> { _track };
+            // Failed strips are reported and keep their fingerprint, as for a new cover above.
             await Task.Run(() =>
             {
+                var written = new List<Track>();
                 foreach (var t in albumTracks)
                 {
-                    try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
+                    bool ok;
+                    try { ok = _metadata.WriteAlbumArt(t.FilePath, null); } catch { ok = false; }
+                    if (ok) written.Add(t);
+                    else AddFailedWrite(failedWrites, t.FilePath);
                     t.AlbumArtworkPath = null;
                 }
-                ClearOwnTrackArtwork(albumTracks, null);
+                ClearOwnTrackArtwork(written, null);
             });
             foreach (var t in albumTracks)
                 ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
