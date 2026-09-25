@@ -707,6 +707,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
+                    // Debug.WriteLine alone is compiled out of Release builds, so a failed
+                    // startup scan left nothing in a reporter's session log (#97).
+                    DebugLog.Write("Scan", $"Startup scan failed: {ex}");
                     System.Diagnostics.Debug.WriteLine($"[MainWindowVM] Auto-scan failed: {ex.Message}");
                 }
             });
