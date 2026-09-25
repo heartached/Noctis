@@ -377,6 +377,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _fadeElapsedSamples;   // render thread only
     private volatile bool _crossfadeArmed; // BeginCrossfade swapped the active off the render thread
     private float[]? _fadeScratch;
+    private readonly float[] _lastMixFrame = new float[2]; // last emitted frame of a read that mixed a tail
+    private bool _tailMixed;           // the last read mixed a tail into its output (render thread only)
 
     // Playback speed (podcast/audiobook island): a WSOLA stretch is the LAST
     // adapter stage, pulling media frames at the rate, so the segment's
@@ -528,6 +530,23 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             _parkRendered = false;
             if (_startFadeSamples > 0)
                 _cutFadePending = true;
+        }
+        if (_tailMixed)
+        {
+            // The last read emitted incoming × fade-in + tail × fade-out, but no
+            // tail is mixed into this one (Clear dropped it mid-blend, or parked).
+            // _lastFrame is the raw incoming frame — ramp from what was actually
+            // emitted instead, or the cut steps by the whole tail.
+            bool tailLive;
+            lock (_gate) tailLive = _fading != null;
+            if (parked || !tailLive)
+            {
+                _tailMixed = false;
+                for (var c = 0; c < WaveFormat.Channels; c++)
+                    _lastFrame[c] = _lastMixFrame[c];
+                if (_startFadeSamples > 0)
+                    _declickRemaining = _startFadeSamples;
+            }
         }
         if (!parked && _crossfadeArmed)
         {
@@ -741,7 +760,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             adapted = _fadingAdapted;
         }
         if (fading == null || adapted == null)
+        {
+            _tailMixed = false;
             return;
+        }
 
         var scratch = _fadeScratch;
         if (scratch == null || scratch.Length < count)
@@ -770,6 +792,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             for (var c = i; c < end; c++)
                 buffer[offset + c] = (float)(buffer[offset + c] * inGain + scratch[c] * outGain);
         }
+        if (count >= ch)
+            for (var c = 0; c < ch; c++)
+                _lastMixFrame[c] = buffer[offset + count - ch + c];
+        _tailMixed = true;
         _fadeElapsedSamples = (int)Math.Min((long)elapsed + count, int.MaxValue / 2);
 
         if (_fadeElapsedSamples >= total || fading.IsFinished || fading.Abandoned)
