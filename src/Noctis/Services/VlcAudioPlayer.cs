@@ -736,10 +736,12 @@ public class VlcAudioPlayer : IAudioPlayer
         // LibVLC player (see VlcSilenceKeepAlive) — both keep the device warm so
         // the first Play() / every transition opens against a running endpoint.
         // Silent test mode (NOCTIS_AOUT=dummy) opens no device, so it has nothing to warm.
+        // The pause probe keeps the Linux loop running through a long pause, so
+        // Resume() never uncorks against a suspended sink (GitHub #70).
         _keepAlive = NullWavePlayer.SilentMode ? null
             : OperatingSystem.IsWindows()
                 ? WasapiSilenceKeepAlive.TryStart()
-                : VlcSilenceKeepAlive.TryStart(_libVlc);
+                : VlcSilenceKeepAlive.TryStart(_libVlc, () => _isPaused);
         if (NullWavePlayer.SilentMode)
         {
             const string silentMode = "NOCTIS_AOUT=dummy: engine renders to a null output, VLC --aout=dummy, " +
