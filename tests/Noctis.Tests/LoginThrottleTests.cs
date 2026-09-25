@@ -52,4 +52,17 @@ public class LoginThrottleTests
         t.Prune();
         Assert.False(t.IsLocked("stale", out _));
     }
+
+    [Fact]
+    public void RecordFailure_SweepsStaleEntries_SoJunkNamesDoNotPileUp()
+    {
+        var now = new DateTime(2026, 9, 5, 12, 0, 0, DateTimeKind.Utc);
+        var t = new LoginThrottle(() => now);
+        for (var i = 0; i < 100; i++) t.RecordFailure("1.2.3.4\njunk" + i);
+        Assert.Equal(100, t.Count);
+
+        now += LoginThrottle.Window + TimeSpan.FromMinutes(1);
+        t.RecordFailure("1.2.3.4\nfresh");
+        Assert.Equal(1, t.Count);
+    }
 }

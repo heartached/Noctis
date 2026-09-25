@@ -3,9 +3,9 @@ using System.Collections.Concurrent;
 namespace Noctis.Services.Server;
 
 /// <summary>
-/// Per-client brute-force brake for the server's login. A client (keyed by remote address)
-/// that fails <see cref="MaxFailures"/> times within <see cref="Window"/> is locked out for
-/// <see cref="Lockout"/>; a successful login clears its record. Cheap and in-memory: the
+/// Per-client brute-force brake for the server's login. A client (keyed by remote address and
+/// account name) that fails <see cref="MaxFailures"/> times within <see cref="Window"/> is locked
+/// out for <see cref="Lockout"/>; a successful login clears its record. Cheap and in-memory: the
 /// server is a home appliance, not a fleet, so a restart forgetting the counters is fine.
 /// </summary>
 public sealed class LoginThrottle
@@ -22,6 +22,7 @@ public sealed class LoginThrottle
 
     private readonly ConcurrentDictionary<string, Entry> _clients = new();
     private readonly Func<DateTime> _now;
+    private DateTime _nextPrune = DateTime.MinValue;
 
     public LoginThrottle() : this(null) { }
 
@@ -44,6 +45,11 @@ public sealed class LoginThrottle
     /// <summary>Records a failed login. Returns true when this failure triggered a lockout.</summary>
     public bool RecordFailure(string client)
     {
+        // Keys include the account name the client sent, so junk names must not pile up
+        // forever: sweep stale entries at most once per window.
+        var start = _now();
+        if (start >= _nextPrune) { _nextPrune = start + Window; Prune(); }
+
         var e = _clients.GetOrAdd(client, _ => new Entry());
         lock (e)
         {
@@ -59,6 +65,8 @@ public sealed class LoginThrottle
 
     /// <summary>A successful login wipes the client's slate.</summary>
     public void RecordSuccess(string client) => _clients.TryRemove(client, out _);
+
+    internal int Count => _clients.Count;
 
     /// <summary>Drops stale entries so the table cannot grow without bound (call occasionally).</summary>
     public void Prune()

@@ -117,10 +117,16 @@ public sealed class NoctisServer : IAsyncDisposable
         {
             if (!NoAuthMethods.Contains(method))
             {
-                // Brute-force brake per remote address: after repeated bad logins every
-                // attempt is refused for a while, before credentials are even checked.
+                // Brute-force brake per remote address + account name: after repeated bad
+                // logins for a name, that name is refused for a while, before its password is
+                // even checked. Keyed by name too because behind the documented reverse proxy
+                // every client shares the proxy's address, and one bad client must not lock out
+                // every account. API keys are 256-bit random (not guessable), so a request that
+                // carries one is never throttled.
                 var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                if (_throttle.IsLocked(client, out var retryAfter))
+                var name = p.Get("apiKey") is null ? p.Get("u") : null;
+                var throttleKey = name is null ? null : client + "\n" + name.Trim().ToLowerInvariant();
+                if (throttleKey is not null && _throttle.IsLocked(throttleKey, out var retryAfter))
                 {
                     ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
                     await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
@@ -131,15 +137,15 @@ public sealed class NoctisServer : IAsyncDisposable
                 var (user, error, errorMessage) = Authenticate(p);
                 if (user is null)
                 {
-                    if (error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
+                    if (throttleKey is not null && error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
                     {
-                        if (_throttle.RecordFailure(client))
+                        if (_throttle.RecordFailure(throttleKey))
                             DebugLogger.Warn(DebugLogger.Category.State, "Server", $"login lockout for {client}");
                     }
                     await WriteAsync(ctx, SubsonicResponse.Error(error, errorMessage, format, _serverVersion), 200).ConfigureAwait(false);
                     return;
                 }
-                _throttle.RecordSuccess(client);
+                if (throttleKey is not null) _throttle.RecordSuccess(throttleKey);
                 ClientAuthenticated?.Invoke(this, user.Name);
                 ctx.Items["user"] = user;
             }

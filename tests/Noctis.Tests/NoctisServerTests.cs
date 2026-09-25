@@ -263,6 +263,22 @@ public class NoctisServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task LoginLockout_IsPerAccount_OtherAccountsAndApiKeysStillSignIn()
+    {
+        _users.Create("bob", "battery staple");
+        for (var i = 0; i < LoginThrottle.MaxFailures; i++)
+            await _http.GetStringAsync("rest/getLicense.view?f=json&u=alice&p=wrong");
+
+        // The name is matched like the user store does (case-insensitive).
+        var locked = await _http.GetAsync("rest/getLicense.view?f=json&u=ALICE&p=correct%20horse");
+        Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+
+        // Same address, as every client behind a reverse proxy: other accounts and API keys still work.
+        Assert.Equal("ok", (await GetJson("rest/getLicense.view?f=json&u=bob&p=battery%20staple")).GetProperty("status").GetString());
+        Assert.Equal("ok", (await Get("getLicense")).GetProperty("status").GetString());
+    }
+
+    [Fact]
     public void UserStore_HashesPasswords_AndApiKeysAreOneWay()
     {
         var store = new ServerUserStore(Path.Combine(_dir, "users2.db"));
