@@ -216,6 +216,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
 
+        // Windows 10: Avalonia leaves the native caption white under the dark theme.
+        // The handle exists from construction, so this lands before the first paint.
+        Win10DarkTitleBar.Apply(this);
+        ActualThemeVariantChanged += (_, _) => Win10DarkTitleBar.Apply(this);
+
         // Initialize the application once the window is fully loaded.
         //
         // The whole body is guarded. This is an async void handler running *inside*
