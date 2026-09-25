@@ -145,6 +145,11 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Loads and begins playing an audio file.</summary>
     void Play(string filePath);
 
+    /// <summary>Music video audio: plays <paramref name="filePath"/> (a clip), or the song file
+    /// <paramref name="fallbackPath"/> when the clip won't open or has no audio stream.
+    /// Engines without that fallback play <paramref name="filePath"/> as-is.</summary>
+    void Play(string filePath, string? fallbackPath) => Play(filePath);
+
     /// <summary>Pauses playback. No-op if not currently playing.</summary>
     void Pause();
 
