@@ -683,6 +683,10 @@ public class AppSettings
     /// <summary>Music video frame: rounded like the cover (true) or flat (false).</summary>
     public bool MusicVideoRoundedCorners { get; set; } = true;
 
+    /// <summary>A song with a music video plays the clip's own audio instead of the song file
+    /// (decided at each song start; the song file is the fallback). Off by default.</summary>
+    public bool MusicVideoUseVideoAudio { get; set; }
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }

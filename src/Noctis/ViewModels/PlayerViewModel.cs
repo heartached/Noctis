@@ -89,7 +89,16 @@ public partial class PlayerViewModel : ViewModelBase
     /// switched back on.</summary>
     [ObservableProperty] private bool _currentTrackHasMusicVideoFile;
     partial void OnCurrentMusicVideoPathChanged(string? value) => OnPropertyChanged(nameof(HasMusicVideo));
-    partial void OnMusicVideosEnabledChanged(bool value) => ResolveMusicVideo();
+
+    partial void OnMusicVideosEnabledChanged(bool value)
+    {
+        ResolveMusicVideo();
+        if (MusicVideoAudioEnabled) ForgetPreparedMusicVideoAudio();
+    }
+
+    // The clip ResolveMusicVideo found for CurrentTrack, whatever the toggle: a song start
+    // reuses it for music video audio instead of probing the disk again.
+    private string? _resolvedMusicVideoPath;
 
     private void ResolveMusicVideo()
     {
@@ -97,8 +106,121 @@ public partial class PlayerViewModel : ViewModelBase
         var found = track != null && !track.IsRemoteStream
             ? Helpers.MusicVideoLocator.Find(track.FilePath)
             : null;
+        _resolvedMusicVideoPath = found;
         CurrentTrackHasMusicVideoFile = found != null;
         CurrentMusicVideoPath = MusicVideosEnabled ? found : null;
+    }
+
+    // ── Music video audio (Discord, aaron): with the setting on, a song whose clip was found
+    // plays the clip's own audio, the song file being the engine's fallback for a clip that
+    // won't open or has no audio. Decided at song start only (PlayTrack): toggling, the
+    // lyrics page, seeks and Previous never switch the source mid-song.
+
+    /// <summary>Settings → Lyrics Studio → Music videos (off by default).</summary>
+    [ObservableProperty] private bool _musicVideoAudioEnabled;
+
+    /// <summary>True while the engine plays the current song's music video audio (false
+    /// again once it fell back to the song file). Refreshed at song start and on engine ticks.</summary>
+    [ObservableProperty] private bool _isPlayingMusicVideoAudio;
+
+    /// <summary>The playing clip's length is more than <see cref="MusicVideoLengthToleranceSeconds"/>
+    /// off the song's: synced lyrics (timed to the song file) open on Plain, and Discord/MPRIS
+    /// re-read the length. Only ever raised mid-song; reset at song start.</summary>
+    [ObservableProperty] private bool _musicVideoAudioLengthDiffers;
+
+    public const double MusicVideoLengthToleranceSeconds = 2.0;
+
+    // The clip handed to the engine at this song's start; null when the song file plays.
+    private string? _musicVideoAudioPath;
+    // A lyric-authoring surface asked for the song file (see RequestOriginalAudio).
+    private Guid _originalAudioTrackId;
+    // UpNext[0]'s play path, resolved once so AutoMix/gapless ticks don't probe the disk.
+    private Guid _nextPlayPathTrackId;
+    private string? _nextPlayPath;
+
+    /// <summary>
+    /// Whether a start of <paramref name="track"/> plays <paramref name="clip"/>'s audio: music
+    /// videos and video audio on, a local file whose clip is not the file itself, no start/stop
+    /// trim, no remembered position, and no lyric-authoring surface asking for the song file.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool UsesMusicVideoAudio(Track track, string? clip, bool videosOn, bool audioOn, bool originalAudioRequested)
+    {
+        if (!videosOn || !audioOn || originalAudioRequested || string.IsNullOrEmpty(clip))
+            return false;
+        if (track.IsRemoteStream || string.IsNullOrWhiteSpace(track.FilePath) || VlcAudioPlayer.IsPathlessMedia(track.FilePath))
+            return false;
+        if (track.StartTimeMs > 0 || track.StopTimeMs > 0 || track.RememberPlaybackPosition)
+            return false;
+        try
+        {
+            return !string.Equals(Path.GetFullPath(clip), Path.GetFullPath(track.FilePath), PathComparison.Comparison);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The exact path a start of <paramref name="track"/> hands the engine.</summary>
+    private string ResolvePlayPath(Track track, string? clip) =>
+        UsesMusicVideoAudio(track, clip, MusicVideosEnabled, MusicVideoAudioEnabled, track.Id == _originalAudioTrackId)
+            ? clip!
+            : track.FilePath;
+
+    /// <summary><see cref="ResolvePlayPath"/> for the next queued song: probed once per song,
+    /// and not at all while the feature is off.</summary>
+    private string ResolveNextPlayPath(Track next)
+    {
+        if (!MusicVideosEnabled || !MusicVideoAudioEnabled)
+            return next.FilePath;
+        if (_nextPlayPathTrackId != next.Id || _nextPlayPath == null)
+        {
+            _nextPlayPath = ResolvePlayPath(next, next.IsRemoteStream ? null : Helpers.MusicVideoLocator.Find(next.FilePath));
+            _nextPlayPathTrackId = next.Id;
+        }
+        return _nextPlayPath;
+    }
+
+    /// <summary>Lyric-authoring surfaces time lines against the song file: starts of
+    /// <paramref name="track"/> play its own audio until another song plays.</summary>
+    public void RequestOriginalAudio(Track track)
+    {
+        _originalAudioTrackId = track.Id;
+        _nextPlayPathTrackId = Guid.Empty;
+    }
+
+    partial void OnMusicVideoAudioEnabledChanged(bool value) => ForgetPreparedMusicVideoAudio();
+
+    /// <summary>The setting moved: a next song already staged with the old choice is dropped
+    /// so it re-prepares with the new one ("takes effect from the next song"). The playing
+    /// song keeps its source.</summary>
+    private void ForgetPreparedMusicVideoAudio()
+    {
+        _nextPlayPathTrackId = Guid.Empty;
+        if (_autoMixPreparedSnapshot != null && !_autoMixAdvanceQueued)
+            CancelAutoMixTransition("settings changed");
+    }
+
+    /// <summary>Re-reads which file the engine actually plays (a broken clip falls back to the
+    /// song file on the engine's worker) and, given the engine's length, whether the clip's
+    /// length differs from the song's.</summary>
+    private void RefreshMusicVideoAudio(TimeSpan engineDuration = default)
+    {
+        var clip = _musicVideoAudioPath;
+        IsPlayingMusicVideoAudio = clip != null &&
+            string.Equals(_audioPlayer.CurrentMediaPath, clip, StringComparison.Ordinal);
+        if (!IsPlayingMusicVideoAudio)
+            MusicVideoAudioLengthDiffers = false;
+        else if (engineDuration > TimeSpan.Zero && CurrentTrack is { } track && track.Duration > TimeSpan.Zero &&
+                 Math.Abs((engineDuration - track.Duration).TotalSeconds) > MusicVideoLengthToleranceSeconds)
+            MusicVideoAudioLengthDiffers = true;
+    }
+
+    partial void OnIsPlayingMusicVideoAudioChanged(bool value)
+    {
+        RefreshSignalPath();
+        UpdateWaveformForMusicVideoAudio();
     }
     [ObservableProperty] private string _positionText = "0:00";
     [ObservableProperty] private string _durationText = "0:00";
@@ -1705,6 +1827,12 @@ public partial class PlayerViewModel : ViewModelBase
         // EQ preset, or switching the EQ back on would re-push it (GitHub #94).
         if (value == null)
             _settings?.ClearTrackEqPresetOverride();
+        // Nothing playing: no music video audio either (the next PlayTrack re-decides).
+        if (value == null && _musicVideoAudioPath != null)
+        {
+            _musicVideoAudioPath = null;
+            RefreshMusicVideoAudio();
+        }
 
         RefreshSignalPath();
         // The player applies ReplayGain / opens the output on a worker shortly
@@ -1797,6 +1925,11 @@ public partial class PlayerViewModel : ViewModelBase
             sourceDetail += $" {track.SampleRate / 1000.0:0.#} kHz";
         if (!track.IsLossless && track.Bitrate > 0)
             sourceDetail += $" ({track.Bitrate} kbps)";
+        // Music video audio: the source is the clip, not the song file these tags describe.
+        var clip = IsPlayingMusicVideoAudio ? _musicVideoAudioPath : null;
+        if (clip != null)
+            sourceDetail = $"Music video audio ({Path.GetExtension(clip).TrimStart('.').ToUpperInvariant()})";
+        var lossless = track.IsLossless && clip == null;
 
         var rgDetail = !rgOn
             ? "Off"
@@ -1835,12 +1968,12 @@ public partial class PlayerViewModel : ViewModelBase
             SignalPathQuality = "Bit-perfect";
             SignalPathColor = "#B197FC"; // violet — untouched samples reach the DAC
         }
-        else if (track.IsLossless && !dspActive)
+        else if (lossless && !dspActive)
         {
             SignalPathQuality = track.IsHiResLossless ? "Hi-Res Lossless" : "Lossless";
             SignalPathColor = "#4ADE80"; // green
         }
-        else if (track.IsLossless)
+        else if (lossless)
         {
             SignalPathQuality = "Enhanced";
             SignalPathColor = "#60A5FA"; // blue — lossless source with DSP applied
@@ -1972,6 +2105,8 @@ public partial class PlayerViewModel : ViewModelBase
         _autoMixAdvanceQueued = false;
         _autoMixPreparedTrackId = Guid.Empty;
         _autoMixCommitGuardUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        // A staged next song must start on exactly the path it was staged with (below).
+        var prepared = _autoMixPreparedSnapshot;
         _autoMixPreparedSnapshot = null;
 
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
@@ -2044,7 +2179,21 @@ public partial class PlayerViewModel : ViewModelBase
                 : 0;
         }
 
-        _audioPlayer.Play(track.FilePath);
+        // Music video audio: decided here, once per song start. A staged next song keeps the
+        // choice it was staged with (a clip: that exact path); a lyric-authoring request only
+        // covers its own song.
+        if (_originalAudioTrackId != track.Id) _originalAudioTrackId = Guid.Empty;
+        var playPath = prepared != null && prepared.TrackId == track.Id && prepared.PlayPath != null
+            ? (string.Equals(prepared.PlayPath, prepared.FilePath, StringComparison.Ordinal) ? track.FilePath : prepared.PlayPath)
+            : ResolvePlayPath(track, _resolvedMusicVideoPath);
+        _musicVideoAudioPath = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? null : playPath;
+        MusicVideoAudioLengthDiffers = false;
+
+        if (_musicVideoAudioPath == null)
+            _audioPlayer.Play(track.FilePath);
+        else
+            _audioPlayer.Play(_musicVideoAudioPath, track.FilePath);
+        RefreshMusicVideoAudio();
 
         // Apply per-track EQ preset (or restore global)
         _settings?.ApplyEqPresetByName(
@@ -2575,6 +2724,7 @@ public partial class PlayerViewModel : ViewModelBase
                 if (Duration.TotalSeconds > 0)
                     PositionFraction = Position.TotalSeconds / Duration.TotalSeconds;
             }
+            RefreshMusicVideoAudio(resolvedDuration);
         });
     }
 
@@ -2641,6 +2791,8 @@ public partial class PlayerViewModel : ViewModelBase
                 Duration = effectiveDuration;
                 DurationText = FormatTime(Duration);
             }
+
+            RefreshMusicVideoAudio(decoderDuration);
 
             // Calculate ALL values FIRST before setting any properties
             var newPosition = latest;
@@ -2769,7 +2921,12 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
 
         var nextTrack = UpNext[0];
-        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions());
+        var nextPlayPath = ResolveNextPlayPath(nextTrack);
+        // A music video's audio runs on the clip's timeline, not the song file's that the
+        // beat and silence data describe: either side playing one keeps both off.
+        var musicVideoAudio = IsPlayingMusicVideoAudio ||
+                              !string.Equals(nextPlayPath, nextTrack.FilePath, StringComparison.Ordinal);
+        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions(musicVideoAudio));
         LogAutoMixPlan(CurrentTrack, nextTrack, plan);
 
         if (!plan.IsEnabled)
@@ -2812,8 +2969,9 @@ public partial class PlayerViewModel : ViewModelBase
                 IsShuffleEnabled,
                 RepeatMode,
                 AutoMixTransitionMode,
-                _audioPlayer.CurrentSessionId);
-            _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+                _audioPlayer.CurrentSessionId,
+                nextPlayPath);
+            _audioPlayer.PrepareNext(nextPlayPath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
             // Prepared late (already inside the window): give the async prepare a
             // tick of head start rather than committing against a cold standby.
             if (position >= fadeStart)
@@ -2879,13 +3037,13 @@ public partial class PlayerViewModel : ViewModelBase
         return true;
     }
 
-    private AutoMixPlannerOptions CreateAutoMixOptions() =>
+    private AutoMixPlannerOptions CreateAutoMixOptions(bool musicVideoAudio = false) =>
         new(
             AutoMixTransitionMode,
             AutoMixStrength,
-            AutoMixRemoveSilence,
+            AutoMixRemoveSilence && !musicVideoAudio,
             AutoMixAvoidAlbums,
-            AutoMixBeatMatch,
+            AutoMixBeatMatch && !musicVideoAudio,
             RepeatMode,
             IsShuffleEnabled,
             false,
@@ -2940,6 +3098,7 @@ public partial class PlayerViewModel : ViewModelBase
                 _autoMixPreparedTrackId != nextTrack.Id &&
                 !string.IsNullOrWhiteSpace(nextTrack.FilePath))
             {
+                var nextPlayPath = ResolveNextPlayPath(nextTrack);
                 _autoMixPreparedTrackId = nextTrack.Id;
                 _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
                     nextTrack.Id,
@@ -2948,9 +3107,10 @@ public partial class PlayerViewModel : ViewModelBase
                     IsShuffleEnabled,
                     RepeatMode,
                     AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId);
+                    _audioPlayer.CurrentSessionId,
+                    nextPlayPath);
                 _audioPlayer.PrepareNext(
-                    nextTrack.FilePath,
+                    nextPlayPath,
                     nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
             }
             return false;

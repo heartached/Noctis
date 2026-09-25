@@ -203,6 +203,11 @@ public sealed class MprisService : IDisposable
                 SnapshotState();
                 EmitPropertiesChanged(statusChanged: false, metadataChanged: true, volumeChanged: false);
                 break;
+            // Music video audio: the engine now knows the clip's own length (mpris:length).
+            case nameof(PlayerViewModel.MusicVideoAudioLengthDiffers) when _player.MusicVideoAudioLengthDiffers:
+                SnapshotState();
+                EmitPropertiesChanged(statusChanged: false, metadataChanged: true, volumeChanged: false);
+                break;
             case nameof(PlayerViewModel.Volume):
                 EmitPropertiesChanged(statusChanged: false, metadataChanged: false, volumeChanged: true);
                 break;
@@ -227,7 +232,8 @@ public sealed class MprisService : IDisposable
             _title = track?.TitleDisplay;
             _artist = track?.ArtistDisplay;
             _album = track?.Album;
-            _lengthUs = track == null ? 0 : track.Duration.Ticks / 10;
+            // Music video audio: the clip's length as the engine reports it, not the song file's.
+            _lengthUs = track == null ? 0 : (_player.IsPlayingMusicVideoAudio ? _player.Duration : track.Duration).Ticks / 10;
             _trackId = track == null
                 ? "/org/mpris/MediaPlayer2/TrackList/NoTrack"
                 : "/com/heartached/noctis/track/" + track.Id.ToString("N");

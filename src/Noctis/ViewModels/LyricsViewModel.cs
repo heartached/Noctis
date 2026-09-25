@@ -2132,6 +2132,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             OnPropertyChanged(nameof(ShowBackgroundVocals));
         }
+        // The engine just reported a music video's audio whose length is off the song's,
+        // after these lyrics opened on Synced: move to Plain once (see OpensOnSyncedTab).
+        else if (e.PropertyName == nameof(PlayerViewModel.MusicVideoAudioLengthDiffers) &&
+                 _player.MusicVideoAudioLengthDiffers && IsSyncTabSelected && HasSyncedLyricsAvailable)
+        {
+            SelectUnsyncTab();
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -2616,12 +2623,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// tab rebuilt twice on a synced↔plain change (old tab's list, then the new one);
     /// flipping first would rebuild the new tab's STALE lines, then the fresh ones.
     /// So: fill the collection the new content will show, flip (AutoSelectTab — reads
-    /// only <see cref="_hasSyncedLyrics"/>, which callers set for the NEW content
-    /// first), then fill the other one once it's off-screen.
+    /// only <see cref="OpensOnSyncedTab"/>, from <see cref="_hasSyncedLyrics"/>, which
+    /// callers set for the NEW content first), then fill the other one once it's off-screen.
     /// </summary>
     private void FillLyricCollections(Action fillSynced, Action fillUnsynced)
     {
-        if (_hasSyncedLyrics)
+        if (OpensOnSyncedTab)
         {
             fillSynced();
             AutoSelectTab();
@@ -2635,9 +2642,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Synced lyrics open on the Synced tab, unless a music video's audio is playing
+    /// whose length is off the song's: its timings would drift, so Plain is the default then
+    /// (Synced stays one click away).</summary>
+    private bool OpensOnSyncedTab => _hasSyncedLyrics && !_player.MusicVideoAudioLengthDiffers;
+
     private void AutoSelectTab()
     {
-        if (_hasSyncedLyrics)
+        if (OpensOnSyncedTab)
         {
             IsSyncTabSelected = true;
             IsUnsyncTabSelected = false;

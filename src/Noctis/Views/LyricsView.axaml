@@ -710,15 +710,27 @@
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
+                    <!-- The song file's quality badge hides while a music video's own audio plays. -->
                     <TextBlock Text=" · "
                                FontSize="12"
                                Foreground="{Binding LyricsSubtleFg}"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
                     <StackPanel Orientation="Horizontal"
                                 Spacing="4"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                VerticalAlignment="Center">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
                         <ToolTip.Tip>
                             <StackPanel Width="220" Spacing="4">
                                 <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"

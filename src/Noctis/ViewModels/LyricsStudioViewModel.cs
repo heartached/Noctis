@@ -738,7 +738,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var synced = BuildReviewText();
         if (_player is not null)
         {
-            if (_player.CurrentTrack?.Id != item.Track.Id)
+            if (_player.CurrentTrack?.Id != item.Track.Id || _player.IsPlayingMusicVideoAudio)
                 await PlayFromTime(ReviewLines[0].Start - TimeSpan.FromSeconds(2));
             else if (_player.State != PlaybackState.Playing)
                 _player.PlayPauseCommand.Execute(null);
@@ -910,10 +910,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(TapHint))]
     private ReviewLine? _tapLine;
     private int _tapIndex;
+    private bool _tapBlocked; // the last tap landed while a music video's audio played
 
     public bool IsTapping => TapLine is not null;
     public string TapHint => TapLine is { } line
-        ? (_tapIndex < line.Words.Count
+        ? (_tapBlocked
+            ? "Tapping is off while the music video's audio plays · click the line's time to hear the song file"
+            : _tapIndex < line.Words.Count
             ? $"Tap for “{line.Words[_tapIndex].Text}” ({_tapIndex + 1} of {line.Words.Count}) · Space or the Tap button · Esc cancels"
             : "Tap once more where the line ends")
         : string.Empty;
@@ -940,6 +943,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void Tap()
     {
         if (TapLine is not { } line || _player is null) return;
+        // Words are timed against the song file; a music video's audio runs on the clip's clock.
+        _tapBlocked = _player.IsPlayingMusicVideoAudio;
+        if (_tapBlocked)
+        {
+            OnPropertyChanged(nameof(TapHint));
+            return;
+        }
         var now = _player.Position;
         if (_tapIndex < line.Words.Count)
         {
@@ -963,6 +973,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (TapLine is { } line)
             foreach (var w in line.Words) w.IsTapTarget = false;
+        _tapBlocked = false;
         TapLine = null;
         _tapIndex = 0;
     }
@@ -982,8 +993,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (_player is null || Selected is null) return;
         var track = Selected.Track;
-        if (_player.CurrentTrack?.Id != track.Id)
+        if (_player.CurrentTrack?.Id != track.Id || _player.IsPlayingMusicVideoAudio)
         {
+            // Lines are timed against the song file: never play them over a music video's audio.
+            _player.RequestOriginalAudio(track);
             _player.ReplaceQueueAndPlay(new[] { track }, 0);
             // Wait for the engine to report the real length rather than a fixed delay: seeking
             // by a fraction of the tag's Duration against the engine's landed a little off.

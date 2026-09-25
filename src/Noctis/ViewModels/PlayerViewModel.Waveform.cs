@@ -22,6 +22,8 @@ public partial class PlayerViewModel
 
     private WaveformService? _waveforms;
     private string? _currentWaveformPath;
+    // The current track's waveform as delivered, kept while music video audio hides it.
+    private WaveformData? _currentWaveformData;
 
     /// <summary>Attaches the background waveform service (the app wires it once at startup;
     /// without it the feature stays inert).</summary>
@@ -49,6 +51,7 @@ public partial class PlayerViewModel
             // Track changed: the old waveform must not linger under the new title. A cached
             // one for the new track comes straight back from the service's memory tier.
             _currentWaveformPath = null;
+            _currentWaveformData = null;
             CurrentWaveform = null;
         }
 
@@ -56,6 +59,7 @@ public partial class PlayerViewModel
         if (!WaveformSeekBarEnabled)
         {
             _currentWaveformPath = null;
+            _currentWaveformData = null;
             CurrentWaveform = null;
             _waveforms.SetPlan(Array.Empty<string>());
             return;
@@ -72,7 +76,14 @@ public partial class PlayerViewModel
             if (current == null || !string.Equals(current.FilePath, path, PathComparison.Comparison)) return;
             if (ReferenceEquals(CurrentWaveform, data)) return;
             _currentWaveformPath = path;
-            CurrentWaveform = data;
+            _currentWaveformData = data;
+            CurrentWaveform = IsPlayingMusicVideoAudio ? null : data;
         });
     }
+
+    /// <summary>Music video audio: the song file's waveform is not what is heard, so the seek
+    /// bars draw their plain line while the clip's audio plays, and get it back if the engine
+    /// falls back to the song file.</summary>
+    private void UpdateWaveformForMusicVideoAudio() =>
+        CurrentWaveform = IsPlayingMusicVideoAudio ? null : _currentWaveformData;
 }

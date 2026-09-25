@@ -265,6 +265,8 @@
   <data name="Settings.MusicVideoRounded" xml:space="preserve"><value>Rounded</value><comment>Lyrics Studio card toggle</comment></data>
   <data name="Settings.MusicVideoRoundedHint" xml:space="preserve"><value>Rounded corners like the cover, or a flat frame</value><comment>Lyrics Studio card toggle tooltip</comment></data>
   <data name="PlaybackBar.MusicVideo" xml:space="preserve"><value>Music video</value><comment>Options menu toggle in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.MusicVideoAudio" xml:space="preserve"><value>Music video audio</value><comment>Options menu toggle in PlaybackBarView.axaml, under Music video</comment></data>
+  <data name="Settings.MusicVideoAudioHint" xml:space="preserve"><value>Play the video's own audio instead of the song file. Takes effect from the next song.</value><comment>Music video audio toggle tooltip (Lyrics Studio card and options menu)</comment></data>
   <data name="Settings.LyricsBackgroundVideo" xml:space="preserve"><value>Lyrics Background Video</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve"><value>A looping video or GIF behind the lyrics.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Choose" xml:space="preserve"><value>Choose</value><comment>Content in SettingsView.axaml</comment></data>
@@ -1799,6 +1801,7 @@
   <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the -0.1s / +0.1s buttons</comment></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
+  <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Video audio</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>
   <data name="LyricsStudio.ComposeEmpty" xml:space="preserve"><value>No lyrics yet. Paste lyrics or listen to the track.</value><comment>Lyrics box empty state</comment></data>
   <data name="LyricsStudio.ComposeCheck" xml:space="preserve"><value>Check the lyrics below, one line per sung line, then press Align lyrics.</value><comment>Lyrics box hint when text is present</comment></data>
   <data name="LyricsStudio.TranscriptBanner" xml:space="preserve"><value>Experimental transcript. Sung vocals often transcribe poorly, so fix the words below, then press Align lyrics to time them.</value><comment>Lyrics box banner after a transcription</comment></data>
