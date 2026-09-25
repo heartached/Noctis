@@ -2809,7 +2809,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
     internal bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
     {
+        // Stop-after-current: no early handoff. The stop branch in AdvanceQueueCore only
+        // flips State, so an advance before the real end let the track play out and its
+        // TrackEnded then started the next one. Let the track end naturally instead.
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
+            StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
             UpNext.Count == 0)
@@ -2966,8 +2970,10 @@ public partial class PlayerViewModel : ViewModelBase
 
     private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
     {
+        // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
         if (!GaplessEnabled ||
             AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
             UpNext.Count == 0 ||
@@ -3063,6 +3069,15 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (value == RepeatMode.One)
             CancelAutoMixTransition("repeat-one enabled");
+    }
+
+    // Arming stop-after-current also drops a successor already prepared for the
+    // gapless/AutoMix handoff: the splice engine (and Media3's playlist) plays a staged
+    // next track on its own at the seam, so the stop would otherwise land a track late.
+    partial void OnStopAfterCurrentTrackChanged(bool value)
+    {
+        if (value && _autoMixPreparedTrackId != Guid.Empty)
+            CancelAutoMixTransition("stop after current track");
     }
 
     private void CancelAutoMixTransition(string reason)
