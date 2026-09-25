@@ -125,7 +125,7 @@ public sealed class NoctisServer : IAsyncDisposable
                 // carries one is never throttled.
                 var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 var name = p.Get("apiKey") is null ? p.Get("u") : null;
-                var throttleKey = name is null ? null : client + "\n" + name.Trim().ToLowerInvariant();
+                var throttleKey = name is null ? null : LoginThrottle.Key(client, name);
                 if (throttleKey is not null && _throttle.IsLocked(throttleKey, out var retryAfter))
                 {
                     ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
