@@ -1,4 +1,6 @@
 using Noctis.Models;
+using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -37,7 +39,9 @@ public static class LyricsfileParser
         LyricsfileDto? dto;
         try
         {
-            dto = _yaml.Deserialize<LyricsfileDto>(content);
+            // Aliases are refused: "- *l" repeats a whole line (or "text: *t" a whole string)
+            // for five bytes, so a tiny file could still fill every line up to the caps below.
+            dto = _yaml.Deserialize<LyricsfileDto>(new NoAliasParser(new Parser(new StringReader(content))));
         }
         catch
         {
@@ -53,8 +57,6 @@ public static class LyricsfileParser
         {
             foreach (var raw in dto.Lines)
             {
-                // YAML aliases let a few bytes repeat a whole line, so the list can be far
-                // longer than the file suggests.
                 if (lines.Count >= EnhancedLrcParser.MaxLyricLines) break;
                 if (raw == null) continue;
 
@@ -128,6 +130,22 @@ public static class LyricsfileParser
             Nullable.Compare(a.Timestamp, b.Timestamp));
 
         return (lines, dto.Plain);
+    }
+
+    /// <summary>Passes parser events through, throwing on any alias (<c>*name</c>).</summary>
+    private sealed class NoAliasParser : IParser
+    {
+        private readonly IParser _inner;
+        public NoAliasParser(IParser inner) => _inner = inner;
+        public ParsingEvent? Current => _inner.Current;
+
+        public bool MoveNext()
+        {
+            if (!_inner.MoveNext()) return false;
+            if (_inner.Current is AnchorAlias alias)
+                throw new YamlException(alias.Start, alias.End, "YAML aliases are not allowed in a Lyricsfile.");
+            return true;
+        }
     }
 
     // ── YAML DTOs (local to the parser — external shape isn't used elsewhere) ──

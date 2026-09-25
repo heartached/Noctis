@@ -28,17 +28,39 @@ public class LyricsfileParserTests
     }
 
     [Fact]
-    public void Parse_AliasedLinesPastCap_StopsAtCap()
+    public void Parse_LinesPastCap_StopsAtCap()
     {
-        // A 5-byte "- *l" alias repeats a whole line, so a small file can list hundreds of
-        // thousands of lines — the lyrics list is not virtualized and realized every one.
-        var yaml = new StringBuilder("version: \"1.0\"\nlines:\n  - &l {text: la, start_ms: 1000}\n");
+        // The lyrics list is not virtualized and realizes every line.
+        var yaml = new StringBuilder("version: \"1.0\"\nlines:\n");
         for (int i = 0; i < EnhancedLrcParser.MaxLyricLines + 50; i++)
-            yaml.Append("  - *l\n");
+            yaml.Append("  - {text: la, start_ms: 1000}\n");
 
         var (lines, _) = LyricsfileParser.Parse(yaml.ToString());
 
         Assert.Equal(EnhancedLrcParser.MaxLyricLines, lines!.Count);
+    }
+
+    [Theory]
+    // A 5-byte "- *l" repeats a whole line: one 512-word line x 3000 stayed under both caps.
+    [InlineData("lines:\n  - &l {text: la, start_ms: 1000}\n  - *l\n")]
+    // "text: *t" repeats a whole string on every line.
+    [InlineData("lines:\n  - text: &t la\n    start_ms: 1000\n  - text: *t\n    start_ms: 2000\n")]
+    // Refused even where the value is ignored.
+    [InlineData("lines:\n  - {text: la, start_ms: 1000}\nplain: &p la\nx: *p\n")]
+    public void Parse_AnyAlias_IsRejected(string body)
+    {
+        var (lines, plain) = LyricsfileParser.Parse("version: \"1.0\"\n" + body);
+
+        Assert.Null(lines);
+        Assert.Null(plain);
+    }
+
+    [Fact]
+    public void Parse_AnchorWithoutAlias_StillParses()
+    {
+        var (lines, _) = LyricsfileParser.Parse("version: \"1.0\"\nlines:\n  - &l {text: la, start_ms: 1000}\n");
+
+        Assert.Equal("la", Assert.Single(lines!).Text);
     }
 
     [Fact]
