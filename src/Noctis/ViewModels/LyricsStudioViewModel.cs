@@ -669,7 +669,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var embed = EmbedTags;
         try
         {
-            var outcome = _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true);
+            // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
+            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true));
             item.Status = StudioStatus.Saved;
             _drafts?.Delete(item.Track.Id);
             item.Existing = null;
@@ -678,7 +679,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
             var format = !WordTimings ? "line timings (LRC)"
                 : lines.Any(l => l.Words.Count > 0) ? "word timings (ELRC)"
                 : "line timings (LRC) · no words timed yet";
-            item.StatusText = !outcome.SidecarWritten ? $"Saved · {format} · no .lrc written"
+            item.StatusText = outcome.KeptForeignSidecar ? $"Saved · {format} · old .lrc kept, couldn't move it to the recycle bin"
+                : !outcome.SidecarWritten ? $"Saved · {format} · no .lrc written"
                 : outcome.ReplacedForeignSidecar ? $"Saved · {format} · old .lrc moved to the recycle bin"
                 : $"Saved · {format}";
             _savedCount++;
