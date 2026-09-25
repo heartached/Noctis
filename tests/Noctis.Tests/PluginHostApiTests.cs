@@ -66,6 +66,24 @@ public class PluginHostApiTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task UnrecoverableSettings_LeaveInstalledPluginsRestricted_AndUnapproved()
+    {
+        // settings.json lost (or reset) while a plugin the user never approved stays on disk.
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Noctis.SamplePlugin.dll"),
+            Path.Combine(_box.WriteFolder("PulseRingPlugin", null), "Noctis.SamplePlugin.dll"));
+        await File.WriteAllTextAsync(Path.Combine(_box.Root, "settings.json"), "<<<not json>>>");
+        var settings = await new PersistenceService(_box.Root).LoadSettingsAsync();
+        var host = new PluginHost(null, _box.Root, () => settings, () => { }, "1.5.3");
+        host.LoadAll();
+
+        Assert.False(settings.CommunityPluginsEnabled);
+        Assert.Equal(PluginStatus.Restricted, host.Plugins.Single().Status);
+        Assert.False(host.Plugins.Single().IsRunning);
+        Assert.Empty(settings.PluginPermissionGrants);
+        host.UnloadAll();
+    }
+
+    [AvaloniaFact]
     public void RestrictedMode_ListsPlugins_ButRunsNoCode()
     {
         _box.Settings.CommunityPluginsEnabled = false;

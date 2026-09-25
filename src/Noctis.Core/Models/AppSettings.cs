@@ -43,9 +43,10 @@ public class AppSettings
 
     /// <summary>
     /// "Community plugins" switch (Settings → Plugins). False = restricted mode: no
-    /// third-party plugin code is loaded. Null = never decided: the plugin host sets it on
-    /// first load, ON when plugins were already installed (they ran before this switch
-    /// existed), OFF for everyone else.
+    /// third-party plugin code is loaded. Null = never decided (a settings.json from before
+    /// this switch existed): the plugin host sets it on first load, ON when plugins were
+    /// already installed (they ran before this switch existed), OFF for everyone else.
+    /// Defaults the app creates itself (no usable settings file, Reset) set it to false.
     /// </summary>
     public bool? CommunityPluginsEnabled { get; set; }
 

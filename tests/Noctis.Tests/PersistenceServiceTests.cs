@@ -153,6 +153,28 @@ public class PersistenceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DefaultSettings_DecideTheCommunityPluginsSwitch_AsRestricted()
+    {
+        // Null means "settings.json predates the switch" to the plugin host, which then
+        // approves and starts every installed plugin. Defaults must never look like that.
+        var svc = Create();
+        Assert.False((await svc.LoadSettingsAsync()).CommunityPluginsEnabled); // no file
+
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), "<<<not json>>>");
+        Assert.False((await Create().LoadSettingsAsync()).CommunityPluginsEnabled); // corrupt, no backup
+    }
+
+    [Fact]
+    public async Task SettingsFromBeforeTheCommunityPluginsSwitch_StayUndecided()
+    {
+        var svc = Create();
+        Directory.CreateDirectory(_root);
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), """{"volume":50}""");
+
+        Assert.Null((await svc.LoadSettingsAsync()).CommunityPluginsEnabled);
+    }
+
+    [Fact]
     public async Task OutOfRangeNumbers_AreClampedOnLoad()
     {
         var svc = Create();

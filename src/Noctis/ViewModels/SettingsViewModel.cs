@@ -6109,8 +6109,10 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear index cache: {ex.Message}");
         }
 
-        // Reset settings to defaults and save
-        var defaultSettings = new AppSettings();
+        // Reset settings to defaults and save. The plugins folder survives the reset, so the
+        // community-plugins switch is decided (restricted) rather than left null, which the
+        // plugin host treats as a pre-switch install and approves every plugin it finds.
+        var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
         try
         {
             await _persistence.SaveSettingsAsync(defaultSettings);
