@@ -1061,10 +1061,11 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null)
+    private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null,
+        string? pattern = null)
     {
         conflict = false;
-        var expanded = TitleFormatter.Expand(RenamePattern, t, sanitizeForFilename: true);
+        var expanded = TitleFormatter.Expand(pattern ?? RenamePattern, t, sanitizeForFilename: true);
         if (string.IsNullOrWhiteSpace(expanded)) return null;
 
         var dir = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
@@ -2618,29 +2619,46 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         // Rename files by pattern (multi-select only). Done after tag writes so the
-        // new name can reflect just-applied tags.
+        // new name can reflect just-applied tags. The moves run on a worker thread for
+        // the same reason as the tag writes: a large selection, or any selection on a
+        // network share or busy disk, froze the window for the whole batch when inline.
         if (_multiSelect && ApplyRename && _albumTracks != null)
         {
             var renameSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var watcher = App.Services?.GetService<ILibraryWatcherService>();
-            var renamed = new List<(string oldPath, string newPath)>();
-            foreach (var t in _albumTracks)
+            var renameTargets = _albumTracks.ToList();
+            var renamePattern = RenamePattern;
+            var moved = new List<(Track track, string oldPath, string newPath)>();
+            await Task.Run(() =>
             {
-                var newPath = ComputeRenamedPath(t, out var conflict, renameSeen);
-                if (newPath != null && !conflict
-                    && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
+                foreach (var t in renameTargets)
                 {
-                    try
+                    var newPath = ComputeRenamedPath(t, out var conflict, renameSeen, renamePattern);
+                    if (newPath != null && !conflict
+                        && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
                     {
                         var oldPath = t.FilePath;
-                        SuppressWatcherForRename(watcher, oldPath, newPath);
-                        File.Move(oldPath, newPath);
-                        MoveLyricSidecars(oldPath, newPath);
-                        t.FilePath = newPath;
-                        renamed.Add((oldPath, newPath));
+                        try
+                        {
+                            SuppressWatcherForRename(watcher, oldPath, newPath);
+                            File.Move(oldPath, newPath);
+                            MoveLyricSidecars(oldPath, newPath);
+                            moved.Add((t, oldPath, newPath));
+                        }
+                        catch (Exception ex)
+                        {
+                            // Non-fatal — skip this file
+                            DebugLog.Write("Metadata", $"Rename failed for '{oldPath}': {ex.Message}");
+                        }
                     }
-                    catch { /* Non-fatal — skip this file */ }
                 }
+            });
+
+            var renamed = new List<(string oldPath, string newPath)>();
+            foreach (var (t, oldPath, newPath) in moved)
+            {
+                t.FilePath = newPath;
+                renamed.Add((oldPath, newPath));
             }
 
             // A track's id is the hash of its path. Re-key the renamed tracks the way
