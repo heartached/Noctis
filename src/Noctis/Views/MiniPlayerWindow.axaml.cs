@@ -1139,6 +1139,7 @@ public partial class MiniPlayerWindow : Window
         _drawerHideTimer?.Stop();
         _lyricsScrollTimer?.Stop();
         _lyricsFontTimer?.Stop();
+        _pillSpinner?.Stop();
         _flow?.Dispose();
         _topmostKeeper?.Dispose();
         _topmostKeeper = null;
