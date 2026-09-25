@@ -108,7 +108,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         var track = CurrentTrack;
         var found = track != null && !track.IsRemoteStream
-            ? Helpers.MusicVideoLocator.Find(track.FilePath)
+            ? (TakeNextClipProbe(track, out var probed) ? probed : Helpers.MusicVideoLocator.Find(track.FilePath))
             : null;
         _resolvedMusicVideoPath = found;
         CurrentTrackHasMusicVideoFile = found != null;
@@ -155,9 +155,10 @@ public partial class PlayerViewModel : ViewModelBase
     private string? _musicVideoAudioPath;
     // A lyric-authoring surface asked for the song file (see RequestOriginalAudio).
     private Guid _originalAudioTrackId;
-    // UpNext[0]'s play path, resolved once so AutoMix/gapless ticks don't probe the disk.
-    private Guid _nextPlayPathTrackId;
-    private string? _nextPlayPath;
+    // UpNext[0]'s clip, looked for once and off the UI thread (a slow or sleeping disk must
+    // not stall AutoMix/gapless ticks), then handed to ResolveMusicVideo when it plays.
+    private Guid _nextClipProbeTrackId;
+    private Task<string?>? _nextClipProbe;
 
     /// <summary>
     /// Whether a start of <paramref name="track"/> plays <paramref name="clip"/>'s audio: music
@@ -189,27 +190,42 @@ public partial class PlayerViewModel : ViewModelBase
             ? clip!
             : track.FilePath;
 
-    /// <summary><see cref="ResolvePlayPath"/> for the next queued song: probed once per song,
-    /// and not at all while the feature is off.</summary>
-    private string ResolveNextPlayPath(Track next)
+    /// <summary><see cref="ResolvePlayPath"/> for the next queued song, or null while its clip
+    /// is still being looked for: probed once per song on the thread pool, and not at all
+    /// while the feature is off.</summary>
+    private string? ResolveNextPlayPath(Track next)
     {
         if (!MusicVideosEnabled || !MusicVideoAudioEnabled)
             return next.FilePath;
-        if (_nextPlayPathTrackId != next.Id || _nextPlayPath == null)
+        if (_nextClipProbeTrackId != next.Id || _nextClipProbe == null)
         {
-            _nextPlayPath = ResolvePlayPath(next, next.IsRemoteStream ? null : Helpers.MusicVideoLocator.Find(next.FilePath));
-            _nextPlayPathTrackId = next.Id;
+            var file = next.FilePath;
+            _nextClipProbe = next.IsRemoteStream
+                ? Task.FromResult<string?>(null)
+                : Task.Run(() => Helpers.MusicVideoLocator.Find(file));
+            _nextClipProbeTrackId = next.Id;
         }
-        return _nextPlayPath;
+        if (!_nextClipProbe.IsCompleted)
+            return null;
+        return ResolvePlayPath(next, _nextClipProbe.IsCompletedSuccessfully ? _nextClipProbe.Result : null);
+    }
+
+    /// <summary>The next-song probe's answer for <paramref name="track"/>, taken once when it
+    /// becomes current, so its clip is not looked for twice.</summary>
+    private bool TakeNextClipProbe(Track track, out string? clip)
+    {
+        clip = null;
+        if (_nextClipProbeTrackId != track.Id || _nextClipProbe is not { IsCompletedSuccessfully: true } probe)
+            return false;
+        clip = probe.Result;
+        _nextClipProbe = null;
+        _nextClipProbeTrackId = Guid.Empty;
+        return true;
     }
 
     /// <summary>Lyric-authoring surfaces time lines against the song file: starts of
     /// <paramref name="track"/> play its own audio until another song plays.</summary>
-    public void RequestOriginalAudio(Track track)
-    {
-        _originalAudioTrackId = track.Id;
-        _nextPlayPathTrackId = Guid.Empty;
-    }
+    public void RequestOriginalAudio(Track track) => _originalAudioTrackId = track.Id;
 
     partial void OnMusicVideoAudioEnabledChanged(bool value) => ForgetPreparedMusicVideoAudio();
 
@@ -218,7 +234,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// song keeps its source.</summary>
     private void ForgetPreparedMusicVideoAudio()
     {
-        _nextPlayPathTrackId = Guid.Empty;
+        _nextClipProbe = null;
+        _nextClipProbeTrackId = Guid.Empty;
         if (_autoMixPreparedSnapshot != null && !_autoMixAdvanceQueued)
             CancelAutoMixTransition("settings changed");
     }
@@ -2943,6 +2960,9 @@ public partial class PlayerViewModel : ViewModelBase
 
         var nextTrack = UpNext[0];
         var nextPlayPath = ResolveNextPlayPath(nextTrack);
+        // Its music video is still being looked for (off the UI thread): plan on a later tick.
+        if (nextPlayPath == null)
+            return false;
         // A music video's audio runs on the clip's timeline, not the song file's that the
         // beat and silence data describe: either side playing one keeps both off.
         var musicVideoAudio = IsPlayingMusicVideoAudio ||
@@ -3117,9 +3137,9 @@ public partial class PlayerViewModel : ViewModelBase
         {
             if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
                 _autoMixPreparedTrackId != nextTrack.Id &&
-                !string.IsNullOrWhiteSpace(nextTrack.FilePath))
+                !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
+                ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
             {
-                var nextPlayPath = ResolveNextPlayPath(nextTrack);
                 _autoMixPreparedTrackId = nextTrack.Id;
                 _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
                     nextTrack.Id,

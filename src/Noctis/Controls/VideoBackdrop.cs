@@ -94,16 +94,6 @@ public sealed class VideoBackdrop : Control
         set => SetValue(CornerRadiusProperty, value);
     }
 
-    /// <summary>Music video audio: the clip's own audio is what plays, so the picture is held
-    /// within <see cref="TightSyncToleranceMs"/> (lip-sync) instead of <see cref="SyncToleranceMs"/>.</summary>
-    public static readonly StyledProperty<bool> TightSyncProperty =
-        AvaloniaProperty.Register<VideoBackdrop, bool>(nameof(TightSync));
-    public bool TightSync
-    {
-        get => GetValue(TightSyncProperty);
-        set => SetValue(TightSyncProperty, value);
-    }
-
     /// <summary>False once the current source turned out to have no video stream (or could
     /// not be read): the page keeps the cover up instead of an empty frame.</summary>
     public static readonly DirectProperty<VideoBackdrop, bool> HasVideoStreamProperty =
@@ -116,9 +106,6 @@ public sealed class VideoBackdrop : Control
     }
 
     public const int SyncToleranceMs = 350;
-    public const int TightSyncToleranceMs = 150;
-
-    private int CurrentSyncToleranceMs => TightSync ? TightSyncToleranceMs : SyncToleranceMs;
 
     /// <summary>What a sync request does to the clip.</summary>
     internal enum SyncAction { None, Seek, Restart }
@@ -203,7 +190,7 @@ public sealed class VideoBackdrop : Control
             _session?.SetPaused(IsPaused || _windowMinimized);
         else if (change.Property == SyncPositionProperty)
         {
-            if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds, CurrentSyncToleranceMs);
+            if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds);
         }
         else if (change.Property == StretchProperty || change.Property == CornerRadiusProperty)
             InvalidateVisual();
@@ -305,7 +292,7 @@ public sealed class VideoBackdrop : Control
                 // track changes, before the song's position resets, so a position captured at
                 // start-up could still be the previous song's.
                 if (SyncPosition is { } now)
-                    session.SyncTo((long)now.TotalMilliseconds, CurrentSyncToleranceMs, force: true);
+                    session.SyncTo((long)now.TotalMilliseconds, force: true);
             });
         });
     }
@@ -365,12 +352,12 @@ public sealed class VideoBackdrop : Control
         private int _syncInFlight;
 
         /// <summary>
-        /// Keeps the clip within <paramref name="toleranceMs"/> of the song. Reading and
+        /// Keeps the clip within <see cref="SyncToleranceMs"/> of the song. Reading and
         /// setting the native time happens off the UI thread; at most one check runs at a
         /// time so a busy position stream cannot queue seeks. An ended clip is restarted
         /// (see <see cref="PlanSync"/>).
         /// </summary>
-        public void SyncTo(long targetMs, int toleranceMs, bool force = false)
+        public void SyncTo(long targetMs, bool force = false)
         {
             if (_dead) return;
             if (Interlocked.CompareExchange(ref _syncInFlight, 1, 0) != 0) return;
@@ -380,7 +367,7 @@ public sealed class VideoBackdrop : Control
                 {
                     var length = Player.Length;
                     if (length > 0) _lengthMs = length; // 0 once ended — keep the last known
-                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, toleranceMs, force))
+                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, SyncToleranceMs, force))
                     {
                         case SyncAction.Seek:
                             Player.Time = targetMs;

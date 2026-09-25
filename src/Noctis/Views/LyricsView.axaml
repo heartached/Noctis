@@ -596,7 +596,6 @@
                         <controls:VideoBackdrop x:Name="MusicVideo"
                                                 Source="{Binding Player.CurrentMusicVideoPath}"
                                                 SyncPosition="{Binding Player.MusicVideoSyncPosition}"
-                                                TightSync="{Binding Player.IsPlayingMusicVideoAudio}"
                                                 IsPaused="{Binding !Player.IsPlaying}"
                                                 Stretch="Uniform"
                                                 CornerRadius="{Binding Player.MusicVideoCornerRadius}"

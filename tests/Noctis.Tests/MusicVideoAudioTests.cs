@@ -248,7 +248,13 @@ public class MusicVideoAudioTests : IDisposable
         vm.ReplaceQueueAndPlay(new[] { first, next }, 0);
         ClearStartGuards(vm);
 
-        Tick(engine, TimeSpan.FromMinutes(3) - TimeSpan.FromSeconds(5)); // inside the prepare lead
+        // Inside the prepare lead; the next song's clip is looked for off the UI thread, so it
+        // is staged on the first tick after the probe finished.
+        Pump(() =>
+        {
+            Tick(engine, TimeSpan.FromMinutes(3) - TimeSpan.FromSeconds(5));
+            return engine.PreparedPaths.Count > 0;
+        });
         var staged = Assert.Single(engine.PreparedPaths);
         Assert.Equal(Clip("Champion"), staged);
 
@@ -260,6 +266,8 @@ public class MusicVideoAudioTests : IDisposable
         Assert.Equal(next.Id, vm.CurrentTrack?.Id);
         Assert.Equal(staged, engine.PlayedPaths[^1]);
         Assert.Equal(next.FilePath, engine.PlayedFallbacks[^1]);
+        // The music video reuses that probe too rather than looking a second time.
+        Assert.Equal(staged, vm.CurrentMusicVideoPath);
     }
 
     // ── 6. The engine fell back to the song file ──
@@ -463,7 +471,7 @@ public class MusicVideoAudioTests : IDisposable
 
     [Theory]
     [InlineData(false, 10_000, 10_200, 200_000, 350, false, "None")]    // within tolerance
-    [InlineData(false, 10_000, 10_200, 200_000, 150, false, "Seek")]    // tight (clip audio)
+    [InlineData(false, 10_000, 10_400, 200_000, 350, false, "Seek")]    // drifted past it
     [InlineData(false, 10_000, 10_000, 200_000, 350, true, "Seek")]     // forced on attach
     [InlineData(true, 0, 0, 200_000, 350, false, "Restart")]            // ended, song replayed
     [InlineData(true, 0, 199_900, 200_000, 350, false, "None")]         // song past the clip's end

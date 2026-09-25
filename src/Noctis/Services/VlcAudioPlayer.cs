@@ -2631,14 +2631,16 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
 
+        var exists = IsPathlessMedia(filePath) || File.Exists(filePath);
         // Music video audio: a clip deleted since it was found plays the song file.
-        if (fallbackPath != null && !File.Exists(filePath))
+        if (!exists && fallbackPath != null)
         {
             filePath = fallbackPath;
             fallbackPath = null;
+            exists = IsPathlessMedia(filePath) || File.Exists(filePath);
         }
 
-        if (!IsPathlessMedia(filePath) && !File.Exists(filePath))
+        if (!exists)
         {
             PlaybackError?.Invoke(this, $"File not found: {filePath}");
             return;
