@@ -111,8 +111,10 @@ internal sealed class FakeLibraryService : ILibraryService
     public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) => Array.Empty<Album>();
     public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
     public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
+    /// <summary>Old id → new id that RelocateTracksAsync reports (empty by default).</summary>
+    public Dictionary<Guid, Guid> RelocateRemap { get; } = new();
     public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
-        => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(RelocateRemap);
     public Task LoadAsync() => Task.CompletedTask;
     public Task SaveAsync() => Task.CompletedTask;
     public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;

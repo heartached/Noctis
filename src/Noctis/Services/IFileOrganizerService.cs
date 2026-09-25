@@ -12,6 +12,12 @@ public sealed record OrganizeResult(int Moved, int Skipped, int Failed, IReadOnl
     /// entries it could not reverse in the log instead of discarding the whole thing.
     /// </summary>
     public IReadOnlyList<string> RestoredPaths { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Old track id → new id for every moved track (ids derive from the path). The caller
+    /// applies it to the live playlists, which own playlists.json.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, Guid> TrackIdRemap { get; init; } = new Dictionary<Guid, Guid>();
 }
 
 /// <summary>
@@ -26,7 +32,8 @@ public interface IFileOrganizerService
 
     /// <summary>
     /// Applies the non-skipped moves off the UI thread, relocates the tracks in the library
-    /// (preserving user state), remaps playlist references, and records an undo log.
+    /// (preserving user state) and records an undo log. Playlists are not touched: apply
+    /// <see cref="OrganizeResult.TrackIdRemap"/> to the live playlists.
     /// </summary>
     Task<OrganizeResult> ApplyAsync(IReadOnlyList<OrganizeMove> moves, CancellationToken ct = default);
 

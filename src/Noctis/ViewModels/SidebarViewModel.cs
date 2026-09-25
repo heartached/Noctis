@@ -669,6 +669,37 @@ public partial class SidebarViewModel : ViewModelBase
         PlaylistTracksChanged?.Invoke(this, playlistId);
     }
 
+    /// <summary>
+    /// Points playlist entries at the new ids of moved tracks (a track's id is derived
+    /// from its path, so Organize Files changes it). Rewrites the live playlists in place
+    /// and persists them: remapping a separate copy of playlists.json left these stale,
+    /// and the next playlist save wrote the old ids back over the remap.
+    /// </summary>
+    public async Task ApplyTrackIdRemapAsync(IReadOnlyDictionary<Guid, Guid> remap)
+    {
+        if (remap.Count == 0) return;
+
+        var changedIds = new List<Guid>();
+        foreach (var pl in Playlists)
+        {
+            var changed = false;
+            for (var i = 0; i < pl.TrackIds.Count; i++)
+            {
+                if (remap.TryGetValue(pl.TrackIds[i], out var newId))
+                {
+                    pl.TrackIds[i] = newId;
+                    changed = true;
+                }
+            }
+            if (changed) { pl.ModifiedAt = DateTime.UtcNow; changedIds.Add(pl.Id); }
+        }
+
+        if (changedIds.Count == 0) return;
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        foreach (var id in changedIds)
+            PlaylistTracksChanged?.Invoke(this, id);
+    }
+
     /// <summary>Opens the search-driven "Add Songs" picker for a manual playlist and
     /// appends the chosen tracks via <see cref="AddTracksToPlaylist"/>.</summary>
     public async Task OpenAddSongsAsync(Playlist playlist)

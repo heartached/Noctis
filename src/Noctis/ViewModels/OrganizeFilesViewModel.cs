@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -95,6 +96,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         await _settingsVm.SaveAsync();
 
         var result = await _service.ApplyAsync(_plan);
+        await RemapPlaylistsAsync(result);
         CanUndo = _service.CanUndo;
         IsBusy = false;
 
@@ -112,11 +114,17 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         IsBusy = true;
         StatusMessage = "Undoing…";
         var result = await _service.UndoLastAsync();
+        await RemapPlaylistsAsync(result);
         CanUndo = _service.CanUndo;
         IsBusy = false;
         await PreviewAsync();
         StatusMessage = $"Restored {result.Moved} file{(result.Moved == 1 ? string.Empty : "s")}";
     }
+
+    /// <summary>Moved tracks get new ids; point the sidebar's live playlists at them.</summary>
+    private static Task RemapPlaylistsAsync(OrganizeResult result)
+        => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.ApplyTrackIdRemapAsync(result.TrackIdRemap)
+           ?? Task.CompletedTask;
 
     [RelayCommand]
     private void Close() => Closed?.Invoke(this, EventArgs.Empty);
