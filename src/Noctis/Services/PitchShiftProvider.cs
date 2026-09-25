@@ -97,8 +97,11 @@ public sealed class PitchShiftProvider : ISampleProvider
         var i = (int)Math.Round(_pos);
         var available = Math.Max(0, _inFrames - i);
         var take = Math.Min(frames, available);
-        if (take > 0)
-            Array.Copy(_in, i * _channels, buffer, offset, take * _channels);
+        // Element stores, never Array.Copy: the render buffer can be NAudio's
+        // WaveBuffer pun (a byte[] seen as float[]) and Array.Copy throws on it.
+        var src = i * _channels;
+        for (var s = 0; s < take * _channels; s++)
+            buffer[offset + s] = _in[src + s];
         // Whatever remains stays buffered; reset position bookkeeping for the next shift.
         var rest = available - take;
         if (rest > 0)
