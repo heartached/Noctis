@@ -541,6 +541,7 @@ public partial class MainWindow : Window
                                 EnsureLyricsPanelLoaded(mainVm2);
                                 _lyricsPanelWrapper.IsVisible = true;
                                 _lyricsPanelWrapper.Width = 356;
+                                GetLyricsPanelView()?.SetShown(true);
                             }
                             else
                             {
@@ -552,7 +553,13 @@ public partial class MainWindow : Window
                                 {
                                     if (_lyricsPanelWrapper != null &&
                                         DataContext is MainWindowViewModel m && !m.IsLyricsPanelOpen)
+                                    {
                                         _lyricsPanelWrapper.IsVisible = false;
+                                        // Hiding does not detach the view, so un-register it
+                                        // as a lyrics surface explicitly (parks the sync
+                                        // timer, word clock and flowing backdrop).
+                                        GetLyricsPanelView()?.SetShown(false);
+                                    }
                                 }, TimeSpan.FromMilliseconds(240));
                             }
                         }
@@ -719,6 +726,9 @@ public partial class MainWindow : Window
 
         host.Content = new LyricsPanelView { DataContext = vm.Lyrics };
     }
+
+    private LyricsPanelView? GetLyricsPanelView() =>
+        this.FindControl<ContentControl>("LyricsPanelHost")?.Content as LyricsPanelView;
 
     private void EnsureSettingsViewLoaded()
     {

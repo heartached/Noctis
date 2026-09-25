@@ -51,6 +51,13 @@ public partial class LyricsPanelView : UserControl
     /// <summary>True while this panel is counted in the VM's visible-surface tally.</summary>
     private bool _countedAsVisible;
 
+    /// <summary>
+    /// False while the side panel is closed. The view is built once and stays attached
+    /// (closing only sets the wrapper's IsVisible=false, which does not detach it), so
+    /// attach/detach alone never took the panel out of the visible-surface tally.
+    /// </summary>
+    private bool _shown = true;
+
     // Flowing-artwork background: the same animator as the lyrics page and the mini
     // player, so the panel's backdrop drifts and pulses in step with them.
     private readonly FlowingArtworkAnimator _flow;
@@ -68,7 +75,7 @@ public partial class LyricsPanelView : UserControl
 
             // Count this panel as a visible lyrics surface so the VM's sync timer and
             // per-frame word clock run only while something can display them.
-            if (!_countedAsVisible && _vm != null)
+            if (_shown && !_countedAsVisible && _vm != null)
             {
                 _vm.SetLyricsSurfaceVisible(true);
                 _countedAsVisible = true;
@@ -117,15 +124,37 @@ public partial class LyricsPanelView : UserControl
         UpdateFlowAnimationState();
     }
 
+    /// <summary>
+    /// Called by MainWindow when the side panel opens (true) and once it has slid shut
+    /// and its wrapper is hidden (false). Keeps the VM's visible-surface tally and the
+    /// flowing backdrop tied to whether the panel is on screen, so a closed panel stops
+    /// holding the sync timer, the per-frame word clock and the flow's visibility poll.
+    /// </summary>
+    internal void SetShown(bool shown)
+    {
+        _shown = shown;
+        if (shown && !_countedAsVisible && _vm != null && this.VisualRoot != null)
+        {
+            _vm.SetLyricsSurfaceVisible(true);
+            _countedAsVisible = true;
+        }
+        else if (!shown && _countedAsVisible)
+        {
+            _countedAsVisible = false;
+            _vm?.SetLyricsSurfaceVisible(false);
+        }
+        UpdateFlowAnimationState();
+    }
+
     // ── Flowing-artwork background ──
-    // Runs while the panel is attached, the Artwork background mode is on and the
-    // Settings toggle is on; the animator itself idles while the panel is hidden.
+    // Runs while the panel is attached and shown, the Artwork background mode is on
+    // and the Settings toggle is on.
 
     private void UpdateFlowAnimationState()
     {
         _flow.BeatReactive = Noctis.Models.FlowingStyles.IsBeatReactive(
             Noctis.Models.FlowingStyles.Normalize(_vm?.Player.LyricsFlowingStyle));
-        _flow.Enabled = _vm != null && this.VisualRoot != null
+        _flow.Enabled = _vm != null && this.VisualRoot != null && _shown
                         && _vm.IsColorModeArtwork && _vm.Player.LyricsFlowingLightEnabled;
     }
 
