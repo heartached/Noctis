@@ -1290,8 +1290,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// parsed tokens (handles "&amp;", "feat.", etc.), or as an exact match.
     /// Both sides are tokenised so that filtering by "A &amp; B" matches fields
     /// containing either "A" or "B", and vice versa.
+    /// A whole-library pass passes <paramref name="filterTokens"/> (the parsed
+    /// <paramref name="artistName"/>) so the name isn't re-parsed for every track.
     /// </summary>
-    internal static bool ContainsArtistToken(string? artistField, string artistName)
+    internal static bool ContainsArtistToken(string? artistField, string artistName, string[]? filterTokens = null)
     {
         if (string.IsNullOrWhiteSpace(artistField))
             return false;
@@ -1300,8 +1302,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (artistField.Equals(artistName, StringComparison.OrdinalIgnoreCase))
             return true;
 
+        filterTokens ??= Track.ParseArtistTokens(artistName);
+
+        // Every parsed token is a substring of its field, so a field missing any filter
+        // token can't match either branch below: skip the regex split for the (vast)
+        // non-matching majority of a library.
+        foreach (var ft in filterTokens)
+        {
+            if (!artistField.Contains(ft, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
         var fieldTokens = Track.ParseArtistTokens(artistField);
-        var filterTokens = Track.ParseArtistTokens(artistName);
 
         if (filterTokens.Length > 1)
         {

@@ -1373,6 +1373,10 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
         UpdateSectionActiveFlags();
+        // Artist pages kept in history stay subscribed to LibraryUpdated; only the shown
+        // one rebuilds, the rest catch up when navigated back to.
+        if (oldValue is ArtistDetailViewModel leftArtistPage) leftArtistPage.IsActive = false;
+        if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
