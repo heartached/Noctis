@@ -24,6 +24,10 @@ public sealed class UpdateService
         _http = http;
     }
 
+    /// <summary>How long the installer download may receive nothing before it counts as stalled (X16:
+    /// replaces the absolute 5-minute deadline that failed every download below ~4-6 Mbit/s).</summary>
+    internal TimeSpan DownloadStallTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
     /// <summary>Current assembly version as a comparable Version object.</summary>
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
@@ -490,23 +494,29 @@ public sealed class UpdateService
 
         try
         {
+            // Inactivity window, not a deadline: a slow but steady link may take as long as it
+            // needs; only a transfer that delivers nothing for DownloadStallTimeout is aborted.
+            using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            stall.CancelAfter(DownloadStallTimeout);
+
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Accept.Add(
                 new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
 
-            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stall.Token);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
-            await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+            await using var contentStream = await response.Content.ReadAsStreamAsync(stall.Token);
             await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920);
 
             var buffer = new byte[81920];
             long bytesRead = 0;
             int read;
 
-            while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
+            while ((read = await contentStream.ReadAsync(buffer, stall.Token)) > 0)
             {
+                stall.CancelAfter(DownloadStallTimeout); // bytes arrived: restart the window
                 await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
                 bytesRead += read;
 
@@ -551,6 +561,12 @@ public sealed class UpdateService
             }
 
             return tempPath;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Not the caller's cancel: the stall window (or HttpClient.Timeout before headers) fired.
+            try { File.Delete(tempPath); } catch { /* best effort */ }
+            throw new TimeoutException($"Update download stalled: no data for {DownloadStallTimeout.TotalSeconds:0}s.");
         }
         catch
         {
