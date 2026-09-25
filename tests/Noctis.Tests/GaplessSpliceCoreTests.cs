@@ -370,6 +370,43 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void SeekCut_At44k1Stereo_KeepsChannelsFrameAligned()
+    {
+        // At 44.1 kHz stereo a 5 ms ramp is 441 SAMPLES — half a frame. The
+        // fast-refill junction ramp then left the post-cut read at an odd offset,
+        // so the ring's L landed in R slots (a channel swap) for the rest of that
+        // read, plus a 1-sample underrun. Ramps must span whole frames.
+        var provider = new GaplessSpliceProvider(44100, 2, startThresholdMs: 100, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(44100, 2, source: null);
+        provider.Enqueue(seg);
+
+        short[] Stereo(short l, short r, int frames)
+        {
+            var b = new short[frames * 2];
+            for (var i = 0; i < frames; i++) { b[2 * i] = l; b[2 * i + 1] = r; }
+            return b;
+        }
+
+        Assert.True(seg.Write(Stereo(16384, -16384, 10000))); // L ≈ +0.5, R ≈ -0.5, past the gate
+        var buffer = new float[1764];
+        provider.Read(buffer, 0, buffer.Length);             // live render
+
+        seg.Flush(60_000);                                   // the seek cut...
+        Assert.True(seg.Write(Stereo(8192, -8192, 10000)));  // ...refilled before any read
+
+        var post = new float[1764];
+        provider.Read(post, 0, post.Length);
+
+        for (var i = 0; i < post.Length; i += 2)
+        {
+            Assert.True(post[i] >= 0f, $"L slot {i} carried R audio: {post[i]}");
+            Assert.True(post[i + 1] <= 0f, $"R slot {i + 1} carried L audio: {post[i + 1]}");
+        }
+        Assert.True(post[^2] > 0.2f && post[^1] < -0.2f,
+            $"post-seek audio not flowing: L={post[^2]} R={post[^1]}");
+    }
+
+    [Fact]
     public void SeekFlush_ReopensAtShortThreshold_NotFullPrebuffer()
     {
         // A fresh track legitimately pre-buffers 200ms, but after an in-place

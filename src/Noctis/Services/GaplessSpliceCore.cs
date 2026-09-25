@@ -415,8 +415,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
             Math.Clamp(sinkRate, 1000, 384000), Math.Clamp(sinkChannels, 1, 2));
         _startThresholdMs = Math.Clamp(startThresholdMs, 0, 2000);
-        _startFadeSamples = WaveFormat.SampleRate * WaveFormat.Channels * Math.Clamp(startFadeMs, 0, 100) / 1000;
-        _fadeArmSamples = WaveFormat.SampleRate * WaveFormat.Channels * FadeArmMs / 1000;
+        // Whole frames: at 44.1 kHz stereo 5 ms is 441 SAMPLES, and an odd-length
+        // junction ramp leaves the post-cut read at an odd offset — L/R swapped.
+        _startFadeSamples = WaveFormat.SampleRate * Math.Clamp(startFadeMs, 0, 100) / 1000 * WaveFormat.Channels;
+        _fadeArmSamples = WaveFormat.SampleRate * FadeArmMs / 1000 * WaveFormat.Channels;
         // Born silent: the very first audio the provider ever renders fades in.
         _silentSamples = _fadeArmSamples;
     }
