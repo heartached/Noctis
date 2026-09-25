@@ -36,6 +36,8 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     private readonly Dictionary<string, int> _importAttempts = new(PathComparison.Comparer);
     private System.Threading.Timer? _flushTimer;
     private bool _disposed;
+    // Guarded by _gate: a watcher setup error was already logged during the current rebuild.
+    private bool _setupErrorLogged;
 
     public LibraryWatcherService(ILibraryService library, Func<AppSettings> settingsAccessor)
     {
@@ -68,6 +70,7 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             catch { return; }
 
             DisposeWatchers();
+            _setupErrorLogged = false;
 
             if (!settings.WatchFoldersEnabled) return;
 
@@ -268,6 +271,21 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         var ex = e.GetException();
         DebugLogger.Error(DebugLogger.Category.Error, "LibraryWatcher",
             $"watcher error: {ex?.Message}");
+
+        // On Linux a folder that can't be watched (inotify watch limit reached, unreadable
+        // subfolder) raises Error synchronously from inside EnableRaisingEvents, i.e. on the
+        // rebuild thread that holds _gate, once per failing folder. A rebuild hits the same
+        // errors again, so rebuilding for them queued rebuilds without end. Keep the
+        // partially working watchers instead and say why once per rebuild.
+        if (Monitor.IsEntered(_gate))
+        {
+            if (!_setupErrorLogged)
+            {
+                _setupErrorLogged = true;
+                DebugLog.Write("LibraryWatcher", $"Some folders can't be watched: {ex?.Message}");
+            }
+            return;
+        }
 
         // Rebuild the watcher set.
         Refresh();
