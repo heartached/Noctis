@@ -514,11 +514,16 @@ public partial class MainWindow : Window
                         SetQueueRowNumber(e.Container, e.Index);
                         e.Container.Classes.Set(QueueSelectedClass, queueSelection.Contains(e.Index));
                     };
+                    var queueRowsSyncPending = false;
                     vm.Player.UpNext.CollectionChanged += (_, e) =>
                     {
                         queueSelection.Apply(e);
+                        // One re-stamp per burst: a block remove / move raises an event per row (audit U03).
+                        if (queueRowsSyncPending) return;
+                        queueRowsSyncPending = true;
                         Dispatcher.UIThread.Post(() =>
                         {
+                            queueRowsSyncPending = false;
                             RenumberQueueRows(queueList);
                             SyncQueueSelectionVisuals(queueList);
                         }, DispatcherPriority.Loaded);

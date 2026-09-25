@@ -338,6 +338,50 @@ public class QueueGitHub82_84_85Tests
         Assert.Empty(sel.Snapshot());
     }
 
+    [Fact]
+    public void Selection_RemapsOnlyTheRowsPastAChange_AndKeepsTheAnchorInStep()
+    {
+        var t = Enumerable.Range(0, 8).Select(i => Trk($"t{i}")).ToArray();
+        var (rows, sel) = Rows(t);
+        sel.Select(new[] { 1, 3, 5, 6 });
+        sel.Toggle(4);                     // anchor 4
+        Assert.Equal(new[] { 1, 3, 4, 5, 6 }, sel.Snapshot());
+
+        rows.RemoveAt(4);                  // a selected row past 1 and 3
+        Assert.Equal(new[] { 1, 3, 4, 5 }, sel.Snapshot());
+        Assert.Equal(-1, sel.Anchor);
+
+        sel.Toggle(4);                     // off again: the anchor is an unselected row
+        rows.RemoveAt(6);                  // past every selected row
+        rows.Insert(2, Trk("x"));          // between 1 and 3
+        Assert.Equal(new[] { 1, 4, 6 }, sel.Snapshot());
+        Assert.Equal(5, sel.Anchor);
+
+        rows.Move(6, 2);                   // the last selected row jumps up past 4
+        Assert.Equal(new[] { 1, 2, 5 }, sel.Snapshot());
+        Assert.Equal(6, sel.Anchor);
+    }
+
+    [Fact]
+    public void Selection_BlockRemoveOfAHugeSelection_DoesNotReMapTheWholeSelectionPerRow()
+    {
+        // Audit U03: Ctrl+A then Delete. RemoveManyFromQueue removes row by row, high to low,
+        // and each Remove used to rebuild the whole remaining selection: ~N²/2 re-inserts
+        // (5,000 rows: 12.5M tree nodes, ~1 GB of garbage, seconds on the UI thread).
+        const int n = 5000;
+        var (rows, sel) = Rows(Enumerable.Range(0, n).Select(i => Trk($"t{i}")).ToArray());
+        sel.SelectAll();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        foreach (var i in sel.Snapshot().Reverse())
+            rows.RemoveAt(i);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Empty(rows);
+        Assert.Equal(0, sel.Count);
+        Assert.True(allocated < 64L * 1024 * 1024, $"removing {n} selected rows allocated {allocated / (1024 * 1024)} MB");
+    }
+
     // ── GitHub #85: panel wiring (MainWindow is not mountable headlessly) ──
 
     [Fact]
