@@ -18,7 +18,7 @@ namespace Noctis.Tests;
 /// Send to Folder) list one row per track. Their lists sat on a plain StackPanel, so a Ctrl+A
 /// selection built every row on the UI thread the moment the dialog opened, the stall the
 /// ReplayGain scanner's list was already virtualized against. Only rows in and near the
-/// viewport may be realized.
+/// viewport may be realized. Organize Files lists every local library track the same way.
 /// </summary>
 public class ToolDialogVirtualizationTests
 {
@@ -120,6 +120,48 @@ public class ToolDialogVirtualizationTests
             AssertVirtualized(RealizedRows(new SendToFolderDialog(vm), vm.Rows));
         }
         finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [AvaloniaFact]
+    public async Task OrganizeFiles_RealizesOnlyViewportRows_AndFillsInOneReset()
+    {
+        EnsureAppResources();
+        using var persistence = new TestPersistenceService();
+        var settings = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistory());
+        settings.OrganizeTargetRoot = TestPaths.Primary("Organized");
+        var vm = new OrganizeFilesViewModel(Tracks(), new StubOrganizer(), settings);
+        for (var i = 0; i < 500 && vm.Rows.Count < RowCount; i++) await Task.Delay(10);
+        Assert.Equal(RowCount, vm.Rows.Count);
+
+        // Update Preview rebuilds the whole list: one notification, not Clear + one Add per track.
+        var changes = 0;
+        vm.Rows.CollectionChanged += (_, _) => changes++;
+        await vm.PreviewCommand.ExecuteAsync(null);
+        Assert.Equal(RowCount, vm.Rows.Count);
+        Assert.Equal(1, changes);
+
+        AssertVirtualized(RealizedRows(new OrganizeFilesDialog(vm), vm.Rows));
+    }
+
+    private sealed class NoOpPlayHistory : IPlayHistoryService
+    {
+        public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    private sealed class StubOrganizer : IFileOrganizerService
+    {
+        public IReadOnlyList<OrganizeMove> Plan(IEnumerable<Track> tracks, string pattern, string targetRoot)
+            => tracks.Select(t => new OrganizeMove(t.Id, t.FilePath,
+                Path.Combine(targetRoot, Path.GetFileName(t.FilePath)), OrganizeAction.Move)).ToList();
+        public Task<OrganizeResult> ApplyAsync(IReadOnlyList<OrganizeMove> moves, CancellationToken ct = default)
+            => throw new NotSupportedException();
+        public bool CanUndo => false;
+        public Task<OrganizeResult> UndoLastAsync(CancellationToken ct = default)
+            => throw new NotSupportedException();
     }
 
     private sealed class StubConverter : IAudioConverterService

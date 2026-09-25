@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,7 +26,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
     [ObservableProperty] private bool _canUndo;
     [ObservableProperty] private bool _hasApplicableMoves;
 
-    public ObservableCollection<OrganizeRow> Rows { get; } = new();
+    public BulkObservableCollection<OrganizeRow> Rows { get; } = new();
 
     public event EventHandler? Closed;
 
@@ -73,9 +72,8 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         var plan = await Task.Run(() => _service.Plan(tracks, pattern, root));
         _plan = plan;
 
-        Rows.Clear();
-        foreach (var m in plan)
-            Rows.Add(new OrganizeRow(m, root));
+        // One Reset for the whole plan: it holds a row per library track.
+        Rows.ReplaceAll(plan.Select(m => new OrganizeRow(m, root)));
 
         var moveCount = plan.Count(m => m.Action != OrganizeAction.Skip);
         HasApplicableMoves = moveCount > 0;
