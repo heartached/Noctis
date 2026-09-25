@@ -248,6 +248,24 @@ public class NoctisServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Download_NonAsciiFileName_ServesTheFile_WithAnEncodedAttachmentName()
+    {
+        // Kestrel rejects raw non-ASCII header values, so the name must travel as RFC 5987 filename*.
+        const string name = "Beyoncé - 夜.mp3";
+        var audio = Path.Combine(_dir, name);
+        File.WriteAllBytes(audio, new byte[] { 1, 2, 3, 4 });
+        var track = new Track { Id = Guid.NewGuid(), Title = "Delta", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB, FilePath = audio, Duration = TimeSpan.FromSeconds(10), FileSize = 4 };
+        _lib.Tracks.Add(track);
+
+        var res = await _http.GetAsync($"rest/download.view?apiKey={_apiKey}&id=tr-{track.Id:N}");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, await res.Content.ReadAsByteArrayAsync());
+        var disposition = res.Content.Headers.ContentDisposition!;
+        Assert.Equal("attachment", disposition.DispositionType);
+        Assert.Equal(name, disposition.FileNameStar);
+    }
+
+    [Fact]
     public async Task RepeatedBadLogins_LockTheClientOut_EvenWithTheRightPassword()
     {
         for (var i = 0; i < LoginThrottle.MaxFailures; i++)

@@ -224,9 +224,10 @@ public sealed class NoctisServer : IAsyncDisposable
                 if (!File.Exists(track.FilePath)) throw NotFound();
                 var contentType = ContentTypeFor(track.FilePath);
                 ctx.Response.Headers.CacheControl = "private, max-age=0";
-                if (method.Equals("download", StringComparison.OrdinalIgnoreCase))
-                    ctx.Response.Headers.ContentDisposition = $"attachment; filename=\"{Path.GetFileName(track.FilePath).Replace("\"", "")}\"";
-                await Results.File(track.FilePath, contentType, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
+                // fileDownloadName writes an RFC 5987 filename* (UTF-8) with an ASCII fallback;
+                // a raw non-ASCII name in the header makes Kestrel throw.
+                var downloadName = method.Equals("download", StringComparison.OrdinalIgnoreCase) ? Path.GetFileName(track.FilePath) : null;
+                await Results.File(track.FilePath, contentType, downloadName, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
                 return true;
             }
             case "getcoverart":
