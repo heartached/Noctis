@@ -202,6 +202,10 @@ public partial class FavoritesView : UserControl
     /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        // Opening the menu from code skips its Opening event, so push the current selection
+        // here; otherwise the commands see whatever the last right-click left on the ViewModel.
+        if (DataContext is FavoritesViewModel vm)
+            vm.CtrlSelectedItems = _selectedItems.ToList();
         Helpers.AlbumTile.OpenMenu(sender);
         e.Handled = true;
     }

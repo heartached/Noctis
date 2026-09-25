@@ -665,7 +665,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task RemoveTrack(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
         {
             var displayIdx = Tracks.IndexOf(t);
@@ -797,7 +797,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -805,9 +805,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var sel = SelectionOr(track);
+        if (sel.Count > 1)
         {
-            var sel = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(sel);
         }
@@ -820,7 +820,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ConvertTracks(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -828,7 +828,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ScanReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }
@@ -836,7 +836,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
         await _library.SaveTrackUserStateAsync(tracks);

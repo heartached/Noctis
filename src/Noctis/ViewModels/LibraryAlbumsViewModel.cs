@@ -302,6 +302,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
+    /// <summary>The Ctrl-selection when the acted-on album is part of it (or none was given), else just that album.</summary>
+    private List<Album> SelectionOr(Album? album) =>
+        album == null || CtrlSelectedAlbums.Contains(album) ? CtrlSelectedAlbums.ToList() : new List<Album> { album };
+
     /// <summary>
     /// Filtered albums grouped into rows for the virtualized grid. Mixed row types:
     /// <see cref="AlbumRow"/> for album tiles, plus <see cref="ArtistSectionHeader"/> and
@@ -1097,7 +1101,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task AddToNewPlaylist(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
@@ -1108,7 +1112,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var changed = new List<Track>();
         foreach (var a in albums)
@@ -1131,9 +1135,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         // Multi-album selection: edit every track across the selected albums in the
         // shared multi-select editor (Mixed fields, edits fan out to all tracks).
-        if (CtrlSelectedAlbums.Count > 1)
+        var selection = SelectionOr(album);
+        if (selection.Count > 1)
         {
-            var tracks = CtrlSelectedAlbums.SelectMany(a => a.Tracks ?? new()).ToList();
+            var tracks = selection.SelectMany(a => a.Tracks ?? new()).ToList();
             CtrlSelectedAlbums.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(tracks);
             return;
@@ -1188,7 +1193,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums.ToList() : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))

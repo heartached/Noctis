@@ -288,6 +288,10 @@ public partial class LibraryAlbumsView : UserControl
     /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        // Opening the menu from code skips its Opening event, so push the current selection
+        // here; otherwise the commands see whatever the last right-click left on the ViewModel.
+        if (DataContext is LibraryAlbumsViewModel vm)
+            vm.CtrlSelectedAlbums = _selectedAlbums.ToList();
         Helpers.AlbumTile.OpenMenu(sender);
         e.Handled = true;
     }

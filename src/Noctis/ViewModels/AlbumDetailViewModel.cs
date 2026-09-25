@@ -833,12 +833,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Tracks Ctrl-selected in the album track list. Set by the view's code-behind.</summary>
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
+    /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
+    private List<Track> SelectionOr(Track track) =>
+        CtrlSelectedTracks.Contains(track) ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var selection = SelectionOr(track);
+        if (selection.Count > 1)
         {
-            var selection = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenMultiTrackMetadataWindow(selection);
             return;
@@ -856,7 +860,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ConvertTrack(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -864,7 +868,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ScanTrackReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }

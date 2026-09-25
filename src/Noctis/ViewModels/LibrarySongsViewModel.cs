@@ -332,7 +332,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -340,7 +340,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
         CtrlSelectedTracks.Clear();
@@ -349,9 +349,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var selection = SelectionOr(track);
+        if (selection.Count > 1)
         {
-            var selection = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(selection);
         }
@@ -364,7 +364,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ConvertTracks(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -372,7 +372,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ScanReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }
@@ -380,7 +380,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
         await _library.SaveTrackUserStateAsync(tracks);
