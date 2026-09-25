@@ -2739,10 +2739,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var lines = new List<LyricLine>();
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
         var offsetMs = ParseLrcOffsetMilliseconds(rawLines);
+        // "[bg: …]" lines attach to a main line instead of adding one, but still
+        // spend the line budget so a file of them cannot run unbounded.
+        var bgLines = 0;
 
         foreach (var rawLine in rawLines)
         {
-            if (lines.Count >= MaxLyricLines) break;
+            if (lines.Count + bgLines >= MaxLyricLines) break;
 
             var trimmed = rawLine.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
@@ -2762,6 +2765,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // "[bg: <00:36.938>(Ah, …]" text would render there as a lyric.
             if (trimmed.StartsWith(BgLinePrefix, StringComparison.Ordinal))
             {
+                bgLines++;
                 var lastMain = lines.LastOrDefault(l => l.Timestamp.HasValue);
                 if (lastMain != null)
                     AttachBackgroundLine(lastMain, trimmed, offsetMs);
@@ -2801,7 +2805,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
                 {
-                    if (lines.Count >= MaxLyricLines) break;
+                    if (lines.Count + bgLines >= MaxLyricLines) break;
 
                     var timestamp = ParseLrcTimestamp(match.Value);
                     if (timestamp.HasValue)

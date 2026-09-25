@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using Noctis.Models;
 
@@ -16,6 +17,14 @@ public static partial class EnhancedLrcParser
     // Inline word tag: <mm:ss.xx>, <mm:ss:xx> or <mm:ss>. Captures the time body.
     [GeneratedRegex(@"<(\d{1,3}:\d{2}(?:[.:]\d{1,3})?)>")]
     private static partial Regex WordTagRegex();
+
+    /// <summary>
+    /// Upper bound on timed words in one line, and in one line's background row. Each
+    /// word realizes its own karaoke cell (~7 controls) on the UI thread, so a hostile
+    /// line carrying hundreds of thousands of word tags must not reach the view. No real
+    /// lyric line comes close.
+    /// </summary>
+    internal const int MaxWordsPerLine = 512;
 
     /// <summary>True when the body contains at least one inline word tag.</summary>
     public static bool ContainsWordTags(string? body) =>
@@ -106,6 +115,10 @@ public static partial class EnhancedLrcParser
                 continue;
             }
 
+            // Too many words to be a real karaoke line: keep the text, drop word timing.
+            if (words.Count >= MaxWordsPerLine)
+                return (StripWordTags(body).Trim(), null);
+
             // Preserve any text that appeared before the first tag by folding it
             // into the first word so no characters are dropped.
             if (words.Count == 0 && tag.Index > 0)
@@ -174,39 +187,41 @@ public static partial class EnhancedLrcParser
         var merged = new List<WordTiming>(words.Count) { words[0] };
         // Parallel to `merged`; null until a word actually absorbs a second syllable.
         var parts = new List<List<WordSyllable>?>(words.Count) { null };
+        // Parallel to `parts`: the joined text, materialized once below. Concatenating
+        // per syllable would be quadratic in the length of a joinable run.
+        var texts = new List<StringBuilder?>(words.Count) { null };
+        var tail = words[0]; // last segment absorbed into merged[^1]
 
         for (int i = 1; i < words.Count; i++)
         {
-            var prev = merged[^1];
             var cur = words[i];
-            if (prev.Text.Length > 0 && cur.Text.Length > 0
-                && IsJoinable(prev.Text[^1]) && IsJoinable(cur.Text[0]))
+            if (tail.Text.Length > 0 && cur.Text.Length > 0
+                && IsJoinable(tail.Text[^1]) && IsJoinable(cur.Text[0]))
             {
-                var segments = parts[^1] ??= [new WordSyllable(prev.Start, prev.End, prev.Text.Length)];
+                var head = merged[^1];
+                var segments = parts[^1] ??= [new WordSyllable(head.Start, head.End, head.Text.Length)];
                 segments.Add(new WordSyllable(cur.Start, cur.End, cur.Text.Length));
-                merged[^1] = new WordTiming
-                {
-                    Text = prev.Text + cur.Text,
-                    Start = prev.Start,
-                    End = cur.End,
-                };
+                (texts[^1] ??= new StringBuilder(head.Text)).Append(cur.Text);
             }
             else
             {
                 merged.Add(cur);
                 parts.Add(null);
+                texts.Add(null);
             }
+            tail = cur;
         }
 
         for (int i = 0; i < merged.Count; i++)
         {
             if (parts[i] is not { } segments) continue;
+            var text = texts[i]!.ToString();
             merged[i] = new WordTiming
             {
-                Text = merged[i].Text,
+                Text = text,
                 Start = merged[i].Start,
-                End = merged[i].End,
-                Syllables = TrimTrailingSpace(segments, merged[i].Text),
+                End = segments[^1].End,
+                Syllables = TrimTrailingSpace(segments, text),
             };
         }
 
@@ -272,9 +287,13 @@ public static partial class EnhancedLrcParser
     /// <summary>
     /// Adds a word-timed background vocal to <paramref name="target"/>, joining onto an
     /// existing one with a space seam. <paramref name="bgEnd"/> bounds the last word.
+    /// A part that would grow the row past <see cref="MaxWordsPerLine"/> is dropped.
     /// </summary>
     public static void AppendBackground(LyricLine target, IReadOnlyList<WordTiming> words, TimeSpan? bgEnd)
     {
+        if ((target.BackgroundWords?.Count ?? 0) + words.Count > MaxWordsPerLine)
+            return;
+
         if (target.HasBackgroundWords)
         {
             // Joined adlib parts share one row; make sure the seam keeps a space
