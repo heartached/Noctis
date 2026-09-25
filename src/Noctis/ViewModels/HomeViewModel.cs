@@ -28,6 +28,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly EventHandler _favoritesChangedHandler;
     private bool _isDirty = true;
 
+    /// <summary>Dirty rebuilds this session. The first <see cref="RebuildLogCap"/> are
+    /// bracketed in the session log (#97).</summary>
+    private int _rebuildCount;
+    private const int RebuildLogCap = 20;
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
@@ -415,6 +420,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
         _isDirty = false;
 
+        // #97: bracketed like PlayerViewModel.OnLibraryUpdated. A library publish marks
+        // Home dirty, so every publish-driven refresh takes this path (500 ms after the
+        // publish while Home is the current view). The awaits below let other UI work
+        // run in between, so an open bracket means "in flight", not "running".
+        var rebuild = Interlocked.Increment(ref _rebuildCount);
+        var log = rebuild <= RebuildLogCap;
+        if (log)
+            DebugLog.Write("Home", $"rebuild #{rebuild}: start (library={_library.Tracks.Count})");
+        else if (rebuild == RebuildLogCap + 1)
+            DebugLog.Write("Home", "rebuild: later ones are not logged");
+
         try
         {
             Greeting = GetGreeting();
@@ -498,9 +514,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     Dispatcher.UIThread.Post(ScheduleTopArtistImageRefresh));
 
             await RefreshTimeAwareRowsAsync();
+            if (log) DebugLog.Write("Home", $"rebuild #{rebuild}: done");
         }
         catch (Exception ex)
         {
+            // Debug.WriteLine alone is compiled out of Release builds (#97); the first
+            // failure of each kind keeps its stack trace in the session log.
+            DebugLog.WriteOnce("Home", "home-rebuild-failed:" + ex.GetType().FullName,
+                $"rebuild #{rebuild} failed: {ex}");
             System.Diagnostics.Debug.WriteLine($"[HomeVM] Refresh failed: {ex.Message}");
         }
     }

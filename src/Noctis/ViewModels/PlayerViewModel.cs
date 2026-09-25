@@ -3171,6 +3171,11 @@ public partial class PlayerViewModel : ViewModelBase
               "(or the music folder is re-added under its new drive letter).";
     }
 
+    /// <summary>Library publishes reconciled this session (UI thread only). The first
+    /// <see cref="ReconcileLogCap"/> are bracketed in the session log (#97).</summary>
+    private int _libraryReconcileCount;
+    private const int ReconcileLogCap = 20;
+
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
@@ -3183,6 +3188,19 @@ public partial class PlayerViewModel : ViewModelBase
             if (_library.IsPublishingPartial)
                 return;
 
+            // #97: a startup scan that found new albums ended the process with no managed
+            // exception logged. Only such a scan reconciles a restored track here (the load
+            // publish lands before the queue restore), and it runs while the scan thread
+            // writes its own [Scan] lines, so without these the journal's last line would
+            // blame whichever scan step was running. Always on, first few publishes only.
+            var reconcile = ++_libraryReconcileCount;
+            var log = reconcile <= ReconcileLogCap;
+            if (log)
+                DebugLog.Write("Player", $"library reconcile #{reconcile}: start " +
+                    $"(library={_library.Tracks.Count}, current={(CurrentTrack != null ? "set" : "none")})");
+            else if (reconcile == ReconcileLogCap + 1)
+                DebugLog.Write("Player", "library reconcile: later ones are not logged");
+
             // If library is now empty, stop playback and clear everything — unless dropped
             // files are playing from outside the library (GitHub #84); the prune below
             // then drops only the library entries.
@@ -3190,6 +3208,7 @@ public partial class PlayerViewModel : ViewModelBase
                 CurrentTrack?.IsExternal != true && !UpNext.Any(t => t.IsExternal))
             {
                 StopAndClear("libraryEmpty");
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done (library empty)");
                 return;
             }
 
@@ -3228,13 +3247,18 @@ public partial class PlayerViewModel : ViewModelBase
             // Reload album art in case artwork was changed via metadata editor
             if (CurrentTrack != null)
             {
+                // The decodes LoadAlbumArt starts run on the pool; "album art" brackets
+                // only its UI-thread part (cache hit, CurrentArtPath, animated cover).
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: album art");
                 LoadAlbumArt(CurrentTrack);
                 // Force converter-based bindings on CurrentTrack.* to re-evaluate
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: CurrentTrack re-raise");
                 OnPropertyChanged(nameof(CurrentTrack));
             }
 
             // The playing track's album may have just been imported (or removed).
             ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+            if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done");
         });
     }
 
