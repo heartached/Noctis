@@ -282,6 +282,66 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void Park_RampsToSilenceWithoutConsuming_AndResumeFadesBackIn()
+    {
+        // Pause parks the provider, not the device stream: WasapiOut.Pause() only
+        // stops filling, so the device starved mid-waveform (a click) and resume
+        // stepped back in at full level (another). Parked, the pause edge ramps to
+        // zero, the ring is held untouched, and resume fades the held audio in.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5); // 40-sample ramp
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 1000))); // ≈ +0.5f steady
+        var live = new float[200];
+        provider.Read(live, 0, 200); // past the cold-start fade, tail ≈ +0.5
+
+        provider.Parked = true;
+        var buffered = seg.BufferedSamples;
+        var positionMs = seg.PositionMs;
+        var paused = new float[400];
+        provider.Read(paused, 0, 200);
+        provider.Read(paused, 200, 200);
+
+        Assert.True(Math.Abs(paused[0] - live[199]) < 0.1f, $"pause edge stepped: {live[199]} -> {paused[0]}");
+        for (var i = 1; i < paused.Length; i++)
+            Assert.True(Math.Abs(paused[i] - paused[i - 1]) < 0.1f,
+                $"step of {Math.Abs(paused[i] - paused[i - 1]):F3} at parked sample {i}");
+        Assert.All(paused.Skip(60), s => Assert.Equal(0f, s));
+        Assert.Equal(buffered, seg.BufferedSamples); // nothing consumed while parked
+        Assert.Equal(positionMs, seg.PositionMs);
+
+        provider.Parked = false;
+        var resumed = new float[200];
+        provider.Read(resumed, 0, 200);
+
+        Assert.True(Math.Abs(resumed[0]) < 0.05f, $"resume edge stepped: 0 -> {resumed[0]}");
+        for (var i = 1; i < resumed.Length; i++)
+            Assert.True(Math.Abs(resumed[i] - resumed[i - 1]) < 0.1f,
+                $"step of {Math.Abs(resumed[i] - resumed[i - 1]):F3} at resumed sample {i}");
+        Assert.True(resumed[199] > 0.45f, $"held audio not resumed: {resumed[199]}");
+        Assert.Equal(buffered - 200, seg.BufferedSamples); // continues from the held position
+    }
+
+    [Fact]
+    public void Park_UndoneBeforeAnyRead_ContinuesUntouched()
+    {
+        // A pause/resume that lands between two render reads emitted no silence,
+        // so there is no edge to hide: the audio must continue bit-exact, unfaded.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 1000)));
+        var buffer = new float[200];
+        provider.Read(buffer, 0, 200);
+
+        provider.Parked = true;
+        provider.Parked = false;
+        provider.Read(buffer, 0, 200);
+
+        Assert.All(buffer, s => Assert.Equal(16384 / 32768f, s));
+    }
+
+    [Fact]
     public void FadeIn_AppliedAfterSilence_NeverAtTheSpliceSeam()
     {
         // Segment heads can carry decoder warm-up garble; a short fade-in from

@@ -357,6 +357,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _declickRemaining;     // samples left of an in-progress cut ramp-to-zero
     private bool _cutFadePending;      // a cut junction is due a fade-in regardless of silence streak (render thread only)
     private volatile bool _pendingCutSignal; // cut raised off the render thread (Clear / abandon-swap)
+    private volatile bool _parked;     // paused: render silence, consume nothing (set off the render thread)
+    private bool _parkRendered;        // a parked read ran since the last un-parked one (render thread only)
     private readonly ReplayDetector? _ringDetector = ReplayDetector.CreateIfEnabled("Ring"); // raw adapter output, pre-fade
     private readonly bool _readTrace = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"));
     private long _lastTraceTick;
@@ -466,6 +468,20 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     /// <summary>True while an outgoing tail is still being mixed underneath the active segment.</summary>
     public bool IsCrossfading { get { lock (_gate) return _fading != null; } }
 
+    /// <summary>
+    /// Pause without stopping the stream. Parked, Read ramps the last emitted frame
+    /// down to silence (the cut declick) and then renders zeros without consuming
+    /// any segment; un-parked, the held audio resumes with the start fade-in.
+    /// Pausing the device instead left both edges unramped: WasapiOut.Pause() only
+    /// stops filling, so the device starved mid-waveform about 100 ms later, and
+    /// Play() stepped straight back in at full level.
+    /// </summary>
+    public bool Parked
+    {
+        get => _parked;
+        set => _parked = value;
+    }
+
     public void Clear()
     {
         lock (_gate)
@@ -499,7 +515,21 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     public int Read(float[] buffer, int offset, int count)
     {
         var written = 0;
-        if (_crossfadeArmed)
+        // Parked: skip the segments (and any crossfade tail) so nothing is consumed;
+        // the pad below declicks the first parked read and renders silence after.
+        var parked = _parked;
+        if (parked)
+            _parkRendered = true;
+        else if (_parkRendered)
+        {
+            // First read after a park that rendered silence: fade the held audio
+            // back in however short the park was (the silence streak alone arms
+            // only after FadeArmMs).
+            _parkRendered = false;
+            if (_startFadeSamples > 0)
+                _cutFadePending = true;
+        }
+        if (!parked && _crossfadeArmed)
         {
             // BeginCrossfade promoted the staged segment off the render thread:
             // a fresh active is governed by its own start gate, not a leftover
@@ -511,7 +541,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (promoted != null)
                 SegmentStarted?.Invoke(promoted);
         }
-        while (written < count)
+        while (!parked && written < count)
         {
             ISampleProvider? adapted;
             GaplessTrackSegment? active;
@@ -671,7 +701,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             }
             _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
         }
-        MixFadingTail(buffer, offset, count);
+        if (!parked)
+            MixFadingTail(buffer, offset, count);
         if (_readTrace && Environment.TickCount64 - _lastTraceTick > 250)
         {
             _lastTraceTick = Environment.TickCount64;

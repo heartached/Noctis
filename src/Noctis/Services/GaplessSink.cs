@@ -376,17 +376,15 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
+    // Pause parks the provider, not the stream (the WasapiGainOutput pattern).
+    // WasapiOut.Pause() only stops FILLING: the device played its queued ~100ms,
+    // then starved mid-waveform (a click), and Play() read the ring back in at
+    // full level (another). Parked, the provider ramps to silence, renders zeros
+    // without consuming the ring, and fades the held audio back in on resume.
     public void Pause()
     {
         _desiredPlaying = false;
-        IWavePlayer current;
-        lock (_gate) current = _out;
-        try { current.Pause(); }
-        catch (Exception ex)
-        {
-            // Device transitional.
-            DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PauseFailed", $"{ex.GetType().Name}: {ex.Message}");
-        }
+        Provider.Parked = true;
     }
 
     public void Resume()
@@ -394,8 +392,10 @@ public sealed class GaplessSink : IDisposable
         // The render thread sat idle through the pause; that is not a render stall.
         if (!_desiredPlaying) _probe.ForgetLastRead();
         _desiredPlaying = true;
+        Provider.Parked = false;
         IWavePlayer current;
         lock (_gate) current = _out;
+        // A no-op on the running stream; starts an output rebuilt while paused.
         try { current.Play(); }
         catch (Exception ex)
         {
