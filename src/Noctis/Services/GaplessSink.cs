@@ -76,6 +76,7 @@ public sealed class GaplessSink : IDisposable
 
     private GaplessSink()
     {
+        var openStart = Stopwatch.GetTimestamp();
         using var enumerator = new MMDeviceEnumerator();
         using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
         var mix = device.AudioClient.MixFormat;
@@ -130,6 +131,9 @@ public sealed class GaplessSink : IDisposable
         // buffers (silence when idle), so the stream never stops between
         // tracks — the property true gapless depends on.
         _out.Play();
+        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkOpened",
+            $"elapsedMs={Stopwatch.GetElapsedTime(openStart).TotalMilliseconds:0}, {DescribeFormats(mix)}, " +
+            $"output={(NullWavePlayer.SilentMode ? "null" : "wasapi")}");
         // Never let the callback throw: an unhandled Timer exception kills the process.
         _deviceWatch = new Timer(_ =>
         {
@@ -217,21 +221,59 @@ public sealed class GaplessSink : IDisposable
         return wasapiOut;
     }
 
-    // The render thread died. Without an exception it's our own Stop/Dispose;
-    // with one the endpoint is gone (unplug, per-app reroute, driver reset) —
-    // rebuild on whatever the default endpoint is now.
+    // The render thread died. With an exception the endpoint is gone (unplug,
+    // per-app reroute, driver reset) — rebuild on whatever the default endpoint
+    // is now. Runs on the dying render thread, so new lines go off-thread.
     private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
     {
-        if (_disposed || e.Exception == null) return;
+        if (_disposed) return;
         // A stopped event can arrive queued (sync-context post) after its
         // output was already replaced — never rebuild a healthy sink over it.
         IWavePlayer current;
         lock (_gate) current = _out;
-        if (!ReferenceEquals(sender, current)) return;
+        var stale = !ReferenceEquals(sender, current);
+        if (e.Exception == null)
+        {
+            // Every Stop/Dispose of ours unsubscribes first, so a clean stop of the
+            // live output is the render thread ending on its own (NAudio's 0-read
+            // end-of-stream path): the engine is silent from here and nothing rebuilds it.
+            if (!stale)
+                DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn,
+                    "GaplessEngine.StoppedUnexpectedly", $"rebuilding={Volatile.Read(ref _rebuilding) == 1}");
+            return;
+        }
+        if (stale)
+        {
+            DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn,
+                "GaplessEngine.StopIgnored", $"reason=staleSender, {e.Exception.GetType().Name}: {e.Exception.Message}");
+            return;
+        }
         DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.DeviceLost",
             $"{e.Exception.GetType().Name}: {e.Exception.Message}");
         if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
             Task.Run(RebuildLoop);
+        else
+            DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn,
+                "GaplessEngine.StopIgnored", $"reason=rebuilding, {e.Exception.GetType().Name}: {e.Exception.Message}");
+    }
+
+    /// <summary>A device mix format against the fixed engine format. NAudio resamples when
+    /// they differ, so a device stuck at mono or a low rate shows up in the device lines.</summary>
+    private string DescribeFormats(WaveFormat mix) =>
+        $"mix={mix.SampleRate}Hz/{mix.Channels}ch/{mix.Encoding}, engine={SampleRate}Hz/{Channels}ch";
+
+    private string DefaultDeviceFormats()
+    {
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return DescribeFormats(device.AudioClient.MixFormat);
+        }
+        catch
+        {
+            return $"mix=?, engine={SampleRate}Hz/{Channels}ch";
+        }
     }
 
     // Default render endpoint moved while our stream is still alive on the old
@@ -256,7 +298,7 @@ public sealed class GaplessSink : IDisposable
         string? boundId;
         lock (_gate) boundId = _deviceId;
         if (boundId == null || currentId == boundId) return;
-        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged");
+        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged", DefaultDeviceFormats());
         if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
             Task.Run(RebuildLoop);
     }
@@ -303,7 +345,7 @@ public sealed class GaplessSink : IDisposable
                         _deviceId = id;
                     }
                     DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuilt",
-                        $"attempt={attempt}, playing={_desiredPlaying}");
+                        $"attempt={attempt}, playing={_desiredPlaying}, {DefaultDeviceFormats()}");
                     try { Rebuilt?.Invoke(); } catch { /* subscriber's problem, not the sink's */ }
                     return;
                 }
@@ -333,7 +375,12 @@ public sealed class GaplessSink : IDisposable
         _desiredPlaying = false;
         IWavePlayer current;
         lock (_gate) current = _out;
-        try { current.Pause(); } catch { /* device transitional */ }
+        try { current.Pause(); }
+        catch (Exception ex)
+        {
+            // Device transitional.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PauseFailed", $"{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     public void Resume()
@@ -341,7 +388,12 @@ public sealed class GaplessSink : IDisposable
         _desiredPlaying = true;
         IWavePlayer current;
         lock (_gate) current = _out;
-        try { current.Play(); } catch { /* device transitional */ }
+        try { current.Play(); }
+        catch (Exception ex)
+        {
+            // Device transitional.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.ResumeFailed", $"{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     public void Dispose()

@@ -1142,13 +1142,31 @@ public class VlcAudioPlayer : IAudioPlayer
         milli = Math.Clamp(milli, 0, 1000);
         if (_sessionVolume != null)
         {
-            _sessionVolume.SetLevel(milli / 1000.0);
+            if (!_sessionVolume.SetLevel(milli / 1000.0))
+                NoteSessionWriteFailed(milli, "ramp");
         }
         else
         {
             var vol = (int)Math.Round(Math.Cbrt(milli / 1000.0) * 100.0);
             SetPlayerVolumeGuarded(_player, vol);
         }
+    }
+
+    private long _lastSessionWriteFailLogTick;
+
+    /// <summary>
+    /// Rate-limited (1/s) trace of a session-level write that did not land while audio
+    /// plays: the "volume slider does nothing" case. Idle failures stay quiet: no session
+    /// exists until an output opens, and the track-start reassert applies the level then.
+    /// </summary>
+    private void NoteSessionWriteFailed(int milli, string origin)
+    {
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - Volatile.Read(ref _lastSessionWriteFailLogTick) < 1000 || !_player.IsPlaying) return;
+        Volatile.Write(ref _lastSessionWriteFailLogTick, now);
+        DebugLogger.Warn(DebugLogger.Category.Playback, "Volume.SessionWriteFailed",
+            $"origin={origin}, milli={milli}, heldActive={_sessionVolume?.HoldsActiveSession}");
     }
 
     /// <summary>
@@ -1509,9 +1527,11 @@ public class VlcAudioPlayer : IAudioPlayer
         // ParametricEqMath.VlcEqUnityPreampDb (or the preset's own preamp) as
         // the make-up instead.
         var isFlat = IsFlatCurve(bands, preamp);
+        string eqMode;
 
         if (enabled && !isFlat)
         {
+            eqMode = "set";
             lock (_equalizerLock)
             {
                 // Avoid rebuilding the native EQ every slider tick.
@@ -1553,6 +1573,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 // curve lands while nothing is playing (e.g. app start).
                 if (_equalizer != null && _player is { IsPlaying: true })
                 {
+                    eqMode = "neutral";
                     _equalizer.SetPreamp(ParametricEqMath.VlcEqUnityPreampDb);
                     for (uint i = 0; i < 10; i++)
                         _equalizer.SetAmp(0f, i);
@@ -1566,6 +1587,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     // the argument unconditionally, so the null form throws NRE on
                     // every call — which the apply queue then retried forever (see
                     // ProcessAdvancedEqualizerQueue).
+                    eqMode = "unset";
                     if (_player != null)
                         _player.UnsetEqualizer();
                     if (_standbyPrepared)
@@ -1575,11 +1597,24 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
             }
         }
+
+        // Branch changes only: a slider drag re-runs "set" every tick. The transitions are
+        // what matters for EQ-change dropouts ("unset" restarts the output's filter chain).
+        if (!string.Equals(eqMode, _lastEqApplyMode, StringComparison.Ordinal))
+        {
+            _lastEqApplyMode = eqMode;
+            DebugLogger.Info(DebugLogger.Category.Playback, "EQ.Applied",
+                $"mode={eqMode}, playing={_player is { IsPlaying: true }}, standbyPrepared={_standbyPrepared}, version={capturedVersion}");
+        }
     }
+
+    private string? _lastEqApplyMode;
 
     public void SetNormalization(bool enabled)
     {
         if (_disposed) return;
+        if (enabled != _normalizationEnabled)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting", $"normalization={enabled}");
         _normalizationEnabled = enabled;
         // Normalization is applied per-track via VLC audio filters.
         // The flag is stored here and applied in PlayInternal when creating new media.
@@ -1992,6 +2027,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 _replayGainScalar = 1.0;
                 ReapplyVolume();
             }
+            LogReplayGain(null, null, null);
             return;
         }
 
@@ -2000,6 +2036,7 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             _replayGainScalar = 1.0;
             ReapplyVolume();
+            LogReplayGain(null, null, null);
             return;
         }
 
@@ -2024,6 +2061,29 @@ public class VlcAudioPlayer : IAudioPlayer
             _replayGainScalar = Math.Pow(10.0, totalDb / 20.0);
         }
         ReapplyVolume();
+        LogReplayGain(_currentMediaPath, track, album);
+    }
+
+    private string? _lastRgLogLine;
+    private long _lastRgLogTick;
+
+    /// <summary>
+    /// "ReplayGain.Applied" when the outcome changes. ApplyReplayGain re-runs from ~9
+    /// settings handlers and at every track start with the same result, and once per
+    /// tick while the pre-amp slider drags: identical lines are dropped, the rest are
+    /// rate-limited to one per 250 ms.
+    /// </summary>
+    private void LogReplayGain(string? path, double? trackDb, double? albumDb)
+    {
+        if (!DebugLogger.IsEnabled) return;
+        var line = $"mode={_rgMode}, file={(path == null ? "-" : Path.GetFileName(path))}, " +
+                   $"trackDb={trackDb?.ToString("0.00") ?? "none"}, albumDb={albumDb?.ToString("0.00") ?? "none"}, " +
+                   $"preampDb={_rgPreampDb:0.0}, appliedDb={ReplayGainAppliedDb:0.00}";
+        var now = Environment.TickCount64;
+        if (line == _lastRgLogLine || now - _lastRgLogTick < 250) return;
+        _lastRgLogLine = line;
+        _lastRgLogTick = now;
+        DebugLogger.Info(DebugLogger.Category.Playback, "ReplayGain.Applied", line);
     }
 
     /// <summary>Re-issue the current curved volume × RG scalar so the next
@@ -2107,8 +2167,10 @@ public class VlcAudioPlayer : IAudioPlayer
             }
             return (track, album);
         }
-        catch
+        catch (Exception ex)
         {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "ReplayGain.TagReadFailed",
+                $"{ex.GetType().Name}, file={Path.GetFileName(filePath)}");
             return (null, null);
         }
     }
@@ -2135,8 +2197,13 @@ public class VlcAudioPlayer : IAudioPlayer
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false)
     {
         if (_disposed) return;
+        var durationMs = Math.Clamp(durationSeconds, 1, 12) * 1000;
+        if (enabled != _crossfadeEnabled || durationMs != _crossfadeDurationMs || fadeCurve != _crossfadeFadeCurve ||
+            fadeOut != _crossfadeFadeOut || overlap != _crossfadeOverlap)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+                $"crossfade enabled={enabled}, durationMs={durationMs}, curve={fadeCurve}, fadeOut={fadeOut}, overlap={overlap}");
         _crossfadeEnabled = enabled;
-        _crossfadeDurationMs = Math.Clamp(durationSeconds, 1, 12) * 1000;
+        _crossfadeDurationMs = durationMs;
         _crossfadeFadeCurve = fadeCurve;
         _crossfadeFadeOut = fadeOut;
         _crossfadeOverlap = overlap;
@@ -2157,8 +2224,12 @@ public class VlcAudioPlayer : IAudioPlayer
     public void SetPlayPauseFade(bool enabled, int durationMs)
     {
         if (_disposed) return;
+        var fadeMs = Math.Clamp(durationMs, 50, 3000);
+        if (enabled != _playPauseFadeEnabled || fadeMs != _playPauseFadeMs)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+                $"playPauseFade enabled={enabled}, durationMs={fadeMs}");
         _playPauseFadeEnabled = enabled;
-        _playPauseFadeMs = Math.Clamp(durationMs, 50, 3000);
+        _playPauseFadeMs = fadeMs;
     }
 
     private bool PlayPauseFadeArmed => _playPauseFadeEnabled && !_userMuted && _playPauseFadeMs > 0;
@@ -2258,7 +2329,11 @@ public class VlcAudioPlayer : IAudioPlayer
     public void SetPlaybackRate(double rate)
     {
         if (_disposed) return;
-        Volatile.Write(ref _playbackRate, TempoStretchProvider.ClampRate(rate));
+        var clamped = TempoStretchProvider.ClampRate(rate);
+        if (clamped != Volatile.Read(ref _playbackRate))
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+                $"rate={clamped:0.##}, pitchRatio={Volatile.Read(ref _pitchRatio):0.###}, engine={_gaplessEngine}");
+        Volatile.Write(ref _playbackRate, clamped);
         ApplyPlaybackRateToOwner();
     }
 
@@ -2266,7 +2341,11 @@ public class VlcAudioPlayer : IAudioPlayer
     public void SetPitchSemitones(double semitones)
     {
         if (_disposed) return;
-        Volatile.Write(ref _pitchRatio, PitchShiftProvider.RatioFromSemitones(semitones));
+        var ratio = PitchShiftProvider.RatioFromSemitones(semitones);
+        if (ratio != Volatile.Read(ref _pitchRatio))
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+                $"pitch semitones={semitones:0.#}, ratio={ratio:0.###}, rate={Volatile.Read(ref _playbackRate):0.##}, engine={_gaplessEngine}");
+        Volatile.Write(ref _pitchRatio, ratio);
         ApplyPlaybackRateToOwner();
     }
 
@@ -2307,6 +2386,8 @@ public class VlcAudioPlayer : IAudioPlayer
     public void SetGapless(bool enabled)
     {
         if (_disposed) return;
+        if (enabled != _gaplessEnabled)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting", $"gapless={enabled}");
         _gaplessEnabled = enabled;
     }
 
@@ -2617,6 +2698,11 @@ public class VlcAudioPlayer : IAudioPlayer
         });
     }
 
+    // A media path as log lines show it: the file name, never a full local path, and
+    // never a media-server URL (those carry auth tokens). Same form as the VLC.Play line.
+    private static string LogName(string path) =>
+        IsRemoteStreamPath(path) ? "<remote stream>" : IsAudioCdPath(path) ? path : Path.GetFileName(path);
+
     /// <summary>
     /// Core playback logic. Must be called under _playbackLock on a ThreadPool thread.
     ///
@@ -2827,6 +2913,8 @@ public class VlcAudioPlayer : IAudioPlayer
             catch (OperationCanceledException) when (cancel.IsCancellationRequested)
             {
                 // Skipped by a new Play() call — abort cleanly
+                DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play.Aborted",
+                    $"session={sessionId}, reason=parseCancelled, path={LogName(filePath)}");
                 media.Dispose();
                 return;
             }
@@ -3942,15 +4030,54 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
 
                 // Blocks when the ring is full (back-pressures this player's
-                // decoder); returns false when abandoned — just drop the block.
-                seg.Write(buf.AsSpan(0, sampleCount));
+                // decoder); returns false when abandoned or timed out — the block
+                // is dropped (and traced, rate-limited).
+                if (!seg.Write(buf.AsSpan(0, sampleCount)))
+                    NoteEngineWriteDropped(slot, seg);
             }
             finally
             {
                 System.Buffers.ArrayPool<short>.Shared.Return(buf);
             }
         }
-        catch { /* libvlc decoder thread */ }
+        catch (Exception ex)
+        {
+            // libvlc decoder thread: never throw.
+            try { NoteEnginePlayThrew(slot, ex); } catch { }
+        }
+    }
+
+    // Engine play-callback diagnostics. Both run on libvlc's decoder threads, so their
+    // lines go through DebugLogger.LogOffThread and never block the decoder, and both
+    // can fire per block, so they are rate-limited.
+    private int _engineWriteDrops;
+    private long _lastEngineWriteDropLogTick;
+    private int _enginePlayThrows;
+
+    private void NoteEngineWriteDropped(int slot, GaplessTrackSegment seg)
+    {
+        var drops = Interlocked.Increment(ref _engineWriteDrops);
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - Volatile.Read(ref _lastEngineWriteDropLogTick) < 250) return;
+        Volatile.Write(ref _lastEngineWriteDropLogTick, now);
+        // Abandoned/EOS drops are the tail of a skip or stop. A timeout means the render
+        // side stopped draining the ring for 2 s: decoded audio was lost.
+        var reason = seg.Abandoned ? "abandoned" : seg.EndOfStream ? "eos" : "timeout";
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback,
+            reason == "timeout" ? DebugLogger.Level.Warn : DebugLogger.Level.Info,
+            "GaplessEngine.WriteDropped",
+            $"slot={slot}, reason={reason}, bufferedSamples={seg.BufferedSamples}, drops={drops}");
+    }
+
+    // First 5, then every 100th: a callback that throws on every block would otherwise
+    // log at the block rate.
+    private void NoteEnginePlayThrew(int slot, Exception ex)
+    {
+        var count = Interlocked.Increment(ref _enginePlayThrows);
+        if (!DebugLogger.IsEnabled || (count > 5 && count % 100 != 0)) return;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn,
+            "GaplessEngine.PlayCallbackThrew", $"slot={slot}, count={count}, {ex.GetType().Name}: {ex.Message}");
     }
 
     private void EngineFlush(int slot)
@@ -4094,6 +4221,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 _sessionVolume.Invalidate();
                 Thread.Sleep(20);
             }
+            DebugLogger.Warn(DebugLogger.Category.Playback, "SessionVolume.ReassertGaveUp",
+                $"origin=rebuild, heldActive={_sessionVolume.HoldsActiveSession}");
         });
     }
 
@@ -4135,6 +4264,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 _sessionVolume.Invalidate();
                 Thread.Sleep(20);
             }
+            // The user level may never have reached the rendering session: the
+            // "plays but no audio" / full-volume-blip class.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "SessionVolume.ReassertGaveUp",
+                $"origin=trackStart, session={sessionId}, heldActive={_sessionVolume.HoldsActiveSession}");
         });
     }
 
@@ -4260,9 +4393,11 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_player.IsPlaying)
                 {
                     ResetEndReachedPending();
+                    var fade = PlayPauseFadeArmed;
+                    var drainMs = PausedOutputDrainMs(OutputLatency);
                     RunFadedPause(
-                        PlayPauseFadeArmed,
-                        PausedOutputDrainMs(OutputLatency),
+                        fade,
+                        drainMs,
                         FadeOutBeforePause,
                         () =>
                         {
@@ -4284,6 +4419,14 @@ public class VlcAudioPlayer : IAudioPlayer
                             try { Thread.Sleep(ms); }
                             finally { _transitionInFlight = false; }
                         });
+                    DebugLogger.Info(DebugLogger.Category.Playback, "Playback.Pause",
+                        $"engine={_gaplessEngine}, fade={fade}, drainMs={(fade ? drainMs : 0)}");
+                }
+                else
+                {
+                    // Nothing is playing yet (input still opening) or any more: dropped.
+                    DebugLogger.Info(DebugLogger.Category.Playback, "Pause.Ignored",
+                        $"vlcState={_player.State}, engineTail={EngineActiveTailSegment() != null}");
                 }
             }
             catch (ObjectDisposedException) { /* disposed mid-pause */ }
@@ -4325,6 +4468,13 @@ public class VlcAudioPlayer : IAudioPlayer
                     _isPaused = false;
                     _positionTimer.Start();
                     if (fade) FadeInAfterResume();
+                    DebugLogger.Info(DebugLogger.Category.Playback, "Playback.Resume",
+                        $"engine={_gaplessEngine}, fade={fade}");
+                }
+                else
+                {
+                    DebugLogger.Info(DebugLogger.Category.Playback, "Resume.Ignored",
+                        $"vlcState={_player.State}, engineTail={EngineActiveTailSegment() != null}");
                 }
             }
             catch (ObjectDisposedException) { /* disposed mid-resume */ }
@@ -4365,6 +4515,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 var oldMedia = _currentMedia;
                 _currentMedia = null;
                 oldMedia?.Dispose();
+                DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Stop",
+                    $"session={CurrentSessionId}, engine={_gaplessEngine}");
             }
             finally
             {
@@ -4375,7 +4527,13 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public void Seek(TimeSpan position)
     {
-        if (_disposed || _currentMedia == null) return;
+        if (_disposed) return;
+        if (_currentMedia == null)
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
+                $"reason=noMedia, targetMs={(long)position.TotalMilliseconds}");
+            return;
+        }
 
         _keepAlive?.NotifyActivity();
         CancelSkipCts();
@@ -4415,7 +4573,12 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var len = _player.Length;
-        if (len <= 0) return;
+        if (len <= 0)
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
+                $"reason=lengthZero, targetMs={(long)position.TotalMilliseconds}, vlcState={state}");
+            return;
+        }
 
         // Keep manual seeks a guard's-width short of the end (scaled down on very
         // short clips) so seeking to the far right never trips EndReached and
@@ -4851,6 +5014,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     var len = _player.Length;
                     if (len <= 0)
                     {
+                        DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Dropped",
+                            $"reason=lengthZeroAtApply, targetMs={targetMs}");
                         sawUnappliedSeek = true;
                         continue;
                     }
@@ -4912,7 +5077,8 @@ public class VlcAudioPlayer : IAudioPlayer
                             // Windows persists per-app session volume across app
                             // restarts. Re-resolve the session and retry once.
                             sv.Invalidate();
-                            sv.SetLevel(savedMilli / 1000.0);
+                            if (!sv.SetLevel(savedMilli / 1000.0))
+                                NoteSessionWriteFailed(savedMilli, "seekRestore");
                         }
                         Volatile.Write(ref _rampCurrentMilli, savedMilli);
                     }
@@ -4950,9 +5116,11 @@ public class VlcAudioPlayer : IAudioPlayer
                         PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(targetMs));
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // If a seek fails due to transient VLC state, keep player alive.
+                try { DebugLogger.Warn(DebugLogger.Category.Playback, "Seek.Failed", $"{ex.GetType().Name}: {ex.Message}"); }
+                catch { }
             }
             finally
             {

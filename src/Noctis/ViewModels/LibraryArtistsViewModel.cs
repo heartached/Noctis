@@ -91,7 +91,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("ArtistsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }

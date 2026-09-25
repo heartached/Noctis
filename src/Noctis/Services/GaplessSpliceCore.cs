@@ -342,6 +342,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private readonly ReplayDetector? _ringDetector = ReplayDetector.CreateIfEnabled("Ring"); // raw adapter output, pre-fade
     private readonly bool _readTrace = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"));
     private long _lastTraceTick;
+    private int _underrunCount;         // mid-track 0-reads (render thread increments)
+    private long _lastUnderrunLogTick;  // render thread only
 
     // Mixed crossfade (transition-mode advance under the engine): the outgoing
     // segment keeps rendering as a fading tail ADDED to the new active segment
@@ -613,6 +615,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (!active.IsFinished)
             {
                 _refillSamplesNeeded = WaveFormat.SampleRate * WaveFormat.Channels * UnderrunRefillMs / 1000;
+                NoteUnderrun(active);
                 break;
             }
         }
@@ -656,6 +659,20 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 $"offset={offset}, count={count}, written={written}, padded={padded}, bufLen={buffer.Length}, declick={_declickRemaining}, fade={_fadeRemaining}, silent={_silentSamples}, active={(_active != null ? 1 : 0)}");
         }
         return count;
+    }
+
+    // A mid-track underrun just armed the refill hold. Counted here on the render
+    // thread; the line is posted off it (a log write must not land inside a render
+    // read) and rate-limited to one per 250 ms, carrying the running count.
+    private void NoteUnderrun(GaplessTrackSegment active)
+    {
+        var count = Interlocked.Increment(ref _underrunCount);
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - _lastUnderrunLogTick < 250) return;
+        _lastUnderrunLogTick = now;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn, "GaplessEngine.Underrun",
+            $"count={count}, slot={active.Source}, bufferedSamples={active.BufferedSamples}, refillHoldSamples={_refillSamplesNeeded}");
     }
 
     // Crossfade render: the buffer holds the new active segment's audio (or

@@ -625,6 +625,8 @@ public partial class PlayerViewModel : ViewModelBase
         PositionFraction = fraction;
         RemainingTimeText = FormatTime(remaining);
         CancelAutoMixTransition("user seeked");
+        DebugLogger.Info(DebugLogger.Category.Playback, "SeekToPosition",
+            $"targetMs={target.TotalMilliseconds:F0}, state={State}, track={CurrentTrack.Id}");
         _audioPlayer.Seek(target);
         _lastSeekTime = DateTime.UtcNow;
         _lastCommittedSeekTarget = target;
@@ -636,6 +638,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         IsMuted = !IsMuted;
         _audioPlayer.IsMuted = IsMuted;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mute", $"muted={IsMuted}, source=toggle");
     }
 
     // ── Sleep timer ──────────────────────────────────────────
@@ -1243,8 +1246,11 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>Stops playback and clears all queue data.</summary>
-    public void StopAndClear()
+    /// <param name="reason">Why the queue is being wiped; recorded in the log.</param>
+    public void StopAndClear(string reason = "unspecified")
     {
+        DebugLogger.Info(DebugLogger.Category.Playback, "StopAndClear",
+            $"reason={reason}, track={CurrentTrack?.Id}, upNext={UpNext.Count}, history={History.Count}");
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
@@ -1494,9 +1500,8 @@ public partial class PlayerViewModel : ViewModelBase
                 .Unwrap()
                 .ContinueWith(t =>
                 {
-                    if (t.IsFaulted)
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[Player] Queue snapshot failed: {t.Exception?.GetBaseException().Message}");
+                    if (t.IsFaulted && t.Exception?.GetBaseException() is { } ex)
+                        DebugLog.Write("Queue", $"Queue snapshot failed: {ex.GetType().Name}: {ex.Message}");
                 }, TaskScheduler.Default);
         }
     }
@@ -1534,6 +1539,8 @@ public partial class PlayerViewModel : ViewModelBase
         // silently reset to Off and the app un-muted on every restart.
         RepeatMode = state.RepeatMode;
         IsShuffleEnabled = state.IsShuffleEnabled;
+        if (IsMuted != state.IsMuted)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mute", $"muted={state.IsMuted}, source=restore");
         IsMuted = state.IsMuted;
 
         var restoredCycle = new List<Track>(state.RepeatCycleIds.Count);
@@ -1545,6 +1552,7 @@ public partial class PlayerViewModel : ViewModelBase
         _repeatCycleTracks = restoredCycle;
 
         // Restore current track (paused, not auto-playing)
+        var usedUpNextFallback = false;
         if (state.CurrentTrackId.HasValue)
         {
             var track = Resolve(state.CurrentTrackId.Value);
@@ -1553,6 +1561,7 @@ public partial class PlayerViewModel : ViewModelBase
             {
                 // Its file was moved or deleted since (GitHub #91): load the next queued
                 // track from its start instead of leaving the island without a track.
+                usedUpNextFallback = true;
                 track = UpNext[0];
                 UpNext.RemoveAt(0);
                 positionSeconds = 0;
@@ -1584,6 +1593,13 @@ public partial class PlayerViewModel : ViewModelBase
                 }, DispatcherPriority.Render);
             }
         }
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "Queue.Restored",
+            $"current={CurrentTrack?.Id.ToString() ?? (state.CurrentTrackId.HasValue ? "unresolved" : "none")}, " +
+            $"savedPosSec={state.PositionSeconds:F1}, resumeMs={Interlocked.Read(ref _resumePositionMs)}, " +
+            $"upNext={restoredUpNext.Count}/{state.UpNextIds.Count}, history={restoredHistory.Count}/{state.HistoryIds.Count}, " +
+            $"cycle={restoredCycle.Count}/{state.RepeatCycleIds.Count}, upNextFallback={usedUpNextFallback}, " +
+            $"shuffle={IsShuffleEnabled}, repeat={RepeatMode}, muted={IsMuted}");
     }
 
     /// <summary>
@@ -1630,7 +1646,8 @@ public partial class PlayerViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[Player] External track restore failed for {path}: {ex.Message}");
+                    // Type only: IO/tag exception messages carry the full path.
+                    DebugLog.Write("Queue", $"External track restore failed for {Path.GetFileName(path)}: {ex.GetType().Name}");
                 }
             }
             return list;
@@ -1688,6 +1705,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (!IsMuted) return;
         IsMuted = false;
         _audioPlayer.IsMuted = false;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mute", "muted=False, source=adjust");
     }
 
     partial void OnCurrentTrackChanged(Track? value)
@@ -1964,7 +1982,7 @@ public partial class PlayerViewModel : ViewModelBase
 
     private void PlayTrack(Track track)
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack", $"title={track.Title}, id={track.Id}, duration={track.Duration}");
+        var playTrackStart = Stopwatch.GetTimestamp();
         _seekDebounceTimer?.Dispose();
         _seekDebounceTimer = null;
         CancelNaturalEndFallback();
@@ -2010,28 +2028,36 @@ public partial class PlayerViewModel : ViewModelBase
         // Set pending seek position BEFORE Play() so VlcAudioPlayer applies it
         // inside PlayInternal after the media is loaded (avoids race condition).
         long seekMs = -1;
+        var seekSource = "none";
         var autoMixStartMs = Interlocked.Exchange(ref _pendingAutoMixNextStartMs, -1);
         // One-shot: any track change consumes the restored-session resume target.
         var resumeMs = Interlocked.Exchange(ref _resumePositionMs, -1);
         if (autoMixStartMs > 0 && TimeSpan.FromMilliseconds(autoMixStartMs) < track.Duration)
         {
             seekMs = autoMixStartMs;
+            seekSource = "automix";
         }
         else if (resumeMs > 0 && track.Id == _resumeTrackId
                  && TimeSpan.FromMilliseconds(resumeMs) < track.Duration)
         {
             seekMs = resumeMs;
+            seekSource = "restore";
         }
         else if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
         {
             seekMs = track.StartTimeMs;
+            seekSource = "startTime";
         }
         else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0
                  && TimeSpan.FromMilliseconds(track.SavedPositionMs) < track.Duration)
         {
             seekMs = track.SavedPositionMs;
+            seekSource = "savedPosition";
         }
         _audioPlayer.PendingSeekMs = seekMs;
+        // Logged here rather than on entry so it can say which start position won.
+        DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack",
+            $"title={track.Title}, id={track.Id}, duration={track.Duration}, seekMs={seekMs}, seekSource={seekSource}");
 
         if (seekMs > 0)
         {
@@ -2070,6 +2096,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Keep the on-disk queue snapshot current so a non-graceful exit
         // (tray + OS shutdown, task kill) still restores this session.
         SaveQueueStateInBackground();
+        UiStallWatchdog.ReportIfSlow("PlayTrack", playTrackStart);
     }
 
     private enum QueueAdvanceReason
@@ -2084,7 +2111,11 @@ public partial class PlayerViewModel : ViewModelBase
     private void AdvanceQueue(QueueAdvanceReason reason = QueueAdvanceReason.Natural)
     {
         // Re-entrancy guard — if TrackEnded fires twice (VLC race), ignore the second.
-        if (_isAdvancingQueue) return;
+        if (_isAdvancingQueue)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "AdvanceQueue.Reentrant", $"reason={reason}");
+            return;
+        }
         _isAdvancingQueue = true;
         try
         {
@@ -2299,7 +2330,7 @@ public partial class PlayerViewModel : ViewModelBase
             _queueHistoryDepth = 0;
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
 
-            if (allTracks.Count == 0) { StopAndClear(); return; }
+            if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
 
             UpNext.ReplaceAll(allTracks.Skip(1).ToList());
             PlayTrack(allTracks[0]);
@@ -2313,7 +2344,7 @@ public partial class PlayerViewModel : ViewModelBase
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
-            StopAndClear();
+            StopAndClear("queueEnded");
         }
     }
 
@@ -2578,6 +2609,21 @@ public partial class PlayerViewModel : ViewModelBase
         });
     }
 
+    private long _lastPositionRejectedLogTick; // UI thread only
+
+    // Rate-limited (1/s): a tick one of the seek guards below dropped. The slider
+    // snap-back / frozen-position evidence.
+    private void NotePositionRejected(string guard, TimeSpan latest, double msSinceSeek)
+    {
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - _lastPositionRejectedLogTick < 1000) return;
+        _lastPositionRejectedLogTick = now;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Position.Rejected",
+            $"guard={guard}, latestMs={latest.TotalMilliseconds:F0}, targetMs={_lastCommittedSeekTarget.TotalMilliseconds:F0}, " +
+            $"msSinceSeek={msSinceSeek:F0}, rate={PlaybackRate}");
+    }
+
     private void OnPositionChanged(object? sender, TimeSpan pos)
     {
         // Store latest position and coalesce: if an update is already queued on the
@@ -2600,7 +2646,10 @@ public partial class PlayerViewModel : ViewModelBase
             // VLC needs time to flush old buffers and settle at the new position.
             var msSinceSeek = (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds;
             if (msSinceSeek < SeekSettleWindowMs)
+            {
+                NotePositionRejected("settle", latest, msSinceSeek);
                 return;
+            }
 
             // After PlayTrack() updates CurrentTrack, the single VLC player can still
             // report positions from the outgoing song while it fades/stops. Those old
@@ -2610,7 +2659,10 @@ public partial class PlayerViewModel : ViewModelBase
                 var expectedSeconds = _lastCommittedSeekTarget.TotalSeconds;
                 var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) + 4;
                 if (latest.TotalSeconds > maxPlausibleSeconds)
+                {
+                    NotePositionRejected("trackStartStale", latest, msSinceSeek);
                     return;
+                }
             }
 
             // Extended settle: even after the base window, reject positions that are
@@ -2619,7 +2671,10 @@ public partial class PlayerViewModel : ViewModelBase
             if (msSinceSeek < SeekSettleWindowMs * 2 &&
                 _lastCommittedSeekTarget > TimeSpan.Zero &&
                 Math.Abs((latest - _lastCommittedSeekTarget).TotalSeconds) > 2.0)
+            {
+                NotePositionRejected("extendedSettle", latest, msSinceSeek);
                 return;
+            }
 
             // Clamp position to duration — VLC may report a position slightly past
             // the stored metadata duration. Prefer decoder-reported duration and
@@ -3081,7 +3136,7 @@ public partial class PlayerViewModel : ViewModelBase
                 if (UnreachableRootHint(CurrentTrack?.FilePath, Directory.Exists) is { } hint)
                     DebugLog.Write("Audio", hint);
                 _consecutivePlaybackErrors = 0;
-                StopAndClear();
+                StopAndClear("errorCascade");
                 return;
             }
 
@@ -3089,7 +3144,7 @@ public partial class PlayerViewModel : ViewModelBase
             if (UpNext.Count > 0)
                 AdvanceQueue(QueueAdvanceReason.Error);
             else
-                StopAndClear();
+                StopAndClear("errorNoNext");
         });
     }
 
@@ -3134,7 +3189,7 @@ public partial class PlayerViewModel : ViewModelBase
             if (_library.Tracks.Count == 0 &&
                 CurrentTrack?.IsExternal != true && !UpNext.Any(t => t.IsExternal))
             {
-                StopAndClear();
+                StopAndClear("libraryEmpty");
                 return;
             }
 
@@ -3157,6 +3212,8 @@ public partial class PlayerViewModel : ViewModelBase
             // Check if current track was deleted
             if (CurrentTrack is { IsExternal: false } && _library.GetTrackById(CurrentTrack.Id) == null)
             {
+                DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrackRemoved",
+                    $"track={CurrentTrack.Id}, state={State}, upNext={UpNext.Count}, action={(UpNext.Count > 0 ? "advance" : "stop")}");
                 // Current track was deleted, skip to next or stop
                 if (UpNext.Count > 0)
                 {
@@ -3164,7 +3221,7 @@ public partial class PlayerViewModel : ViewModelBase
                 }
                 else
                 {
-                    StopAndClear();
+                    StopAndClear("currentTrackRemoved");
                 }
             }
 

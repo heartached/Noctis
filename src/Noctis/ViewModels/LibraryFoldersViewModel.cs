@@ -87,7 +87,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("FoldersRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }

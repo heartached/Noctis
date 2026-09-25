@@ -92,6 +92,9 @@ internal sealed class WasapiGainOutput : IDisposable
             if (_disposed) return;
             _faulted = true;
             Diag($"PlaybackStopped (device lost?): {e.Exception?.Message ?? "no exception"}");
+            // Raised on NAudio's render thread: logged off it. Once per sink by nature.
+            DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn, "Exclusive.PlaybackStopped",
+                $"exclusive={IsExclusive}, {(e.Exception == null ? "no exception" : $"{e.Exception.GetType().Name}: {e.Exception.Message}")}");
             try { Faulted?.Invoke(this); } catch { /* never throw on NAudio's thread */ }
         };
     }
@@ -285,7 +288,25 @@ internal sealed class WasapiGainOutput : IDisposable
         catch (Exception ex)
         {
             Diag($"AddSamples threw: {ex.GetType().Name}: {ex.Message}");
+            NoteWriteDropped(count, ex);
         }
+    }
+
+    private int _writeDrops;
+    private long _lastWriteDropLogTick;
+
+    // A block the buffer refused (still full after the 2 s backpressure wait): that PCM is
+    // lost. Mirrored from the opt-in Diag file into DebugLogger; Write runs on libvlc's
+    // audio thread, so the line goes off-thread, at most one per 250 ms.
+    private void NoteWriteDropped(int bytes, Exception ex)
+    {
+        var drops = Interlocked.Increment(ref _writeDrops);
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - _lastWriteDropLogTick < 250) return;
+        _lastWriteDropLogTick = now;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn, "Exclusive.WriteDropped",
+            $"exclusive={IsExclusive}, bytes={bytes}, drops={drops}, {ex.GetType().Name}");
     }
 
     // Pause/Resume park the render chain instead of pausing WasapiOut. NAudio's

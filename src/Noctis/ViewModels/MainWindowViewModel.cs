@@ -692,7 +692,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (Settings.GetSettings().RestoreLastTrackOnStartup)
         {
             try { await Player.RestoreQueueStateAsync(); }
-            catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue restore failed: {ex.Message}"); }
+            catch (Exception ex) { DebugLog.Write("Queue", $"Queue restore failed: {ex}"); }
         }
 
         // Auto-scan if enabled
@@ -1910,6 +1910,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Navigate(string key)
     {
+        var navigateStart = Stopwatch.GetTimestamp();
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         // Section switches join the browser-style history (instead of clearing it)
         // so Back/Forward work across top-level views, e.g. Songs → Album → Artists.
@@ -2019,6 +2020,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowArtistSort(_artistsVm.SetSortCommand, _artistsVm.SortLabel, _artistsVm.SortMode, _artistsVm.SortAscending);
 
         RefreshBackButton();
+        UiStallWatchdog.ReportIfSlow("Navigate", navigateStart, $"key={key}");
     }
 
     /// <summary>Sidebar Lyrics Studio: re-scans the library for songs missing the chosen format

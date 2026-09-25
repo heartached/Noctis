@@ -370,7 +370,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             // LibraryUpdated every ~1.5 s and hidden views catch up via the dirty
             // flag when activated instead of rebuilding the grid each event.
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("AlbumsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }

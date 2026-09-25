@@ -91,7 +91,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _isDirty = true;
             Noctis.Services.DebugLog.Write("Songs", $"LibraryUpdated active={_isActive} library={_library.Tracks.Count} shown={FilteredTracks.Count}");
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("SongsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }

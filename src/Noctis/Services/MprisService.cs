@@ -320,6 +320,7 @@ public sealed class MprisService : IDisposable
     {
         OnUiThread(() =>
         {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mpris.Command", $"{member} vmState={_player.State}");
             switch (member)
             {
                 case "PlayPause":
@@ -346,6 +347,7 @@ public sealed class MprisService : IDisposable
     {
         OnUiThread(() =>
         {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mpris.Command", $"Seek offsetUs={offsetUs} vmState={_player.State}");
             var duration = _player.Duration;
             if (duration <= TimeSpan.Zero) return;
             var target = _player.Position + TimeSpan.FromTicks(offsetUs * 10);
@@ -358,6 +360,7 @@ public sealed class MprisService : IDisposable
     {
         OnUiThread(() =>
         {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mpris.Command", $"SetPosition positionUs={positionUs} vmState={_player.State}");
             var duration = _player.Duration;
             if (duration <= TimeSpan.Zero) return;
             var fraction = Math.Clamp(positionUs * 10 / (double)duration.Ticks, 0.0, 1.0);
@@ -604,6 +607,8 @@ public sealed class MprisService : IDisposable
         {
             try
             {
+                // D-Bus thread; State is a plain enum read.
+                DebugLogger.Info(DebugLogger.Category.Playback, "Mpris.Command", $"Set {prop} vmState={_s._player.State}");
                 switch (prop)
                 {
                     case "Volume":

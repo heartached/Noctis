@@ -2550,9 +2550,11 @@ public partial class SettingsViewModel : ViewModelBase
         await _saveLock.WaitAsync();
         try
         {
+            var saveStart = Stopwatch.GetTimestamp();
             await MergeExternalSettingChangesAsync();
             SyncToSettings();
             await _persistence.SaveSettingsAsync(_settings);
+            UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
         catch (Exception ex)
         {
@@ -6682,6 +6684,8 @@ public partial class SettingsViewModel : ViewModelBase
         // Mirror LibVLC warnings/errors into the session log while dev mode is
         // on, so "Copy Logs" captures audio-engine complaints (see DebugLog).
         DebugLog.VlcBridgeEnabled = value;
+        // UI-thread stall detection runs only while Developer Mode is on.
+        UiStallWatchdog.SetEnabled(value);
 
         if (value)
         {
