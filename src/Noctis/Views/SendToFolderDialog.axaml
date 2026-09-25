@@ -23,6 +23,7 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
         <Style Selector="Border.plan-row">
+            <Setter Property="Margin" Value="0,0,0,4" />
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Background" Value="#10FFFFFF" />
@@ -107,8 +108,11 @@
                         <!-- Plan -->
                         <TextBlock Text="{Binding PlanSummary}" FontSize="12" Opacity="0.7" />
                         <ItemsControl ItemsSource="{Binding Rows}">
+                            <!-- Virtualized: one row per selected track, so a Ctrl+A selection built
+                                 every row once the plan landed. VirtualizingStackPanel has no Spacing;
+                                 the 4px gap is the plan-row's bottom margin. -->
                             <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:SendToFolderViewModel+PlanRow">
