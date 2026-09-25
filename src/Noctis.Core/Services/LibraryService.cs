@@ -297,7 +297,8 @@ public class LibraryService : ILibraryService
                         // Skip files we already have that haven't changed
                         if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
                         {
-                            if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize)
+                            if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize
+                                && !IsStaleCaseSpelling(existing.FilePath, filePath))
                             {
                                 newTracks.Add(existing);
                                 Interlocked.Increment(ref unchangedCount);
@@ -1148,7 +1149,8 @@ public class LibraryService : ILibraryService
 
             if (existing != null &&
                 fi.LastWriteTimeUtc == existing.LastModified &&
-                fi.Length == existing.FileSize)
+                fi.Length == existing.FileSize &&
+                !IsStaleCaseSpelling(existing.FilePath, filePath))
             {
                 // The audio didn't change, but the watcher also routes a replaced
                 // cover.jpg here via a sibling audio file — check that album's folder art.
@@ -2871,6 +2873,17 @@ public class LibraryService : ILibraryService
             System.Text.Encoding.UTF8.GetBytes(normalized));
         return new Guid(hash);
     }
+
+    /// <summary>
+    /// True when a known track's stored path and the path just found for the same id
+    /// differ in spelling and the stored one no longer exists: a case-only rename on a
+    /// case-sensitive filesystem (Linux; the id folds case, see ComputeFileId). The
+    /// unchanged-file fast paths kept the stale path — a file VLC can't open — through
+    /// every rescan. Where the old spelling still resolves (case-insensitive volumes)
+    /// the fast path is taken exactly as before.
+    /// </summary>
+    private static bool IsStaleCaseSpelling(string storedPath, string foundPath) =>
+        !string.Equals(storedPath, foundPath, StringComparison.Ordinal) && !File.Exists(storedPath);
 
     /// <summary>Returns the first artist token for sorting (e.g. "Bad Bunny" from "Bad Bunny & J Balvin").</summary>
     private static string GetPrimaryArtist(string? artist)
