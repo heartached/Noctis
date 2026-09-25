@@ -259,6 +259,16 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             || Noctis.Helpers.SearchText.Matches(track.Album, query);
     }
 
+    /// <summary><see cref="MatchesSearch(Track, string)"/> against the track's cached search keys,
+    /// with <paramref name="queryKey"/> = SearchText.Normalize(query) computed once per scan.</summary>
+    public static bool MatchesSearch(Track track, string query, string queryKey)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        return Noctis.Helpers.SearchText.Matches(track.Title, track.SearchTitleKey, query, queryKey)
+            || Noctis.Helpers.SearchText.Matches(track.Artist, track.SearchArtistKey, query, queryKey)
+            || Noctis.Helpers.SearchText.Matches(track.Album, track.SearchAlbumKey, query, queryKey);
+    }
+
     [RelayCommand]
     private void SetSort(string mode)
     {
