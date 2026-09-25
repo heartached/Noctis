@@ -239,6 +239,7 @@ public static class RecycleBin
                 RedirectStandardError = true,
             };
             foreach (var a in args) psi.ArgumentList.Add(a);
+            PlatformHelper.ScrubAppImageEnvironment(psi);
 
             using var p = Process.Start(psi);
             if (p == null) return false;
