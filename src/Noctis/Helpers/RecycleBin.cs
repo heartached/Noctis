@@ -17,12 +17,20 @@ public static class RecycleBin
     /// Moves <paramref name="path"/> to the OS trash. Returns true only when the
     /// file existed and was successfully trashed.
     /// </summary>
-    public static bool TryMoveToTrash(string path)
+    public static bool TryMoveToTrash(string path) => TryMoveToTrash(path, out _);
+
+    /// <inheritdoc cref="TryMoveToTrash(string)"/>
+    /// <param name="path">The file to trash.</param>
+    /// <param name="declined">True when Windows could only delete permanently (the
+    /// drive's Recycle Bin is off, or the item is over its quota) and the user said No.
+    /// Trying again would only raise the same prompt.</param>
+    public static bool TryMoveToTrash(string path, out bool declined)
     {
+        declined = false;
         try
         {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
-            return TrashCore(path);
+            return TrashCore(path, out declined);
         }
         catch
         {
@@ -35,12 +43,18 @@ public static class RecycleBin
     /// trash. Returns true only when the directory existed and was trashed. All three
     /// platform backends accept directories the same way they accept files.
     /// </summary>
-    public static bool TryMoveDirectoryToTrash(string path)
+    public static bool TryMoveDirectoryToTrash(string path) => TryMoveDirectoryToTrash(path, out _);
+
+    /// <inheritdoc cref="TryMoveDirectoryToTrash(string)"/>
+    /// <param name="path">The directory to trash.</param>
+    /// <param name="declined">Same as <see cref="TryMoveToTrash(string, out bool)"/>.</param>
+    public static bool TryMoveDirectoryToTrash(string path, out bool declined)
     {
+        declined = false;
         try
         {
             if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return false;
-            return TrashCore(path);
+            return TrashCore(path, out declined);
         }
         catch
         {
@@ -48,9 +62,10 @@ public static class RecycleBin
         }
     }
 
-    private static bool TrashCore(string path)
+    private static bool TrashCore(string path, out bool declined)
     {
-        if (OperatingSystem.IsWindows()) return WindowsRecycle(path);
+        declined = false;
+        if (OperatingSystem.IsWindows()) return WindowsRecycle(path, out declined);
         if (OperatingSystem.IsMacOS()) return MacTrash(path);
         if (OperatingSystem.IsLinux()) return LinuxTrash(path);
         return false;
@@ -61,8 +76,9 @@ public static class RecycleBin
     // DeleteFile with UIOption.OnlyErrorDialogs did exactly that); failures just
     // surface as `false` to the caller. The one prompt left is the shell's
     // "permanently delete?" nuke warning (see FOF_WANTNUKEWARNING below).
-    private static bool WindowsRecycle(string path)
+    private static bool WindowsRecycle(string path, out bool declined)
     {
+        declined = false;
         var fullPath = Path.GetFullPath(path);
         // FOF_ALLOWUNDO only recycles "if possible": on a volume with no Recycle Bin
         // (UNC or mapped network share, USB stick) the shell deletes permanently, so
@@ -79,8 +95,23 @@ public static class RecycleBin
             // for the drive); declining leaves the item and reports false.
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_WANTNUKEWARNING | FOF_SILENT | FOF_NOERRORUI,
         };
-        return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
+        var result = SHFileOperation(ref op);
+        declined = WasDeclined(result, op.fAnyOperationsAborted);
+        return result == 0 && !op.fAnyOperationsAborted;
     }
+
+    /// <summary>
+    /// True when the operation was cancelled at a prompt instead of failing. Every other
+    /// dialog is suppressed, so the only prompt left is the permanent-delete warning.
+    /// Real failures return an error code with the aborted flag clear. Measured with
+    /// these flags: a missing path returns 2, a locked file 32, a folder holding a
+    /// locked file 124. So the handle-release retries are not mistaken for a No.
+    /// </summary>
+    internal static bool WasDeclined(int result, bool anyOperationsAborted)
+        => anyOperationsAborted || result == ERROR_CANCELLED || result == DE_OPCANCELLED;
+
+    private const int ERROR_CANCELLED = 1223;
+    private const int DE_OPCANCELLED = 0x75;
 
     /// <summary>
     /// True when <paramref name="fullPath"/> is on a local fixed drive, the only kind
