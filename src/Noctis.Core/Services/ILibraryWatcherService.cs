@@ -10,6 +10,7 @@ public interface ILibraryWatcherService : IDisposable
     /// Rebuilds the set of active filesystem watchers from current settings
     /// (<c>MusicFolders</c> + <c>WatchFoldersEnabled</c>). Safe to call repeatedly;
     /// disposes any existing watchers first. A no-op when watching is disabled.
+    /// The rebuild runs on the thread pool; the call returns immediately.
     /// </summary>
     void Refresh();
 

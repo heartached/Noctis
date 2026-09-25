@@ -48,13 +48,25 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     {
         if (_disposed) return;
 
-        AppSettings settings;
-        try { settings = _settingsAccessor() ?? new AppSettings(); }
-        catch { return; }
+        // Rebuild on the thread pool: callers include the UI thread (launch, music-folder
+        // changes, the Watch Folders toggle), and on Linux enabling a recursive watcher
+        // walks the whole folder tree on the calling thread (one inotify watch per
+        // directory), which takes seconds on a cold disk or a network mount.
+        _ = Task.Run(RebuildWatchers);
+    }
 
+    private void RebuildWatchers()
+    {
         lock (_gate)
         {
             if (_disposed) return;
+
+            // Read under the lock so overlapping rebuilds, which may run in any order,
+            // all settle on the latest folder set and toggle state.
+            AppSettings settings;
+            try { settings = _settingsAccessor() ?? new AppSettings(); }
+            catch { return; }
+
             DisposeWatchers();
 
             if (!settings.WatchFoldersEnabled) return;
