@@ -413,6 +413,8 @@ public partial class PlaylistView : UserControl
             sendToFolderCommand: vm.SendToFolderCommand,
             badgeCommand: vm.SetBadgeCommand,
             badgeNames: vm.BadgeNames);
+        // Same gate as the selection bar's Remove: smart playlists are rule-driven.
+        _menuBuilder.Remove.IsVisible = vm.IsManualPlaylist;
     }
 
     private void DetachMenuFromOwner()

@@ -665,6 +665,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task RemoveTrack(Track track)
     {
+        // Smart playlist contents come from its rules, not TrackIds: the row would just
+        // come back on the next reload.
+        if (IsSmartPlaylist) return;
         var tracks = SelectionOr(track);
         foreach (var t in tracks)
         {

@@ -218,9 +218,12 @@ public sealed class TrackContextMenuBuilder
         _pluginSeparator = new Separator { IsVisible = false };
         items.Add(_pluginSeparator);
 
-        items.Add(new Separator());
+        var removeSeparator = new Separator();
+        items.Add(removeSeparator);
 
         Remove = new MenuItem { Header = removeHeader };
+        // A view may hide Remove (smart playlists); don't leave a trailing separator.
+        removeSeparator.Bind(Visual.IsVisibleProperty, Remove.GetObservable(Visual.IsVisibleProperty));
         var isDanger = removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase);
         if (isDanger)
             Remove.Classes.Add("danger");
