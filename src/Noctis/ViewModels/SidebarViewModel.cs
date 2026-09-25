@@ -637,11 +637,12 @@ public partial class SidebarViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
-    /// <summary>Adds tracks to a playlist and persists.</summary>
+    /// <summary>Adds tracks to a manual playlist and persists. Smart playlists are
+    /// filled by their rules, so added ids would never show and are ignored.</summary>
     public async Task AddTracksToPlaylist(Guid playlistId, IEnumerable<Track> tracks)
     {
         var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
-        if (playlist == null) return;
+        if (playlist == null || playlist.IsSmartPlaylist) return;
 
         // Only add tracks that aren't already in the playlist to prevent duplicates
         var existingIds = new HashSet<Guid>(playlist.TrackIds);
