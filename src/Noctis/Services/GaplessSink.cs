@@ -29,7 +29,7 @@ namespace Noctis.Services;
 public sealed class GaplessSink : IDisposable
 {
     private readonly object _gate = new();
-    private WasapiOut _out;
+    private IWavePlayer _out; // WasapiOut, or NullWavePlayer in silent test mode
     private string? _deviceId; // endpoint the current output was opened against
     private readonly WaveFileWriter? _tap; // NOCTIS_ENGINE_TAP diagnostic capture
     private readonly ISampleProvider _renderSource;
@@ -184,9 +184,13 @@ public sealed class GaplessSink : IDisposable
         catch { return 2; }
     }
 
-    private WasapiOut CreateOutput()
+    private IWavePlayer CreateOutput()
     {
-        var wasapiOut = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs);
+        // Silent test mode (NOCTIS_AOUT=dummy): the same chain, pulled in real time by a
+        // player with no device behind it (see NullWavePlayer).
+        IWavePlayer wasapiOut = NullWavePlayer.SilentMode
+            ? new NullWavePlayer()
+            : new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: OutputLatencyMs);
         try
         {
             ISampleProvider render = _renderSource;
@@ -221,7 +225,7 @@ public sealed class GaplessSink : IDisposable
         if (_disposed || e.Exception == null) return;
         // A stopped event can arrive queued (sync-context post) after its
         // output was already replaced — never rebuild a healthy sink over it.
-        WasapiOut current;
+        IWavePlayer current;
         lock (_gate) current = _out;
         if (!ReferenceEquals(sender, current)) return;
         DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.DeviceLost",
@@ -236,7 +240,8 @@ public sealed class GaplessSink : IDisposable
     // the default, so the engine must too.
     private void CheckDefaultDevice()
     {
-        if (_disposed || Volatile.Read(ref _rebuilding) == 1) return;
+        // Silent test mode has no device to follow.
+        if (_disposed || NullWavePlayer.SilentMode || Volatile.Read(ref _rebuilding) == 1) return;
         string currentId;
         try
         {
@@ -260,7 +265,7 @@ public sealed class GaplessSink : IDisposable
     {
         try
         {
-            WasapiOut oldOut;
+            IWavePlayer oldOut;
             lock (_gate) oldOut = _out;
             oldOut.PlaybackStopped -= OnPlaybackStopped;
             try { oldOut.Stop(); } catch { }
@@ -270,7 +275,7 @@ public sealed class GaplessSink : IDisposable
             while (!_disposed)
             {
                 attempt++;
-                WasapiOut? newOut = null;
+                IWavePlayer? newOut = null;
                 try
                 {
                     newOut = CreateOutput();
@@ -326,7 +331,7 @@ public sealed class GaplessSink : IDisposable
     public void Pause()
     {
         _desiredPlaying = false;
-        WasapiOut current;
+        IWavePlayer current;
         lock (_gate) current = _out;
         try { current.Pause(); } catch { /* device transitional */ }
     }
@@ -334,7 +339,7 @@ public sealed class GaplessSink : IDisposable
     public void Resume()
     {
         _desiredPlaying = true;
-        WasapiOut current;
+        IWavePlayer current;
         lock (_gate) current = _out;
         try { current.Play(); } catch { /* device transitional */ }
     }
@@ -344,7 +349,7 @@ public sealed class GaplessSink : IDisposable
         _disposed = true;
         try { _deviceWatch.Dispose(); } catch { }
         try { Provider.Clear(); } catch { }
-        WasapiOut current;
+        IWavePlayer current;
         lock (_gate) current = _out;
         current.PlaybackStopped -= OnPlaybackStopped;
         try { current.Stop(); } catch { }

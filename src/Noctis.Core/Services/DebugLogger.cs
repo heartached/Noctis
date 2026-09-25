@@ -41,7 +41,7 @@ public static class DebugLogger
     /// (they must be recorded even when this logger is off), so mirroring them would
     /// double every line.</summary>
     private static readonly HashSet<string> SessionLogSelfWriters =
-        new(StringComparer.Ordinal) { "PositionTimer.Stall" };
+        new(StringComparer.Ordinal) { "PositionTimer.Stall", "Audio.SilentMode" };
 
     /// <summary>Also write to System.Diagnostics.Debug output.</summary>
     public static bool MirrorToDebugOutput { get; set; }

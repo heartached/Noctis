@@ -99,6 +99,8 @@ internal sealed class WasapiGainOutput : IDisposable
     public static WasapiGainOutput? TryCreate()
     {
         if (!OperatingSystem.IsWindows()) return null;
+        // Silent test mode (NOCTIS_AOUT=dummy) opens no device: callers take their fallbacks.
+        if (NullWavePlayer.SilentMode) return null;
         try { return new WasapiGainOutput(); }
         catch (Exception ex)
         {
@@ -118,6 +120,11 @@ internal sealed class WasapiGainOutput : IDisposable
         if (!OperatingSystem.IsWindows())
         {
             failureReason = "not supported on this platform";
+            return null;
+        }
+        if (NullWavePlayer.SilentMode)
+        {
+            failureReason = "silent test mode (NOCTIS_AOUT=dummy)";
             return null;
         }
         try { return new WasapiGainOutput(sampleRate, channels); }

@@ -536,8 +536,14 @@ public class VlcAudioPlayer : IAudioPlayer
             // "playback too late → flushing buffers" stutter; directsound /
             // waveout use different timing models. Defaults to mmdevice.
             var aoutOverride = Environment.GetEnvironmentVariable("NOCTIS_AOUT");
-            var aout = string.IsNullOrWhiteSpace(aoutOverride) ? "mmdevice" : aoutOverride.Trim();
+            var aout = NullWavePlayer.SilentMode ? "dummy"
+                : string.IsNullOrWhiteSpace(aoutOverride) ? "mmdevice" : aoutOverride.Trim();
             vlcArgs.Add($"--aout={aout}");
+        }
+        else if (NullWavePlayer.SilentMode)
+        {
+            // NOCTIS_AOUT=dummy is also the silent test mode on macOS/Linux: no audio device at all.
+            vlcArgs.Add("--aout=dummy");
         }
 
         // Verbose generation so LibVLC actually emits debug-level audio-output
@@ -729,9 +735,20 @@ public class VlcAudioPlayer : IAudioPlayer
         // Windows uses a silent WASAPI stream; macOS/Linux use a silent looping
         // LibVLC player (see VlcSilenceKeepAlive) — both keep the device warm so
         // the first Play() / every transition opens against a running endpoint.
-        _keepAlive = OperatingSystem.IsWindows()
-            ? WasapiSilenceKeepAlive.TryStart()
-            : VlcSilenceKeepAlive.TryStart(_libVlc);
+        // Silent test mode (NOCTIS_AOUT=dummy) opens no device, so it has nothing to warm.
+        _keepAlive = NullWavePlayer.SilentMode ? null
+            : OperatingSystem.IsWindows()
+                ? WasapiSilenceKeepAlive.TryStart()
+                : VlcSilenceKeepAlive.TryStart(_libVlc);
+        if (NullWavePlayer.SilentMode)
+        {
+            const string silentMode = "NOCTIS_AOUT=dummy: engine renders to a null output, VLC --aout=dummy, " +
+                                      "keep-alive and WASAPI sinks off";
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Audio.SilentMode", silentMode);
+            // Written to the session log directly too: this runs at launch, before the
+            // settings turn Developer Mode (and with it the Playback mirror) on.
+            DebugLog.Write("Playback", $"Warn: Audio.SilentMode | {silentMode}");
+        }
 
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
