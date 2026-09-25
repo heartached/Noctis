@@ -251,7 +251,7 @@ public class SidebarGroupReorderTests
                   { "id": "00000000-0000-0000-0000-000000000002", "name": "A1", "folder": "Alpha" },
                   { "id": "00000000-0000-0000-0000-000000000003", "name": "B1", "folder": "Beta" }
                 ]
-                """);
+                """, TestContext.Current.CancellationToken);
 
             var vm = new SidebarViewModel(new PersistenceService(root), new FakeLibraryService());
             await vm.LoadPlaylistsAsync();
