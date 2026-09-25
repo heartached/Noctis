@@ -16,8 +16,8 @@ public sealed record WhisperModelInfo(WhisperModelSize Size, string DisplayName,
 
 /// <summary>
 /// Whisper (ggml) speech models for Lyrics Studio: where they live, which are installed,
-/// and on-demand download from the official whisper.cpp mirror through Whisper.net's
-/// downloader. Models are big, so nothing is fetched until the user asks.
+/// and on-demand, resumable download from Whisper.net's Hugging Face mirror. Models are big,
+/// so nothing is fetched until the user asks.
 /// </summary>
 public sealed class WhisperModelManager
 {
@@ -35,11 +35,22 @@ public sealed class WhisperModelManager
         _ => size,
     };
 
-    private readonly string _directory;
+    // No overall timeout: a 1.5 GB model on a slow link takes over an hour. Stalls are caught
+    // per read by ResumableDownload instead.
+    private static readonly Lazy<HttpClient> SharedHttp = new(() => new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
 
-    public WhisperModelManager(string dataRoot)
+    private readonly string _directory;
+    private readonly HttpClient _http;
+    private readonly ResumableDownload.Options? _downloadOptions;
+
+    public WhisperModelManager(string dataRoot) : this(dataRoot, null, null) { }
+
+    /// <summary>Test seam: a fake HTTP handler and short retry delays.</summary>
+    internal WhisperModelManager(string dataRoot, HttpClient? http, ResumableDownload.Options? downloadOptions)
     {
         _directory = Path.Combine(dataRoot, "models", "whisper");
+        _http = http ?? SharedHttp.Value;
+        _downloadOptions = downloadOptions;
     }
 
     public string Directory => _directory;
@@ -64,39 +75,38 @@ public sealed class WhisperModelManager
 
     public IReadOnlyList<WhisperModelSize> Installed() => Catalog.Where(m => IsInstalled(m.Size)).Select(m => m.Size).ToList();
 
-    /// <summary>Downloads the model to a temp file and moves it into place; progress is 0–1 against the published size.</summary>
+    /// <summary>
+    /// Downloads the model to a ".part" file and moves it into place; progress is 0–1. A dropped or
+    /// stalled connection is retried and resumed (<see cref="ResumableDownload"/>), and the ".part"
+    /// survives a failure so the next attempt continues where this one stopped (09-25 Discord: Medium
+    /// "fails halfway" on a slow link, and each retry used to start again from zero).
+    /// </summary>
     public async Task DownloadAsync(WhisperModelSize size, IProgress<double>? progress, CancellationToken ct)
     {
         System.IO.Directory.CreateDirectory(_directory);
         var target = PathFor(size);
         var temp = target + ".part";
         var info = Info(size);
-        try
-        {
-            await using var source = await WhisperGgmlDownloader.Default
-                .GetGgmlModelAsync(ToGgml(size), QuantizationType.NoQuantization, ct).ConfigureAwait(false);
-            await using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, useAsync: true))
-            {
-                var buffer = new byte[1 << 16];
-                long total = 0;
-                int read;
-                while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
-                {
-                    await file.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-                    total += read;
-                    progress?.Report(Math.Min(0.999, total / (double)info.ApproxBytes));
-                }
-            }
-            File.Move(temp, target, overwrite: true);
-            progress?.Report(1);
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelInstalled", $"{info.FileName} ({new FileInfo(target).Length} bytes)");
-        }
-        catch
-        {
-            try { if (File.Exists(temp)) File.Delete(temp); } catch { }
-            throw;
-        }
+        await ResumableDownload.DownloadAsync(
+            _http,
+            () => new HttpRequestMessage(HttpMethod.Get, ModelUrl(size)),
+            temp,
+            resumeExisting: true,
+            (done, total) => progress?.Report(Math.Min(0.999, done / (double)(total > 0 ? total : info.ApproxBytes))),
+            "Whisper." + info.FileName,
+            ct,
+            _downloadOptions).ConfigureAwait(false);
+        File.Move(temp, target, overwrite: true);
+        progress?.Report(1);
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelInstalled", $"{info.FileName} ({new FileInfo(target).Length} bytes)");
     }
+
+    /// <summary>
+    /// The URL Whisper.net 1.9.1's WhisperGgmlDownloader builds for an unquantized model
+    /// ("{repo}/v4/classic/{name}.bin"). Fetched directly because that downloader cannot resume.
+    /// </summary>
+    internal static string ModelUrl(WhisperModelSize size) =>
+        "https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/" + Info(size).FileName;
 
     public void Delete(WhisperModelSize size)
     {
@@ -108,13 +118,5 @@ public sealed class WhisperModelManager
     {
         WhisperModelSize.Medium => WhisperAlignmentHeadsPreset.Medium,
         _ => WhisperAlignmentHeadsPreset.Base,
-    };
-
-    private static GgmlType ToGgml(WhisperModelSize size) => size switch
-    {
-        WhisperModelSize.Tiny => GgmlType.Tiny,
-        WhisperModelSize.Small => GgmlType.Small,
-        WhisperModelSize.Medium => GgmlType.Medium,
-        _ => GgmlType.Base,
     };
 }

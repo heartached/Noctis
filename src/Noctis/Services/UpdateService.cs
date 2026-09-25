@@ -19,6 +19,9 @@ public sealed class UpdateService
 
     private readonly HttpClient _http;
 
+    /// <summary>Null = <see cref="ResumableDownload.Options.Default"/>; tests shorten the retry delays.</summary>
+    internal ResumableDownload.Options? DownloadOptions { get; set; }
+
     public UpdateService(HttpClient http)
     {
         _http = http;
@@ -490,32 +493,28 @@ public sealed class UpdateService
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Accept.Add(
-                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
-
-            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
-
-            var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
-            await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
-            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920);
-
-            var buffer = new byte[81920];
-            long bytesRead = 0;
-            int read;
-
-            while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
-            {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
-                bytesRead += read;
-
-                if (totalBytes > 0)
-                    progress?.Report((double)bytesRead / totalBytes * 100.0);
-            }
-
-            await fileStream.FlushAsync(ct);
-            await fileStream.DisposeAsync(); // release the handle before validating / hashing
+            // Retried and resumed (HTTP Range) within this call when the connection drops or
+            // stalls; the size + SHA-256 checks below still gate the finished file.
+            await ResumableDownload.DownloadAsync(
+                _http,
+                () =>
+                {
+                    var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    request.Headers.Accept.Add(
+                        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
+                    return request;
+                },
+                tempPath,
+                resumeExisting: false,
+                (done, total) =>
+                {
+                    var totalBytes = total > 0 ? total : expectedSize;
+                    if (totalBytes > 0)
+                        progress?.Report((double)done / totalBytes * 100.0);
+                },
+                "Update.Installer",
+                ct,
+                DownloadOptions);
 
             // Validate file size if GitHub reported one
             if (expectedSize > 0)

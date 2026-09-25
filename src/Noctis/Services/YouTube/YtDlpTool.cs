@@ -56,6 +56,8 @@ public sealed class YtDlpTool
     internal Func<DateTime> Clock { get; set; } = () => DateTime.UtcNow;
     /// <summary>Null = detect from PATH on first use.</summary>
     internal (bool HasDeno, bool HasNode)? JsRuntimes { get; set; }
+    /// <summary>Null = <see cref="ResumableDownload.Options.Default"/>; tests shorten the retry delays.</summary>
+    internal ResumableDownload.Options? DownloadOptions { get; set; }
 
     public YtDlpTool(HttpClient http, string dataRoot, Func<string> overridePath)
     {
@@ -128,21 +130,24 @@ public sealed class YtDlpTool
         Directory.CreateDirectory(ToolsDirectory);
         var url = YtDlpParsing.ReleaseDownloadUrl();
         var temp = InstalledPath + ".part";
-        using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var total = response.Content.Headers.ContentLength ?? 0;
-        await using (var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
-        await using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, useAsync: true))
+        // Retried/resumed within this call only: "latest" can change between calls, so a
+        // leftover .part from an earlier run is never continued.
+        try
         {
-            var buffer = new byte[1 << 16];
-            long done = 0;
-            int read;
-            while ((read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
-            {
-                await file.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-                done += read;
-                if (total > 0) progress?.Report(Math.Min(0.99, done / (double)total));
-            }
+            await ResumableDownload.DownloadAsync(
+                _http,
+                () => new HttpRequestMessage(HttpMethod.Get, url),
+                temp,
+                resumeExisting: false,
+                (done, total) => { if (total > 0) progress?.Report(Math.Min(0.99, done / (double)total)); },
+                "YtDlp.Install",
+                ct,
+                DownloadOptions).ConfigureAwait(false);
+        }
+        catch
+        {
+            try { File.Delete(temp); } catch { }
+            throw;
         }
         File.Move(temp, InstalledPath, overwrite: true);
         _versionCache = null;
