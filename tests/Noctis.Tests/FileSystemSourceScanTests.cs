@@ -99,13 +99,13 @@ public class FileSystemSourceScanTests : IDisposable
     {
         var source = new StreamOnlySource(_music) { NameOf = n => n.ToLowerInvariant() };
         var (library, _) = MakeLibrary(source);
-        await library.ScanAsync(new[] { "fake://tree/music" });
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
         var before = library.Tracks.Single(t => t.Title == "First");
         Assert.Equal("fake://tree/music/01 - first.mp3", before.FilePath);
         before.PlayCount = 7;
 
         source.NameOf = n => n;
-        await library.ScanAsync(new[] { "fake://tree/music" });
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, library.Tracks.Count);
         var after = library.Tracks.Single(t => t.Title == "First");
