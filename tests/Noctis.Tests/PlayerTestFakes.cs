@@ -47,7 +47,8 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void Pause() => State = PlaybackState.Paused;
     public void Resume() => State = PlaybackState.Playing;
     public void Stop() => State = PlaybackState.Stopped;
-    public void Seek(TimeSpan position) { }
+    public List<TimeSpan> Seeks { get; } = new();
+    public void Seek(TimeSpan position) => Seeks.Add(position);
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
     public void SetExclusiveMode(bool enabled) { }

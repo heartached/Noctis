@@ -531,7 +531,8 @@ public partial class PlayerViewModel : ViewModelBase
         {
             // Restart current track
             CancelAutoMixTransition("user skipped");
-            _audioPlayer.Seek(TimeSpan.Zero);
+            if (!DeferSeekWhileStopped(TimeSpan.Zero))
+                _audioPlayer.Seek(TimeSpan.Zero);
             _lastSeekTime = DateTime.UtcNow;
             _lastCommittedSeekTarget = TimeSpan.Zero;
             Position = TimeSpan.Zero;
@@ -627,10 +628,27 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("user seeked");
         DebugLogger.Info(DebugLogger.Category.Playback, "SeekToPosition",
             $"targetMs={target.TotalMilliseconds:F0}, state={State}, track={CurrentTrack.Id}");
-        _audioPlayer.Seek(target);
+        if (!DeferSeekWhileStopped(target))
+            _audioPlayer.Seek(target);
         _lastSeekTime = DateTime.UtcNow;
         _lastCommittedSeekTarget = target;
         Seeked?.Invoke(this, target);
+    }
+
+    /// <summary>
+    /// A seek on a Stopped track (restored session, or halted by stop-after-current) has
+    /// no playing media to move: the player dropped it (nothing loaded yet, so Play then
+    /// jumped back to the stale restored position) or restarted the ended media behind a
+    /// Stopped UI. Keep it as the one-shot resume target PlayTrack applies on Play instead.
+    /// </summary>
+    private bool DeferSeekWhileStopped(TimeSpan target)
+    {
+        if (State != PlaybackState.Stopped || CurrentTrack == null) return false;
+        _resumePositionMs = target > TimeSpan.Zero ? (long)target.TotalMilliseconds : -1;
+        _resumeTrackId = CurrentTrack.Id;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Deferred",
+            $"reason=stopped, targetMs={target.TotalMilliseconds:F0}, track={CurrentTrack.Id}");
+        return true;
     }
 
     [RelayCommand]
@@ -1939,6 +1957,12 @@ public partial class PlayerViewModel : ViewModelBase
         // This prevents hammering VLC with rapid seeks that cause audio crackling.
         DebugLogger.Info(DebugLogger.Category.Playback, "EndSeek", $"targetMs={target.TotalMilliseconds:F0}, debounce={SeekDebounceMs}ms");
         _seekDebounceTimer?.Dispose();
+        _seekDebounceTimer = null;
+        if (DeferSeekWhileStopped(target))
+        {
+            Seeked?.Invoke(this, target);
+            return;
+        }
         _seekDebounceTimer = new System.Threading.Timer(_ =>
         {
             DebugLogger.Info(DebugLogger.Category.Playback, "SeekDebounce.Fire", $"targetMs={target.TotalMilliseconds:F0}");
