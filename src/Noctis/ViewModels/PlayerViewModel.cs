@@ -655,7 +655,6 @@ public partial class PlayerViewModel : ViewModelBase
     private void ToggleMute()
     {
         IsMuted = !IsMuted;
-        _audioPlayer.IsMuted = IsMuted;
         DebugLogger.Info(DebugLogger.Category.Playback, "Mute", $"muted={IsMuted}, source=toggle");
     }
 
@@ -1706,7 +1705,13 @@ public partial class PlayerViewModel : ViewModelBase
         RefreshSignalPath();
     }
 
-    partial void OnIsMutedChanged(bool value) => RefreshSignalPath();
+    partial void OnIsMutedChanged(bool value)
+    {
+        // Every writer (toggle, adjust, queue restore) reaches the audio player here; the
+        // restore used to set only this property, so a saved mute showed Muted but played.
+        _audioPlayer.IsMuted = value;
+        RefreshSignalPath();
+    }
 
     /// <summary>
     /// Flush the final volume to VLC immediately — call on slider drag-end
@@ -1722,7 +1727,6 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!IsMuted) return;
         IsMuted = false;
-        _audioPlayer.IsMuted = false;
         DebugLogger.Info(DebugLogger.Category.Playback, "Mute", "muted=False, source=adjust");
     }
 
