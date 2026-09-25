@@ -4409,18 +4409,26 @@ public class VlcAudioPlayer : IAudioPlayer
             try
             {
                 if (_disposed) return;
-                if (_player.IsPlaying)
+                // Gated on intent, not on VLC's IsPlaying: that is false while a new
+                // input is still opening and through the engine's tail (the input is
+                // Ended ~2 s before the ring has played out). A pause dropped there
+                // left the audio playing under a Paused UI, and the end of the tail
+                // then started the next track.
+                if (_currentMedia != null && !_isPaused)
                 {
                     ResetEndReachedPending();
                     var fade = PlayPauseFadeArmed;
                     var drainMs = PausedOutputDrainMs(OutputLatency);
+                    var vlcState = _player.State;
                     RunFadedPause(
                         fade,
                         drainMs,
                         FadeOutBeforePause,
                         () =>
                         {
-                            _player.Pause();
+                            // SetPause, not the Pause() toggle: idempotent, a no-op on an
+                            // Ended input, and queued until an opening input can pause.
+                            _player.SetPause(true);
                             // Engine: the ring holds seconds of decoded audio — pausing
                             // only VLC would keep the sink audibly playing it out.
                             if (_gaplessEngine)
@@ -4439,13 +4447,13 @@ public class VlcAudioPlayer : IAudioPlayer
                             finally { _transitionInFlight = false; }
                         });
                     DebugLogger.Info(DebugLogger.Category.Playback, "Playback.Pause",
-                        $"engine={_gaplessEngine}, fade={fade}, drainMs={(fade ? drainMs : 0)}");
+                        $"engine={_gaplessEngine}, fade={fade}, drainMs={(fade ? drainMs : 0)}, vlcState={vlcState}");
                 }
                 else
                 {
-                    // Nothing is playing yet (input still opening) or any more: dropped.
+                    // No media loaded, or already paused: dropped.
                     DebugLogger.Info(DebugLogger.Category.Playback, "Pause.Ignored",
-                        $"vlcState={_player.State}, engineTail={EngineActiveTailSegment() != null}");
+                        $"vlcState={_player.State}, engineTail={EngineActiveTailSegment() != null}, paused={_isPaused}");
                 }
             }
             catch (ObjectDisposedException) { /* disposed mid-pause */ }
@@ -4482,13 +4490,19 @@ public class VlcAudioPlayer : IAudioPlayer
                     if (fade) DipLevelBeforeResume();
                     if (_gaplessEngine)
                         _gaplessSink?.Resume();
-                    // VLC's Pause() toggles between pause and play
-                    _player.Pause();
+                    // Not the Pause() toggle: it pauses when the input still reads Playing
+                    // (a pause queued on an opening input that hasn't applied yet).
+                    _player.SetPause(false);
                     _isPaused = false;
+                    // Paused after the input hit EOF (the engine tail): an Ended input
+                    // raises no second end, so arm the end grace from here.
+                    var inputEnded = _player.State == VLCState.Ended;
+                    if (inputEnded)
+                        ArmEndGrace(CurrentSessionId);
                     _positionTimer.Start();
                     if (fade) FadeInAfterResume();
                     DebugLogger.Info(DebugLogger.Category.Playback, "Playback.Resume",
-                        $"engine={_gaplessEngine}, fade={fade}");
+                        $"engine={_gaplessEngine}, fade={fade}, inputEnded={inputEnded}");
                 }
                 else
                 {
@@ -4588,6 +4602,8 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_seekGate) { _latestSeekMs = -1; }
             _positionTimer.Stop();
             Interlocked.Exchange(ref _pendingSeekMs, restartMs);
+            // Paused in the engine tail: the restart must open paused too.
+            _restartPausedRequest = _isPaused;
             Play(_currentMediaPath);
             return;
         }
@@ -4756,6 +4772,14 @@ public class VlcAudioPlayer : IAudioPlayer
         // and started the next track over it, which with gapless OFF sounded
         // like gapless was still on (same root as the repeat-one / queue-end
         // tail cut). One-shot upper bound, self-capped by the ring capacity.
+        ArmEndGrace(sessionId);
+        _positionTimer.Start();
+    }
+
+    // Arms the end grace for the current input: EndReachedGraceMs, or on the engine
+    // until the audible tail has played out (see the note in OnEndReachedCore).
+    private void ArmEndGrace(long sessionId)
+    {
         var graceMs = (long)EndReachedGraceMs;
         if (EngineActiveTailSegment() is { } tailSeg)
         {
@@ -4766,7 +4790,6 @@ public class VlcAudioPlayer : IAudioPlayer
         var deadline = DateTime.UtcNow.AddMilliseconds(graceMs).Ticks;
         Interlocked.Exchange(ref _endReachedSessionId, sessionId);
         Interlocked.Exchange(ref _endReachedDeadlineTicksUtc, deadline);
-        _positionTimer.Start();
     }
 
     private void OnError(object? sender, EventArgs e)
