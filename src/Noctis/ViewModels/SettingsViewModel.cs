@@ -6122,6 +6122,32 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
         }
 
+        // Launch-at-login is an OS-level registration, not a settings field — a reset
+        // that leaves it enabled means the app keeps starting itself after the user
+        // asked for defaults. The toggle only reads the OS at load, so re-read it here:
+        // it kept showing ON, and flipping Start-minimized then re-registered the entry.
+        try { Helpers.StartupHelper.SetEnabled(false); } catch { }
+        _suppressLaunchAtStartupHandler = true;
+        try { LaunchAtStartup = Helpers.StartupHelper.IsEnabled(); }
+        finally { _suppressLaunchAtStartupHandler = false; }
+
+        ResetSettingsToDefaults(defaultSettings);
+
+        SetScanStatus("All settings and data have been reset.", autoClear: true);
+        RefreshLibraryStats();
+        TotalPlaylists = 0;
+        RefreshStorageInfo();
+
+        SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Puts every view-model-owned setting back to <paramref name="defaultSettings"/>.
+    /// SaveAsync re-bases on the defaulted file and then SyncToSettings writes these
+    /// properties over it, so any one left out here silently survives the reset.
+    /// </summary>
+    internal void ResetSettingsToDefaults(AppSettings defaultSettings)
+    {
         // Update ViewModel with defaults (suspend persistence during update)
         _suspendSettingPersistence = true;
         try
@@ -6142,6 +6168,7 @@ public partial class SettingsViewModel : ViewModelBase
             ActiveAccentHex = defaultSettings.AccentColorHex;
             ActiveAccentName = defaultSettings.AccentPresetName;
             CustomAccentHex = ActiveAccentHex;
+            AccentFollowsArtwork = defaultSettings.AccentFollowsArtwork;
             try
             {
                 _suppressPickerSync = true;
@@ -6150,6 +6177,9 @@ public partial class SettingsViewModel : ViewModelBase
             catch { }
             finally { _suppressPickerSync = false; }
             RebuildAccentSwatches();
+
+            // Keyboard shortcuts: SyncToSettings writes the service's overrides back.
+            ShortcutService.Load(defaultSettings);
 
             // Preferences
             ScanOnStartup = true;
@@ -6169,6 +6199,9 @@ public partial class SettingsViewModel : ViewModelBase
             RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             LocalApiEnabled = defaultSettings.LocalApiEnabled;
+            // Enabled first: a port change while the server still runs restarts it.
+            NoctisServerEnabled = defaultSettings.NoctisServerEnabled;
+            NoctisServerPort = defaultSettings.NoctisServerPort;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
@@ -6202,6 +6235,10 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
             LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
+            _lyricsBackgroundOverrides.Clear(); // ApplyPlayerSettings below pushes the empty map
+            LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
+            MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
+            MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
@@ -6228,13 +6265,19 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
+            ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
+            ShowGenreColumn = defaultSettings.ShowGenreColumn;
+            ShowRatingColumn = defaultSettings.ShowRatingColumn;
+            ShowBpmColumn = defaultSettings.ShowBpmColumn;
+            ShowBitrateColumn = defaultSettings.ShowBitrateColumn;
+            ShowSampleRateColumn = defaultSettings.ShowSampleRateColumn;
+            ShowTimeColumn = defaultSettings.ShowTimeColumn;
+            ShowArtistColumn = defaultSettings.ShowArtistColumn;
+            ShowAlbumColumn = defaultSettings.ShowAlbumColumn;
+            ShowFavoritesColumn = defaultSettings.ShowFavoritesColumn;
+            ShowPlaysColumn = defaultSettings.ShowPlaysColumn;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
-
-            // Launch-at-login is an OS-level registration, not a settings field — a reset
-            // that leaves it enabled means the app keeps starting itself after the user
-            // asked for defaults.
-            try { Helpers.StartupHelper.SetEnabled(false); } catch { }
 
             // Playback
             CrossfadeEnabled = false;
@@ -6266,6 +6309,9 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
+            // Upmix, sync, YouTube downloads and Lyrics Studio: re-read from the defaulted
+            // _settings the same way LoadAsync does (ApplyAudioSettings below pushes upmix).
+            LoadFeatureSettings();
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -6293,6 +6339,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Integrations
             DiscordRichPresenceEnabled = false;
+            DiscordShowAlbum = defaultSettings.DiscordShowAlbum;
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             IsLastFmConnected = false;
@@ -6345,13 +6392,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _suspendSettingPersistence = false;
         }
-
-        SetScanStatus("All settings and data have been reset.", autoClear: true);
-        RefreshLibraryStats();
-        TotalPlaylists = 0;
-        RefreshStorageInfo();
-
-        SettingsReset?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
