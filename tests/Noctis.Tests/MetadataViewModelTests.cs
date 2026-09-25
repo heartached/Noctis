@@ -424,6 +424,40 @@ public class MetadataViewModelTests
         finally { Directory.Delete(dir, true); }
     }
 
+    [Fact]
+    public async Task MultiSelectRename_RelocatesRenamedTracksInLibrary()
+    {
+        // A track's id is the hash of its path. Only reassigning FilePath kept the old
+        // id, so the watcher (and the next scan) imported each renamed file as a new
+        // track and the old one's play counts, favorites and playlist entries were lost.
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Album("A", "X", 2);
+            tracks[0].FilePath = Path.Combine(dir, "a.flac");
+            tracks[1].FilePath = Path.Combine(dir, "b.flac");
+            File.WriteAllText(tracks[0].FilePath, "audio");
+            File.WriteAllText(tracks[1].FilePath, "audio");
+
+            using var p = new TestPersistenceService();
+            var library = new FakeLibraryService { TrackList = tracks.ToList() };
+            var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                library, p, new FakeAnimatedCoverService(),
+                albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+
+            vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Equal(new[]
+            {
+                (Path.Combine(dir, "a.flac"), Path.Combine(dir, "01 - Track 1.flac")),
+                (Path.Combine(dir, "b.flac"), Path.Combine(dir, "02 - Track 2.flac")),
+            }, library.Relocated);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     // ── Artwork chooser: iTunes search term construction ──
     // "Choose Artwork — From Apple Music" for the album "7" (Lil Nas X) showed George
     // Strait and Beach House records: the title-only query surfaced every album named
@@ -665,9 +699,13 @@ public class MetadataViewModelTests
         public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) => Array.Empty<Album>();
         public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
         public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
+        public List<(string oldPath, string newPath)> Relocated { get; } = new();
         public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
             IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        {
+            Relocated.AddRange(moves);
+            return Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        }
         public Task LoadAsync() => Task.CompletedTask;
         public Task SaveAsync() => Task.CompletedTask;
         public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;

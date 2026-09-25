@@ -6,6 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -2600,6 +2601,8 @@ public partial class MetadataViewModel : ViewModelBase
         if (_multiSelect && ApplyRename && _albumTracks != null)
         {
             var renameSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var watcher = App.Services?.GetService<ILibraryWatcherService>();
+            var renamed = new List<(string oldPath, string newPath)>();
             foreach (var t in _albumTracks)
             {
                 var newPath = ComputeRenamedPath(t, out var conflict, renameSeen);
@@ -2608,12 +2611,25 @@ public partial class MetadataViewModel : ViewModelBase
                 {
                     try
                     {
-                        File.Move(t.FilePath, newPath);
-                        MoveLyricSidecars(t.FilePath, newPath);
+                        var oldPath = t.FilePath;
+                        SuppressWatcherForRename(watcher, oldPath, newPath);
+                        File.Move(oldPath, newPath);
+                        MoveLyricSidecars(oldPath, newPath);
                         t.FilePath = newPath;
+                        renamed.Add((oldPath, newPath));
                     }
                     catch { /* Non-fatal — skip this file */ }
                 }
+            }
+
+            // A track's id is the hash of its path. Re-key the renamed tracks the way
+            // Organize Files does, keeping play counts, favorites and store-backed lyrics;
+            // with the old id the watcher/next scan imported each file as a new track.
+            if (renamed.Count > 0)
+            {
+                var remap = await _library.RelocateTracksAsync(renamed);
+                if (App.Services?.GetService<MainWindowViewModel>() is { } main)
+                    await main.Sidebar.ApplyTrackIdRemapAsync(remap);
             }
         }
 
@@ -2690,6 +2706,21 @@ public partial class MetadataViewModel : ViewModelBase
             }
             catch { /* Best effort — the audio rename already succeeded */ }
         }
+    }
+
+    /// <summary>Makes the folder watcher ignore a rename the editor is about to do (audio
+    /// file and its sidecars), as Organize Files does: it would otherwise record the old
+    /// path as deleted and import the new one before the track is relocated.</summary>
+    private static void SuppressWatcherForRename(ILibraryWatcherService? watcher, string oldPath, string newPath)
+    {
+        if (watcher == null) return;
+        var paths = new List<string> { oldPath, newPath };
+        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        {
+            paths.Add(Path.ChangeExtension(oldPath, ext));
+            paths.Add(Path.ChangeExtension(newPath, ext));
+        }
+        watcher.SuppressPaths(paths, TimeSpan.FromSeconds(30));
     }
 
     [RelayCommand]
