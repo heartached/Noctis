@@ -287,6 +287,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
+    /// <summary>
+    /// Identifies the filter the current rows were built for: artist, applied search (SearchText
+    /// runs ahead of it by the debounce) and chips. The view resets its scroll only when this
+    /// changes, so a library reload or column-count rebuild of the same results keeps its place.
+    /// </summary>
+    internal string FilterKey => $"{ArtistFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
+
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 

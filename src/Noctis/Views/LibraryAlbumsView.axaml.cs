@@ -18,6 +18,8 @@ public partial class LibraryAlbumsView : UserControl
 {
     private LibraryAlbumsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
+    /// <summary>The VM FilterKey the grid last reset its scroll for (see OnFilteredRowsChanged).</summary>
+    private string? _scrollResetFilterKey;
     // Track selection by the Album itself (not the tile Button) so that row
     // virtualization recycling the tile Buttons on scroll doesn't drop the
     // ctrl-selected highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
@@ -169,16 +171,25 @@ public partial class LibraryAlbumsView : UserControl
 
         _vm = DataContext as LibraryAlbumsViewModel;
         if (_vm != null)
+        {
             _vm.FilteredAlbumRows.CollectionChanged += OnFilteredRowsChanged;
+            _scrollResetFilterKey = _vm.FilterKey;
+        }
     }
 
     private void OnFilteredRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        // Scroll to top when rows change due to any active filter (search text or artist)
+        // Scroll to top when an active filter (search text, chips or artist) changes, not on
+        // every rebuild: a library reload or column-count change re-fills the same results
+        // and keeps the user's place.
         // BUT skip if a scroll restore is pending (returning from album detail)
-        if (_vm?.HasActiveFilter != true && _vm?.IsArtistFiltered != true)
+        if (_vm == null || _vm.FilterKey == _scrollResetFilterKey)
             return;
-        if (_pendingScrollRestore != null || (_vm != null && _vm.SavedScrollOffset > 0))
+        _scrollResetFilterKey = _vm.FilterKey;
+
+        if (!_vm.HasActiveFilter && !_vm.IsArtistFiltered)
+            return;
+        if (_pendingScrollRestore != null)
             return;
 
         Dispatcher.UIThread.Post(() =>

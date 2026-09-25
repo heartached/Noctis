@@ -47,6 +47,13 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>
+    /// Identifies the filter the current rows were built for: the applied search (SearchText
+    /// runs ahead of it by the debounce) plus the quality/favorites narrowing. The view resets
+    /// its scroll only when this changes, so a library reload of the same results keeps its place.
+    /// </summary>
+    internal string FilterKey => $"{_currentFilter}\n{QualityFilter}\n{ShowOnlyFavorites}";
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
