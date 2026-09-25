@@ -4103,6 +4103,14 @@ public class VlcAudioPlayer : IAudioPlayer
             "GaplessEngine.PlayCallbackThrew", $"slot={slot}, count={count}, {ex.GetType().Name}: {ex.Message}");
     }
 
+    // VLC 3's speex resampler (--speex-resampler-quality=10) is not reset by a
+    // seek flush: what it emits first afterwards is its pre-seek delay line
+    // (128 frames at the lower of the source and output rates), ending in a
+    // step into the new position that lands inside the 5 ms fade-in as a click
+    // (silent-harness tap: 139 frames in at 44.1 kHz, 128 at 96 kHz, none at
+    // 48 kHz where nothing resamples). 20 ms covers it for sources down to 8 kHz.
+    private const int EngineSeekResamplerTailMs = 20;
+
     private void EngineFlush(int slot)
     {
         try
@@ -4113,7 +4121,8 @@ public class VlcAudioPlayer : IAudioPlayer
             // would eat the un-played tail mid-splice. A drained segment is
             // final — ignore the flush.
             if (seg != null && !seg.EndOfStream)
-                seg.Flush(Interlocked.Read(ref _enginePendingBaseMs[slot]));
+                seg.Flush(Interlocked.Read(ref _enginePendingBaseMs[slot]),
+                    seg.SampleRate * EngineSeekResamplerTailMs / 1000);
         }
         catch { /* libvlc thread */ }
     }

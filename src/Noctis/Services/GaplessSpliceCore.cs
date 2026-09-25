@@ -46,6 +46,8 @@ public sealed class GaplessTrackSegment
     private bool _started;           // first samples handed to the render side
     private bool _cutPending;        // a Flush cut live audio; renderer must declick the junction
     private bool _flushRearmed;      // gate re-armed by a seek flush (warm decoder), not a cold start
+    private bool _hadAudio;          // any block written since creation (the upstream resampler holds history)
+    private int _discardSamples;     // post-flush samples still to drop: the resampler's stale pre-seek tail
     private long _consumedFrames;    // frames handed to the render side
     private long _basePositionMs;    // media position of the first frame after creation/flush
 
@@ -95,6 +97,17 @@ public sealed class GaplessTrackSegment
         {
             lock (_gate)
             {
+                _hadAudio = true;
+                if (_discardSamples > 0)
+                {
+                    // Stale head after a flush (see Flush): never staged, but
+                    // counted as consumed so PositionMs stays media time.
+                    var skip = Math.Min(_discardSamples, pcm.Length - offset);
+                    offset += skip;
+                    _discardSamples -= skip;
+                    _consumedFrames += skip / Channels;
+                    continue;
+                }
                 while (_count == _ring.Length)
                 {
                     if (_abandoned || _endOfStream)
@@ -161,8 +174,12 @@ public sealed class GaplessTrackSegment
     /// VLC flush callback (seek/stop): discard buffered PCM. The engine passes
     /// the seek target so position reporting stays truthful; a teardown flush
     /// AFTER drain must be ignored by the caller (it would eat the tail).
+    /// <paramref name="discardFrames"/> drops that many frames of the next
+    /// writes: an upstream resampler that a flush does not reset emits its
+    /// pre-flush history first, ending in a step into the new audio. Armed only
+    /// once audio has been written — before that there is no stale history.
     /// </summary>
-    public void Flush(long newBasePositionMs)
+    public void Flush(long newBasePositionMs, int discardFrames = 0)
     {
         lock (_gate)
         {
@@ -171,6 +188,7 @@ public sealed class GaplessTrackSegment
             _count = 0;
             _consumedFrames = 0;
             _basePositionMs = Math.Max(0, newBasePositionMs);
+            _discardSamples = _hadAudio ? Math.Max(0, discardFrames) * Channels : 0;
             // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
             // input start, and a once-per-life gate let the first trickle blocks
             // render against silence — the post-seek chop the gate exists to stop.

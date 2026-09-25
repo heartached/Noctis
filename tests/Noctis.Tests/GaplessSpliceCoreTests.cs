@@ -393,6 +393,66 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void SeekFlush_DiscardsTheStaleResamplerTail_NoStepInsideTheFade()
+    {
+        // Silent-harness capture (2026-09-25): VLC's speex resampler is not reset
+        // by a seek flush, so the first post-seek block opens with 139 frames of
+        // the PRE-seek waveform (44.1 kHz source → 48 kHz) and then steps into the
+        // new position. The 5 ms fade starts at the block head, so the step landed
+        // at ~58% gain — a click on every seek. The flush must drop that tail.
+        var provider = new GaplessSpliceProvider(48000, 2, startThresholdMs: 200, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(48000, 2, source: null, capacitySeconds: 20);
+        provider.Enqueue(seg);
+
+        // 375 Hz (128-frame period) sweep stand-in: L 0.3, R 0.25 phase-shifted.
+        short[] Sine(long firstFrame, int frames)
+        {
+            var b = new short[frames * 2];
+            for (var i = 0; i < frames; i++)
+            {
+                var ph = 2 * Math.PI * (firstFrame + i) / 128;
+                b[2 * i] = (short)(0.3 * Math.Sin(ph) * 32767);
+                b[2 * i + 1] = (short)(0.25 * Math.Sin(ph + 1) * 32767);
+            }
+            return b;
+        }
+
+        var output = new System.Collections.Generic.List<float>();
+        var buf = new float[960];
+        void Render(int reads)
+        {
+            for (var r = 0; r < reads; r++)
+            {
+                provider.Read(buf, 0, buf.Length);
+                output.AddRange(buf);
+            }
+        }
+
+        Assert.True(seg.Write(Sine(0, 24000)));             // 500 ms pre-seek
+        Render(30);                                          // playing live
+
+        seg.Flush(10_000, discardFrames: 960);               // the seek (EngineFlush: 20 ms)
+        var head = Sine(24000, 139)                          // stale resampler tail...
+            .Concat(Sine(24000 + 139 + 64, 24000))           // ...then the new position, half a period off
+            .ToArray();
+        Assert.True(seg.Write(head));
+        Assert.Equal(10_020, seg.PositionMs);                // dropped frames still count as media time
+        Render(30);
+
+        for (var i = 2; i < output.Count; i++)
+            Assert.True(Math.Abs(output[i] - output[i - 2]) < 0.05f,
+                $"step of {Math.Abs(output[i] - output[i - 2]):F3} at sample {i} (ch {i % 2})");
+        Assert.True(output.Skip(output.Count - 960).Max(s => Math.Abs(s)) > 0.29f, "post-seek audio never played");
+
+        // A flush before any audio (input-open) has no stale history: drop nothing.
+        var fresh = new GaplessTrackSegment(48000, 2, source: null);
+        fresh.Flush(5_000, discardFrames: 960);
+        Assert.True(fresh.Write(Sine(0, 1000)));
+        Assert.Equal(2000, fresh.BufferedSamples);
+        Assert.Equal(5_000, fresh.PositionMs);
+    }
+
+    [Fact]
     public void FlushStorm_UnderConcurrentReads_NeverReplaysOutput()
     {
         // Field capture (2026-08-13): every seek/skip renders a ~10ms window of
