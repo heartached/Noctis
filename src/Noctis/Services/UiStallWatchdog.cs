@@ -21,6 +21,8 @@ internal static class UiStallWatchdog
 
     private static DispatcherTimer? _timer;
     private static long _lastTick;
+    private static long _lastStallLog; // Stopwatch timestamp of the last UI.Stall line
+    private static int _suppressedStalls;
 
     /// <summary>Starts or stops the watchdog; called when Developer Mode toggles. Any thread.</summary>
     public static void SetEnabled(bool enabled)
@@ -57,8 +59,19 @@ internal static class UiStallWatchdog
         if (last == 0 || !DebugLogger.IsEnabled) return;
         // A suspended process (system sleep) shows up here as one very long stall.
         var blockedMs = (now - last) * 1000.0 / Stopwatch.Frequency - IntervalMs;
-        if (blockedMs > StallMs)
-            Write("UI.Stall", $"blockedMs={blockedMs:0}");
+        if (blockedMs <= StallMs) return;
+        // One line a second, the rest counted: every line refreshes the Developer Mode
+        // log pane, and a refresh slow enough to read as a stall must not log itself
+        // again (a self-feeding loop); sustained load would also flush the session ring.
+        if (now - _lastStallLog < Stopwatch.Frequency)
+        {
+            _suppressedStalls++;
+            return;
+        }
+        _lastStallLog = now;
+        var suppressed = _suppressedStalls;
+        _suppressedStalls = 0;
+        Write("UI.Stall", suppressed == 0 ? $"blockedMs={blockedMs:0}" : $"blockedMs={blockedMs:0}, suppressed={suppressed}");
     }
 
     /// <summary>

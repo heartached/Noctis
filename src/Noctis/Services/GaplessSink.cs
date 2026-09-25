@@ -268,7 +268,8 @@ public sealed class GaplessSink : IDisposable
         {
             using var enumerator = new MMDeviceEnumerator();
             using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            return DescribeFormats(device.AudioClient.MixFormat);
+            using var client = device.AudioClient; // a fresh IAudioClient per access
+            return DescribeFormats(client.MixFormat);
         }
         catch
         {
@@ -298,7 +299,9 @@ public sealed class GaplessSink : IDisposable
         string? boundId;
         lock (_gate) boundId = _deviceId;
         if (boundId == null || currentId == boundId) return;
-        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged", DefaultDeviceFormats());
+        // Guarded: the format read is COM work that would otherwise run with logging off.
+        if (DebugLogger.IsEnabled)
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged", DefaultDeviceFormats());
         if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
             Task.Run(RebuildLoop);
     }
@@ -344,9 +347,12 @@ public sealed class GaplessSink : IDisposable
                         _out = newOut;
                         _deviceId = id;
                     }
-                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuilt",
-                        $"attempt={attempt}, playing={_desiredPlaying}, {DefaultDeviceFormats()}");
                     try { Rebuilt?.Invoke(); } catch { /* subscriber's problem, not the sink's */ }
+                    // After the volume re-assert is kicked off: the format read is COM work
+                    // that must not widen the fresh session's 100% window.
+                    if (DebugLogger.IsEnabled)
+                        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuilt",
+                            $"attempt={attempt}, playing={_desiredPlaying}, {DefaultDeviceFormats()}");
                     return;
                 }
                 catch (Exception ex)
