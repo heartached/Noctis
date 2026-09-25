@@ -184,6 +184,8 @@
   <data name="Settings.TintEachAlbumS" xml:space="preserve"><value>Tint each album page with its cover colour.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumPageTintStrength" xml:space="preserve"><value>Tint strength</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumPageTintStrengthHint" xml:space="preserve"><value>How strongly the album page takes on its cover colour.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumPageTintWholePage" xml:space="preserve"><value>Tint Whole Page</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumPageTintWholePageHint" xml:space="preserve"><value>Carry the cover colour under Other Versions and More By too.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NowPlayingArtwork" xml:space="preserve"><value>Now Playing Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverAppearsLyrics" xml:space="preserve"><value>How the cover appears on the Lyrics page. Discs spin while playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumCoverAsTip" xml:space="preserve"><value>The album cover as it is</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

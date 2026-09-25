@@ -292,6 +292,46 @@ public class MiniPlayerMenuClickTests
         }
     }
 
+    /// <summary>GitHub #79 root cause (enoversum's log): on a comma-decimal culture the
+    /// design switch's segment offset formatted as "translateX(54,67px)", the transform
+    /// parser threw mid-click, and the popup stayed open at opacity 0 — Classic worked only
+    /// because its offset is a whole 0. Discord (Mistery): "…" does nothing on Windows.</summary>
+    [AvaloniaTheory]
+    [InlineData("Pill", MiniPlayerForm.Pill)]
+    [InlineData("Sleeve", MiniPlayerForm.Sleeve)]
+    public async Task MoreButton_OpensTheMenu_OnACommaDecimalCulture(string design, MiniPlayerForm form)
+    {
+        EnsureAppResources();
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+        var vm = MakeViewModel();
+        vm.SetDesignCommand.Execute(design);
+        var (w, h) = MiniPlayerViewModel.CanonicalSize(form);
+        var win = new MiniPlayerWindow { DataContext = vm, Width = w, Height = h };
+        win.Show();
+        await PumpFor(400);
+        try
+        {
+            var popup = win.FindControl<Avalonia.Controls.Primitives.Popup>("MorePopup")!;
+            var card = win.FindControl<Border>("MenuCard")!;
+            var more = VisibleButton(win, b => ToolTip.GetTip(b) as string == "More");
+            // Headless fonts lay the switch out at 150 (a whole 50 per segment); real
+            // fonts/DPI give fractions. 152 → 50.67, the "54,67"-style case.
+            win.FindControl<Control>("DesignSegmentPanel")!.Width = 152;
+
+            Assert.True(Click(more), "the … button never received the press");
+            await PumpFor(400);
+
+            Assert.True(popup.IsOpen, $"{form}: the menu is not open after the click");
+            Assert.Equal(1, card.Opacity, 3);
+        }
+        finally
+        {
+            win.Close();
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+        }
+    }
+
     /// <summary>GitHub #79 diagnostics must land where a user can copy them: the session
     /// log behind Developer Mode → "Copy Logs" (DebugLogger's UI entries are never shown).</summary>
     [AvaloniaFact]

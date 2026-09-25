@@ -1090,8 +1090,10 @@ public partial class MiniPlayerWindow : Window
             _ => 0,
         };
         DesignSegmentThumb.Width = segment;
-        DesignSegmentThumb.RenderTransform =
-            Avalonia.Media.Transformation.TransformOperations.Parse($"translateX({segment * index:0.##}px)");
+        // Invariant: on a comma-decimal locale "54,67px" parses as two values and throws
+        // (GitHub #79 log) — mid OnMoreMenuClick, leaving the popup open at opacity 0.
+        DesignSegmentThumb.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
+            FormattableString.Invariant($"translateX({segment * index:0.##}px)"));
     }
 
     // Wheel over a design card: volume, 5 per notch (the classic forms have their own bar

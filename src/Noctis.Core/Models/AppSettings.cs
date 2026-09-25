@@ -211,6 +211,14 @@ public class AppSettings
     /// the page reads calmer and its buttons stand further apart from it (Discord ask).</summary>
     public int AlbumPageTintStrength { get; set; } = AlbumPageTintStrengthDefault;
 
+    /// <summary>Fresh-install value of <see cref="AlbumPageTintWholePage"/>.</summary>
+    public const bool AlbumPageTintWholePageDefault = true;
+
+    /// <summary>A tinted album page carries the cover colour under Other Versions / More By
+    /// too, with no viewport-tall padding between the tracks and those rows (Discord
+    /// "Album Page Redesign" mockup). Off keeps the tint on the album block alone.</summary>
+    public bool AlbumPageTintWholePage { get; set; } = AlbumPageTintWholePageDefault;
+
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
 

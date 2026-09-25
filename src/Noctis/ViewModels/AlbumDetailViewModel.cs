@@ -69,6 +69,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     /// <summary>True while the album block is painted with the cover tint.</summary>
     public bool HasTint => BackgroundBrush != null;
+
+    /// <summary>Settings → Album Page → Tint whole page: the tint also runs under Other
+    /// Versions / More By; true without a settings VM.</summary>
+    public bool TintWholePage => _settings?.AlbumPageTintWholePage ?? AppSettings.AlbumPageTintWholePageDefault;
     [ObservableProperty] private bool _isLightTint;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
     [ObservableProperty] private IBrush _pageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
@@ -235,6 +239,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
                     Dispatcher.UIThread.Post(RebuildBackgroundBrush);
                 else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintStrength))
                     Dispatcher.UIThread.Post(ReapplyTint);
+                else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintWholePage))
+                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TintWholePage)));
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
             // A theme switch flips the untinted page text between the variants' colours.

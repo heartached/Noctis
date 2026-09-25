@@ -2054,6 +2054,17 @@
                         <TextBlock Grid.Column="1" Text="{Binding AlbumPageTintStrength, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
                     </Grid>
+                    <!-- Whole page: the colour also runs under Other Versions / More By. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholePage}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholePageHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AlbumPageTintWholePage}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
                 </controls:CollapsibleContent>
                 </StackPanel>

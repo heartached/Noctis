@@ -108,7 +108,10 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;
     public Track? GetTrackById(Guid id) => TrackList.FirstOrDefault(t => t.Id == id);
     public Album? GetAlbumById(Guid id) => Albums.FirstOrDefault(a => a.Id == id);
-    public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) => Array.Empty<Album>();
+    /// <summary>Albums GetAlbumsByArtist answers from (by Artist); empty unless a test fills it.</summary>
+    public List<Album> ArtistAlbums { get; } = new();
+    public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) =>
+        ArtistAlbums.Where(a => string.Equals(a.Artist, artistName, StringComparison.OrdinalIgnoreCase)).ToList();
     public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
     public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
     public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)

@@ -636,6 +636,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// full cover colour. Open album pages re-blend live on change.</summary>
     [ObservableProperty] private int _albumPageTintStrength = AppSettings.AlbumPageTintStrengthDefault;
 
+    /// <summary>A tinted album page's colour also runs under Other Versions / More By.</summary>
+    [ObservableProperty] private bool _albumPageTintWholePage = AppSettings.AlbumPageTintWholePageDefault;
+
     /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
     /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
     /// shape as the Song Transitions style cards.</summary>
@@ -2271,6 +2274,7 @@ public partial class SettingsViewModel : ViewModelBase
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             AlbumPageTintEnabled = _settings.AlbumPageTintEnabled;
             AlbumPageTintStrength = Math.Clamp(_settings.AlbumPageTintStrength, 0, 100);
+            AlbumPageTintWholePage = _settings.AlbumPageTintWholePage;
             // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
@@ -2720,6 +2724,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.AlbumPageTintEnabled = AlbumPageTintEnabled;
         _settings.AlbumPageTintStrength = AlbumPageTintStrength;
+        _settings.AlbumPageTintWholePage = AlbumPageTintWholePage;
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
@@ -3970,6 +3975,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintStrengthChanged(int value)
     {
         // Same as the toggle: open album pages watch this VM and re-blend their tint.
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnAlbumPageTintWholePageChanged(bool value)
+    {
+        // Open album pages watch this VM and re-lay out their tint.
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -6172,6 +6183,7 @@ public partial class SettingsViewModel : ViewModelBase
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             AlbumPageTintStrength = defaultSettings.AlbumPageTintStrength;
+            AlbumPageTintWholePage = defaultSettings.AlbumPageTintWholePage;
             HomeShowHeavyRotation = defaultSettings.HomeShowHeavyRotation;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;

@@ -65,14 +65,22 @@ public partial class AlbumDetailView : UserControl
     /// 09-22: the colour stopping mid-screen looked awkward). The block also carries the
     /// player-bar clearance whenever it is tinted or ends the page, so the footer never
     /// sits under the bar and the colour never gives way to a strip of app background.
+    /// With Tint whole page (Discord "Album Page Redesign") the colour runs on under the
+    /// related sections instead, which follow the tracks directly — the viewport-tall
+    /// block left a screen of empty colour above them on short albums.
     /// </summary>
     private void UpdateAlbumBlockLayout()
     {
         if (DataContext is not AlbumDetailViewModel vm) return;
         var hasRelated = vm.HasOtherVersions || vm.HasMoreByArtist;
-        AlbumBlock.MinHeight = vm.HasTint ? TrackScrollViewer.Viewport.Height : 0;
+        var wholePage = vm.HasTint && vm.TintWholePage && hasRelated;
+        var viewport = TrackScrollViewer.Viewport.Height;
+        Grid.SetRowSpan(AlbumTintBg, wholePage ? 2 : 1);
+        RelatedSections.Classes.Set("page-tint", wholePage);
+        PageLayout.MinHeight = wholePage ? viewport : 0;
+        AlbumBlock.MinHeight = vm.HasTint && !wholePage ? viewport : 0;
         AlbumBlockContent.Margin = new Thickness(0, 0, 0,
-            vm.HasTint || !hasRelated ? PlayerBarClearance - FooterBottomMargin : 0);
+            (vm.HasTint && !wholePage) || !hasRelated ? PlayerBarClearance - FooterBottomMargin : 0);
     }
 
     /// <summary>Ctrl+Click toggles a track row's selection; a plain click clears it.</summary>
@@ -472,6 +480,7 @@ public partial class AlbumDetailView : UserControl
                 if (args.PropertyName == nameof(AlbumDetailViewModel.BackgroundBrush))
                     AlbumTintBg.Opacity = ((AlbumDetailViewModel)DataContext!).BackgroundBrush != null ? 1 : 0;
                 if (args.PropertyName is nameof(AlbumDetailViewModel.HasTint)
+                    or nameof(AlbumDetailViewModel.TintWholePage)
                     or nameof(AlbumDetailViewModel.HasOtherVersions)
                     or nameof(AlbumDetailViewModel.HasMoreByArtist))
                     UpdateAlbumBlockLayout();
