@@ -209,8 +209,17 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         };
         _player.PropertyChanged += _playerPropertyChangedHandler;
 
-        // Refresh when library metadata changes (e.g. metadata editor save)
-        _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(RefreshFromLibrary);
+        // Refresh when library metadata changes (e.g. metadata editor save). A scan's
+        // progressive fill publishes only the tracks found SO FAR every 1.5 s, so an album
+        // missing from one is "not walked yet", not removed — refreshing then closed the
+        // page mid-scan. The authoritative publish follows with IsPublishingPartial false.
+        // Checked at raise time: the scan can end (flag cleared, partial snapshot still
+        // live) before a posted refresh runs.
+        _libraryUpdatedHandler = (_, _) =>
+        {
+            if (_library.IsPublishingPartial) return;
+            Dispatcher.UIThread.Post(RefreshFromLibrary);
+        };
         _library.LibraryUpdated += _libraryUpdatedHandler;
 
         // Refresh album-level favorite indicators when any favorite changes externally
