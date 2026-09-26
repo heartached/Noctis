@@ -34,6 +34,27 @@ public static class FileActivation
         return () => lifetime.Activated -= handler;
     }
 
+    /// <summary>
+    /// Calls <paramref name="reopen"/> when macOS asks the running app to reopen: a Dock
+    /// icon click, or launching it again from Finder, Spotlight or the login item's
+    /// <c>open</c> — none of which reach the single-instance pipe there. A window hidden
+    /// into the tray was ordered out, not miniaturized, so AppKit brings nothing back by
+    /// itself. Returns the action that detaches it, or null with no activatable lifetime.
+    /// </summary>
+    public static Action? SubscribeReopen(IActivatableLifetime? lifetime, Action reopen)
+    {
+        if (lifetime == null)
+            return null;
+
+        EventHandler<ActivatedEventArgs> handler = (_, e) =>
+        {
+            if (e.Kind == ActivationKind.Reopen)
+                reopen();
+        };
+        lifetime.Activated += handler;
+        return () => lifetime.Activated -= handler;
+    }
+
     /// <summary>Local file paths carried by a file activation; empty for any other kind.</summary>
     public static IReadOnlyList<string> LocalPaths(ActivatedEventArgs e) =>
         e is FileActivatedEventArgs files

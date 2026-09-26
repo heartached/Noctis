@@ -109,5 +109,38 @@ public class FileActivationTests
     {
         // Windows and Linux: files come through argv and the single-instance pipe.
         Assert.Null(FileActivation.Subscribe(null, _ => throw new InvalidOperationException()));
+        Assert.Null(FileActivation.SubscribeReopen(null, () => throw new InvalidOperationException()));
+    }
+
+    [Fact]
+    public void Reopen_activation_calls_reopen_and_nothing_else_does()
+    {
+        // Audit P30: a Dock-icon click (or relaunch) on a window hidden into the tray
+        // raised Reopen and nobody listened, so the window stayed hidden.
+        var (lifetime, fake) = NewLifetime();
+        var reopened = 0;
+
+        Assert.NotNull(FileActivation.SubscribeReopen(lifetime, () => reopened++));
+        fake.Raise(new ActivatedEventArgs(ActivationKind.Background));
+        fake.Raise(new ProtocolActivatedEventArgs(new Uri("noctis://open")));
+        fake.Raise(new FileActivatedEventArgs(new[] { Item(new Uri(TrackA)) }));
+        Assert.Equal(0, reopened);
+
+        fake.Raise(new ActivatedEventArgs(ActivationKind.Reopen));
+        Assert.Equal(1, reopened);
+    }
+
+    [Fact]
+    public void Reopen_detach_stops_delivery()
+    {
+        var (lifetime, fake) = NewLifetime();
+        var reopened = 0;
+
+        var detach = FileActivation.SubscribeReopen(lifetime, () => reopened++)!;
+        detach();
+        fake.Raise(new ActivatedEventArgs(ActivationKind.Reopen));
+
+        Assert.Equal(0, reopened);
+        Assert.Null(fake.Activated);
     }
 }

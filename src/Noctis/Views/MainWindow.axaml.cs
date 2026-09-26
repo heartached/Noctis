@@ -145,6 +145,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private MiniPlayerWindow? _miniPlayer;
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
     private Action? _detachFileActivation;
+    private Action? _detachReopenActivation;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -822,6 +823,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     vm.OpenExternalFilesWhenReady(files);
             }));
 
+        // macOS: a Dock-icon click or relaunch only sends the running app a reopen, so a
+        // window hidden into the menu-bar tray (close/minimize to tray, start minimized)
+        // had no way back but the status item. With the mini player up there is a visible
+        // window, and AppKit's convention then is to just activate — leave it.
+        _detachReopenActivation = Helpers.FileActivation.SubscribeReopen(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            () => Dispatcher.UIThread.Post(() =>
+            {
+                if (_miniPlayer == null)
+                    ShowFromTray();
+            }));
+
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
         // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
         // rule here — F11, Escape and WM-initiated transitions all funnel through
@@ -1214,6 +1227,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
         _detachFileActivation?.Invoke();
         _detachFileActivation = null;
+        _detachReopenActivation?.Invoke();
+        _detachReopenActivation = null;
 
         _taskbar?.Dispose();
         _smtc?.Dispose();
