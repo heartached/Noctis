@@ -847,6 +847,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // 1.0 = bypass. Updated by ApplyReplayGain().
     private double _replayGainScalar = 1.0;
     private string? _currentMediaPath;
+    // Music video audio: the song file behind the clip in _currentMediaPath (null for a
+    // plain play). Internal restarts keep it, and ApplyReplayGain borrows its tags.
+    private string? _currentFallbackPath;
     private string _rgMode = "Off";
     private double _rgPreampDb = 0.0;
 
@@ -1752,6 +1755,7 @@ public class VlcAudioPlayer : IAudioPlayer
         // on/off → track plays).
         var wasPaused = _isPaused;
         var resumePath = _currentMediaPath;
+        var resumeFallback = _currentFallbackPath;
         long resumeMs = 0;
         if (wasActive)
         {
@@ -1849,7 +1853,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // :start-paused + :start-time (the drag-to-start/Previous mechanism):
             // the input reopens ON the resume frame but paused, so the mode
             // switch never turns a paused track into audible playback.
-            PlayInternal(resumePath, startPaused: wasPaused);
+            PlayInternal(resumePath, startPaused: wasPaused, fallbackPath: resumeFallback);
         }
     }
 
@@ -2066,6 +2070,11 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var (track, album) = ReadReplayGainTagsCached(_currentMediaPath);
+        // Music video audio: a clip without tags of its own borrows the song file's
+        // (usually the same master), so it doesn't jump against RG'd neighbours.
+        var borrowFrom = _currentFallbackPath;
+        if (BorrowsReplayGain((track, album), borrowFrom))
+            (track, album) = ReadBorrowedReplayGainTagsCached(borrowFrom!);
         _replayGainScalar = ReplayGainScalarFor(track, album);
         ReapplyVolume();
         LogReplayGain(_currentMediaPath, track, album);
@@ -2202,6 +2211,35 @@ public class VlcAudioPlayer : IAudioPlayer
         }
         return parsed;
     }
+
+    // Music video audio: the song file's tags, borrowed while its clip plays. A slot of
+    // its own, so the clip's read above stays cached too (the pre-amp drag calls per tick).
+    private string? _rgBorrowCachePath;
+    private (double? track, double? album) _rgBorrowCacheValue;
+
+    private (double? track, double? album) ReadBorrowedReplayGainTagsCached(string filePath)
+    {
+        lock (_rgCacheLock)
+        {
+            if (string.Equals(_rgBorrowCachePath, filePath, StringComparison.OrdinalIgnoreCase))
+                return _rgBorrowCacheValue;
+        }
+
+        var parsed = ReadReplayGainTags(filePath);
+
+        lock (_rgCacheLock)
+        {
+            _rgBorrowCachePath = filePath;
+            _rgBorrowCacheValue = parsed;
+        }
+        return parsed;
+    }
+
+    /// <summary>Music video audio: true when the playing clip has no ReplayGain tags of its
+    /// own and <paramref name="songFile"/> (the song behind it) should lend its tags.</summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool BorrowsReplayGain((double? track, double? album) own, string? songFile) =>
+        songFile != null && own.track == null && own.album == null;
 
     /// <summary>Read REPLAYGAIN_TRACK_GAIN / REPLAYGAIN_ALBUM_GAIN from a file
     /// via TagLib. Returns the parsed dB value (negative for attenuation).
@@ -2572,6 +2610,14 @@ public class VlcAudioPlayer : IAudioPlayer
                     DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={LogName(normalizedPath)}");
                     return;
                 }
+                // Music video audio: a clip with no audio stream is not staged, so the
+                // handoff takes the Play path, which falls back to the song file.
+                if (IsVideoContainerPath(normalizedPath) && !HasAudioTrack(media))
+                {
+                    media.Dispose();
+                    DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareSkipped", $"path={LogName(normalizedPath)}, no audio stream");
+                    return;
+                }
             }
             catch (Exception ex)
             {
@@ -2757,11 +2803,38 @@ public class VlcAudioPlayer : IAudioPlayer
         return media;
     }
 
-    public void Play(string filePath)
+    /// <summary>Music video audio: a file extension the clip finder accepts (see
+    /// <see cref="Helpers.MusicVideoLocator.Extensions"/>).</summary>
+    internal static bool IsVideoContainerPath(string path) =>
+        Helpers.MusicVideoLocator.Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Music video audio: a clip that failed to parse, or parsed without an audio
+    /// stream, plays the song file instead.</summary>
+    internal static bool ShouldPlayFallback(bool parsed, bool hasAudioTrack) => !parsed || !hasAudioTrack;
+
+    private static bool HasAudioTrack(Media media)
+    {
+        foreach (var t in media.Tracks)
+            if (t.TrackType == TrackType.Audio) return true;
+        return false;
+    }
+
+    public void Play(string filePath) => Play(filePath, null);
+
+    public void Play(string filePath, string? fallbackPath)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
 
-        if (!IsPathlessMedia(filePath) && !File.Exists(filePath))
+        var exists = IsPathlessMedia(filePath) || File.Exists(filePath);
+        // Music video audio: a clip deleted since it was found plays the song file.
+        if (!exists && fallbackPath != null)
+        {
+            filePath = fallbackPath;
+            fallbackPath = null;
+            exists = IsPathlessMedia(filePath) || File.Exists(filePath);
+        }
+
+        if (!exists)
         {
             PlaybackError?.Invoke(this, $"File not found: {filePath}");
             return;
@@ -2771,6 +2844,7 @@ public class VlcAudioPlayer : IAudioPlayer
             $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : IsAudioCdPath(filePath) ? filePath : Path.GetFileName(filePath))}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
+        _currentFallbackPath = fallbackPath;
         // This track supersedes one still opening: abort its header parse so the
         // worker below (queued behind it on the lock) isn't held up for up to 8 s.
         CancelOpenCts();
@@ -2788,7 +2862,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
             try
             {
-                PlayInternal(filePath, startPaused);
+                PlayInternal(filePath, startPaused, fallbackPath);
             }
             finally
             {
@@ -2815,7 +2889,7 @@ public class VlcAudioPlayer : IAudioPlayer
     /// the AAC/ALAC codec inside the MP4 container, causing silent playback
     /// or immediate EndReached.
     /// </summary>
-    private void PlayInternal(string filePath, bool startPaused = false)
+    private void PlayInternal(string filePath, bool startPaused = false, string? fallbackPath = null)
     {
         try
         {
@@ -2847,6 +2921,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // runs here on the worker, before the target volume is computed). If
             // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
             _currentMediaPath = filePath;
+            _currentFallbackPath = fallbackPath;
             if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
                 ApplyReplayGain(_rgMode, _rgPreampDb);
 
@@ -3012,6 +3087,7 @@ public class VlcAudioPlayer : IAudioPlayer
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(openCancel);
             cts.CancelAfter(8000);
             var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
+            var clipParseTimedOut = false;
             try
             {
                 parseTask.Wait(cts.Token);
@@ -3024,8 +3100,49 @@ public class VlcAudioPlayer : IAudioPlayer
                 media.Dispose();
                 return;
             }
+            catch (OperationCanceledException) when (fallbackPath != null)
+            {
+                // Music video audio: a clip whose parse hangs falls back like a broken one.
+                clipParseTimedOut = true;
+            }
 
-            var parseResult = parseTask.Result;
+            var parseResult = clipParseTimedOut ? MediaParsedStatus.Timeout : parseTask.Result;
+            // Music video audio: a clip that won't open or has no audio stream plays the
+            // song file instead of skipping the song. Decided here on the worker, with the
+            // song file getting its own parse budget and its own ReplayGain.
+            if (fallbackPath != null &&
+                ShouldPlayFallback(parseResult == MediaParsedStatus.Done,
+                    parseResult == MediaParsedStatus.Done && HasAudioTrack(media)))
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "MusicVideoAudio.Fallback",
+                    $"clip={LogName(filePath)}, parse={parseResult}");
+                media.Dispose();
+                filePath = fallbackPath;
+                fallbackPath = null;
+                _currentMediaPath = filePath;
+                _currentFallbackPath = null;
+                if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
+                    ApplyReplayGain(_rgMode, _rgPreampDb);
+                targetVolume = GetTargetVlcVolume();
+
+                media = new Media(_libVlc, filePath, FromType.FromPath);
+                ApplyReadAhead(media);
+                if (!_gaplessEngine)
+                    media.AddOption(":audio-time-stretch");
+                using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+                fallbackCts.CancelAfter(8000);
+                parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+                try
+                {
+                    parseTask.Wait(fallbackCts.Token);
+                }
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+                {
+                    media.Dispose();
+                    return;
+                }
+                parseResult = parseTask.Result;
+            }
             if (parseResult != MediaParsedStatus.Done)
             {
                 // Parsing failed or timed out — file may be corrupted. Stream URLs
@@ -4755,7 +4872,7 @@ public class VlcAudioPlayer : IAudioPlayer
             Interlocked.Exchange(ref _pendingSeekMs, restartMs);
             // Paused in the engine tail: the restart must open paused too.
             _restartPausedRequest = _isPaused;
-            Play(_currentMediaPath);
+            Play(_currentMediaPath, _currentFallbackPath);
             return;
         }
 
@@ -4797,7 +4914,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // restart; exact-zero restarts need no pending seek.
             Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
             _restartPausedRequest = _isPaused;
-            Play(_currentMediaPath);
+            Play(_currentMediaPath, _currentFallbackPath);
             return;
         }
 

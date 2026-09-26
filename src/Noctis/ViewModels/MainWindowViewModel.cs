@@ -2933,6 +2933,13 @@ public partial class MainWindowViewModel : ViewModelBase
             if (Player.State == PlaybackState.Stopped)
                 TryScrobblePreviousTrack();
         }
+        // A music video's audio turned out longer or shorter than the song: re-send the
+        // presence once the engine knows, so Discord's bar runs to the clip's end.
+        else if (e.PropertyName == nameof(Player.MusicVideoAudioLengthDiffers) && Player.MusicVideoAudioLengthDiffers &&
+                 _discord.IsConnected && Player.State == PlaybackState.Playing && Player.CurrentTrack is { } clipTrack)
+        {
+            _ = UpdateDiscordPresenceAsync(clipTrack, Player.Position, true);
+        }
     }
 
     private void OnPlayerSeekedForIntegrations(object? sender, TimeSpan newPosition)
@@ -2976,7 +2983,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 track.Album,
                 artworkUrl,
                 ShowAlbum: Settings.DiscordShowAlbum);
-            await _discord.UpdateAsync(dto, position, track.Duration, isPlaying);
+            // Music video audio: the clip's length, as the engine reports it, not the song file's.
+            var duration = Player.IsPlayingMusicVideoAudio ? Player.Duration : track.Duration;
+            await _discord.UpdateAsync(dto, position, duration, isPlaying);
         }
         catch (Exception ex)
         {

@@ -9,7 +9,10 @@ namespace Noctis.Tests;
 internal sealed class FakeAudioPlayer : IAudioPlayer
 {
     public List<string> PlayedPaths { get; } = new();
+    /// <summary>The fallback passed with each Play (null for a plain Play), index-aligned with PlayedPaths.</summary>
+    public List<string?> PlayedFallbacks { get; } = new();
     public List<string> PreparedPaths { get; } = new();
+    public List<TimeSpan> Seeks { get; } = new();
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -18,9 +21,9 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public event EventHandler<string>? OutputModeChanged;
 
     public PlaybackState State { get; private set; } = PlaybackState.Stopped;
-    public TimeSpan Duration => TimeSpan.FromMinutes(3);
+    public TimeSpan Duration { get; set; } = TimeSpan.FromMinutes(3);
     public TimeSpan Position => TimeSpan.Zero;
-    public TimeSpan OutputLatency => TimeSpan.Zero;
+    public TimeSpan OutputLatency { get; set; } = TimeSpan.Zero;
     public long CurrentSessionId { get; private set; }
     public int Volume { get; set; }
     public int VolumeAdjust { get; set; }
@@ -30,15 +33,20 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public bool EqualizerActive { get; set; }
     public string OutputDescription => "test";
     public double ReplayGainAppliedDb => 0;
-    public string? CurrentMediaPath { get; private set; }
+    /// <summary>Settable so a test can play the engine falling back to the song file.</summary>
+    public string? CurrentMediaPath { get; set; }
 
     public void RaiseTrackEnded() => TrackEnded?.Invoke(this, EventArgs.Empty);
     public void RaisePlaybackError(string msg) => PlaybackError?.Invoke(this, msg);
     public void RaisePositionChanged(TimeSpan position) => PositionChanged?.Invoke(this, position);
+    public void RaiseDurationResolved(TimeSpan duration) => DurationResolved?.Invoke(this, duration);
 
-    public void Play(string filePath)
+    public void Play(string filePath) => Play(filePath, null);
+
+    public void Play(string filePath, string? fallbackPath)
     {
         PlayedPaths.Add(filePath);
+        PlayedFallbacks.Add(fallbackPath);
         CurrentMediaPath = filePath;
         CurrentSessionId++;
         State = PlaybackState.Playing;
@@ -47,7 +55,6 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void Pause() => State = PlaybackState.Paused;
     public void Resume() => State = PlaybackState.Playing;
     public void Stop() => State = PlaybackState.Stopped;
-    public List<TimeSpan> Seeks { get; } = new();
     public void Seek(TimeSpan position) => Seeks.Add(position);
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
