@@ -3381,18 +3381,20 @@ public partial class PlayerViewModel : ViewModelBase
             // Clean up UpNext and History FIRST so that if we need to advance,
             // we only advance into tracks that still exist in the library.
             // External (dropped, non-library) tracks were never indexed — not "deleted".
-            var deletedTracks = UpNext.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
-            if (deletedTracks.Count > 0)
+            // One pass and one Reset per list: a Remove per deleted track was a linear search
+            // plus a queue-panel renumber each, thousands of them when a removed folder was
+            // under a whole-library shuffle.
+            var keptUpNext = UpNext.Where(t => t.IsExternal || _library.GetTrackById(t.Id) != null).ToList();
+            if (keptUpNext.Count != UpNext.Count)
             {
                 CancelAutoMixTransition("queue changed");
                 MarkQueueChanged();
+                UpNext.ReplaceAll(keptUpNext);
             }
-            foreach (var track in deletedTracks)
-                UpNext.Remove(track);
 
-            var deletedHistory = History.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
-            foreach (var track in deletedHistory)
-                History.Remove(track);
+            var keptHistory = History.Where(t => t.IsExternal || _library.GetTrackById(t.Id) != null).ToList();
+            if (keptHistory.Count != History.Count)
+                History.ReplaceAll(keptHistory);
 
             // Check if current track was deleted
             if (CurrentTrack is { IsExternal: false } && _library.GetTrackById(CurrentTrack.Id) == null)

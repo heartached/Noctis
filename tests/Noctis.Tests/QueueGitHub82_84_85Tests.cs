@@ -81,6 +81,42 @@ public class QueueGitHub82_84_85Tests
     }
 
     [AvaloniaFact]
+    public void LibraryUpdated_PrunesRemovedTracks_WithOneChangePerCollection()
+    {
+        // A removed folder under a whole-library shuffle deleted queue rows one Remove at a
+        // time: a linear search, a CollectionChanged and a queue-panel renumber per track.
+        var (vm, _, library) = CreateVm();
+        var t = Enumerable.Range(0, 10).Select(i => Trk($"t{i}")).ToList();
+        var e1 = Trk("e1", external: true);
+        library.TrackList.AddRange(t);
+        vm.ReplaceQueueAndPlay(new List<Track> { t[0], t[1], t[2], t[3], t[4], t[5], e1, t[6], t[7], t[8], t[9] }, 0);
+        vm.NextCommand.Execute(null);
+        vm.NextCommand.Execute(null);
+        vm.NextCommand.Execute(null);
+        Assert.Same(t[3], vm.CurrentTrack);
+        Assert.Equal(new[] { "t2", "t1", "t0" }, vm.History.Select(x => x.Title));
+
+        int upNextEvents = 0, historyEvents = 0;
+        vm.UpNext.CollectionChanged += (_, _) => upNextEvents++;
+        vm.History.CollectionChanged += (_, _) => historyEvents++;
+        foreach (var gone in new[] { t[0], t[2], t[4], t[6], t[8] })
+            library.TrackList.Remove(gone);
+        Reconcile(library);
+
+        Assert.Same(t[3], vm.CurrentTrack);
+        Assert.Equal(new[] { "t5", "e1", "t7", "t9" }, vm.UpNext.Select(x => x.Title));
+        Assert.Equal(new[] { "t1" }, vm.History.Select(x => x.Title));
+        Assert.Equal(1, upNextEvents);
+        Assert.Equal(1, historyEvents);
+
+        // Nothing removed: no change notification at all.
+        upNextEvents = historyEvents = 0;
+        Reconcile(library);
+        Assert.Equal(0, upNextEvents);
+        Assert.Equal(0, historyEvents);
+    }
+
+    [AvaloniaFact]
     public void LibraryUpdated_EmptyLibrary_DoesNotClearAnExternalQueue()
     {
         var (vm, player, library) = CreateVm();
