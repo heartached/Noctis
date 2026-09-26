@@ -21,6 +21,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private SmtcService? _smtc;
     private MprisService? _mpris;
     private LinuxResumeWatcher? _resumeWatcher;
+    private LinuxTrayHost? _trayHost;
 
     /// <summary>
     /// Linux, XWayland on NVIDIA: after a suspend the window's buffers are gone and nothing
@@ -508,6 +509,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 InitializeQueuePopupBinding(vm);
                 InitializeTaskbarButtons(vm);
                 InitializeTrayIcon(vm);
+                _trayHost = LinuxTrayHost.TryStart();
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
                 _resumeWatcher = LinuxResumeWatcher.TryStart(() => Dispatcher.UIThread.Post(RemapWindowsAfterResume));
@@ -517,14 +519,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load). App already
-                // minimized the window before it was realized; drop it out of the
-                // taskbar now that the tray icon exists to get it back. Guarded on
-                // _trayIcon != null so a platform where the tray failed to initialize
-                // never leaves the app running with no window AND no tray icon.
-                if (App.StartMinimizedAtLogin && _trayIcon != null)
-                {
-                    Hide();
-                }
+                // minimized the window and took it off the taskbar before it was
+                // realized; settle it into the tray, or back onto the taskbar when there
+                // is no tray to get it back from.
+                if (App.StartMinimizedAtLogin)
+                    _ = SettleStartMinimizedAsync();
 
                 await vm.InitializeAsync();
                 Services.StartupTrace.Mark("initialize-async-done");
@@ -834,7 +833,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             UpdateImmersiveLyricsState();
             if (WindowState != WindowState.Minimized)
                 return;
-            if (_trayIcon != null
+            if (IsTrayUsable
                 && DataContext is MainWindowViewModel trayVm
                 && trayVm.Settings.MinimizeToTray
                 && _miniPlayer == null)
@@ -1075,6 +1074,48 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
 
+    /// <summary>
+    /// Whether hiding into the tray leaves a way back. A TrayIcon object alone does not: on
+    /// Linux Avalonia creates one even with nothing hosting it (stock GNOME), so every
+    /// hide-to-tray path also needs a live StatusNotifierWatcher (audit P29).
+    /// </summary>
+    private bool IsTrayUsable => LinuxTrayHost.IsTrayUsable(
+        _trayIcon != null, OperatingSystem.IsLinux(), _trayHost?.IsAvailable == true);
+
+    private async Task SettleStartMinimizedAsync()
+    {
+        try
+        {
+            if (_trayHost != null)
+            {
+                // At login the panel may register its tray a moment after we start.
+                await _trayHost.WaitForHostAsync(TimeSpan.FromSeconds(5));
+                // Brought up meanwhile (second launch): ShowFromTray already settled it.
+                if (ShowInTaskbar)
+                    return;
+            }
+            SettleStartMinimized(this, IsTrayUsable);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "TrayIcon.StartMinimized", ex.Message);
+            ShowInTaskbar = true;
+        }
+    }
+
+    /// <summary>
+    /// A login launch arrives minimized with no taskbar button (see App). Into the tray when
+    /// there is one; otherwise give the taskbar button back, or the app runs with no window,
+    /// no taskbar entry and no tray icon. Internal for tests.
+    /// </summary>
+    internal static void SettleStartMinimized(Window window, bool trayUsable)
+    {
+        if (trayUsable)
+            window.Hide();
+        else
+            window.ShowInTaskbar = true;
+    }
+
     private static string Truncate(string s, int max)
         => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
 
@@ -1106,7 +1147,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // explicit app shutdown (tray Exit) always pass through.
         if (!_exitRequestedFromTray
             && e.CloseReason == WindowCloseReason.WindowClosing
-            && _trayIcon != null
+            && IsTrayUsable
             && _miniPlayer == null
             && DataContext is MainWindowViewModel vm
             && vm.Settings.CloseToTray)
@@ -1181,6 +1222,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _mpris = null;
         _resumeWatcher?.Dispose();
         _resumeWatcher = null;
+        _trayHost?.Dispose();
+        _trayHost = null;
         _macNowPlaying?.Dispose();
         _macNowPlaying = null;
         if (_trayIcon != null)
