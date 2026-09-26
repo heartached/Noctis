@@ -915,6 +915,9 @@
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Written By: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Follow</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.PreviewUnsaved" xml:space="preserve"><value>Preview · unsaved lyrics</value><comment>Text in LyricsView.axaml — Lyrics Studio preview indicator</comment></data>
+  <data name="Lyrics.OffsetEarlier" xml:space="preserve"><value>Lyrics {0:0.0} s earlier</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
+  <data name="Lyrics.OffsetLater" xml:space="preserve"><value>Lyrics {0:0.0} s later</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
+  <data name="Lyrics.OffsetInSync" xml:space="preserve"><value>Lyrics in sync</value><comment>Notice pill after Ctrl+scroll brings the lyrics offset back to 0 (LyricsViewModel)</comment></data>
 
   <!-- MainWindow.axaml (auto-migrated) -->
   <data name="Main.Noctis" xml:space="preserve"><value>Noctis</value><comment>Title in MainWindow.axaml</comment></data>

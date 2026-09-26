@@ -2056,6 +2056,7 @@ public class LibraryService : ILibraryService
         target.StopTimeMs = source.StopTimeMs;
         target.VolumeAdjust = source.VolumeAdjust;
         target.EqPreset = source.EqPreset;
+        target.LyricsOffsetMs = source.LyricsOffsetMs;
         target.SavedPositionMs = source.SavedPositionMs;
         target.DateAdded = source.DateAdded;
 
