@@ -85,6 +85,7 @@ public class SettingsResetTests : IDisposable
             LyricsStudioSkipAlreadyTimed = false,
             LyricsStudioEmbedTags = true,
             LyricsStudioOnlineLyrics = false,
+            PlayCountThresholdPercent = 75,
         });
 
         var audio = new FakeAudioPlayer();

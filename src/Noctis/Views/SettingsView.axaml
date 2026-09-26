@@ -3002,6 +3002,24 @@
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
+            <!-- GitHub #101: how much of a song has to be heard before it counts as played. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.PlayCountAfter}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlayCountAfterHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              Classes="pill-list"
+                              ItemsSource="{Binding PlayCountThresholdOptions}"
+                              SelectedItem="{Binding SelectedPlayCountThresholdOption}"
+                              MinWidth="140"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">

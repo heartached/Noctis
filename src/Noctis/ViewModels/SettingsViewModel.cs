@@ -617,6 +617,42 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playPauseFadeEnabled;
     [ObservableProperty] private double _playPauseFadeMs = 300;
 
+    /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
+    /// (0 = as soon as it starts). The player reads it on every position tick, so a change
+    /// also applies to the rest of the song playing now.</summary>
+    [ObservableProperty] private int _playCountThresholdPercent;
+
+    /// <summary>One row of the "Count a play after" picker.</summary>
+    public sealed record PlayCountThresholdOption(int Percent, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<PlayCountThresholdOption> PlayCountThresholdOptions
+    {
+        get => _playCountThresholdOptions;
+        private set => SetProperty(ref _playCountThresholdOptions, value);
+    }
+    private IReadOnlyList<PlayCountThresholdOption> _playCountThresholdOptions = BuildPlayCountThresholdOptions();
+
+    private static IReadOnlyList<PlayCountThresholdOption> BuildPlayCountThresholdOptions() =>
+        AppSettings.PlayCountThresholdChoices
+            .Select(p => new PlayCountThresholdOption(p, p == 0
+                ? Loc.T("Settings.PlayCountAfterImmediately")
+                : Loc.T("Settings.PlayCountAfterPercent", p)))
+            .ToList();
+
+    public PlayCountThresholdOption? SelectedPlayCountThresholdOption
+    {
+        get => PlayCountThresholdOptions.FirstOrDefault(o => o.Percent == PlayCountThresholdPercent);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            PlayCountThresholdPercent = value.Percent;
+        }
+    }
+
     /// <summary>GitHub #71: drops import into the library (default) or play/queue in place.</summary>
     [ObservableProperty] private bool _importDroppedMedia = true;
 
@@ -789,6 +825,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowOlderVersionsLabel));
         foreach (var group in SectionGroups) group.Relabel();
         RefreshFlowingStyleOptions();
+        PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
+        OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
     }
 
     public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
@@ -2295,6 +2333,7 @@ public partial class SettingsViewModel : ViewModelBase
             MigrateTransitionSettings(_settings);
             PlayPauseFadeEnabled = _settings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = Math.Clamp(_settings.PlayPauseFadeMs, 100, 2000);
+            PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(_settings.PlayCountThresholdPercent);
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
@@ -2751,6 +2790,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
+        _settings.PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(PlayCountThresholdPercent);
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
         _settings.PlaylistShowNewBadge = PlaylistShowNewBadge;
@@ -3708,6 +3748,18 @@ public partial class SettingsViewModel : ViewModelBase
         }
         ApplyAudioSettings();
         if (_settingsLoaded) QueueSettingsSave();
+    }
+
+    partial void OnPlayCountThresholdPercentChanged(int value)
+    {
+        var snapped = AppSettings.SnapPlayCountThreshold(value);
+        if (snapped != value)
+        {
+            PlayCountThresholdPercent = snapped;
+            return;
+        }
+        OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnImportDroppedMediaChanged(bool value)
@@ -6355,6 +6407,7 @@ public partial class SettingsViewModel : ViewModelBase
             _playbackBarWidth = null;
             PlayPauseFadeEnabled = defaultSettings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = defaultSettings.PlayPauseFadeMs;
+            PlayCountThresholdPercent = defaultSettings.PlayCountThresholdPercent;
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;
