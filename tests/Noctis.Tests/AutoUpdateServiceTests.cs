@@ -158,12 +158,12 @@ public class AutoUpdateLaunchInstallTests : IDisposable
     };
 
     [Fact]
-    public async Task Schedule_RecordsTheVerifiedHash_AndResetsFailures()
+    public async Task Schedule_RecordsTheVerifiedHash_AndANewTagStartsItsOwnCount()
     {
         var file = Path.Combine(_dir, "installer.bin");
         await File.WriteAllTextAsync(file, "verified bytes", TestContext.Current.CancellationToken);
         var store = new AutoUpdateStore(_dir);
-        store.Save(new AutoUpdateState { Tag = "v9.9.9", Failures = 2, LastAttemptUtc = DateTimeOffset.UtcNow });
+        store.Save(new AutoUpdateState { Tag = "v9.9.8", Failures = 2, LastAttemptUtc = DateTimeOffset.UtcNow, Blocked = true });
 
         var update = new UpdateInfo
         {
@@ -182,6 +182,72 @@ public class AutoUpdateLaunchInstallTests : IDisposable
         Assert.Equal(file, p.InstallerPath);
         Assert.True(p.IsPrerelease);
         Assert.Equal(0, p.LaunchAttempts);
+    }
+
+    /// <summary>Re-queueing the same release keeps its failures: an installer that never starts
+    /// (or a file that keeps vanishing) can't reset the count by downloading again, so the third
+    /// failure blocks the tag instead of re-downloading forever.</summary>
+    [Fact]
+    public async Task Schedule_SameTagKeepsItsFailures_SoTheThirdFailureBlocks()
+    {
+        var file = Path.Combine(_dir, "installer.bin"); // not an updater temp file: "vanished" at launch
+        await File.WriteAllTextAsync(file, "verified bytes", TestContext.Current.CancellationToken);
+        var store = new AutoUpdateStore(_dir);
+        store.Save(new AutoUpdateState { Tag = "v98.0.0", Failures = 2, LastAttemptUtc = DateTimeOffset.UtcNow.AddHours(-7) });
+
+        var update = new UpdateInfo
+        {
+            TagName = "v98.0.0", Version = new Version(98, 0, 0),
+            ReleaseUrl = "https://github.com/heartached/Noctis/releases/tag/v98.0.0"
+        };
+        await Service().ScheduleAutoInstallAsync(update, file, store);
+        Assert.Equal((2, false), (store.Load()!.Failures, store.Load()!.Blocked));
+
+        Assert.False(Service().TryInstallPendingUpdateAtLaunch(false, store, AutoUpdateMode.InstallAtLaunch));
+
+        var s = store.Load()!;
+        Assert.Null(s.Pending);
+        Assert.Equal(("v98.0.0", 3, true), (s.Tag, s.Failures, s.Blocked));
+        Assert.Contains("v98.0.0", UpdateService.LaunchInstallNote);
+    }
+
+    /// <summary>A queued file deleted before the launch (temp cleanup) counts as a failed download
+    /// with the usual backoff, instead of a silent re-download after every launch.</summary>
+    [Theory]
+    [InlineData(AutoUpdateMode.InstallAtLaunch)]
+    [InlineData(AutoUpdateMode.DownloadOnly)] // a purged macOS .dmg
+    public void VanishedFile_IsDiscarded_AndCountsAFailure(AutoUpdateMode mode)
+    {
+        var file = OwnedTempFile();
+        File.Delete(file);
+        var store = new AutoUpdateStore(_dir);
+        store.Save(new AutoUpdateState { Tag = "v99.0.0", Pending = Pending(file, "99.0.0") });
+
+        Assert.False(Service().TryInstallPendingUpdateAtLaunch(false, store, mode));
+
+        var s = store.Load()!;
+        Assert.Null(s.Pending);
+        Assert.Equal(("v99.0.0", 1, false), (s.Tag, s.Failures, s.Blocked));
+        Assert.NotNull(s.LastAttemptUtc);
+    }
+
+    /// <summary>A second launch while the first launch's install still runs leaves it alone.</summary>
+    [Fact]
+    public void RelaunchWhileAnInstallRuns_KeepsTheQueue_AndStartsNothing()
+    {
+        // The all-zero hash would fail the re-check if this reached the install step.
+        var file = OwnedTempFile();
+        var store = new AutoUpdateStore(_dir);
+        var pending = Pending(file, "99.0.0", attempts: 1);
+        pending.LastLaunchUtc = DateTimeOffset.UtcNow.AddMinutes(-1);
+        store.Save(new AutoUpdateState { Pending = pending });
+
+        Assert.False(Service().TryInstallPendingUpdateAtLaunch(false, store, AutoUpdateMode.InstallAtLaunch));
+
+        var s = store.Load()!;
+        Assert.Equal(1, s.Pending!.LaunchAttempts);
+        Assert.False(s.Blocked);
+        Assert.True(File.Exists(file));
     }
 
     [Fact]

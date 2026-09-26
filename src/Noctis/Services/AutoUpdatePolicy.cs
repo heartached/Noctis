@@ -32,6 +32,8 @@ public sealed class PendingInstall
     public DateTimeOffset DownloadedUtc { get; set; }
     public DateTimeOffset? PostponedUntilUtc { get; set; }
     public int LaunchAttempts { get; set; }
+    /// <summary>When the last launch install started; a relaunch soon after leaves it running alone.</summary>
+    public DateTimeOffset? LastLaunchUtc { get; set; }
 }
 
 /// <summary>Auto-update bookkeeping: the queued install plus per-tag failure/backoff state.</summary>
@@ -106,6 +108,9 @@ internal static class AutoUpdatePolicy
     public const int MaxLaunchAttempts = 2;
     public static readonly TimeSpan PostponeFor = TimeSpan.FromHours(24);
     public static readonly TimeSpan RecheckInterval = TimeSpan.FromHours(24);
+    /// <summary>Nothing shows until Inno's window appears (or, on Linux, the silent swap ends), so a
+    /// second click this soon after an install started must not start another one over it.</summary>
+    public static readonly TimeSpan InstallRunningWindow = TimeSpan.FromMinutes(5);
 
     // The names DownloadInstallerAsync gives its temp files (random lowercase 8-hex run tag).
     private static readonly Regex OwnedName = new(
@@ -195,8 +200,15 @@ internal static class AutoUpdatePolicy
         if (target < running) { reason = "older than this build"; return LaunchAction.Discard; }
 
         if (mode == AutoUpdateMode.Off) { reason = "automatic updates are off for this copy"; return LaunchAction.Discard; }
-        if (mode == AutoUpdateMode.DownloadOnly) { reason = "waiting for Install & Restart"; return LaunchAction.None; }
+        // Before the file check: the Linux AppImage swap moves the file away while it runs.
+        if (p.LastLaunchUtc is { } started && now >= started && now - started < InstallRunningWindow)
+        {
+            reason = $"an install started at {started.LocalDateTime:T}";
+            return LaunchAction.None;
+        }
+        // Before DownloadOnly too: a macOS .dmg purged from temp would otherwise stay queued forever.
         if (!fileOk) { reason = "installer file missing or not ours"; return LaunchAction.Discard; }
+        if (mode == AutoUpdateMode.DownloadOnly) { reason = "waiting for Install & Restart"; return LaunchAction.None; }
         if (p.LaunchAttempts >= MaxLaunchAttempts) { reason = $"{p.LaunchAttempts} launch attempts"; return LaunchAction.Discard; }
         // The installer's relaunch passes no arguments, so files handed to this launch would be lost.
         if (hasFilesToOpen) { reason = "files to open"; return LaunchAction.None; }

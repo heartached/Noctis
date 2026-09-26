@@ -1271,7 +1271,7 @@
                                                     <Ellipse.IsVisible>
                                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                             <Binding Path="IsAbout"/>
-                                                            <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).IsUpdateAvailable"/>
+                                                            <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).ShowUpdateBadge"/>
                                                         </MultiBinding>
                                                     </Ellipse.IsVisible>
                                                 </Ellipse>

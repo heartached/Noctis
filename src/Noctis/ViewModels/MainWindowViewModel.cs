@@ -325,12 +325,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsIdleIslandVisible));
                 return;
             }
-            if (e.PropertyName != nameof(SettingsViewModel.IsUpdateAvailable)) return;
+            if (e.PropertyName != nameof(SettingsViewModel.ShowUpdateBadge)) return;
             Dispatcher.UIThread.Post(() =>
             {
                 var settingsNav = Sidebar.NavItems.FirstOrDefault(n => n.Key == "settings");
                 if (settingsNav is not null)
-                    settingsNav.ShowBadge = Settings.IsUpdateAvailable;
+                    settingsNav.ShowBadge = Settings.ShowUpdateBadge;
             });
         };
 

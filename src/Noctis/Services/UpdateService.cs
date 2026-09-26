@@ -116,7 +116,10 @@ public sealed class UpdateService
 
     /// <summary>What "Update automatically" may do on this copy (computed once per process):
     /// install at next launch, download only (macOS), or nothing (toggle hidden).</summary>
-    public static AutoUpdateMode AutoMode => _autoMode ??= ResolveAutoMode();
+    public static AutoUpdateMode AutoMode => AutoModeOverride ?? (_autoMode ??= ResolveAutoMode());
+
+    /// <summary>Tests only: the Debug builds tests run resolve <see cref="AutoMode"/> to Off.</summary>
+    internal static AutoUpdateMode? AutoModeOverride { get; set; }
 
     private static AutoUpdateMode ResolveAutoMode()
     {
@@ -468,8 +471,8 @@ public sealed class UpdateService
     /// <param name="update">Release to download.</param>
     /// <param name="progress">Receives 0-100 download progress.</param>
     /// <param name="ct">Cancels the download.</param>
-    /// <param name="destinationPath">Where to save the installer; defaults to the
-    /// updater's fixed temp path. The Developer Mode version manager passes the
+    /// <param name="destinationPath">Where to save the installer; defaults to a new
+    /// file in <see cref="InstallerDirectory"/>. The Developer Mode version manager passes the
     /// user's Downloads folder here.</param>
     public Task<string> DownloadInstallerAsync(
         UpdateInfo update,
@@ -486,6 +489,16 @@ public sealed class UpdateService
             update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct,
             requireChecksums, destinationPath);
     }
+
+    /// <summary>
+    /// Where installer downloads land. Linux: a private (0700) folder in the user's data dir, because
+    /// /tmp is shared with every local user (a vanished queued file could be recreated there by someone
+    /// else) and tmpfs distros empty it at every boot, which lost a queued update before the next launch.
+    /// Windows and macOS: the per-user temp folder, as before.
+    /// </summary>
+    internal static string InstallerDirectory => OperatingSystem.IsLinux()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Noctis", "updates")
+        : Path.GetTempPath();
 
     private async Task<string> DownloadInstallerAsync(
         string url, long expectedSize,
@@ -513,10 +526,17 @@ public sealed class UpdateService
         if (requireChecksums && (!IsConfiguredRepoAssetUrl(url) || !IsConfiguredRepoAssetUrl(checksumsUrl)))
             throw new InvalidOperationException("Refusing an update asset from outside heartached/Noctis.");
 
+        if (destinationPath is null && OperatingSystem.IsLinux())
+        {
+            const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            Directory.CreateDirectory(InstallerDirectory, ownerOnly);
+            File.SetUnixFileMode(InstallerDirectory, ownerOnly); // a folder that already existed too
+        }
+
         // Random per-run filename: a fixed predictable path invited a same-user
         // verify-then-launch swap (TOCTOU) on the elevated installer.
         var runTag = Guid.NewGuid().ToString("N")[..8];
-        var tempPath = destinationPath ?? Path.Combine(Path.GetTempPath(),
+        var tempPath = destinationPath ?? Path.Combine(InstallerDirectory,
             OperatingSystem.IsMacOS() ? $"Noctis-Update-{runTag}.dmg"
             : OperatingSystem.IsLinux() ? $"Noctis-Update-{runTag}{LinuxInstallerExtension()}"
             : $"Noctis-Update-{runTag}-Setup.exe");
@@ -763,10 +783,15 @@ public sealed class UpdateService
             try { File.Delete(older.InstallerPath); } catch { /* best effort */ }
         }
 
-        state.Tag = update.TagName;
-        state.Failures = 0;
-        state.LastAttemptUtc = null;
-        state.Blocked = false;
+        if (state.Tag != update.TagName)
+        {
+            // A new release starts its own count. The same release keeps it across re-queues, so one
+            // whose installer never starts (or whose file keeps vanishing) still ends up blocked.
+            state.Tag = update.TagName;
+            state.Failures = 0;
+            state.LastAttemptUtc = null;
+            state.Blocked = false;
+        }
         state.Pending = new PendingInstall
         {
             Tag = update.TagName,
@@ -822,7 +847,11 @@ public sealed class UpdateService
 
                 case LaunchAction.Discard:
                     var exhausted = pending.LaunchAttempts >= AutoUpdatePolicy.MaxLaunchAttempts;
-                    DiscardPending(store, state, pending, owned, reason, block: exhausted, notify: exhausted);
+                    // A file that vanished (temp cleanup) counts as a failed download, so one that
+                    // keeps vanishing ends up blocked instead of re-downloading after every launch.
+                    var vanished = !owned && mode != AutoUpdateMode.Off;
+                    if (vanished) state = AutoUpdatePolicy.RecordDownloadFailure(state, pending.Tag, now, hard: false);
+                    DiscardPending(store, state, pending, owned, reason, block: exhausted, notify: exhausted || (vanished && state.Blocked));
                     return false;
 
                 case LaunchAction.Postponed:
@@ -847,6 +876,7 @@ public sealed class UpdateService
 
             // Counted before the launch, so an installer that keeps failing can't retry forever.
             pending.LaunchAttempts++;
+            pending.LastLaunchUtc = now;
             store.Save(state);
             DebugLog.Write("Updater",
                 $"Auto-update: installing {pending.Tag} at launch (attempt {pending.LaunchAttempts}, from {CurrentVersion.ToString(3)}).");
@@ -886,14 +916,27 @@ public sealed class UpdateService
     }
 
     /// <summary>Deletes the installer a completed auto-update left in temp. While the Inno loader
-    /// still holds it the delete fails and the path stays recorded for the next launch.</summary>
+    /// still holds it the delete fails and the path stays recorded for the next launch. On Linux
+    /// it also clears downloads earlier sessions left in <see cref="InstallerDirectory"/>, which
+    /// nothing else empties (one never installed, or kept for Install &amp; Restart and not used).</summary>
     public static void DeleteStaleInstaller(AutoUpdateStore store)
     {
         try
         {
             var state = store.Load();
+            if (OperatingSystem.IsLinux() && Directory.Exists(InstallerDirectory))
+            {
+                foreach (var file in Directory.EnumerateFiles(InstallerDirectory))
+                {
+                    if (file != state?.Pending?.InstallerPath && IsOwnedInstallerFile(file))
+                    {
+                        try { File.Delete(file); } catch { /* best effort */ }
+                    }
+                }
+            }
+
             if (state?.StaleInstallerPath is not { } stale) return;
-            if (AutoUpdatePolicy.IsOwnedUpdateFile(stale, Path.GetTempPath()) && File.Exists(stale))
+            if (AutoUpdatePolicy.IsOwnedUpdateFile(stale, InstallerDirectory) && File.Exists(stale))
                 File.Delete(stale);
             state.StaleInstallerPath = null;
             store.Save(state);
@@ -908,7 +951,7 @@ public sealed class UpdateService
     /// updater's own temp files and a regular file (never a symlink or other reparse point).</summary>
     internal static bool IsOwnedInstallerFile(string? path)
     {
-        if (!AutoUpdatePolicy.IsOwnedUpdateFile(path, Path.GetTempPath())) return false;
+        if (!AutoUpdatePolicy.IsOwnedUpdateFile(path, InstallerDirectory)) return false;
         try
         {
             var info = new FileInfo(path!);

@@ -38,6 +38,7 @@ public partial class SettingsViewModel : ViewModelBase
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
     private bool _autoDownloadRunning;
+    private bool _autoDownloadPrerelease; // the running automatic download is a pre-release
     private bool _autoDownloadCancelled; // Cancel on an automatic download: no retry until the next launch
     private AutoUpdateStore? _autoStore;
     // Under the persistence root (not AppPaths) so tests stay isolated; the same folder in the app.
@@ -1925,12 +1926,14 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     [NotifyPropertyChangedFor(nameof(ShowInAppUpdateButton))]
     [NotifyPropertyChangedFor(nameof(ShowManualUpdateButton))]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateBadge))]
     private bool _isUpdateAvailable;
     [ObservableProperty] private bool _isDownloadingUpdate;
     [ObservableProperty] private double _downloadProgress;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateBadge))]
     private bool _isReadyToInstall;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
@@ -1943,6 +1946,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>The ready installer is queued in auto-update.json for the next launch.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateBadge))]
     private bool _isAutoInstallPending;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
@@ -1956,6 +1960,11 @@ public partial class SettingsViewModel : ViewModelBase
     public bool AutoUpdateDownloadOnly => UpdateService.AutoMode == AutoUpdateMode.DownloadOnly;
     public bool ShowPostponeButton => IsReadyToInstall && IsAutoInstallPending && !IsAutoInstallPostponed && AutoUpdateInstallsAtLaunch;
     private bool AutoUpdateActive => AutoInstallUpdates && CanAutoUpdate;
+    /// <summary>Sidebar / About badge: an update to act on, including a macOS background download
+    /// that still waits for Install &amp; Restart (it clears IsUpdateAvailable when it starts).</summary>
+    public bool ShowUpdateBadge => IsUpdateAvailable || (IsReadyToInstall && IsAutoInstallPending && AutoUpdateDownloadOnly);
+    /// <summary>A verified download may be queued: auto-update is on and the release is on the chosen channel.</summary>
+    private bool MayQueue(UpdateInfo update) => AutoUpdateActive && (IncludePrereleaseUpdates || !update.IsPrerelease);
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -3627,6 +3636,8 @@ public partial class SettingsViewModel : ViewModelBase
             DiscardAutoInstall(cancelDownload: false, "pre-release updates turned off");
             if (!IsUpToDate) _ = CheckForUpdateSilentAsync(); // IsUpToDate re-asks just below
         }
+        // Nor may one still downloading; DownloadUpdateCoreAsync then re-asks the stable channel.
+        if (!value && _autoDownloadRunning && _autoDownloadPrerelease) _updateCts?.Cancel();
 
         // "Up to date" was answered for the other channel; re-ask for this one.
         if (IsUpToDate)
@@ -6508,12 +6519,16 @@ public partial class SettingsViewModel : ViewModelBase
                     {
                         var queued = AutoUpdatePolicy.Normalize(pv);
                         var offered = AutoUpdatePolicy.Normalize(update.Version);
-                        if (queued == offered) return; // already queued
-                        if (queued > offered)
+                        var fileOk = UpdateService.IsOwnedInstallerFile(p.InstallerPath);
+                        if (queued == offered && fileOk) return; // already queued
+                        if (queued > offered || !fileOk)
                         {
-                            // The queued release was pulled from GitHub: never install it.
+                            // Pulled from GitHub, or its file vanished (temp cleanup): never install it.
+                            // A vanished file counts as a failed download, like at launch.
                             ResetReadyInstallIfQueued();
-                            DiscardAutoInstall(cancelDownload: false, "no longer offered on GitHub");
+                            DiscardAutoInstall(cancelDownload: false, fileOk ? "no longer offered on GitHub" : "installer file missing");
+                            if (!fileOk)
+                                AutoStore.Save(AutoUpdatePolicy.RecordDownloadFailure(AutoStore.Load(), p.Tag, DateTimeOffset.UtcNow, hard: false));
                             state = AutoStore.Load();
                         }
                     }
@@ -6642,6 +6657,8 @@ public partial class SettingsViewModel : ViewModelBase
         DownloadProgress = 0;
         UpdateStatusText = "Downloading update...";
         _autoDownloadRunning = automatic;
+        _autoDownloadPrerelease = automatic && known is { IsPrerelease: true };
+        var recheck = false;
 
         // No deadline (X16): a slow link may take as long as it needs. ResumableDownload retries a
         // stalled transfer and gives up on its own, so this token is only the user's Cancel.
@@ -6678,11 +6695,19 @@ public partial class SettingsViewModel : ViewModelBase
                 update, progress, token, requireChecksums: true);
 
             UpdateStatusText = "Update ready to install.";
-            if (AutoUpdateActive)
+            if (MayQueue(update))
             {
                 try
                 {
                     await _updateService.ScheduleAutoInstallAsync(update, _downloadedInstallerPath, AutoStore);
+                    if (!MayQueue(update))
+                    {
+                        // Turned off (or pre-releases off) while the file was hashed: nothing may stay
+                        // queued. Ready first, so the discard keeps the file for Install & Restart.
+                        IsReadyToInstall = true;
+                        DiscardAutoInstall(cancelDownload: false, "turned off while queuing");
+                        return;
+                    }
                     IsAutoInstallPending = true;
                     IsAutoInstallPostponed = false;
                     LatestVersionTag = update.TagName;
@@ -6714,11 +6739,16 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            // The user (Cancel / Check) or the toggle stopped it: not a failure to back off from.
+            // The user (Cancel / Check), the toggle or leaving the pre-release channel stopped it:
+            // not a failure to back off from.
             UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", "Download cancelled.");
-            if (automatic && update is not null)
+            if (automatic && update is { IsPrerelease: true } && !IncludePrereleaseUpdates)
+            {
+                recheck = true; // pre-releases turned off: ask the stable channel instead (below)
+            }
+            else if (automatic && update is not null)
             {
                 // "Not now": no automatic retry this session; the Update pill stays as the manual path.
                 _autoDownloadCancelled = true;
@@ -6738,7 +6768,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsDownloadingUpdate = false;
             _autoDownloadRunning = false;
+            _autoDownloadPrerelease = false;
         }
+        if (recheck) _ = CheckForUpdateSilentAsync();
     }
 
     /// <summary>

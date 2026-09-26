@@ -179,10 +179,11 @@ public class AutoUpdateLaunchActionTests
     private static readonly DateTimeOffset Now = new(2026, 9, 25, 12, 0, 0, TimeSpan.Zero);
     private static readonly Version Current = new(1, 5, 4, 0); // assembly versions are 4-part
 
-    private static PendingInstall Pending(string to = "1.5.5", int attempts = 0, DateTimeOffset? postponedUntil = null) => new()
+    private static PendingInstall Pending(string to = "1.5.5", int attempts = 0, DateTimeOffset? postponedUntil = null,
+        DateTimeOffset? lastLaunch = null) => new()
     {
         Tag = "v" + to, FromVersion = "1.5.4", ToVersion = to, InstallerPath = "x", Sha256 = new string('a', 64),
-        LaunchAttempts = attempts, PostponedUntilUtc = postponedUntil
+        LaunchAttempts = attempts, PostponedUntilUtc = postponedUntil, LastLaunchUtc = lastLaunch
     };
 
     private static LaunchAction Decide(PendingInstall? p, Version? current = null,
@@ -215,6 +216,21 @@ public class AutoUpdateLaunchActionTests
 
     [Fact]
     public void FileMissingOrNotOurs_Discard() => Assert.Equal(LaunchAction.Discard, Decide(Pending(), fileOk: false));
+
+    [Fact]
+    public void DownloadOnly_FileMissing_Discard_SoAPurgedDmgDoesNotStayQueued()
+        => Assert.Equal(LaunchAction.Discard, Decide(Pending(), mode: AutoUpdateMode.DownloadOnly, fileOk: false));
+
+    /// <summary>A relaunch while the first launch's install still runs must not start a second one
+    /// (the Linux AppImage swap has already moved the file away, hence fileOk: false).</summary>
+    [Theory]
+    [InlineData(2, false, true)]
+    [InlineData(2, true, true)]
+    [InlineData(10, true, false)]
+    [InlineData(-60, true, false)] // clock set back: not "just started"
+    public void InstallStartedMinutesAgo_LeftAlone(int minutesAgo, bool fileOk, bool leftAlone)
+        => Assert.Equal(leftAlone ? LaunchAction.None : LaunchAction.Install,
+            Decide(Pending(attempts: 1, lastLaunch: Now.AddMinutes(-minutesAgo)), fileOk: fileOk));
 
     [Fact]
     public void TwoLaunchAttempts_Discard() => Assert.Equal(LaunchAction.Discard, Decide(Pending(attempts: 2)));
@@ -328,7 +344,8 @@ public class AutoUpdateStoreTests : IDisposable
             {
                 Tag = "v1.5.5", FromVersion = "1.5.4", ToVersion = "1.5.5", InstallerPath = "p",
                 Sha256 = new string('b', 64), IsPrerelease = true, ReleaseUrl = "https://github.com/heartached/Noctis",
-                DownloadedUtc = downloaded, PostponedUntilUtc = downloaded.AddDays(1), LaunchAttempts = 1
+                DownloadedUtc = downloaded, PostponedUntilUtc = downloaded.AddDays(1), LaunchAttempts = 1,
+                LastLaunchUtc = downloaded.AddDays(2)
             }
         });
 
@@ -346,6 +363,7 @@ public class AutoUpdateStoreTests : IDisposable
         Assert.Equal(downloaded, p.DownloadedUtc);
         Assert.Equal(downloaded.AddDays(1), p.PostponedUntilUtc);
         Assert.Equal(1, p.LaunchAttempts);
+        Assert.Equal(downloaded.AddDays(2), p.LastLaunchUtc);
         Assert.False(File.Exists(store.FilePath + ".tmp"));
     }
 
