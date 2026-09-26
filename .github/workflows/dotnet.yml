@@ -207,7 +207,7 @@ jobs:
           # official universal (arm64+x86_64) VLC 3.0.23 dylibs + plugins at
           # Contents/MacOS/libvlc/{lib,plugins} — the same sibling layout as
           # VLC.app, which the plugins' @loader_path/../lib install names
-          # require. VlcAudioPlayer probes this path after a user-installed
+          # require. VlcAudioPlayer probes this path before a user-installed
           # VLC.app. Pinned + SHA-256-verified like the ffmpeg bundles above;
           # any failure FAILS the build.
           curl -sSL https://download.videolan.org/pub/videolan/vlc/3.0.23/macosx/vlc-3.0.23-universal.dmg -o vlc.dmg

@@ -418,9 +418,9 @@ public class VlcAudioPlayer : IAudioPlayer
         try
         {
             // On macOS the VideoLAN.LibVLC.Mac NuGet has shifting layouts between
-            // versions; if VLC.app is installed (recommended path), point the
-            // loader at its dylibs directly so playback works regardless of
-            // which package version restore picked. libvlc also needs to find
+            // versions, so point the loader at the libvlc the .app bundles (or,
+            // for unbundled runs, an installed VLC.app / Homebrew) directly so
+            // playback works regardless of any package restore. libvlc also needs to find
             // its plugins folder, which it cannot locate on its own when loaded
             // from outside an .app bundle — set VLC_PLUGIN_PATH explicitly.
             var macLibPath = TryFindMacLibVlcPath();
@@ -5674,26 +5674,38 @@ public class VlcAudioPlayer : IAudioPlayer
     private static string? TryFindMacLibVlcPath()
     {
         if (!OperatingSystem.IsMacOS()) return null;
+        return PickMacLibVlcDirectory(AppContext.BaseDirectory, File.Exists);
+    }
 
-        // Standard VLC.app install (covers `brew install --cask vlc` and manual
-        // installs) stays first: a user-installed VLC is newer than our bundle.
-        // Second choice is the libvlc payload the CI .app packaging step bundles
-        // at Contents/MacOS/libvlc (dylibs + plugins/) — the VideoLAN.LibVLC.Mac
+    /// <summary>
+    /// First libvlc directory (one holding libvlc.dylib) to hand Core.Initialize on
+    /// macOS. Pure; internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static string? PickMacLibVlcDirectory(string baseDirectory, Func<string, bool> fileExists)
+    {
+        // The libvlc payload the CI .app packaging step bundles at
+        // Contents/MacOS/libvlc (dylibs + plugins/) comes first: it is the pinned
+        // universal VLC 3.0.23, so it loads on both arm64 and x64 builds and matches
+        // LibVLCSharp 3's major version. A VLC.app in /Applications may be Intel-only
+        // (dlopen fails on the arm64 build) or VLC 4.x (version-mismatch VLCException),
+        // and Core.Initialize gets one shot, so preferring it failed startup even with
+        // a good bundle present (P24). VLC.app (covers `brew install --cask vlc` and
+        // manual installs) and Homebrew serve unbundled/dev runs. The VideoLAN.LibVLC.Mac
         // NuGet was dropped because its 3.0.21 pin never existed on nuget.org
         // and restore floated to an abandoned 2019 payload (AUDIT H7/H8).
         // The bundle mirrors VLC.app's lib/ + plugins/ sibling layout because the
         // plugins' install names reference libvlccore via @loader_path/../lib/.
         string[] candidates =
         {
+            Path.Combine(baseDirectory, "libvlc", "lib"),
             "/Applications/VLC.app/Contents/MacOS/lib",
-            Path.Combine(AppContext.BaseDirectory, "libvlc", "lib"),
             "/opt/homebrew/lib",
             "/usr/local/lib",
         };
 
         foreach (var dir in candidates)
         {
-            if (File.Exists(Path.Combine(dir, "libvlc.dylib")))
+            if (fileExists(Path.Combine(dir, "libvlc.dylib")))
                 return dir;
         }
         return null;
