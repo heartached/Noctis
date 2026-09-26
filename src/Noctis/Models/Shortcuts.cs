@@ -22,6 +22,7 @@ public enum ShortcutAction
     CommandPalette,
     NewPlaylist,
     ToggleQueue,
+    ToggleLyrics,
 }
 
 /// <summary>Display metadata for one rebindable action.</summary>
@@ -44,6 +45,7 @@ public static class ShortcutDefaults
         new ShortcutDescriptor(ShortcutAction.ToggleFavorite, "Favorite current track", GroupPlayback),
         new ShortcutDescriptor(ShortcutAction.ToggleFullscreen, "Toggle fullscreen", GroupWindow),
         new ShortcutDescriptor(ShortcutAction.ToggleQueue, "Show / hide queue", GroupWindow),
+        new ShortcutDescriptor(ShortcutAction.ToggleLyrics, "Show / hide lyrics", GroupWindow),
         new ShortcutDescriptor(ShortcutAction.SearchLibrary, "Search library", GroupNavigation),
         new ShortcutDescriptor(ShortcutAction.CommandPalette, "Command palette", GroupNavigation),
         new ShortcutDescriptor(ShortcutAction.NewPlaylist, "New playlist", GroupNavigation),
@@ -72,6 +74,8 @@ public static class ShortcutDefaults
             // U for Up Next. Not Ctrl/⌘+Q (quit on macOS / Linux desktops) and not a bare
             // letter; Ctrl+U is no TextBox editing key, so it works from the search box too.
             ShortcutAction.ToggleQueue => new KeyGesture(Key.U, primary),
+            // GitHub #103. Ctrl/⌘+L is Favorite, so the Shift variant of the same letter.
+            ShortcutAction.ToggleLyrics => new KeyGesture(Key.L, primary | KeyModifiers.Shift),
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
     }

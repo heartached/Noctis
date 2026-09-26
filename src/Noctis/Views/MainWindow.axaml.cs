@@ -1769,6 +1769,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 // (the bar unmounts), so this is the way in to an empty queue.
                 vm.Player.ShowQueueCommand.Execute(null);
                 return true;
+            case ShortcutAction.ToggleLyrics:
+                // Same toggle as the island's Lyrics button (GitHub #103).
+                vm.ToggleLyricsCommand.Execute(null);
+                return true;
             default:
                 return false;
         }
