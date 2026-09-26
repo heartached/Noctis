@@ -5143,7 +5143,8 @@ public class VlcAudioPlayer : IAudioPlayer
                         // _player.Volume is pinned at 100. Touching the OS session here
                         // (which the branch below would do, since _sessionVolume is
                         // non-null by default on Windows) would duck the whole process
-                        // session on top of the sink's own level. Just seek.
+                        // session on top of the sink's own level. Just seek — the
+                        // sink declicks the flush cut and fades the refill in itself.
                         // Gapless engine: the splice provider declicks + fades every
                         // cut junction itself — the duck was masking a legacy VLC
                         // flush click that no longer reaches the speakers, while its

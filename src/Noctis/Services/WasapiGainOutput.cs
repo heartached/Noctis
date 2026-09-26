@@ -237,7 +237,9 @@ internal sealed class WasapiGainOutput : IDisposable
             // rather than overflowing.
             BufferDuration = TimeSpan.FromMilliseconds(1000),
             DiscardOnBufferOverflow = false,
-            ReadFully = true, // return silence (not 0) when idle so WasapiOut keeps running
+            // Short reads when dry, so the gain stage sees an underrun/flush and
+            // declicks it; the gain stage pads to full buffers so WasapiOut keeps running.
+            ReadFully = false,
         };
         return (buffer, new GainSampleProvider(buffer.ToSampleProvider(), channels, sampleRate));
     }
@@ -333,7 +335,9 @@ internal sealed class WasapiGainOutput : IDisposable
     public void Flush()
     {
         if (_disposed) return;
-        try { _buffer.ClearBuffer(); } catch { }
+        // Seek/stop cut: the gain stage ramps the last emitted frame down and
+        // fades the refill in (see GainSampleProvider.Cut).
+        try { _gain.Cut(_buffer.ClearBuffer); } catch { }
     }
 
     public void Drain()
@@ -400,7 +404,14 @@ internal sealed class WasapiGainOutput : IDisposable
     /// WITHOUT consuming the source, holding the pre-pause tail for a
     /// sample-exact resume. The stream itself never pauses — see the note on
     /// <see cref="WasapiGainOutput.Pause"/> for the exclusive-mode DMA-loop
-    /// static this design exists to avoid. Internal for tests.
+    /// static this design exists to avoid.
+    ///
+    /// Also declicks cuts (<see cref="Cut"/>) and underruns (the source
+    /// short-reads): a seek/stop flush or a dry queue stops LIVE audio inside a
+    /// stream that never stops, and exclusive mode has no OS mixer to soften the
+    /// edge. The last emitted frame is ramped to silence and whatever follows is
+    /// faded in (~5ms each, the GaplessSpliceProvider pattern). Uninterrupted
+    /// audio never ramps, so steady-state output stays bit-exact. Internal for tests.
     /// </summary>
     internal sealed class GainSampleProvider : ISampleProvider
     {
@@ -414,11 +425,24 @@ internal sealed class WasapiGainOutput : IDisposable
         private long _readCount;
         private long _setCount;
 
+        // Cut/underrun declick. The gate makes a Cut (source clear + mark) atomic
+        // against the render read's mark check + source read; the rest is
+        // render-thread only.
+        private readonly object _readGate = new();
+        private bool _cutPending;               // guarded by _readGate
+        private readonly int _rampFrames;       // ~5ms
+        private readonly float[] _lastFrame;    // last emitted (post-gain) frame
+        private int _declickLeft;               // tail-ramp frames still to emit
+        private int _fadeLeft;                  // fade-in frames still to apply
+        private bool _fadePending;              // fade in the next source audio
+
         public GainSampleProvider(ISampleProvider src, int channels, int sampleRate)
         {
             _src = src;
             _channels = channels;
             _step = 1f / (sampleRate * 0.015f);
+            _rampFrames = Math.Max(1, sampleRate / 200);
+            _lastFrame = new float[channels];
         }
 
         public WaveFormat WaveFormat => _src.WaveFormat;
@@ -435,6 +459,21 @@ internal sealed class WasapiGainOutput : IDisposable
 
         public void Unpark() => _parked = false;
 
+        /// <summary>
+        /// A seek/stop flush: <paramref name="clearSource"/> drops the queued
+        /// source and the cut is marked under the read gate, so a render read
+        /// sees either the pre-cut queue or the marked cut — never post-cut audio
+        /// butt-joined to the pre-cut tail.
+        /// </summary>
+        public void Cut(Action clearSource)
+        {
+            lock (_readGate)
+            {
+                _cutPending = true;
+                clearSource();
+            }
+        }
+
         public int Read(float[] buffer, int offset, int count)
         {
             var parked = _parked;
@@ -443,28 +482,50 @@ internal sealed class WasapiGainOutput : IDisposable
             // Fully parked: full buffers of silence, source untouched. The
             // explicit loop (not Array.Clear) matters — the buffer can be a
             // WaveBuffer-punned float[] whose Length lies about its element count.
-            if (parked && park == 0f)
+            if (parked && park == 0f && _declickLeft == 0)
             {
                 for (var i = 0; i < count; i++) buffer[offset + i] = 0f;
                 return count;
             }
 
-            // Fading out: consume only the ~15ms the ramp still needs, so the
-            // rest of the pre-pause tail stays queued for resume instead of
-            // being eaten at zero gain.
-            var toConsume = count;
-            if (parked)
+            var written = 0;
+            int toConsume, read;
+            lock (_readGate)
             {
-                var rampFramesLeft = (int)MathF.Ceiling(park / _step);
-                toConsume = Math.Min(count, rampFramesLeft * _channels);
-            }
+                // A cut since the last read: what is queued now is unrelated to
+                // the last emitted frame.
+                if (_cutPending)
+                {
+                    _cutPending = false;
+                    BeginDeclick();
+                }
+                // Play a pending tail ramp out before any fresh audio.
+                if (_declickLeft > 0)
+                    written = EmitDeclick(buffer, offset, count);
 
-            var read = _src.Read(buffer, offset, toConsume);
+                // Fading out: consume only the ~15ms the ramp still needs, so the
+                // rest of the pre-pause tail stays queued for resume instead of
+                // being eaten at zero gain.
+                toConsume = count - written;
+                if (parked)
+                {
+                    var rampFramesLeft = (int)MathF.Ceiling(park / _step);
+                    toConsume = Math.Min(toConsume, rampFramesLeft * _channels);
+                }
+
+                read = toConsume > 0 ? _src.Read(buffer, offset + written, toConsume) : 0;
+            }
             var target = _target;
             var cur = _current;
             var parkTarget = parked ? 0f : 1f;
             var step = _step;
             var peak = 0f;
+            if (read > 0 && _fadePending)
+            {
+                _fadePending = false;
+                _fadeLeft = _rampFrames;
+            }
+            var fadeLeft = _fadeLeft;
 
             for (var i = 0; i + _channels <= read; i += _channels)
             {
@@ -472,33 +533,81 @@ internal sealed class WasapiGainOutput : IDisposable
                 else if (cur > target) cur = Math.Max(target, cur - step);
                 if (park < parkTarget) park = Math.Min(parkTarget, park + step);
                 else if (park > parkTarget) park = Math.Max(parkTarget, park - step);
+                // Fade-in after a cut/underrun, 0 → 1; exactly 1 otherwise.
+                var fade = 1f;
+                if (fadeLeft > 0)
+                    fade = (float)(_rampFrames - fadeLeft--) / _rampFrames;
 
                 for (var ch = 0; ch < _channels; ch++)
                 {
-                    var idx = offset + i + ch;
+                    var idx = offset + written + i + ch;
                     var s = buffer[idx];
                     var a = s < 0 ? -s : s;
                     if (a > peak) peak = a;
-                    buffer[idx] = s * cur * park;
+                    buffer[idx] = s * cur * park * fade;
                 }
             }
 
             _current = cur;
             _parkGain = park;
+            _fadeLeft = fadeLeft;
+            if (read >= _channels)
+                for (var ch = 0; ch < _channels; ch++)
+                    _lastFrame[ch] = buffer[offset + written + read - _channels + ch];
+            written += read;
 
-            // Parked (or a short source read): pad the rest of the buffer with
-            // silence and claim the full count, so WasapiOut's render loop keeps
-            // running — a starved exclusive stream loops its stale DMA buffer.
-            if (parked)
-            {
-                for (var i = read; i < count; i++) buffer[offset + i] = 0f;
-                read = count;
-            }
+            // The source ran dry (mid-track underrun, or drained after a stop):
+            // ramp the tail down instead of stepping to the pad's zeros.
+            if (read < toConsume)
+                BeginDeclick();
+
+            // Pad the rest with the tail ramp then silence, and claim the full
+            // count, so WasapiOut's render loop keeps running — a starved
+            // exclusive stream loops its stale DMA buffer.
+            if (written < count && _declickLeft > 0)
+                written += EmitDeclick(buffer, offset + written, count - written);
+            for (var i = written; i < count; i++) buffer[offset + i] = 0f;
             // Diag() is a no-op unless NOCTIS_WASAPI_LOG=1, but keep the interpolation
             // itself off the render thread's hot path when logging is off.
             if (DiagEnabled && ++_readCount % 400 == 1)
                 Diag($"Read #{_readCount}: frames={read / _channels} srcPeak={peak:F4} gain={cur:F4} target={target:F4}");
-            return read;
+            return count;
+        }
+
+        // Arms the junction: ramp the last emitted frame down (unless a ramp is
+        // already running or the output is already silent) and fade in the
+        // next source audio.
+        private void BeginDeclick()
+        {
+            _fadePending = true;
+            if (_declickLeft > 0) return;
+            for (var ch = 0; ch < _channels; ch++)
+            {
+                if (_lastFrame[ch] != 0f)
+                {
+                    _declickLeft = _rampFrames;
+                    return;
+                }
+            }
+        }
+
+        // Writes the tail ramp (last emitted frame → 0) into at most maxSamples,
+        // resuming across reads; returns the samples written. Element stores
+        // only — the buffer can be the byte[]-punned render buffer.
+        private int EmitDeclick(float[] buffer, int pos, int maxSamples)
+        {
+            var frames = Math.Min(_declickLeft, maxSamples / _channels);
+            for (var f = 0; f < frames; f++, _declickLeft--)
+            {
+                var g = (float)_declickLeft / _rampFrames;
+                for (var ch = 0; ch < _channels; ch++)
+                    buffer[pos + f * _channels + ch] = _lastFrame[ch] * g;
+            }
+            // The emitted tail is now silent: a later cut must not ramp from it again.
+            if (_declickLeft == 0)
+                for (var ch = 0; ch < _channels; ch++)
+                    _lastFrame[ch] = 0f;
+            return frames * _channels;
         }
     }
 }
