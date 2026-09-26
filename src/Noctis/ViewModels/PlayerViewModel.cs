@@ -2034,8 +2034,9 @@ public partial class PlayerViewModel : ViewModelBase
             _pendingPlayStateSaves.Add(track);
     }
 
-    /// <summary>Writes the accumulated play-state changes as user-state journal rows.</summary>
-    private async Task FlushPendingPlayStateAsync()
+    /// <summary>Writes the accumulated play-state changes as user-state journal rows
+    /// (shutdown calls it before its slow steps; see MainWindowViewModel.ShutdownAsync).</summary>
+    public async Task FlushPendingPlayStateAsync()
     {
         List<Track> pending;
         lock (_pendingPlayStateSaves)

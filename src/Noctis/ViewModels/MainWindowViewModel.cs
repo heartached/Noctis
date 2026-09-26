@@ -686,6 +686,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Apply saved volume
         Player.Volume = Settings.GetSettings().Volume;
+        // ...and persist every later change (slider, wheel, keys, MPRIS, remote) through the
+        // debounced settings save. Written only on a graceful exit, a crash or kill brought
+        // back the previous session's volume — possibly louder than the user left it.
+        Player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.Volume))
+                Settings.PersistVolume(Player.Volume);
+        };
 
         // Restore the previous session's queue (current track loads paused;
         // the user presses play to resume). Gated by the Settings toggle.
@@ -954,6 +962,27 @@ public partial class MainWindowViewModel : ViewModelBase
         try { Player.PauseForShutdown(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
 
+        // The small user-state saves go first. App abandons this method after
+        // ShutdownSaveDeadline (4 s), and the server stop, scan checkpoint and scrobble
+        // flush below can take 2 + 5 + 3 s — saved after them, a quit mid-scan or with a
+        // slow scrobble lost the volume, the queue position and recent plays. Each step
+        // is guarded so one failing save can't skip the later ones (the queue snapshot
+        // below used to be silently lost this way).
+        Settings.SetVolume(Player.Volume);
+        try { await Settings.SaveAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
+
+        // Snapshot the queue so the next launch restores it.
+        try { await Player.SaveQueueStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
+
+        try { await _playHistory.FlushAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
+        // Play counts as journal rows only; the full library.json write waits for the
+        // scan checkpoint below (mid-scan, the library holds a partial track list).
+        try { await Player.FlushPendingPlayStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-state flush failed: {ex.Message}"); }
+
         // Plugins get their Shutdown() (timers, files), and the server releases its port.
         try { Plugins.UnloadAll(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Plugin shutdown failed: {ex.Message}"); }
@@ -973,14 +1002,6 @@ public partial class MainWindowViewModel : ViewModelBase
         TryScrobblePreviousTrack();
         await FlushPendingScrobblesAsync();
 
-        // Update volume in settings and save everything. Each step is guarded
-        // so one failing save can't skip the later ones (the queue snapshot
-        // below used to be silently lost this way).
-        Settings.SetVolume(Player.Volume);
-        try { await Settings.SaveAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
-        try { await _playHistory.FlushAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
         // Ratings/lyrics waiting for the quiet period (or for the playing file) go to disk now.
         try
         {
@@ -988,10 +1009,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 await tagWriter.FlushAsync().WaitAsync(TimeSpan.FromSeconds(3));
         }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Tag-write flush failed: {ex.Message}"); }
-
-        // Snapshot the queue so the next launch restores it.
-        try { await Player.SaveQueueStateAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
 
         // Flush the debounced per-play library save so play counts aren't lost.
         try { await Player.FlushPendingLibrarySaveAsync(); }

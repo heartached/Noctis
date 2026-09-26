@@ -2877,6 +2877,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _volume = _settings.Volume = volume;
 
+    /// <summary>Persists a user volume change through the debounced settings write, so a
+    /// crash or kill can't revert it to the value saved at the last graceful exit.</summary>
+    public void PersistVolume(int volume)
+    {
+        SetVolume(volume);
+        QueueSettingsSave();
+    }
+
     /// <summary>Last playback-bar width pushed via <see cref="SetPlaybackBarWidth"/>;
     /// null until the bar pushes one, so saves before that leave the stored value alone.</summary>
     private double? _playbackBarWidth;
