@@ -25,7 +25,8 @@ public partial class App : Application
     public static bool LaunchedAtStartup { get; set; }
 
     /// <summary>Audio files passed on this launch's command line ("Open with
-    /// Noctis"), consumed by the main window once the player is ready.</summary>
+    /// Noctis"), or opened through macOS's open-documents event before startup
+    /// finished, consumed by the main window once the player is ready.</summary>
     public static IReadOnlyList<string> PendingOpenFiles { get; set; } = Array.Empty<string>();
 
     /// <summary>True when the autostart entry additionally requested a minimized (tray)

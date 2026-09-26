@@ -263,6 +263,23 @@ jobs:
             <key>LSMinimumSystemVersion</key><string>12.0</string>
             <key>NSHighResolutionCapable</key><true/>
             <key>NSAppleEventsUsageDescription</key><string>Noctis asks Finder to move deleted music files to the Trash.</string>
+            <key>CFBundleDocumentTypes</key>
+            <array>
+              <dict>
+                <key>CFBundleTypeName</key><string>Audio</string>
+                <key>CFBundleTypeRole</key><string>Viewer</string>
+                <key>LSHandlerRank</key><string>Alternate</string>
+                <key>LSItemContentTypes</key>
+                <array>
+                  <string>public.audio</string>
+                  <string>public.mp3</string>
+                  <string>org.xiph.flac</string>
+                  <string>com.apple.m4a-audio</string>
+                  <string>public.aiff-audio</string>
+                  <string>com.microsoft.waveform-audio</string>
+                </array>
+              </dict>
+            </array>
           </dict>
           </plist>
           PLIST

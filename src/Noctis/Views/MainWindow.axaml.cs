@@ -110,6 +110,7 @@ public partial class MainWindow : Window
     private Border? _queuePopupPanel;
     private MiniPlayerWindow? _miniPlayer;
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
+    private Action? _detachFileActivation;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -776,6 +777,18 @@ public partial class MainWindow : Window
         });
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
+        // macOS delivers "Open With Noctis", Finder double-clicks and Dock-icon drops as
+        // an open-documents event instead (see FileActivation) — at a cold launch too,
+        // once the run loop starts, which is before InitializeAsync has restored the queue.
+        _detachFileActivation = Helpers.FileActivation.Subscribe(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            files => Dispatcher.UIThread.Post(() =>
+            {
+                ShowFromTray();
+                if (DataContext is MainWindowViewModel vm)
+                    vm.OpenExternalFilesWhenReady(files);
+            }));
+
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
         // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
         // rule here — F11, Escape and WM-initiated transitions all funnel through
@@ -1124,6 +1137,8 @@ public partial class MainWindow : Window
             Helpers.SingleInstanceGuard.ActivationRequested -= _singleInstanceActivationHandler;
             _singleInstanceActivationHandler = null;
         }
+        _detachFileActivation?.Invoke();
+        _detachFileActivation = null;
 
         _taskbar?.Dispose();
         _smtc?.Dispose();

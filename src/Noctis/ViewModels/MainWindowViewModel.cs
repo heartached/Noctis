@@ -249,6 +249,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The sidebar key for the section currently selected underneath Cover Flow (e.g. "home", "songs", "albums"). Tracked so clicking Library returns to the right section.</summary>
     private string _currentSectionKey = "home";
 
+    /// <summary>Set once InitializeAsync has taken App.PendingOpenFiles; see <see cref="OpenExternalFilesWhenReady"/>.</summary>
+    private bool _pendingOpenFilesTaken;
+
     /// <summary>The non-section view (e.g. a PlaylistViewModel) the user was on when entering Cover Flow. Restored on exit so clicking Library returns to the same detail page.</summary>
     private ViewModelBase? _preCoverFlowView;
 
@@ -822,6 +825,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Play any files this launch was asked to open ("Open with Noctis"),
         // now that the window and player are up. Background priority so first
         // paint isn't delayed by the metadata read.
+        _pendingOpenFilesTaken = true;
         if (App.PendingOpenFiles.Count > 0)
         {
             var pending = App.PendingOpenFiles;
@@ -839,6 +843,19 @@ public partial class MainWindowViewModel : ViewModelBase
     public void OpenExternalFiles(IReadOnlyList<string> paths)
     {
         _ = OpenExternalFilesAsync(paths);
+    }
+
+    /// <summary>
+    /// Files the OS opens in the running app (macOS open-documents event). Until
+    /// InitializeAsync has taken <see cref="App.PendingOpenFiles"/> they join that list:
+    /// played at once, the queue restore that follows would replace them.
+    /// </summary>
+    public void OpenExternalFilesWhenReady(IReadOnlyList<string> paths)
+    {
+        if (_pendingOpenFilesTaken)
+            OpenExternalFiles(paths);
+        else
+            App.PendingOpenFiles = App.PendingOpenFiles.Concat(paths).ToArray();
     }
 
     /// <summary>
