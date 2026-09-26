@@ -123,6 +123,10 @@
   <data name="Settings.RemoveSeparatorTip" xml:space="preserve"><value>Remove separator</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.AddSeparatorEG" xml:space="preserve"><value>Add a separator, e.g. feat. or /</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.Add" xml:space="preserve"><value>Add</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSort" xml:space="preserve"><value>Ignore Leading Words When Sorting Artists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSortHint" xml:space="preserve"><value>Sort &quot;The Beatles&quot; under B. Names still show in full.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RemoveWordTip" xml:space="preserve"><value>Remove word</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.AddWordEG" xml:space="preserve"><value>Add a word, e.g. A or Los</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.Noctis" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickCopyVersionSystemTip" xml:space="preserve"><value>Click to copy version and system info</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Copied" xml:space="preserve"><value>Copied!</value><comment>Text in SettingsView.axaml</comment></data>

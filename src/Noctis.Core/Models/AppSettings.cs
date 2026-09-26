@@ -543,6 +543,14 @@ public class AppSettings
     /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
     public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
 
+    /// <summary>GitHub #99: the Artists grid's name sort skips a leading word from
+    /// <see cref="ArtistSortIgnoredWords"/> ("The Beatles" sorts under B). Off by default.</summary>
+    public bool IgnoreLeadingWordsInArtistSort { get; set; } = false;
+
+    /// <summary>Leading words skipped while <see cref="IgnoreLeadingWordsInArtistSort"/> is on;
+    /// see ArtistSortWords.SortKey for the matching rule.</summary>
+    public List<string> ArtistSortIgnoredWords { get; set; } = ArtistSortWords.DefaultWords.ToList();
+
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
 

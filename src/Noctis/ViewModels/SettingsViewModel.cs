@@ -1647,6 +1647,24 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Text of the "add separator" box on the Library tab.</summary>
     [ObservableProperty] private string _newArtistSeparator = string.Empty;
 
+    // ── Artist sort: ignore leading words (GitHub #99) ──
+
+    /// <summary>When on, the Artists grid's name sort skips a leading word from
+    /// <see cref="ArtistSortIgnoredWords"/>. Names still display in full.</summary>
+    [ObservableProperty] private bool _ignoreLeadingWordsInArtistSort;
+
+    /// <summary>Leading words the Artists name sort skips while the toggle is on. Edited as chips.</summary>
+    public ObservableCollection<string> ArtistSortIgnoredWords { get; } = new();
+
+    /// <summary>Text of the "add word" box under the toggle.</summary>
+    [ObservableProperty] private string _newArtistSortIgnoredWord = string.Empty;
+
+    /// <summary>The words the Artists grid skips right now: the list while the toggle is on,
+    /// nothing while it is off. Raised on every toggle or list edit; MainWindowViewModel
+    /// pushes it into LibraryArtistsViewModel.</summary>
+    public IReadOnlyList<string> ActiveArtistSortIgnoredWords =>
+        IgnoreLeadingWordsInArtistSort ? ArtistSortIgnoredWords.ToArray() : Array.Empty<string>();
+
     // ── Lyrics Providers ──
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
@@ -2418,6 +2436,8 @@ public partial class SettingsViewModel : ViewModelBase
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
+            IgnoreLeadingWordsInArtistSort = _settings.IgnoreLeadingWordsInArtistSort;
+            ReplaceArtistSortIgnoredWords(_settings.ArtistSortIgnoredWords);
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -2860,6 +2880,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
+        _settings.IgnoreLeadingWordsInArtistSort = IgnoreLeadingWordsInArtistSort;
+        _settings.ArtistSortIgnoredWords = ArtistSortIgnoredWords.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
@@ -3936,6 +3958,55 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    partial void OnIgnoreLeadingWordsInArtistSortChanged(bool value) => ApplyArtistSortIgnoredWords();
+
+    /// <summary>
+    /// Swaps the ignored-word chips with one re-sort at the end (same shape as the separators).
+    /// </summary>
+    private void ReplaceArtistSortIgnoredWords(IEnumerable<string>? words)
+    {
+        var normalized = ArtistSortWords.Normalize(words);
+        if (normalized.SequenceEqual(ArtistSortIgnoredWords, StringComparer.Ordinal))
+            return;
+        ArtistSortIgnoredWords.Clear();
+        foreach (var w in normalized)
+            ArtistSortIgnoredWords.Add(w);
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void AddArtistSortIgnoredWord()
+    {
+        var value = NewArtistSortIgnoredWord?.Trim() ?? string.Empty;
+        NewArtistSortIgnoredWord = string.Empty;
+        if (value.Length == 0) return;
+        if (ArtistSortIgnoredWords.Any(w => string.Equals(w, value, StringComparison.OrdinalIgnoreCase)))
+            return;
+        ArtistSortIgnoredWords.Add(value);
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void RemoveArtistSortIgnoredWord(string word)
+    {
+        if (!ArtistSortIgnoredWords.Remove(word)) return;
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void ResetArtistSortIgnoredWords() => ReplaceArtistSortIgnoredWords(ArtistSortWords.DefaultWords);
+
+    /// <summary>
+    /// Announces the new <see cref="ActiveArtistSortIgnoredWords"/> (the Artists grid re-sorts
+    /// from it) and saves. Runs during settings load and reset too, which skip the save.
+    /// </summary>
+    private void ApplyArtistSortIgnoredWords()
+    {
+        OnPropertyChanged(nameof(ActiveArtistSortIgnoredWords));
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
 
     /// <summary>
     /// Pushes the grouping mode and separators into the process-wide tokenizer. Runs during
@@ -6300,6 +6371,8 @@ public partial class SettingsViewModel : ViewModelBase
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
+            IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
+            ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             AlbumPageTintStrength = defaultSettings.AlbumPageTintStrength;

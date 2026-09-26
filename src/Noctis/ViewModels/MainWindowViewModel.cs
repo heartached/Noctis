@@ -436,6 +436,14 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             finally { adoptingArtistSort = false; }
         };
+        // Ignored leading words for the Artists name sort (GitHub #99): pushed now and on every
+        // toggle/list change, including the settings load — same shape as the Cover Flow layout.
+        _artistsVm.SetSortIgnoredWords(Settings.ActiveArtistSortIgnoredWords);
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.ActiveArtistSortIgnoredWords))
+                _artistsVm.SetSortIgnoredWords(Settings.ActiveArtistSortIgnoredWords);
+        };
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
         // Same mirroring as the Albums sort chip: the label lives on the grid view-model,
         // the control that shows it lives in the shared top bar.
