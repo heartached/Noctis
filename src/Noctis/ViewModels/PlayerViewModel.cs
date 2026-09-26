@@ -364,7 +364,8 @@ public partial class PlayerViewModel : ViewModelBase
     // Repeat All used to rebuild the queue from History, but TrimHistory caps History at
     // 50 entries — so cycling a 120-track playlist restarted at track 71 and permanently
     // dropped tracks 1-70, with no UI indication. History is a *display* list with a
-    // display-sized cap; the repeat cycle needs the real queue.
+    // display-sized cap; the repeat cycle needs the real queue. Queue adds/removes are
+    // mirrored into it (AddNext … ClearQueue) so a wrap replays the queue as edited.
     private List<Track> _repeatCycleTracks = new();
     private Action<string>? _navigateAction; // injected navigation action
     private Action<Track>? _viewAlbumAction; // injected from MainWindowViewModel
@@ -1213,6 +1214,13 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Insert(0, track);
+        if (_repeatCycleTracks.Count > 0)
+        {
+            // In the cycle it follows the playing track, as it does in this pass.
+            var current = CurrentTrack;
+            var at = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
+            _repeatCycleTracks.Insert(at < 0 ? _repeatCycleTracks.Count : at + 1, track);
+        }
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
@@ -1222,6 +1230,7 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Add(track);
+        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
     }
 
     /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch.</summary>
@@ -1238,6 +1247,7 @@ public partial class PlayerViewModel : ViewModelBase
             _suppressHasContentNotify = false;
             OnPropertyChanged(nameof(HasContent));
         }
+        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -1248,6 +1258,7 @@ public partial class PlayerViewModel : ViewModelBase
             DebugLogger.Info(DebugLogger.Category.Queue, "RemoveFromQueue", $"idx={index}, track={UpNext[index].Title}");
             CancelAutoMixTransition("queue changed");
             MarkQueueChanged();
+            RemoveFromRepeatCycle(new[] { UpNext[index] });
             UpNext.RemoveAt(index);
         }
     }
@@ -1258,6 +1269,7 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "ClearQueue", $"cleared={UpNext.Count} tracks");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        RemoveFromRepeatCycle(UpNext);
         UpNext.Clear();
         _parkedExplicit.Clear();
     }
@@ -1286,6 +1298,7 @@ public partial class PlayerViewModel : ViewModelBase
         _precedingInQueue.Clear();
         _originalQueue.Clear();
         _parkedExplicit.Clear();
+        _repeatCycleTracks.Clear(); // a queue started on the emptied player is not this cycle
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         PositionFraction = 0;
@@ -1328,9 +1341,35 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "RemoveManyFromQueue", $"count={rows.Count}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        RemoveFromRepeatCycle(rows.Select(i => UpNext[i]).ToList());
         // High → low so the lower indices stay valid.
         foreach (var i in rows)
             UpNext.RemoveAt(i);
+    }
+
+    /// <summary>
+    /// Drops tracks removed from UpNext out of the Repeat All cycle too, or the next
+    /// wrap brought them back. One entry per track given, last occurrence first: a
+    /// pending track sits after any copy of it that already played this pass.
+    /// </summary>
+    private void RemoveFromRepeatCycle(IEnumerable<Track> removed)
+    {
+        if (_repeatCycleTracks.Count == 0) return;
+        var pending = new Dictionary<Guid, int>();
+        foreach (var t in removed)
+            pending[t.Id] = pending.GetValueOrDefault(t.Id) + 1;
+        var drop = new HashSet<int>();
+        for (var i = _repeatCycleTracks.Count - 1; i >= 0; i--)
+        {
+            var id = _repeatCycleTracks[i].Id;
+            if (pending.TryGetValue(id, out var n) && n > 0)
+            {
+                pending[id] = n - 1;
+                drop.Add(i);
+            }
+        }
+        if (drop.Count > 0)
+            _repeatCycleTracks = _repeatCycleTracks.Where((_, i) => !drop.Contains(i)).ToList();
     }
 
     /// <summary>
@@ -2359,6 +2398,22 @@ public partial class PlayerViewModel : ViewModelBase
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
 
             if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
+
+            // Shuffle stays on across the wrap. The cycle holds the order the queue was
+            // started in, so replaying it as-is played every pass after the first in
+            // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
+            // does, keeping the in-order cycle as the un-shuffle target.
+            if (IsShuffleEnabled)
+            {
+                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                    allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
+                if (shuffled.Count > 0)
+                {
+                    _originalQueue = new List<Track>(allTracks);
+                    _originalQueue.Remove(shuffled[0]); // about to play, not pending
+                    allTracks = shuffled;
+                }
+            }
 
             UpNext.ReplaceAll(allTracks.Skip(1).ToList());
             PlayTrack(allTracks[0]);
