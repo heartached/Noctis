@@ -14,7 +14,7 @@ using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IPageKeyOverlayHost
 {
 
     private TaskbarIntegrationService? _taskbar;
@@ -754,8 +754,9 @@ public partial class MainWindow : Window
         // ShortcutService so Settings › Shortcuts can change any of them at runtime.
         AddHandler(KeyDownEvent, OnGlobalShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnGlobalShortcutKeyUp, RoutingStrategies.Tunnel);
-        // Queue-row keys (GitHub #85). Tunnel at the window and registered before any page's
-        // WindowKeyForwarder, so Ctrl+A / Escape inside the queue don't also hit the page.
+        // Queue-row keys (GitHub #85). Tunnel at the window. A page's WindowKeyForwarder is
+        // added later and so runs first (newest first); it stands aside through
+        // IsOverlayCapturingKeys, so Ctrl+A / Escape inside the queue don't hit the page.
         AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
 
         // Volume control via mouse wheel and keyboard
@@ -1841,6 +1842,11 @@ public partial class MainWindow : Window
         _queuePopupPanel is { IsVisible: true } panel
         && FocusManager?.GetFocusedElement() is Visual focused
         && (focused == panel || panel.IsVisualAncestorOf(focused));
+
+    /// <summary>Page shortcuts (Ctrl+A, Escape) stay off the page while the Settings sheet
+    /// covers it or the queue panel holds focus; the sheet and panel handle those keys.</summary>
+    bool IPageKeyOverlayHost.IsOverlayCapturingKeys =>
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsFocusInQueuePanel();
 
     private void OnQueueKeyDown(object? sender, KeyEventArgs e)
     {
