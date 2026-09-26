@@ -4247,6 +4247,22 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
+    /// End-watchdog drain test for a player whose input VLC reports Ended: its
+    /// OWN segment must have played out. Judging by the sink's active segment
+    /// was wrong right after a splice into a short track that fully decoded
+    /// while staged (its EndReached was ignored as inactive): the active segment
+    /// is still the outgoing tail from the other slot, so the watchdog fired
+    /// TrackEnded ~250 ms in and the short track was skipped.
+    /// </summary>
+    internal static bool EngineEndedInputDrained(GaplessTrackSegment? playerSegment)
+    {
+        if (playerSegment == null)
+            return true;
+        playerSegment.MarkEndOfStream(); // idempotent: input is done, no more samples
+        return playerSegment.IsFinished;
+    }
+
+    /// <summary>
     /// Open a fresh segment for this player's next input and queue it behind
     /// whatever the sink is rendering. Call BEFORE the player's Play().
     /// <paramref name="path"/> is the input it carries (its ReplayGain level).
@@ -5054,11 +5070,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 {
                     if (_player.State == VLCState.Ended)
                     {
-                        var wdSeg = _gaplessSink?.Provider.ActiveSegment;
-                        if (wdSeg != null && wdSeg.Source is int wdSlot && wdSlot == EngineSlotOf(_player))
-                            wdSeg.MarkEndOfStream(); // idempotent: input is done, no more samples
-                        var drained = wdSeg == null || wdSeg.IsFinished || wdSeg.BufferedSamples == 0 ||
-                                      (wdSeg.Source is int s && s != EngineSlotOf(_player));
+                        var drained = EngineEndedInputDrained(
+                            Volatile.Read(ref _engineSegments[EngineSlotOf(_player)]));
                         if (drained)
                         {
                             DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.EndWatchdog",
