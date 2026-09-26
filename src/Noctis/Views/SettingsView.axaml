@@ -5618,6 +5618,15 @@
                                            FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                             </Button>
 
+                            <!-- Postpone a queued automatic install by 24 h (auto-update only) -->
+                            <Button Command="{Binding PostponeAutoInstallCommand}"
+                                    Classes="pill"
+                                    Padding="16,6"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding ShowPostponeButton}">
+                                <TextBlock Text="{loc:T Settings.Postpone}" FontSize="12" />
+                            </Button>
+
                             <!-- Install & Restart button (replaces Update when ready) -->
                             <Button Command="{Binding InstallUpdateCommand}"
                                     Classes="pill red-pill"
@@ -5636,6 +5645,14 @@
                         <TextBlock Text="{Binding UpdateStatusText}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" />
+                        <!-- After an automatic update: the release notes on GitHub -->
+                        <Button Command="{Binding OpenLatestReleaseCommand}"
+                                Classes="pill"
+                                Padding="12,4"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding ShowWhatsNew}">
+                            <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
+                        </Button>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="12"
@@ -5652,6 +5669,23 @@
                             <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12" />
                         </Button>
                     </StackPanel>
+
+                    <!-- Auto-update (opt-in): background download + install at next launch. Hidden for Scoop /
+                         portable / read-only copies, which update through their own channel. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2" IsVisible="{Binding CanAutoUpdate}">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AutoInstallUpdates}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AutoInstallUpdatesCaption}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                       IsVisible="{Binding AutoUpdateInstallsAtLaunch}"/>
+                            <TextBlock Text="{loc:T Settings.AutoDownloadUpdatesCaption}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                       IsVisible="{Binding AutoUpdateDownloadOnly}"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AutoInstallUpdates}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
 
                     <!-- Row 2: three equal-width brand tiles (GitHub / Discord / Website),
                          each a solid brand fill (star yellow, Discord blurple, Noctis red)

@@ -129,6 +129,11 @@
   <data name="Settings.PreRelease" xml:space="preserve"><value>Pre-Release</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.InstallRestart" xml:space="preserve"><value>Install &amp; Restart</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cancel" xml:space="preserve"><value>Cancel</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoInstallUpdates" xml:space="preserve"><value>Update automatically</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve"><value>Downloads new versions in the background and installs them the next time you open Noctis. Playback is never interrupted.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Downloads new versions in the background. Click Install &amp; Restart when you're ready to finish.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Postpone" xml:space="preserve"><value>Postpone</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WhatsNew" xml:space="preserve"><value>What's new</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>See recent releases</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Right-click a song or album to give it its own video.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Pause Video With Playback</value><comment>Appearance toggle title</comment></data>
