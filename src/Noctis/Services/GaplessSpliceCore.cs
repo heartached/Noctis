@@ -413,6 +413,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private float[]? _fadeScratch;
     private readonly float[] _lastMixFrame = new float[2]; // last emitted frame of a read that mixed a tail
     private bool _tailMixed;           // the last read mixed a tail into its output (render thread only)
+    private int _tailFadeInRemaining;  // un-park fade-in still due on the tail (render thread only)
 
     // Playback speed (podcast/audiobook island): a WSOLA stretch is the LAST
     // adapter stage, pulling media frames at the rate, so the segment's
@@ -563,7 +564,11 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             // only after FadeArmMs).
             _parkRendered = false;
             if (_startFadeSamples > 0)
+            {
                 _cutFadePending = true;
+                // A crossfade tail kept across the pause resumes from silence too.
+                _tailFadeInRemaining = _startFadeSamples;
+            }
         }
         if (_tailMixed)
         {
@@ -796,6 +801,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         if (fading == null || adapted == null)
         {
             _tailMixed = false;
+            _tailFadeInRemaining = 0;
             return;
         }
 
@@ -814,6 +820,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         }
         for (var i = got; i < count; i++)
             scratch[i] = 0f;
+        // First read after a pause: ramp the tail in with the active's fade-in, or
+        // it steps straight out of the parked silence at its outgoing level.
+        for (var i = 0; i < count && _tailFadeInRemaining > 0; i++, _tailFadeInRemaining--)
+            scratch[i] *= (float)(_startFadeSamples - _tailFadeInRemaining) / _startFadeSamples;
 
         var total = _fadeTotalSamples;
         var elapsed = _fadeElapsedSamples;

@@ -2594,7 +2594,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     return;
                 }
 
-                ReleasePreparedNext();
+                // Reuses the standby: also takes over a tail it may still carry.
+                ReleasePreparedNext(reuseStandby: true);
 
                 _standbyMedia = media;
                 _standbyPath = normalizedPath;
@@ -5348,15 +5349,49 @@ public class VlcAudioPlayer : IAudioPlayer
         catch (ObjectDisposedException) { }
     }
 
-    private void ReleasePreparedNext()
+    /// <summary>
+    /// Engine: whether releasing the standby may touch it, given its slot's
+    /// segment. Nothing staged means a splice made the standby the OUTGOING
+    /// player, and an unfinished segment there is the audible tail (a crossfade's
+    /// fading tail for up to 12 s, or a drained ring's last moment). Killing it
+    /// on a queue edit, shuffle/repeat toggle, pause, seek or settings change
+    /// dropped the old track in one read and snapped the new one to full level;
+    /// QueueInactivePlayerCleanup retires it. Only PrepareNext reusing the
+    /// standby takes it over: a live tail is abandoned (its decoder is about to
+    /// be stopped), a drained one keeps playing out of the ring.
+    /// <paramref name="abandon"/>: abandon the segment before the Stop.
+    /// </summary>
+    internal static bool EngineStandbyReleasable(
+        GaplessTrackSegment? standbySegment, bool standbyPrepared, bool reuseStandby, out bool abandon)
+    {
+        abandon = false;
+        if (standbySegment == null)
+            return true;
+        if (!standbyPrepared && !reuseStandby && !standbySegment.IsFinished)
+            return false;
+        abandon = standbyPrepared || !standbySegment.EndOfStream;
+        return true;
+    }
+
+    private void ReleasePreparedNext(bool reuseStandby = false)
     {
         if (_gaplessEngine)
         {
             _engineStagedPath = null;
+            var standbySeg = Volatile.Read(ref _engineSegments[EngineSlotOf(_standbyPlayer)]);
+            if (!EngineStandbyReleasable(standbySeg, _standbyPrepared, reuseStandby, out var abandon))
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.TailKept",
+                    $"slot={EngineSlotOf(_standbyPlayer)}, eos={standbySeg!.EndOfStream}");
+                return;
+            }
             // Unblock the staging writer BEFORE Stop() joins its decoder thread
             // (a Write blocked on a full ring would deadlock the stop). The
             // abandoned segment is skipped by the sink's splice loop.
-            try { Volatile.Read(ref _engineSegments[EngineSlotOf(_standbyPlayer)])?.Abandon(); } catch { }
+            if (abandon)
+            {
+                try { standbySeg!.Abandon(); } catch { }
+            }
         }
         try { _standbyPlayer.Stop(); } catch { }
         SetPlayerVolumeGuarded(_standbyPlayer, 0);
