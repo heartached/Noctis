@@ -2737,10 +2737,12 @@ public partial class PlayerViewModel : ViewModelBase
             // After PlayTrack() updates CurrentTrack, the single VLC player can still
             // report positions from the outgoing song while it fades/stops. Those old
             // near-end positions must not drive AutoMix for the newly selected track.
+            // Media time advances at the playback rate (VLC rate / engine stretch), so
+            // the elapsed allowance scales with it — else 2× ticks are dropped from ~4s.
             if (msSinceSeek < TrackStartStalePositionGuardMs)
             {
                 var expectedSeconds = _lastCommittedSeekTarget.TotalSeconds;
-                var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) + 4;
+                var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) * Math.Max(1.0, PlaybackRate) + 4;
                 if (latest.TotalSeconds > maxPlausibleSeconds)
                 {
                     NotePositionRejected("trackStartStale", latest, msSinceSeek);
