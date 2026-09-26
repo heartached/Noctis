@@ -121,9 +121,21 @@ public static class SmoothScrollBehavior
             GetState(element)?.Stop();
     }
 
+    /// <summary>True when the wheel carries the platform's primary modifier: Ctrl, or ⌘ on
+    /// macOS (the same split as the default shortcuts).</summary>
+    public static bool HasCommandModifier(PointerWheelEventArgs e)
+        => e.KeyModifiers.HasFlag(KeyModifiers.Control)
+           || (OperatingSystem.IsMacOS() && e.KeyModifiers.HasFlag(KeyModifiers.Meta));
+
     private static void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         if (sender is not InputElement element || Math.Abs(e.Delta.Y) < 0.01)
+            return;
+
+        // A Ctrl/⌘+wheel an outer handler already claimed is a command, not a scroll: the
+        // lyrics views shift the song's lyrics with it (GitHub #102). handledEventsToo would
+        // otherwise scroll under it; unclaimed or unmodified wheels are untouched.
+        if (e.Handled && HasCommandModifier(e))
             return;
 
         var state = GetState(element);

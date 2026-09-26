@@ -3059,8 +3059,83 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // snaps to the new active line. Without this, a prior mouse-wheel scroll leaves
         // IsAutoFollowPaused=true and the seek looks like it did nothing.
         IsAutoFollowPaused = false;
+        // Land where the line is shown: with a lyrics offset that is its timestamp plus the
+        // offset (the seek clamps a result before 0:00 or past the end).
         _player.SeekToPositionCommand.Execute(
-            line.Timestamp.Value.TotalSeconds / _player.Duration.TotalSeconds);
+            (line.Timestamp.Value + LyricsOffset).TotalSeconds / _player.Duration.TotalSeconds);
+    }
+
+    // ── Per-track lyrics offset (GitHub #102) ──
+    // Ctrl/⌘+wheel over the lyrics shifts them half a second per notch: wheel up shows
+    // them earlier, down later. Kept on the Track (library.json, like VolumeAdjust) and
+    // applied only where the timeline is read (UpdateActiveLine / SeekToLine), so it
+    // works for every source and neither lyric files nor parsed timestamps change.
+    internal const int LyricsOffsetStepMs = 500;
+    internal const int MaxLyricsOffsetMs = 30_000;
+    private const int LyricsOffsetSaveDebounceMs = 1000;
+    private CancellationTokenSource? _lyricsOffsetSaveCts;
+    private double _lyricsOffsetWheelRemainder;
+
+    /// <summary>Shows a transient app-wide notice (the glass pill); set by MainWindowViewModel.</summary>
+    internal Action<string>? ShowNotice { get; set; }
+
+    private TimeSpan LyricsOffset => TimeSpan.FromMilliseconds(_currentTrack?.LyricsOffsetMs ?? 0);
+
+    /// <summary>
+    /// Shifts the current track's lyrics one step per wheel notch (positive delta = wheel
+    /// up = earlier). Returns false, leaving the wheel to scroll, when no synced lyrics are
+    /// on screen to shift.
+    /// </summary>
+    internal bool NudgeLyricsOffset(double wheelDelta)
+    {
+        if (_currentTrack is not { } track || !_hasSyncedLyrics || !IsSyncTabSelected || wheelDelta == 0)
+            return false;
+
+        // Hi-res wheels and touchpads report fractions of a notch: step once per whole one.
+        if (Math.Sign(wheelDelta) != Math.Sign(_lyricsOffsetWheelRemainder))
+            _lyricsOffsetWheelRemainder = 0;
+        _lyricsOffsetWheelRemainder += wheelDelta;
+        var notches = (int)_lyricsOffsetWheelRemainder;
+        if (notches == 0) return true;
+        _lyricsOffsetWheelRemainder -= notches;
+
+        var offset = Math.Clamp(track.LyricsOffsetMs - notches * LyricsOffsetStepMs,
+            -MaxLyricsOffsetMs, MaxLyricsOffsetMs);
+        if (offset != track.LyricsOffsetMs)
+        {
+            track.LyricsOffsetMs = offset;
+            // The queue can hold a pre-reload instance of the song; the library's is the one saved.
+            if (_library.GetTrackById(track.Id) is { } libraryTrack)
+                libraryTrack.LyricsOffsetMs = offset;
+            UpdateActiveLine(GetPlaybackPosition());
+            QueueLyricsOffsetSave();
+        }
+
+        ShowNotice?.Invoke(offset switch
+        {
+            0 => Localization.Loc.T("Lyrics.OffsetInSync"),
+            < 0 => Localization.Loc.T("Lyrics.OffsetEarlier", -offset / 1000.0),
+            _ => Localization.Loc.T("Lyrics.OffsetLater", offset / 1000.0),
+        });
+        return true;
+    }
+
+    private void QueueLyricsOffsetSave()
+    {
+        _lyricsOffsetSaveCts?.Cancel();
+        _lyricsOffsetSaveCts?.Dispose();
+        var cts = _lyricsOffsetSaveCts = new CancellationTokenSource();
+        _ = SaveLyricsOffsetDebouncedAsync(cts.Token);
+    }
+
+    private async Task SaveLyricsOffsetDebouncedAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(LyricsOffsetSaveDebounceMs, token);
+            await _library.SaveAsync();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer notch */ }
     }
 
     // Word-level lookahead: small lead so the sweep matches the vocal instead of trailing
@@ -3085,6 +3160,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private void UpdateActiveLine(TimeSpan position)
     {
+        // Every caller passes the audio position; the track's lyrics offset (GitHub #102)
+        // moves the lyrics, not the audio, so read the timeline that much behind it.
+        position -= LyricsOffset;
+        if (position < TimeSpan.Zero) position = TimeSpan.Zero;
         var step = _timeline.Update(position);
         if (!step.LineChanged) return;
         if (DebugLog.VlcBridgeEnabled)

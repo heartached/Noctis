@@ -112,7 +112,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _isDropImporting;
     [ObservableProperty] private string _dropImportStatus = string.Empty;
 
-    /// <summary>"Plugin: message" from a plugin's Notify(), shown for a few seconds in the notice pill.</summary>
+    /// <summary>"Plugin: message" from a plugin's Notify(), shown for a few seconds in the notice pill
+    /// (also the lyrics offset confirmation, GitHub #102).</summary>
     [ObservableProperty] private string _pluginNotice = string.Empty;
 
     // ── Discord seek throttle ──
@@ -504,6 +505,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _lyricsVm.PluginLyricsSources = () => Plugins.LyricsProviders;
+        // Lyrics offset nudges (Ctrl+wheel, GitHub #102) confirm in the notice pill, which
+        // shows over both the lyrics page and the side panel.
+        _lyricsVm.ShowNotice = text => TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
         _statisticsVm.BackRequested += (_, _) =>
         {

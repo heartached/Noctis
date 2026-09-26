@@ -128,7 +128,9 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(RelocateRemap);
     public Task LoadAsync() => Task.CompletedTask;
-    public Task SaveAsync() => Task.CompletedTask;
+    /// <summary>Number of full library saves requested.</summary>
+    public int SaveCount { get; private set; }
+    public Task SaveAsync() { SaveCount++; return Task.CompletedTask; }
     public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;
     public Task ClearAsync() => Task.CompletedTask;
     public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;

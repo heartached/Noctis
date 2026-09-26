@@ -99,6 +99,9 @@ public partial class LyricsPanelView : UserControl
         };
 
         PanelScrollViewer.PointerWheelChanged += OnUserScroll;
+        // Ctrl/⌘+wheel shifts the lyrics instead of scrolling (GitHub #102); tunnel on the
+        // view so it runs before SmoothScrollBehavior's handler on the ScrollViewer.
+        AddHandler(PointerWheelChangedEvent, OnLyricsOffsetWheel, RoutingStrategies.Tunnel);
     }
 
     private void HookViewModel()
@@ -270,6 +273,16 @@ public partial class LyricsPanelView : UserControl
                 ScrollToLine(vm.ActiveLineIndex, force: true);
         };
         _followResumeTimer.Start();
+    }
+
+    private void OnLyricsOffsetWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!SmoothScrollBehavior.HasCommandModifier(e) || _vm == null) return;
+        if (e.Source is not Visual source
+            || !(source == PanelScrollViewer || PanelScrollViewer.IsVisualAncestorOf(source))) return;
+        // Handled: no scroll, and OnUserScroll never pauses follow.
+        if (_vm.NudgeLyricsOffset(e.Delta.Y))
+            e.Handled = true;
     }
 
     private void CancelFollowResumeTimer()
