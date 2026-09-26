@@ -2984,7 +2984,7 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+        if (!CanHandOffEarly(nextTrack.FilePath))
         {
             DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.PreparedInvalid", "next track unavailable");
             CancelAutoMixTransition("next track unavailable");
@@ -3025,6 +3025,14 @@ public partial class PlayerViewModel : ViewModelBase
         return true;
     }
 
+    // An early advance needs a target the player can hand off to: a file on disk, or a
+    // media-server stream when the player stages streams (the splice engine). A URL
+    // never passes File.Exists; unstaged, it waits for TrackEnded and opens cold
+    // rather than cutting the outgoing tail early.
+    private bool CanHandOffEarly(string? path) =>
+        !string.IsNullOrWhiteSpace(path) &&
+        (VlcAudioPlayer.IsRemoteStreamPath(path) ? _audioPlayer.PreparesRemoteStreams : File.Exists(path));
+
     private AutoMixPlannerOptions CreateAutoMixOptions() =>
         new(
             AutoMixTransitionMode,
@@ -3055,7 +3063,8 @@ public partial class PlayerViewModel : ViewModelBase
     private const int AutoMixOverlapSeconds = 3;
     private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
 
-    private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
     {
         // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
         if (!GaplessEnabled ||
@@ -3104,7 +3113,7 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+        if (!CanHandOffEarly(nextTrack.FilePath))
             return false;
 
         var validation = AutoMixPreparedTransitionValidator.Validate(

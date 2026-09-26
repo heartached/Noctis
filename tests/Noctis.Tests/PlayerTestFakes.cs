@@ -65,6 +65,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public string UpmixMode { get; private set; } = "Off";
     public void SetUpmixMode(string mode) => UpmixMode = mode;
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
+    public bool PreparesRemoteStreams { get; set; }
     public int CancelledCount { get; private set; }
     public void CancelPreparedNext() => CancelledCount++;
     /// <summary>The last curve pushed by SetAdvancedEqualizer (null until the first call).</summary>

@@ -2419,9 +2419,21 @@ public class VlcAudioPlayer : IAudioPlayer
         _gaplessEnabled = enabled;
     }
 
+    /// <summary>
+    /// Remote streams are staged only on the splice engine: its boundary is the sink's
+    /// segment queue, while the classic standby handoff and crossfade helpers take local
+    /// files only (PlayInternal gates them on !isPathless).
+    /// </summary>
+    public bool PreparesRemoteStreams => _gaplessEngine && !_exclusiveModeEnabled;
+
     public void PrepareNext(string filePath, long startPositionMs = -1)
     {
-        if (_disposed || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        if (_disposed || string.IsNullOrWhiteSpace(filePath))
+            return;
+        // A media-server URL never passes File.Exists: open it as a location and parse
+        // it over the network, like PlayInternal does. Never logged verbatim (LogName).
+        var isRemote = IsRemoteStreamPath(filePath);
+        if (isRemote ? !PreparesRemoteStreams : !File.Exists(filePath))
             return;
 
         // The WASAPI callback sinks are single-stream: standby warmup would play
@@ -2429,7 +2441,7 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_wasapiOut != null || _exclusiveModeEnabled)
             return;
 
-        var normalizedPath = Path.GetFullPath(filePath);
+        var normalizedPath = isRemote ? filePath : Path.GetFullPath(filePath);
         if (_standbyPrepared &&
             string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
             _standbyStartPositionMs == startPositionMs)
@@ -2438,7 +2450,7 @@ public class VlcAudioPlayer : IAudioPlayer
         ThreadPool.QueueUserWorkItem(_ =>
         {
             var prepareStart = Environment.TickCount64;
-            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={LogName(normalizedPath)}, startMs={startPositionMs}");
 
             if (_disposed || _currentMedia == null)
                 return;
@@ -2465,8 +2477,9 @@ public class VlcAudioPlayer : IAudioPlayer
             Media media;
             try
             {
-                media = new Media(_libVlc, normalizedPath, FromType.FromPath);
-                ApplyReadAhead(media);
+                media = new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
+                if (!isRemote)
+                    ApplyReadAhead(media);
                 // Off the engine the playback-speed button is LibVLC's rate; only
                 // media opened with time-stretch keep their pitch at ≠ 1×.
                 if (!_gaplessEngine)
@@ -2487,7 +2500,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     media.AddOption(":audio-replay-gain-default=-7.0");
                 }
 
-                var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+                var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
                 bool parsed;
                 try
                 {
@@ -2503,7 +2516,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (!parsed)
                 {
                     media.Dispose();
-                    DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={Path.GetFileName(normalizedPath)}");
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={LogName(normalizedPath)}");
                     return;
                 }
             }
@@ -2596,7 +2609,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     {
                         try { _standbyPlayer.Time = startPositionMs; } catch { /* input not up yet */ }
                     }
-                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Staged", $"path={Path.GetFileName(normalizedPath)}");
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Staged", $"path={LogName(normalizedPath)}");
                 }
                 else if (preRoll)
                 {
@@ -2619,7 +2632,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 DebugLogger.Info(
                     DebugLogger.Category.Playback,
                     "AutoMix.DualPrepared",
-                    $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}, preRoll={preRoll}, elapsedMs={Environment.TickCount64 - prepareStart}");
+                    $"path={LogName(normalizedPath)}, startMs={startPositionMs}, preRoll={preRoll}, elapsedMs={Environment.TickCount64 - prepareStart}");
             }
             catch (Exception ex)
             {
@@ -2661,9 +2674,10 @@ public class VlcAudioPlayer : IAudioPlayer
     /// <summary>
     /// True when the path is a remote http(s) stream (media-server track) rather
     /// than a local file. Remote streams open with FromType.FromLocation and parse
-    /// over the network; they never use the standby/crossfade machinery (which is
-    /// built around normalized local paths and pre-parsed local media). Stream URLs
-    /// can embed auth tokens, so they must never be logged or shown verbatim.
+    /// over the network; off the splice engine they never use the standby/crossfade
+    /// machinery (which is built around normalized local paths and pre-parsed local
+    /// media). Stream URLs can embed auth tokens, so they must never be logged or
+    /// shown verbatim.
     /// </summary>
     internal static bool IsRemoteStreamPath(string path) =>
         path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
@@ -2784,14 +2798,12 @@ public class VlcAudioPlayer : IAudioPlayer
 
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
-            // Remote streams take the plain open path: the standby/crossfade helpers
-            // compare Path.GetFullPath-normalized local paths and the standby player
-            // is never prepared for URLs (PrepareNext rejects them).
             var isRemote = IsRemoteStreamPath(filePath);
             var isCd = IsAudioCdPath(filePath);
             // Neither a stream nor a disc track is a file: the standby/crossfade helpers
             // compare Path.GetFullPath-normalized local paths and PrepareNext never
-            // stages them, so both take the plain open path.
+            // stages them for those, so both take the plain open path. The one exception
+            // is a stream staged on the splice engine (see the splice below).
             var isPathless = isRemote || isCd;
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
@@ -2834,9 +2846,11 @@ public class VlcAudioPlayer : IAudioPlayer
             // behind the active segment, so the audible boundary needs NOTHING
             // from us. This "track change" is pure bookkeeping: swap the player
             // roles and let the outgoing segment play its tail out of the ring.
-            if (_gaplessEngine && !startPaused && !isPathless && hadPreviousMedia &&
+            // A remote stream qualifies too: PrepareNext stages URLs on the engine,
+            // keyed by the URL itself (not a file path).
+            if (_gaplessEngine && !startPaused && !isCd && hadPreviousMedia &&
                 _engineStagedPath != null && _standbyMedia != null &&
-                string.Equals(_engineStagedPath, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
+                string.Equals(_engineStagedPath, isRemote ? filePath : Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
             {
                 // Bookkeeping-only is valid ONLY when the outgoing input already hit
                 // EOF (decode-ahead). Taken mid-track (transition-mode advance at
@@ -2884,7 +2898,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
                 _positionTimer.Start();
                 DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Spliced",
-                    $"path={Path.GetFileName(filePath)}, crossfadeMs={engineFadeMs}");
+                    $"path={LogName(filePath)}, crossfadeMs={engineFadeMs}");
                 // Outgoing input already hit EOF (decode-ahead) — the deferred
                 // Stop() cannot block on a writer, and its segment keeps playing
                 // from the ring untouched. A crossfading tail must keep its decoder
