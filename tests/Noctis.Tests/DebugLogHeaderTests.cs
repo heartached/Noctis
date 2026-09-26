@@ -12,6 +12,8 @@ public class DebugLogHeaderTests
     [Fact]
     public void Header_Reports_Install_Source_And_Location()
     {
+        // Clear re-seeds the header: other tests can log past the 500-line ring first.
+        DebugLog.Clear();
         var snapshot = DebugLog.Snapshot();
 
         Assert.Contains($"Install source: {UpdateService.Source}", snapshot);
