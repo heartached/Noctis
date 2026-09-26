@@ -348,6 +348,11 @@ public class AppSettings
     /// <summary>Artists grid sort direction.</summary>
     public bool ArtistSortAscending { get; set; } = true;
 
+    /// <summary>Artist page Albums / Singles &amp; EPs tab order (GitHub #100): "newest"
+    /// (release date), "oldest" (undated releases last) or "name" (A–Z). One setting for
+    /// both tabs and every artist.</summary>
+    public string ArtistReleaseSortMode { get; set; } = "newest";
+
     /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
     /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
     public string FoldersSortMode { get; set; } = "default";
