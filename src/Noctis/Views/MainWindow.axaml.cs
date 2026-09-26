@@ -23,34 +23,85 @@ public partial class MainWindow : Window
     private LinuxResumeWatcher? _resumeWatcher;
 
     /// <summary>
-    /// Linux, XWayland on NVIDIA: after a suspend the window's buffers are gone and nothing
-    /// drawn reaches the screen until the app is restarted (Mistery, Discord 2026-09-22; see
-    /// <see cref="LinuxResumeWatcher"/>). Unmap + map gives XWayland a fresh surface and
-    /// pixmap, as a restart would. Only windows the user can see are touched — minimized
-    /// and tray-hidden ones are left alone — and focus is handed back to the one that had it.
+    /// Linux, XWayland on NVIDIA: after a suspend the window came back see-through until the
+    /// app was restarted (Mistery, Discord 2026-09-22; see <see cref="LinuxResumeWatcher"/>).
+    /// Each visible window gets a real size change and is put back: a size change gives a
+    /// redirected window a new backing pixmap in the X server, XWayland drops its window
+    /// buffers with it, and Avalonia rebuilds its render layer and redraws everything (an
+    /// expose only redraws what it thinks is dirty). Normal windows grow 1px; maximized
+    /// ones are restored and re-maximized, because KWin refuses client resizes of maximized
+    /// windows. See <see cref="LinuxResumeWatcher.ChooseWindowRefresh"/> for what is skipped.
+    /// The 1.5.3 Hide() + Show() remap is gone: Window.Hide() hides the owner's dialogs and
+    /// completes their ShowDialog as if cancelled, and the loop then skipped them, hidden.
     /// </summary>
-    private void RemapWindowsAfterResume()
+    private void RefreshWindowsAfterResume(int pass)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
         foreach (var window in new List<Window>(desktop.Windows))
         {
-            if (!window.IsVisible || window.WindowState == WindowState.Minimized)
-                continue;
-            var wasActive = window.IsActive;
+            var name = window.GetType().Name;
+            var refresh = LinuxResumeWatcher.ChooseWindowRefresh(window.IsVisible, window.WindowState, window.SizeToContent);
             try
             {
-                window.Hide();
-                window.Show();
-                if (wasActive)
-                    window.Activate();
-                DebugLogger.Info(DebugLogger.Category.UI, "ResumeWatch.Remapped", window.GetType().Name);
+                switch (refresh)
+                {
+                    case LinuxResumeWatcher.WindowRefresh.NudgeSize:
+                        NudgeWindowSizeAfterResume(window, name, pass);
+                        break;
+                    case LinuxResumeWatcher.WindowRefresh.Remaximize:
+                        window.WindowState = WindowState.Normal;
+                        DispatcherTimer.RunOnce(() =>
+                        {
+                            try
+                            {
+                                if (window.WindowState == WindowState.Normal)
+                                    window.WindowState = WindowState.Maximized;
+                                LinuxResumeWatcher.Log("ResumeWatch.Refreshed", $"pass {pass}: {name} restored and re-maximized");
+                            }
+                            catch (Exception ex)
+                            {
+                                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
+                            }
+                        }, LinuxResumeWatcher.RefreshHold);
+                        break;
+                    default:
+                        LinuxResumeWatcher.Log("ResumeWatch.Skipped", $"pass {pass}: {name} ({refresh})");
+                        break;
+                }
             }
             catch (Exception ex)
             {
-                DebugLogger.Warn(DebugLogger.Category.UI, "ResumeWatch.Remap", $"{window.GetType().Name}: {ex.Message}");
+                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Grows the window by 1px and puts it back after <see cref="LinuxResumeWatcher.RefreshHold"/>.
+    /// The put-back waits for the window manager's answer: X11Window.Resize drops a request
+    /// equal to the size it last heard back, so an immediate restore would be lost.
+    /// </summary>
+    private static void NudgeWindowSizeAfterResume(Window window, string name, int pass)
+    {
+        var before = window.ClientSize;
+        var height = window.Height;
+        window.Height = before.Height + 1;
+        DispatcherTimer.RunOnce(() =>
+        {
+            try
+            {
+                var grew = window.ClientSize.Height > before.Height;
+                window.Height = double.IsNaN(height) ? before.Height : height;
+                LinuxResumeWatcher.Log("ResumeWatch.Refreshed",
+                    $"pass {pass}: {name} {before.Width:0}x{before.Height:0} " +
+                    (grew ? "grew 1px and was put back" : "did not grow (window manager kept its size, e.g. tiled)"));
+            }
+            catch (Exception ex)
+            {
+                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
+            }
+        }, LinuxResumeWatcher.RefreshHold);
     }
     private MacNowPlayingService? _macNowPlaying;
     private TrayIcon? _trayIcon;
@@ -481,7 +532,7 @@ public partial class MainWindow : Window
                 InitializeTrayIcon(vm);
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
-                _resumeWatcher = LinuxResumeWatcher.TryStart(() => Dispatcher.UIThread.Post(RemapWindowsAfterResume));
+                _resumeWatcher = LinuxResumeWatcher.TryStart(pass => Dispatcher.UIThread.Post(() => RefreshWindowsAfterResume(pass)));
                 _macNowPlaying = MacNowPlayingService.TryStart(vm.Player);
                 InitializeMacMenuBar(vm);
                 Services.StartupTrace.Mark("tray-smtc-mpris-ready");
