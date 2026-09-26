@@ -11,7 +11,8 @@ namespace Noctis.Services;
 
 // Persistent shared-mode WASAPI stream for the true-gapless splice engine
 // (NOCTIS_GAPLESS_ENGINE=1). One WasapiOut opened at the device mix format
-// runs for the player's lifetime; GaplessSpliceProvider feeds it per-track
+// runs for the player's lifetime (stopped only after a long idle, see
+// CheckIdle); GaplessSpliceProvider feeds it per-track
 // segments rendered back-to-back, so the track boundary is crossed inside a
 // single render read — zero inserted samples. The stream lives in the process
 // audio session, so the existing WindowsSessionVolume machinery keeps owning
@@ -49,6 +50,19 @@ public sealed class GaplessSink : IDisposable
     private int _rebuilding; // interlocked 0/1
 
     private const int DeviceCheckIntervalMs = 2000;
+    private const int StartThresholdMs = 200;
+
+    // Idle park. A running render stream holds Windows' "audio stream in use" power
+    // request even while it renders only silence, so a paused, stopped or never-started
+    // player kept the PC from auto-sleeping for as long as Noctis stayed open (the reason
+    // the keep-alive parks too). After the idle timeout without track audio the stream is
+    // stopped; the client stays open, so the session and its volume stay. Resume, or audio
+    // due again, restarts it. NOCTIS_ENGINE_IDLE_MS overrides the timeout (0 = never park).
+    private const int DefaultIdleStopMs = 10 * 60 * 1000;
+    private readonly int _idleStopMs;
+    private readonly IdleWatch _idle;
+    private readonly object _parkGate = new(); // serializes idle park/wake; never taken on the render thread
+    private bool _streamParked; // _out stopped by the idle park and unsubscribed (guarded by _gate)
 
     public GaplessSpliceProvider Provider { get; }
     public int SampleRate { get; }
@@ -88,7 +102,10 @@ public sealed class GaplessSink : IDisposable
         // 5ms fade-in whenever audio resumes after silence (start, post-seek,
         // underrun recovery) masks decoder warm-up garble at segment heads; the
         // seam is never preceded by silence, so true gapless stays bit-exact.
-        Provider = new GaplessSpliceProvider(SampleRate, Channels, startThresholdMs: 200, startFadeMs: 5);
+        Provider = new GaplessSpliceProvider(SampleRate, Channels, startThresholdMs: StartThresholdMs, startFadeMs: 5);
+        _idleStopMs = int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_IDLE_MS"), out var idleMs) && idleMs >= 0
+            ? idleMs : DefaultIdleStopMs;
+        _idle = new IdleWatch(_idleStopMs, SampleRate * Channels * StartThresholdMs / 1000, Environment.TickCount64);
         // NOCTIS_ENGINE_TAP=1 (or =<path>): capture exactly what the engine
         // renders to a WAV so glitches can be inspected sample-by-sample
         // instead of by ear. Diagnostic only — never breaks rendering.
@@ -126,9 +143,9 @@ public sealed class GaplessSink : IDisposable
         _probe = new StallProbe(renderSource);
         _renderSource = _probe;
         _out = CreateOutput();
-        // Render immediately and forever: the provider always returns full
-        // buffers (silence when idle), so the stream never stops between
-        // tracks — the property true gapless depends on.
+        // Render immediately: the provider always returns full buffers (silence
+        // when idle), so the stream never stops between tracks — the property
+        // true gapless depends on. Only a long idle parks it (see CheckIdle).
         _out.Play();
         DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkOpened",
             $"elapsedMs={Stopwatch.GetElapsedTime(openStart).TotalMilliseconds:0}, {DescribeFormats(mix)}, " +
@@ -137,6 +154,7 @@ public sealed class GaplessSink : IDisposable
         _deviceWatch = new Timer(_ =>
         {
             try { CheckDefaultDevice(); } catch { /* next tick retries */ }
+            try { CheckIdle(); } catch { /* next tick retries */ }
         }, null, DeviceCheckIntervalMs, DeviceCheckIntervalMs);
     }
 
@@ -356,6 +374,9 @@ public sealed class GaplessSink : IDisposable
                         }
                         _out = newOut;
                         _deviceId = id;
+                        // The new output is subscribed and started per _desiredPlaying;
+                        // if the player is still idle, the next watch tick parks it again.
+                        _streamParked = false;
                     }
                     try { Rebuilt?.Invoke(); } catch { /* subscriber's problem, not the sink's */ }
                     // After the volume re-assert is kicked off: the format read is COM work
@@ -403,15 +424,74 @@ public sealed class GaplessSink : IDisposable
         if (!_desiredPlaying) _probe.ForgetLastRead();
         _desiredPlaying = true;
         Provider.Parked = false;
+        lock (_parkGate) WakeStreamLocked("resume");
+    }
+
+    // Watch tick: park the stream after the idle timeout, or restart a parked one
+    // whose provider has audio due (anything that queued audio without Resume).
+    private void CheckIdle()
+    {
+        if (_disposed || Volatile.Read(ref _rebuilding) == 1) return;
+        lock (_parkGate)
+        {
+            bool streamParked;
+            lock (_gate) streamParked = _streamParked;
+            var step = _idle.Observe(Environment.TickCount64, Provider.ActiveSegment, Provider.Parked, streamParked);
+            if (step == IdleStep.Park)
+                ParkStreamLocked();
+            else if (step == IdleStep.Wake)
+                WakeStreamLocked("audio");
+        }
+    }
+
+    // Caller holds _parkGate. Stop() stops the audio client (releasing the power
+    // request) and joins the render thread; the output stays initialized for Play().
+    private void ParkStreamLocked()
+    {
         IWavePlayer current;
-        lock (_gate) current = _out;
-        // A no-op on the running stream; starts an output rebuilt while paused.
+        lock (_gate)
+        {
+            if (_disposed) return;
+            current = _out;
+            _streamParked = true;
+        }
+        // Unsubscribed first like every stop of ours: this clean stop is not the
+        // render thread dying on its own.
+        current.PlaybackStopped -= OnPlaybackStopped;
+        try { current.Stop(); } catch { }
+        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.IdlePark",
+            $"idleMs={_idleStopMs}, paused={Provider.Parked}, segment={Provider.ActiveSegment != null}");
+    }
+
+    // Caller holds _parkGate. Play() is a no-op on the running stream; it starts an
+    // output rebuilt while paused, or one the idle park stopped.
+    private void WakeStreamLocked(string reason)
+    {
+        _idle.Touch(Environment.TickCount64);
+        IWavePlayer current;
+        bool wasParked;
+        lock (_gate)
+        {
+            if (_disposed) return;
+            current = _out;
+            wasParked = _streamParked;
+            _streamParked = false;
+        }
+        if (wasParked)
+        {
+            current.PlaybackStopped += OnPlaybackStopped;
+            // New render thread: re-apply priority + MMCSS on first read, and the
+            // parked gap is not a render stall.
+            _probe.RearmBoost();
+        }
         try { current.Play(); }
         catch (Exception ex)
         {
             // Device transitional.
             DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.ResumeFailed", $"{ex.GetType().Name}: {ex.Message}");
         }
+        if (wasParked)
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.IdleWake", $"reason={reason}");
     }
 
     public void Dispose()
@@ -419,12 +499,61 @@ public sealed class GaplessSink : IDisposable
         _disposed = true;
         try { _deviceWatch.Dispose(); } catch { }
         try { Provider.Clear(); } catch { }
-        IWavePlayer current;
-        lock (_gate) current = _out;
-        current.PlaybackStopped -= OnPlaybackStopped;
-        try { current.Stop(); } catch { }
-        try { current.Dispose(); } catch { }
+        lock (_parkGate) // no idle park/wake in flight on the output being torn down
+        {
+            IWavePlayer current;
+            lock (_gate) current = _out;
+            current.PlaybackStopped -= OnPlaybackStopped;
+            try { current.Stop(); } catch { }
+            try { current.Dispose(); } catch { }
+        }
         try { _tap?.Dispose(); } catch { }
+    }
+
+    /// <summary>What a watch tick does with the stream.</summary>
+    internal enum IdleStep { None, Park, Wake }
+
+    /// <summary>
+    /// The idle-park decision of the watch tick, kept free of the device so it is testable.
+    /// Track audio is flowing while the active segment was consumed, flushed or replaced
+    /// since the last tick, or while it holds a start gate's worth of audio the un-parked
+    /// provider would render now (due). The stream parks after the idle timeout without
+    /// either, and a parked stream wakes once audio is due again. A paused provider is
+    /// never due: its held audio waits for Resume.
+    /// </summary>
+    internal sealed class IdleWatch
+    {
+        private readonly int _idleStopMs;
+        private readonly int _dueSamples;
+        private GaplessTrackSegment? _segment;
+        private long _positionMs = -1;
+        private long _busyMs;
+
+        /// <param name="idleStopMs">Park after this long without track audio; 0 never parks.</param>
+        /// <param name="dueSamples">Buffered samples that make a segment's audio due.</param>
+        public IdleWatch(int idleStopMs, int dueSamples, long nowMs)
+        {
+            _idleStopMs = idleStopMs;
+            _dueSamples = Math.Max(1, dueSamples);
+            _busyMs = nowMs;
+        }
+
+        /// <summary>Activity outside the ticks (a resume): the idle timeout starts over.</summary>
+        public void Touch(long nowMs) => _busyMs = nowMs;
+
+        public IdleStep Observe(long nowMs, GaplessTrackSegment? active, bool providerParked, bool streamParked)
+        {
+            var positionMs = active?.PositionMs ?? -1;
+            var moved = !ReferenceEquals(active, _segment) || positionMs != _positionMs;
+            _segment = active;
+            _positionMs = positionMs;
+            var due = !providerParked && active != null && active.BufferedSamples >= _dueSamples;
+            if (moved || due)
+                _busyMs = nowMs;
+            if (streamParked)
+                return due ? IdleStep.Wake : IdleStep.None;
+            return _idleStopMs > 0 && nowMs - _busyMs >= _idleStopMs ? IdleStep.Park : IdleStep.None;
+        }
     }
 
     // Tee for the diagnostic tap: forwards renders and appends them to the WAV,
