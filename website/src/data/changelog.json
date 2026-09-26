@@ -1,6 +1,108 @@
 {
   "releases": [
     {
+      "tag": "v1.5.5",
+      "version": "1.5.5",
+      "name": "v1.5.5",
+      "publishedAt": "2026-09-26T16:58:48Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.5",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Tint Whole Page setting for album page",
+            "Added resumable downloads with retry",
+            "Added drag to reorder playlist groups",
+            "Added Music video audio setting",
+            "Added Update automatically toggle with Postpone"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved album page layout",
+            "Improved performance by moving heavy work off the UI thread",
+            "Improved tool dialog list performance",
+            "Improved log redaction",
+            "Improved crash diagnostics on Linux"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed mini player menu doing nothing on Windows",
+            "Fixed Volume tooltip covering the volume slider",
+            "Fixed in-app downloads failing halfway",
+            "Fixed white title bar on Windows 10",
+            "Fixed clicks when seeking",
+            "Fixed clicks on pause/resume",
+            "Fixed clicks at track junctions and crossfades",
+            "Fixed audio going silent after speed or pitch changes",
+            "Fixed volume blip and low quality after switching devices",
+            "Fixed Exclusive Mode hard cuts on seek and stop",
+            "Fixed pause being treated as a disk stall",
+            "Fixed audio stalls from memory cleanup during playback",
+            "Fixed ReplayGain for APE/WMA files",
+            "Fixed audio blocking laptop sleep while paused",
+            "Fixed timeline slider desync on restore",
+            "Fixed Stop After Current being ignored with gapless or AutoMix",
+            "Fixed pause and seek being lost while a track loads",
+            "Fixed restored mute still playing audio",
+            "Fixed deleting a paused track starting the next one",
+            "Fixed Repeat All ignoring shuffle on second pass",
+            "Fixed timeline freezing above 1× speed",
+            "Fixed one playback error wiping the queue",
+            "Fixed short tracks being skipped after gapless changes",
+            "Fixed MPRIS shuffle not shuffling",
+            "Fixed right-click actions hitting the wrong selection",
+            "Fixed Move to Recycle Bin permanently deleting on some drives",
+            "Fixed rename by pattern losing play counts and favorites",
+            "Fixed Organize Files playlist changes being overwritten",
+            "Fixed failed cover saves reported as saved",
+            "Fixed smart playlists showing in Add to Playlist",
+            "Fixed playlist page keeping previous selection",
+            "Fixed Lyrics Studio overwriting .lrc files",
+            "Fixed Reset Settings missing many settings",
+            "Fixed queue Select All and Delete freezing",
+            "Fixed album page closing itself during rescan",
+            "Fixed lists jumping to top on library reload",
+            "Fixed timers left running after panels close",
+            "Fixed Ctrl+A and Esc not reaching the queue panel",
+            "Fixed arrow shortcuts skipping tracks while typing",
+            "Fixed Space pausing instead of stamping in LRC editor",
+            "Fixed server HTTPS on Windows",
+            "Fixed server login throttle locking everyone out",
+            "Fixed server downloads for non-ASCII file names",
+            "Fixed crafted lyrics and content packs freezing the app",
+            "Fixed plugins turning on after a settings reset",
+            "Fixed macOS Apple Silicon build shipping Intel ffmpeg",
+            "Fixed macOS Open With and double-click on audio files",
+            "Fixed macOS Dock click not restoring the window",
+            "Fixed Linux libvlc not loading on tarball builds",
+            "Fixed Linux freezes with big libraries and folder watching",
+            "Fixed Linux covers with capital letters not being found",
+            "Fixed Linux dialogs and tray issues after sleep",
+            "Fixed Linux window going see-through after sleep",
+            "Fixed Linux AppImage cutout after long pause",
+            "Fixed server not shutting down gracefully",
+            "Fixed update downloads dying on slow connections"
+          ]
+        },
+        {
+          "title": "Dependencies",
+          "items": [
+            "Updated Avalonia to 12.1.3",
+            "Updated LibVLCSharp to 3.10.1",
+            "Updated Microsoft.Data.Sqlite to 8.0.31",
+            "Updated SQLitePCLRaw to 2.1.13",
+            "Updated QrCodeGenerator to 3.2.1",
+            "Updated Tmds.DBus.Protocol to 0.95.1"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.5.4",
       "version": "1.5.4",
       "name": "v1.5.4",
@@ -2762,6 +2864,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-09-25T02:20:58.618Z",
+  "updatedAt": "2026-09-26T16:59:18.281Z",
   "degraded": false
 }
