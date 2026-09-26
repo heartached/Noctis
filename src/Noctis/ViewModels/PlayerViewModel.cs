@@ -3275,11 +3275,23 @@ public partial class PlayerViewModel : ViewModelBase
             if (CurrentTrack is { IsExternal: false } && _library.GetTrackById(CurrentTrack.Id) == null)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrackRemoved",
-                    $"track={CurrentTrack.Id}, state={State}, upNext={UpNext.Count}, action={(UpNext.Count > 0 ? "advance" : "stop")}");
+                    $"track={CurrentTrack.Id}, state={State}, upNext={UpNext.Count}, " +
+                    $"action={(UpNext.Count == 0 ? "stop" : State == PlaybackState.Playing ? "advance" : "load")}");
                 // Current track was deleted, skip to next or stop
-                if (UpNext.Count > 0)
+                if (UpNext.Count > 0 && State == PlaybackState.Playing)
                 {
-                    AdvanceQueue();
+                    // Not a natural end: Repeat One replayed the removed file and the
+                    // stop-after branch flagged Stopped over a track still playing. Move on
+                    // like a skip, but a pending stop-after (the sleep timer's end of track)
+                    // carries over to the track that now plays.
+                    var stopAfter = StopAfterCurrentTrack;
+                    AdvanceQueue(QueueAdvanceReason.UserSkip);
+                    if (stopAfter && State == PlaybackState.Playing)
+                        StopAfterCurrentTrack = true;
+                }
+                else if (UpNext.Count > 0)
+                {
+                    LoadNextWithoutPlaying();
                 }
                 else
                 {
@@ -3303,6 +3315,44 @@ public partial class PlayerViewModel : ViewModelBase
             ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
             if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done");
         });
+    }
+
+    /// <summary>
+    /// The paused or stopped current track left the library: stage the next queued track
+    /// the way a restored session is staged — loaded, Stopped, waiting for Play. Advancing
+    /// played it, so audio started by itself when a startup scan dropped the restored
+    /// track's moved file, or when a paused track's album was removed.
+    /// </summary>
+    private void LoadNextWithoutPlaying()
+    {
+        _seekDebounceTimer?.Dispose();
+        _seekDebounceTimer = null;
+        _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("current track removed");
+        CancelNaturalEndFallback();
+        _audioPlayer.Stop();
+
+        // Same pick as an advance: explicit tracks the filter blocks are passed over.
+        PruneBlockedExplicit();
+        if (UpNext.Count == 0)
+        {
+            StopAndClear("currentTrackRemoved");
+            return;
+        }
+
+        MarkQueueChanged();
+        var next = UpNext[0];
+        UpNext.RemoveAt(0);
+        _resumePositionMs = -1;
+        State = PlaybackState.Stopped;
+        CurrentTrack = next;
+        Duration = next.Duration;
+        DurationText = FormatTime(next.Duration);
+        RemainingTimeText = FormatTime(next.Duration);
+        Position = TimeSpan.Zero;
+        PositionFraction = 0;
+        PositionText = "0:00";
+        SaveQueueStateInBackground();
     }
 
     private static string FormatTime(TimeSpan ts)
