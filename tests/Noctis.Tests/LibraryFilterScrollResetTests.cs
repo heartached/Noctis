@@ -198,6 +198,13 @@ public class LibraryFilterScrollResetTests
         vm.FilteredAlbumRows.CollectionChanged += (_, _) => filtered++;
         vm.ApplyFilter("album");
         await PumpUntil(() => filtered > 0);
+        // The album grid fills its rows in more than one change: wait until they stop, or a
+        // late filter change is counted below as a reload reset.
+        for (var seen = -1; seen != filtered;)
+        {
+            seen = filtered;
+            await PumpUntil(() => filtered != seen, budgetMs: 250);
+        }
         var sv = Scroller(view.AlbumListBox);
         await ScrollTo(sv, ScrolledTo);
 
