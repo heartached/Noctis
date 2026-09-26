@@ -622,6 +622,9 @@
   <data name="ArtistDetail.Albums" xml:space="preserve"><value>Albums</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SinglesEPs" xml:space="preserve"><value>Singles &amp; EPs</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.NoReleasesMatch" xml:space="preserve"><value>No releases match.</value><comment>Text in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortNewest" xml:space="preserve"><value>Newest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortOldest" xml:space="preserve"><value>Oldest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortName" xml:space="preserve"><value>Name (A–Z)</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Appears" xml:space="preserve"><value>Appears On</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Overview" xml:space="preserve"><value>Overview</value><comment>Tab in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Songs" xml:space="preserve"><value>Songs</value><comment>Tab in ArtistDetailView.axaml</comment></data>

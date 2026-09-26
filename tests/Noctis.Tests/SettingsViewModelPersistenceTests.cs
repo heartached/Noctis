@@ -293,6 +293,23 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.Equal("modified-oldest", reloaded.FoldersSortMode);
     }
 
+    /// <summary>GitHub #100: the artist page's Albums / Singles &amp; EPs sort defaults to newest first and survives a restart.</summary>
+    [AvaloniaFact]
+    public async Task ArtistReleaseSort_DefaultsToNewest_AndSurvivesSaveAndReload()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        Assert.Equal("newest", vm.ArtistReleaseSortMode);
+
+        vm.ArtistReleaseSortMode = "oldest";
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.Equal("oldest", reloaded.ArtistReleaseSortMode);
+    }
+
     [AvaloniaFact]
     public async Task SongsViewState_DefaultsMatchTheFormerStartupBehaviour()
     {

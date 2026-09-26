@@ -243,6 +243,22 @@
         <Style Selector="Button.grey-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
         </Style>
+        <!-- Glass pill (Albums / Singles & EPs Sort, GitHub #100): the playlist page's Sort pill style. -->
+        <Style Selector="Button.glass-pill">
+            <Setter Property="Background" Value="{DynamicResource GlassPillBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource GlassPillBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Button.glass-pill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GlassPillHoverBackground}" />
+        </Style>
+        <Style Selector="Button.glass-pill:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GlassPillPressedBackground}" />
+        </Style>
+        <Style Selector="Button.glass-pill:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
         <!-- No hover zoom on covers and portraits: opt out of the global button scale. -->
         <Style Selector="Button.latest-cover:pointerover, Button.similar-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
@@ -1088,6 +1104,31 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
                     <TextBlock Text="{loc:T ArtistDetail.Albums}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding AlbumCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): one order shared with Singles & EPs and every artist;
+                         the playlist page's Sort pill, same size and flyout. -->
+                    <Button Classes="glass-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Playlist.Text}"
+                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding AlbumReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasAlbums}">
                     <ItemsControl.ItemsPanel>
@@ -1104,6 +1145,30 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
                     <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding SingleCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
+                    <Button Classes="glass-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Playlist.Text}"
+                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding SingleReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasSingles}">
                     <ItemsControl.ItemsPanel>
