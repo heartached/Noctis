@@ -803,7 +803,9 @@ public partial class MainWindowViewModel : ViewModelBase
         });
 
         // The load/scan/backfill burst above leaves a lot of dead large arrays behind;
-        // hand them back once everything has gone quiet (see MemoryTrim).
+        // hand them back once everything has gone quiet (see MemoryTrim). While music
+        // plays the trim must not block: a forced compacting GC stalls the render thread.
+        Services.MemoryTrim.IsAudioPlaying = () => Player.IsPlaying;
         Services.MemoryTrim.RequestAfterIdle("startup");
 
         // Refresh non-visible content VMs so their data is ready when navigated to.
