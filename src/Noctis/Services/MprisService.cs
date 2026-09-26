@@ -117,7 +117,8 @@ public sealed class MprisService : IDisposable
             DebugLogger.Info(DebugLogger.Category.Playback, "Mpris.Started", BusName);
 
             // The desktop may have missed state set before the name was acquired.
-            EmitPropertiesChanged(statusChanged: true, metadataChanged: true, volumeChanged: true);
+            EmitPropertiesChanged(statusChanged: true, metadataChanged: true, volumeChanged: true,
+                shuffleChanged: true, loopStatusChanged: true);
 
             _ = WatchForDisconnectAsync(connection);
         }
@@ -206,8 +207,50 @@ public sealed class MprisService : IDisposable
             case nameof(PlayerViewModel.Volume):
                 EmitPropertiesChanged(statusChanged: false, metadataChanged: false, volumeChanged: true);
                 break;
+            // Without these an in-app Shuffle/Repeat click never reached the desktop,
+            // so the GNOME/KDE widget kept showing the old state.
+            case nameof(PlayerViewModel.IsShuffleEnabled):
+                EmitPropertiesChanged(statusChanged: false, metadataChanged: false, volumeChanged: false, shuffleChanged: true);
+                break;
+            case nameof(PlayerViewModel.RepeatMode):
+                EmitPropertiesChanged(statusChanged: false, metadataChanged: false, volumeChanged: false, loopStatusChanged: true);
+                break;
         }
     }
+
+    /// <summary>
+    /// MPRIS Shuffle write. Goes through the command a click uses: setting
+    /// IsShuffleEnabled directly lit the indicator but left Up Next in album order
+    /// and saved no original order, so a later toggle-off had nothing to restore.
+    /// </summary>
+    internal static void ApplyShuffle(PlayerViewModel player, bool shuffle)
+    {
+        if (player.IsShuffleEnabled != shuffle)
+            player.ToggleShuffleCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// MPRIS LoopStatus write, through the command a click uses so its side effects
+    /// (AutoMix cancel, logging) match. At most three steps round the cycle.
+    /// </summary>
+    internal static void ApplyLoopStatus(PlayerViewModel player, string loopStatus)
+    {
+        var mode = loopStatus switch
+        {
+            "Track" => RepeatMode.One,
+            "Playlist" => RepeatMode.All,
+            _ => RepeatMode.Off,
+        };
+        for (var i = 0; i < 3 && player.RepeatMode != mode; i++)
+            player.CycleRepeatCommand.Execute(null);
+    }
+
+    private static string LoopStatusOf(RepeatMode mode) => mode switch
+    {
+        RepeatMode.One => "Track",
+        RepeatMode.All => "Playlist",
+        _ => "None",
+    };
 
     private void SnapshotState()
     {
@@ -269,7 +312,8 @@ public sealed class MprisService : IDisposable
         return new Dict<string, VariantValue>(dict).AsVariantValue();
     }
 
-    private void EmitPropertiesChanged(bool statusChanged, bool metadataChanged, bool volumeChanged)
+    private void EmitPropertiesChanged(bool statusChanged, bool metadataChanged, bool volumeChanged,
+        bool shuffleChanged = false, bool loopStatusChanged = false)
     {
         var conn = _connection;
         if (conn == null || _disposed) return;
@@ -303,6 +347,18 @@ public sealed class MprisService : IDisposable
                 writer.WriteDictionaryEntryStart();
                 writer.WriteString("Volume");
                 writer.WriteVariantDouble(Math.Clamp(_player.Volume, 0, 100) / 100.0);
+            }
+            if (shuffleChanged)
+            {
+                writer.WriteDictionaryEntryStart();
+                writer.WriteString("Shuffle");
+                writer.WriteVariantBool(_player.IsShuffleEnabled);
+            }
+            if (loopStatusChanged)
+            {
+                writer.WriteDictionaryEntryStart();
+                writer.WriteString("LoopStatus");
+                writer.WriteVariantString(LoopStatusOf(_player.RepeatMode));
             }
             writer.WriteDictionaryEnd(dict);
             writer.WriteArray(System.Array.Empty<string>()); // no invalidated properties
@@ -620,18 +676,13 @@ public sealed class MprisService : IDisposable
                     case "Shuffle":
                     {
                         var shuffle = value.GetBool();
-                        _s.OnUiThread(() => _s._player.IsShuffleEnabled = shuffle);
+                        _s.OnUiThread(() => ApplyShuffle(_s._player, shuffle));
                         break;
                     }
                     case "LoopStatus":
                     {
-                        var mode = value.GetString() switch
-                        {
-                            "Track" => RepeatMode.One,
-                            "Playlist" => RepeatMode.All,
-                            _ => RepeatMode.Off,
-                        };
-                        _s.OnUiThread(() => _s._player.RepeatMode = mode);
+                        var loopStatus = value.GetString();
+                        _s.OnUiThread(() => ApplyLoopStatus(_s._player, loopStatus));
                         break;
                     }
                 }
@@ -686,12 +737,7 @@ public sealed class MprisService : IDisposable
                     lock (_s._stateLock) writer.WriteVariantString(_s._status);
                     return true;
                 case "LoopStatus":
-                    writer.WriteVariantString(_s._player.RepeatMode switch
-                    {
-                        RepeatMode.One => "Track",
-                        RepeatMode.All => "Playlist",
-                        _ => "None",
-                    });
+                    writer.WriteVariantString(LoopStatusOf(_s._player.RepeatMode));
                     return true;
                 case "Rate":
                 case "MinimumRate":
