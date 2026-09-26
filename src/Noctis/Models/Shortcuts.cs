@@ -89,4 +89,15 @@ public static class ShortcutDefaults
         Key.LWin or Key.RWin => false,
         _ => true,
     };
+
+    /// <summary>
+    /// True when a focused edit box needs this key itself, so a window-level shortcut must
+    /// let it through: an unmodified key types, and the caret / delete keys keep their
+    /// meaning under any modifier (Ctrl+←/→ jumps words, Ctrl+Backspace deletes one,
+    /// ⌘←/→ goes to line start/end on macOS) even though Previous / Next use them.
+    /// </summary>
+    public static bool IsTextBoxKey(Key key, KeyModifiers modifiers) =>
+        modifiers == KeyModifiers.None
+        || key is Key.Left or Key.Right or Key.Up or Key.Down
+            or Key.Home or Key.End or Key.Back or Key.Delete;
 }

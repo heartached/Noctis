@@ -1590,8 +1590,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         if (shortcuts.TryMatch(e) is not { } action) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
-        // edit box: typing a space in the search box stays typing a space.
-        if (e.KeyModifiers == KeyModifiers.None && e.Source is TextBox) return;
+        // edit box: typing a space in the search box stays typing a space. Ctrl+←/→ in
+        // the search box or Lyrics Studio moves the caret by a word, not the track.
+        if (e.Source is TextBox && ShortcutDefaults.IsTextBoxKey(e.Key, e.KeyModifiers)) return;
 
         if (!ExecuteShortcut(vm, action)) return;
         _consumedShortcut = action;
