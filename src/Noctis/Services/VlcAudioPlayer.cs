@@ -444,6 +444,10 @@ public class VlcAudioPlayer : IAudioPlayer
             }
             else
             {
+                // Linux system libvlc: let the runtime-only package (libvlc.so.5)
+                // load too, not just the -dev symlink default probing needs (P25).
+                if (OperatingSystem.IsLinux())
+                    RegisterLinuxLibVlcSonameFallback();
                 Core.Initialize();
             }
         }
@@ -5670,6 +5674,47 @@ public class VlcAudioPlayer : IAudioPlayer
             Environment.SetEnvironmentVariable(name, value);
         }
     }
+
+    private static int _linuxSonameFallbackRegistered;
+    private static IntPtr _linuxLibVlcFallbackHandle;
+
+    /// <summary>
+    /// LibVLCSharp imports DllImport("libvlc"), which .NET probes on Linux as
+    /// libvlc.so only: the unversioned name distros ship solely in libvlc-dev /
+    /// vlc-devel. With just the vlc / libvlc5 runtime installed (libvlc.so.5) the
+    /// tarball builds refused to start (P25; the AppImage adds its own libvlc.so
+    /// symlink). ResolvingUnmanagedDll fires only after default probing fails, so
+    /// bundled and -dev installs load exactly as before.
+    /// </summary>
+    private static void RegisterLinuxLibVlcSonameFallback()
+    {
+        if (Interlocked.Exchange(ref _linuxSonameFallbackRegistered, 1) != 0) return;
+        var alc = System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(Core).Assembly)
+                  ?? System.Runtime.Loader.AssemblyLoadContext.Default;
+        alc.ResolvingUnmanagedDll += (assembly, libraryName) =>
+        {
+            var soname = LinuxLibVlcFallbackSoname(assembly, libraryName);
+            if (soname == null) return IntPtr.Zero;
+            // Not cached by the runtime on this path: every LibVLCSharp import's
+            // first call lands here, so load (and log) once.
+            if (_linuxLibVlcFallbackHandle == IntPtr.Zero && NativeLibrary.TryLoad(soname, out var handle))
+            {
+                _linuxLibVlcFallbackHandle = handle;
+                DebugLogger.Info(DebugLogger.Category.Playback, "VLC.SonameFallback",
+                    $"{libraryName} -> {soname}");
+            }
+            return _linuxLibVlcFallbackHandle;
+        };
+    }
+
+    /// <summary>
+    /// Versioned soname to try when default probing could not find
+    /// <paramref name="libraryName"/> for <paramref name="assembly"/>, or null to
+    /// leave the import alone. libvlc.so.5 is the libvlc 3.x ABI LibVLCSharp 3
+    /// requires. Pure; internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static string? LinuxLibVlcFallbackSoname(System.Reflection.Assembly assembly, string libraryName)
+        => assembly == typeof(Core).Assembly && libraryName == "libvlc" ? "libvlc.so.5" : null;
 
     private static string? TryFindMacLibVlcPath()
     {
