@@ -13,7 +13,9 @@ namespace Noctis.Helpers;
 public sealed class QueueRowSelection<T> where T : class
 {
     private readonly IReadOnlyList<T> _rows;
-    private readonly SortedDictionary<int, T> _selected = new();
+    // Highest row first: the rows a queue change moves (those at or past it) lead, so
+    // Remap walks only them. Snapshot hands the rows out ascending.
+    private readonly SortedDictionary<int, T> _selected = new(Comparer<int>.Create((a, b) => b.CompareTo(a)));
 
     public QueueRowSelection(IReadOnlyList<T> rows) => _rows = rows;
 
@@ -25,7 +27,12 @@ public sealed class QueueRowSelection<T> where T : class
     public bool Contains(int row) => _selected.ContainsKey(row);
 
     /// <summary>The selected rows, ascending — snapshot this per action.</summary>
-    public int[] Snapshot() => _selected.Keys.ToArray();
+    public int[] Snapshot()
+    {
+        var rows = _selected.Keys.ToArray();
+        Array.Reverse(rows);
+        return rows;
+    }
 
     public void Clear()
     {
@@ -73,7 +80,7 @@ public sealed class QueueRowSelection<T> where T : class
     {
         _selected.Clear();
         foreach (var i in rows) Add(i);
-        Anchor = _selected.Count > 0 ? _selected.Keys.First() : -1;
+        Anchor = _selected.Count > 0 ? _selected.Keys.Min() : -1;
     }
 
     /// <summary>GitHub #88 rubber band: the rows a band spanning <paramref name="from"/>..<paramref name="to"/>
@@ -111,21 +118,21 @@ public sealed class QueueRowSelection<T> where T : class
             {
                 var at = e.NewStartingIndex;
                 var n = e.NewItems?.Count ?? 0;
-                Remap(i => i >= at ? i + n : i);
+                Remap(at, i => i >= at ? i + n : i);
                 break;
             }
             case NotifyCollectionChangedAction.Remove when e.OldStartingIndex >= 0:
             {
                 var at = e.OldStartingIndex;
                 var n = e.OldItems?.Count ?? 0;
-                Remap(i => i < at ? i : i >= at + n ? i - n : -1);
+                Remap(at, i => i < at ? i : i >= at + n ? i - n : -1);
                 break;
             }
             case NotifyCollectionChangedAction.Move when e.OldStartingIndex >= 0 && e.NewStartingIndex >= 0:
             {
                 var from = e.OldStartingIndex;
                 var to = e.NewStartingIndex;
-                Remap(i =>
+                Remap(Math.Min(from, to), i =>
                 {
                     if (i == from) return to;
                     if (from < to && i > from && i <= to) return i - 1;
@@ -147,11 +154,17 @@ public sealed class QueueRowSelection<T> where T : class
         }
     }
 
-    private void Remap(Func<int, int> map)
+    /// <summary>Re-maps the selected rows at or past <paramref name="start"/>; the rows
+    /// before it keep their index and are not visited. RemoveManyFromQueue removes row by
+    /// row, high to low, so re-mapping the whole selection on each Remove made deleting a
+    /// Ctrl+A'd queue O(rows²) (audit U03).</summary>
+    private void Remap(int start, Func<int, int> map)
     {
-        var moved = _selected.Select(kv => (Row: map(kv.Key), Item: kv.Value)).ToList();
-        _selected.Clear();
-        foreach (var (row, item) in moved)
+        var moved = _selected.TakeWhile(kv => kv.Key >= start)
+                             .Select(kv => (Old: kv.Key, Row: map(kv.Key), Item: kv.Value)).ToList();
+        foreach (var (old, _, _) in moved)
+            _selected.Remove(old);
+        foreach (var (_, row, item) in moved)
             if (row >= 0) _selected[row] = item;
         Anchor = Anchor >= 0 ? map(Anchor) : -1;
     }

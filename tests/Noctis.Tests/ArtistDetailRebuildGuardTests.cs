@@ -90,6 +90,62 @@ public class ArtistDetailRebuildGuardTests
         Assert.Equal("Intro", vm.PopularSongs.First().Track.Title);
     }
 
+    // Artist pages kept in navigation history stay subscribed to LibraryUpdated, and each
+    // one re-classified the whole library on every publish (every ~1.5 s during a scan).
+    [AvaloniaFact]
+    public void HiddenPage_DefersLibraryRebuild_UntilShownAgain()
+    {
+        var (vm, lib, _) = Make();
+        var single = new Album { Id = Guid.NewGuid(), Name = "Ozone", Artist = "Chase Atlantic", Year = 2020 };
+        single.Tracks = new List<Track> { T("Ozone", "Chase Atlantic", single, 1) };
+
+        vm.IsActive = false; // navigated away: the page sits in history
+        ((List<Album>)lib.Albums).Add(single);
+        var hidden = CountResets(vm.Releases, lib.RaiseLibraryUpdated);
+        Assert.Equal(0, hidden);
+        Assert.Single(vm.Releases);
+
+        vm.IsActive = true; // navigated back: catches up once
+        Assert.Equal(2, vm.Releases.Count);
+        Assert.Equal(4, vm.SongCount);
+    }
+
+    [AvaloniaFact]
+    public void PartialScanPublish_KeepsTheLists_AuthoritativePublishRebuilds()
+    {
+        var (vm, lib, _) = Make();
+        var albums = (List<Album>)lib.Albums;
+        albums.Clear(); // the scan hasn't walked this artist's folder yet
+
+        lib.IsPublishingPartial = true;
+        lib.RaiseLibraryUpdated();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(vm.Releases);
+        Assert.Equal(3, vm.PopularSongs.Count);
+
+        // The authoritative publish: the album really is gone.
+        lib.IsPublishingPartial = false;
+        lib.RaiseLibraryUpdated();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(vm.Releases);
+        Assert.Empty(vm.PopularSongs);
+    }
+
+    [Theory]
+    [InlineData("Chase Atlantic", "chase atlantic", true)]
+    [InlineData("Dillon, Chase Atlantic", "Chase Atlantic", true)]
+    [InlineData("Dillon feat. Chase Atlantic", "Chase Atlantic", true)]
+    [InlineData("Chase Atlanticus", "Chase Atlantic", false)]
+    [InlineData("Dillon", "Chase Atlantic", false)]
+    [InlineData("B, A", "A, B", true)]
+    [InlineData("A, B, C", "A, B", false)]
+    [InlineData("A", "A, B", false)]
+    public void ContainsArtistToken_PreParsedName_MatchesTheSingleCallForm(string field, string name, bool expected)
+    {
+        Assert.Equal(expected, LibraryAlbumsViewModel.ContainsArtistToken(field, name));
+        Assert.Equal(expected, LibraryAlbumsViewModel.ContainsArtistToken(field, name, Track.ParseArtistTokens(name)));
+    }
+
     [Fact]
     public void SameRows_ComparesTrackAndRank()
     {

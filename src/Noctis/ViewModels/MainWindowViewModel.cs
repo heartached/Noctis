@@ -249,6 +249,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The sidebar key for the section currently selected underneath Cover Flow (e.g. "home", "songs", "albums"). Tracked so clicking Library returns to the right section.</summary>
     private string _currentSectionKey = "home";
 
+    /// <summary>Set once InitializeAsync has taken App.PendingOpenFiles; see <see cref="OpenExternalFilesWhenReady"/>.</summary>
+    private bool _pendingOpenFilesTaken;
+
     /// <summary>The non-section view (e.g. a PlaylistViewModel) the user was on when entering Cover Flow. Restored on exit so clicking Library returns to the same detail page.</summary>
     private ViewModelBase? _preCoverFlowView;
 
@@ -686,13 +689,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Apply saved volume
         Player.Volume = Settings.GetSettings().Volume;
+        // ...and persist every later change (slider, wheel, keys, MPRIS, remote) through the
+        // debounced settings save. Written only on a graceful exit, a crash or kill brought
+        // back the previous session's volume — possibly louder than the user left it.
+        Player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.Volume))
+                Settings.PersistVolume(Player.Volume);
+        };
 
         // Restore the previous session's queue (current track loads paused;
         // the user presses play to resume). Gated by the Settings toggle.
         if (Settings.GetSettings().RestoreLastTrackOnStartup)
         {
             try { await Player.RestoreQueueStateAsync(); }
-            catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue restore failed: {ex.Message}"); }
+            catch (Exception ex) { DebugLog.Write("Queue", $"Queue restore failed: {ex}"); }
         }
 
         // Auto-scan if enabled
@@ -707,6 +718,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
+                    // Debug.WriteLine alone is compiled out of Release builds, so a failed
+                    // startup scan left nothing in a reporter's session log (#97).
+                    DebugLog.Write("Scan", $"Startup scan failed: {ex}");
                     System.Diagnostics.Debug.WriteLine($"[MainWindowVM] Auto-scan failed: {ex.Message}");
                 }
             });
@@ -800,7 +814,9 @@ public partial class MainWindowViewModel : ViewModelBase
         });
 
         // The load/scan/backfill burst above leaves a lot of dead large arrays behind;
-        // hand them back once everything has gone quiet (see MemoryTrim).
+        // hand them back once everything has gone quiet (see MemoryTrim). While music
+        // plays the trim must not block: a forced compacting GC stalls the render thread.
+        Services.MemoryTrim.IsAudioPlaying = () => Player.IsPlaying;
         Services.MemoryTrim.RequestAfterIdle("startup");
 
         // Refresh non-visible content VMs so their data is ready when navigated to.
@@ -822,6 +838,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Play any files this launch was asked to open ("Open with Noctis"),
         // now that the window and player are up. Background priority so first
         // paint isn't delayed by the metadata read.
+        _pendingOpenFilesTaken = true;
         if (App.PendingOpenFiles.Count > 0)
         {
             var pending = App.PendingOpenFiles;
@@ -839,6 +856,19 @@ public partial class MainWindowViewModel : ViewModelBase
     public void OpenExternalFiles(IReadOnlyList<string> paths)
     {
         _ = OpenExternalFilesAsync(paths);
+    }
+
+    /// <summary>
+    /// Files the OS opens in the running app (macOS open-documents event). Until
+    /// InitializeAsync has taken <see cref="App.PendingOpenFiles"/> they join that list:
+    /// played at once, the queue restore that follows would replace them.
+    /// </summary>
+    public void OpenExternalFilesWhenReady(IReadOnlyList<string> paths)
+    {
+        if (_pendingOpenFilesTaken)
+            OpenExternalFiles(paths);
+        else
+            App.PendingOpenFiles = App.PendingOpenFiles.Concat(paths).ToArray();
     }
 
     /// <summary>
@@ -962,6 +992,27 @@ public partial class MainWindowViewModel : ViewModelBase
         try { Player.PauseForShutdown(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
 
+        // The small user-state saves go first. App abandons this method after
+        // ShutdownSaveDeadline (4 s), and the server stop, scan checkpoint and scrobble
+        // flush below can take 2 + 5 + 3 s — saved after them, a quit mid-scan or with a
+        // slow scrobble lost the volume, the queue position and recent plays. Each step
+        // is guarded so one failing save can't skip the later ones (the queue snapshot
+        // below used to be silently lost this way).
+        Settings.SetVolume(Player.Volume);
+        try { await Settings.SaveAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
+
+        // Snapshot the queue so the next launch restores it.
+        try { await Player.SaveQueueStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
+
+        try { await _playHistory.FlushAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
+        // Play counts as journal rows only; the full library.json write waits for the
+        // scan checkpoint below (mid-scan, the library holds a partial track list).
+        try { await Player.FlushPendingPlayStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-state flush failed: {ex.Message}"); }
+
         // Plugins get their Shutdown() (timers, files), and the server releases its port.
         try { Plugins.UnloadAll(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Plugin shutdown failed: {ex.Message}"); }
@@ -981,14 +1032,6 @@ public partial class MainWindowViewModel : ViewModelBase
         TryScrobblePreviousTrack();
         await FlushPendingScrobblesAsync();
 
-        // Update volume in settings and save everything. Each step is guarded
-        // so one failing save can't skip the later ones (the queue snapshot
-        // below used to be silently lost this way).
-        Settings.SetVolume(Player.Volume);
-        try { await Settings.SaveAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
-        try { await _playHistory.FlushAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
         // Ratings/lyrics waiting for the quiet period (or for the playing file) go to disk now.
         try
         {
@@ -996,10 +1039,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 await tagWriter.FlushAsync().WaitAsync(TimeSpan.FromSeconds(3));
         }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Tag-write flush failed: {ex.Message}"); }
-
-        // Snapshot the queue so the next launch restores it.
-        try { await Player.SaveQueueStateAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
 
         // Flush the debounced per-play library save so play counts aren't lost.
         try { await Player.FlushPendingLibrarySaveAsync(); }
@@ -1384,6 +1423,10 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
         UpdateSectionActiveFlags();
+        // Artist pages kept in history stay subscribed to LibraryUpdated; only the shown
+        // one rebuilds, the rest catch up when navigated back to.
+        if (oldValue is ArtistDetailViewModel leftArtistPage) leftArtistPage.IsActive = false;
+        if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
@@ -1921,6 +1964,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Navigate(string key)
     {
+        var navigateStart = Stopwatch.GetTimestamp();
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         // Section switches join the browser-style history (instead of clearing it)
         // so Back/Forward work across top-level views, e.g. Songs → Album → Artists.
@@ -2030,6 +2074,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowArtistSort(_artistsVm.SetSortCommand, _artistsVm.SortLabel, _artistsVm.SortMode, _artistsVm.SortAscending);
 
         RefreshBackButton();
+        UiStallWatchdog.ReportIfSlow("Navigate", navigateStart, $"key={key}");
     }
 
     /// <summary>Sidebar Lyrics Studio: re-scans the library for songs missing the chosen format

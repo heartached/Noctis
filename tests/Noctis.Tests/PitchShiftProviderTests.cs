@@ -21,6 +21,24 @@ public class PitchShiftProviderTests
         }
     }
 
+    // Like the engine's segment ring: hands out only what the decoder has delivered
+    // so far and returns 0 while starved, which is an underrun, not the end.
+    private sealed class StarvingSource : ISampleProvider
+    {
+        private readonly float[] _data;
+        private int _pos;
+        public int Delivered;
+        public StarvingSource(float[] data, int channels, int delivered) { _data = data; Delivered = delivered; WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(48000, channels); }
+        public WaveFormat WaveFormat { get; }
+        public int Read(float[] buffer, int offset, int count)
+        {
+            var n = Math.Max(0, Math.Min(count, Delivered - _pos));
+            Array.Copy(_data, _pos, buffer, offset, n);
+            _pos += n;
+            return n;
+        }
+    }
+
     private static float[] Sine(int frames, double hz, int rate = 48000, int channels = 1)
     {
         var data = new float[frames * channels];
@@ -115,6 +133,38 @@ public class PitchShiftProviderTests
         // 8000 @1.0 + 8000 @1.2 (=9600 input) + remainder @1.0 (48000-17600) ≈ 30400
         Assert.InRange(first.Length + second.Length + rest.Length, 46300, 46420);
         Assert.All(rest, v => Assert.InRange(v, -1.0001f, 1.0001f));
+    }
+
+    [Fact]
+    public void Underrun_WhilePitched_ResumesWhenTheSourceRefills()
+    {
+        var data = Sine(48000, 440);
+        // 50 ms staged (the post-seek refill gate), then the decoder stalls.
+        var src = new StarvingSource(data, 1, 2400);
+        var p = new PitchShiftProvider(src, () => 1.5);
+        var head = ReadAll(p, 4096);
+        Assert.InRange(head.Length, 1550, 1600);
+
+        src.Delivered = data.Length; // the decoder catches up
+        var rest = ReadAll(p, 4096);
+        // Same total as an uninterrupted run: 48000 input frames at 1.5 ≈ 32000 out.
+        Assert.InRange(head.Length + rest.Length, 31950, 32000);
+    }
+
+    [Fact]
+    public void Underrun_WhilePitched_DoesNotSilenceALaterUnityStream()
+    {
+        var data = Sine(48000, 440);
+        var src = new StarvingSource(data, 1, 2400);
+        var ratio = 1.5;
+        var p = new PitchShiftProvider(src, () => ratio);
+        ReadAll(p, 4096);
+
+        ratio = 1.0;
+        src.Delivered = data.Length;
+        var rest = ReadAll(p, 4096);
+        // The 45600 frames still to come stream straight through (plus the few buffered).
+        Assert.InRange(rest.Length, 45600, 45604);
     }
 
     [Fact]

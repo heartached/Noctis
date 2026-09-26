@@ -14,13 +14,14 @@ using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IPageKeyOverlayHost
 {
 
     private TaskbarIntegrationService? _taskbar;
     private SmtcService? _smtc;
     private MprisService? _mpris;
     private LinuxResumeWatcher? _resumeWatcher;
+    private LinuxTrayHost? _trayHost;
 
     /// <summary>
     /// Linux, XWayland on NVIDIA: after a suspend the window came back see-through until the
@@ -161,6 +162,8 @@ public partial class MainWindow : Window
     private Border? _queuePopupPanel;
     private MiniPlayerWindow? _miniPlayer;
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
+    private Action? _detachFileActivation;
+    private Action? _detachReopenActivation;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -530,6 +533,7 @@ public partial class MainWindow : Window
                 InitializeQueuePopupBinding(vm);
                 InitializeTaskbarButtons(vm);
                 InitializeTrayIcon(vm);
+                _trayHost = LinuxTrayHost.TryStart();
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
                 _resumeWatcher = LinuxResumeWatcher.TryStart(pass => Dispatcher.UIThread.Post(() => RefreshWindowsAfterResume(pass)));
@@ -539,14 +543,11 @@ public partial class MainWindow : Window
 
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load). App already
-                // minimized the window before it was realized; drop it out of the
-                // taskbar now that the tray icon exists to get it back. Guarded on
-                // _trayIcon != null so a platform where the tray failed to initialize
-                // never leaves the app running with no window AND no tray icon.
-                if (App.StartMinimizedAtLogin && _trayIcon != null)
-                {
-                    Hide();
-                }
+                // minimized the window and took it off the taskbar before it was
+                // realized; settle it into the tray, or back onto the taskbar when there
+                // is no tray to get it back from.
+                if (App.StartMinimizedAtLogin)
+                    _ = SettleStartMinimizedAsync();
 
                 await vm.InitializeAsync();
                 Services.StartupTrace.Mark("initialize-async-done");
@@ -570,11 +571,16 @@ public partial class MainWindow : Window
                         SetQueueRowNumber(e.Container, e.Index);
                         e.Container.Classes.Set(QueueSelectedClass, queueSelection.Contains(e.Index));
                     };
+                    var queueRowsSyncPending = false;
                     vm.Player.UpNext.CollectionChanged += (_, e) =>
                     {
                         queueSelection.Apply(e);
+                        // One re-stamp per burst: a block remove / move raises an event per row (audit U03).
+                        if (queueRowsSyncPending) return;
+                        queueRowsSyncPending = true;
                         Dispatcher.UIThread.Post(() =>
                         {
+                            queueRowsSyncPending = false;
                             RenumberQueueRows(queueList);
                             SyncQueueSelectionVisuals(queueList);
                         }, DispatcherPriority.Loaded);
@@ -592,6 +598,7 @@ public partial class MainWindow : Window
                                 EnsureLyricsPanelLoaded(mainVm2);
                                 _lyricsPanelWrapper.IsVisible = true;
                                 _lyricsPanelWrapper.Width = 356;
+                                GetLyricsPanelView()?.SetShown(true);
                             }
                             else
                             {
@@ -603,7 +610,13 @@ public partial class MainWindow : Window
                                 {
                                     if (_lyricsPanelWrapper != null &&
                                         DataContext is MainWindowViewModel m && !m.IsLyricsPanelOpen)
+                                    {
                                         _lyricsPanelWrapper.IsVisible = false;
+                                        // Hiding does not detach the view, so un-register it
+                                        // as a lyrics surface explicitly (parks the sync
+                                        // timer, word clock and flowing backdrop).
+                                        GetLyricsPanelView()?.SetShown(false);
+                                    }
                                 }, TimeSpan.FromMilliseconds(240));
                             }
                         }
@@ -771,6 +784,9 @@ public partial class MainWindow : Window
         host.Content = new LyricsPanelView { DataContext = vm.Lyrics };
     }
 
+    private LyricsPanelView? GetLyricsPanelView() =>
+        this.FindControl<ContentControl>("LyricsPanelHost")?.Content as LyricsPanelView;
+
     private void EnsureSettingsViewLoaded()
     {
         var host = this.FindControl<ContentControl>("SettingsViewHost");
@@ -794,8 +810,9 @@ public partial class MainWindow : Window
         // ShortcutService so Settings › Shortcuts can change any of them at runtime.
         AddHandler(KeyDownEvent, OnGlobalShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnGlobalShortcutKeyUp, RoutingStrategies.Tunnel);
-        // Queue-row keys (GitHub #85). Tunnel at the window and registered before any page's
-        // WindowKeyForwarder, so Ctrl+A / Escape inside the queue don't also hit the page.
+        // Queue-row keys (GitHub #85). Tunnel at the window. A page's WindowKeyForwarder is
+        // added later and so runs first (newest first); it stands aside through
+        // IsOverlayCapturingKeys, so Ctrl+A / Escape inside the queue don't hit the page.
         AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
 
         // Volume control via mouse wheel and keyboard
@@ -817,6 +834,30 @@ public partial class MainWindow : Window
         });
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
+        // macOS delivers "Open With Noctis", Finder double-clicks and Dock-icon drops as
+        // an open-documents event instead (see FileActivation) — at a cold launch too,
+        // once the run loop starts, which is before InitializeAsync has restored the queue.
+        _detachFileActivation = Helpers.FileActivation.Subscribe(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            files => Dispatcher.UIThread.Post(() =>
+            {
+                ShowFromTray();
+                if (DataContext is MainWindowViewModel vm)
+                    vm.OpenExternalFilesWhenReady(files);
+            }));
+
+        // macOS: a Dock-icon click or relaunch only sends the running app a reopen, so a
+        // window hidden into the menu-bar tray (close/minimize to tray, start minimized)
+        // had no way back but the status item. With the mini player up there is a visible
+        // window, and AppKit's convention then is to just activate — leave it.
+        _detachReopenActivation = Helpers.FileActivation.SubscribeReopen(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            () => Dispatcher.UIThread.Post(() =>
+            {
+                if (_miniPlayer == null)
+                    ShowFromTray();
+            }));
+
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
         // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
         // rule here — F11, Escape and WM-initiated transitions all funnel through
@@ -828,7 +869,7 @@ public partial class MainWindow : Window
             UpdateImmersiveLyricsState();
             if (WindowState != WindowState.Minimized)
                 return;
-            if (_trayIcon != null
+            if (IsTrayUsable
                 && DataContext is MainWindowViewModel trayVm
                 && trayVm.Settings.MinimizeToTray
                 && _miniPlayer == null)
@@ -1069,6 +1110,48 @@ public partial class MainWindow : Window
 
     private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
 
+    /// <summary>
+    /// Whether hiding into the tray leaves a way back. A TrayIcon object alone does not: on
+    /// Linux Avalonia creates one even with nothing hosting it (stock GNOME), so every
+    /// hide-to-tray path also needs a live StatusNotifierWatcher (audit P29).
+    /// </summary>
+    private bool IsTrayUsable => LinuxTrayHost.IsTrayUsable(
+        _trayIcon != null, OperatingSystem.IsLinux(), _trayHost?.IsAvailable == true);
+
+    private async Task SettleStartMinimizedAsync()
+    {
+        try
+        {
+            if (_trayHost != null)
+            {
+                // At login the panel may register its tray a moment after we start.
+                await _trayHost.WaitForHostAsync(TimeSpan.FromSeconds(5));
+                // Brought up meanwhile (second launch): ShowFromTray already settled it.
+                if (ShowInTaskbar)
+                    return;
+            }
+            SettleStartMinimized(this, IsTrayUsable);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "TrayIcon.StartMinimized", ex.Message);
+            ShowInTaskbar = true;
+        }
+    }
+
+    /// <summary>
+    /// A login launch arrives minimized with no taskbar button (see App). Into the tray when
+    /// there is one; otherwise give the taskbar button back, or the app runs with no window,
+    /// no taskbar entry and no tray icon. Internal for tests.
+    /// </summary>
+    internal static void SettleStartMinimized(Window window, bool trayUsable)
+    {
+        if (trayUsable)
+            window.Hide();
+        else
+            window.ShowInTaskbar = true;
+    }
+
     private static string Truncate(string s, int max)
         => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
 
@@ -1100,7 +1183,7 @@ public partial class MainWindow : Window
         // explicit app shutdown (tray Exit) always pass through.
         if (!_exitRequestedFromTray
             && e.CloseReason == WindowCloseReason.WindowClosing
-            && _trayIcon != null
+            && IsTrayUsable
             && _miniPlayer == null
             && DataContext is MainWindowViewModel vm
             && vm.Settings.CloseToTray)
@@ -1165,6 +1248,10 @@ public partial class MainWindow : Window
             Helpers.SingleInstanceGuard.ActivationRequested -= _singleInstanceActivationHandler;
             _singleInstanceActivationHandler = null;
         }
+        _detachFileActivation?.Invoke();
+        _detachFileActivation = null;
+        _detachReopenActivation?.Invoke();
+        _detachReopenActivation = null;
 
         _taskbar?.Dispose();
         _smtc?.Dispose();
@@ -1173,6 +1260,8 @@ public partial class MainWindow : Window
         _mpris = null;
         _resumeWatcher?.Dispose();
         _resumeWatcher = null;
+        _trayHost?.Dispose();
+        _trayHost = null;
         _macNowPlaying?.Dispose();
         _macNowPlaying = null;
         if (_trayIcon != null)
@@ -1615,8 +1704,9 @@ public partial class MainWindow : Window
         if (shortcuts.TryMatch(e) is not { } action) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
-        // edit box: typing a space in the search box stays typing a space.
-        if (e.KeyModifiers == KeyModifiers.None && e.Source is TextBox) return;
+        // edit box: typing a space in the search box stays typing a space. Ctrl+←/→ in
+        // the search box or Lyrics Studio moves the caret by a word, not the track.
+        if (e.Source is TextBox && ShortcutDefaults.IsTextBoxKey(e.Key, e.KeyModifiers)) return;
 
         if (!ExecuteShortcut(vm, action)) return;
         _consumedShortcut = action;
@@ -1867,6 +1957,11 @@ public partial class MainWindow : Window
         _queuePopupPanel is { IsVisible: true } panel
         && FocusManager?.GetFocusedElement() is Visual focused
         && (focused == panel || panel.IsVisualAncestorOf(focused));
+
+    /// <summary>Page shortcuts (Ctrl+A, Escape) stay off the page while the Settings sheet
+    /// covers it or the queue panel holds focus; the sheet and panel handle those keys.</summary>
+    bool IPageKeyOverlayHost.IsOverlayCapturingKeys =>
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsFocusInQueuePanel();
 
     private void OnQueueKeyDown(object? sender, KeyEventArgs e)
     {

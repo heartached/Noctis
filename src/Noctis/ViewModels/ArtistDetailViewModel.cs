@@ -336,7 +336,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _ = LoadAboutAsync();
         _ = LoadSimilarAsync(); // the Overview carries a Similar Artists row, so load on open
 
-        _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(Rebuild);
+        // A scan's progressive fill publishes only the tracks found SO FAR every 1.5 s, so
+        // rebuilding on it shrank the lists mid-scan and re-ran Classify each time; the
+        // authoritative publish follows with IsPublishingPartial false (checked at raise
+        // time, as on the album page). A page kept in history stays subscribed, so it
+        // only marks itself stale and catches up once it is current again (IsActive).
+        _libraryUpdatedHandler = (_, _) =>
+        {
+            if (_library.IsPublishingPartial) return;
+            Dispatcher.UIThread.Post(OnLibraryUpdated);
+        };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         // Hearts on the rows bind Track.IsFavorite; the Top Favorites section itself
         // must follow the set, so re-derive the lists when favourites change anywhere.
@@ -351,8 +360,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     internal static (List<Album> Releases, List<Album> AppearsOn, List<Track> Songs) Classify(
         IReadOnlyList<Album> allAlbums, string artistName)
     {
+        // Parsed once: this walks every track of the library (twice).
+        var nameTokens = Track.ParseArtistTokens(artistName);
+        bool Credits(string? field) => LibraryAlbumsViewModel.ContainsArtistToken(field, artistName, nameTokens);
+
         var releases = allAlbums
-            .Where(a => LibraryAlbumsViewModel.ContainsArtistToken(a.Artist, artistName))
+            .Where(a => Credits(a.Artist))
             .OrderByDescending(ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -360,14 +373,14 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
         var appearsOn = allAlbums
             .Where(a => !releaseIds.Contains(a.Id)
-                        && a.Tracks.Any(t => LibraryAlbumsViewModel.ContainsArtistToken(t.Artist, artistName)))
+                        && a.Tracks.Any(t => Credits(t.Artist)))
             .OrderByDescending(ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var songs = allAlbums
             .SelectMany(a => a.Tracks)
-            .Where(t => LibraryAlbumsViewModel.ContainsArtistToken(t.Artist, artistName))
+            .Where(t => Credits(t.Artist))
             .GroupBy(t => t.Id).Select(g => g.First())
             .ToList();
 
@@ -429,6 +442,38 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Overview row contents: the newest <paramref name="cap"/> (0 = all).</summary>
     internal static List<Album> OverviewRow(IReadOnlyList<Album> releases, int cap)
         => cap > 0 ? releases.Take(cap).ToList() : releases.ToList();
+
+    /// <summary>
+    /// Set by MainWindowViewModel as the page becomes (or stops being) the current view.
+    /// True from construction: the page is shown as soon as it is built.
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            if (value && _rebuildPending)
+            {
+                _rebuildPending = false;
+                Rebuild();
+            }
+        }
+    }
+
+    private bool _isActive = true;
+    private bool _rebuildPending;
+
+    private void OnLibraryUpdated()
+    {
+        if (!_isActive)
+        {
+            _rebuildPending = true;
+            return;
+        }
+        Rebuild();
+    }
 
     private void Rebuild()
     {

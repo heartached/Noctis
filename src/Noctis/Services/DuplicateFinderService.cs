@@ -40,10 +40,13 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
         var trashedPaths = new List<string>(targets.Count);
         await Task.Run(() =>
         {
+            // One "delete permanently?" No per drive, not one prompt per duplicate.
+            var (trashFile, _) = LibraryRemovalHelper.SkipDeclinedTrash(
+                RecycleBin.TryMoveToTrash, RecycleBin.TryMoveDirectoryToTrash);
             foreach (var (id, path) in targets)
             {
                 ct.ThrowIfCancellationRequested();
-                if (RecycleBin.TryMoveToTrash(path))
+                if (trashFile(path))
                 {
                     trashed++;
                     removeIds.Add(id);
@@ -59,7 +62,7 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
             // handled this for the normal removal path all along; the duplicate finder
             // never called it, so every deleted duplicate left its .lrc/.ttml/.txt behind.
             if (trashedPaths.Count > 0)
-                LibraryRemovalHelper.TrashSidecarFiles(trashedPaths, RecycleBin.TryMoveToTrash);
+                LibraryRemovalHelper.TrashSidecarFiles(trashedPaths, trashFile);
         }, ct);
 
         if (removeIds.Count > 0)

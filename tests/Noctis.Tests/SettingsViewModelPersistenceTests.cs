@@ -202,6 +202,29 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.Equal(37, reloaded.GetSettings().Volume);
     }
 
+    /// <summary>A32: the volume reached disk only through the shutdown save, so a crash or
+    /// kill brought back the last graceful exit's (possibly louder) level. A live change
+    /// now rides the debounced settings write on its own.</summary>
+    [AvaloniaFact]
+    public async Task LiveVolumeChange_ReachesDiskWithoutShutdownSave()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        vm.PersistVolume(23); // no SaveAsync: the debounced write alone must land it
+
+        var persistence = new PersistenceService(_root);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        int stored;
+        do
+        {
+            await Task.Delay(100);
+            stored = (await persistence.LoadSettingsAsync()).Volume;
+        } while (stored != 23 && DateTime.UtcNow < deadline);
+
+        Assert.Equal(23, stored);
+    }
+
     [AvaloniaFact]
     public async Task SongsViewState_SurvivesSaveAndReload()
     {

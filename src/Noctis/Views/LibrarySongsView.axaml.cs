@@ -19,6 +19,8 @@ public partial class LibrarySongsView : UserControl
 {
     private LibrarySongsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
+    /// <summary>The VM FilterKey the list last reset its scroll for (see OnFilteredTracksChanged).</summary>
+    private string? _scrollResetFilterKey;
     // Track selection by the Track itself (not the ListBoxItem container) so
     // virtualization-driven container recycling doesn't drag the visual
     // ctrl-selected class onto a different track when the user scrolls or
@@ -215,7 +217,10 @@ public partial class LibrarySongsView : UserControl
 
         _vm = DataContext as LibrarySongsViewModel;
         if (_vm != null)
+        {
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _scrollResetFilterKey = _vm.FilterKey;
+        }
 
         // Reset shared menu so it picks up new VM commands
         _menuBuilder?.Reset();
@@ -224,9 +229,15 @@ public partial class LibrarySongsView : UserControl
 
     private void OnFilteredTracksChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (_vm?.HasActiveFilter != true)
+        // Scroll to top only when the filter itself changed: a library reload (metadata
+        // save, scan tick, analysis pass) re-fills the same results and keeps the user's place.
+        if (_vm == null || _vm.FilterKey == _scrollResetFilterKey)
             return;
-        if (_pendingScrollRestore != null || (_vm != null && _vm.SavedScrollOffset > 0))
+        _scrollResetFilterKey = _vm.FilterKey;
+
+        if (!_vm.HasActiveFilter)
+            return;
+        if (_pendingScrollRestore != null)
             return;
 
         Dispatcher.UIThread.Post(() =>
@@ -343,6 +354,7 @@ public partial class LibrarySongsView : UserControl
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _scrollResetFilterKey = _vm.FilterKey;
         }
 
         if (DataContext is LibrarySongsViewModel vm && vm.SavedScrollOffset > 0)

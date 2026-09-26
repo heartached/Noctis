@@ -116,6 +116,39 @@ public class LyricsWriterTests : IDisposable
         Assert.Equal(new[] { _elrc }, _trashed);
     }
 
+    [Fact]
+    public void Save_ReplaceForeignSidecar_TrashRefused_KeepsTheUsersFilesUntouched()
+    {
+        File.WriteAllText(_elrc, ForeignLrc);
+        File.WriteAllText(_lrc, ForeignLrc);
+        _writer.TrashFile = p => { _trashed.Add(p); return false; };
+
+        var outcome = _writer.SaveDetailed(NewTrack(), "Hello world", Elrc, embedInTags: false, replaceForeignSidecar: true);
+
+        Assert.True(outcome.Wrote);
+        Assert.False(outcome.SidecarWritten);
+        Assert.False(outcome.ReplacedForeignSidecar, "nothing reached the recycle bin");
+        Assert.True(outcome.KeptForeignSidecar);
+        Assert.Equal(new[] { _elrc, _lrc }, _trashed);
+        Assert.Equal(ForeignLrc, File.ReadAllText(_elrc));
+        Assert.Equal(ForeignLrc, File.ReadAllText(_lrc));
+    }
+
+    [Fact]
+    public void Save_LineLevel_ForeignElrcTrashRefused_ReportsItKept()
+    {
+        File.WriteAllText(_elrc, Elrc);
+        _writer.TrashFile = p => { _trashed.Add(p); return false; };
+
+        var outcome = _writer.SaveDetailed(NewTrack(), "a", "[00:02.00]Again", embedInTags: false, replaceForeignSidecar: true);
+
+        Assert.True(outcome.SidecarWritten);
+        Assert.False(outcome.ReplacedForeignSidecar);
+        Assert.True(outcome.KeptForeignSidecar);
+        Assert.Equal(Elrc, File.ReadAllText(_elrc));
+        Assert.Equal("[00:02.00]Again", File.ReadAllText(_lrc));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_dir, recursive: true); } catch { }

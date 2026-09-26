@@ -92,6 +92,74 @@ public class GaplessCrossfadeTests
         Assert.True(Math.Abs(after[199]) < 0.001f, $"expected silence, got {after[199]}");
     }
 
+    // A cut mid-blend must ramp from the MIXED frame the speaker last got, not the
+    // raw incoming one: at 25% equal-power the output is ≈ +0.27 while B alone is
+    // −0.5, and ramping from B stepped by ≈0.77 — a click on skip/stop/pause.
+    private static (GaplessSpliceProvider provider, float[] mix) BlendWithDeclick(int bSamples)
+    {
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5); // 40-sample ramp
+        var a = new GaplessTrackSegment(8000, 1, source: 0);
+        var b = new GaplessTrackSegment(8000, 1, source: 1);
+        provider.Enqueue(a);
+        provider.Enqueue(b);
+        Assert.True(a.Write(ConstantBlock(16384, 2000)));      // ≈ +0.5f
+        Assert.True(b.Write(ConstantBlock(-16384, bSamples))); // ≈ -0.5f, no EOS
+        var warm = new float[200];
+        provider.Read(warm, 0, 200);                            // past the cold-start fade
+
+        Assert.True(provider.BeginCrossfade(100, AutoMixFadeCurve.EqualPower)); // 800-sample fade
+        var mix = new float[200];
+        provider.Read(mix, 0, 200);
+        Assert.True(provider.IsCrossfading);
+        return (provider, mix);
+    }
+
+    private static void AssertRampsFrom(float lastEmitted, float[] after)
+    {
+        Assert.True(Math.Abs(after[0] - lastEmitted) < 0.05f, $"cut stepped: {lastEmitted} -> {after[0]}");
+        for (var i = 1; i < after.Length; i++)
+            Assert.True(Math.Abs(after[i] - after[i - 1]) < 0.05f,
+                $"step of {Math.Abs(after[i] - after[i - 1]):F3} at sample {i}");
+        Assert.All(after.Skip(60), s => Assert.Equal(0f, s));
+    }
+
+    [Fact]
+    public void Clear_DuringCrossfade_RampsFromTheMixedFrame()
+    {
+        var (provider, mix) = BlendWithDeclick(bSamples: 2000);
+        Assert.True(mix[199] > 0.2f, $"expected the blend near +0.27, got {mix[199]}");
+
+        provider.Clear();
+        var after = new float[200];
+        provider.Read(after, 0, 200);
+        AssertRampsFrom(mix[199], after);
+    }
+
+    [Fact]
+    public void Clear_DuringCrossfade_WhileIncomingUnderruns_RampsTheTailDown()
+    {
+        // B dries up mid-read: the read ends as silence + A's fading tail. Clear
+        // then drops the tail — without a ramp that is a step of the whole tail.
+        var (provider, mix) = BlendWithDeclick(bSamples: 150);
+        Assert.True(mix[199] > 0.3f, $"expected A's tail alone, got {mix[199]}");
+
+        provider.Clear();
+        var after = new float[200];
+        provider.Read(after, 0, 200);
+        AssertRampsFrom(mix[199], after);
+    }
+
+    [Fact]
+    public void Park_DuringCrossfade_RampsFromTheMixedFrame()
+    {
+        var (provider, mix) = BlendWithDeclick(bSamples: 2000);
+
+        provider.Parked = true;
+        var paused = new float[200];
+        provider.Read(paused, 0, 200);
+        AssertRampsFrom(mix[199], paused);
+    }
+
     [Fact]
     public void Crossfade_OutgoingRunsDry_PadsTheTailWithSilence()
     {

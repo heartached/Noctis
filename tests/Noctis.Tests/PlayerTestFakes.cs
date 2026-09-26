@@ -47,7 +47,8 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void Pause() => State = PlaybackState.Paused;
     public void Resume() => State = PlaybackState.Playing;
     public void Stop() => State = PlaybackState.Stopped;
-    public void Seek(TimeSpan position) { }
+    public List<TimeSpan> Seeks { get; } = new();
+    public void Seek(TimeSpan position) => Seeks.Add(position);
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
     public void SetExclusiveMode(bool enabled) { }
@@ -64,6 +65,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public string UpmixMode { get; private set; } = "Off";
     public void SetUpmixMode(string mode) => UpmixMode = mode;
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
+    public bool PreparesRemoteStreams { get; set; }
     public int CancelledCount { get; private set; }
     public void CancelPreparedNext() => CancelledCount++;
     /// <summary>The last curve pushed by SetAdvancedEqualizer (null until the first call).</summary>
@@ -114,8 +116,10 @@ internal sealed class FakeLibraryService : ILibraryService
         ArtistAlbums.Where(a => string.Equals(a.Artist, artistName, StringComparison.OrdinalIgnoreCase)).ToList();
     public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
     public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
+    /// <summary>Old id → new id that RelocateTracksAsync reports (empty by default).</summary>
+    public Dictionary<Guid, Guid> RelocateRemap { get; } = new();
     public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
-        => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(RelocateRemap);
     public Task LoadAsync() => Task.CompletedTask;
     public Task SaveAsync() => Task.CompletedTask;
     public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;

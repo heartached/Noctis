@@ -46,8 +46,16 @@ public sealed class GaplessTrackSegment
     private bool _started;           // first samples handed to the render side
     private bool _cutPending;        // a Flush cut live audio; renderer must declick the junction
     private bool _flushRearmed;      // gate re-armed by a seek flush (warm decoder), not a cold start
+    private bool _hadAudio;          // any block written since creation (the upstream resampler holds history)
+    private int _discardSamples;     // post-flush samples still to drop: the resampler's stale pre-seek tail
     private long _consumedFrames;    // frames handed to the render side
     private long _basePositionMs;    // media position of the first frame after creation/flush
+    private float _gain = 1f;        // amplitude the render side reads at (see Gain)
+    private float _renderGain = 1f;  // gain applied to the last sample read; slews to _gain
+
+    // A mid-play Gain change (ReplayGain setting moved) slews over this long per
+    // 1.0 of amplitude, so a pre-amp drag never steps the waveform.
+    private const int GainSlewMs = 20;
 
     public int SampleRate { get; }
     public int Channels { get; }
@@ -70,6 +78,26 @@ public sealed class GaplessTrackSegment
     public bool Abandoned { get { lock (_gate) return _abandoned; } }
     public bool IsFinished { get { lock (_gate) return (_endOfStream || _abandoned) && _count == 0; } }
     public int BufferedSamples { get { lock (_gate) return _count; } }
+
+    /// <summary>
+    /// Amplitude gain applied as the render side reads this segment (ReplayGain on
+    /// the splice engine). Per segment, so the audible boundary and a crossfade tail
+    /// each keep their own track's level. Set before the first read it applies from
+    /// the first sample; changed mid-play it slews. 1 = bit-exact pass-through.
+    /// </summary>
+    public float Gain
+    {
+        get { lock (_gate) return _gain; }
+        set
+        {
+            lock (_gate)
+            {
+                _gain = Math.Max(0f, value);
+                if (!_started)
+                    _renderGain = _gain;
+            }
+        }
+    }
 
     /// <summary>Audible media position of this segment = base + consumed.</summary>
     public long PositionMs
@@ -95,6 +123,17 @@ public sealed class GaplessTrackSegment
         {
             lock (_gate)
             {
+                _hadAudio = true;
+                if (_discardSamples > 0)
+                {
+                    // Stale head after a flush (see Flush): never staged, but
+                    // counted as consumed so PositionMs stays media time.
+                    var skip = Math.Min(_discardSamples, pcm.Length - offset);
+                    offset += skip;
+                    _discardSamples -= skip;
+                    _consumedFrames += skip / Channels;
+                    continue;
+                }
                 while (_count == _ring.Length)
                 {
                     if (_abandoned || _endOfStream)
@@ -130,9 +169,17 @@ public sealed class GaplessTrackSegment
         lock (_gate)
         {
             var toCopy = Math.Min(_count, maxSamples);
+            var slewStep = 1000f / (SampleRate * Channels * GainSlewMs);
             for (var i = 0; i < toCopy; i++)
             {
-                dest[destOffset + i] = _ring[_readIdx];
+                var sample = _ring[_readIdx];
+                if (_renderGain != _gain)
+                    _renderGain = _renderGain < _gain
+                        ? Math.Min(_gain, _renderGain + slewStep)
+                        : Math.Max(_gain, _renderGain - slewStep);
+                if (_renderGain != 1f)
+                    sample *= _renderGain;
+                dest[destOffset + i] = sample;
                 _readIdx = (_readIdx + 1) % _ring.Length;
             }
             _count -= toCopy;
@@ -161,8 +208,12 @@ public sealed class GaplessTrackSegment
     /// VLC flush callback (seek/stop): discard buffered PCM. The engine passes
     /// the seek target so position reporting stays truthful; a teardown flush
     /// AFTER drain must be ignored by the caller (it would eat the tail).
+    /// <paramref name="discardFrames"/> drops that many frames of the next
+    /// writes: an upstream resampler that a flush does not reset emits its
+    /// pre-flush history first, ending in a step into the new audio. Armed only
+    /// once audio has been written — before that there is no stale history.
     /// </summary>
-    public void Flush(long newBasePositionMs)
+    public void Flush(long newBasePositionMs, int discardFrames = 0)
     {
         lock (_gate)
         {
@@ -171,6 +222,7 @@ public sealed class GaplessTrackSegment
             _count = 0;
             _consumedFrames = 0;
             _basePositionMs = Math.Max(0, newBasePositionMs);
+            _discardSamples = _hadAudio ? Math.Max(0, discardFrames) * Channels : 0;
             // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
             // input start, and a once-per-life gate let the first trickle blocks
             // render against silence — the post-seek chop the gate exists to stop.
@@ -339,9 +391,13 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _declickRemaining;     // samples left of an in-progress cut ramp-to-zero
     private bool _cutFadePending;      // a cut junction is due a fade-in regardless of silence streak (render thread only)
     private volatile bool _pendingCutSignal; // cut raised off the render thread (Clear / abandon-swap)
+    private volatile bool _parked;     // paused: render silence, consume nothing (set off the render thread)
+    private bool _parkRendered;        // a parked read ran since the last un-parked one (render thread only)
     private readonly ReplayDetector? _ringDetector = ReplayDetector.CreateIfEnabled("Ring"); // raw adapter output, pre-fade
     private readonly bool _readTrace = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"));
     private long _lastTraceTick;
+    private int _underrunCount;         // mid-track 0-reads (render thread increments)
+    private long _lastUnderrunLogTick;  // render thread only
 
     // Mixed crossfade (transition-mode advance under the engine): the outgoing
     // segment keeps rendering as a fading tail ADDED to the new active segment
@@ -355,6 +411,9 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _fadeElapsedSamples;   // render thread only
     private volatile bool _crossfadeArmed; // BeginCrossfade swapped the active off the render thread
     private float[]? _fadeScratch;
+    private readonly float[] _lastMixFrame = new float[2]; // last emitted frame of a read that mixed a tail
+    private bool _tailMixed;           // the last read mixed a tail into its output (render thread only)
+    private int _tailFadeInRemaining;  // un-park fade-in still due on the tail (render thread only)
 
     // Playback speed (podcast/audiobook island): a WSOLA stretch is the LAST
     // adapter stage, pulling media frames at the rate, so the segment's
@@ -395,8 +454,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
             Math.Clamp(sinkRate, 1000, 384000), Math.Clamp(sinkChannels, 1, 2));
         _startThresholdMs = Math.Clamp(startThresholdMs, 0, 2000);
-        _startFadeSamples = WaveFormat.SampleRate * WaveFormat.Channels * Math.Clamp(startFadeMs, 0, 100) / 1000;
-        _fadeArmSamples = WaveFormat.SampleRate * WaveFormat.Channels * FadeArmMs / 1000;
+        // Whole frames: at 44.1 kHz stereo 5 ms is 441 SAMPLES, and an odd-length
+        // junction ramp leaves the post-cut read at an odd offset — L/R swapped.
+        _startFadeSamples = WaveFormat.SampleRate * Math.Clamp(startFadeMs, 0, 100) / 1000 * WaveFormat.Channels;
+        _fadeArmSamples = WaveFormat.SampleRate * FadeArmMs / 1000 * WaveFormat.Channels;
         // Born silent: the very first audio the provider ever renders fades in.
         _silentSamples = _fadeArmSamples;
     }
@@ -444,6 +505,20 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     /// <summary>True while an outgoing tail is still being mixed underneath the active segment.</summary>
     public bool IsCrossfading { get { lock (_gate) return _fading != null; } }
 
+    /// <summary>
+    /// Pause without stopping the stream. Parked, Read ramps the last emitted frame
+    /// down to silence (the cut declick) and then renders zeros without consuming
+    /// any segment; un-parked, the held audio resumes with the start fade-in.
+    /// Pausing the device instead left both edges unramped: WasapiOut.Pause() only
+    /// stops filling, so the device starved mid-waveform about 100 ms later, and
+    /// Play() stepped straight back in at full level.
+    /// </summary>
+    public bool Parked
+    {
+        get => _parked;
+        set => _parked = value;
+    }
+
     public void Clear()
     {
         lock (_gate)
@@ -477,7 +552,42 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     public int Read(float[] buffer, int offset, int count)
     {
         var written = 0;
-        if (_crossfadeArmed)
+        // Parked: skip the segments (and any crossfade tail) so nothing is consumed;
+        // the pad below declicks the first parked read and renders silence after.
+        var parked = _parked;
+        if (parked)
+            _parkRendered = true;
+        else if (_parkRendered)
+        {
+            // First read after a park that rendered silence: fade the held audio
+            // back in however short the park was (the silence streak alone arms
+            // only after FadeArmMs).
+            _parkRendered = false;
+            if (_startFadeSamples > 0)
+            {
+                _cutFadePending = true;
+                // A crossfade tail kept across the pause resumes from silence too.
+                _tailFadeInRemaining = _startFadeSamples;
+            }
+        }
+        if (_tailMixed)
+        {
+            // The last read emitted incoming × fade-in + tail × fade-out, but no
+            // tail is mixed into this one (Clear dropped it mid-blend, or parked).
+            // _lastFrame is the raw incoming frame — ramp from what was actually
+            // emitted instead, or the cut steps by the whole tail.
+            bool tailLive;
+            lock (_gate) tailLive = _fading != null;
+            if (parked || !tailLive)
+            {
+                _tailMixed = false;
+                for (var c = 0; c < WaveFormat.Channels; c++)
+                    _lastFrame[c] = _lastMixFrame[c];
+                if (_startFadeSamples > 0)
+                    _declickRemaining = _startFadeSamples;
+            }
+        }
+        if (!parked && _crossfadeArmed)
         {
             // BeginCrossfade promoted the staged segment off the render thread:
             // a fresh active is governed by its own start gate, not a leftover
@@ -489,7 +599,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (promoted != null)
                 SegmentStarted?.Invoke(promoted);
         }
-        while (written < count)
+        while (!parked && written < count)
         {
             ISampleProvider? adapted;
             GaplessTrackSegment? active;
@@ -613,6 +723,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (!active.IsFinished)
             {
                 _refillSamplesNeeded = WaveFormat.SampleRate * WaveFormat.Channels * UnderrunRefillMs / 1000;
+                NoteUnderrun(active);
                 break;
             }
         }
@@ -648,7 +759,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             }
             _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
         }
-        MixFadingTail(buffer, offset, count);
+        if (!parked)
+            MixFadingTail(buffer, offset, count);
         if (_readTrace && Environment.TickCount64 - _lastTraceTick > 250)
         {
             _lastTraceTick = Environment.TickCount64;
@@ -656,6 +768,20 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 $"offset={offset}, count={count}, written={written}, padded={padded}, bufLen={buffer.Length}, declick={_declickRemaining}, fade={_fadeRemaining}, silent={_silentSamples}, active={(_active != null ? 1 : 0)}");
         }
         return count;
+    }
+
+    // A mid-track underrun just armed the refill hold. Counted here on the render
+    // thread; the line is posted off it (a log write must not land inside a render
+    // read) and rate-limited to one per 250 ms, carrying the running count.
+    private void NoteUnderrun(GaplessTrackSegment active)
+    {
+        var count = Interlocked.Increment(ref _underrunCount);
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - _lastUnderrunLogTick < 250) return;
+        _lastUnderrunLogTick = now;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Warn, "GaplessEngine.Underrun",
+            $"count={count}, slot={active.Source}, bufferedSamples={active.BufferedSamples}, refillHoldSamples={_refillSamplesNeeded}");
     }
 
     // Crossfade render: the buffer holds the new active segment's audio (or
@@ -673,7 +799,11 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             adapted = _fadingAdapted;
         }
         if (fading == null || adapted == null)
+        {
+            _tailMixed = false;
+            _tailFadeInRemaining = 0;
             return;
+        }
 
         var scratch = _fadeScratch;
         if (scratch == null || scratch.Length < count)
@@ -690,6 +820,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         }
         for (var i = got; i < count; i++)
             scratch[i] = 0f;
+        // First read after a pause: ramp the tail in with the active's fade-in, or
+        // it steps straight out of the parked silence at its outgoing level.
+        for (var i = 0; i < count && _tailFadeInRemaining > 0; i++, _tailFadeInRemaining--)
+            scratch[i] *= (float)(_startFadeSamples - _tailFadeInRemaining) / _startFadeSamples;
 
         var total = _fadeTotalSamples;
         var elapsed = _fadeElapsedSamples;
@@ -702,6 +836,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             for (var c = i; c < end; c++)
                 buffer[offset + c] = (float)(buffer[offset + c] * inGain + scratch[c] * outGain);
         }
+        if (count >= ch)
+            for (var c = 0; c < ch; c++)
+                _lastMixFrame[c] = buffer[offset + count - ch + c];
+        _tailMixed = true;
         _fadeElapsedSamples = (int)Math.Min((long)elapsed + count, int.MaxValue / 2);
 
         if (_fadeElapsedSamples >= total || fading.IsFinished || fading.Abandoned)

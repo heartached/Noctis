@@ -6,6 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -1060,10 +1061,11 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null)
+    private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null,
+        string? pattern = null)
     {
         conflict = false;
-        var expanded = TitleFormatter.Expand(RenamePattern, t, sanitizeForFilename: true);
+        var expanded = TitleFormatter.Expand(pattern ?? RenamePattern, t, sanitizeForFilename: true);
         if (string.IsNullOrWhiteSpace(expanded)) return null;
 
         var dir = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
@@ -2241,6 +2243,15 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Records a file the save could not write, once: the playing track often
+    /// fails both its tag and its cover write, and the error should count it as one file.</summary>
+    private static void AddFailedWrite(List<string> failedWrites, string filePath)
+    {
+        var name = Path.GetFileName(filePath);
+        lock (failedWrites)
+            if (!failedWrites.Contains(name)) failedWrites.Add(name);
+    }
+
     private static (string Extension, FilePickerFileType FileType) GetArtworkSaveType(byte[] data)
     {
         if (data.Length >= 8 &&
@@ -2508,14 +2519,21 @@ public partial class MetadataViewModel : ViewModelBase
                 _persistence.SaveArtwork(albumId, _newArtworkData);
                 ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
             }
+            // A failed cover write (the playing track libVLC holds, a read-only file) leaves
+            // the old cover in that file: report it like a failed tag write so the dialog
+            // stays open, and keep that track's fingerprint matching what is still on disk.
             await Task.Run(() =>
             {
+                var written = new List<Track>();
                 foreach (var t in artTargets)
                 {
-                    try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
+                    bool ok;
+                    try { ok = _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { ok = false; }
+                    if (ok) written.Add(t);
+                    else AddFailedWrite(failedWrites, t.FilePath);
                     t.AlbumArtworkPath = null;
                 }
-                ClearOwnTrackArtwork(artTargets, _newArtworkData);
+                ClearOwnTrackArtwork(written, _newArtworkData);
             });
             foreach (var t in artTargets)
                 ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
@@ -2531,14 +2549,19 @@ public partial class MetadataViewModel : ViewModelBase
             var albumTracks = _albumTracks
                 ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
             if (albumTracks.Count == 0) albumTracks = new List<Track> { _track };
+            // Failed strips are reported and keep their fingerprint, as for a new cover above.
             await Task.Run(() =>
             {
+                var written = new List<Track>();
                 foreach (var t in albumTracks)
                 {
-                    try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
+                    bool ok;
+                    try { ok = _metadata.WriteAlbumArt(t.FilePath, null); } catch { ok = false; }
+                    if (ok) written.Add(t);
+                    else AddFailedWrite(failedWrites, t.FilePath);
                     t.AlbumArtworkPath = null;
                 }
-                ClearOwnTrackArtwork(albumTracks, null);
+                ClearOwnTrackArtwork(written, null);
             });
             foreach (var t in albumTracks)
                 ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
@@ -2596,24 +2619,56 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         // Rename files by pattern (multi-select only). Done after tag writes so the
-        // new name can reflect just-applied tags.
+        // new name can reflect just-applied tags. The moves run on a worker thread for
+        // the same reason as the tag writes: a large selection, or any selection on a
+        // network share or busy disk, froze the window for the whole batch when inline.
         if (_multiSelect && ApplyRename && _albumTracks != null)
         {
             var renameSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var t in _albumTracks)
+            var watcher = App.Services?.GetService<ILibraryWatcherService>();
+            var renameTargets = _albumTracks.ToList();
+            var renamePattern = RenamePattern;
+            var moved = new List<(Track track, string oldPath, string newPath)>();
+            await Task.Run(() =>
             {
-                var newPath = ComputeRenamedPath(t, out var conflict, renameSeen);
-                if (newPath != null && !conflict
-                    && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
+                foreach (var t in renameTargets)
                 {
-                    try
+                    var newPath = ComputeRenamedPath(t, out var conflict, renameSeen, renamePattern);
+                    if (newPath != null && !conflict
+                        && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
                     {
-                        File.Move(t.FilePath, newPath);
-                        MoveLyricSidecars(t.FilePath, newPath);
-                        t.FilePath = newPath;
+                        var oldPath = t.FilePath;
+                        try
+                        {
+                            SuppressWatcherForRename(watcher, oldPath, newPath);
+                            File.Move(oldPath, newPath);
+                            MoveLyricSidecars(oldPath, newPath);
+                            moved.Add((t, oldPath, newPath));
+                        }
+                        catch (Exception ex)
+                        {
+                            // Non-fatal — skip this file
+                            DebugLog.Write("Metadata", $"Rename failed for '{oldPath}': {ex.Message}");
+                        }
                     }
-                    catch { /* Non-fatal — skip this file */ }
                 }
+            });
+
+            var renamed = new List<(string oldPath, string newPath)>();
+            foreach (var (t, oldPath, newPath) in moved)
+            {
+                t.FilePath = newPath;
+                renamed.Add((oldPath, newPath));
+            }
+
+            // A track's id is the hash of its path. Re-key the renamed tracks the way
+            // Organize Files does, keeping play counts, favorites and store-backed lyrics;
+            // with the old id the watcher/next scan imported each file as a new track.
+            if (renamed.Count > 0)
+            {
+                var remap = await _library.RelocateTracksAsync(renamed);
+                if (App.Services?.GetService<MainWindowViewModel>() is { } main)
+                    await main.Sidebar.ApplyTrackIdRemapAsync(remap);
             }
         }
 
@@ -2690,6 +2745,21 @@ public partial class MetadataViewModel : ViewModelBase
             }
             catch { /* Best effort — the audio rename already succeeded */ }
         }
+    }
+
+    /// <summary>Makes the folder watcher ignore a rename the editor is about to do (audio
+    /// file and its sidecars), as Organize Files does: it would otherwise record the old
+    /// path as deleted and import the new one before the track is relocated.</summary>
+    private static void SuppressWatcherForRename(ILibraryWatcherService? watcher, string oldPath, string newPath)
+    {
+        if (watcher == null) return;
+        var paths = new List<string> { oldPath, newPath };
+        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        {
+            paths.Add(Path.ChangeExtension(oldPath, ext));
+            paths.Add(Path.ChangeExtension(newPath, ext));
+        }
+        watcher.SuppressPaths(paths, TimeSpan.FromSeconds(30));
     }
 
     [RelayCommand]

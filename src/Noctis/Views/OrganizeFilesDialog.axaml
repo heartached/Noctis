@@ -148,6 +148,15 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                               Padding="24,2,24,8">
                     <ItemsControl ItemsSource="{Binding Rows}">
+                        <!-- Virtualized: Rows holds one entry per local library track (skips
+                             included), so opening the tool or pressing Update Preview on a
+                             large library built every row's Border + DockPanel + 3 TextBlock
+                             tree on the UI thread. -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:OrganizeFilesViewModel+OrganizeRow">
                                 <Border Background="#10FFFFFF" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">

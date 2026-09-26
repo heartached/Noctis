@@ -2589,9 +2589,11 @@ public partial class SettingsViewModel : ViewModelBase
         await _saveLock.WaitAsync();
         try
         {
+            var saveStart = Stopwatch.GetTimestamp();
             await MergeExternalSettingChangesAsync();
             SyncToSettings();
             await _persistence.SaveSettingsAsync(_settings);
+            UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
         catch (Exception ex)
         {
@@ -2915,6 +2917,14 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _volume = _settings.Volume = volume;
+
+    /// <summary>Persists a user volume change through the debounced settings write, so a
+    /// crash or kill can't revert it to the value saved at the last graceful exit.</summary>
+    public void PersistVolume(int volume)
+    {
+        SetVolume(volume);
+        QueueSettingsSave();
+    }
 
     /// <summary>Last playback-bar width pushed via <see cref="SetPlaybackBarWidth"/>;
     /// null until the bar pushes one, so saves before that leave the stored value alone.</summary>
@@ -6177,8 +6187,10 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear index cache: {ex.Message}");
         }
 
-        // Reset settings to defaults and save
-        var defaultSettings = new AppSettings();
+        // Reset settings to defaults and save. The plugins folder survives the reset, so the
+        // community-plugins switch is decided (restricted) rather than left null, which the
+        // plugin host treats as a pre-switch install and approves every plugin it finds.
+        var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
         try
         {
             await _persistence.SaveSettingsAsync(defaultSettings);
@@ -6188,6 +6200,32 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
         }
 
+        // Launch-at-login is an OS-level registration, not a settings field — a reset
+        // that leaves it enabled means the app keeps starting itself after the user
+        // asked for defaults. The toggle only reads the OS at load, so re-read it here:
+        // it kept showing ON, and flipping Start-minimized then re-registered the entry.
+        try { Helpers.StartupHelper.SetEnabled(false); } catch { }
+        _suppressLaunchAtStartupHandler = true;
+        try { LaunchAtStartup = Helpers.StartupHelper.IsEnabled(); }
+        finally { _suppressLaunchAtStartupHandler = false; }
+
+        ResetSettingsToDefaults(defaultSettings);
+
+        SetScanStatus("All settings and data have been reset.", autoClear: true);
+        RefreshLibraryStats();
+        TotalPlaylists = 0;
+        RefreshStorageInfo();
+
+        SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Puts every view-model-owned setting back to <paramref name="defaultSettings"/>.
+    /// SaveAsync re-bases on the defaulted file and then SyncToSettings writes these
+    /// properties over it, so any one left out here silently survives the reset.
+    /// </summary>
+    internal void ResetSettingsToDefaults(AppSettings defaultSettings)
+    {
         // Update ViewModel with defaults (suspend persistence during update)
         _suspendSettingPersistence = true;
         try
@@ -6208,6 +6246,7 @@ public partial class SettingsViewModel : ViewModelBase
             ActiveAccentHex = defaultSettings.AccentColorHex;
             ActiveAccentName = defaultSettings.AccentPresetName;
             CustomAccentHex = ActiveAccentHex;
+            AccentFollowsArtwork = defaultSettings.AccentFollowsArtwork;
             try
             {
                 _suppressPickerSync = true;
@@ -6216,6 +6255,9 @@ public partial class SettingsViewModel : ViewModelBase
             catch { }
             finally { _suppressPickerSync = false; }
             RebuildAccentSwatches();
+
+            // Keyboard shortcuts: SyncToSettings writes the service's overrides back.
+            ShortcutService.Load(defaultSettings);
 
             // Preferences
             ScanOnStartup = true;
@@ -6236,6 +6278,9 @@ public partial class SettingsViewModel : ViewModelBase
             RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             LocalApiEnabled = defaultSettings.LocalApiEnabled;
+            // Enabled first: a port change while the server still runs restarts it.
+            NoctisServerEnabled = defaultSettings.NoctisServerEnabled;
+            NoctisServerPort = defaultSettings.NoctisServerPort;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
@@ -6270,6 +6315,10 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
             LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
+            _lyricsBackgroundOverrides.Clear(); // ApplyPlayerSettings below pushes the empty map
+            LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
+            MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
+            MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
@@ -6296,13 +6345,19 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
+            ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
+            ShowGenreColumn = defaultSettings.ShowGenreColumn;
+            ShowRatingColumn = defaultSettings.ShowRatingColumn;
+            ShowBpmColumn = defaultSettings.ShowBpmColumn;
+            ShowBitrateColumn = defaultSettings.ShowBitrateColumn;
+            ShowSampleRateColumn = defaultSettings.ShowSampleRateColumn;
+            ShowTimeColumn = defaultSettings.ShowTimeColumn;
+            ShowArtistColumn = defaultSettings.ShowArtistColumn;
+            ShowAlbumColumn = defaultSettings.ShowAlbumColumn;
+            ShowFavoritesColumn = defaultSettings.ShowFavoritesColumn;
+            ShowPlaysColumn = defaultSettings.ShowPlaysColumn;
             ProfileName = defaultSettings.ProfileName;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
-
-            // Launch-at-login is an OS-level registration, not a settings field — a reset
-            // that leaves it enabled means the app keeps starting itself after the user
-            // asked for defaults.
-            try { Helpers.StartupHelper.SetEnabled(false); } catch { }
 
             // Playback
             CrossfadeEnabled = false;
@@ -6334,6 +6389,9 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
+            // Upmix, sync, YouTube downloads and Lyrics Studio: re-read from the defaulted
+            // _settings the same way LoadAsync does (ApplyAudioSettings below pushes upmix).
+            LoadFeatureSettings();
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -6361,6 +6419,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Integrations
             DiscordRichPresenceEnabled = false;
+            DiscordShowAlbum = defaultSettings.DiscordShowAlbum;
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             IsLastFmConnected = false;
@@ -6413,13 +6472,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _suspendSettingPersistence = false;
         }
-
-        SetScanStatus("All settings and data have been reset.", autoClear: true);
-        RefreshLibraryStats();
-        TotalPlaylists = 0;
-        RefreshStorageInfo();
-
-        SettingsReset?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -7069,6 +7121,8 @@ public partial class SettingsViewModel : ViewModelBase
         // Mirror LibVLC warnings/errors into the session log while dev mode is
         // on, so "Copy Logs" captures audio-engine complaints (see DebugLog).
         DebugLog.VlcBridgeEnabled = value;
+        // UI-thread stall detection runs only while Developer Mode is on.
+        UiStallWatchdog.SetEnabled(value);
 
         if (value)
         {

@@ -213,8 +213,17 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         };
         _player.PropertyChanged += _playerPropertyChangedHandler;
 
-        // Refresh when library metadata changes (e.g. metadata editor save)
-        _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(RefreshFromLibrary);
+        // Refresh when library metadata changes (e.g. metadata editor save). A scan's
+        // progressive fill publishes only the tracks found SO FAR every 1.5 s, so an album
+        // missing from one is "not walked yet", not removed — refreshing then closed the
+        // page mid-scan. The authoritative publish follows with IsPublishingPartial false.
+        // Checked at raise time: the scan can end (flag cleared, partial snapshot still
+        // live) before a posted refresh runs.
+        _libraryUpdatedHandler = (_, _) =>
+        {
+            if (_library.IsPublishingPartial) return;
+            Dispatcher.UIThread.Post(RefreshFromLibrary);
+        };
         _library.LibraryUpdated += _libraryUpdatedHandler;
 
         // Refresh album-level favorite indicators when any favorite changes externally
@@ -358,14 +367,21 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (_moreByArtistKey != null && _moreByArtistOrder != null)
             _moreByArtistKey = $"{updatedAlbum.Artist}\0{updatedAlbum.Id}";
 
+        // Every index rebuild hands back a new Album, so this also rebuilds the related
+        // sections (OnAlbumChanged). The same instance means no rebuild ran: nothing to redo.
         Album = updatedAlbum;
 
-        Tracks.ReplaceAll(updatedAlbum.Tracks);
-        BuildDiscGroups();
+        // The rows are rebuilt only when the track list changed. Track instances survive
+        // an index rebuild (a metadata save edits them in place and re-notifies their
+        // bindings), and the unconditional Reset tore down every row on each scan publish,
+        // analysis pass or save elsewhere: the row under the pointer flickered and an open
+        // track menu closed with its owner row (the Home / artist-page fix, 09-13/09-14).
+        if (!IsShownTrackList(updatedAlbum.Tracks))
+        {
+            Tracks.ReplaceAll(updatedAlbum.Tracks);
+            BuildDiscGroups();
+        }
         AnimatedCoverPath = ResolveAlbumAnimatedCover();
-        // OnAlbumChanged already rebuilds related sections; reaching here only when the
-        // ID actually changed, but rebuild defensively in case the same-ID path missed.
-        BuildRelatedSections();
 
         // Refresh header art path. CachedImage in the XAML invalidates and
         // reloads via the shared LRU cache automatically on path change.
@@ -583,9 +599,28 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     // (library update, album re-key) or the page is disposed.
     private int _discFillGeneration;
 
+    // Each row's disc when the groups were built: a disc edit is made in place, so it can
+    // regroup the rows without changing their order.
+    private int[] _groupedDiscNumbers = Array.Empty<int>();
+
+    /// <summary>True when <paramref name="next"/> is what the rows already show: the same
+    /// Track instances in the same order, each still on the disc it was grouped under.
+    /// Reference equality on purpose: a rescan's fresh Track instances must re-bind.</summary>
+    private bool IsShownTrackList(IReadOnlyList<Track> next)
+    {
+        if (next.Count != Tracks.Count || next.Count != _groupedDiscNumbers.Length) return false;
+        for (int i = 0; i < next.Count; i++)
+        {
+            if (!ReferenceEquals(Tracks[i], next[i]) || next[i].DiscNumber != _groupedDiscNumbers[i])
+                return false;
+        }
+        return true;
+    }
+
     private void BuildDiscGroups()
     {
         var generation = ++_discFillGeneration;
+        _groupedDiscNumbers = Tracks.Select(t => t.DiscNumber).ToArray();
         DiscGroups.Clear();
         var pending = new List<(ObservableCollection<Track> Target, List<Track> Remainder)>();
         foreach (var g in Tracks.GroupBy(t => t.DiscNumber).OrderBy(g => g.Key))
@@ -839,12 +874,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Tracks Ctrl-selected in the album track list. Set by the view's code-behind.</summary>
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
+    /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
+    private List<Track> SelectionOr(Track track) =>
+        CtrlSelectedTracks.Contains(track) ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var selection = SelectionOr(track);
+        if (selection.Count > 1)
         {
-            var selection = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenMultiTrackMetadataWindow(selection);
             return;
@@ -862,7 +901,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ConvertTrack(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -870,7 +909,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ScanTrackReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }

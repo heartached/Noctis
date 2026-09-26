@@ -145,6 +145,21 @@ public class ArtworkRefreshTests : IDisposable
         Assert.Equal(expected, MetadataService.IsFolderArtCandidate(path));
     }
 
+    [Fact]
+    public void Folder_art_lookup_ignores_name_case()
+    {
+        // Exact lower-case File.Exists probes missed these on case-sensitive file systems
+        // (Linux); on Windows they matched but returned the probed name, not the real one.
+        File.WriteAllBytes(Path.Combine(_musicDir, "Folder.JPG"), FolderArtNew);
+        File.WriteAllBytes(Path.Combine(_musicDir, "Cover.jpg"), ArtV1);
+
+        var art = MetadataService.TryGetFolderArtFile(_musicDir);
+
+        Assert.NotNull(art);
+        Assert.Equal("Folder.JPG", art.Name);
+        Assert.Equal(FolderArtNew, MetadataService.TryReadFolderArt(_musicDir));
+    }
+
     private sealed class ArtworkTestPersistence : IPersistenceService, IDisposable
     {
         public string DataDirectory { get; }

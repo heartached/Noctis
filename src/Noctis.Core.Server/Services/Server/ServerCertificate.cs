@@ -16,10 +16,13 @@ public static class ServerCertificate
     public const string KeyFileName = "server.pfx.key";
     private const int ValidYears = 10;
 
-    /// <summary>macOS has no ephemeral key set: keys there land in a temporary keychain instead, so the flag is dropped on that platform.</summary>
+    /// <summary>macOS has no ephemeral key set: keys there land in a temporary keychain instead, so the flag is dropped on that platform.
+    /// Windows' Schannel cannot use an ephemeral key as a server credential (every TLS handshake fails), so the key goes to the user key store there; it is removed again when the certificate is disposed.</summary>
     private static X509KeyStorageFlags KeyFlags => OperatingSystem.IsMacOS()
         ? X509KeyStorageFlags.Exportable
-        : X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet;
+        : OperatingSystem.IsWindows()
+            ? X509KeyStorageFlags.Exportable | X509KeyStorageFlags.UserKeySet
+            : X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet;
 
     /// <summary>Loads the stored certificate or creates a new one. Regenerates if the stored one is unreadable or within 30 days of expiry.</summary>
     public static X509Certificate2 LoadOrCreate(string directory)

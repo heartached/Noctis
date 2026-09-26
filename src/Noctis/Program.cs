@@ -152,12 +152,72 @@ internal class Program
             else
             {
                 Console.Error.WriteLine($"Noctis failed to start: {ex}");
+
+                // A Finder/Dock/login launch has no terminal, so stderr alone was a
+                // bounce and a silent exit — and the next launch fails the same way,
+                // so the crash-journal banner never gets a chance to show. Put the
+                // message (libvlc install guidance etc.) up in a native dialog too.
+                ShowStartupErrorAlert(ex.Message, Path.Combine(AppPaths.DataRoot, "crash.log"));
             }
         }
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    /// <summary>
+    /// macOS/Linux counterpart of the Windows startup MessageBox: the desktop's own
+    /// dialog tools, tried in order until one launches. The message travels as an
+    /// argument, never spliced into script source. Internal for tests
+    /// (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static (string FileName, string[] Args)[] StartupErrorAlertCommands(
+        string error, string crashLogPath, bool macOS)
+    {
+        var body = $"{error}\n\nDetails: {crashLogPath}";
+        if (macOS)
+        {
+            return new[]
+            {
+                ("/usr/bin/osascript", new[]
+                {
+                    "-e", "on run argv",
+                    "-e", "display alert \"Noctis failed to start\" message (item 1 of argv) as critical",
+                    "-e", "end run",
+                    body,
+                }),
+            };
+        }
+
+        // zenity parses --text as Pango markup: an unescaped "<" or "&" in the
+        // exception text would fail the parse and show an empty dialog.
+        var text = $"Noctis failed to start:\n\n{body}";
+        var markup = text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+        return new[]
+        {
+            ("zenity", new[] { "--error", "--title=Noctis — Startup Error", "--text=" + markup }),
+            ("kdialog", new[] { "--title", "Noctis — Startup Error", "--error", text }),
+        };
+    }
+
+    private static void ShowStartupErrorAlert(string error, string crashLogPath)
+    {
+        foreach (var (fileName, args) in StartupErrorAlertCommands(error, crashLogPath, OperatingSystem.IsMacOS()))
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(fileName) { UseShellExecute = false };
+                foreach (var a in args) psi.ArgumentList.Add(a);
+                using var p = System.Diagnostics.Process.Start(psi);
+                if (p == null) continue;
+                // Blocks like the Windows MessageBox. A tool that launched but has no
+                // display to open exits at once; the next one would fail the same way.
+                p.WaitForExit();
+                return;
+            }
+            catch { /* not installed — try the next tool */ }
+        }
+    }
 
     public static AppBuilder BuildAvaloniaApp()
     {

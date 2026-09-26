@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -156,21 +157,28 @@ public static class Program
             Console.WriteLine("  plain HTTP: put a TLS reverse proxy in front for anything beyond your LAN.");
 
         using var shutdown = new CancellationTokenSource();
+        // The scan loop has its own token, cancelled only after the running scan is
+        // checkpointed: cancelling the scan first rolls it back instead of saving progress.
+        using var scanStop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; shutdown.Cancel(); };
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => shutdown.Cancel();
+        // docker stop / systemctl stop send SIGTERM. The web host's ConsoleLifetime cancels
+        // it, so a ProcessExit hook never fired (and threw on the disposed token after a clean
+        // exit); handle it here and keep the process up for the ordered shutdown below.
+        using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; shutdown.Cancel(); });
 
         var watcher = new LibraryWatcherService(core.Library, () => core.Settings);
         var scanLoop = options.NoScan
             ? Task.CompletedTask
-            : ScanLoopAsync(core, watcher, options.RescanMinutes, shutdown.Token);
+            : ScanLoopAsync(core, watcher, options.RescanMinutes, scanStop.Token);
 
         try { await Task.Delay(Timeout.Infinite, shutdown.Token); }
         catch (OperationCanceledException) { }
 
         Console.WriteLine("shutting down…");
         try { await server.StopAsync(); } catch { }
-        try { await scanLoop.WaitAsync(TimeSpan.FromSeconds(5)); } catch { }
         try { await core.Library.PauseActiveScanForShutdownAsync(TimeSpan.FromSeconds(5)); } catch { }
+        scanStop.Cancel();
+        try { await scanLoop.WaitAsync(TimeSpan.FromSeconds(3)); } catch { }
         return 0;
     }
 

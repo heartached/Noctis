@@ -78,6 +78,19 @@ public class WatchDebouncerTests
     }
 
     [Fact]
+    public void RecordRename_CaseOnly_ImportsTheNewSpelling()
+    {
+        // Picard/beets retagging "song" to "Song" on ext4: the old spelling is gone, so the
+        // coalesced entry must carry the new one or the import drops it as missing.
+        var d = new WatchDebouncer();
+        d.RecordRename("/m/01 song.flac", "/m/01 Song.flac");
+
+        var batch = d.Drain();
+        Assert.Equal(new[] { "/m/01 Song.flac" }, batch.ToImport);
+        Assert.Empty(batch.ToRemove);
+    }
+
+    [Fact]
     public void RecordRename_AllowsOneSidedNonAudio()
     {
         var d = new WatchDebouncer();

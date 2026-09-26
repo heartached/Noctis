@@ -179,7 +179,7 @@ public static class ContentPackLoader
     private static readonly Regex Hex6 = new(@"^#[0-9A-Fa-f]{6}$", RegexOptions.CultureInvariant);
     private static readonly Regex HexColor = new(@"^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$", RegexOptions.CultureInvariant);
     private static readonly Regex CultureName = new(@"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$", RegexOptions.CultureInvariant);
-    private static readonly Regex Placeholder = new(@"\{(\d+)[^{}]*\}", RegexOptions.CultureInvariant);
+    private static readonly Regex Placeholder = new(@"\{(\d+)([^{}]*)\}", RegexOptions.CultureInvariant);
 
     internal const int MaxStrings = 5000;
     internal const int MaxStringLength = 4000;
@@ -395,9 +395,18 @@ public static class ContentPackLoader
     internal static bool PlaceholdersFit(string english, string value)
     {
         var args = 0;
+        var specs = new HashSet<string>(StringComparer.Ordinal) { "" };
         foreach (Match match in Placeholder.Matches(english.Replace("{{", "").Replace("}}", "")))
+        {
             if (int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var i)) args = Math.Max(args, i + 1);
+            specs.Add(match.Groups[2].Value);
+        }
         if (!Formats(english, args)) return true; // English itself is not a format string: shown as is
+        // A width or format the English text does not use is refused before formatting anything:
+        // "{0,999999}" pads to a million characters and "{0:D999999999}" asks for a billion digits
+        // once Loc.T passes a number (the "x" below ignores the format, so it cannot catch this).
+        foreach (Match match in Placeholder.Matches(value.Replace("{{", "").Replace("}}", "")))
+            if (!specs.Contains(match.Groups[2].Value)) return false;
         return Formats(value, args);
     }
 

@@ -427,14 +427,19 @@ public class MetadataService : IMetadataService
         if (string.IsNullOrWhiteSpace(directory)) return null;
         try
         {
+            // One listing matched case-insensitively: probing exact lower-case names with
+            // File.Exists missed Folder.jpg / Cover.JPG on case-sensitive file systems (Linux).
+            var found = Directory.EnumerateFiles(directory).Where(IsFolderArtCandidate).ToList();
             var candidates = new List<FileInfo>();
             foreach (var name in FolderArtNames)
             {
                 foreach (var ext in FolderArtExtensions)
                 {
-                    var artPath = Path.Combine(directory, name + ext);
-                    if (File.Exists(artPath))
-                        candidates.Add(new FileInfo(artPath));
+                    foreach (var artPath in found)
+                    {
+                        if (string.Equals(Path.GetFileName(artPath), name + ext, StringComparison.OrdinalIgnoreCase))
+                            candidates.Add(new FileInfo(artPath));
+                    }
                 }
             }
 

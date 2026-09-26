@@ -132,6 +132,11 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 
+    /// <summary>True when <see cref="PrepareNext"/> also stages remote http(s) streams, so a
+    /// gapless/AutoMix transition may hand off to a media-server track early. False: a remote
+    /// next track waits for <see cref="TrackEnded"/> and opens cold.</summary>
+    bool PreparesRemoteStreams => false;
+
     /// <summary>Cancels and releases any prepared inactive media item.</summary>
     void CancelPreparedNext();
 

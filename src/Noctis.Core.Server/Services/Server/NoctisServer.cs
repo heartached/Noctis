@@ -117,10 +117,16 @@ public sealed class NoctisServer : IAsyncDisposable
         {
             if (!NoAuthMethods.Contains(method))
             {
-                // Brute-force brake per remote address: after repeated bad logins every
-                // attempt is refused for a while, before credentials are even checked.
+                // Brute-force brake per remote address + account name: after repeated bad
+                // logins for a name, that name is refused for a while, before its password is
+                // even checked. Keyed by name too because behind the documented reverse proxy
+                // every client shares the proxy's address, and one bad client must not lock out
+                // every account. API keys are 256-bit random (not guessable), so a request that
+                // carries one is never throttled.
                 var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                if (_throttle.IsLocked(client, out var retryAfter))
+                var name = p.Get("apiKey") is null ? p.Get("u") : null;
+                var throttleKey = name is null ? null : LoginThrottle.Key(client, name);
+                if (throttleKey is not null && _throttle.IsLocked(throttleKey, out var retryAfter))
                 {
                     ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
                     await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
@@ -131,15 +137,15 @@ public sealed class NoctisServer : IAsyncDisposable
                 var (user, error, errorMessage) = Authenticate(p);
                 if (user is null)
                 {
-                    if (error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
+                    if (throttleKey is not null && error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
                     {
-                        if (_throttle.RecordFailure(client))
+                        if (_throttle.RecordFailure(throttleKey))
                             DebugLogger.Warn(DebugLogger.Category.State, "Server", $"login lockout for {client}");
                     }
                     await WriteAsync(ctx, SubsonicResponse.Error(error, errorMessage, format, _serverVersion), 200).ConfigureAwait(false);
                     return;
                 }
-                _throttle.RecordSuccess(client);
+                if (throttleKey is not null) _throttle.RecordSuccess(throttleKey);
                 ClientAuthenticated?.Invoke(this, user.Name);
                 ctx.Items["user"] = user;
             }
@@ -218,9 +224,10 @@ public sealed class NoctisServer : IAsyncDisposable
                 if (!File.Exists(track.FilePath)) throw NotFound();
                 var contentType = ContentTypeFor(track.FilePath);
                 ctx.Response.Headers.CacheControl = "private, max-age=0";
-                if (method.Equals("download", StringComparison.OrdinalIgnoreCase))
-                    ctx.Response.Headers.ContentDisposition = $"attachment; filename=\"{Path.GetFileName(track.FilePath).Replace("\"", "")}\"";
-                await Results.File(track.FilePath, contentType, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
+                // fileDownloadName writes an RFC 5987 filename* (UTF-8) with an ASCII fallback;
+                // a raw non-ASCII name in the header makes Kestrel throw.
+                var downloadName = method.Equals("download", StringComparison.OrdinalIgnoreCase) ? Path.GetFileName(track.FilePath) : null;
+                await Results.File(track.FilePath, contentType, downloadName, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
                 return true;
             }
             case "getcoverart":

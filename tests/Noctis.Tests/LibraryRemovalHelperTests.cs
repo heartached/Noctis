@@ -613,4 +613,111 @@ public class LibraryRemovalHelperTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public async Task TrashLocalFilesCore_DeclinedPermanentDeleteIsAskedOncePerFolderAndDrive()
+    {
+        // Recycle Bin turned off for the drive: every attempt would raise Windows'
+        // "delete permanently?" prompt. After a No, neither the retry ladders nor the
+        // sidecar/folder sweeps may ask again: one prompt for the folder, one for the
+        // first file, and everything stays on disk.
+        var root = MakeTempDir();
+        try
+        {
+            var album = Path.Combine(root, "Album");
+            Directory.CreateDirectory(album);
+            var a1 = Path.Combine(album, "01.m4a");
+            var a2 = Path.Combine(album, "02.m4a");
+            File.WriteAllText(a1, "audio");
+            File.WriteAllText(a2, "audio");
+            File.WriteAllText(Path.ChangeExtension(a1, ".lrc"), "lrc");
+
+            var fileAsks = new List<string>();
+            var dirAsks = new List<string>();
+            var (trashFile, trashDirectory) = LibraryRemovalHelper.SkipDeclinedTrash(
+                (string p, out bool declined) => { fileAsks.Add(p); declined = true; return false; },
+                (string d, out bool declined) => { dirAsks.Add(d); declined = true; return false; });
+
+            await LibraryRemovalHelper.TrashLocalFilesCoreAsync(
+                new[] { a1, a2 },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                trashFile, trashDirectory,
+                new[] { 0, 0, 0, 0 }, new[] { 0, 0, 0, 0, 0 });
+
+            Assert.Equal(album, Assert.Single(dirAsks));
+            Assert.Single(fileAsks);
+            Assert.True(File.Exists(a1));
+            Assert.True(File.Exists(a2));
+            Assert.True(File.Exists(Path.ChangeExtension(a1, ".lrc")));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task TrashLocalFilesCore_DeclinedFolderStillTrashesItsFilesOneByOne()
+    {
+        // Folder over the bin quota: the No only covers the folder. Each file fits,
+        // so the per-file pass must still recycle them, without re-asking about the folder.
+        var root = MakeTempDir();
+        try
+        {
+            var album = Path.Combine(root, "Album");
+            Directory.CreateDirectory(album);
+            var a1 = Path.Combine(album, "01.m4a");
+            var a2 = Path.Combine(album, "02.m4a");
+            File.WriteAllText(a1, "audio");
+            File.WriteAllText(a2, "audio");
+
+            var fileTrashes = new List<string>();
+            var dirAsks = 0;
+            var (trashFile, trashDirectory) = LibraryRemovalHelper.SkipDeclinedTrash(
+                (string p, out bool declined) => { declined = false; fileTrashes.Add(p); File.Delete(p); return true; },
+                (string d, out bool declined) => { dirAsks++; declined = true; return false; });
+
+            await LibraryRemovalHelper.TrashLocalFilesCoreAsync(
+                new[] { a1, a2 },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                trashFile, trashDirectory,
+                new[] { 0 }, new[] { 0, 0, 0, 0, 0 });
+
+            Assert.Equal(1, dirAsks);
+            Assert.Equal(new[] { a1, a2 }, fileTrashes);
+            Assert.False(File.Exists(a1));
+            Assert.False(File.Exists(a2));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void SkipDeclinedTrash_FailureWithoutDeclineKeepsRetrying()
+    {
+        // A locked file is a plain failure, not a No: the retry ladder must keep trying it.
+        var asks = 0;
+        var (trashFile, _) = LibraryRemovalHelper.SkipDeclinedTrash(
+            (string p, out bool declined) => { asks++; declined = false; return false; },
+            (string d, out bool declined) => { declined = false; return false; });
+
+        var path = Path.Combine(Path.GetTempPath(), "locked.m4a");
+        Assert.False(trashFile(path));
+        Assert.False(trashFile(path));
+        Assert.Equal(2, asks);
+    }
+
+    [Fact]
+    public void SkipDeclinedTrash_DeclineOnOneDriveLeavesOtherDrivesAlone()
+    {
+        if (!OperatingSystem.IsWindows())
+            return; // Drive-letter roots are Windows-only.
+
+        var asked = new List<string>();
+        var (trashFile, _) = LibraryRemovalHelper.SkipDeclinedTrash(
+            (string p, out bool declined) => { asked.Add(p); declined = p.StartsWith(@"D:\", StringComparison.Ordinal); return !declined; },
+            (string d, out bool declined) => { declined = false; return false; });
+
+        Assert.False(trashFile(@"D:\Music\01.flac"));
+        Assert.False(trashFile(@"D:\Music\02.flac")); // skipped, no second prompt
+        Assert.True(trashFile(@"C:\Music\03.flac"));
+
+        Assert.Equal(new[] { @"D:\Music\01.flac", @"C:\Music\03.flac" }, asked);
+    }
 }

@@ -64,15 +64,15 @@
 
   <!-- Avalonia UI -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
-    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.2" />
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.3" />
     <PackageReference Include="Avalonia.Labs.Lottie" Version="12.0.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
     <!-- MPRIS media keys on Linux (MprisService). Same version Avalonia's
          FreeDesktop backend already ships transitively — no new vendor. -->
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
@@ -90,14 +90,14 @@
 
   <!-- Audio playback via libVLC -->
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.10.0" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <!-- macOS gets NO libvlc NuGet on purpose: VideoLAN.LibVLC.Mac's 3.0.21 pin
          never existed on nuget.org, so restore floated to the abandoned 2019-era
          3.1.3.1 payload (x86_64-only, no plugins, pre-3.0.8 security state).
          The CI .app packaging step bundles official VLC 3.0.23 universal dylibs
          + plugins at Contents/MacOS/libvlc instead; VlcAudioPlayer probes that
-         path (after a user-installed VLC.app). AUDIT H7/H8. -->
+         path (before any user-installed VLC.app). AUDIT H7/H8. -->
     <!-- WASAPI output for click-free per-sample-gain volume (NOCTIS_WASAPI=1,
          Windows-only at runtime; managed packages restore on all build hosts).
          Core+Wasapi only: the NAudio meta-package drags in NAudio.WinForms,
@@ -121,13 +121,13 @@
        the framework's in-box copy (10.0.x) supersedes any 8.x package and the
        SDK flags the reference as inert (NU1510). -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.29" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
     <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
          Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
          bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
          explicit reference wins over the transitive pin without moving off the 8.0.x
          Microsoft.Data.Sqlite line. Verify with a vulnerable/transitive package audit. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
     <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
@@ -140,7 +140,7 @@
   <!-- Web Remote QR code (Settings → Integrations). Pure managed MIT port of
        Nayuki's QR generator; zero transitive dependencies. -->
   <ItemGroup>
-    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="3.1.0" />
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="3.2.1" />
   </ItemGroup>
 
   <!-- Embedded assets -->

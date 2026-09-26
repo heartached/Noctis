@@ -51,27 +51,62 @@ public partial class SendToFolderViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(initialDestination)) Destination = initialDestination;
     }
 
-    partial void OnDestinationChanged(string value) => RebuildPlan();
-    partial void OnOrganizeIntoFoldersChanged(bool value) => RebuildPlan();
-    partial void OnIncludeLyricsChanged(bool value) => RebuildPlan();
+    // The Destination box pushes every keystroke here, and a plan stats each track's source,
+    // target and .lrc on the destination drive (often a slow USB stick): wait for the typing
+    // to pause, and build the plan off the UI thread.
+    private const int DestinationDebounceMs = 300;
+    private CancellationTokenSource? _rebuildCts;
+
+    /// <summary>The last plan rebuild (tests await it).</summary>
+    internal Task PlanRebuild { get; private set; } = Task.CompletedTask;
+
+    partial void OnDestinationChanged(string value) => RebuildPlan(DestinationDebounceMs);
+    partial void OnOrganizeIntoFoldersChanged(bool value) => RebuildPlan(0);
+    partial void OnIncludeLyricsChanged(bool value) => RebuildPlan(0);
     partial void OnHasPlanChanged(bool value) => OnPropertyChanged(nameof(CanStart));
     partial void OnIsCopyingChanged(bool value) => OnPropertyChanged(nameof(CanStart));
     partial void OnIsDoneChanged(bool value) => OnPropertyChanged(nameof(CanStart));
 
-    private void RebuildPlan()
+    private void RebuildPlan(int delayMs)
     {
         if (IsCopying) return;
         IsDone = false;
+        _rebuildCts?.Cancel();
+        _rebuildCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _rebuildCts = cts;
+        // The old plan no longer matches the options: Copy waits for the new one.
+        _plan = Array.Empty<SendToFolderItem>();
+        HasPlan = false;
+        PlanRebuild = RebuildPlanAsync(delayMs, cts.Token);
+    }
+
+    private async Task RebuildPlanAsync(int delayMs, CancellationToken token)
+    {
+        IReadOnlyList<SendToFolderItem>? plan;
+        var root = string.Empty;
+        try
+        {
+            if (delayMs > 0) await Task.Delay(delayMs, token);
+            if (token.IsCancellationRequested) return;
+            root = Destination?.Trim() ?? string.Empty;
+            var pattern = OrganizeIntoFolders ? _organizePattern : null;
+            var includeLyrics = IncludeLyrics;
+            plan = root.Length == 0 ? null : await Task.Run(
+                () => Directory.Exists(root) ? _service.Plan(_tracks, root, pattern, includeLyrics) : null, token);
+            if (token.IsCancellationRequested || IsCopying) return;
+        }
+        catch (OperationCanceledException) { return; /* superseded by a newer change */ }
+
         Rows.Clear();
-        var root = Destination?.Trim() ?? string.Empty;
-        if (root.Length == 0 || !Directory.Exists(root))
+        if (plan is null)
         {
             _plan = Array.Empty<SendToFolderItem>();
             HasPlan = false;
             PlanSummary = root.Length == 0 ? "Pick a destination folder." : "That folder doesn't exist.";
             return;
         }
-        _plan = _service.Plan(_tracks, root, OrganizeIntoFolders ? _organizePattern : null, IncludeLyrics);
+        _plan = plan;
         foreach (var item in _plan)
             Rows.Add(new PlanRow(item, root));
         var copy = _plan.Count(p => p.Action != SendToFolderAction.SkipIdentical);

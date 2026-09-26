@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services.Lyrics;
 using Noctis.Services.LyricsStudio;
@@ -148,6 +150,31 @@ public class LyricsStudioComposeTests : IDisposable
         Assert.Contains("song.lrc", prompt);
         Assert.Equal("[00:01.00]mine", File.ReadAllText(lrc));
         Assert.Equal(Status.Loaded, vm.Queue[0].Status);
+    }
+
+    [AvaloniaFact]
+    public async Task Save_TrashRefused_KeepsTheUsersLrc_SaysSo_AndTrashesOffTheUiThread()
+    {
+        var track = T("song");
+        var lrc = Path.ChangeExtension(track.FilePath!, ".lrc");
+        File.WriteAllText(lrc, "[00:01.00]mine");
+        bool? trashedOnUiThread = null;
+        var writer = new LyricsWriter(null!, null, new AppWrittenSidecarRegistry(Path.Combine(_tmp, "registry.json")), Path.Combine(_tmp, "cache"))
+        {
+            TrashFile = _ => { trashedOnUiThread = Dispatcher.UIThread.CheckAccess(); return false; },
+        };
+        var vm = new LyricsStudioViewModel(new[] { track }, new FakeEngine(_tmp), writer, new FakeLibraryService(), null, () => new AppSettings(), _ => { });
+        vm.Confirm = _ => Task.FromResult(true);
+        vm.Selected = vm.Queue[0];
+        Assert.True(vm.HasReview, "the .lrc loads for review");
+        vm.NudgeEarlierCommand.Execute(null);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(trashedOnUiThread ?? true, "the trash must run off the UI thread");
+        Assert.Equal("[00:01.00]mine", File.ReadAllText(lrc));
+        Assert.Contains("old .lrc kept", vm.Queue[0].StatusText);
+        Assert.DoesNotContain("moved to the recycle bin", vm.Queue[0].StatusText);
     }
 
     [AvaloniaFact]

@@ -21,6 +21,7 @@ public sealed class CoverSpinner
     private readonly SpinClock _clock = new();
     private long _lastTimestamp;
     private bool _frameQueued;
+    private bool _stopped;
 
     public CoverSpinner(Control host, Visual target)
     {
@@ -45,9 +46,20 @@ public sealed class CoverSpinner
     /// <summary>Current angle in degrees (tests/diagnostics).</summary>
     public double Angle => _clock.Angle;
 
+    /// <summary>
+    /// Ends the loop for good (host window closed). The frame request goes to the app-wide
+    /// frame clock, not the window, so a spinner left running would keep firing every frame
+    /// and rooting its closed window.
+    /// </summary>
+    public void Stop()
+    {
+        _stopped = true;
+        _clock.IsRunning = false;
+    }
+
     private void QueueFrame()
     {
-        if (_frameQueued || _clock.IsSettled) return;
+        if (_stopped || _frameQueued || _clock.IsSettled) return;
         if (TopLevel.GetTopLevel(_host) is not { } topLevel) return;
         _lastTimestamp = Stopwatch.GetTimestamp();
         _frameQueued = true;
@@ -57,6 +69,7 @@ public sealed class CoverSpinner
     private void OnFrame(TimeSpan _)
     {
         _frameQueued = false;
+        if (_stopped) return;
         var now = Stopwatch.GetTimestamp();
         // Clamped so a long stall (hidden window, sleep) doesn't whip the cover round.
         var elapsed = Math.Min((now - _lastTimestamp) / (double)Stopwatch.Frequency, 0.1);

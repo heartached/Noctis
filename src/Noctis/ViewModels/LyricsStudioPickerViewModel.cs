@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -101,7 +102,33 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
         SuggestionsLoad = LoadSuggestionsAsync();
     }
 
-    partial void OnSearchTextChanged(string value) => RefreshResults();
+    // Debounced, like Add Songs: RefreshResults scans the whole library on the UI thread
+    // (Take only stops early on a broad query), and it ran for every character typed.
+    private const int SearchDebounceMs = 250;
+    private CancellationTokenSource? _searchDebounceCts;
+
+    /// <summary>The last debounced search refresh (tests await it).</summary>
+    internal Task SearchRefresh { get; private set; } = Task.CompletedTask;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _searchDebounceCts = cts;
+        SearchRefresh = DebouncedRefreshAsync(cts.Token);
+    }
+
+    private async Task DebouncedRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            RefreshResults();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
+    }
 
     partial void OnWordTimingsChanged(bool value)
     {
@@ -146,8 +173,11 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
         }
         else
         {
+            // Normalize the query once and match the cached keys, not every field per row.
+            var queryKey = Noctis.Helpers.SearchText.Normalize(query);
             foreach (var album in _library.Albums
-                         .Where(a => Noctis.Helpers.SearchText.Matches(a.Name, query) || Noctis.Helpers.SearchText.Matches(a.Artist, query))
+                         .Where(a => Noctis.Helpers.SearchText.Matches(a.Name, a.SearchNameKey, query, queryKey)
+                                  || Noctis.Helpers.SearchText.Matches(a.Artist, a.SearchArtistKey, query, queryKey))
                          .Take(MaxAlbumRows))
             {
                 var local = (album.Tracks ?? new List<Track>()).Where(t => t.SourceType == SourceType.Local).ToList();
@@ -164,7 +194,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
                 });
             }
             foreach (var track in _library.Tracks
-                         .Where(t => t.SourceType == SourceType.Local && PlaylistViewModel.MatchesSearch(t, query))
+                         .Where(t => t.SourceType == SourceType.Local && PlaylistViewModel.MatchesSearch(t, query, queryKey))
                          .Take(MaxTrackRows))
                 Results.Add(RowForTrack(track));
             ScanFormats();

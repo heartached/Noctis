@@ -36,6 +36,18 @@ public class LogRedactionTests
             LogRedaction.Scrub("retry with api_key=tok-123 later"));
     }
 
+    [Theory]
+    // LibVLC demux line: location is the MRL after "://", so no scheme to anchor on.
+    [InlineData(
+        "main debug: creating demux: access='https' demux='any' location='nas.local/rest/stream.view?u=demo&t=abcdef012345&s=deadbeef&v=1.16.1&c=Noctis&f=json&id=9' file='(null)'",
+        "main debug: creating demux: access='https' demux='any' location='nas.local/rest/stream.view?u=[redacted]&t=[redacted]&s=[redacted]&v=1.16.1&c=Noctis&f=json&id=9' file='(null)'")]
+    // LibVLC https access request dump (path + query only), legacy p=enc: password form.
+    [InlineData(
+        "http debug: outgoing request:\nGET /rest/stream.view?u=demo&p=enc:73656372657431&v=1.16.1&id=9 HTTP/1.1",
+        "http debug: outgoing request:\nGET /rest/stream.view?u=[redacted]&p=[redacted]&v=1.16.1&id=9 HTTP/1.1")]
+    public void Scrub_RedactsSubsonicAuthParams_WithoutScheme(string input, string expected)
+        => Assert.Equal(expected, LogRedaction.Scrub(input));
+
     [Fact]
     public void DebugLog_Write_ScrubsBeforeStoring()
     {

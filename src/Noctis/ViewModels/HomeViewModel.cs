@@ -28,11 +28,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly EventHandler _favoritesChangedHandler;
     private bool _isDirty = true;
 
+    /// <summary>Dirty rebuilds this session. The first <see cref="RebuildLogCap"/> are
+    /// bracketed in the session log (#97).</summary>
+    private int _rebuildCount;
+    private const int RebuildLogCap = 20;
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
+
+    /// <summary>The Ctrl-selection when the acted-on album is part of it (or none was given), else just that album.</summary>
+    private List<Album> SelectionOr(Album? album) =>
+        album == null || CtrlSelectedAlbums.Contains(album) ? CtrlSelectedAlbums.ToList() : new List<Album> { album };
 
     /// <summary>Top songs sorted by play count descending.</summary>
     public BulkObservableCollection<Track> TopSongs { get; } = new();
@@ -411,6 +420,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
         _isDirty = false;
 
+        // #97: bracketed like PlayerViewModel.OnLibraryUpdated. A library publish marks
+        // Home dirty, so every publish-driven refresh takes this path (500 ms after the
+        // publish while Home is the current view). The awaits below let other UI work
+        // run in between, so an open bracket means "in flight", not "running".
+        var rebuild = Interlocked.Increment(ref _rebuildCount);
+        var log = rebuild <= RebuildLogCap;
+        if (log)
+            DebugLog.Write("Home", $"rebuild #{rebuild}: start (library={_library.Tracks.Count})");
+        else if (rebuild == RebuildLogCap + 1)
+            DebugLog.Write("Home", "rebuild: later ones are not logged");
+
         try
         {
             Greeting = GetGreeting();
@@ -494,9 +514,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     Dispatcher.UIThread.Post(ScheduleTopArtistImageRefresh));
 
             await RefreshTimeAwareRowsAsync();
+            if (log) DebugLog.Write("Home", $"rebuild #{rebuild}: done");
         }
         catch (Exception ex)
         {
+            // Debug.WriteLine alone is compiled out of Release builds (#97); the first
+            // failure of each kind keeps its stack trace in the session log.
+            DebugLog.WriteOnce("Home", "home-rebuild-failed:" + ex.GetType().FullName,
+                $"rebuild #{rebuild} failed: {ex}");
             System.Diagnostics.Debug.WriteLine($"[HomeVM] Refresh failed: {ex.Message}");
         }
     }
@@ -954,7 +979,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task AddAlbumToNewPlaylist(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
@@ -966,7 +991,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : new List<Album> { album };
+        var albums = SelectionOr(album);
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
         await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
@@ -976,7 +1001,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var changed = new List<Track>();
         foreach (var a in albums)
@@ -999,9 +1024,10 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         // Multi-album selection: edit every track across the selected albums in the
         // shared multi-select editor (Mixed fields, edits fan out to all tracks).
-        if (CtrlSelectedAlbums.Count > 1)
+        var selection = SelectionOr(album);
+        if (selection.Count > 1)
         {
-            var tracks = CtrlSelectedAlbums.SelectMany(a => a.Tracks ?? new()).ToList();
+            var tracks = selection.SelectMany(a => a.Tracks ?? new()).ToList();
             CtrlSelectedAlbums.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(tracks);
             return;
@@ -1035,7 +1061,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums.ToList() : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
