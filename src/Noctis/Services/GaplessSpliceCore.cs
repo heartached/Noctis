@@ -50,6 +50,12 @@ public sealed class GaplessTrackSegment
     private int _discardSamples;     // post-flush samples still to drop: the resampler's stale pre-seek tail
     private long _consumedFrames;    // frames handed to the render side
     private long _basePositionMs;    // media position of the first frame after creation/flush
+    private float _gain = 1f;        // amplitude the render side reads at (see Gain)
+    private float _renderGain = 1f;  // gain applied to the last sample read; slews to _gain
+
+    // A mid-play Gain change (ReplayGain setting moved) slews over this long per
+    // 1.0 of amplitude, so a pre-amp drag never steps the waveform.
+    private const int GainSlewMs = 20;
 
     public int SampleRate { get; }
     public int Channels { get; }
@@ -72,6 +78,26 @@ public sealed class GaplessTrackSegment
     public bool Abandoned { get { lock (_gate) return _abandoned; } }
     public bool IsFinished { get { lock (_gate) return (_endOfStream || _abandoned) && _count == 0; } }
     public int BufferedSamples { get { lock (_gate) return _count; } }
+
+    /// <summary>
+    /// Amplitude gain applied as the render side reads this segment (ReplayGain on
+    /// the splice engine). Per segment, so the audible boundary and a crossfade tail
+    /// each keep their own track's level. Set before the first read it applies from
+    /// the first sample; changed mid-play it slews. 1 = bit-exact pass-through.
+    /// </summary>
+    public float Gain
+    {
+        get { lock (_gate) return _gain; }
+        set
+        {
+            lock (_gate)
+            {
+                _gain = Math.Max(0f, value);
+                if (!_started)
+                    _renderGain = _gain;
+            }
+        }
+    }
 
     /// <summary>Audible media position of this segment = base + consumed.</summary>
     public long PositionMs
@@ -143,9 +169,17 @@ public sealed class GaplessTrackSegment
         lock (_gate)
         {
             var toCopy = Math.Min(_count, maxSamples);
+            var slewStep = 1000f / (SampleRate * Channels * GainSlewMs);
             for (var i = 0; i < toCopy; i++)
             {
-                dest[destOffset + i] = _ring[_readIdx];
+                var sample = _ring[_readIdx];
+                if (_renderGain != _gain)
+                    _renderGain = _renderGain < _gain
+                        ? Math.Min(_gain, _renderGain + slewStep)
+                        : Math.Max(_gain, _renderGain - slewStep);
+                if (_renderGain != 1f)
+                    sample *= _renderGain;
+                dest[destOffset + i] = sample;
                 _readIdx = (_readIdx + 1) % _ring.Length;
             }
             _count -= toCopy;

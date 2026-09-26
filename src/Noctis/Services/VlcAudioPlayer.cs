@@ -164,6 +164,11 @@ public class VlcAudioPlayer : IAudioPlayer
     private GaplessSink? _gaplessSink;
     private readonly MediaPlayer[] _enginePlayers = new MediaPlayer[2];
     private readonly GaplessTrackSegment?[] _engineSegments = new GaplessTrackSegment?[2];
+    // ReplayGain attenuation renders per segment on the engine (EngineSegmentGain):
+    // each slot's newest segment with the input it carries, and that input's tags
+    // once read.
+    private readonly Tuple<GaplessTrackSegment, string>?[] _engineRgInput = new Tuple<GaplessTrackSegment, string>?[2];
+    private readonly Tuple<string, double?, double?>?[] _engineRgTags = new Tuple<string, double?, double?>?[2];
     private readonly long[] _enginePendingBaseMs = new long[2];
     // Diagnostics: expected pts of the next amem block per slot (µs); 0 = head
     // block pending. A jump between consecutive blocks means VLC dropped audio
@@ -2031,6 +2036,9 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_disposed) return;
         _rgMode = string.IsNullOrWhiteSpace(mode) ? "Off" : mode;
         _rgPreampDb = preampDb;
+        // Splice engine: re-level the playing and staged segments, each from its own
+        // track's tags (the session below then carries only a boost).
+        EngineApplyReplayGain();
 
         // Mode "Off" — bypass.
         if (string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
@@ -2054,6 +2062,15 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var (track, album) = ReadReplayGainTagsCached(_currentMediaPath);
+        _replayGainScalar = ReplayGainScalarFor(track, album);
+        ReapplyVolume();
+        LogReplayGain(_currentMediaPath, track, album);
+    }
+
+    /// <summary>Amplitude scalar for a track's RG tags under the current mode and
+    /// pre-amp; 1 = bypass.</summary>
+    private double ReplayGainScalarFor(double? track, double? album)
+    {
         double? gain = _rgMode.ToLowerInvariant() switch
         {
             "track" => track,
@@ -2062,19 +2079,47 @@ public class VlcAudioPlayer : IAudioPlayer
             _ => null,
         };
 
+        // No tag present — bypass rather than guess.
         if (gain == null)
+            return 1.0;
+        // Clamp combined gain to a sane window so a corrupt tag can't blow speakers.
+        var totalDb = Math.Clamp(gain.Value + _rgPreampDb, -30.0, 12.0);
+        return Math.Pow(10.0, totalDb / 20.0);
+    }
+
+    /// <summary>
+    /// ReplayGain attenuation for the input feeding this engine slot. The OS session
+    /// is ONE post-mix level, and PlayInternal re-reads RG for the incoming track at
+    /// the splice — the queue advances ~0.5 s before the audible boundary, and a
+    /// crossfade tail renders for seconds after it — so on the session the outgoing
+    /// played its last stretch at the incoming track's level. Rendered on the
+    /// segment it is sample-locked to its own track. A boost stays on the session
+    /// (ApplyReplayGainScalar): boosted PCM could exceed full scale.
+    /// </summary>
+    private float EngineSegmentGain(int slot, string path)
+    {
+        if (string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(path))
+            return 1f;
+        var tags = Volatile.Read(ref _engineRgTags[slot]);
+        if (tags == null || !string.Equals(tags.Item1, path, StringComparison.OrdinalIgnoreCase))
         {
-            // No tag present — bypass rather than guess.
-            _replayGainScalar = 1.0;
+            // Read lazily: with RG off no track pays a tag read.
+            var (track, album) = File.Exists(path) ? ReadReplayGainTagsCached(path) : (null, null);
+            tags = Tuple.Create(path, track, album);
+            Volatile.Write(ref _engineRgTags[slot], tags);
         }
-        else
+        return (float)Math.Min(1.0, ReplayGainScalarFor(tags.Item2, tags.Item3));
+    }
+
+    // A ReplayGain setting changed: every live segment takes its new level (slewed).
+    private void EngineApplyReplayGain()
+    {
+        if (!_gaplessEngine) return;
+        for (var slot = 0; slot < _engineRgInput.Length; slot++)
         {
-            // Clamp combined gain to a sane window so a corrupt tag can't blow speakers.
-            var totalDb = Math.Clamp(gain.Value + preampDb, -30.0, 12.0);
-            _replayGainScalar = Math.Pow(10.0, totalDb / 20.0);
+            if (Volatile.Read(ref _engineRgInput[slot]) is { } input)
+                input.Item1.Gain = EngineSegmentGain(slot, input.Item2);
         }
-        ReapplyVolume();
-        LogReplayGain(_currentMediaPath, track, album);
     }
 
     private string? _lastRgLogLine;
@@ -2111,7 +2156,11 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private int ApplyReplayGainScalar(int curvedVolume)
     {
-        if (Math.Abs(_replayGainScalar - 1.0) < 0.0001) return curvedVolume;
+        // Splice engine: the attenuation renders per segment (EngineSegmentGain).
+        var scalar = _gaplessEngine && _gaplessSink != null
+            ? Math.Max(1.0, _replayGainScalar)
+            : _replayGainScalar;
+        if (Math.Abs(scalar - 1.0) < 0.0001) return curvedVolume;
         // _replayGainScalar is an AMPLITUDE ratio (10^(dB/20)), but every consumer
         // of this value is mapped to amplitude through the mmdevice cubic taper
         // afterwards (CurvedVolumeToLevelMilli / WasapiGainLevel cube ÷100, the
@@ -2119,7 +2168,7 @@ public class VlcAudioPlayer : IAudioPlayer
         // raw meant the cube applied scalar³: every ReplayGain dB landed ×3, so a
         // −8.4 dB loudness tag wrote the session to 0.055 (mixer row "5") instead
         // of 0.38. Fold in the CUBE ROOT so the taper yields exactly scalar×.
-        var scaled = (int)Math.Round(curvedVolume * Math.Cbrt(_replayGainScalar));
+        var scaled = (int)Math.Round(curvedVolume * Math.Cbrt(scalar));
         return Math.Clamp(scaled, 0, 100);
     }
 
@@ -2603,7 +2652,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     // input decodes nothing — VLC 3 source-verified), no volume
                     // dance (the OS session owns the sink's stream).
                     _engineStagedPath = normalizedPath;
-                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs));
+                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath);
                     _standbyPlayer.Play(media);
                     if (startPositionMs > 0)
                     {
@@ -3052,7 +3101,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 // EngineBeginSegment stores the base in both the segment and
                 // _enginePendingBaseMs, so an input-open flush re-bases to the
                 // same value the :start-time open actually begins at.
-                EngineBeginSegment(_player, Math.Max(0, pendingMs));
+                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath);
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -4200,8 +4249,9 @@ public class VlcAudioPlayer : IAudioPlayer
     /// <summary>
     /// Open a fresh segment for this player's next input and queue it behind
     /// whatever the sink is rendering. Call BEFORE the player's Play().
+    /// <paramref name="path"/> is the input it carries (its ReplayGain level).
     /// </summary>
-    private void EngineBeginSegment(MediaPlayer player, long basePositionMs)
+    private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path)
     {
         var sink = _gaplessSink;
         if (sink == null) return;
@@ -4211,6 +4261,8 @@ public class VlcAudioPlayer : IAudioPlayer
         _enginePauseDate[slot] = 0;
         var seg = new GaplessTrackSegment(
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
+        seg.Gain = EngineSegmentGain(slot, path);
+        Volatile.Write(ref _engineRgInput[slot], Tuple.Create(seg, path));
         Volatile.Write(ref _engineSegments[slot], seg);
         sink.Provider.Enqueue(seg);
     }
