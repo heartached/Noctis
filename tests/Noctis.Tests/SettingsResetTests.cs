@@ -85,6 +85,8 @@ public class SettingsResetTests : IDisposable
             LyricsStudioSkipAlreadyTimed = false,
             LyricsStudioEmbedTags = true,
             LyricsStudioOnlineLyrics = false,
+            IgnoreLeadingWordsInArtistSort = true,
+            ArtistSortIgnoredWords = new List<string> { "The", "Los" },
         });
 
         var audio = new FakeAudioPlayer();

@@ -3686,6 +3686,71 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <Border Classes="setting-row">
+                <!-- GitHub #99. Toggle + its word list share a spacing-free panel so the gap folds
+                     with the body (see the Album page colour block). -->
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.IgnoreLeadingWordsInArtistSort}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.IgnoreLeadingWordsInArtistSortHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding IgnoreLeadingWordsInArtistSort}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding IgnoreLeadingWordsInArtistSort}" Lift="10" Motion="Glide">
+                <StackPanel Classes="sub-setting" Spacing="12" Margin="0,12,0,0">
+                    <ItemsControl ItemsSource="{Binding ArtistSortIgnoredWords}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Border Padding="12,4,6,4" Margin="0,0,6,6" CornerRadius="14"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Content="{loc:T Settings.Text}"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveArtistSortIgnoredWordCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontSize="11"
+                                                Opacity="0.5"
+                                                Cursor="Hand"
+                                                Padding="4,2"
+                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Classes="settings-search"
+                                 Text="{Binding NewArtistSortIgnoredWord, Mode=TwoWay}"
+                                 PlaceholderText="{loc:T Settings.AddWordEG}"
+                                 Padding="14,6"
+                                 MaxWidth="320" HorizontalAlignment="Left" MinWidth="220">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding AddArtistSortIgnoredWordCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Add}" FontSize="13" Padding="16,6"
+                                Command="{Binding AddArtistSortIgnoredWordCommand}"/>
+                        <Button Grid.Column="2" Classes="pill" Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Center"
+                                Command="{Binding ResetArtistSortIgnoredWordsCommand}"/>
+                    </Grid>
+                </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
             </StackPanel>
             </Border>
 
