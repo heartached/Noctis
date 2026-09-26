@@ -735,6 +735,9 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         });
 
+        // What an auto-update did at launch ("Updated to X.") and a queued install's Ready state.
+        Settings.RestoreAutoUpdateState();
+
         // Silently check GitHub for a newer release so the About page can surface
         // a passive "Update available" badge without the user clicking anything.
         // Deferred + fire-and-forget so it never blocks startup.
@@ -748,6 +751,14 @@ public partial class MainWindowViewModel : ViewModelBase
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Update] Silent check failed: {ex.Message}");
+            }
+
+            // Tray users who keep Noctis running for days still pick up a release while auto-update is on.
+            while (true)
+            {
+                await Task.Delay(AutoUpdatePolicy.RecheckInterval);
+                try { if (Settings.AutoInstallUpdates) await Settings.CheckForUpdateSilentAsync(); }
+                catch (Exception ex) { Debug.WriteLine($"[Update] Periodic check failed: {ex.Message}"); }
             }
         });
 

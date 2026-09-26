@@ -37,6 +37,11 @@ public partial class SettingsViewModel : ViewModelBase
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
+    private bool _autoDownloadRunning;
+    private bool _autoDownloadCancelled; // Cancel on an automatic download: no retry until the next launch
+    private AutoUpdateStore? _autoStore;
+    // Under the persistence root (not AppPaths) so tests stay isolated; the same folder in the app.
+    private AutoUpdateStore AutoStore => _autoStore ??= new(_persistence.DataDirectory);
     private CancellationTokenSource? _lastFmAuthCts;
     private bool _settingsLoaded;
 
@@ -1925,12 +1930,32 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _downloadProgress;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
     private bool _isReadyToInstall;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
     private string _latestVersionTag = "";
     [ObservableProperty] private bool _isLatestPrerelease;
     [ObservableProperty] private bool _includePrereleaseUpdates;
+
+    /// <summary>Opt-in "Update automatically" (About): background download, install at next launch.</summary>
+    [ObservableProperty] private bool _autoInstallUpdates;
+    /// <summary>The ready installer is queued in auto-update.json for the next launch.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
+    private bool _isAutoInstallPending;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
+    private bool _isAutoInstallPostponed;
+    /// <summary>Shows the "What's new" pill after an automatic update installed.</summary>
+    [ObservableProperty] private bool _showWhatsNew;
+
+    /// <summary>False for Scoop / portable / read-only copies and Debug builds: the toggle is hidden.</summary>
+    public bool CanAutoUpdate => UpdateService.AutoMode != AutoUpdateMode.Off;
+    public bool AutoUpdateInstallsAtLaunch => UpdateService.AutoMode == AutoUpdateMode.InstallAtLaunch;
+    public bool AutoUpdateDownloadOnly => UpdateService.AutoMode == AutoUpdateMode.DownloadOnly;
+    public bool ShowPostponeButton => IsReadyToInstall && IsAutoInstallPending && !IsAutoInstallPostponed && AutoUpdateInstallsAtLaunch;
+    private bool AutoUpdateActive => AutoInstallUpdates && CanAutoUpdate;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -2242,6 +2267,7 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
+            AutoInstallUpdates = _settings.AutoInstallUpdates;
             DeveloperMode = _settings.DeveloperMode;
 
             // Playback
@@ -2682,6 +2708,7 @@ public partial class SettingsViewModel : ViewModelBase
         // so any VM-owned field not re-applied here is silently reverted on every save —
         // both About-tab toggles turned back off on the next launch.
         _settings.IncludePrereleaseUpdates = IncludePrereleaseUpdates;
+        _settings.AutoInstallUpdates = AutoInstallUpdates;
         _settings.DeveloperMode = DeveloperMode;
         // Same trap (Discord, Mistery 2026-09-21: "language changes to system default after
         // restart"): the picker wrote _settings.Language once, the merge put the on-disk ""
@@ -3593,12 +3620,33 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.IncludePrereleaseUpdates = value;
         _ = SaveAsync();
 
+        // Back on the stable channel: a queued pre-release must not install at the next launch.
+        if (!value && AutoStore.Load()?.Pending is { IsPrerelease: true })
+        {
+            ResetReadyInstallIfQueued();
+            DiscardAutoInstall(cancelDownload: false, "pre-release updates turned off");
+            if (!IsUpToDate) _ = CheckForUpdateSilentAsync(); // IsUpToDate re-asks just below
+        }
+
         // "Up to date" was answered for the other channel; re-ask for this one.
         if (IsUpToDate)
         {
             IsUpToDate = false;
             _ = CheckForUpdateSilentAsync();
         }
+    }
+
+    partial void OnAutoInstallUpdatesChanged(bool value)
+    {
+        // Off must never leave an install queued for the next launch, even during a settings reset.
+        if (!value) DiscardAutoInstall(cancelDownload: true, "turned off");
+        if (_suspendSettingPersistence) return;
+        _settings.AutoInstallUpdates = value;
+        _ = SaveAsync();
+        DebugLog.Write("Updater", $"Auto-update turned {(value ? "on" : "off")}.");
+        if (!value) return;
+        _autoDownloadCancelled = false; // switching it on again is a fresh go-ahead
+        _ = CheckForUpdateSilentAsync();
     }
 
     partial void OnCrossfadeEnabledChanged(bool value)
@@ -6165,6 +6213,7 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
+            AutoInstallUpdates = false;
             DeveloperMode = false;
 
             // Everything below was previously left at its pre-reset value, and because
@@ -6420,7 +6469,11 @@ public partial class SettingsViewModel : ViewModelBase
     public async Task CheckForUpdateSilentAsync()
     {
         if (_updateService is null) return;
-        if (IsCheckingForUpdate || IsUpdateAvailable || IsDownloadingUpdate || IsReadyToInstall) return;
+        if (IsCheckingForUpdate || IsDownloadingUpdate) return;
+        // Auto-update re-asks while a release is merely known (the soak or backoff may have ended) or was
+        // queued in an earlier session (a newer release may replace it); manual mode keeps the old rule.
+        if (!AutoUpdateActive && (IsUpdateAvailable || IsReadyToInstall)) return;
+        if (AutoUpdateActive && IsReadyToInstall && !IsAutoInstallPending) return;
 
         try
         {
@@ -6429,7 +6482,16 @@ public partial class SettingsViewModel : ViewModelBase
             if (update is null)
             {
                 // Nothing newer: About shows "Up to date" without a manual click.
-                await Dispatcher.UIThread.InvokeAsync(() => IsUpToDate = true);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    // A queued release GitHub no longer lists (pulled, or back to draft) must not install.
+                    if (AutoUpdateActive && AutoStore.Load()?.Pending is not null)
+                    {
+                        ResetReadyInstallIfQueued();
+                        DiscardAutoInstall(cancelDownload: false, "no longer offered on GitHub");
+                    }
+                    IsUpToDate = true;
+                });
                 return;
             }
             if (update.InstallerApiUrl is null) return;
@@ -6439,6 +6501,38 @@ public partial class SettingsViewModel : ViewModelBase
             // or the About page update UI won't refresh.
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                if (AutoUpdateActive)
+                {
+                    var state = AutoStore.Load();
+                    if (state?.Pending is { } p && Version.TryParse(p.ToVersion, out var pv))
+                    {
+                        var queued = AutoUpdatePolicy.Normalize(pv);
+                        var offered = AutoUpdatePolicy.Normalize(update.Version);
+                        if (queued == offered) return; // already queued
+                        if (queued > offered)
+                        {
+                            // The queued release was pulled from GitHub: never install it.
+                            ResetReadyInstallIfQueued();
+                            DiscardAutoInstall(cancelDownload: false, "no longer offered on GitHub");
+                            state = AutoStore.Load();
+                        }
+                    }
+                    string why;
+                    if (_autoDownloadCancelled) why = "cancelled this session";
+                    else if (AutoUpdatePolicy.ShouldAutoDownload(state, update, DateTimeOffset.UtcNow, out why))
+                    {
+                        if (state?.Pending is not null)
+                        {
+                            ResetReadyInstallIfQueued();
+                            DiscardAutoInstall(cancelDownload: false, $"replaced by {update.TagName}");
+                        }
+                        _ = DownloadUpdateCoreAsync(update, automatic: true);
+                        return;
+                    }
+                    DebugLog.Write("Updater", $"Auto-update: {update.TagName} not downloaded automatically ({why}).");
+                    if (IsReadyToInstall) return; // keep the queued older build; it installs first
+                }
+
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
                 IsUpToDate = false;
@@ -6532,7 +6626,14 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task DownloadUpdateAsync()
+    private Task DownloadUpdateAsync() => DownloadUpdateCoreAsync(null, automatic: false);
+
+    /// <summary>
+    /// Downloads and verifies the installer. The Update pill calls it with no release (it
+    /// re-checks for a fresh URL); auto-update passes the release its check just returned.
+    /// With auto-update on, a verified download is queued for the next launch.
+    /// </summary>
+    private async Task DownloadUpdateCoreAsync(UpdateInfo? known, bool automatic)
     {
         if (_updateService is null || IsDownloadingUpdate) return;
 
@@ -6540,6 +6641,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsDownloadingUpdate = true;
         DownloadProgress = 0;
         UpdateStatusText = "Downloading update...";
+        _autoDownloadRunning = automatic;
 
         // No deadline (X16): a slow link may take as long as it needs. ResumableDownload retries a
         // stalled transfer and gives up on its own, so this token is only the user's Cancel.
@@ -6548,11 +6650,12 @@ public partial class SettingsViewModel : ViewModelBase
         _updateCts?.Dispose();
         _updateCts = cts;
         var token = cts.Token;
+        var update = known;
 
         try
         {
             // Re-check to get fresh URL
-            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, token);
+            update ??= await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, token);
             if (update is null || update.InstallerApiUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";
@@ -6560,6 +6663,9 @@ public partial class SettingsViewModel : ViewModelBase
                 _ = ClearUpdateStatusAfterDelay();
                 return;
             }
+
+            if (automatic)
+                DebugLog.Write("Updater", $"Auto-update: downloading {update.TagName} ({update.InstallerSize} bytes).");
 
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>
@@ -6572,29 +6678,261 @@ public partial class SettingsViewModel : ViewModelBase
                 update, progress, token, requireChecksums: true);
 
             UpdateStatusText = "Update ready to install.";
+            if (AutoUpdateActive)
+            {
+                try
+                {
+                    await _updateService.ScheduleAutoInstallAsync(update, _downloadedInstallerPath, AutoStore);
+                    IsAutoInstallPending = true;
+                    IsAutoInstallPostponed = false;
+                    LatestVersionTag = update.TagName;
+                    UpdateStatusText = AutoUpdateInstallsAtLaunch
+                        ? $"{update.TagName} is ready. It installs the next time you open Noctis."
+                        : $"{update.TagName} downloaded. Click Install & Restart to finish.";
+                }
+                catch (Exception ex)
+                {
+                    // Couldn't queue it (state file unwritable): the verified file still
+                    // installs through Install & Restart this session.
+                    DebugLog.Write("Updater", ex);
+                }
+            }
             IsReadyToInstall = true;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("corrupted"))
         {
             UpdateStatusText = "Download corrupted. Try again.";
             _ = ClearUpdateStatusAfterDelay();
+            if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("SHA-256"))
+        {
+            UpdateStatusText = "Update failed verification.";
+            _ = ClearUpdateStatusAfterDelay();
+            DebugLog.Write("Updater", ex.Message);
+            if (automatic) RecordAutoDownloadFailure(update, ex, hard: true);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
+            // The user (Cancel / Check) or the toggle stopped it: not a failure to back off from.
             UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", "Download cancelled.");
+            if (automatic && update is not null)
+            {
+                // "Not now": no automatic retry this session; the Update pill stays as the manual path.
+                _autoDownloadCancelled = true;
+                LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
+                IsUpdateAvailable = true;
+            }
         }
         catch (Exception ex)
         {
             UpdateStatusText = "Download failed. Try again.";
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex);
+            if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
         }
         finally
         {
             IsDownloadingUpdate = false;
+            _autoDownloadRunning = false;
         }
+    }
+
+    /// <summary>
+    /// Counts a failed automatic download (backoff 1 h, then 6 h; blocked after 3, or at once
+    /// on a SHA-256 mismatch) and brings back the manual "Update to X" pill as the fallback.
+    /// </summary>
+    private void RecordAutoDownloadFailure(UpdateInfo? update, Exception ex, bool hard)
+    {
+        if (update is null) return; // failed before the release was known: nothing to count
+
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            var state = AutoUpdatePolicy.RecordDownloadFailure(AutoStore.Load(), update.TagName, now, hard);
+            AutoStore.Save(state);
+            var next = state.Blocked
+                ? "blocked"
+                : $"next try after {(now + AutoUpdatePolicy.BackoffAfter(state.Failures)).LocalDateTime:g}";
+            DebugLog.Write("Updater",
+                $"Auto-update: download of {update.TagName} failed ({ex.GetType().Name}: {ex.Message}); failure {state.Failures}, {next}.");
+        }
+        catch (Exception e)
+        {
+            DebugLog.Write("Updater", e);
+        }
+
+        LatestVersionTag = update.TagName;
+        IsLatestPrerelease = update.IsPrerelease;
+        IsUpdateAvailable = true;
+        UpdateStatusText += " Use the Update button.";
+    }
+
+    /// <summary>
+    /// Drops the install queued for the next launch (toggle off, settings reset, channel change,
+    /// replaced or pulled release) and deletes its file, unless Install &amp; Restart still offers
+    /// that file this session. Optionally stops a running automatic download.
+    /// </summary>
+    private void DiscardAutoInstall(bool cancelDownload, string reason)
+    {
+        if (cancelDownload && _autoDownloadRunning) _updateCts?.Cancel();
+
+        try
+        {
+            var state = AutoStore.Load();
+            if (state?.Pending is { } p)
+            {
+                var inUse = IsReadyToInstall && string.Equals(p.InstallerPath, _downloadedInstallerPath, StringComparison.Ordinal);
+                if (!inUse && UpdateService.IsOwnedInstallerFile(p.InstallerPath))
+                {
+                    try { File.Delete(p.InstallerPath); } catch { /* best effort */ }
+                }
+                state.Pending = null;
+                AutoStore.Save(state);
+                DebugLog.Write("Updater", $"Auto-update: pending {p.Tag} discarded ({reason}).");
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Updater", ex);
+        }
+
+        if (IsAutoInstallPending && IsReadyToInstall)
+            UpdateStatusText = "Update ready to install."; // manual Install & Restart still works
+        IsAutoInstallPending = false;
+        IsAutoInstallPostponed = false;
+    }
+
+    /// <summary>Takes down the Install &amp; Restart state of a queued auto-update, so the discard
+    /// that follows deletes its file too (it is no longer offered this session).</summary>
+    private void ResetReadyInstallIfQueued()
+    {
+        if (!IsAutoInstallPending || !IsReadyToInstall) return;
+        IsReadyToInstall = false;
+        _downloadedInstallerPath = null;
+        UpdateStatusText = "";
+    }
+
+    [RelayCommand]
+    private void PostponeAutoInstall()
+    {
+        try
+        {
+            var state = AutoStore.Load();
+            if (state?.Pending is not { } p) return;
+
+            var until = DateTimeOffset.UtcNow + AutoUpdatePolicy.PostponeFor;
+            p.PostponedUntilUtc = until;
+            AutoStore.Save(state);
+            IsAutoInstallPostponed = true;
+            UpdateStatusText = $"Postponed. {p.Tag} won't install before {until.LocalDateTime:g}. Install & Restart still works.";
+            DebugLog.Write("Updater", $"Auto-update: install postponed until {until.LocalDateTime:g}.");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Updater", ex);
+        }
+    }
+
+    /// <summary>
+    /// Startup (UI thread, before the silent check): reports what the launch-time installer did
+    /// ("Updated to X." / a failure note), cleans up the finished installer, and turns a queued
+    /// install back into the Install &amp; Restart state once its file re-verifies.
+    /// </summary>
+    public void RestoreAutoUpdateState()
+    {
+        if (UpdateService.CompletedAutoUpdate is { } done && AutoUpdatePolicy.IsSafeTag(done.Tag))
+        {
+            LatestVersionTag = done.Tag;
+            ShowWhatsNew = true;
+            UpdateStatusText = $"Updated to {UpdateService.CurrentVersion.ToString(3)}.";
+        }
+        if (UpdateService.LaunchInstallNote is { } note)
+        {
+            UpdateStatusText = note;
+            IsUpdateAvailable = false; // the silent check brings the Update pill back
+        }
+
+        // A plain delete (a metadata operation), kept on this thread so it can't race the
+        // other auto-update.json writes, which all happen here.
+        UpdateService.DeleteStaleInstaller(AutoStore);
+
+        if (!AutoUpdateActive)
+        {
+            DiscardAutoInstall(cancelDownload: false, "automatic updates are off");
+            return;
+        }
+
+        var pending = AutoStore.Load()?.Pending;
+        if (pending is null) return;
+
+        var owned = UpdateService.IsOwnedInstallerFile(pending.InstallerPath);
+        var action = AutoUpdatePolicy.DecideLaunchAction(pending, UpdateService.CurrentVersion,
+            UpdateService.AutoMode, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
+        if (action == LaunchAction.Completed) return; // settled by the next launch's Program.Main
+        if (action == LaunchAction.Discard)
+        {
+            DiscardAutoInstall(cancelDownload: false, reason);
+            return;
+        }
+        if (!owned || !AutoUpdatePolicy.IsSafeTag(pending.Tag)) return;
+
+        _ = Task.Run(async () =>
+        {
+            bool match;
+            try
+            {
+                await using var fs = File.OpenRead(pending.InstallerPath);
+                var hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(fs)).ToLowerInvariant();
+                match = string.Equals(hash, pending.Sha256, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Updater", ex);
+                return;
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (!match)
+                {
+                    try
+                    {
+                        var state = AutoStore.Load() ?? new AutoUpdateState();
+                        if (state.Pending?.InstallerPath == pending.InstallerPath) state.Pending = null;
+                        state.Tag = pending.Tag;
+                        state.Blocked = true;
+                        AutoStore.Save(state);
+                        try { File.Delete(pending.InstallerPath); } catch { /* best effort */ }
+                        DebugLog.Write("Updater", $"Auto-update: pending {pending.Tag} discarded (failed SHA-256 re-check).");
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLog.Write("Updater", ex);
+                    }
+                    return;
+                }
+
+                // A check or download may have started meanwhile; leave its state alone.
+                if (IsDownloadingUpdate || IsReadyToInstall) return;
+
+                _downloadedInstallerPath = pending.InstallerPath;
+                LatestVersionTag = pending.Tag;
+                IsLatestPrerelease = pending.IsPrerelease;
+                IsAutoInstallPending = true;
+                IsAutoInstallPostponed = pending.PostponedUntilUtc is { } until && until > DateTimeOffset.UtcNow;
+                IsUpdateAvailable = false;
+                IsReadyToInstall = true;
+                UpdateStatusText = IsAutoInstallPostponed
+                    ? $"Postponed. {pending.Tag} won't install before {pending.PostponedUntilUtc!.Value.LocalDateTime:g}. Install & Restart still works."
+                    : AutoUpdateInstallsAtLaunch
+                        ? $"{pending.Tag} is ready. It installs the next time you open Noctis."
+                        : $"{pending.Tag} downloaded. Click Install & Restart to finish.";
+            });
+        });
     }
 
     [RelayCommand]

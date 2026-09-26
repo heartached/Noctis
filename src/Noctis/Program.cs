@@ -40,7 +40,8 @@ internal class Program
             // One instance per user: launching again (e.g. pinned taskbar icon while
             // the app sits in the tray) surfaces the running window instead of
             // starting a second player.
-            if (!SingleInstanceGuard.TryAcquire())
+            var ownsInstance = SingleInstanceGuard.TryAcquire();
+            if (!ownsInstance)
             {
                 if (SingleInstanceGuard.SignalFirstInstance(filesToOpen))
                     return;
@@ -80,6 +81,16 @@ internal class Program
 
             // Make services available to the Avalonia App
             App.Services = provider;
+
+            // Auto-update: a verified release downloaded in an earlier session installs now, before the
+            // audio engine or any window exists, so it never interrupts playback. Only the instance that
+            // owns the guard may do it, and not when files were passed (the installer's relaunch drops them).
+            if (ownsInstance && provider.GetRequiredService<UpdateService>().TryInstallPendingUpdateAtLaunch(filesToOpen.Length > 0))
+            {
+                provider.Dispose();
+                Services.CrashJournal.MarkCleanShutdown();
+                return;
+            }
 
             // Warm the LibVLC-backed audio player while Avalonia initializes.
             // Its constructor (native libvlc load + plugin scan + audio device

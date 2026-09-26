@@ -112,6 +112,10 @@ public class AppSettings
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 
+    /// <summary>Opt-in: download new releases in the background and install them at the next launch
+    /// (Windows Inno install, Linux AppImage/tarball; macOS downloads only). Off = manual Update button.</summary>
+    public bool AutoInstallUpdates { get; set; } = false;
+
     /// <summary>Shows the Developer section (version manager + debug logs) in Settings → About.</summary>
     public bool DeveloperMode { get; set; } = false;
 
