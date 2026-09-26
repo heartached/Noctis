@@ -2721,6 +2721,7 @@ public partial class PlayerViewModel : ViewModelBase
             _positionUpdateQueued = false;
             // Audio is demonstrably playing — the error-cascade breaker resets.
             if (_consecutivePlaybackErrors != 0) _consecutivePlaybackErrors = 0;
+            if (_errorSkippedTracks.Count != 0) _errorSkippedTracks.Clear();
             var latest = _latestVlcPosition;
 
             if (_isSeeking) return; // don't update while user is dragging
@@ -3215,6 +3216,10 @@ public partial class PlayerViewModel : ViewModelBase
     private const int MaxConsecutivePlaybackErrors = 5;
     private int _consecutivePlaybackErrors;
 
+    // The tracks the current error run skipped past, oldest first, each with the position
+    // its start was aimed at, so ending the run can put them back (StopAfterPlaybackErrors).
+    private readonly List<(Track Track, TimeSpan StartAt)> _errorSkippedTracks = new();
+
     private void OnPlaybackError(object? sender, string message)
     {
         DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError", $"msg={message}, track={CurrentTrack?.Title}");
@@ -3236,16 +3241,76 @@ public partial class PlayerViewModel : ViewModelBase
                 if (UnreachableRootHint(CurrentTrack?.FilePath, Directory.Exists) is { } hint)
                     DebugLog.Write("Audio", hint);
                 _consecutivePlaybackErrors = 0;
-                StopAndClear("errorCascade");
+                StopAfterPlaybackErrors("errorCascade");
                 return;
             }
 
             // Skip to next track on error
             if (UpNext.Count > 0)
+            {
+                if (CurrentTrack != null) _errorSkippedTracks.Add((CurrentTrack, Position));
                 AdvanceQueue(QueueAdvanceReason.Error);
+            }
             else
-                StopAndClear("errorNoNext");
+                StopAfterPlaybackErrors("errorNoNext");
         });
+    }
+
+    /// <summary>
+    /// Ends an error run without wiping the session. StopAndClear here emptied the current
+    /// track, Up Next and History — and the next queue snapshot saved that, so a Play pressed
+    /// while the music drive was asleep or unplugged lost the whole queue for good. Stops on
+    /// the track the run started from, with the ones it skipped past back in Up Next, so Play
+    /// retries from there (at the position it was aimed at) once the files can be read again.
+    /// </summary>
+    private void StopAfterPlaybackErrors(string reason)
+    {
+        _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("player stopped");
+        CancelNaturalEndFallback();
+        MarkQueueChanged();
+        _audioPlayer.Stop();
+        State = PlaybackState.Stopped;
+
+        var resumeAt = Position;
+        int rewound = 0;
+        for (int i = _errorSkippedTracks.Count - 1; i >= 0; i--)
+        {
+            var (track, startAt) = _errorSkippedTracks[i];
+            // Only while it is still the newest History entry: a slow run can outlive a queue
+            // replacement or a Previous, and those tracks are no longer this run's to undo.
+            if (History.Count == 0 || !ReferenceEquals(History[0], track)) break;
+            History.RemoveAt(0);
+            if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+            if (CurrentTrack != null) UpNext.Insert(0, CurrentTrack);
+            CurrentTrack = track;
+            resumeAt = startAt;
+            rewound++;
+        }
+        _errorSkippedTracks.Clear();
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "StopAfterPlaybackErrors",
+            $"reason={reason}, track={CurrentTrack?.Id}, rewound={rewound}, upNext={UpNext.Count}, history={History.Count}");
+        if (CurrentTrack == null) return;
+
+        if (rewound > 0)
+        {
+            LoadAlbumArt(CurrentTrack);
+            Duration = CurrentTrack.Duration;
+            DurationText = FormatTime(CurrentTrack.Duration);
+        }
+        Position = resumeAt;
+        PositionText = FormatTime(resumeAt);
+        PositionFraction = Duration.TotalSeconds > 0 ? resumeAt.TotalSeconds / Duration.TotalSeconds : 0;
+        RemainingTimeText = FormatTime(Duration > resumeAt ? Duration - resumeAt : TimeSpan.Zero);
+        _resumePositionMs = resumeAt > TimeSpan.Zero ? (long)resumeAt.TotalMilliseconds : -1;
+        _resumeTrackId = CurrentTrack.Id;
+        if (CurrentTrack.RememberPlaybackPosition)
+        {
+            CurrentTrack.SavedPositionMs = (long)resumeAt.TotalMilliseconds;
+            MarkPlayStateDirty(CurrentTrack);
+        }
+        SaveQueueStateInBackground();
     }
 
     /// <summary>
