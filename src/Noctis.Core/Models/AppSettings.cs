@@ -158,6 +158,18 @@ public class AppSettings
 
     public int PlayPauseFadeMs { get; set; } = 300;
 
+    /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
+    /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
+    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>.</summary>
+    public int PlayCountThresholdPercent { get; set; }
+
+    /// <summary>The Settings picker's choices for <see cref="PlayCountThresholdPercent"/>.</summary>
+    public static IReadOnlyList<int> PlayCountThresholdChoices { get; } = new[] { 0, 25, 50, 75, 90 };
+
+    /// <summary>The nearest of <see cref="PlayCountThresholdChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapPlayCountThreshold(int percent) =>
+        PlayCountThresholdChoices.MinBy(c => Math.Abs((long)c - percent));
+
     /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
     public bool SongTransitionsEnabled { get; set; }
     /// <summary>Transition style when enabled: "AutoMix" (key/tempo aware) or "Crossfade" (fixed duration).</summary>
@@ -811,6 +823,7 @@ public class AppSettings
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         PlaybackBarTrackBoxOpacity = double.IsFinite(PlaybackBarTrackBoxOpacity)
             ? Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1)

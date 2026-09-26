@@ -245,8 +245,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             };
         }
 
-        // Subscribe to track changes for real-time updates
-        _player.TrackStarted += OnTrackStarted;
+        // Subscribe to counted plays for real-time updates: the rows mirror the play log, and
+        // a song skipped before "Count a play after" never reaches it (GitHub #101).
+        _player.PlayCounted += OnPlayCounted;
         _player.PropertyChanged += OnPlayerPropertyChanged;
 
         // Subscribe to library changes with debounce to avoid flooding UI thread
@@ -352,7 +353,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void OnTrackStarted(object? sender, Track track)
+    private void OnPlayCounted(object? sender, Track track)
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -1109,7 +1110,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         _refreshDebounce.Stop();
         _topArtistImageDebounce?.Stop();
-        _player.TrackStarted -= OnTrackStarted;
+        _player.PlayCounted -= OnPlayCounted;
         _player.PropertyChanged -= OnPlayerPropertyChanged;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;

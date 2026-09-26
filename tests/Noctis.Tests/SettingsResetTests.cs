@@ -87,6 +87,7 @@ public class SettingsResetTests : IDisposable
             LyricsStudioOnlineLyrics = false,
             IgnoreLeadingWordsInArtistSort = true,
             ArtistSortIgnoredWords = new List<string> { "The", "Los" },
+            PlayCountThresholdPercent = 75,
         });
 
         var audio = new FakeAudioPlayer();
