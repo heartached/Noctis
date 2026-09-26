@@ -47,6 +47,13 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>
+    /// Identifies the filter the current rows were built for: the applied search (SearchText
+    /// runs ahead of it by the debounce) plus the quality/favorites narrowing. The view resets
+    /// its scroll only when this changes, so a library reload of the same results keeps its place.
+    /// </summary>
+    internal string FilterKey => $"{_currentFilter}\n{QualityFilter}\n{ShowOnlyFavorites}";
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
@@ -91,7 +98,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _isDirty = true;
             Noctis.Services.DebugLog.Write("Songs", $"LibraryUpdated active={_isActive} library={_library.Tracks.Count} shown={FilteredTracks.Count}");
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("SongsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
@@ -332,7 +339,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -340,7 +347,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
         CtrlSelectedTracks.Clear();
@@ -349,9 +356,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var selection = SelectionOr(track);
+        if (selection.Count > 1)
         {
-            var selection = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(selection);
         }
@@ -364,7 +371,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ConvertTracks(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -372,7 +379,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ScanReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }
@@ -380,7 +387,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
         await _library.SaveTrackUserStateAsync(tracks);

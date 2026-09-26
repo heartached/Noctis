@@ -33,6 +33,26 @@ public class ShortcutDefaultsTests
         Assert.True(ShortcutDefaults.IsValid(new KeyGesture(Key.Space)));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DefaultTrackAndVolumeKeys_StayWithAFocusedTextBox_OtherModifiedKeysDoNot(bool isMac)
+    {
+        foreach (var action in new[] { ShortcutAction.NextTrack, ShortcutAction.PreviousTrack,
+                     ShortcutAction.VolumeUp, ShortcutAction.VolumeDown, ShortcutAction.PlayPause })
+        {
+            var g = ShortcutDefaults.For(action, isMac);
+            Assert.True(ShortcutDefaults.IsTextBoxKey(g.Key, g.KeyModifiers), action.ToString());
+        }
+        foreach (var action in new[] { ShortcutAction.ToggleQueue, ShortcutAction.SearchLibrary,
+                     ShortcutAction.CommandPalette, ShortcutAction.ToggleFavorite })
+        {
+            var g = ShortcutDefaults.For(action, isMac);
+            Assert.False(ShortcutDefaults.IsTextBoxKey(g.Key, g.KeyModifiers), action.ToString());
+        }
+        Assert.True(ShortcutDefaults.IsTextBoxKey(Key.Back, KeyModifiers.Control));
+    }
+
     [Fact]
     public void EveryAction_HasExactlyOneDescriptor_AndAValidDefaultOnBothPlatforms()
     {

@@ -248,6 +248,24 @@ public class NoctisServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Download_NonAsciiFileName_ServesTheFile_WithAnEncodedAttachmentName()
+    {
+        // Kestrel rejects raw non-ASCII header values, so the name must travel as RFC 5987 filename*.
+        const string name = "Beyoncé - 夜.mp3";
+        var audio = Path.Combine(_dir, name);
+        File.WriteAllBytes(audio, new byte[] { 1, 2, 3, 4 });
+        var track = new Track { Id = Guid.NewGuid(), Title = "Delta", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB, FilePath = audio, Duration = TimeSpan.FromSeconds(10), FileSize = 4 };
+        _lib.Tracks.Add(track);
+
+        var res = await _http.GetAsync($"rest/download.view?apiKey={_apiKey}&id=tr-{track.Id:N}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, await res.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        var disposition = res.Content.Headers.ContentDisposition!;
+        Assert.Equal("attachment", disposition.DispositionType);
+        Assert.Equal(name, disposition.FileNameStar);
+    }
+
+    [Fact]
     public async Task RepeatedBadLogins_LockTheClientOut_EvenWithTheRightPassword()
     {
         for (var i = 0; i < LoginThrottle.MaxFailures; i++)
@@ -260,6 +278,22 @@ public class NoctisServerTests : IAsyncLifetime
 
         // ping stays reachable (no auth) so clients can still tell the server is alive.
         Assert.Equal("ok", (await Get("ping", auth: false)).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task LoginLockout_IsPerAccount_OtherAccountsAndApiKeysStillSignIn()
+    {
+        _users.Create("bob", "battery staple");
+        for (var i = 0; i < LoginThrottle.MaxFailures; i++)
+            await _http.GetStringAsync("rest/getLicense.view?f=json&u=alice&p=wrong", TestContext.Current.CancellationToken);
+
+        // The name is matched like the user store does (case-insensitive).
+        var locked = await _http.GetAsync("rest/getLicense.view?f=json&u=ALICE&p=correct%20horse", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+
+        // Same address, as every client behind a reverse proxy: other accounts and API keys still work.
+        Assert.Equal("ok", (await GetJson("rest/getLicense.view?f=json&u=bob&p=battery%20staple")).GetProperty("status").GetString());
+        Assert.Equal("ok", (await Get("getLicense")).GetProperty("status").GetString());
     }
 
     [Fact]
@@ -305,6 +339,31 @@ public class NoctisServerTests : IAsyncLifetime
         Assert.Matches("^([0-9A-F]{2}:){31}[0-9A-F]{2}$", fp);
         using var second = ServerCertificate.LoadOrCreate(dir);
         Assert.Equal(fp, ServerCertificate.Fingerprint(second));
+    }
+
+    [Fact]
+    public async Task Https_Handshake_Succeeds_WithFreshAndReloadedCertificate()
+    {
+        // Schannel refuses ephemeral private keys for a server credential: Kestrel still starts,
+        // but every TLS handshake fails. Other platforms' TLS stacks accept either key storage.
+        if (!OperatingSystem.IsWindows()) return;
+        var dir = Path.Combine(_dir, "tls");
+        using var created = ServerCertificate.LoadOrCreate(dir);  // Create() path
+        using var reloaded = ServerCertificate.LoadOrCreate(dir); // stored PFX path
+        foreach (var cert in new[] { created, reloaded })
+        {
+            var fp = ServerCertificate.Fingerprint(cert);
+            await using var server = new NoctisServer(_lib, _users, "test");
+            await server.StartAsync(0, cert, TestContext.Current.CancellationToken);
+            using var handler = new HttpClientHandler
+            {
+                // Pin the fingerprint, as the phone does.
+                ServerCertificateCustomValidationCallback = (_, c, _, _) => c is not null && ServerCertificate.Fingerprint(c) == fp,
+            };
+            using var https = new HttpClient(handler) { BaseAddress = new Uri($"https://127.0.0.1:{server.Port}/") };
+            var json = await https.GetStringAsync("rest/ping.view?f=json", TestContext.Current.CancellationToken);
+            Assert.Equal("ok", JsonDocument.Parse(json).RootElement.GetProperty("subsonic-response").GetProperty("status").GetString());
+        }
     }
 
     private static bool Contains(byte[] haystack, byte[] needle)

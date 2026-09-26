@@ -29,5 +29,9 @@ public class SearchTextTests
     [InlineData("Mr. Mr.", "**", false)]
     [InlineData("Baby ***", "**", true)]
     public void Matches_PunctuationAndAccentInsensitive(string? source, string query, bool expected)
-        => Assert.Equal(expected, SearchText.Matches(source, query));
+    {
+        Assert.Equal(expected, SearchText.Matches(source, query));
+        // The precomputed-key form the whole-library pickers use must agree case for case.
+        Assert.Equal(expected, SearchText.Matches(source, SearchText.Normalize(source), query, SearchText.Normalize(query)));
+    }
 }

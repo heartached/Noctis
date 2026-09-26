@@ -97,6 +97,23 @@ public class ContentPackManifestTests
     }
 }
 
+/// <summary>Which pack translations Loc.T may format: a width or format the English text does not
+/// use would let a pack make "{0} themes" build a gigabyte string from a number.</summary>
+public class ContentPackPlaceholderTests
+{
+    [Theory]
+    [InlineData("{0} themes", "{0} temas", true)]
+    [InlineData("{0} of {1}", "{1} de {0}", true)]
+    [InlineData("{0} themes", "{{0:D999999999}} {0}", true)] // escaped: literal text
+    [InlineData("{0:N0} songs", "{0:N0} canciones", true)]
+    [InlineData("{0} themes", "{0:D999999999} themes", false)]
+    [InlineData("{0} themes", "{0,999999} themes", false)]
+    [InlineData("{0:N0} songs", "{0:D999999999} canciones", false)]
+    [InlineData("By {0}", "by {1}", false)]
+    public void PlaceholdersFit_RefusesWidthsAndFormatsTheEnglishLacks(string english, string value, bool fits)
+        => Assert.Equal(fits, ContentPackLoader.PlaceholdersFit(english, value));
+}
+
 /// <summary>Loading content packs from folders and zips: validation, the catalog, and the
 /// guarantee that nothing in a content pack is ever loaded as code.</summary>
 [Collection("Localization")] // sample packs carry a language: Loc is process-wide

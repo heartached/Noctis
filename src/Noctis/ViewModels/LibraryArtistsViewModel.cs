@@ -32,6 +32,13 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     [ObservableProperty] private string _searchText = string.Empty;
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>
+    /// The applied search the current rows were built for (SearchText runs ahead of it by the
+    /// debounce). The view resets its scroll only when this changes, so a rebuild of the same
+    /// results (library reload, portrait refresh, favorite toggle) keeps its place.
+    /// </summary>
+    internal string FilterKey => _currentFilter;
+
     // ── Sort (Name / Songs / Albums + direction) ──
     // Mirrored into the top bar by MainWindowViewModel, persisted through SettingsViewModel
     // (same pattern as the Albums grid sort). Favorites float to the top only for the
@@ -91,7 +98,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("ArtistsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }

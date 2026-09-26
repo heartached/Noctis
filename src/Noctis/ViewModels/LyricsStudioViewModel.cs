@@ -176,11 +176,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public int AddTracks(IEnumerable<Track> tracks)
     {
         var added = 0;
+        var withDrafts = _drafts?.ListTrackIds();
         foreach (var t in tracks)
         {
             if (t.SourceType != SourceType.Local || Queue.Any(i => i.Track.Id == t.Id)) continue;
             var item = new StudioItem(t);
-            if (_drafts is not null && _drafts.TryLoad(t.Id, out var draft))
+            if (withDrafts is not null && withDrafts.Contains(t.Id) && _drafts!.TryLoad(t.Id, out var draft))
             {
                 item.Result = draft.ToResult(t);
                 item.Status = StudioStatus.Ready;
@@ -229,11 +230,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _loadingPrefs = false;
 
         var restored = 0;
+        // One listing of the drafts folder instead of a file probe per selected track (UI thread).
+        var withDrafts = _drafts?.ListTrackIds();
         foreach (var t in tracks.Where(t => t.SourceType == SourceType.Local))
         {
             var item = new StudioItem(t);
             // A review left unfinished when the app closed comes back as it was — no re-run.
-            if (_drafts is not null && _drafts.TryLoad(t.Id, out var draft))
+            if (withDrafts is not null && withDrafts.Contains(t.Id) && _drafts!.TryLoad(t.Id, out var draft))
             {
                 item.Result = draft.ToResult(t);
                 item.Status = StudioStatus.Ready;
@@ -669,7 +672,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var embed = EmbedTags;
         try
         {
-            var outcome = _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true);
+            // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
+            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true));
             item.Status = StudioStatus.Saved;
             _drafts?.Delete(item.Track.Id);
             item.Existing = null;
@@ -678,7 +682,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
             var format = !WordTimings ? "line timings (LRC)"
                 : lines.Any(l => l.Words.Count > 0) ? "word timings (ELRC)"
                 : "line timings (LRC) · no words timed yet";
-            item.StatusText = !outcome.SidecarWritten ? $"Saved · {format} · no .lrc written"
+            item.StatusText = outcome.KeptForeignSidecar ? $"Saved · {format} · old .lrc kept, couldn't move it to the recycle bin"
+                : !outcome.SidecarWritten ? $"Saved · {format} · no .lrc written"
                 : outcome.ReplacedForeignSidecar ? $"Saved · {format} · old .lrc moved to the recycle bin"
                 : $"Saved · {format}";
             _savedCount++;
@@ -738,7 +743,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var synced = BuildReviewText();
         if (_player is not null)
         {
-            if (_player.CurrentTrack?.Id != item.Track.Id)
+            if (_player.CurrentTrack?.Id != item.Track.Id || _player.IsPlayingMusicVideoAudio)
                 await PlayFromTime(ReviewLines[0].Start - TimeSpan.FromSeconds(2));
             else if (_player.State != PlaybackState.Playing)
                 _player.PlayPauseCommand.Execute(null);
@@ -910,10 +915,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(TapHint))]
     private ReviewLine? _tapLine;
     private int _tapIndex;
+    private bool _tapBlocked; // the last tap landed while a music video's audio played
 
     public bool IsTapping => TapLine is not null;
     public string TapHint => TapLine is { } line
-        ? (_tapIndex < line.Words.Count
+        ? (_tapBlocked
+            ? "Tapping is off while the music video's audio plays · click the line's time to hear the song file"
+            : _tapIndex < line.Words.Count
             ? $"Tap for “{line.Words[_tapIndex].Text}” ({_tapIndex + 1} of {line.Words.Count}) · Space or the Tap button · Esc cancels"
             : "Tap once more where the line ends")
         : string.Empty;
@@ -940,6 +948,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void Tap()
     {
         if (TapLine is not { } line || _player is null) return;
+        // Words are timed against the song file; a music video's audio runs on the clip's clock.
+        _tapBlocked = _player.IsPlayingMusicVideoAudio;
+        if (_tapBlocked)
+        {
+            OnPropertyChanged(nameof(TapHint));
+            return;
+        }
         var now = _player.Position;
         if (_tapIndex < line.Words.Count)
         {
@@ -963,6 +978,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (TapLine is { } line)
             foreach (var w in line.Words) w.IsTapTarget = false;
+        _tapBlocked = false;
         TapLine = null;
         _tapIndex = 0;
     }
@@ -982,8 +998,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (_player is null || Selected is null) return;
         var track = Selected.Track;
-        if (_player.CurrentTrack?.Id != track.Id)
+        if (_player.CurrentTrack?.Id != track.Id || _player.IsPlayingMusicVideoAudio)
         {
+            // Lines are timed against the song file: never play them over a music video's audio.
+            _player.RequestOriginalAudio(track);
             _player.ReplaceQueueAndPlay(new[] { track }, 0);
             // Wait for the engine to report the real length rather than a fixed delay: seeking
             // by a fraction of the tag's Duration against the engine's landed a little off.

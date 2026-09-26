@@ -173,6 +173,52 @@ public class MetadataViewModelTests
             Assert.Contains(t.FilePath, meta.WrittenArtPaths);
     }
 
+    // A cover write that fails (the playing file LibVLC holds, a read-only file) used to be
+    // ignored: the dialog closed as saved and the failed track was stamped with the new
+    // cover's fingerprint, so the old cover came back on its next re-read.
+
+    [Fact]
+    public async Task AddArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    {
+        var tracks = Album("A", "X", 3);
+        foreach (var t in tracks) t.ArtworkHash = "OLD";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        meta.FailArtPaths.Add(tracks[1].FilePath);
+        var closed = false;
+        vm.CloseRequested += (_, _) => closed = true;
+
+        var art = new byte[] { 1, 2, 3 };
+        SetNewArtwork(vm, art);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(closed);
+        Assert.Contains(Path.GetFileName(tracks[1].FilePath), vm.SaveErrorMessage);
+        Assert.Equal("OLD", tracks[1].ArtworkHash);
+        Assert.Equal(TrackArtwork.Fingerprint(art), tracks[0].ArtworkHash);
+        Assert.Equal(TrackArtwork.Fingerprint(art), tracks[2].ArtworkHash);
+    }
+
+    [Fact]
+    public async Task RemoveArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    {
+        var tracks = Album("A", "X", 2);
+        foreach (var t in tracks) t.ArtworkHash = "OLD";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        meta.FailArtPaths.Add(tracks[0].FilePath);
+        var closed = false;
+        vm.CloseRequested += (_, _) => closed = true;
+
+        vm.RemoveArtworkCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(closed);
+        Assert.Contains(Path.GetFileName(tracks[0].FilePath), vm.SaveErrorMessage);
+        Assert.Equal("OLD", tracks[0].ArtworkHash);
+        Assert.Null(tracks[1].ArtworkHash);
+    }
+
     // ── Tag writes only happen when a tag actually changed ────────────────────
     // Every save used to rewrite every album track's audio file unconditionally. Saving an
     // animated cover — which is a separate sidecar file and never touches the audio tags —
@@ -424,6 +470,131 @@ public class MetadataViewModelTests
         finally { Directory.Delete(dir, true); }
     }
 
+    [Fact]
+    public async Task MultiSelectRename_RelocatesRenamedTracksInLibrary()
+    {
+        // A track's id is the hash of its path. Only reassigning FilePath kept the old
+        // id, so the watcher (and the next scan) imported each renamed file as a new
+        // track and the old one's play counts, favorites and playlist entries were lost.
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Album("A", "X", 2);
+            tracks[0].FilePath = Path.Combine(dir, "a.flac");
+            tracks[1].FilePath = Path.Combine(dir, "b.flac");
+            File.WriteAllText(tracks[0].FilePath, "audio");
+            File.WriteAllText(tracks[1].FilePath, "audio");
+
+            using var p = new TestPersistenceService();
+            var library = new FakeLibraryService { TrackList = tracks.ToList() };
+            var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                library, p, new FakeAnimatedCoverService(),
+                albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+
+            vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Equal(new[]
+            {
+                (Path.Combine(dir, "a.flac"), Path.Combine(dir, "01 - Track 1.flac")),
+                (Path.Combine(dir, "b.flac"), Path.Combine(dir, "02 - Track 2.flac")),
+            }, library.Relocated);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    /// <summary>
+    /// Sets the process-wide App.Services to observe the rename loop, so it runs in its
+    /// own non-parallel collection and always restores the previous provider.
+    /// </summary>
+    [Collection("App.Services global")]
+    public class RenameThreading
+    {
+        [Fact]
+        public async Task MultiSelectRename_MovesFilesOffTheUiContext()
+        {
+            // The per-file moves (plus sidecar probes) ran inline after the tag writes'
+            // awaits resumed on the UI context, freezing the window for the whole batch.
+            var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            var previousServices = App.Services;
+            var watcher = new RecordingWatcher();
+            try
+            {
+                App.Services = new SingleServiceProvider(watcher);
+                var tracks = Album("A", "X", 2);
+                tracks[0].FilePath = Path.Combine(dir, "a.flac");
+                tracks[1].FilePath = Path.Combine(dir, "b.flac");
+                File.WriteAllText(tracks[0].FilePath, "audio");
+                File.WriteAllText(tracks[1].FilePath, "audio");
+
+                using var p = new TestPersistenceService();
+                var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                    new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
+                    albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+                vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+
+                // Start Save on a UI-like context so its awaits resume there, as the
+                // Save button's command does on the Avalonia dispatcher.
+                var ui = new UiContext();
+                var done = new TaskCompletionSource();
+                ui.Post(async _ =>
+                {
+                    try { await vm.SaveCommand.ExecuteAsync(null); done.SetResult(); }
+                    catch (Exception ex) { done.SetException(ex); }
+                }, null);
+                await done.Task;
+
+                Assert.Equal(2, watcher.Calls);
+                Assert.Equal(0, watcher.CallsOnUiContext);
+                Assert.Equal(Path.Combine(dir, "01 - Track 1.flac"), tracks[0].FilePath);
+                Assert.Equal(Path.Combine(dir, "02 - Track 2.flac"), tracks[1].FilePath);
+                Assert.True(File.Exists(tracks[0].FilePath));
+                Assert.True(File.Exists(tracks[1].FilePath));
+            }
+            finally
+            {
+                App.Services = previousServices;
+                Directory.Delete(dir, true);
+            }
+        }
+
+        /// <summary>Runs posted work on the pool with itself installed as the current context.</summary>
+        private sealed class UiContext : SynchronizationContext
+        {
+            public override void Post(SendOrPostCallback d, object? state) =>
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    SetSynchronizationContext(this);
+                    try { d(state); }
+                    finally { SetSynchronizationContext(null); }
+                });
+        }
+
+        private sealed class SingleServiceProvider(object service) : IServiceProvider
+        {
+            public object? GetService(Type serviceType) =>
+                serviceType.IsInstanceOfType(service) ? service : null;
+        }
+
+        /// <summary>The rename suppresses the watcher right before each move, so its
+        /// calls show which context the moves run on.</summary>
+        private sealed class RecordingWatcher : ILibraryWatcherService
+        {
+            private int _calls, _callsOnUi;
+            public int Calls => _calls;
+            public int CallsOnUiContext => _callsOnUi;
+            public void Refresh() { }
+            public void SuppressPaths(IEnumerable<string> paths, TimeSpan window)
+            {
+                Interlocked.Increment(ref _calls);
+                if (SynchronizationContext.Current is UiContext) Interlocked.Increment(ref _callsOnUi);
+            }
+            public void Dispose() { }
+        }
+    }
+
     // ── Artwork chooser: iTunes search term construction ──
     // "Choose Artwork — From Apple Music" for the album "7" (Lil Nas X) showed George
     // Strait and Beach House records: the title-only query surfaced every album named
@@ -629,10 +800,13 @@ public class MetadataViewModelTests
             Noctis.Services.AdvancedTagIO.AdvancedFields original) => true;
         public AudioFileInfo? ReadFileInfo(string filePath) => null;
 
+        /// <summary>Paths whose cover write fails, as SaveTagsAtomically reports it (false).</summary>
+        public HashSet<string> FailArtPaths { get; } = new();
+
         public bool WriteAlbumArt(string filePath, byte[]? imageData)
         {
             lock (_gate) WrittenArtPaths.Add(filePath);
-            return true;
+            return !FailArtPaths.Contains(filePath);
         }
     }
 
@@ -665,9 +839,13 @@ public class MetadataViewModelTests
         public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) => Array.Empty<Album>();
         public Task RemoveTrackAsync(Guid id) => Task.CompletedTask;
         public Task RemoveTracksAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
+        public List<(string oldPath, string newPath)> Relocated { get; } = new();
         public Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
             IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        {
+            Relocated.AddRange(moves);
+            return Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+        }
         public Task LoadAsync() => Task.CompletedTask;
         public Task SaveAsync() => Task.CompletedTask;
         public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;
@@ -685,3 +863,6 @@ public class MetadataViewModelTests
         public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 }
+
+[CollectionDefinition("App.Services global", DisableParallelization = true)]
+public class AppServicesCollection { }

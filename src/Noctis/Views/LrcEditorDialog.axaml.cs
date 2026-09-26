@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 
@@ -17,7 +18,10 @@ public partial class LrcEditorDialog : Window
     public LrcEditorDialog(LrcEditorViewModel vm) : this()
     {
         DataContext = vm;
-        KeyDown += OnDialogKeyDown;
+        // Tunnelled so a focused Button (Play/Pause, a row's nudge or clear) cannot take Space
+        // first and click itself instead of stamping; same routing as the Lyrics Studio.
+        AddHandler(KeyDownEvent, OnDialogKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnDialogKeyUp, RoutingStrategies.Tunnel);
 
         // Keep the highlighted line in view while tap-syncing.
         vm.PropertyChanged += (_, e) =>
@@ -32,7 +36,7 @@ public partial class LrcEditorDialog : Window
     private void OnDialogKeyDown(object? sender, KeyEventArgs e)
     {
         // Space = tap-to-sync stamp (the core editing gesture).
-        if (e.Key == Key.Space)
+        if (e.Key == Key.Space && e.Source is not TextBox)
         {
             Vm?.StampCurrentCommand.Execute(null);
             e.Handled = true;
@@ -42,6 +46,12 @@ public partial class LrcEditorDialog : Window
             Close();
             e.Handled = true;
         }
+    }
+
+    /// <summary>A focused Button clicks on Space key-up, so the release is swallowed too.</summary>
+    private void OnDialogKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && e.Source is not TextBox) e.Handled = true;
     }
 
     private void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();

@@ -32,4 +32,36 @@ public class VlcReadAheadTests
         Assert.Null(VlcAudioPlayer.ReadAheadOption(1000, 1000));
         Assert.Equal(":file-caching=5000", VlcAudioPlayer.ReadAheadOption(1000, 5000));
     }
+
+    /// <summary>
+    /// Silent runtime run (audit R1): a 2 s user pause read as a 2005 ms PtsGap and raised
+    /// file-caching 1000 -> 3500 for the rest of the session. VLC moves its clock on by the
+    /// pause length, so the first block after the resume is stamped exactly that much later.
+    /// </summary>
+    [Fact]
+    public void ExpectedPtsAfterPause_APauseIsNotAnInputStall()
+    {
+        const long expectedPts = 5_000_000_000;         // µs, VLC clock: next block due here
+        const long pauseDate = 4_999_900_000;
+        const long resumeDate = pauseDate + 2_005_000;  // 2005 ms pause
+        var firstBlockPts = expectedPts + (resumeDate - pauseDate);
+
+        var carried = VlcAudioPlayer.ExpectedPtsAfterPause(expectedPts, pauseDate, resumeDate);
+
+        Assert.Equal(firstBlockPts, carried);
+        Assert.Equal(1000, VlcAudioPlayer.NextReadAheadMs(1000, (firstBlockPts - carried) / 1000.0));
+        // Uncarried, the same block raised the read-ahead:
+        Assert.Equal(3500, VlcAudioPlayer.NextReadAheadMs(1000, (firstBlockPts - expectedPts) / 1000.0));
+    }
+
+    [Theory]
+    [InlineData(0, 100, 2_000_100, 0)]          // head block pending: no continuity to carry
+    [InlineData(1_000, 0, 2_000_100, 1_000)]    // resume without a pause seen
+    [InlineData(1_000, 300, 200, 1_000)]        // dates backwards
+    [InlineData(1_000, 300, 300, 1_000)]
+    public void ExpectedPtsAfterPause_LeavesUntrackedOrBogusPausesAlone(
+        long expectedPts, long pauseDate, long resumeDate, long result)
+    {
+        Assert.Equal(result, VlcAudioPlayer.ExpectedPtsAfterPause(expectedPts, pauseDate, resumeDate));
+    }
 }

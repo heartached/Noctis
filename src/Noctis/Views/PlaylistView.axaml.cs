@@ -80,8 +80,15 @@ public partial class PlaylistView : UserControl
         _menuBuilder?.Reset();
         _menuBuilder = null;
 
+        // Avalonia reuses this view when one playlist opens straight into another (no
+        // detach fires), so drop the previous playlist's Ctrl-selection here too or its
+        // songs are what the next menu action in the new playlist acts on.
+        MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+
         if (_observedVm != null)
         {
+            _observedVm.CtrlSelectedTracks = new List<Track>();
+            _observedVm.SelectedCount = 0;
             _observedVm.PropertyChanged -= OnVmPropertyChanged;
             _observedVm.Tracks.CollectionChanged -= OnTracksCollectionChanged;
         }
@@ -413,6 +420,8 @@ public partial class PlaylistView : UserControl
             sendToFolderCommand: vm.SendToFolderCommand,
             badgeCommand: vm.SetBadgeCommand,
             badgeNames: vm.BadgeNames);
+        // Same gate as the selection bar's Remove: smart playlists are rule-driven.
+        _menuBuilder.Remove.IsVisible = vm.IsManualPlaylist;
     }
 
     private void DetachMenuFromOwner()

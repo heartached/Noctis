@@ -87,7 +87,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("FoldersRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
@@ -137,6 +137,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
         var settings = await _persistence.LoadSettingsAsync();
         var roots = settings.MusicFolders;
+        // Read before the snapshot: a scan ending in between errs toward "partial", and
+        // the authoritative publish that follows refreshes again.
+        var partial = _library.IsPublishingPartial;
         var tracks = _library.Tracks.ToList();
 
         // Capture the selected folder's path before the rebuild swaps in fresh
@@ -153,6 +156,17 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
         var forest = await Task.Run(() => FolderTreeBuilder.Build(tracks, roots));
 
+        // A scan's progressive fill carries only the folders walked so far, so a selected
+        // folder missing from it is "not walked yet", not removed. Deselecting here stuck:
+        // the next pass read selectedPath from the null node, so the user stayed kicked out
+        // of their folder after the scan. Keep the current tree until a later publish.
+        var reselected = selectedPath != null ? FindNode(forest, selectedPath) : null;
+        if (partial && selectedPath != null && reselected == null)
+        {
+            _isDirty = true;
+            return;
+        }
+
         foreach (var root in forest)
             RestoreExpansion(root, expansion);
 
@@ -163,7 +177,6 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         // Re-select the equivalent node in the rebuilt forest (matched by path) so the
         // user stays in their folder and the track pane refreshes against the NEW node —
         // which includes any just-added tracks in folder order.
-        var reselected = selectedPath != null ? FindNode(forest, selectedPath) : null;
         if (reselected != null)
         {
             SelectedNode = reselected;

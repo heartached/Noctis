@@ -20,6 +20,12 @@ public static partial class LogRedaction
     [GeneratedRegex("""\b(api_key|apikey|access_token|token)=("[^"]*"|[^&\s"'<>]+)""", RegexOptions.IgnoreCase)]
     private static partial Regex BareSecretRegex();
 
+    // Subsonic auth parameters (u, t/s token+salt, p=enc:<hex password>). LibVLC
+    // also logs stream URLs without a scheme (demux "location='host/rest/...?u=..'",
+    // the https access's "GET /rest/stream.view?..."), which UrlQueryRegex never sees.
+    [GeneratedRegex("""([?&](?:u|t|s|p)=)[^&\s"'<>]+""", RegexOptions.IgnoreCase)]
+    private static partial Regex SubsonicAuthParamRegex();
+
     /// <summary>Returns <paramref name="message"/> with URL query strings and
     /// token-style key=value pairs replaced by <c>[redacted]</c>. Text without
     /// URLs or token markers passes through untouched (cheap contains gate).</summary>
@@ -34,6 +40,9 @@ public static partial class LogRedaction
             message.Contains("api_key", StringComparison.OrdinalIgnoreCase) ||
             message.Contains("apikey", StringComparison.OrdinalIgnoreCase))
             message = BareSecretRegex().Replace(message, "$1=[redacted]");
+
+        if (message.Contains('='))
+            message = SubsonicAuthParamRegex().Replace(message, "$1[redacted]");
 
         return message;
     }

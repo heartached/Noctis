@@ -39,6 +39,7 @@ public static class SkiaArtworkDecoder
 
             var info = codec.Info;
             if (info.Width <= 0 || info.Height <= 0) return null;
+            NoteLargeDecode(info.Width, info.Height, codec.EncodedFormat, path);
             var longest = Math.Max(info.Width, info.Height);
             var sample = 1;
             while (longest / sample > maxDimension) sample *= 2;
@@ -96,6 +97,7 @@ public static class SkiaArtworkDecoder
 
             var info = codec.Info;
             if (info.Width <= 0 || info.Height <= 0) return null;
+            NoteLargeDecode(info.Width, info.Height, codec.EncodedFormat, path);
             sourceWidth = info.Width;
 
             var targetWidth = Math.Min(width, info.Width);
@@ -124,6 +126,26 @@ public static class SkiaArtworkDecoder
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Covers above this many pixels get a session-log line before they are decoded.
+    /// 5000×5000 (the largest real cover seen, see ArtworkThumbnailCache) stays quiet.
+    /// </summary>
+    internal const long LargeDecodePixels = 25_000_000;
+
+    /// <summary>
+    /// #97 breadcrumb: names a cover bigger than <see cref="LargeDecodePixels"/> right
+    /// before it is decoded, once per path, so a native decode crash or an out-of-memory
+    /// kill leaves the file in the session log's last lines. Returns true when the cover
+    /// is over the threshold.
+    /// </summary>
+    internal static bool NoteLargeDecode(int width, int height, SKEncodedImageFormat format, string path)
+    {
+        if ((long)width * height <= LargeDecodePixels) return false;
+        Noctis.Services.DebugLog.WriteOnce("Artwork", "bigdecode:" + path,
+            $"decoding large cover {width}x{height} {format}: {path}");
+        return true;
     }
 
     /// <summary>

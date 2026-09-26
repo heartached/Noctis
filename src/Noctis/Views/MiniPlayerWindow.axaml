@@ -1056,12 +1056,18 @@
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                     hidden while a music video's own audio plays (it describes the song file). -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center"
                             Background="Transparent"
-                            Margin="0,4,0,0"
-                            IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                            Margin="0,4,0,0">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <ToolTip.Tip>
                         <StackPanel Width="220" Spacing="4">
                             <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
@@ -1307,12 +1313,18 @@
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                     hidden while a music video's own audio plays (it describes the song file). -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center"
                             Background="Transparent"
-                            Margin="0,4,0,0"
-                            IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                            Margin="0,4,0,0">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <ToolTip.Tip>
                         <StackPanel Width="220" Spacing="4">
                             <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
@@ -1567,12 +1579,18 @@
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="0,4,0,0" VerticalAlignment="Center"/>
 
-                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                         hidden while a music video's own audio plays (it describes the song file). -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                                 HorizontalAlignment="Center"
                                 Background="Transparent"
-                                Margin="0,3,0,0"
-                                IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                                Margin="0,3,0,0">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
                         <ToolTip.Tip>
                             <StackPanel Width="220" Spacing="4">
                                 <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"

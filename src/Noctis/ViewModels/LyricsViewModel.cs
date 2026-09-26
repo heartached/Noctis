@@ -2132,6 +2132,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             OnPropertyChanged(nameof(ShowBackgroundVocals));
         }
+        // The engine just reported a music video's audio whose length is off the song's,
+        // after these lyrics opened on Synced: move to Plain once (see OpensOnSyncedTab).
+        else if (e.PropertyName == nameof(PlayerViewModel.MusicVideoAudioLengthDiffers) &&
+                 _player.MusicVideoAudioLengthDiffers && IsSyncTabSelected && HasSyncedLyricsAvailable)
+        {
+            SelectUnsyncTab();
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -2616,12 +2623,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// tab rebuilt twice on a synced↔plain change (old tab's list, then the new one);
     /// flipping first would rebuild the new tab's STALE lines, then the fresh ones.
     /// So: fill the collection the new content will show, flip (AutoSelectTab — reads
-    /// only <see cref="_hasSyncedLyrics"/>, which callers set for the NEW content
-    /// first), then fill the other one once it's off-screen.
+    /// only <see cref="OpensOnSyncedTab"/>, from <see cref="_hasSyncedLyrics"/>, which
+    /// callers set for the NEW content first), then fill the other one once it's off-screen.
     /// </summary>
     private void FillLyricCollections(Action fillSynced, Action fillUnsynced)
     {
-        if (_hasSyncedLyrics)
+        if (OpensOnSyncedTab)
         {
             fillSynced();
             AutoSelectTab();
@@ -2635,9 +2642,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Synced lyrics open on the Synced tab, unless a music video's audio is playing
+    /// whose length is off the song's: its timings would drift, so Plain is the default then
+    /// (Synced stays one click away).</summary>
+    private bool OpensOnSyncedTab => _hasSyncedLyrics && !_player.MusicVideoAudioLengthDiffers;
+
     private void AutoSelectTab()
     {
-        if (_hasSyncedLyrics)
+        if (OpensOnSyncedTab)
         {
             IsSyncTabSelected = true;
             IsUnsyncTabSelected = false;
@@ -2717,14 +2729,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// Ignores metadata tags like [ar:], [ti:], [al:], etc.
     /// </summary>
     /// <summary>
-    /// Upper bound on lines produced from one file. The lyrics list is not virtualized —
-    /// every line is realized, and a word-timed line is ~7 controls per word plus a
-    /// BlurEffect — so an oversized or hostile sidecar (a 1 MB .lrc, or one line carrying
-    /// thousands of stacked [mm:ss.xx] tags, since each tag emits its own LyricLine) would
-    /// build tens of thousands of controls in a single UI-thread pass. No real song comes
-    /// close to this.
+    /// Upper bound on lines produced from one file — shared with the Lyricsfile and TTML
+    /// parsers, see <see cref="EnhancedLrcParser.MaxLyricLines"/>.
     /// </summary>
-    private const int MaxLyricLines = 3000;
+    private const int MaxLyricLines = EnhancedLrcParser.MaxLyricLines;
 
     /// <summary>Splits plain lyrics into display lines, bounded by <see cref="MaxLyricLines"/>.</summary>
     private static string[] SplitPlainLyrics(string text)
@@ -2739,10 +2747,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var lines = new List<LyricLine>();
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
         var offsetMs = ParseLrcOffsetMilliseconds(rawLines);
+        // "[bg: …]" lines attach to a main line instead of adding one, but still
+        // spend the line budget so a file of them cannot run unbounded.
+        var bgLines = 0;
 
         foreach (var rawLine in rawLines)
         {
-            if (lines.Count >= MaxLyricLines) break;
+            if (lines.Count + bgLines >= MaxLyricLines) break;
 
             var trimmed = rawLine.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
@@ -2762,6 +2773,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // "[bg: <00:36.938>(Ah, …]" text would render there as a lyric.
             if (trimmed.StartsWith(BgLinePrefix, StringComparison.Ordinal))
             {
+                bgLines++;
                 var lastMain = lines.LastOrDefault(l => l.Timestamp.HasValue);
                 if (lastMain != null)
                     AttachBackgroundLine(lastMain, trimmed, offsetMs);
@@ -2801,7 +2813,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
                 {
-                    if (lines.Count >= MaxLyricLines) break;
+                    if (lines.Count + bgLines >= MaxLyricLines) break;
 
                     var timestamp = ParseLrcTimestamp(match.Value);
                     if (timestamp.HasValue)

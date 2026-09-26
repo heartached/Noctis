@@ -93,4 +93,93 @@ public class PlayerQueueTests
 
         Assert.Equal(before, after);
     }
+
+    /// <summary>Skips to the last track, then once more so Repeat All wraps; returns the new pass.</summary>
+    private static List<Guid> WrapRepeatAll(PlayerViewModel vm)
+    {
+        while (vm.UpNext.Count > 0) vm.NextCommand.Execute(null);
+        vm.NextCommand.Execute(null);
+        var pass = new List<Guid> { vm.CurrentTrack!.Id };
+        pass.AddRange(vm.UpNext.Select(t => t.Id));
+        return pass;
+    }
+
+    [Fact]
+    public void RepeatAll_WithShuffleOn_WrapStartsAReshuffledPass()
+    {
+        var (vm, _) = CreateVm();
+        var tracks = Enumerable.Range(0, 20).Select(i => Trk($"t{i}")).ToList();
+        vm.ReplaceQueueAndPlay(tracks, 0);
+        vm.RepeatMode = RepeatMode.All;
+        vm.ToggleShuffleCommand.Execute(null); // on
+
+        var pass = WrapRepeatAll(vm);
+
+        Assert.True(vm.IsShuffleEnabled);
+        Assert.Equal(tracks.Select(t => t.Id).OrderBy(g => g), pass.OrderBy(g => g));
+        // The wrap replayed the album order with Shuffle lit (1 in 20! by chance).
+        Assert.NotEqual(tracks.Select(t => t.Id), pass);
+
+        vm.ToggleShuffleCommand.Execute(null); // off: the rest of the pass in queue order
+        var current = vm.CurrentTrack!.Id;
+        Assert.Equal(tracks.Select(t => t.Id).Where(id => id != current), vm.UpNext.Select(t => t.Id));
+    }
+
+    [Fact]
+    public void RepeatAll_WrapReplaysTheQueueAsEdited()
+    {
+        var (vm, _) = CreateVm();
+        var (a, b, c, d, x, y) = (Trk("a"), Trk("b"), Trk("c"), Trk("d"), Trk("x"), Trk("y"));
+        vm.ReplaceQueueAndPlay(new[] { a, b, c, d }, 0);
+        vm.RepeatMode = RepeatMode.All;
+
+        vm.AddNext(y);         // y b c d
+        vm.AddToQueue(x);      // y b c d x
+        vm.RemoveFromQueue(2); // y b d x
+
+        Assert.Equal(new[] { a.Id, y.Id, b.Id, d.Id, x.Id }, WrapRepeatAll(vm));
+    }
+
+    [Fact]
+    public void RepeatAll_WrapKeepsRangeAddsAndMultiRemoves()
+    {
+        var (vm, _) = CreateVm();
+        var (a, b, c, x, y) = (Trk("a"), Trk("b"), Trk("c"), Trk("x"), Trk("y"));
+        vm.ReplaceQueueAndPlay(new[] { a, b, c }, 0);
+        vm.RepeatMode = RepeatMode.All;
+
+        vm.AddRangeToQueue(new[] { x, y });      // b c x y
+        vm.RemoveManyFromQueue(new[] { 0, 2 }); // c y
+
+        Assert.Equal(new[] { a.Id, c.Id, y.Id }, WrapRepeatAll(vm));
+    }
+
+    [Fact]
+    public void RepeatAll_AfterClearQueue_WrapReplaysOnlyWhatIsLeft()
+    {
+        var (vm, _) = CreateVm();
+        var (a, b, c) = (Trk("a"), Trk("b"), Trk("c"));
+        vm.ReplaceQueueAndPlay(new[] { a, b, c }, 0);
+        vm.RepeatMode = RepeatMode.All;
+
+        vm.ClearQueue();
+
+        Assert.Equal(new[] { a.Id }, WrapRepeatAll(vm));
+    }
+
+    [Fact]
+    public void RepeatAll_AfterStopAndClear_DoesNotWrapIntoTheOldQueue()
+    {
+        var (vm, _) = CreateVm();
+        var (a, b, c, d) = (Trk("a"), Trk("b"), Trk("c"), Trk("d"));
+        vm.ReplaceQueueAndPlay(new[] { a, b }, 0);
+        vm.RepeatMode = RepeatMode.All;
+
+        vm.StopAndClear("test");
+        vm.AddToQueue(c);
+        vm.AddToQueue(d);
+        vm.PlayPauseCommand.Execute(null); // plays c from the refilled queue
+
+        Assert.Equal(new[] { c.Id, d.Id }, WrapRepeatAll(vm));
+    }
 }

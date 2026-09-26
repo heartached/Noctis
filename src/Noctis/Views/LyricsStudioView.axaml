@@ -170,7 +170,7 @@
                 Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                 DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings}"
                 x:DataType="vm:SettingsViewModel">
-            <Grid ColumnDefinitions="*,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{loc:T Settings.MusicVideos}" FontSize="15" FontWeight="SemiBold"/>
                     <TextBlock Text="{loc:T Settings.MusicVideosHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -185,6 +185,11 @@
                             ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}" IsEnabled="{Binding MusicVideosEnabled}">
                     <TextBlock Text="{loc:T LyricsStudio.RoundedCorners}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
                     <controls:LottieToggle IsChecked="{Binding MusicVideoRoundedCorners}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="20,0,0,0"
+                            ToolTip.Tip="{loc:T Settings.MusicVideoAudioHint}" IsEnabled="{Binding MusicVideosEnabled}">
+                    <TextBlock Text="{loc:T LyricsStudio.MusicVideoAudio}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
+                    <controls:LottieToggle IsChecked="{Binding MusicVideoUseVideoAudio}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>

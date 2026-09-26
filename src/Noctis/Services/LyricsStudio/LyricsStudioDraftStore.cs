@@ -44,6 +44,27 @@ public sealed class LyricsStudioDraftStore
 
     private string PathFor(Guid trackId) => Path.Combine(_dir, trackId.ToString("N") + ".json");
 
+    /// <summary>
+    /// Ids of the tracks that have a draft file: one directory listing, so a big selection
+    /// only probes (<see cref="TryLoad"/>) the few tracks that can have something to restore.
+    /// </summary>
+    public HashSet<Guid> ListTrackIds()
+    {
+        var ids = new HashSet<Guid>();
+        try
+        {
+            if (!Directory.Exists(_dir)) return ids;
+            foreach (var path in Directory.EnumerateFiles(_dir, "*.json"))
+                if (Guid.TryParseExact(Path.GetFileNameWithoutExtension(path), "N", out var id))
+                    ids.Add(id);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.DraftListFailed", ex.Message);
+        }
+        return ids;
+    }
+
     public bool TryLoad(Guid trackId, out LyricsStudioDraft draft)
     {
         draft = null!;

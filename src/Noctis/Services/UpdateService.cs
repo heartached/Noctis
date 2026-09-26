@@ -19,6 +19,9 @@ public sealed class UpdateService
 
     private readonly HttpClient _http;
 
+    /// <summary>Null = <see cref="ResumableDownload.Options.Default"/>; tests shorten the retry delays.</summary>
+    internal ResumableDownload.Options? DownloadOptions { get; set; }
+
     public UpdateService(HttpClient http)
     {
         _http = http;
@@ -102,6 +105,32 @@ public sealed class UpdateService
         InstallSource.Portable => "Download the new version from GitHub.",
         _ => null
     };
+
+#if DEBUG
+    private const bool IsDebugBuild = true;
+#else
+    private const bool IsDebugBuild = false;
+#endif
+
+    private static AutoUpdateMode? _autoMode;
+
+    /// <summary>What "Update automatically" may do on this copy (computed once per process):
+    /// install at next launch, download only (macOS), or nothing (toggle hidden).</summary>
+    public static AutoUpdateMode AutoMode => AutoModeOverride ?? (_autoMode ??= ResolveAutoMode());
+
+    /// <summary>Tests only: the Debug builds tests run resolve <see cref="AutoMode"/> to Off.</summary>
+    internal static AutoUpdateMode? AutoModeOverride { get; set; }
+
+    private static AutoUpdateMode ResolveAutoMode()
+    {
+        var appImage = OperatingSystem.IsLinux() ? Environment.GetEnvironmentVariable("APPIMAGE") : null;
+        var isAppImage = !string.IsNullOrEmpty(appImage) && File.Exists(appImage);
+        var appImageDirWritable = isAppImage && IsDirectoryWritable(Path.GetDirectoryName(appImage) ?? "/");
+        return AutoUpdatePolicy.ResolveMode(
+            OperatingSystem.IsWindows(), OperatingSystem.IsMacOS(), OperatingSystem.IsLinux(),
+            Source, isAppImage, appImageDirWritable,
+            RuntimeInformation.OSArchitecture == Architecture.X64, IsDebugBuild);
+    }
 
     private static InstallSource DetectSource()
     {
@@ -239,7 +268,9 @@ public sealed class UpdateService
             InstallerSize = installerAsset?.Size ?? 0,
             InstallerAssetName = installerAsset?.Name,
             ChecksumsApiUrl = checksumsAsset?.Url,
-            ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}"
+            ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}",
+            PublishedAt = best.Release.PublishedAt,
+            WarningText = ExtractReleaseWarning(best.Release.Body)
         };
     }
 
@@ -440,8 +471,8 @@ public sealed class UpdateService
     /// <param name="update">Release to download.</param>
     /// <param name="progress">Receives 0-100 download progress.</param>
     /// <param name="ct">Cancels the download.</param>
-    /// <param name="destinationPath">Where to save the installer; defaults to the
-    /// updater's fixed temp path. The Developer Mode version manager passes the
+    /// <param name="destinationPath">Where to save the installer; defaults to a new
+    /// file in <see cref="InstallerDirectory"/>. The Developer Mode version manager passes the
     /// user's Downloads folder here.</param>
     public Task<string> DownloadInstallerAsync(
         UpdateInfo update,
@@ -458,6 +489,16 @@ public sealed class UpdateService
             update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct,
             requireChecksums, destinationPath);
     }
+
+    /// <summary>
+    /// Where installer downloads land. Linux: a private (0700) folder in the user's data dir, because
+    /// /tmp is shared with every local user (a vanished queued file could be recreated there by someone
+    /// else) and tmpfs distros empty it at every boot, which lost a queued update before the next launch.
+    /// Windows and macOS: the per-user temp folder, as before.
+    /// </summary>
+    internal static string InstallerDirectory => OperatingSystem.IsLinux()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Noctis", "updates")
+        : Path.GetTempPath();
 
     private async Task<string> DownloadInstallerAsync(
         string url, long expectedSize,
@@ -480,42 +521,50 @@ public sealed class UpdateService
             throw new InvalidOperationException(
                 "This release has no SHA256SUMS manifest — refusing to install an unverifiable update.");
 
+        // Installable downloads also pin the repo, not just the host: IsTrustedGitHubUrl accepts
+        // any GitHub repo's assets, and an unattended install must only ever run our own releases.
+        if (requireChecksums && (!IsConfiguredRepoAssetUrl(url) || !IsConfiguredRepoAssetUrl(checksumsUrl)))
+            throw new InvalidOperationException("Refusing an update asset from outside heartached/Noctis.");
+
+        if (destinationPath is null && OperatingSystem.IsLinux())
+        {
+            const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            Directory.CreateDirectory(InstallerDirectory, ownerOnly);
+            File.SetUnixFileMode(InstallerDirectory, ownerOnly); // a folder that already existed too
+        }
+
         // Random per-run filename: a fixed predictable path invited a same-user
         // verify-then-launch swap (TOCTOU) on the elevated installer.
         var runTag = Guid.NewGuid().ToString("N")[..8];
-        var tempPath = destinationPath ?? Path.Combine(Path.GetTempPath(),
+        var tempPath = destinationPath ?? Path.Combine(InstallerDirectory,
             OperatingSystem.IsMacOS() ? $"Noctis-Update-{runTag}.dmg"
             : OperatingSystem.IsLinux() ? $"Noctis-Update-{runTag}{LinuxInstallerExtension()}"
             : $"Noctis-Update-{runTag}-Setup.exe");
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Accept.Add(
-                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
-
-            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
-
-            var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
-            await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
-            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920);
-
-            var buffer = new byte[81920];
-            long bytesRead = 0;
-            int read;
-
-            while ((read = await contentStream.ReadAsync(buffer, ct)) > 0)
-            {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
-                bytesRead += read;
-
-                if (totalBytes > 0)
-                    progress?.Report((double)bytesRead / totalBytes * 100.0);
-            }
-
-            await fileStream.FlushAsync(ct);
-            await fileStream.DisposeAsync(); // release the handle before validating / hashing
+            // Retried and resumed (HTTP Range) within this call when the connection drops or
+            // stalls; the size + SHA-256 checks below still gate the finished file.
+            await ResumableDownload.DownloadAsync(
+                _http,
+                () =>
+                {
+                    var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    request.Headers.Accept.Add(
+                        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
+                    return request;
+                },
+                tempPath,
+                resumeExisting: false,
+                (done, total) =>
+                {
+                    var totalBytes = total > 0 ? total : expectedSize;
+                    if (totalBytes > 0)
+                        progress?.Report((double)done / totalBytes * 100.0);
+                },
+                "Update.Installer",
+                ct,
+                DownloadOptions);
 
             // Validate file size if GitHub reported one
             if (expectedSize > 0)
@@ -711,7 +760,212 @@ public sealed class UpdateService
         return false;
     }
 
-    private static Version? ParseTag(string tag)
+    // ── Automatic updates (opt-in) ──
+
+    /// <summary>Set at launch when this process is the version a queued auto-update installed.</summary>
+    public static PendingInstall? CompletedAutoUpdate { get; private set; }
+
+    /// <summary>Set at launch when a queued auto-update was given up; About shows it.</summary>
+    public static string? LaunchInstallNote { get; private set; }
+
+    /// <summary>
+    /// Queues a verified download for the next launch (or, on macOS, for Install &amp; Restart).
+    /// The file has just passed the SHA256SUMS check, so the hash recorded here is the verified
+    /// one; the launch install re-hashes the file and refuses anything that differs.
+    /// </summary>
+    public async Task ScheduleAutoInstallAsync(UpdateInfo update, string installerPath, AutoUpdateStore store)
+    {
+        var sha = await ComputeSha256Async(installerPath, CancellationToken.None);
+
+        var state = store.Load() ?? new AutoUpdateState();
+        if (state.Pending is { } older && older.InstallerPath != installerPath && IsOwnedInstallerFile(older.InstallerPath))
+        {
+            try { File.Delete(older.InstallerPath); } catch { /* best effort */ }
+        }
+
+        if (state.Tag != update.TagName)
+        {
+            // A new release starts its own count. The same release keeps it across re-queues, so one
+            // whose installer never starts (or whose file keeps vanishing) still ends up blocked.
+            state.Tag = update.TagName;
+            state.Failures = 0;
+            state.LastAttemptUtc = null;
+            state.Blocked = false;
+        }
+        state.Pending = new PendingInstall
+        {
+            Tag = update.TagName,
+            FromVersion = CurrentVersion.ToString(3),
+            ToVersion = update.Version.ToString(3),
+            InstallerPath = installerPath,
+            Sha256 = sha,
+            IsPrerelease = update.IsPrerelease,
+            ReleaseUrl = update.ReleaseUrl,
+            DownloadedUtc = DateTimeOffset.UtcNow,
+            LaunchAttempts = 0
+        };
+        store.Save(state);
+
+        DebugLog.Write("Updater", $"Auto-update: {update.TagName} verified (sha256 {sha[..12]}), " +
+            (AutoMode == AutoUpdateMode.InstallAtLaunch ? "installs at next launch." : "waiting for Install & Restart."));
+    }
+
+    /// <summary>
+    /// Program.Main, before the audio engine or any window exists: installs a queued, verified
+    /// update and returns true (the caller then exits; the installer relaunches Noctis), or
+    /// settles the queue (completed / discarded / postponed) and returns false. Never throws.
+    /// </summary>
+    public bool TryInstallPendingUpdateAtLaunch(bool hasFilesToOpen) =>
+        TryInstallPendingUpdateAtLaunch(hasFilesToOpen, new AutoUpdateStore(Noctis.Helpers.AppPaths.DataRoot));
+
+    /// <param name="modeOverride">Tests only; the app uses <see cref="AutoMode"/>, resolved only
+    /// when something is queued so an ordinary launch pays for one missing-file check.</param>
+    internal bool TryInstallPendingUpdateAtLaunch(bool hasFilesToOpen, AutoUpdateStore store, AutoUpdateMode? modeOverride = null)
+    {
+        try
+        {
+            var state = store.Load();
+            if (state?.Pending is not { } pending) return false;
+
+            var mode = modeOverride ?? AutoMode;
+            var path = pending.InstallerPath;
+            var owned = IsOwnedInstallerFile(path);
+            var now = DateTimeOffset.UtcNow;
+            var action = AutoUpdatePolicy.DecideLaunchAction(pending, CurrentVersion, mode, hasFilesToOpen, owned, now, out var reason);
+
+            switch (action)
+            {
+                case LaunchAction.Completed:
+                    CompletedAutoUpdate = pending;
+                    // Windows: the Inno loader may still hold its Setup.exe; the VM deletes it later.
+                    if (owned) state.StaleInstallerPath = path;
+                    state.Pending = null;
+                    state.Failures = 0;
+                    store.Save(state);
+                    DebugLog.Write("Updater", $"Auto-update: now running {CurrentVersion.ToString(3)} (from {pending.FromVersion}).");
+                    return false;
+
+                case LaunchAction.Discard:
+                    var exhausted = pending.LaunchAttempts >= AutoUpdatePolicy.MaxLaunchAttempts;
+                    // A file that vanished (temp cleanup) counts as a failed download, so one that
+                    // keeps vanishing ends up blocked instead of re-downloading after every launch.
+                    var vanished = !owned && mode != AutoUpdateMode.Off;
+                    if (vanished) state = AutoUpdatePolicy.RecordDownloadFailure(state, pending.Tag, now, hard: false);
+                    DiscardPending(store, state, pending, owned, reason, block: exhausted, notify: exhausted || (vanished && state.Blocked));
+                    return false;
+
+                case LaunchAction.Postponed:
+                    DebugLog.Write("Updater", $"Auto-update: install postponed until {pending.PostponedUntilUtc?.LocalDateTime:g}.");
+                    return false;
+
+                case LaunchAction.None:
+                    DebugLog.Write("Updater", $"Auto-update: launch install skipped ({reason}).");
+                    return false;
+            }
+
+            // Install. Re-verify the exact bytes about to run against the hash recorded after the
+            // manifest check, so nothing swapped in since the download can execute.
+            string actual;
+            using (var fs = File.OpenRead(path))
+                actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fs)).ToLowerInvariant();
+            if (!string.Equals(actual, pending.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                DiscardPending(store, state, pending, owned: true, "failed SHA-256 re-check", block: true, notify: true);
+                return false;
+            }
+
+            // Counted before the launch, so an installer that keeps failing can't retry forever.
+            pending.LaunchAttempts++;
+            pending.LastLaunchUtc = now;
+            store.Save(state);
+            DebugLog.Write("Updater",
+                $"Auto-update: installing {pending.Tag} at launch (attempt {pending.LaunchAttempts}, from {CurrentVersion.ToString(3)}).");
+
+            if (LaunchInstaller(path)) return true;
+
+            DebugLog.Write("Updater", $"Auto-update: installer for {pending.Tag} did not start.");
+            state = AutoUpdatePolicy.RecordDownloadFailure(state, pending.Tag, now, hard: false);
+            DiscardPending(store, state, pending, owned: true, "installer did not start", block: false, notify: true);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Updater", ex);
+            return false;
+        }
+    }
+
+    private static void DiscardPending(
+        AutoUpdateStore store, AutoUpdateState state, PendingInstall pending,
+        bool owned, string reason, bool block, bool notify)
+    {
+        if (owned)
+        {
+            try { File.Delete(pending.InstallerPath); } catch { /* best effort */ }
+        }
+        state.Pending = null;
+        if (block)
+        {
+            state.Tag = pending.Tag;
+            state.Blocked = true;
+        }
+        if (notify)
+            LaunchInstallNote = $"Automatic install of {pending.Tag} didn't complete. Use the Update button.";
+        store.Save(state);
+        DebugLog.Write("Updater", $"Auto-update: pending {pending.Tag} discarded ({reason}).");
+    }
+
+    /// <summary>Deletes the installer a completed auto-update left in temp. While the Inno loader
+    /// still holds it the delete fails and the path stays recorded for the next launch. On Linux
+    /// it also clears downloads earlier sessions left in <see cref="InstallerDirectory"/>, which
+    /// nothing else empties (one never installed, or kept for Install &amp; Restart and not used).</summary>
+    public static void DeleteStaleInstaller(AutoUpdateStore store)
+    {
+        try
+        {
+            var state = store.Load();
+            if (OperatingSystem.IsLinux() && Directory.Exists(InstallerDirectory))
+            {
+                foreach (var file in Directory.EnumerateFiles(InstallerDirectory))
+                {
+                    if (file != state?.Pending?.InstallerPath && IsOwnedInstallerFile(file))
+                    {
+                        try { File.Delete(file); } catch { /* best effort */ }
+                    }
+                }
+            }
+
+            if (state?.StaleInstallerPath is not { } stale) return;
+            if (AutoUpdatePolicy.IsOwnedUpdateFile(stale, InstallerDirectory) && File.Exists(stale))
+                File.Delete(stale);
+            state.StaleInstallerPath = null;
+            store.Save(state);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Updater", $"Auto-update: leftover installer not deleted yet ({ex.GetType().Name}).");
+        }
+    }
+
+    /// <summary>A queued installer may be hashed, launched or deleted only when it is one of the
+    /// updater's own temp files and a regular file (never a symlink or other reparse point).</summary>
+    internal static bool IsOwnedInstallerFile(string? path)
+    {
+        if (!AutoUpdatePolicy.IsOwnedUpdateFile(path, InstallerDirectory)) return false;
+        try
+        {
+            var info = new FileInfo(path!);
+            return info.Exists
+                && (info.Attributes & FileAttributes.ReparsePoint) == 0
+                && info.LinkTarget is null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    internal static Version? ParseTag(string tag)
     {
         // Strip leading 'v'/'V', then any semver pre-release/build suffix
         // (e.g. "1.1.11-beta.1" or "1.1.11+build") so prerelease tags still parse.
@@ -737,6 +991,27 @@ public sealed class UpdateService
             || host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
             || host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase)
             || host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private const string RepoAssetPathPrefix = "/repos/heartached/Noctis/releases/assets/";
+
+    /// <summary>
+    /// True only for this repo's release-asset API URL
+    /// (https://api.github.com/repos/heartached/Noctis/releases/assets/&lt;id&gt;, no query):
+    /// what CheckForUpdateAsync reads from the pinned releases endpoint. Checked on top of
+    /// <see cref="IsTrustedGitHubUrl"/> for every download that may be installed.
+    /// </summary>
+    internal static bool IsConfiguredRepoAssetUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps || !uri.IsDefaultPort || uri.UserInfo.Length > 0) return false;
+        if (!uri.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)) return false;
+        if (uri.Query.Length > 0) return false;
+
+        var path = uri.AbsolutePath;
+        if (!path.StartsWith(RepoAssetPathPrefix, StringComparison.OrdinalIgnoreCase)) return false;
+        var id = path[RepoAssetPathPrefix.Length..];
+        return id.Length > 0 && id.All(char.IsAsciiDigit);
     }
 
     /// <summary>
@@ -842,6 +1117,10 @@ public sealed class UpdateInfo
     /// <summary>GitHub API asset URL of the SHA-256 checksums manifest, when the release publishes one.</summary>
     public string? ChecksumsApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
+    /// <summary>When GitHub published the release; auto-update waits out a soak period from here.</summary>
+    public DateTimeOffset? PublishedAt { get; init; }
+    /// <summary>Warning from the release notes' "[!WARNING]" admonition; such releases never auto-install.</summary>
+    public string? WarningText { get; init; }
 }
 
 /// <summary>One release row in the Developer Mode version manager.</summary>

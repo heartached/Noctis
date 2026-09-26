@@ -105,6 +105,12 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Opacity" Value="0.7" />
         </Style>
+        <!-- Whole-page tint: related-section text takes the page colour (dark on light
+             covers). Classed, not every TextBlock: the tiles' context menus and the "E"
+             badge keep their own colours. Inside Buttons, so inheritance alone can't reach. -->
+        <Style Selector="StackPanel#RelatedSections.page-tint TextBlock.page-text">
+            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+        </Style>
         <Style Selector="Button.related-album-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -247,7 +253,10 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   IsHitTestVisible="{Binding !IsAlbumDescriptionOpen}">
-    <StackPanel>
+    <!-- Row 0 album block, row 1 related sections. The tint spans row 0, or both rows
+         with Settings → Tint whole page (Discord "Album Page Redesign"); the star row lets
+         a whole-page tint reach the bottom of the viewport on short pages. -->
+    <Grid x:Name="PageLayout" RowDefinitions="Auto,*">
 
         <!-- Album block: header, tracks and footer facts sit on one flat panel of the
              cover's edge colour, the way iTunes' expanded album view did. Other Versions
@@ -257,8 +266,8 @@
              a tinted block always reaches the bottom of the viewport with the footer facts
              pinned to its foot (Discord NJZ 09-22), and whichever block ends the page
              keeps the floating player bar's clearance. -->
-        <Grid x:Name="AlbumBlock">
         <Border x:Name="AlbumTintBg"
+                Grid.Row="0"
                 Background="{Binding BackgroundBrush}"
                 IsHitTestVisible="False"
                 Opacity="0">
@@ -270,6 +279,7 @@
                 </Transitions>
             </Border.Transitions>
         </Border>
+        <Grid x:Name="AlbumBlock" Grid.Row="0">
         <DockPanel x:Name="AlbumBlockContent"
                    LastChildFill="True"
                    TextElement.Foreground="{Binding PageForegroundBrush}">
@@ -881,10 +891,12 @@
         </DockPanel>
         </Grid>
 
-        <!-- Related sections: app background, theme foreground (not the tint's). -->
+        <!-- Related sections: app background, theme foreground (not the tint's) — unless
+             the tint covers the whole page, then the .page-tint class gives their text the
+             page colour. -->
         <!-- Carries the player-bar clearance itself when shown; hidden when empty so an
              album with no related rows ends on its (padded) coloured block. -->
-        <StackPanel x:Name="RelatedSections" Margin="10,0,16,115">
+        <StackPanel x:Name="RelatedSections" Grid.Row="1" Margin="10,0,16,115">
             <StackPanel.IsVisible>
                 <MultiBinding Converter="{x:Static BoolConverters.Or}">
                     <Binding Path="HasOtherVersions" />
@@ -896,6 +908,7 @@
         <StackPanel Margin="0,28,0,0" Spacing="10"
                     IsVisible="{Binding HasOtherVersions}">
             <TextBlock Text="{loc:T AlbumDetail.OtherVersions}"
+                       Classes="page-text"
                        FontSize="20"
                        FontWeight="Bold" />
             <Grid>
@@ -1048,7 +1061,8 @@
                                             </Button>
                                         </Panel>
                                     </Border>
-                                    <TextBlock FontSize="13"
+                                    <TextBlock Classes="page-text"
+                                               FontSize="13"
                                                FontWeight="SemiBold"
                                                TextWrapping="NoWrap"
                                                MaxLines="1"
@@ -1069,7 +1083,8 @@
                                             </Border>
                                         </InlineUIContainer>
                                     </TextBlock>
-                                    <TextBlock FontSize="12"
+                                    <TextBlock Classes="page-text"
+                                               FontSize="12"
                                                Opacity="0.55"
                                                Width="220"
                                                HorizontalAlignment="Left"
@@ -1115,13 +1130,14 @@
         </StackPanel>
 
         <!-- More By {Artist}: up to 20 random albums by the same artist (excludes self + Other Versions) -->
-        <StackPanel Margin="0,28,0,64" Spacing="10"
+        <StackPanel Margin="0,28,0,0" Spacing="10"
                     IsVisible="{Binding HasMoreByArtist}">
             <!-- Header is plain text; the only affordance is the "See discography" link on
                  the right, which opens the artist page (Discord ask, 2026-09-03: the old
                  chevron + clickable title read as a mystery button). -->
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,0">
                 <TextBlock Grid.Column="0"
+                           Classes="page-text"
                            Text="{Binding MoreByArtistTitle}"
                            FontSize="20"
                            FontWeight="Bold"
@@ -1137,6 +1153,7 @@
                         Command="{Binding ViewArtistCommand}"
                         ToolTip.Tip="{loc:T AlbumDetail.OpenArtistPageTip}">
                     <TextBlock Text="{loc:T AlbumDetail.SeeDiscography}"
+                               Classes="page-text"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Opacity="0.7" />
@@ -1292,7 +1309,8 @@
                                             </Button>
                                         </Panel>
                                     </Border>
-                                    <TextBlock FontSize="13"
+                                    <TextBlock Classes="page-text"
+                                               FontSize="13"
                                                FontWeight="SemiBold"
                                                TextWrapping="NoWrap"
                                                MaxLines="1"
@@ -1313,7 +1331,8 @@
                                             </Border>
                                         </InlineUIContainer>
                                     </TextBlock>
-                                    <TextBlock FontSize="12"
+                                    <TextBlock Classes="page-text"
+                                               FontSize="12"
                                                Opacity="0.55"
                                                Width="220"
                                                HorizontalAlignment="Left"
@@ -1360,7 +1379,7 @@
 
         </StackPanel>
 
-    </StackPanel>
+    </Grid>
     </ScrollViewer>
 
     <!-- Album description popup is now shown via AlbumDescriptionDialog window -->

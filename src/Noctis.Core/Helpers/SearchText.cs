@@ -55,4 +55,22 @@ public static class SearchText
         if (nq.Length == 0) return false;
         return Normalize(source).Contains(nq, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// <see cref="Matches(string?, string?)"/> for a whole-library scan: <paramref name="sourceKey"/> is the
+    /// source's cached <see cref="Normalize"/> key (Track.SearchTitleKey etc.) and <paramref name="queryKey"/>
+    /// is Normalize(query), computed once per search. The two-argument form re-normalizes both strings on
+    /// every call — up to six throwaway strings per track per search.
+    /// </summary>
+    public static bool Matches(string? source, string sourceKey, string query, string queryKey)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        if (string.IsNullOrWhiteSpace(source)) return false;
+
+        if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (queryKey.Length == 0) return false;
+        return sourceKey.Contains(queryKey, StringComparison.Ordinal);
+    }
 }

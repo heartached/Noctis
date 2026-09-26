@@ -106,6 +106,13 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                               Padding="24,4,24,8">
                     <ItemsControl ItemsSource="{Binding Rows}">
+                        <!-- Virtualized: every poorly tagged track is a row, so a messy library
+                             built thousands of cards on open. -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:MetadataFinderViewModel+MetaRow">
                                 <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">

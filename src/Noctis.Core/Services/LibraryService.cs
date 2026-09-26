@@ -132,6 +132,7 @@ public class LibraryService : ILibraryService
 
     private async Task ScanCoreAsync(IEnumerable<string> folders, CancellationToken ct)
     {
+        var scanStarted = Environment.TickCount64;
         var settings = await _persistence.LoadSettingsAsync();
         // Refresh the artwork-toggle mirror from the persisted settings so even a
         // scan that starts before SettingsViewModel finishes loading honors it.
@@ -176,6 +177,8 @@ public class LibraryService : ILibraryService
         var unchangedCount = 0;
         var changedCount = 0;
         var skippedCount = 0;
+        // Developer Mode: names each new/changed file right before TagLib opens it (#97).
+        var tagOpen = new CappedBreadcrumb("Scan", "tags: open");
 
         // Snapshot the current track index for read-only access during parallel scan
         var trackIndexSnapshot = _trackIndex;
@@ -297,7 +300,8 @@ public class LibraryService : ILibraryService
                         // Skip files we already have that haven't changed
                         if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
                         {
-                            if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize)
+                            if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize
+                                && !IsStaleCaseSpelling(existing.FilePath, filePath))
                             {
                                 newTracks.Add(existing);
                                 Interlocked.Increment(ref unchangedCount);
@@ -307,6 +311,7 @@ public class LibraryService : ILibraryService
                         }
 
                         // Read metadata (and the embedded cover, already in memory) for new/changed files
+                        tagOpen.Note(filePath);
                         var track = _metadata.ReadTrackMetadata(entry, out var embeddedArt);
                         if (track != null)
                         {
@@ -558,24 +563,39 @@ public class LibraryService : ILibraryService
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
         await RebuildIndexesAsync(persistCache: false);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        // #97: a startup scan that found new albums ended the process after this publish
+        // with no managed exception logged. Only a scan that found changes runs the steps
+        // below, so each one is bracketed in the session log; the disk mirror flushes
+        // every line, so the last line left names the step that was running.
+        DebugLog.Write("Scan", $"published {_tracks.Count} tracks (changed={changedCount}, " +
+            $"unchanged={unchangedCount}, skipped={skippedCount}, t={Environment.TickCount64 - scanStarted}ms)");
 
         // Deterministic album-art extraction, published progressively so covers fill
         // into the views live instead of all at once at the end. Groups are complete
         // here (post-scan), and each cover comes from the album's lowest disc/track
         // representative — stable across scans.
-        await ExtractArtworkProgressivelyAsync(newTracks, ct);
+        DebugLog.Write("Scan", "artwork extract: start");
+        var extractedCovers = await ExtractArtworkProgressivelyAsync(newTracks, ct);
+        DebugLog.Write("Scan", $"artwork extract: done ({extractedCovers} cached)");
         if (!ct.IsCancellationRequested)
-            await RefreshStaleFolderArtworkAsync(newTracks, ct);
+        {
+            DebugLog.Write("Scan", "stale folder art: start");
+            var staleCovers = await RefreshStaleFolderArtworkAsync(newTracks, ct);
+            DebugLog.Write("Scan", $"stale folder art: done ({staleCovers} replaced)");
+        }
         // Per-track covers for the albums a re-read file belongs to (before the final
         // rebuild below, which points each odd track at its own cover).
         if (!ct.IsCancellationRequested && !freshlyRead.IsEmpty)
         {
             var fresh = new HashSet<Guid>(freshlyRead.Keys);
             var albums = _tracks.Where(t => fresh.Contains(t.Id)).Select(t => t.AlbumId).ToList();
-            await Task.Run(() => ResolveTrackArtwork(_tracks, albums, fresh, ct));
+            DebugLog.Write("Scan", $"per-track covers: {albums.Distinct().Count()} album(s)");
+            var trackCovers = await Task.Run(() => ResolveTrackArtwork(_tracks, albums, fresh, ct));
+            DebugLog.Write("Scan", $"per-track covers: done ({trackCovers} changed)");
         }
         if (ct.IsCancellationRequested)
         {
+            DebugLog.Write("Scan", $"cancelled after publish (checkpoint={_checkpointRequested})");
             if (_checkpointRequested)
                 // Enumeration already completed (only artwork was interrupted), so
                 // _tracks is the authoritative scanned set — persist it as the checkpoint.
@@ -587,10 +607,14 @@ public class LibraryService : ILibraryService
 
         // Final authoritative rebuild (persists the index cache and attaches all
         // extracted covers), then write through to disk.
+        DebugLog.Write("Scan", "rebuild: start");
         await RebuildIndexesAsync();
+        DebugLog.Write("Scan", "rebuild: done");
 
         // Persist to disk
+        DebugLog.Write("Scan", "save: start");
         await SaveAsync();
+        DebugLog.Write("Scan", "save: done");
         // The SQLite tracks mirror is deliberately not rewritten here: nothing reads
         // it yet (startup loads library.json), and a full DELETE+reinsert of every
         // row after each scan was pure write amplification at 50k+ tracks. The manual
@@ -612,6 +636,7 @@ public class LibraryService : ILibraryService
             }
         }, ct);
 
+        DebugLog.Write("Scan", $"done ({_tracks.Count} tracks, t={Environment.TickCount64 - scanStarted}ms)");
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         // Tag reads and artwork extraction above leave large dead arrays behind;
         // every caller (startup, Settings rescan, folder watcher) gets the trim.
@@ -717,6 +742,8 @@ public class LibraryService : ILibraryService
         // session log is how a "some covers don't load" report can be told apart from a
         // decode problem without the reporter's files.
         var noArt = new ConcurrentBag<string>();
+        // Developer Mode: names each file right before TagLib re-opens it (#97).
+        var artOpen = new CappedBreadcrumb("Scan", "art: open");
         try
         {
             await Task.Run(() =>
@@ -728,6 +755,7 @@ public class LibraryService : ILibraryService
                         if (ct.IsCancellationRequested) return;
                         var rep = Album.SelectArtworkRepresentative(g.ToList());
                         if (rep == null) return;
+                        artOpen.Note(rep.FilePath);
                         var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
                         if (artBytes is { Length: > 0 })
                         {
@@ -803,6 +831,8 @@ public class LibraryService : ILibraryService
         if (groups.Count == 0) return 0;
 
         var refreshed = 0;
+        // Developer Mode: names each file right before TagLib re-opens it (#97).
+        var artOpen = new CappedBreadcrumb("Scan", "folder art: open");
         try
         {
             await Task.Run(() =>
@@ -829,6 +859,7 @@ public class LibraryService : ILibraryService
                         // ExtractAlbumArt keeps the embedded-first precedence and the
                         // loose-file attribution rules; a newer cover.jpg only wins when
                         // that is what extraction would have picked in the first place.
+                        artOpen.Note(rep.FilePath);
                         var fresh = _metadata.ExtractAlbumArt(rep.FilePath);
                         if (RefreshAlbumArtworkIfChanged(g.Key, fresh))
                         {
@@ -874,6 +905,8 @@ public class LibraryService : ILibraryService
         catch { /* unreadable folder: treat as empty */ }
 
         var changed = 0;
+        // Developer Mode: names each file right before TagLib re-opens it (#97).
+        var artOpen = new CappedBreadcrumb("Scan", "track art: open");
         foreach (var album in tracks.Where(t => wanted.Contains(t.AlbumId)).GroupBy(t => t.AlbumId))
         {
             if (ct.IsCancellationRequested) break;
@@ -894,6 +927,7 @@ public class LibraryService : ILibraryService
                 if (albumHash != null && albumHash != current)
                 {
                     var rep = albumTracks.FirstOrDefault(t => t.ArtworkHash == albumHash);
+                    if (rep != null) artOpen.Note(rep.FilePath);
                     var bytes = rep == null ? null : _metadata.ExtractEmbeddedArt(rep.FilePath);
                     if (bytes != null && TrackArtwork.Fingerprint(bytes) == albumHash)
                     {
@@ -911,6 +945,7 @@ public class LibraryService : ILibraryService
                 {
                     // An unchanged odd track keeps the file it already has.
                     if (hasOwn && !freshlyRead.Contains(t.Id)) continue;
+                    artOpen.Note(t.FilePath);
                     var bytes = _metadata.ExtractEmbeddedArt(t.FilePath);
                     if (bytes == null) continue;
                     _persistence.SaveTrackArtwork(t.Id, bytes);
@@ -1148,7 +1183,8 @@ public class LibraryService : ILibraryService
 
             if (existing != null &&
                 fi.LastWriteTimeUtc == existing.LastModified &&
-                fi.Length == existing.FileSize)
+                fi.Length == existing.FileSize &&
+                !IsStaleCaseSpelling(existing.FilePath, filePath))
             {
                 // The audio didn't change, but the watcher also routes a replaced
                 // cover.jpg here via a sibling audio file — check that album's folder art.
@@ -1473,6 +1509,11 @@ public class LibraryService : ILibraryService
     /// </summary>
     public static event Action<string>? ArtworkFileReplaced;
 
+    /// <summary>The slow part of <see cref="LoadAsync"/> (SQLite, schema migration, cover
+    /// heal) that runs after it returns. It re-applies static metadata toggles from the
+    /// persisted settings, so tests await it before restoring them. Internal for tests.</summary>
+    internal Task BackgroundInit { get; private set; } = Task.CompletedTask;
+
     public async Task LoadAsync()
     {
         // Startup calls this from the UI thread. The persistence layer awaits without
@@ -1502,7 +1543,7 @@ public class LibraryService : ILibraryService
             LibraryUpdated?.Invoke(this, EventArgs.Empty);
 
             // Run slow tasks (SQLite, schema migration) in background to not block UI
-            _ = Task.Run(async () =>
+            BackgroundInit = Task.Run(async () =>
             {
                 try
                 {
@@ -1525,6 +1566,7 @@ public class LibraryService : ILibraryService
                 }
                 catch (Exception ex)
                 {
+                    DebugLog.Write("Library", $"Background init failed: {ex.Message}");
                     System.Diagnostics.Debug.WriteLine($"[LibraryService] Background init failed: {ex.Message}");
                 }
                 finally
@@ -1564,6 +1606,7 @@ public class LibraryService : ILibraryService
         {
             // Log the error but don't crash the app for a failed library save.
             // Library data remains in memory and will be retried on next save/shutdown.
+            DebugLog.Write("Library", $"Failed to save library: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[LibraryService] Failed to save library: {ex.Message}");
         }
     }
@@ -2856,6 +2899,7 @@ public class LibraryService : ILibraryService
         }
         catch (Exception ex)
         {
+            DebugLog.Write("Library", $"Failed to save index cache: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[LibraryService] Failed to save index cache: {ex.Message}");
         }
     }
@@ -2871,6 +2915,17 @@ public class LibraryService : ILibraryService
             System.Text.Encoding.UTF8.GetBytes(normalized));
         return new Guid(hash);
     }
+
+    /// <summary>
+    /// True when a known track's stored path and the path just found for the same id
+    /// differ in spelling and the stored one no longer exists: a case-only rename on a
+    /// case-sensitive filesystem (Linux; the id folds case, see ComputeFileId). The
+    /// unchanged-file fast paths kept the stale path — a file VLC can't open — through
+    /// every rescan. Where the old spelling still resolves (case-insensitive volumes)
+    /// the fast path is taken exactly as before.
+    /// </summary>
+    private static bool IsStaleCaseSpelling(string storedPath, string foundPath) =>
+        !string.Equals(storedPath, foundPath, StringComparison.Ordinal) && !File.Exists(storedPath);
 
     /// <summary>Returns the first artist token for sorting (e.g. "Bad Bunny" from "Bad Bunny & J Balvin").</summary>
     private static string GetPrimaryArtist(string? artist)

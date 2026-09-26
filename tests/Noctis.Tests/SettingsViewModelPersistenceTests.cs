@@ -45,6 +45,7 @@ public class SettingsViewModelPersistenceTests : IDisposable
         await vm.LoadAsync();
 
         vm.IncludePrereleaseUpdates = true;
+        vm.AutoInstallUpdates = true;
         vm.DeveloperMode = true;
         await vm.SaveAsync();
 
@@ -53,7 +54,48 @@ public class SettingsViewModelPersistenceTests : IDisposable
         await reloaded.LoadAsync();
 
         Assert.True(reloaded.IncludePrereleaseUpdates);
+        Assert.True(reloaded.AutoInstallUpdates);
         Assert.True(reloaded.DeveloperMode);
+    }
+
+    /// <summary>Turning "Update automatically" off must never leave an install queued for the
+    /// next launch: the queue entry and its downloaded installer are both removed.</summary>
+    [AvaloniaFact]
+    public async Task AutoInstallUpdatesOff_DiscardsTheQueuedInstall()
+    {
+        var seeded = new AppSettings { AutoInstallUpdates = true };
+        await new PersistenceService(_root).SaveSettingsAsync(seeded);
+
+        var installer = Path.Combine(Path.GetTempPath(), $"Noctis-Update-{Guid.NewGuid().ToString("N")[..8]}-Setup.exe");
+        File.WriteAllText(installer, "not an installer");
+        try
+        {
+            var store = new AutoUpdateStore(_root);
+            store.Save(new AutoUpdateState
+            {
+                Tag = "v99.0.0",
+                Pending = new PendingInstall
+                {
+                    Tag = "v99.0.0", FromVersion = "1.0.0", ToVersion = "99.0.0",
+                    InstallerPath = installer, Sha256 = new string('0', 64)
+                }
+            });
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync();
+            Assert.True(vm.AutoInstallUpdates);
+            Assert.False(vm.IsReadyToInstall);
+
+            vm.AutoInstallUpdates = false;
+
+            Assert.Null(store.Load()!.Pending);
+            Assert.False(File.Exists(installer));
+            Assert.False(vm.IsAutoInstallPending);
+        }
+        finally
+        {
+            try { File.Delete(installer); } catch { }
+        }
     }
 
     /// <summary>Discord (Mistery, 2026-09-21): the picker applied the language live but the
@@ -158,6 +200,29 @@ public class SettingsViewModelPersistenceTests : IDisposable
         await reloaded.LoadAsync();
 
         Assert.Equal(37, reloaded.GetSettings().Volume);
+    }
+
+    /// <summary>A32: the volume reached disk only through the shutdown save, so a crash or
+    /// kill brought back the last graceful exit's (possibly louder) level. A live change
+    /// now rides the debounced settings write on its own.</summary>
+    [AvaloniaFact]
+    public async Task LiveVolumeChange_ReachesDiskWithoutShutdownSave()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        vm.PersistVolume(23); // no SaveAsync: the debounced write alone must land it
+
+        var persistence = new PersistenceService(_root);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        int stored;
+        do
+        {
+            await Task.Delay(100);
+            stored = (await persistence.LoadSettingsAsync()).Volume;
+        } while (stored != 23 && DateTime.UtcNow < deadline);
+
+        Assert.Equal(23, stored);
     }
 
     [AvaloniaFact]

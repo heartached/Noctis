@@ -3,6 +3,11 @@ using Avalonia.Headless;
 using Avalonia.Themes.Fluent;
 
 [assembly: AvaloniaTestApplication(typeof(Noctis.Tests.HeadlessTestApp))]
+// Test classes run one at a time: plain [Fact] tests that post to Dispatcher.UIThread or
+// time a window raced the headless session's thread when classes ran in parallel, so a
+// loaded CI runner failed a different probe on every run ("a different thread owns it",
+// a streamed slice landing after its clear, a 308px window). Costs ~30 s locally.
+[assembly: Xunit.CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Noctis.Tests;
 

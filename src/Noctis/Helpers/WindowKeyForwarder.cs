@@ -18,6 +18,11 @@ namespace Noctis.Helpers;
 ///
 /// Text editing is respected: when a <see cref="TextBox"/> is focused (e.g. a search box),
 /// the key is left alone so Ctrl+A still selects text instead of being hijacked.
+///
+/// Avalonia calls one element's tunnel handlers newest first, so this forwarder (added on
+/// page attach) runs BEFORE the window's own constructor-registered tunnel handlers. A
+/// window whose overlays can own the keyboard implements <see cref="IPageKeyOverlayHost"/>
+/// so the page stays out of the way while one of them does.
 /// </summary>
 public sealed class WindowKeyForwarder
 {
@@ -50,9 +55,21 @@ public sealed class WindowKeyForwarder
     {
         // Don't steal Ctrl+A (etc.) while the user is editing text in a box.
         if (e.Source is TextBox) return;
-        // An earlier window-level tunnel handler already took the key (a global shortcut,
-        // or the queue panel's Ctrl+A / Escape / Delete while focus is in it).
+        // A tunnel handler added to the window after this one already took the key.
         if (e.Handled) return;
+        // An overlay above the page owns the keyboard (the Settings sheet, or the queue panel
+        // while focus is in it): Ctrl+A / Escape belong to it, not to the page underneath.
+        if (_topLevel is IPageKeyOverlayHost { IsOverlayCapturingKeys: true }) return;
         _handler(sender, e);
     }
+}
+
+/// <summary>
+/// Implemented by a window that shows overlays above its pages. While
+/// <see cref="IsOverlayCapturingKeys"/> is true, <see cref="WindowKeyForwarder"/> keeps page
+/// shortcuts from acting on the page hidden underneath.
+/// </summary>
+public interface IPageKeyOverlayHost
+{
+    bool IsOverlayCapturingKeys { get; }
 }

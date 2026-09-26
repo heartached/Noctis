@@ -77,6 +77,7 @@ public class FreshInstallDefaultsTests
         Assert.False(Fresh.DiscordRichPresenceEnabled);
         Assert.False(Fresh.DeveloperMode);
         Assert.False(Fresh.IncludePrereleaseUpdates);
+        Assert.False(Fresh.AutoInstallUpdates);
         Assert.False(Fresh.CollapseAlbumEditions);
         Assert.False(Fresh.ExclusiveAudioEnabled);
 

@@ -119,6 +119,17 @@ public partial class PlaybackBarView : UserControl
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
+        // GitHub #96: bar tooltips sit above their button (Placement=Top, the #52 fix) —
+        // exactly where the slider popup opens, and the tooltip's native window draws over
+        // the overlay-hosted slider. Hovering the icon and scrolling left "Volume" covering
+        // the pill. The popup already shows what the tooltip names, so mute it while open.
+        VolumeFlyout.Opened += (_, _) =>
+        {
+            ToolTip.SetIsOpen(VolumeButton, false);
+            ToolTip.SetServiceEnabled(VolumeButton, false);
+        };
+        VolumeFlyout.Closed += (_, _) => ToolTip.SetServiceEnabled(VolumeButton, true);
+
         // Shape follows the ARRANGED width, so a window squeeze (MaxWidth clamping the
         // island) morphs the layout exactly like a user drag does.
         IslandBorder.SizeChanged += OnIslandBorderSizeChanged;

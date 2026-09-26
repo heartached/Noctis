@@ -43,9 +43,10 @@ public class AppSettings
 
     /// <summary>
     /// "Community plugins" switch (Settings → Plugins). False = restricted mode: no
-    /// third-party plugin code is loaded. Null = never decided: the plugin host sets it on
-    /// first load, ON when plugins were already installed (they ran before this switch
-    /// existed), OFF for everyone else.
+    /// third-party plugin code is loaded. Null = never decided (a settings.json from before
+    /// this switch existed): the plugin host sets it on first load, ON when plugins were
+    /// already installed (they ran before this switch existed), OFF for everyone else.
+    /// Defaults the app creates itself (no usable settings file, Reset) set it to false.
     /// </summary>
     public bool? CommunityPluginsEnabled { get; set; }
 
@@ -111,6 +112,10 @@ public class AppSettings
 
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
+
+    /// <summary>Opt-in: download new releases in the background and install them at the next launch
+    /// (Windows Inno install, Linux AppImage/tarball; macOS downloads only). Off = manual Update button.</summary>
+    public bool AutoInstallUpdates { get; set; } = false;
 
     /// <summary>Shows the Developer section (version manager + debug logs) in Settings → About.</summary>
     public bool DeveloperMode { get; set; } = false;
@@ -210,6 +215,14 @@ public class AppSettings
     /// (0–100). Below 100 the cover colour is blended into the theme's own page colour, so
     /// the page reads calmer and its buttons stand further apart from it (Discord ask).</summary>
     public int AlbumPageTintStrength { get; set; } = AlbumPageTintStrengthDefault;
+
+    /// <summary>Fresh-install value of <see cref="AlbumPageTintWholePage"/>.</summary>
+    public const bool AlbumPageTintWholePageDefault = true;
+
+    /// <summary>A tinted album page carries the cover colour under Other Versions / More By
+    /// too, with no viewport-tall padding between the tracks and those rows (Discord
+    /// "Album Page Redesign" mockup). Off keeps the tint on the album block alone.</summary>
+    public bool AlbumPageTintWholePage { get; set; } = AlbumPageTintWholePageDefault;
 
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
@@ -682,6 +695,10 @@ public class AppSettings
 
     /// <summary>Music video frame: rounded like the cover (true) or flat (false).</summary>
     public bool MusicVideoRoundedCorners { get; set; } = true;
+
+    /// <summary>A song with a music video plays the clip's own audio instead of the song file
+    /// (decided at each song start; the song file is the fallback). Off by default.</summary>
+    public bool MusicVideoUseVideoAudio { get; set; }
 
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>

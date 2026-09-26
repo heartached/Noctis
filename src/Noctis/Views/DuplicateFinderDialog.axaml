@@ -109,6 +109,13 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                               Padding="24,4,24,8">
                     <ItemsControl ItemsSource="{Binding Groups}">
+                        <!-- Virtualized: a library with many duplicates built every group card (and
+                             its per-copy rows) on open. Each group's own list stays small. -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupGroup">
                                 <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">
