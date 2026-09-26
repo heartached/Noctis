@@ -6541,14 +6541,18 @@ public partial class SettingsViewModel : ViewModelBase
         DownloadProgress = 0;
         UpdateStatusText = "Downloading update...";
 
+        // No deadline (X16): a slow link may take as long as it needs. ResumableDownload retries a
+        // stalled transfer and gives up on its own, so this token is only the user's Cancel.
+        var cts = new CancellationTokenSource();
+        _updateCts?.Cancel();
+        _updateCts?.Dispose();
+        _updateCts = cts;
+        var token = cts.Token;
+
         try
         {
-            _updateCts?.Cancel();
-            _updateCts?.Dispose();
-            _updateCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-
             // Re-check to get fresh URL
-            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, _updateCts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, token);
             if (update is null || update.InstallerApiUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";
@@ -6565,7 +6569,7 @@ public partial class SettingsViewModel : ViewModelBase
                 }));
 
             _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
-                update, progress, _updateCts.Token, requireChecksums: true);
+                update, progress, token, requireChecksums: true);
 
             UpdateStatusText = "Update ready to install.";
             IsReadyToInstall = true;
@@ -6575,10 +6579,11 @@ public partial class SettingsViewModel : ViewModelBase
             UpdateStatusText = "Download corrupted. Try again.";
             _ = ClearUpdateStatusAfterDelay();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
+            DebugLog.Write("Updater", "Download cancelled.");
         }
         catch (Exception ex)
         {
@@ -6823,7 +6828,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _devCts?.Cancel();
             _devCts?.Dispose();
-            _devCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            _devCts = new CancellationTokenSource(); // no deadline (X16); ResumableDownload handles stalls
 
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>
@@ -6886,7 +6891,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _devCts?.Cancel();
             _devCts?.Dispose();
-            _devCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            _devCts = new CancellationTokenSource(); // no deadline (X16); ResumableDownload handles stalls
 
             var downloads = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
