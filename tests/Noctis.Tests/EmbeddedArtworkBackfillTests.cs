@@ -158,6 +158,9 @@ public class EmbeddedArtworkBackfillTests : IDisposable
         }
         finally
         {
+            // Its background init copies this test's "off" into the static mirror; let it
+            // finish first, or it lands in a later test's scan.
+            await library.BackgroundInit;
             MetadataService.UseEmbeddedArtwork = true;
         }
     }

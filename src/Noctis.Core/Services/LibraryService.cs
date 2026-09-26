@@ -1509,6 +1509,11 @@ public class LibraryService : ILibraryService
     /// </summary>
     public static event Action<string>? ArtworkFileReplaced;
 
+    /// <summary>The slow part of <see cref="LoadAsync"/> (SQLite, schema migration, cover
+    /// heal) that runs after it returns. It re-applies static metadata toggles from the
+    /// persisted settings, so tests await it before restoring them. Internal for tests.</summary>
+    internal Task BackgroundInit { get; private set; } = Task.CompletedTask;
+
     public async Task LoadAsync()
     {
         // Startup calls this from the UI thread. The persistence layer awaits without
@@ -1538,7 +1543,7 @@ public class LibraryService : ILibraryService
             LibraryUpdated?.Invoke(this, EventArgs.Empty);
 
             // Run slow tasks (SQLite, schema migration) in background to not block UI
-            _ = Task.Run(async () =>
+            BackgroundInit = Task.Run(async () =>
             {
                 try
                 {
