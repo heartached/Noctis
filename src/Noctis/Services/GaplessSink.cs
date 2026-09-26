@@ -71,9 +71,25 @@ public sealed class GaplessSink : IDisposable
     /// <summary>
     /// Raised after the output was rebuilt on a (new) device. The fresh WASAPI
     /// stream registers a brand-new audio session at Windows' default level —
-    /// the owner must re-assert the user volume or playback jumps to 100%.
+    /// the owner must re-assert the user volume or playback jumps to 100%. The
+    /// new output renders silence until the owner calls <see cref="ReleaseRebuildHold"/>
+    /// (at most <see cref="RebuildHoldMaxMs"/>).
     /// </summary>
     public event Action? Rebuilt;
+
+    // Fail-safe for the rebuild hold: past it the audio plays at whatever level the
+    // new session has rather than not at all. The owner's re-assert gives up at 1.5 s.
+    private const int RebuildHoldMaxMs = 2000;
+    private long _rebuildHoldStart; // Stopwatch timestamp of the pending hold
+
+    /// <summary>Ends the silence a rebuild put on the new output (see <see cref="Rebuilt"/>),
+    /// once the user volume is on the new session or the owner gave up on it.</summary>
+    public void ReleaseRebuildHold()
+    {
+        if (_muteGate.ReleaseHold())
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.RebuildHoldReleased",
+                $"heldMs={Stopwatch.GetElapsedTime(Interlocked.Read(ref _rebuildHoldStart)).TotalMilliseconds:0}");
+    }
 
     public static GaplessSink? TryCreate()
     {
@@ -362,6 +378,14 @@ public sealed class GaplessSink : IDisposable
                     catch { /* watch just compares against null → no false trigger */ }
                     // New render thread: re-apply priority + MMCSS on first read.
                     _probe.RearmBoost();
+                    // The new session opens at its own level, not the user's: render silence
+                    // from the first sample until the owner re-asserted the volume. Without a
+                    // subscriber nothing would release it.
+                    if (Rebuilt != null)
+                    {
+                        Interlocked.Exchange(ref _rebuildHoldStart, Stopwatch.GetTimestamp());
+                        _muteGate.Hold(RebuildHoldMaxMs);
+                    }
                     if (_desiredPlaying) newOut.Play();
                     lock (_gate)
                     {

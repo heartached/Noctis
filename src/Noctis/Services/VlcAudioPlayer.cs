@@ -4257,23 +4257,37 @@ public class VlcAudioPlayer : IAudioPlayer
     /// The gapless sink rebuilt its WASAPI stream (device unplug/switch): the
     /// new stream's session opens at Windows' default level on the new device,
     /// ignoring the user's volume until re-asserted — same 100%-blip mechanism
-    /// as a track-open, so run the same invalidate-and-poll reassert.
+    /// as a track-open, so run the same invalidate-and-poll reassert. The sink holds
+    /// the new output silent until the level landed on the rendering session (or the
+    /// reassert gave up), so the new session's own level is never heard.
     /// </summary>
     private void OnGaplessSinkRebuilt()
     {
-        if (_sessionVolume == null) return;
+        var sink = _gaplessSink;
+        if (_sessionVolume == null)
+        {
+            sink?.ReleaseRebuildHold();
+            return;
+        }
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            _sessionVolume.Invalidate();
-            for (var waited = 0; waited < 1500; waited += 20)
+            try
             {
-                if (_disposed) return;
-                if (ReapplySessionVolume() && _sessionVolume.HoldsActiveSession) return;
                 _sessionVolume.Invalidate();
-                Thread.Sleep(20);
+                for (var waited = 0; waited < 1500; waited += 20)
+                {
+                    if (_disposed) return;
+                    if (ReapplySessionVolume() && _sessionVolume.HoldsActiveSession) return;
+                    _sessionVolume.Invalidate();
+                    Thread.Sleep(20);
+                }
+                DebugLogger.Warn(DebugLogger.Category.Playback, "SessionVolume.ReassertGaveUp",
+                    $"origin=rebuild, heldActive={_sessionVolume.HoldsActiveSession}");
             }
-            DebugLogger.Warn(DebugLogger.Category.Playback, "SessionVolume.ReassertGaveUp",
-                $"origin=rebuild, heldActive={_sessionVolume.HoldsActiveSession}");
+            finally
+            {
+                sink?.ReleaseRebuildHold();
+            }
         });
     }
 
