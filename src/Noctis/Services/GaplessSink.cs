@@ -80,8 +80,7 @@ public sealed class GaplessSink : IDisposable
         using var enumerator = new MMDeviceEnumerator();
         using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
         var mix = device.AudioClient.MixFormat;
-        SampleRate = Math.Clamp(mix.SampleRate, 8000, 384000);
-        Channels = mix.Channels >= 2 ? 2 : 1;
+        (SampleRate, Channels) = EngineFormat(mix.SampleRate);
         _deviceId = device.ID;
         // 200ms pre-buffer before a FRESH segment renders (kills the input-start
         // buzz of chopping ramping delivery against silence); the gapless splice
@@ -150,6 +149,17 @@ public sealed class GaplessSink : IDisposable
     /// <summary>Requested WasapiOut buffer depth. Also the lead of the segment's
     /// consumed-frame position over the speaker (see VlcAudioPlayer.OutputLatency).</summary>
     public const int OutputLatencyMs = 100;
+
+    /// <summary>
+    /// The engine (VLC-facing) format for the startup device's mix rate. It stays fixed for the
+    /// session (rebuilds reuse the provider chain), so it must not inherit a mono or telephone-rate
+    /// endpoint such as a Bluetooth hands-free "Headset": every track would stay downmixed and
+    /// band-limited until restart, even after moving to stereo speakers. Always stereo, and 48 kHz
+    /// below 44.1 kHz; shared mode's AUTOCONVERTPCM (NAudio passes it) matrixes and resamples for
+    /// such a device, while a normal device keeps its own rate.
+    /// </summary>
+    internal static (int SampleRate, int Channels) EngineFormat(int mixSampleRate) =>
+        (mixSampleRate < 44100 ? 48000 : Math.Min(mixSampleRate, 384000), 2);
 
     // ── Multi-channel upmix (Settings → Audio) ──
     // Read at output creation, so a change takes effect through the same rebuild
