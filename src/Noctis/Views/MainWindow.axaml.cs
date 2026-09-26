@@ -33,7 +33,39 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
-        foreach (var window in new List<Window>(desktop.Windows))
+        var dialog = RemapVisibleWindows(desktop.Windows);
+        if (dialog == null || ReferenceEquals(dialog, _remapWaitingOnDialog))
+            return;
+        _remapWaitingOnDialog = dialog;
+        dialog.Closed += (_, _) =>
+        {
+            _remapWaitingOnDialog = null;
+            Dispatcher.UIThread.Post(RemapWindowsAfterResume);
+        };
+    }
+
+    private Window? _remapWaitingOnDialog;
+
+    /// <summary>
+    /// Re-maps every visible, non-minimized window, unless a dialog is open: then nothing is
+    /// touched and that dialog is returned so the caller can remap once it closes. Avalonia's
+    /// Window.Hide() hides the window's dialogs too, detaches them and ends their ShowDialog
+    /// as if cancelled, and Show() never brings them back, so a remap would make an open
+    /// metadata editor or confirmation vanish. Only ShowDialog gives a window an Owner here.
+    /// Internal for tests.
+    /// </summary>
+    internal static Window? RemapVisibleWindows(IReadOnlyList<Window> windows)
+    {
+        foreach (var window in windows)
+        {
+            if (window.IsVisible && window.Owner != null)
+            {
+                DebugLogger.Info(DebugLogger.Category.UI, "ResumeWatch.Deferred",
+                    $"{window.GetType().Name} is open; remapping after it closes");
+                return window;
+            }
+        }
+        foreach (var window in new List<Window>(windows))
         {
             if (!window.IsVisible || window.WindowState == WindowState.Minimized)
                 continue;
@@ -51,6 +83,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 DebugLogger.Warn(DebugLogger.Category.UI, "ResumeWatch.Remap", $"{window.GetType().Name}: {ex.Message}");
             }
         }
+        return null;
     }
     private MacNowPlayingService? _macNowPlaying;
     private TrayIcon? _trayIcon;

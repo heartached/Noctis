@@ -1,4 +1,7 @@
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using Noctis.Services;
+using Noctis.Views;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -30,5 +33,46 @@ public class LinuxResumeWatcherTests
     {
         if (OperatingSystem.IsLinux()) return; // the Linux path needs a system bus; covered by hand
         Assert.Null(LinuxResumeWatcher.TryStart(() => { }));
+    }
+
+    // Audit P28: hiding the owner hid the open dialog, detached it and ended its ShowDialog
+    // as if cancelled; the remap then skipped it (no longer visible), so it never came back.
+    [AvaloniaFact]
+    public void RemapAfterResume_WithDialogOpen_LeavesDialogOpenAndWaitsForIt()
+    {
+        var owner = new Window();
+        owner.Show();
+        var dialog = new Window();
+        var result = dialog.ShowDialog(owner);
+        try
+        {
+            var waitingOn = MainWindow.RemapVisibleWindows(new[] { owner, dialog });
+
+            Assert.False(result.IsCompleted);
+            Assert.True(dialog.IsVisible);
+            Assert.Same(owner, dialog.Owner);
+            Assert.Same(dialog, waitingOn);
+        }
+        finally
+        {
+            dialog.Close();
+            owner.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void RemapAfterResume_NoDialog_RemapsAndKeepsWindowsShown()
+    {
+        var window = new Window();
+        window.Show();
+        try
+        {
+            Assert.Null(MainWindow.RemapVisibleWindows(new[] { window }));
+            Assert.True(window.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 }
