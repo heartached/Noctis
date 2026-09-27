@@ -211,6 +211,9 @@ public partial class SidebarView : UserControl
     private Point _dragStart;
     private double _dragGrabY;
     private bool _dragActive;
+    // The press travelled past the drag threshold: even a drag that was refused (a lone
+    // folder) is then no click, so its release must not fold / unfold the header.
+    private bool _dragMoved;
     private LiquidReorder? _liquid;
 
     private LiquidReorder Liquid => _liquid ??= new LiquidReorder(
@@ -241,6 +244,7 @@ public partial class SidebarView : UserControl
         _dragStart = e.GetPosition(PlaylistList);
         _dragGrabY = e.GetPosition(row).Y;
         _dragActive = false;
+        _dragMoved = false;
     }
 
     private void OnPlaylistRowPointerMoved(object? sender, PointerEventArgs e)
@@ -254,6 +258,7 @@ public partial class SidebarView : UserControl
             if (Math.Abs(pos.X - _dragStart.X) < PlaylistDragThreshold &&
                 Math.Abs(pos.Y - _dragStart.Y) < PlaylistDragThreshold)
                 return;
+            _dragMoved = true;
             if (!(_dragItem.IsFolder ? StartFolderDrag(e) : StartPlaylistDrag(e))) return;
         }
 
@@ -399,8 +404,8 @@ public partial class SidebarView : UserControl
     {
         if (!_dragActive)
         {
-            // A press on a folder header that never became a drag is a click: toggle it.
-            if (_dragItem is { IsFolder: true } clicked && ReferenceEquals(RowOf(e.Source)?.DataContext, clicked))
+            // A press on a folder header that never moved like a drag is a click: toggle it.
+            if (!_dragMoved && _dragItem is { IsFolder: true } clicked && ReferenceEquals(RowOf(e.Source)?.DataContext, clicked))
                 _vm?.ToggleFolderExpansion(clicked.Label);
             _dragItem = null;
             return;
