@@ -558,11 +558,20 @@ internal static class AdvancedTagIO
     /// (e.g. the ReplayGain scanner) can write format-agnostic tags through one
     /// code path.
     /// </summary>
+    /// <remarks>
+    /// Only the format's own tag type (<see cref="NativeCustomTagType"/>) is created;
+    /// other tag types are updated only when the file already has them. Creating every
+    /// type used to prepend an ID3v2 header and append an APEv2 trailer to FLAC (ffmpeg
+    /// then reports "invalid sync code" and VLC drops the last fraction of a second) and
+    /// append APEv2 to MP3.
+    /// </remarks>
     public static void WriteCustomField(TagFile file, string key, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        var native = NativeCustomTagType(file);
+        bool Create(TagTypes type) => clean != null && type == native;
 
-        if (file.GetTag(TagTypes.Id3v2, clean != null) is TagLib.Id3v2.Tag id3)
+        if (file.GetTag(TagTypes.Id3v2, Create(TagTypes.Id3v2)) is TagLib.Id3v2.Tag id3)
         {
             if (clean == null)
             {
@@ -576,29 +585,56 @@ internal static class AdvancedTagIO
             }
         }
 
-        if (file.GetTag(TagTypes.Xiph, clean != null) is XiphComment xiph)
+        if (file.GetTag(TagTypes.Xiph, Create(TagTypes.Xiph)) is XiphComment xiph)
         {
             if (clean == null) xiph.RemoveField(key);
             else xiph.SetField(key, new[] { clean });
         }
 
-        if (file.GetTag(TagTypes.Ape, clean != null) is TagLib.Ape.Tag ape)
+        if (file.GetTag(TagTypes.Ape, Create(TagTypes.Ape)) is TagLib.Ape.Tag ape)
         {
             if (clean == null) ape.RemoveItem(key);
             else ape.SetValue(key, clean);
         }
 
-        if (file.GetTag(TagTypes.Apple, clean != null) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, Create(TagTypes.Apple)) is AppleTag apple)
         {
             if (clean == null) apple.SetDashBox("com.apple.iTunes", key, (string?)null);
             else apple.SetDashBox("com.apple.iTunes", key, clean);
         }
 
-        if (file.GetTag(TagTypes.Asf, clean != null) is TagLib.Asf.Tag asf)
+        if (file.GetTag(TagTypes.Asf, Create(TagTypes.Asf)) is TagLib.Asf.Tag asf)
         {
             if (clean == null) asf.RemoveDescriptors(key);
             else asf.SetDescriptorString(clean, key);
         }
+    }
+
+    /// <summary>
+    /// The tag type a format natively carries custom fields in: Xiph comments for
+    /// FLAC/Ogg/Opus, MP4 freeform atoms, ASF descriptors for WMA, APEv2 for
+    /// APE/WavPack/Musepack, and ID3v2 for everything else (MP3, AIFF, WAV, DSF).
+    /// </summary>
+    internal static TagTypes NativeCustomTagType(TagFile file) => file switch
+    {
+        TagLib.Flac.File or TagLib.Ogg.File => TagTypes.Xiph,
+        TagLib.Mpeg4.File => TagTypes.Apple,
+        TagLib.Asf.File => TagTypes.Asf,
+        TagLib.Ape.File or TagLib.WavPack.File or TagLib.MusePack.File => TagTypes.Ape,
+        _ => TagTypes.Id3v2,
+    };
+
+    /// <summary>
+    /// Drops ID3v1 / ID3v2 / APEv2 tags that exist only in memory — not on disk and not
+    /// the format's own tag type — so saving doesn't bolt them onto the file. TagLib#
+    /// gives every MP3 an ID3v1 tag when it opens it, so a plain save appends a
+    /// 128-byte ID3v1 trailer to a file that only had ID3v2.
+    /// </summary>
+    internal static void RemoveAddedForeignTags(TagFile file)
+    {
+        var added = file.TagTypes & ~file.TagTypesOnDisk & ~NativeCustomTagType(file)
+            & (TagTypes.Id3v1 | TagTypes.Id3v2 | TagTypes.Ape);
+        if (added != TagTypes.None) file.RemoveTags(added);
     }
 
     /// <summary>
