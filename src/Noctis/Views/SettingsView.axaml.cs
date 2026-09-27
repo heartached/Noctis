@@ -358,6 +358,7 @@ public partial class SettingsView : UserControl
             case nameof(SettingsViewModel.MediaFoldersScrollRequest):
             case nameof(SettingsViewModel.SelectedSettingsTab):
                 ScrollToTop();
+                Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;
 
             // Version-manager download started: bring the progress bar + Cancel
@@ -382,6 +383,46 @@ public partial class SettingsView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         OnSettingsDataContextChanged(this, EventArgs.Empty);
+        Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
+    }
+
+    internal static readonly HashSet<string> StyleProbeTabs = new(); // internal for tests
+
+    /// <summary>
+    /// macOS diagnostics (owner's Mac, 09-26): styled values that came out wrong there —
+    /// square pill buttons and text boxes, invisible section titles, slider tracks gone —
+    /// while cards and locally set values drew fine. One line per session in "Copy Logs"
+    /// with what the styles actually resolved to, so wrong values and right-values-wrong-
+    /// pixels can be told apart. Once per tab per session.
+    /// </summary>
+    private void LogStyleProbe()
+    {
+        var tab = (DataContext as SettingsViewModel)?.SelectedSettingsTab ?? "?";
+        if (StyleProbeTabs.Contains(tab)) return;
+        try
+        {
+            var all = this.GetVisualDescendants().ToList();
+            var title = all.OfType<TextBlock>().FirstOrDefault(t => t.Classes.Contains("section-title") && t.IsEffectivelyVisible);
+            var pill = all.OfType<Button>().FirstOrDefault(b => b.Classes.Contains("pill-action") && b.IsEffectivelyVisible);
+            var pillPresenter = pill?.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().FirstOrDefault();
+            var box = all.OfType<TextBox>().FirstOrDefault(t => t.IsEffectivelyVisible);
+            var boxBorder = box?.GetVisualDescendants().OfType<Border>().FirstOrDefault(x => x.Name == "PART_BorderElement");
+            var slider = all.OfType<Slider>().FirstOrDefault(s => s.Classes.Contains("accent-slider") && s.IsEffectivelyVisible);
+            var track = slider?.GetVisualDescendants().OfType<RepeatButton>().FirstOrDefault(r => r.Name == "PART_IncreaseButton")
+                ?.GetVisualDescendants().OfType<Border>().FirstOrDefault();
+            if (title == null && pill == null && slider == null) return; // nothing realized yet
+            StyleProbeTabs.Add(tab);
+            DebugLog.Write("SettingsStyle",
+                $"{tab}: title opacity={title?.Opacity:0.##} fg={title?.Foreground} | " +
+                $"pill radius={pillPresenter?.CornerRadius} bg={pillPresenter?.Background} | " +
+                $"textbox radius={box?.CornerRadius} border={boxBorder?.CornerRadius} | " +
+                $"slider track opacity={track?.Opacity:0.##} radius={track?.CornerRadius} h={track?.Bounds.Height:0.#} bg={track?.Background}");
+        }
+        catch (Exception ex)
+        {
+            StyleProbeTabs.Add(tab);
+            DebugLog.Write("SettingsStyle", $"{tab}: probe failed: {ex.Message}");
+        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
