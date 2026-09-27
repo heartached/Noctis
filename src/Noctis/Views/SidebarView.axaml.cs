@@ -258,6 +258,7 @@ public partial class SidebarView : UserControl
         }
 
         var cardTop = e.GetPosition(PlaylistListHost).Y - _dragGrabY;
+        if (_dragItem.IsFolder) cardTop = ClampToFolders(cardTop);
         Liquid.MoveCardTo(cardTop);
         if (_dragItem.IsFolder)
         {
@@ -310,7 +311,10 @@ public partial class SidebarView : UserControl
     private bool StartFolderDrag(PointerEventArgs e)
     {
         if (_vm == null || _dragItem == null) return false;
-        var block = FolderBlocks().Find(b => ReferenceEquals(b.Header, _dragItem));
+        // A lone folder has nowhere to go: the press stays a click (folds / unfolds on release).
+        var blocks = FolderBlocks();
+        if (blocks.Count < 2) return false;
+        var block = blocks.Find(b => ReferenceEquals(b.Header, _dragItem));
         if (block.Header == null || PlaylistList.ContainerFromIndex(block.Start) is not ListBoxItem row) return false;
 
         _dragActive = true;
@@ -371,6 +375,16 @@ public partial class SidebarView : UserControl
             if (dist < bestDist) { bestDist = dist; best = slot; }
         }
         return best;
+    }
+
+    /// <summary>Keeps the folder card between the first folder's top and the last folder block's
+    /// bottom, so it never floats over the pinned or loose playlists it cannot land among.</summary>
+    private double ClampToFolders(double cardTop)
+    {
+        var blocks = FolderBlocks();
+        if (blocks.Count == 0) return cardTop;
+        var (_, lastStart, lastCount) = blocks[^1];
+        return Math.Clamp(cardTop, FolderSlotTop(blocks[0].Start), FolderSlotTop(lastStart + lastCount - Liquid.SourceCount));
     }
 
     /// <summary>Card top for the dragged block starting at row <paramref name="slot"/>. The

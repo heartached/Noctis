@@ -26,7 +26,7 @@ public class SidebarGroupReorderTests
     private sealed class PlaylistPersistence : TestPersistenceService
     {
         public List<Playlist> Saved { get; private set; } = new();
-        public List<Playlist> Initial { get; } = new()
+        public List<Playlist> Initial { get; init; } = new()
         {
             new Playlist { Id = Guid.NewGuid(), Name = "A1", Folder = "Alpha" },
             new Playlist { Id = Guid.NewGuid(), Name = "A2", Folder = "Alpha" },
@@ -64,10 +64,10 @@ public class SidebarGroupReorderTests
 
     private sealed record Sidebar(SidebarViewModel Vm, PlaylistPersistence Persistence, SidebarView View, Window Win, ListBox List);
 
-    private static async Task<Sidebar> ShowSidebarAsync()
+    private static async Task<Sidebar> ShowSidebarAsync(PlaylistPersistence? persistence = null)
     {
         EnsureAppStyles();
-        var persistence = new PlaylistPersistence();
+        persistence ??= new PlaylistPersistence();
         var vm = new SidebarViewModel(persistence, new FakeLibraryService()) { IsExpanded = true };
         await vm.LoadPlaylistsAsync();
         var view = new SidebarView { DataContext = vm };
@@ -231,6 +231,77 @@ public class SidebarGroupReorderTests
         Assert.Equal(new[] { "Alpha", "A1", "A2", "Beta", "B1", "Loose", "Gamma", "G1" }, Labels(s.Vm));
         Assert.Equal("Beta", s.Persistence.Saved.Single(p => p.Name == "Loose").Folder);
         Assert.DoesNotContain("drop-target", beta.Classes);
+    }
+
+    [AvaloniaFact]
+    public async Task DraggingTheOnlyFolder_StartsNoDrag_AndStaysAClick()
+    {
+        // Discord Luwi (1.5.5): with one folder there is nowhere to move it, yet the card
+        // lifted, left an empty gap at its slot and floated over the loose playlists.
+        var s = await ShowSidebarAsync(new PlaylistPersistence
+        {
+            Initial = new()
+            {
+                new Playlist { Id = Guid.NewGuid(), Name = "Pinned", IsPinned = true },
+                new Playlist { Id = Guid.NewGuid(), Name = "A1", Folder = "Alpha" },
+                new Playlist { Id = Guid.NewGuid(), Name = "A2", Folder = "Alpha" },
+                new Playlist { Id = Guid.NewGuid(), Name = "L1" },
+                new Playlist { Id = Guid.NewGuid(), Name = "L2" },
+            },
+        });
+        Assert.Equal(new[] { "Pinned", "Alpha", "A1", "A2", "L1", "L2" }, Labels(s.Vm));
+        var header = Row(s.List, 1);
+        var pitch = header.Bounds.Height + header.Margin.Top + header.Margin.Bottom;
+        var card = s.View.FindControl<Border>("PlaylistDragCard")!;
+        var start = Centre(header, s.Win);
+        var end = new Point(start.X, start.Y + 3 * pitch);
+        DragTo(s.Win, start, end);
+
+        Assert.False(card.IsVisible, "a lone folder has nowhere to go");
+        foreach (var c in s.List.GetRealizedContainers())
+        {
+            Assert.Equal(1, c.Opacity); // no hole where the folder was
+            Assert.Equal(0, OffsetY(c)); // and no gap opening below
+        }
+        s.Win.MouseUp(end, MouseButton.Left, RawInputModifiers.None);
+        Pump(40);
+        // The press never became a drag, so its release is the header click: it folds.
+        Assert.Equal(new[] { "Pinned", "Alpha", "L1", "L2" }, Labels(s.Vm));
+
+        s.Win.MouseDown(start, MouseButton.Left);
+        s.Win.MouseUp(start, MouseButton.Left, RawInputModifiers.None);
+        Pump(4);
+        Assert.Equal(new[] { "Pinned", "Alpha", "A1", "A2", "L1", "L2" }, Labels(s.Vm));
+        Assert.False(card.IsVisible);
+        Assert.Empty(s.Persistence.Saved);
+        Assert.Null(s.Vm.SelectedNavItem);
+    }
+
+    [AvaloniaFact]
+    public async Task DraggingAFolderPastTheLast_KeepsTheCardOverTheFolders_AndLandsAfterTheLast()
+    {
+        var s = await ShowSidebarAsync();
+        var header = Row(s.List, 0);
+        var pitch = header.Bounds.Height + header.Margin.Top + header.Margin.Bottom;
+        var host = s.View.FindControl<Panel>("PlaylistListHost")!;
+        var headerTop = header.TranslatePoint(new Point(0, 0), host)!.Value.Y;
+        var looseTop = Row(s.List, 7).TranslatePoint(new Point(0, 0), host)!.Value.Y;
+
+        // Far below Loose: the card stops where the Alpha block (3 rows) would sit after
+        // Gamma, its bottom on G1's, instead of floating over the loose playlist.
+        var start = Centre(header, s.Win);
+        var end = new Point(start.X, start.Y + 10 * pitch);
+        DragTo(s.Win, start, end);
+
+        var card = s.View.FindControl<Border>("PlaylistDragCard")!;
+        Assert.True(card.IsVisible, "drag card should be showing");
+        var cardY = ((TransformGroup)card.RenderTransform!).Children.OfType<TranslateTransform>().Single().Y;
+        Assert.Equal(headerTop + 4 * pitch, cardY, 1.0);
+        Assert.True(cardY + card.Height <= looseTop, "the card stays off the loose playlists");
+
+        s.Win.MouseUp(end, MouseButton.Left, RawInputModifiers.None);
+        Pump(40);
+        Assert.Equal(new[] { "Beta", "B1", "Gamma", "G1", "Alpha", "A1", "A2", "Loose" }, Labels(s.Vm));
     }
 
     // ── Order model (no UI) ──
