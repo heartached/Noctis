@@ -632,8 +632,12 @@ internal static class AdvancedTagIO
     /// Whether a write of <paramref name="clean"/> may create a <paramref name="type"/>
     /// tag: only a non-empty value, and only in the format's own tag type.
     /// </summary>
-    private static bool CreatesTag(TagFile file, TagTypes type, string? clean)
-        => clean != null && type == NativeCustomTagType(file);
+    internal static bool CreatesTag(TagFile file, TagTypes type, string? clean)
+        => CreatesTag(file, type, clean != null);
+
+    /// <inheritdoc cref="CreatesTag(TagFile, TagTypes, string?)"/>
+    internal static bool CreatesTag(TagFile file, TagTypes type, bool hasValue)
+        => hasValue && type == NativeCustomTagType(file);
 
     /// <summary>
     /// Drops ID3v1 / ID3v2 / APEv2 tags that exist only in memory — not on disk and not
