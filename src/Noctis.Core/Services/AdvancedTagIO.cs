@@ -500,11 +500,16 @@ internal static class AdvancedTagIO
     //  FIELD WRITE HELPERS
     // ══════════════════════════════════════════════════════════════
 
+    /// <remarks>
+    /// Like <see cref="WriteCustomField"/>, only creates the format's own tag type
+    /// (<see cref="CreatesTag"/>) — a Lyricist/ISRC/… edit used to prepend an ID3v2 header
+    /// to FLAC — and updates the other tag types only when the file already has them.
+    /// </remarks>
     private static void WriteField(TagFile file, string? id3FrameId, string? xiphKey, string? appleAtom, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-        if (id3FrameId != null && file.GetTag(TagTypes.Id3v2, clean != null) is TagLib.Id3v2.Tag id3)
+        if (id3FrameId != null && file.GetTag(TagTypes.Id3v2, CreatesTag(file, TagTypes.Id3v2, clean)) is TagLib.Id3v2.Tag id3)
         {
             var frameId = ByteVector.FromString(id3FrameId, StringType.Latin1);
             var existing = id3.GetFrames<TextInformationFrame>()
@@ -524,13 +529,13 @@ internal static class AdvancedTagIO
             }
         }
 
-        if (xiphKey != null && file.GetTag(TagTypes.Xiph, clean != null) is XiphComment xiph)
+        if (xiphKey != null && file.GetTag(TagTypes.Xiph, CreatesTag(file, TagTypes.Xiph, clean)) is XiphComment xiph)
         {
             if (clean == null) xiph.RemoveField(xiphKey);
             else xiph.SetField(xiphKey, new[] { clean });
         }
 
-        if (appleAtom != null && file.GetTag(TagTypes.Apple, clean != null) is AppleTag apple)
+        if (appleAtom != null && file.GetTag(TagTypes.Apple, CreatesTag(file, TagTypes.Apple, clean)) is AppleTag apple)
         {
             var bv = appleAtom.StartsWith("\u00A9")
                 ? new ByteVector(new byte[] { 0xA9 }.Concat(System.Text.Encoding.ASCII.GetBytes(appleAtom[1..])).ToArray())
@@ -544,7 +549,7 @@ internal static class AdvancedTagIO
         WriteField(file, "TPUB", "ORGANIZATION", "©pub", value);
         // Also write to PUBLISHER xiph field for compatibility
         var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        if (file.GetTag(TagTypes.Xiph, clean != null) is XiphComment xiph)
+        if (file.GetTag(TagTypes.Xiph, CreatesTag(file, TagTypes.Xiph, clean)) is XiphComment xiph)
         {
             if (clean == null) xiph.RemoveField("PUBLISHER");
             else xiph.SetField("PUBLISHER", new[] { clean });
@@ -568,8 +573,7 @@ internal static class AdvancedTagIO
     public static void WriteCustomField(TagFile file, string key, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        var native = NativeCustomTagType(file);
-        bool Create(TagTypes type) => clean != null && type == native;
+        bool Create(TagTypes type) => CreatesTag(file, type, clean);
 
         if (file.GetTag(TagTypes.Id3v2, Create(TagTypes.Id3v2)) is TagLib.Id3v2.Tag id3)
         {
@@ -623,6 +627,13 @@ internal static class AdvancedTagIO
         TagLib.Ape.File or TagLib.WavPack.File or TagLib.MusePack.File => TagTypes.Ape,
         _ => TagTypes.Id3v2,
     };
+
+    /// <summary>
+    /// Whether a write of <paramref name="clean"/> may create a <paramref name="type"/>
+    /// tag: only a non-empty value, and only in the format's own tag type.
+    /// </summary>
+    private static bool CreatesTag(TagFile file, TagTypes type, string? clean)
+        => clean != null && type == NativeCustomTagType(file);
 
     /// <summary>
     /// Drops ID3v1 / ID3v2 / APEv2 tags that exist only in memory — not on disk and not

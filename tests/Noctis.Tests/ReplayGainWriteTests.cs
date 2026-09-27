@@ -28,9 +28,9 @@ public class ReplayGainWriteTests : IDisposable
 
     // "fLaC" + a lone STREAMINFO block (1 s, 44.1 kHz, stereo, 16-bit) + filler audio:
     // enough for TagLib# to open it as a FLAC with no Vorbis comment block yet.
-    private string CreateFlac()
+    internal static string CreateFlac(string dir)
     {
-        var path = Path.Combine(_dir, "rg.flac");
+        var path = Path.Combine(dir, "rg.flac");
         var bytes = new List<byte>();
         bytes.AddRange("fLaC"u8.ToArray());
         bytes.AddRange(new byte[] { 0x80, 0x00, 0x00, 34 }); // last block, STREAMINFO, 34 bytes
@@ -49,9 +49,9 @@ public class ReplayGainWriteTests : IDisposable
 
     // Silent MPEG-1 Layer III frames behind an ID3v2 tag, and nothing else — no ID3v1
     // trailer, no APEv2 (written by hand: a TagLib# save would add ID3v1 itself).
-    private string CreateMp3WithId3v2Only()
+    internal static string CreateMp3WithId3v2Only(string dir)
     {
-        var path = Path.Combine(_dir, "rg.mp3");
+        var path = Path.Combine(dir, "rg.mp3");
         var id3 = new TagLib.Id3v2.Tag { Title = "Quevedo" };
         var bytes = new List<byte>(id3.Render().Data);
         const int frameLength = 417; // 144 * 128000 / 44100, no padding
@@ -67,19 +67,19 @@ public class ReplayGainWriteTests : IDisposable
         return path;
     }
 
-    private static TagLib.TagTypes TagTypesOnDisk(string path)
+    internal static TagLib.TagTypes TagTypesOnDisk(string path)
     {
         using var f = TagLib.File.Create(path);
         return f.TagTypesOnDisk;
     }
 
-    private static bool Contains(byte[] haystack, string needle)
+    internal static bool Contains(byte[] haystack, string needle)
         => Encoding.Latin1.GetString(haystack).Contains(needle, StringComparison.Ordinal);
 
     [Fact]
     public void Flac_gets_only_a_vorbis_comment()
     {
-        var path = CreateFlac();
+        var path = CreateFlac(_dir);
 
         var (ok, error) = ReplayGainScannerService.WriteReplayGainTags(path, -7.84, 0.891251, -6.1, 0.977237);
         Assert.True(ok, error);
@@ -104,7 +104,7 @@ public class ReplayGainWriteTests : IDisposable
     [Fact]
     public void Mp3_with_only_id3v2_gets_no_ape_or_id3v1()
     {
-        var path = CreateMp3WithId3v2Only();
+        var path = CreateMp3WithId3v2Only(_dir);
 
         var (ok, error) = ReplayGainScannerService.WriteReplayGainTags(path, -3.5, 1.02, null, null);
         Assert.True(ok, error);
@@ -133,7 +133,7 @@ public class ReplayGainWriteTests : IDisposable
     {
         // Foreign tag types are no longer created, but one the file already carries
         // (mp3gain writes APEv2) must not be left holding a stale gain.
-        var path = CreateMp3WithId3v2Only();
+        var path = CreateMp3WithId3v2Only(_dir);
         using (var f = TagLib.File.Create(path))
         {
             ((TagLib.Ape.Tag)f.GetTag(TagLib.TagTypes.Ape, true)).SetValue("REPLAYGAIN_TRACK_GAIN", "+9.00 dB");
@@ -154,7 +154,7 @@ public class ReplayGainWriteTests : IDisposable
         // The player keeps the track open while it is scanned. An atomic temp-copy +
         // rename swaps a new file in under the name and leaves that open handle on the
         // untouched original; an in-place save rewrites the bytes under it.
-        var path = CreateFlac();
+        var path = CreateFlac(_dir);
         var original = File.ReadAllBytes(path);
 
         if (OperatingSystem.IsWindows())
@@ -195,7 +195,7 @@ public class ReplayGainWriteTests : IDisposable
         public uint VolumeSerial, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
     }
 
-    private static ulong WindowsFileId(string path)
+    internal static ulong WindowsFileId(string path)
     {
         using var handle = File.OpenHandle(path);
         Assert.True(GetFileInformationByHandle(handle, out var info));
@@ -206,7 +206,7 @@ public class ReplayGainWriteTests : IDisposable
     public void Advisory_write_on_flac_does_not_add_id3v2_or_ape()
     {
         // Same helper, other caller: the album editor's explicit toggle.
-        var path = CreateFlac();
+        var path = CreateFlac(_dir);
         using (var f = TagLib.File.Create(path))
         {
             AdvancedTagIO.WriteAdvisory(f, 1);
