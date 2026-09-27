@@ -301,6 +301,14 @@ public partial class MiniPlayerWindow : Window
 
         DataContextChanged += (_, _) => HookViewModel();
 
+        // What the OS actually granted, for "Copy Logs": on macOS a hint that falls back to
+        // None paints the window opaque (square card on a dark rectangle).
+        Opened += (_, _) => LogTransparency("opened");
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ActualTransparencyLevelProperty) LogTransparency("changed");
+        };
+
         // The root border starts faded/scaled-down in XAML; flipping the values once
         // the window is shown lets its transitions play the open animation.
         Opened += (_, _) =>
@@ -956,10 +964,17 @@ public partial class MiniPlayerWindow : Window
     // not anti-aliased, and the design grounds' drop shadows fall outside it. Mica is left
     // out on purpose: it tints from the wallpaper instead of blurring what is behind.
 
-    /// <summary>The transparency levels asked for, and what the frost toggle maps to.</summary>
-    internal static WindowTransparencyLevel[] TransparencyLevels(bool frosted) => frosted
-        ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
-        : new[] { WindowTransparencyLevel.Transparent };
+    /// <summary>The transparency levels asked for, and what the frost toggle maps to.
+    /// One shared array per choice: the hint is set again whenever the view model is
+    /// (re)attached, and Avalonia compares arrays by reference. On macOS a second, equal
+    /// hint that arrives as a new array is re-applied, the native backend skips the level
+    /// it already has and falls back to Opaque, and the window paints its fallback brush
+    /// behind the card as a dark square (Avalonia.Native TopLevelImpl, 12.1.3).</summary>
+    internal static WindowTransparencyLevel[] TransparencyLevels(bool frosted) => frosted ? FrostedLevels : ClearLevels;
+
+    private static readonly WindowTransparencyLevel[] FrostedLevels =
+        { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent };
+    private static readonly WindowTransparencyLevel[] ClearLevels = { WindowTransparencyLevel.Transparent };
 
     private bool _frosted;
 
@@ -1377,6 +1392,10 @@ public partial class MiniPlayerWindow : Window
 
     private string MenuState() =>
         $"isOpen={MorePopup.IsOpen} opacity={MenuCard.Opacity:0.##} active={IsActive} gen={_menuCloseGeneration}";
+
+    private void LogTransparency(string when) =>
+        Noctis.Services.DebugLog.Write("MiniPlayer",
+            $"transparency {when}: hint=[{string.Join(",", TransparencyLevelHint)}] actual={ActualTransparencyLevel}");
 
     // GitHub #79 diagnostics. Written straight to the session log behind Settings →
     // Developer Mode → "Copy Logs" (DebugLogger's UI entries are never shown anywhere),

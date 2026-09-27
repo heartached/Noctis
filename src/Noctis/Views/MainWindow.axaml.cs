@@ -23,6 +23,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private LinuxResumeWatcher? _resumeWatcher;
     private LinuxTrayHost? _trayHost;
 
+    private static readonly WindowTransparencyLevel[] GlassTransparencyLevels =
+    {
+        WindowTransparencyLevel.AcrylicBlur,
+        WindowTransparencyLevel.Mica,
+        WindowTransparencyLevel.Blur,
+        WindowTransparencyLevel.None,
+    };
+
     /// <summary>
     /// Linux, XWayland on NVIDIA: after a suspend the window came back see-through until the
     /// app was restarted (Mistery, Discord 2026-09-22; see <see cref="LinuxResumeWatcher"/>).
@@ -367,13 +375,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
         var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
 
-        TransparencyLevelHint = new[]
-        {
-            WindowTransparencyLevel.AcrylicBlur,
-            WindowTransparencyLevel.Mica,
-            WindowTransparencyLevel.Blur,
-            WindowTransparencyLevel.None,
-        };
+        // One shared array: a new, equal array on every glass refresh is re-applied by
+        // Avalonia, and macOS drops a repeated level to Opaque (see MiniPlayerWindow).
+        TransparencyLevelHint = GlassTransparencyLevels;
 
         if (acrylic != null)
         {
