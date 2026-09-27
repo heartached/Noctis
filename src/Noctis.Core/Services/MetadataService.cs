@@ -560,7 +560,26 @@ public class MetadataService : IMetadataService
     private static bool SaveTagsAtomically(string targetFilePath, Action<TagLib.File> applyTags, out string? error)
     {
         error = null;
+        try
+        {
+            SaveTagsAtomicallyOrThrow(targetFilePath, applyTags);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            DebugLog.Write("Metadata", $"Tag save failed for '{targetFilePath}': {ex.Message}");
+            return false;
+        }
+    }
 
+    /// <summary>
+    /// The temp-copy + atomic-rename save behind <see cref="SaveTagsAtomically(string, Action{TagLib.File})"/>,
+    /// throwing on failure (after removing the temp copy) so callers that retry on a
+    /// transient <see cref="IOException"/> — the ReplayGain scanner — can tell it apart.
+    /// </summary>
+    internal static void SaveTagsAtomicallyOrThrow(string targetFilePath, Action<TagLib.File> applyTags)
+    {
         // Same directory keeps the rename on one filesystem (so it is atomic); the
         // leading dot hides the transient file; the original extension is preserved
         // so TagLib still detects the format from the work copy.
@@ -589,14 +608,11 @@ public class MetadataService : IMetadataService
                 file.Save();
             }
             File.Move(tempPath, targetFilePath, overwrite: true);
-            return true;
         }
-        catch (Exception ex)
+        catch
         {
-            error = ex.Message;
             try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
-            DebugLog.Write("Metadata", $"Tag save failed for '{targetFilePath}': {ex.Message}");
-            return false;
+            throw;
         }
     }
 
