@@ -130,7 +130,7 @@ public class HiddenAnimationParkingTests
             host.IsVisible = true;
             Call(eq, "OnAnimTick", null, EventArgs.Empty);
             Assert.True(timer.IsEnabled);
-            Assert.Equal(TimeSpan.FromMilliseconds(16), timer.Interval);
+            Assert.Equal(EqVisualizer.FrameInterval, timer.Interval);
         }
         finally { win.Close(); }
     }
