@@ -218,26 +218,34 @@ public sealed class AudioAnalysisCoordinator
     /// Writes the detected tempo/key into the file's tags. Returns true when the file
     /// was actually rewritten.
     /// </summary>
-    private static bool TryWriteTags(Track track)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool TryWriteTags(Track track)
     {
         for (int attempt = 0; attempt < TagWriteMaxAttempts; attempt++)
         {
             try
             {
-                using var file = TagLib.File.Create(track.FilePath);
-                if (track.Bpm > 0) file.Tag.BeatsPerMinute = (uint)track.Bpm;
-                if (!string.IsNullOrWhiteSpace(track.MusicalKey))
+                // Temp copy + atomic rename, like every other tag write in the app: an
+                // in-place file.Save() on Linux/macOS corrupts the player's open read of
+                // a playing/prepared track (the audio stops early while the clock keeps
+                // ticking).
+                MetadataService.SaveTagsAtomicallyOrThrow(track.FilePath, file =>
                 {
-                    // "INITIALKEY", not "TKEY". WriteCustomField emits a TXXX frame whose
-                    // *description* is the key argument — and MetadataService.ReadMusicalKey
-                    // only accepts descriptions INITIALKEY / KEY / MUSICALKEY (the bare
-                    // "TKEY" it does read is the standard text frame, which this never
-                    // wrote). So the value could not be read back by Noctis or by
-                    // foobar/Serato/Mixed In Key, the re-import dropped it, and the
-                    // backfill re-analyzed and rewrote the file forever.
-                    AdvancedTagIO.WriteCustomField(file, "INITIALKEY", track.MusicalKey);
-                }
-                file.Save();
+                    if (track.Bpm > 0) file.Tag.BeatsPerMinute = (uint)track.Bpm;
+                    if (!string.IsNullOrWhiteSpace(track.MusicalKey))
+                    {
+                        // "INITIALKEY", not "TKEY". WriteCustomField emits a TXXX frame whose
+                        // *description* is the key argument — and MetadataService.ReadMusicalKey
+                        // only accepts descriptions INITIALKEY / KEY / MUSICALKEY (the bare
+                        // "TKEY" it does read is the standard text frame, which this never
+                        // wrote). So the value could not be read back by Noctis or by
+                        // foobar/Serato/Mixed In Key, the re-import dropped it, and the
+                        // backfill re-analyzed and rewrote the file forever.
+                        AdvancedTagIO.WriteCustomField(file, "INITIALKEY", track.MusicalKey);
+                    }
+                    // Only tempo/key change: no new ID3v1 trailer on an MP3 that had none.
+                    AdvancedTagIO.RemoveAddedForeignTags(file);
+                });
                 return true;
             }
             catch (System.IO.IOException) { System.Threading.Thread.Sleep(TagWriteRetryDelayMs); }
