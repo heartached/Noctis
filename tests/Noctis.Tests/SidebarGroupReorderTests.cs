@@ -265,13 +265,27 @@ public class SidebarGroupReorderTests
         }
         s.Win.MouseUp(end, MouseButton.Left, RawInputModifiers.None);
         Pump(40);
-        // The press never became a drag, so its release is the header click: it folds.
-        Assert.Equal(new[] { "Pinned", "Alpha", "L1", "L2" }, Labels(s.Vm));
+        // The press moved like a drag, so its release is no click either: the folder stays open.
+        Assert.Equal(new[] { "Pinned", "Alpha", "A1", "A2", "L1", "L2" }, Labels(s.Vm));
 
+        // A plain click still folds, and the next one unfolds.
+        s.Win.MouseDown(start, MouseButton.Left);
+        s.Win.MouseUp(start, MouseButton.Left, RawInputModifiers.None);
+        Pump(4);
+        Assert.Equal(new[] { "Pinned", "Alpha", "L1", "L2" }, Labels(s.Vm));
         s.Win.MouseDown(start, MouseButton.Left);
         s.Win.MouseUp(start, MouseButton.Left, RawInputModifiers.None);
         Pump(4);
         Assert.Equal(new[] { "Pinned", "Alpha", "A1", "A2", "L1", "L2" }, Labels(s.Vm));
+
+        // A hand that wobbles under the drag threshold is still a click.
+        var wobble = new Point(start.X + 3, start.Y + 3);
+        s.Win.MouseDown(start, MouseButton.Left);
+        s.Win.MouseMove(wobble, RawInputModifiers.LeftMouseButton);
+        Pump(2);
+        s.Win.MouseUp(wobble, MouseButton.Left, RawInputModifiers.None);
+        Pump(4);
+        Assert.Equal(new[] { "Pinned", "Alpha", "L1", "L2" }, Labels(s.Vm));
         Assert.False(card.IsVisible);
         Assert.Empty(s.Persistence.Saved);
         Assert.Null(s.Vm.SelectedNavItem);
