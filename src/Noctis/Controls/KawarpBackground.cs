@@ -68,11 +68,14 @@ public sealed class KawarpBackground : Control
     private double _beat;
     private bool _running;
     private bool _attached;
+    private readonly Helpers.HostWindowWatch _hostWindow;
 
     public KawarpBackground()
     {
         IsHitTestVisible = false;
         ClipToBounds = true;
+        // Minimized parks the frame loop (OnFrame); restoring restarts it here.
+        _hostWindow = new Helpers.HostWindowWatch(this, SyncState);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -111,7 +114,7 @@ public sealed class KawarpBackground : Control
             return;
         }
         LoadArtwork(ArtworkPath, Math.Clamp(BlurPasses, 1, 16));
-        if (!_running && TopLevel.GetTopLevel(this) is { } top)
+        if (!_running && !_hostWindow.IsMinimized && TopLevel.GetTopLevel(this) is { } top)
         {
             _running = true;
             top.RequestAnimationFrame(OnFrame);
@@ -159,6 +162,11 @@ public sealed class KawarpBackground : Control
     private void OnFrame(TimeSpan _)
     {
         if (!_running) return;
+        if (_hostWindow.IsMinimized)
+        {
+            _running = false;
+            return;
+        }
         var target = BeatReactive && BeatMeter.Shared.TryRead(BeatMeter.Shared.NowMs, out var pulse) ? pulse : 0;
         _beat += (target - _beat) * (target > _beat ? 0.5 : 0.08);
         InvalidateVisual();

@@ -18,8 +18,8 @@ namespace Noctis.Helpers;
 /// beats against the compositor's ~16.7 ms frame interval and reads as judder (the
 /// mini player's old 33 ms timer stepped 2-2-2-3 frames). Only transform/opacity
 /// values are written, never layout, so a frame costs a handful of property sets.
-/// The loop stops itself while the host is detached, hidden or disabled and resumes
-/// when it can be seen again.
+/// The loop stops itself while the host is detached, hidden, disabled or in a minimized
+/// window and resumes when it can be seen again.
 /// </summary>
 public sealed class FlowingArtworkAnimator : IDisposable
 {
@@ -42,6 +42,7 @@ public sealed class FlowingArtworkAnimator : IDisposable
     private bool _running;
     private bool _disposed;
     private DispatcherTimer? _visibilityPoll;
+    private readonly HostWindowWatch _hostWindow;
 
     private sealed class LayerTransforms
     {
@@ -84,6 +85,8 @@ public sealed class FlowingArtworkAnimator : IDisposable
         _layer2.RenderTransformOrigin = RelativePoint.Center;
         _layer2.RenderTransform = _t2.Group;
         _glow.Opacity = 0;
+        // Minimized parks the loop (OnFrame); restoring restarts it.
+        _hostWindow = new HostWindowWatch(host, TryStart);
     }
 
     /// <summary>The smoothed pulse currently on screen (0..1) — diagnostics/tests.</summary>
@@ -112,6 +115,12 @@ public sealed class FlowingArtworkAnimator : IDisposable
     private void TryStart()
     {
         if (_disposed || !_enabled || _running) return;
+        if (_hostWindow.IsMinimized)
+        {
+            // No poll while minimized: restoring the window calls back into TryStart.
+            StopVisibilityPoll();
+            return;
+        }
         if (!_host.IsEffectivelyVisible || TopLevel.GetTopLevel(_host) is not { } topLevel)
         {
             // Nothing to draw on yet — poll gently until the host can be seen. Cheaper
@@ -128,7 +137,7 @@ public sealed class FlowingArtworkAnimator : IDisposable
     private void OnFrame(TimeSpan _)
     {
         if (!_running) return;
-        if (_disposed || !_enabled)
+        if (_disposed || !_enabled || _hostWindow.IsMinimized)
         {
             _running = false;
             return;

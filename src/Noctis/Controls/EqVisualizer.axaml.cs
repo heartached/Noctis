@@ -20,7 +20,8 @@ namespace Noctis.Controls;
 /// alone read as stuck: five bands three octaves wide are always loud, so the bars sat
 /// pinned near the top. Where no sample tap is flowing (engines without one, or the first
 /// frames of a track) the oscillation alone runs, as before. Eases to flat on pause.
-/// A tick only repaints the bars (<see cref="EqBar"/>), never re-runs layout, at ~30 fps.
+/// A tick only repaints the bars (<see cref="EqBar"/>), never re-runs layout, at ~30 fps,
+/// and the timer stops outright while the host window is minimized.
 /// </summary>
 public class EqVisualizer : TemplatedControl
 {
@@ -35,6 +36,7 @@ public class EqVisualizer : TemplatedControl
 
     private EqBar? _bar1, _bar2, _bar3, _bar4, _bar5;
     private DispatcherTimer? _animTimer;
+    private readonly Helpers.HostWindowWatch _hostWindow;
     private DateTime _animStart;
     private bool _initialized;
 
@@ -89,6 +91,11 @@ public class EqVisualizer : TemplatedControl
         // control's IsVisible per row, so without this a hidden instance keeps
         // its 16ms timer running until the page is left.
         IsVisibleProperty.Changed.AddClassHandler<EqVisualizer>((c, e) => c.OnIsVisibleChanged());
+    }
+
+    public EqVisualizer()
+    {
+        _hostWindow = new Helpers.HostWindowWatch(this, OnHostMinimizedChanged);
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -173,9 +180,30 @@ public class EqVisualizer : TemplatedControl
     // there let the dispatcher root the closed window for as long as music played.
     private bool IsAttached => ((global::Avalonia.LogicalTree.ILogical)this).IsAttachedToLogicalTree;
 
+    // Minimized: stop outright, no poll; restoring restarts the bars. A flatten in progress
+    // just lands flat — nobody is watching it ease.
+    private void OnHostMinimizedChanged()
+    {
+        if (!_initialized) return;
+        if (_hostWindow.IsMinimized)
+        {
+            StopAnimating();
+            if (_flattening || !IsPlaying)
+            {
+                _flattening = false;
+                SetAllBars(FlatHeight);
+            }
+        }
+        else if (IsPlaying && IsVisible)
+        {
+            _flattening = false;
+            StartAnimating();
+        }
+    }
+
     private void StartAnimating()
     {
-        if (!IsAttached) return;
+        if (!IsAttached || _hostWindow.IsMinimized) return;
         _animStart = DateTime.UtcNow;
         _lastTick = _animStart;
         var timer = EnsureTimer();
@@ -203,7 +231,7 @@ public class EqVisualizer : TemplatedControl
 
     private void BeginFlatten()
     {
-        if (!IsAttached)
+        if (!IsAttached || _hostWindow.IsMinimized)
         {
             _flattening = false;
             StopAnimating();
@@ -228,6 +256,12 @@ public class EqVisualizer : TemplatedControl
         {
             _flattening = false;
             StopAnimating();
+            return;
+        }
+        if (_hostWindow.IsMinimized)
+        {
+            // Started in the moment before the watch saw the window minimized.
+            OnHostMinimizedChanged();
             return;
         }
         if (!IsEffectivelyVisible)
