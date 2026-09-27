@@ -37,7 +37,8 @@ public sealed class UpdateService
     {
         var v = CurrentVersion;
         return $"Noctis {v.Major}.{v.Minor}.{v.Build}" + (IsPrereleaseBuild ? " (pre-release)" : "")
-             + $"\nInstall source: {Source}";
+             + $"\nInstall source: {Source}"
+             + (MacRosetta.IsTranslated == true ? "\nRunning under Rosetta 2: Intel (x64) build on Apple Silicon" : "");
     }
 
     public static string CurrentVersionDisplay
@@ -408,7 +409,7 @@ public sealed class UpdateService
 
         if (OperatingSystem.IsMacOS())
         {
-            var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+            var arch = MacDmgArch(RuntimeInformation.OSArchitecture, MacRosetta.IsTranslated);
             return release.Assets.FirstOrDefault(a =>
                 a.Name != null &&
                 a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
@@ -447,6 +448,15 @@ public sealed class UpdateService
 
         return null;
     }
+
+    /// <summary>
+    /// Which macOS disk image ("arm64" / "x64") the updater installs. An Intel build
+    /// running under Rosetta on Apple Silicon moves to the native arm64 build instead of
+    /// updating itself to another Intel build. A failed Rosetta check (null) falls back to
+    /// the reported OS architecture alone.
+    /// </summary>
+    internal static string MacDmgArch(Architecture osArchitecture, bool? translatedByRosetta)
+        => osArchitecture == Architecture.Arm64 || translatedByRosetta == true ? "arm64" : "x64";
 
     /// <summary>
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
