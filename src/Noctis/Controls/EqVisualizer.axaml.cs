@@ -4,6 +4,8 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Noctis.Services;
 
@@ -18,6 +20,7 @@ namespace Noctis.Controls;
 /// alone read as stuck: five bands three octaves wide are always loud, so the bars sat
 /// pinned near the top. Where no sample tap is flowing (engines without one, or the first
 /// frames of a track) the oscillation alone runs, as before. Eases to flat on pause.
+/// A tick only repaints the bars (<see cref="EqBar"/>), never re-runs layout, at ~30 fps.
 /// </summary>
 public class EqVisualizer : TemplatedControl
 {
@@ -30,13 +33,13 @@ public class EqVisualizer : TemplatedControl
         set => SetValue(IsPlayingProperty, value);
     }
 
-    private Rectangle? _bar1, _bar2, _bar3, _bar4, _bar5;
+    private EqBar? _bar1, _bar2, _bar3, _bar4, _bar5;
     private DispatcherTimer? _animTimer;
     private DateTime _animStart;
     private bool _initialized;
 
-    // Pause-flatten runs on the same render timer with plain local Height sets.
-    // Animation.RunAsync with FillMode.Forward would pin Height at animation
+    // Pause-flatten runs on the same render timer with plain local BarHeight sets.
+    // Animation.RunAsync with FillMode.Forward would pin BarHeight at animation
     // priority once finished, masking every later local set (frozen bars on
     // the next play).
     private bool _flattening;
@@ -55,9 +58,11 @@ public class EqVisualizer : TemplatedControl
 
     // Frame cadence while the bars can be seen, and the slow re-check cadence while an
     // ancestor hides them (the playback bar's track box on the lyrics page, the mini
-    // player's inactive Sleeve form): own IsVisible stays true there, so the 16 ms timer
-    // used to keep running for bars nobody could see.
-    private static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(16);
+    // player's inactive Sleeve form): own IsVisible stays true there, so the frame timer
+    // used to keep running for bars nobody could see. ~30 fps: the motion is time-based
+    // (sines and dt-scaled smoothing), so a coarser tick samples the same curves, and
+    // every tick costs the whole window a composition frame.
+    internal static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(33);
     internal static readonly TimeSpan HiddenPollInterval = TimeSpan.FromMilliseconds(250);
 
     // Live state: one spectrum band per bar for tonal colour, the beat pulse for the
@@ -89,11 +94,11 @@ public class EqVisualizer : TemplatedControl
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
-        _bar1 = e.NameScope.Find<Rectangle>("Bar1");
-        _bar2 = e.NameScope.Find<Rectangle>("Bar2");
-        _bar3 = e.NameScope.Find<Rectangle>("Bar3");
-        _bar4 = e.NameScope.Find<Rectangle>("Bar4");
-        _bar5 = e.NameScope.Find<Rectangle>("Bar5");
+        _bar1 = e.NameScope.Find<EqBar>("Bar1");
+        _bar2 = e.NameScope.Find<EqBar>("Bar2");
+        _bar3 = e.NameScope.Find<EqBar>("Bar3");
+        _bar4 = e.NameScope.Find<EqBar>("Bar4");
+        _bar5 = e.NameScope.Find<EqBar>("Bar5");
 
         SetAllBars(FlatHeight);
         _initialized = true;
@@ -205,11 +210,11 @@ public class EqVisualizer : TemplatedControl
             SetAllBars(FlatHeight);
             return;
         }
-        _flattenFrom[0] = _bar1?.Height ?? FlatHeight;
-        _flattenFrom[1] = _bar2?.Height ?? FlatHeight;
-        _flattenFrom[2] = _bar3?.Height ?? FlatHeight;
-        _flattenFrom[3] = _bar4?.Height ?? FlatHeight;
-        _flattenFrom[4] = _bar5?.Height ?? FlatHeight;
+        _flattenFrom[0] = _bar1?.BarHeight ?? FlatHeight;
+        _flattenFrom[1] = _bar2?.BarHeight ?? FlatHeight;
+        _flattenFrom[2] = _bar3?.BarHeight ?? FlatHeight;
+        _flattenFrom[3] = _bar4?.BarHeight ?? FlatHeight;
+        _flattenFrom[4] = _bar5?.BarHeight ?? FlatHeight;
         _flattenStart = DateTime.UtcNow;
         _flattening = true;
         var timer = EnsureTimer();
@@ -312,33 +317,107 @@ public class EqVisualizer : TemplatedControl
         }
     }
 
-    private static void SetBarLevel(Rectangle? bar, float level)
+    private static void SetBarLevel(EqBar? bar, float level)
     {
         if (bar == null) return;
-        bar.Height = HeightForLevel(level);
+        bar.BarHeight = HeightForLevel(level);
     }
 
-    private static void SetBarLerp(Rectangle? bar, double from, double eased)
+    private static void SetBarLerp(EqBar? bar, double from, double eased)
     {
         if (bar == null) return;
-        bar.Height = from + (FlatHeight - from) * eased;
+        bar.BarHeight = from + (FlatHeight - from) * eased;
     }
 
-    private static void SetBar(Rectangle? bar, double t, int idx)
+    private static void SetBar(EqBar? bar, double t, int idx)
     {
         if (bar == null) return;
         var s = Math.Sin(2 * Math.PI * Frequencies[idx] * t + Phases[idx]);
         // Map sin in [-1,1] to [MinHeight, MaxHeight].
         var h = BarMin + (BarMax - BarMin) * (s * 0.5 + 0.5);
-        bar.Height = h;
+        bar.BarHeight = h;
     }
 
     private void SetAllBars(double h)
     {
-        if (_bar1 != null) _bar1.Height = h;
-        if (_bar2 != null) _bar2.Height = h;
-        if (_bar3 != null) _bar3.Height = h;
-        if (_bar4 != null) _bar4.Height = h;
-        if (_bar5 != null) _bar5.Height = h;
+        if (_bar1 != null) _bar1.BarHeight = h;
+        if (_bar2 != null) _bar2.BarHeight = h;
+        if (_bar3 != null) _bar3.BarHeight = h;
+        if (_bar4 != null) _bar4.BarHeight = h;
+        if (_bar5 != null) _bar5.BarHeight = h;
+    }
+}
+
+/// <summary>
+/// One <see cref="EqVisualizer"/> bar: a rounded rect <see cref="BarHeight"/> tall, centred
+/// in a slot whose own size never changes. The bars used to be Rectangles whose Height was
+/// set every tick, and every set re-ran layout (measure + arrange, then again once the
+/// Shape saw its new bounds) before the frame could render; a BarHeight change only
+/// repaints. It draws the rect layout rounding gave the old Rectangle (height rounded up
+/// to the pixel grid, offset rounded), so the bars look and step exactly as before.
+/// </summary>
+public sealed class EqBar : Control
+{
+    public static readonly StyledProperty<IBrush?> FillProperty =
+        Shape.FillProperty.AddOwner<EqBar>();
+
+    public static readonly StyledProperty<double> BarHeightProperty =
+        AvaloniaProperty.Register<EqBar, double>(nameof(BarHeight), 1.75);
+
+    /// <summary>The old Rectangle's RadiusX/RadiusY (half its width).</summary>
+    internal const double Radius = 0.875;
+
+    private RectangleGeometry? _geometry;
+
+    static EqBar()
+    {
+        AffectsRender<EqBar>(FillProperty, BarHeightProperty);
+    }
+
+    public IBrush? Fill
+    {
+        get => GetValue(FillProperty);
+        set => SetValue(FillProperty, value);
+    }
+
+    public double BarHeight
+    {
+        get => GetValue(BarHeightProperty);
+        set => SetValue(BarHeightProperty, value);
+    }
+
+    /// <summary>The rect the current <see cref="BarHeight"/> draws, in this control's space.</summary>
+    internal Rect BarRect => BarRectIn(Bounds.Size, BarHeight,
+        UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0);
+
+    /// <summary>
+    /// Where a vertically centred child with Height = <paramref name="height"/> lands in a
+    /// <paramref name="slot"/> once arranged, i.e. the old Rectangle's bounds. A
+    /// <paramref name="scale"/> of 0 skips layout rounding.
+    /// </summary>
+    internal static Rect BarRectIn(Size slot, double height, double scale)
+    {
+        var h = height;
+        var slotHeight = slot.Height;
+        if (scale > 0)
+        {
+            h = LayoutHelper.RoundLayoutValueUp(h, scale);
+            slotHeight = LayoutHelper.RoundLayoutValueUp(slotHeight, scale);
+        }
+        h = Math.Min(h, slotHeight);
+        var y = (slotHeight - h) / 2;
+        if (scale > 0) y = LayoutHelper.RoundLayoutValue(y, scale);
+        return new Rect(0, y, slot.Width, h);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        if (Fill is not { } fill) return;
+        var rect = BarRect;
+        if (rect.Width <= 0 || rect.Height <= 0) return;
+        // The geometry the Rectangle drew; rebuilt only when the rounded rect moves.
+        if (_geometry == null || _geometry.Rect != rect)
+            _geometry = new RectangleGeometry(rect, Radius, Radius);
+        context.DrawGeometry(fill, null, _geometry);
     }
 }
