@@ -1,4 +1,5 @@
 using System;
+
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Threading;
@@ -58,8 +59,15 @@ public sealed class HeartIcon : Panel
     public static readonly StyledProperty<Geometry?> GlyphProperty =
         AvaloniaProperty.Register<HeartIcon, Geometry?>(nameof(Glyph));
 
+    /// <summary>A click zooms the whole icon instead of popping the incoming glyph: in past
+    /// full size on favorite, out on unfavorite, then back, while the colours crossfade
+    /// (the artist page's star).</summary>
+    public static readonly StyledProperty<bool> ZoomOnToggleProperty =
+        AvaloniaProperty.Register<HeartIcon, bool>(nameof(ZoomOnToggle));
+
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
     public Geometry? Glyph { get => GetValue(GlyphProperty); set => SetValue(GlyphProperty, value); }
+    public bool ZoomOnToggle { get => GetValue(ZoomOnToggleProperty); set => SetValue(ZoomOnToggleProperty, value); }
     public double Size { get => GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
     public IBrush? OnBrush { get => GetValue(OnBrushProperty); set => SetValue(OnBrushProperty, value); }
     public IBrush? OffBrush { get => GetValue(OffBrushProperty); set => SetValue(OffBrushProperty, value); }
@@ -191,6 +199,12 @@ public sealed class HeartIcon : Panel
 
         var fav = IsFavorite;
         var showOff = !fav && ShowWhenOff;
+        if (animate && ZoomOnToggle)
+        {
+            // Decoration only: a failed zoom must never keep the state from showing.
+            try { RunZoom(fav); }
+            catch { RenderTransform = Rest; }
+        }
 
         SetGlyph(_on, shown: fav, restOpacity: 1, animate);
         SetGlyph(_off, shown: showOff, restOpacity: OffOpacity, animate);
@@ -200,6 +214,46 @@ public sealed class HeartIcon : Panel
             _on.Transitions = _onPop;
             _off.Transitions = _offPop;
         }
+    }
+
+    /// <summary>Peak scale of the zoom: past full size on favorite, below it on unfavorite.</summary>
+    internal const double ZoomInPeak = 1.35;
+    internal const double ZoomOutPeak = 0.72;
+
+    private static readonly TransformOperations ZoomInPose = TransformOperations.Parse("scale(1.35)");
+    private static readonly TransformOperations ZoomOutPose = TransformOperations.Parse("scale(0.72)");
+    private static readonly TimeSpan ZoomToPeak = TimeSpan.FromMilliseconds(170);
+    private static readonly TimeSpan ZoomBack = TimeSpan.FromMilliseconds(230);
+
+    private readonly Transitions _zoomOut = ZoomTransition(ZoomToPeak, new CubicEaseOut());
+    private readonly Transitions _zoomSettle = ZoomTransition(ZoomBack, new CubicEaseInOut());
+    private int _zoomGeneration;
+
+    private static Transitions ZoomTransition(TimeSpan duration, Easing easing) => new()
+    {
+        new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Easing = easing },
+    };
+
+    /// <summary>
+    /// Scale 1 → peak → 1 over the whole icon, as two RenderTransform transitions (ease out
+    /// to the peak, ease back to rest). A keyframe Animation built in code has no animator
+    /// for RenderTransform and threw; running it on a bare ScaleTransform threw too, inside
+    /// the IsFavorite change, so the star never turned red. A new click restarts from the
+    /// current pose and drops the pending settle of the previous one.
+    /// </summary>
+    private void RunZoom(bool favorite)
+    {
+        var generation = ++_zoomGeneration;
+        RenderTransformOrigin = RelativePoint.Center;
+        Transitions = _zoomOut;
+        RenderTransform = favorite ? ZoomInPose : ZoomOutPose;
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (generation != _zoomGeneration) return;
+            Transitions = _zoomSettle;
+            RenderTransform = Rest;
+        }, ZoomToPeak);
     }
 
     /// <summary>How long a glyph stays in the tree after it starts fading out (covers the pop).</summary>
@@ -221,7 +275,8 @@ public sealed class HeartIcon : Panel
         }
 
         glyph.Opacity = 0;
-        glyph.RenderTransform = Small;
+        // Zoom mode scales the whole icon, so the glyphs only crossfade.
+        glyph.RenderTransform = ZoomOnToggle ? Rest : Small;
         if (!animate || !glyph.IsVisible)
         {
             glyph.IsVisible = false;

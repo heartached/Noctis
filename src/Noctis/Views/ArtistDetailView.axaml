@@ -754,13 +754,14 @@
                                     Cursor="Hand"
                                     Command="{Binding ToggleFavoriteCommand}"
                                     ToolTip.Tip="{loc:T ArtistDetail.FavoriteArtistTip}">
-                                <!-- The heart's pop (scale 0.7→1 with a fade, both ways) on the star glyph. -->
+                                <!-- Zooms in on favourite, out on unfavourite, colours crossfading (HeartIcon.ZoomOnToggle). -->
                                 <ctrl:HeartIcon IsFavorite="{Binding IsFavorite}"
                                                     Glyph="{StaticResource StarIcon}"
                                                     Size="18"
                                                     OnBrush="{DynamicResource AccentColorBrush}"
                                                     OffOpacity="0.7"
-                                                    OutlineWhenOff="False" />
+                                                    OutlineWhenOff="False"
+                                                    ZoomOnToggle="True" />
                             </Button>
 
                             <!-- Options -->
