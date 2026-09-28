@@ -423,6 +423,41 @@
             <Setter Property="ToolTip.Placement" Value="Top" />
             <Setter Property="ToolTip.VerticalOffset" Value="-6" />
         </Style>
+
+        <!-- Liquid Glass island menus (GitHub #104). GlassMenuFlyout hosts the menu in the
+             window's overlay layer (a native popup window cannot be frosted) and adds the
+             "glass-menu" class while glass is on. The chrome is then a GlassPanel tinted with
+             the menu's own colour at Glass Opacity, and the open/close motion fades its Fade
+             (plus the items' Opacity) instead of the presenter's Opacity, which the GPU
+             backend does not apply to the blur. Mirrors the Fluent MenuFlyoutPresenter template. -->
+        <Style Selector="MenuFlyoutPresenter.glass-menu">
+            <Setter Property="(helpers:MenuOpenAnimation.UseFade)" Value="True" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <controls:GlassPanel Name="GlassMenuRoot"
+                                         Background="{TemplateBinding Background}"
+                                         CornerRadius="{TemplateBinding CornerRadius}"
+                                         Padding="{TemplateBinding Padding}"
+                                         MaxWidth="{DynamicResource FlyoutThemeMaxWidth}"
+                                         MinHeight="{DynamicResource MenuFlyoutThemeMinHeight}"
+                                         HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                                         GlassTintOpacity="{Binding IslandBackgroundOpacity}"
+                                         BlurRadius="14"
+                                         Fade="{TemplateBinding (helpers:MenuOpenAnimation.Fade)}">
+                        <ScrollViewer Theme="{StaticResource FluentMenuScrollViewer}"
+                                      Opacity="{TemplateBinding (helpers:MenuOpenAnimation.Fade)}"
+                                      HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                                      VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}">
+                            <ItemsPresenter Name="PART_ItemsPresenter"
+                                            ItemsPanel="{TemplateBinding ItemsPanel}"
+                                            Margin="{DynamicResource MenuFlyoutScrollerMargin}"
+                                            KeyboardNavigation.TabNavigation="Continue"
+                                            Grid.IsSharedSizeScope="True" />
+                        </ScrollViewer>
+                    </controls:GlassPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
     </UserControl.Styles>
 
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
@@ -452,7 +487,7 @@
                  user drags to resize the persistent bar (see the resize handlers in
                  code-behind). Grips overlay the pill's rounded ends via the negative
                  margins that reach back across the island's 12px padding. -->
-            <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Player Bar
+            <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Glass
                  Opacity). Driving the brush opacity (not the panel's) keeps text/controls crisp.
                  With Liquid Glass on the same brush becomes the tint over a live frost of the
                  content scrolling under the pill. Negative margin reaches back across the
@@ -496,7 +531,8 @@
                         <Button.Flyout>
                             <MenuFlyout Placement="Top"
                                         PlacementConstraintAdjustment="FlipY"
-                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True"
+                                        helpers:GlassMenuFlyout.Enable="True">
                                 <MenuItem Header="0.75×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="75">
                                     <MenuItem.Icon>
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
@@ -702,7 +738,8 @@
                         <Button.Flyout>
                             <MenuFlyout Placement="Top"
                                         PlacementConstraintAdjustment="FlipY"
-                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True"
+                                        helpers:GlassMenuFlyout.Enable="True">
                                 <MenuItem IsEnabled="False" IsVisible="{Binding IsSleepTimerActive}">
                                     <MenuItem.Header>
                                         <TextBlock FontSize="12" Opacity="0.7">
@@ -1263,7 +1300,8 @@
                         <Button.Flyout>
                             <MenuFlyout Placement="TopEdgeAlignedLeft"
                                         PlacementConstraintAdjustment="FlipY"
-                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True"
+                                        helpers:GlassMenuFlyout.Enable="True">
                                 <MenuItem Command="{Binding PlayPauseCommand}"
                                           MaxWidth="400">
                                     <MenuItem.Header>

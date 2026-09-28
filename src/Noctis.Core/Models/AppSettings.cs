@@ -404,7 +404,8 @@ public class AppSettings
 
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
-    /// original #66 alpha glass look.</summary>
+    /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
+    /// on it also tints the queue drawer and the island's menus. Key kept so looks carry over.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
