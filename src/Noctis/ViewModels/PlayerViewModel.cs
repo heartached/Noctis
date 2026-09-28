@@ -365,8 +365,10 @@ public partial class PlayerViewModel : ViewModelBase
         if (int.TryParse(semitones, out var st) && st is >= -12 and <= 12)
             PitchSemitones = st;
     }
-    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
-    /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
+    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings (Glass
+    /// Opacity); default 0.4 matches the original #66 alpha. Background only — controls/text
+    /// stay opaque. With Liquid Glass on the queue drawer and the island's menus tint their
+    /// frost with it too (GitHub #104).</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
     /// <summary>Opacity of the white track box (song-info card) inside the bar (0–1).
     /// Driven by Settings; 0 removes the card, leaving art/text straight on the pill.</summary>

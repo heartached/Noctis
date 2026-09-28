@@ -101,6 +101,16 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+
+        <!-- Queue drawer fill. A style rather than a Background attribute so Liquid Glass can
+             clear it: with glass on the QueueGlass frost under the drawer carries the fill
+             (QueueDrawerGlass adds the "glass" class). -->
+        <Style Selector="Border#QueuePopupPanel">
+            <Setter Property="Background" Value="{DynamicResource QueueDrawerBackground}"/>
+        </Style>
+        <Style Selector="Border#QueuePopupPanel.glass">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
     </Window.Styles>
 
 
@@ -732,17 +742,52 @@
                     </Grid>
                 </Border>
 
+                <!-- Queue drawer frost (Liquid Glass only, GitHub #104). A sibling UNDER the
+                     drawer with its exact geometry and transform, so it is never inside the
+                     drawer's rounded clip or its fading opacity layer (see the Settings sheet):
+                     it fades on its own Fade. Tint = the drawer's colour at Glass Opacity.
+                     Hidden while glass is off, so the drawer paints exactly as before. -->
+                <controls:GlassPanel x:Name="QueueGlass"
+                                     HorizontalAlignment="Right"
+                                     Width="330"
+                                     Margin="0,8,8,8"
+                                     CornerRadius="16"
+                                     Background="{DynamicResource QueueDrawerBackground}"
+                                     GlassTintOpacity="{Binding Player.IslandBackgroundOpacity}"
+                                     BlurRadius="14"
+                                     IsVisible="False"
+                                     Fade="0"
+                                     IsHitTestVisible="False"
+                                     RenderTransformOrigin="100%,50%"
+                                     RenderTransform="translateX(16px) scale(0.97)"
+                                     ZIndex="20">
+                    <controls:GlassPanel.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Fade" Duration="0:0:0.18">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                                <TransformOperationsTransition.Easing>
+                                    <CubicEaseOut/>
+                                </TransformOperationsTransition.Easing>
+                            </TransformOperationsTransition>
+                        </Transitions>
+                    </controls:GlassPanel.Transitions>
+                </controls:GlassPanel>
+
                 <!-- Queue popup panel (right side, rounded, slightly transparent).
                      Visibility and the fade/slide open-close animation are driven from
                      code-behind (IsQueuePopupOpen handler) so the close can play before
-                     the panel leaves the tree — same pattern as the Settings modal. -->
+                     the panel leaves the tree — same pattern as the Settings modal.
+                     Its fill comes from the Border#QueuePopupPanel style (Window.Styles). -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
                         Width="330"
                         Margin="0,8,8,8"
                         CornerRadius="16"
                         ClipToBounds="True"
-                        Background="{DynamicResource QueueDrawerBackground}"
                         TextElement.Foreground="{DynamicResource QueueDrawerForeground}"
                         IsVisible="False"
                         Opacity="0"
