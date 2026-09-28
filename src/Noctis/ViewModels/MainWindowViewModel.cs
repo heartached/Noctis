@@ -2044,8 +2044,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // changes (and via a debounce). If the box was already empty from a prior visit,
         // the destination view keeps whatever filter it was last given — so it can show
         // nothing even though the search box looks empty. Clear it directly here.
-        if (CurrentView is ISearchable searchableView)
-            searchableView.ApplyFilter(string.Empty);
+        ClearStaleSearch(CurrentView);
 
         TopBar.CurrentTabName = key switch
         {
@@ -2087,6 +2086,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
         RefreshBackButton();
         UiStallWatchdog.ReportIfSlow("Navigate", navigateStart, $"key={key}");
+    }
+
+    /// <summary>Clears a filter the destination view still holds from a prior visit. Skipped
+    /// when there is none: ApplyFilter("") rebuilt the Songs/Albums/Artists rows off-thread
+    /// and Reset them just after the page appeared, so every row and cover was re-created on
+    /// each sidebar click, and on Albums it also superseded Refresh's pending library reload.</summary>
+    internal static void ClearStaleSearch(ViewModelBase? view)
+    {
+        if (view is ISearchable { IsSearchCleared: false } searchable)
+            searchable.ApplyFilter(string.Empty);
     }
 
     /// <summary>Sidebar Lyrics Studio: re-scans the library for songs missing the chosen format

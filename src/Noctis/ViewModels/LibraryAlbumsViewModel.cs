@@ -287,6 +287,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
+    /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
+    /// filter Reset the whole list, re-creating every row and cover on each click.</summary>
+    public bool IsSearchCleared => string.IsNullOrEmpty(_currentFilter) && string.IsNullOrEmpty(SearchText);
+
     /// <summary>
     /// Identifies the filter the current rows were built for: artist, applied search (SearchText
     /// runs ahead of it by the debounce) and chips. The view resets its scroll only when this
