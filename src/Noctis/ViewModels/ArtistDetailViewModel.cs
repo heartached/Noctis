@@ -204,6 +204,29 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     public int AlbumCount => _tabAlbums.Count;
     public int SingleCount => _tabSingles.Count;
 
+    // ── Albums / Singles & EPs tab sort (GitHub #100) ──
+    /// <summary>"newest" (the page's order since the redesign), "oldest" or "name". One
+    /// setting for both tabs and every artist (<see cref="SettingsViewModel.ArtistReleaseSortMode"/>);
+    /// the Overview rows, Latest Release and Appears On stay newest-first.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReleaseSortLabel))]
+    private string _releaseSortMode = "newest";
+    public string ReleaseSortLabel => ReleaseSortMode switch
+    {
+        "oldest" => Loc.T("ArtistDetail.SortOldest"),
+        "name" => Loc.T("ArtistDetail.SortName"),
+        _ => Loc.T("ArtistDetail.SortNewest"),
+    };
+
+    partial void OnReleaseSortModeChanged(string value)
+    {
+        if (_settings != null) _settings.ArtistReleaseSortMode = value;
+        if (_allReleases.Count > 0) ApplyLists(); // re-sorts the tab lists; an open grid refills
+    }
+
+    [RelayCommand]
+    private void SetReleaseSort(string? mode) => ReleaseSortMode = mode is "oldest" or "name" ? mode : "newest";
+
     // ── Latest release (by release date, falling back to year) ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLatestRelease))]
@@ -317,6 +340,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         ArtistName = (artistName ?? string.Empty).Trim();
         _settings = settings;
+        ReleaseSortMode = settings?.ArtistReleaseSortMode ?? "newest";
         _library = library;
         _player = player;
         LibraryAlbumsVm = libraryAlbumsVm;
@@ -432,6 +456,25 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _ => releases,
     };
 
+    /// <summary>Tab grid order (GitHub #100) over releases already newest-first from
+    /// <see cref="Classify"/>: "oldest" = release date ascending with undated releases last
+    /// (not first), ties by name; "name" = A–Z, ties newest first; anything else keeps
+    /// newest-first.</summary>
+    internal static List<Album> SortReleases(IEnumerable<Album> releases, string? mode)
+    {
+        static DateTime OldestKey(Album a)
+        {
+            var date = ReleaseSortDate(a);
+            return date == DateTime.MinValue ? DateTime.MaxValue : date;
+        }
+        return mode switch
+        {
+            "oldest" => releases.OrderBy(OldestKey).ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            "name" => releases.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(ReleaseSortDate).ToList(),
+            _ => releases.ToList(),
+        };
+    }
+
     /// <summary>An album answers a search when its name or any of its track titles matches,
     /// accent- and punctuation-insensitively ("ultimo" finds "EL ÚLTIMO TOUR DEL MUNDO").</summary>
     internal static bool AlbumMatches(Album album, string query)
@@ -459,6 +502,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
                 _rebuildPending = false;
                 Rebuild();
             }
+            // The tab sort is shared by every artist page: a pick made on another page
+            // while this one sat in history applies on the way back.
+            if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
         }
     }
 
@@ -546,8 +592,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var singles = FilterReleases(matching, "singles").ToList();
 
         ReplaceAlbums(Releases, matching);
-        _tabAlbums = albums;
-        _tabSingles = singles;
+        _tabAlbums = SortReleases(albums, ReleaseSortMode);
+        _tabSingles = SortReleases(singles, ReleaseSortMode);
         if (IsTabAlbums) FillTabAlbums();
         else { _albumsFilled = null; ++_albumsGeneration; AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabSingles) FillTabSingles();

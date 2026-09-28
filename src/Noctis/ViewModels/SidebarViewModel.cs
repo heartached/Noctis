@@ -31,6 +31,14 @@ public partial class SidebarViewModel : ViewModelBase
 
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _foldingFolders = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Set by the view: eases a folder's rows shut; the collapse removes them once
+    /// the task ends. Null (tests) collapses at once.</summary>
+    public Func<string, Task>? FoldFolderRows { get; set; }
+
+    /// <summary>Raised after an expand inserted a folder's rows, so the view can ease them open.</summary>
+    public event Action<string>? FolderRowsInserted;
 
     /// <summary>
     /// Flattened sidebar playlist rows: pinned playlists first, then folder
@@ -141,10 +149,10 @@ public partial class SidebarViewModel : ViewModelBase
         // ArgumentOutOfRangeException, app crash (reported on Linux/X11).
         if (newValue is PlaylistNavItem { IsFolder: true } folder)
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
-                ToggleFolderExpansion(folder.Label);
                 SetSelectedNavItemSilently(oldValue);
+                await ToggleFolderAnimatedAsync(folder);
             });
             return;
         }
@@ -158,6 +166,32 @@ public partial class SidebarViewModel : ViewModelBase
     /// item that is already highlighted (e.g. Home while inside an album opened from Home)
     /// never reaches OnSelectedNavItemChanged — the view routes those clicks here.</summary>
     public void RequestNavigation(NavItem item) => NavigationRequested?.Invoke(this, item.Key);
+
+    /// <summary>
+    /// Toggles a folder header the user clicked, easing its rows (see <see cref="FoldFolderRows"/>
+    /// and <see cref="FolderRowsInserted"/>). A collapse removes the rows only once they have
+    /// folded; a click while they are still folding is ignored, or it would toggle the folder
+    /// back open against rows about to be removed.
+    /// </summary>
+    public async Task ToggleFolderAnimatedAsync(PlaylistNavItem folder)
+    {
+        if (!_foldingFolders.Add(folder.Label)) return;
+        try
+        {
+            if (folder.IsExpanded && FoldFolderRows is { } fold)
+            {
+                folder.IsExpanded = false; // the chevron turns with the fold
+                await fold(folder.Label);
+                ToggleFolderExpansion(folder.Label);
+                return;
+            }
+
+            var opening = !folder.IsExpanded;
+            ToggleFolderExpansion(folder.Label);
+            if (opening) FolderRowsInserted?.Invoke(folder.Label);
+        }
+        finally { _foldingFolders.Remove(folder.Label); }
+    }
 
     /// <summary>Collapses or expands a sidebar playlist folder and rebuilds the rows.
     /// Must never be called from inside a ListBox selection change (see above).</summary>
@@ -204,9 +238,9 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Rebuilds the flattened sidebar rows: pinned playlists, then folders (in the
-    /// order they were dragged to, else alphabetical) with their playlists when
-    /// expanded, then loose playlists.
+    /// Rebuilds the flattened sidebar rows: pinned playlists, then the folders (with
+    /// their playlists when expanded) and loose playlists in the order they were dragged
+    /// to; never-dragged ones after them as before (folders alphabetical, then loose).
     /// Syncs the collection in place instead of Clear+refill: tearing down the
     /// row under the pointer mid-click dropped the sidebar wrapper's
     /// IsPointerOver for a frame, which the hover-expand handler in MainWindow
@@ -215,7 +249,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// </summary>
     public void RebuildSidebarRows()
     {
-        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders());
+        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders(), SidebarOrders());
 
         // Folder headers are synthesized fresh by BuildRows; swap in the live
         // instances (matched by key) so their ListBox containers survive.
@@ -248,10 +282,14 @@ public partial class SidebarViewModel : ViewModelBase
     /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder
     /// on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
     /// maps folders the user dragged into place to their position (see FolderOrders).
+    /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
+    /// "playlist:id") the user placed among each other to their position (see
+    /// SidebarOrders); the rest follow them in the old layout, folders then loose playlists.
     /// </summary>
     public static List<PlaylistNavItem> BuildRows(
         IEnumerable<PlaylistNavItem> items, ISet<string> collapsedFolders,
-        IReadOnlyDictionary<string, int>? folderOrder = null)
+        IReadOnlyDictionary<string, int>? folderOrder = null,
+        IReadOnlyDictionary<string, int>? sidebarOrder = null)
     {
         var rows = new List<PlaylistNavItem>();
         var all = items.ToList();
@@ -264,44 +302,53 @@ public partial class SidebarViewModel : ViewModelBase
 
         var unpinned = all.Where(i => !i.IsPinned).ToList();
 
-        var folders = unpinned
+        // The old layout (folders, then loose playlists), then the placed entries moved to
+        // the front in their order. OrderBy is stable, so unplaced ones keep the old layout.
+        var entries = unpinned
             .Where(i => !string.IsNullOrWhiteSpace(i.Folder))
             .GroupBy(i => i.Folder.Trim(), StringComparer.OrdinalIgnoreCase)
             .OrderBy(g => FolderRank(folderOrder, g.Key))
-            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Key: $"folder:{g.Key}", Folder: (string?)g.Key, Items: g.ToList()))
+            .Concat(unpinned
+                .Where(i => string.IsNullOrWhiteSpace(i.Folder))
+                .Select(i => (i.Key, Folder: (string?)null, Items: new List<PlaylistNavItem> { i })))
+            .OrderBy(e => FolderRank(sidebarOrder, e.Key))
+            .ToList();
 
-        foreach (var group in folders)
+        foreach (var (key, folder, members) in entries)
         {
-            var expanded = !collapsedFolders.Contains(group.Key);
+            if (folder == null)
+            {
+                members[0].IsInFolder = false;
+                rows.Add(members[0]);
+                continue;
+            }
+
+            var expanded = !collapsedFolders.Contains(folder);
             rows.Add(new PlaylistNavItem
             {
-                Key = $"folder:{group.Key}",
-                Label = group.Key,
+                Key = key,
+                Label = folder,
                 IsFolder = true,
                 IsExpanded = expanded,
-                TrackCount = group.Count(),
+                TrackCount = members.Count,
             });
 
             if (!expanded) continue;
-            foreach (var item in group)
+            foreach (var item in members)
             {
                 item.IsInFolder = true;
                 rows.Add(item);
             }
         }
 
-        foreach (var item in unpinned.Where(i => string.IsNullOrWhiteSpace(i.Folder)))
-        {
-            item.IsInFolder = false;
-            rows.Add(item);
-        }
-
         return rows;
     }
 
-    /// <summary>Folders that were never dragged sort after the ones that were.</summary>
-    private static int FolderRank(IReadOnlyDictionary<string, int>? folderOrder, string folder)
-        => folderOrder != null && folderOrder.TryGetValue(folder, out var order) ? order : int.MaxValue;
+    /// <summary>Entries that were never dragged sort after the ones that were.</summary>
+    private static int FolderRank(IReadOnlyDictionary<string, int>? order, string key)
+        => order != null && order.TryGetValue(key, out var rank) ? rank : int.MaxValue;
 
     /// <summary>Sidebar position of each folder the user dragged into place, read from its
     /// playlists (Playlist.FolderOrder), so it persists with them.</summary>
@@ -320,6 +367,93 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Position of an existing folder (0 = never dragged, or no such folder). A
     /// playlist filed into a folder takes it, so the folder stays where it was put.</summary>
     private int FolderOrderOf(string folder) => FolderOrders().GetValueOrDefault(folder.Trim());
+
+    /// <summary>Sidebar position of each top-level entry the user dragged into place, by row
+    /// key ("folder:Name" / "playlist:id"), read from Playlist.SidebarOrder so it persists
+    /// with the playlists.</summary>
+    private Dictionary<string, int> SidebarOrders()
+    {
+        var orders = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pl in Playlists)
+        {
+            if (pl.SidebarOrder <= 0) continue;
+            var key = EntryKey(pl);
+            orders[key] = Math.Max(pl.SidebarOrder, orders.GetValueOrDefault(key));
+        }
+        return orders;
+    }
+
+    /// <summary>Row key of the top-level entry a playlist sits in: its folder, or itself.</summary>
+    private static string EntryKey(Playlist pl)
+        => pl.Folder.Trim() is { Length: > 0 } folder ? $"folder:{folder}" : $"playlist:{pl.Id}";
+
+    /// <summary>
+    /// Files <paramref name="playlist"/> into <paramref name="folder"/> (empty = no folder).
+    /// Joining an existing folder takes that folder's places, so the folder stays where it
+    /// was put; otherwise the playlist keeps its own sidebar place, so a new folder shows up
+    /// where the playlist was and one taken out of a folder lands right after it.
+    /// </summary>
+    private void FileIntoFolder(Playlist playlist, string folder)
+    {
+        folder = folder.Trim();
+        var members = folder.Length == 0 ? new List<Playlist>() : Playlists
+            .Where(p => p != playlist && string.Equals(p.Folder.Trim(), folder, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        playlist.FolderOrder = FolderOrderOf(folder);
+        if (members.Count > 0) playlist.SidebarOrder = members.Max(p => p.SidebarOrder);
+        playlist.Folder = folder;
+    }
+
+    /// <summary>Keys of the top-level sidebar entries (folders and loose playlists, not the
+    /// pinned ones) in the order they are shown.</summary>
+    private List<string> TopLevelKeys()
+        => SidebarRows.Where(r => r.IsFolder || (!r.IsPinned && !r.IsInFolder && r.PlaylistId != null))
+            .Select(r => r.Key)
+            .ToList();
+
+    /// <summary>
+    /// Saves <paramref name="keys"/> as the top-level order: every entry's position goes to
+    /// Playlist.SidebarOrder (all of a folder's playlists), and each folder's rank among the
+    /// folders to FolderOrder, kept in step so an older build still shows the folders in
+    /// this order.
+    /// </summary>
+    private void ApplyTopLevelOrder(IReadOnlyList<string> keys)
+    {
+        var folderRank = 0;
+        for (var i = 0; i < keys.Count; i++)
+        {
+            if (keys[i].StartsWith("folder:", StringComparison.Ordinal))
+            {
+                var folder = keys[i]["folder:".Length..];
+                folderRank++;
+                foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), folder, StringComparison.OrdinalIgnoreCase)))
+                {
+                    pl.SidebarOrder = i + 1;
+                    pl.FolderOrder = folderRank;
+                }
+            }
+            else if (keys[i].StartsWith("playlist:", StringComparison.Ordinal)
+                     && Guid.TryParse(keys[i]["playlist:".Length..], out var id)
+                     && Playlists.FirstOrDefault(p => p.Id == id) is { } loose
+                     && loose.Folder.Trim().Length == 0)
+            {
+                loose.SidebarOrder = i + 1;
+            }
+        }
+    }
+
+    /// <summary>Moves the top-level entry <paramref name="movedKey"/> right before/after the entry
+    /// <paramref name="targetKey"/> and saves the order. False when the target is not top-level.</summary>
+    private bool PlaceTopLevel(string movedKey, string targetKey, bool placeAfter)
+    {
+        var keys = TopLevelKeys();
+        keys.RemoveAll(k => string.Equals(k, movedKey, StringComparison.OrdinalIgnoreCase));
+        var at = keys.FindIndex(k => string.Equals(k, targetKey, StringComparison.OrdinalIgnoreCase));
+        if (at < 0) return false;
+        keys.Insert(at + (placeAfter ? 1 : 0), movedKey);
+        ApplyTopLevelOrder(keys);
+        return true;
+    }
 
     /// <summary>Existing folder names, for suggestions in the edit dialog.</summary>
     public IReadOnlyList<string> GetFolderNames() =>
@@ -451,9 +585,8 @@ public partial class SidebarViewModel : ViewModelBase
             Name = playlistName,
             Description = playlistDescription,
             Color = Playlist.GetRandomColor(),
-            Folder = folder?.Trim() ?? string.Empty,
-            FolderOrder = FolderOrderOf(folder ?? string.Empty),
         };
+        FileIntoFolder(playlist, folder ?? string.Empty);
         Playlists.Add(playlist);
         PlaylistItems.Add(BuildPlaylistNavItem(playlist));
         RebuildSidebarRows();
@@ -527,11 +660,12 @@ public partial class SidebarViewModel : ViewModelBase
         var merged = !string.Equals(newName.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)
             && Playlists.Any(p => string.Equals(p.Folder.Trim(), newName.Trim(), StringComparison.OrdinalIgnoreCase));
         var mergedOrder = FolderOrderOf(newName);
+        var mergedPlace = SidebarOrders().GetValueOrDefault($"folder:{newName.Trim()}");
 
         foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)))
         {
             pl.Folder = newName;
-            if (merged) pl.FolderOrder = mergedOrder;
+            if (merged) { pl.FolderOrder = mergedOrder; pl.SidebarOrder = mergedPlace; }
             pl.ModifiedAt = DateTime.UtcNow;
             var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
             if (nav != null) nav.Folder = newName;
@@ -566,7 +700,8 @@ public partial class SidebarViewModel : ViewModelBase
     /// files it into that folder (end of the folder); onto another playlist places it
     /// right before/after that row and adopts the row's group (pinned state + folder),
     /// so "put it where I dropped it" is exactly what happens. Sidebar order within a
-    /// group is the saved playlist order.
+    /// group is the saved playlist order; next to a loose playlist it also takes its
+    /// place among the folders and loose playlists (SidebarOrder).
     /// </summary>
     public async Task MovePlaylistAsync(Guid draggedId, PlaylistNavItem target, bool placeAfter)
     {
@@ -576,8 +711,7 @@ public partial class SidebarViewModel : ViewModelBase
         if (target.IsFolder)
         {
             dragged.IsPinned = false;
-            dragged.FolderOrder = FolderOrderOf(target.Label);
-            dragged.Folder = target.Label;
+            FileIntoFolder(dragged, target.Label);
             Playlists.Remove(dragged);
             var lastInFolder = Playlists.LastOrDefault(p =>
                 !p.IsPinned && string.Equals(p.Folder.Trim(), target.Label, StringComparison.OrdinalIgnoreCase));
@@ -591,8 +725,9 @@ public partial class SidebarViewModel : ViewModelBase
             if (targetPl == null) return;
 
             dragged.IsPinned = targetPl.IsPinned;
-            dragged.FolderOrder = FolderOrderOf(targetPl.Folder);
-            dragged.Folder = targetPl.Folder;
+            FileIntoFolder(dragged, targetPl.Folder);
+            if (!targetPl.IsPinned && targetPl.Folder.Trim().Length == 0)
+                PlaceTopLevel($"playlist:{dragged.Id}", target.Key, placeAfter);
             Playlists.Remove(dragged);
             var idx = Playlists.IndexOf(targetPl) + (placeAfter ? 1 : 0);
             Playlists.Insert(Math.Clamp(idx, 0, Playlists.Count), dragged);
@@ -605,29 +740,45 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Drop of a dragged playlist (from a folder, the pinned ones or the loose ones) right
+    /// before/after the folder header <paramref name="target"/>: it lands above / below the
+    /// whole folder as a loose playlist instead of inside it.
+    /// </summary>
+    public async Task MovePlaylistNextToFolderAsync(Guid draggedId, PlaylistNavItem target, bool placeAfter)
+    {
+        var dragged = Playlists.FirstOrDefault(p => p.Id == draggedId);
+        if (dragged == null || !target.IsFolder) return;
+        var members = Playlists.Where(p => p != dragged && !p.IsPinned
+            && string.Equals(p.Folder.Trim(), target.Label, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (members.Count == 0 || !TopLevelKeys().Contains(target.Key, StringComparer.OrdinalIgnoreCase)) return;
+
+        dragged.IsPinned = false;
+        FileIntoFolder(dragged, string.Empty);
+        PlaceTopLevel($"playlist:{dragged.Id}", target.Key, placeAfter);
+        // Saved order next to the folder's playlists, as a drop next to a row does.
+        Playlists.Remove(dragged);
+        var at = placeAfter ? Playlists.IndexOf(members[^1]) + 1 : Playlists.IndexOf(members[0]);
+        Playlists.Insert(Math.Clamp(at, 0, Playlists.Count), dragged);
+
+        dragged.ModifiedAt = DateTime.UtcNow;
+        SyncPlaylistItemsWithPlaylists();
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+    }
+
+    /// <summary>
     /// Drop of a dragged folder (its header and playlists as one block) right before/after
-    /// the folder header <paramref name="target"/>. Every folder's new position is written to
-    /// its playlists' FolderOrder, so the order is saved with the playlists.
+    /// the top-level entry <paramref name="target"/>: another folder header or a loose
+    /// playlist. Every entry's new position goes to its playlists' SidebarOrder (and each
+    /// folder's rank to FolderOrder), so the order is saved with the playlists.
     /// </summary>
     public async Task MoveFolderAsync(string folder, PlaylistNavItem target, bool placeAfter)
     {
-        if (!target.IsFolder || string.Equals(folder.Trim(), target.Label, StringComparison.OrdinalIgnoreCase)) return;
+        var key = $"folder:{folder.Trim()}";
+        if (string.Equals(key, target.Key, StringComparison.OrdinalIgnoreCase)) return;
+        if (!TopLevelKeys().Contains(key, StringComparer.OrdinalIgnoreCase)) return;
+        if (!PlaceTopLevel(key, target.Key, placeAfter)) return;
 
-        var orders = FolderOrders();
-        var names = GetFolderNames().OrderBy(f => FolderRank(orders, f)).ToList();
-        var from = names.FindIndex(f => string.Equals(f, folder.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (from < 0) return;
-        var moved = names[from];
-        names.RemoveAt(from);
-        var at = names.FindIndex(f => string.Equals(f, target.Label, StringComparison.OrdinalIgnoreCase));
-        if (at < 0) return;
-        names.Insert(at + (placeAfter ? 1 : 0), moved);
-
-        foreach (var pl in Playlists)
-        {
-            var index = names.FindIndex(f => string.Equals(f, pl.Folder.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (index >= 0) pl.FolderOrder = index + 1;
-        }
         RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -637,8 +788,7 @@ public partial class SidebarViewModel : ViewModelBase
 
     private async Task SetPlaylistFolderAsync(Playlist playlist, string folder)
     {
-        playlist.FolderOrder = FolderOrderOf(folder);
-        playlist.Folder = folder.Trim();
+        FileIntoFolder(playlist, folder);
         playlist.ModifiedAt = DateTime.UtcNow;
         var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         if (nav != null) nav.Folder = playlist.Folder;
@@ -943,8 +1093,7 @@ public partial class SidebarViewModel : ViewModelBase
         playlist.Name = newName;
         playlist.Description = newDescription;
         playlist.IsPinned = dialogVm.IsPinned;
-        playlist.FolderOrder = FolderOrderOf(dialogVm.PlaylistFolder);
-        playlist.Folder = dialogVm.PlaylistFolder.Trim();
+        FileIntoFolder(playlist, dialogVm.PlaylistFolder);
         playlist.ModifiedAt = DateTime.UtcNow;
 
         // Handle cover art changes

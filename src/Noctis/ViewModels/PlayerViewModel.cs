@@ -365,8 +365,10 @@ public partial class PlayerViewModel : ViewModelBase
         if (int.TryParse(semitones, out var st) && st is >= -12 and <= 12)
             PitchSemitones = st;
     }
-    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
-    /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
+    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings (Glass
+    /// Opacity); default 0.4 matches the original #66 alpha. Background only — controls/text
+    /// stay opaque. With Liquid Glass on the queue drawer and the island's menus tint their
+    /// frost with it too (GitHub #104).</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
     /// <summary>Opacity of the white track box (song-info card) inside the bar (0–1).
     /// Driven by Settings; 0 removes the card, leaving art/text straight on the pill.</summary>
@@ -493,6 +495,10 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Fires when a new track starts playing.</summary>
     public event EventHandler<Track>? TrackStarted;
+
+    /// <summary>Fires when a play is counted (play count, Last Played, play log): at the
+    /// start, or once enough of the song was heard (GitHub #101).</summary>
+    public event EventHandler<Track>? PlayCounted;
 
     /// <summary>Fires when the user seeks to a new position.</summary>
     public event EventHandler<TimeSpan>? Seeked;
@@ -677,8 +683,10 @@ public partial class PlayerViewModel : ViewModelBase
                       (_repeatCycleTracks.Count > 0 || History.Count > 0);
         if (UpNext.Count == 0 && !canWrap) return;
 
-        // A user skip before the halfway point counts as a skip in the play log.
-        if (CurrentTrack != null && PositionFraction < 0.5)
+        // A user skip before the halfway point counts as a skip in the play log. A play
+        // not counted yet has no log event, and RecordSkip would mark an earlier play of
+        // the same song instead (GitHub #101).
+        if (CurrentTrack != null && PositionFraction < 0.5 && !_playCountPending)
             _playHistory?.RecordSkip(CurrentTrack);
 
         AdvanceQueue(QueueAdvanceReason.UserSkip);
@@ -2219,6 +2227,65 @@ public partial class PlayerViewModel : ViewModelBase
         await _library.SaveTrackUserStateAsync(pending);
     }
 
+    // Persist play count/LastPlayed with a debounce: rapid skips coalesce
+    // into a single write. Only the changed tracks' journal rows are written
+    // (library.db) — not the whole library.json.
+    private void ScheduleLibrarySave()
+    {
+        _librarySaveDebounce?.Dispose();
+        _librarySaveDebounce = new System.Threading.Timer(
+            _ => _ = FlushPendingPlayStateAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+    }
+
+    // ── Counting a play (GitHub #101) ──
+    // With Settings → Playback → "Count a play after" above Immediately, PlayTrack leaves the
+    // play uncounted and the position ticks add up what is actually heard; the play counts
+    // once that reaches the chosen share of the song. UI thread only.
+    private bool _playCountPending;
+    private TimeSpan _listenedTime;
+    private TimeSpan _listenAnchor;
+    private DateTime _listenAnchorSeekTime;
+    // A bigger forward step between two ticks is a jump (a seek, a stall), not listening.
+    private const double MaxListenStepSeconds = 2;
+
+    private void CountPlay(Track track)
+    {
+        track.PlayCount++;
+        track.LastPlayed = DateTime.UtcNow;
+        MarkPlayStateDirty(track);
+        _playHistory?.RecordPlay(track);
+        PlayCounted?.Invoke(this, track);
+    }
+
+    /// <summary>
+    /// Adds what was heard since the previous tick and counts a pending play once that
+    /// reaches the threshold. The song start and every seek set _lastSeekTime and
+    /// _lastCommittedSeekTarget, so the first tick after either re-anchors at that target:
+    /// a seek is never listening, and a mid-song start counts only from where it began.
+    /// </summary>
+    private void AccumulateListenedTime(TimeSpan position, TimeSpan duration)
+    {
+        if (!_playCountPending || CurrentTrack == null) return;
+        if (_listenAnchorSeekTime != _lastSeekTime)
+        {
+            _listenAnchorSeekTime = _lastSeekTime;
+            _listenAnchor = _lastCommittedSeekTarget;
+        }
+        var step = position - _listenAnchor;
+        _listenAnchor = position;
+        if (State == PlaybackState.Playing && step > TimeSpan.Zero
+            && step.TotalSeconds <= MaxListenStepSeconds * Math.Max(1.0, PlaybackRate))
+            _listenedTime += step;
+
+        // Read per tick: a change of the setting applies to the rest of this play.
+        var percent = _settings?.PlayCountThresholdPercent ?? 0;
+        if (duration > TimeSpan.Zero && _listenedTime.TotalSeconds < duration.TotalSeconds * percent / 100.0)
+            return;
+        _playCountPending = false;
+        CountPlay(CurrentTrack);
+        ScheduleLibrarySave();
+    }
+
     private void PlayTrack(Track track)
     {
         var playTrackStart = Stopwatch.GetTimestamp();
@@ -2256,11 +2323,13 @@ public partial class PlayerViewModel : ViewModelBase
 
         State = PlaybackState.Playing;
 
-        // Update play count and last played time
-        track.PlayCount++;
-        track.LastPlayed = DateTime.UtcNow;
-        MarkPlayStateDirty(track);
-        _playHistory?.RecordPlay(track);
+        // Update play count and last played time — now, or once enough of the song has
+        // been heard (GitHub #101, AccumulateListenedTime). A song with no known length
+        // can't be measured against, so it counts now as before.
+        _listenedTime = TimeSpan.Zero;
+        _playCountPending = (_settings?.PlayCountThresholdPercent ?? 0) > 0 && track.Duration > TimeSpan.Zero;
+        if (!_playCountPending)
+            CountPlay(track);
         MarkRecentlyPlayed(track);
 
         // Apply per-track volume adjustment
@@ -2341,12 +2410,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Fire event to notify that a new track started
         TrackStarted?.Invoke(this, track);
 
-        // Persist play count/LastPlayed with a debounce: rapid skips coalesce
-        // into a single write. Only the changed tracks' journal rows are written
-        // (library.db) — not the whole library.json.
-        _librarySaveDebounce?.Dispose();
-        _librarySaveDebounce = new System.Threading.Timer(
-            _ => _ = FlushPendingPlayStateAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+        ScheduleLibrarySave();
 
         // Keep the on-disk queue snapshot current so a non-graceful exit
         // (tray + OS shutdown, task kill) still restores this session.
@@ -2994,6 +3058,9 @@ public partial class PlayerViewModel : ViewModelBase
             PositionText = newPositionText;
             PositionFraction = newPositionFraction;
             RemainingTimeText = newRemainingTimeText;
+
+            // Before the advances below: the outgoing song's last ticks still count for it.
+            AccumulateListenedTime(newPosition, effectiveDuration);
 
             if (TryAdvanceForAutoMix(newPosition, effectiveDuration))
                 return;

@@ -617,6 +617,42 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playPauseFadeEnabled;
     [ObservableProperty] private double _playPauseFadeMs = 300;
 
+    /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
+    /// (0 = as soon as it starts). The player reads it on every position tick, so a change
+    /// also applies to the rest of the song playing now.</summary>
+    [ObservableProperty] private int _playCountThresholdPercent;
+
+    /// <summary>One row of the "Count a play after" picker.</summary>
+    public sealed record PlayCountThresholdOption(int Percent, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<PlayCountThresholdOption> PlayCountThresholdOptions
+    {
+        get => _playCountThresholdOptions;
+        private set => SetProperty(ref _playCountThresholdOptions, value);
+    }
+    private IReadOnlyList<PlayCountThresholdOption> _playCountThresholdOptions = BuildPlayCountThresholdOptions();
+
+    private static IReadOnlyList<PlayCountThresholdOption> BuildPlayCountThresholdOptions() =>
+        AppSettings.PlayCountThresholdChoices
+            .Select(p => new PlayCountThresholdOption(p, p == 0
+                ? Loc.T("Settings.PlayCountAfterImmediately")
+                : Loc.T("Settings.PlayCountAfterPercent", p)))
+            .ToList();
+
+    public PlayCountThresholdOption? SelectedPlayCountThresholdOption
+    {
+        get => PlayCountThresholdOptions.FirstOrDefault(o => o.Percent == PlayCountThresholdPercent);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            PlayCountThresholdPercent = value.Percent;
+        }
+    }
+
     /// <summary>GitHub #71: drops import into the library (default) or play/queue in place.</summary>
     [ObservableProperty] private bool _importDroppedMedia = true;
 
@@ -789,6 +825,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowOlderVersionsLabel));
         foreach (var group in SectionGroups) group.Relabel();
         RefreshFlowingStyleOptions();
+        PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
+        OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
     }
 
     public VisualizerStyle LyricsVisualizerStyleMode => VisualizerStyles.Parse(LyricsVisualizerStyle);
@@ -961,6 +999,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _artistSortMode = "name";
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
+    [ObservableProperty] private string _artistReleaseSortMode = "newest";
 
     partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -970,6 +1009,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnArtistSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistReleaseSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Home section collapse state ──
     //
@@ -1647,6 +1687,24 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Text of the "add separator" box on the Library tab.</summary>
     [ObservableProperty] private string _newArtistSeparator = string.Empty;
 
+    // ── Artist sort: ignore leading words (GitHub #99) ──
+
+    /// <summary>When on, the Artists grid's name sort skips a leading word from
+    /// <see cref="ArtistSortIgnoredWords"/>. Names still display in full.</summary>
+    [ObservableProperty] private bool _ignoreLeadingWordsInArtistSort;
+
+    /// <summary>Leading words the Artists name sort skips while the toggle is on. Edited as chips.</summary>
+    public ObservableCollection<string> ArtistSortIgnoredWords { get; } = new();
+
+    /// <summary>Text of the "add word" box under the toggle.</summary>
+    [ObservableProperty] private string _newArtistSortIgnoredWord = string.Empty;
+
+    /// <summary>The words the Artists grid skips right now: the list while the toggle is on,
+    /// nothing while it is off. Raised on every toggle or list edit; MainWindowViewModel
+    /// pushes it into LibraryArtistsViewModel.</summary>
+    public IReadOnlyList<string> ActiveArtistSortIgnoredWords =>
+        IgnoreLeadingWordsInArtistSort ? ArtistSortIgnoredWords.ToArray() : Array.Empty<string>();
+
     // ── Lyrics Providers ──
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
@@ -2295,6 +2353,7 @@ public partial class SettingsViewModel : ViewModelBase
             MigrateTransitionSettings(_settings);
             PlayPauseFadeEnabled = _settings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = Math.Clamp(_settings.PlayPauseFadeMs, 100, 2000);
+            PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(_settings.PlayCountThresholdPercent);
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
@@ -2394,6 +2453,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
+            ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
             HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
             HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
             HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
@@ -2418,6 +2478,8 @@ public partial class SettingsViewModel : ViewModelBase
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
+            IgnoreLeadingWordsInArtistSort = _settings.IgnoreLeadingWordsInArtistSort;
+            ReplaceArtistSortIgnoredWords(_settings.ArtistSortIgnoredWords);
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -2751,6 +2813,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
+        _settings.PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(PlayCountThresholdPercent);
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
         _settings.PlaylistShowNewBadge = PlaylistShowNewBadge;
@@ -2837,6 +2900,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;
+        _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
         _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
         _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
         _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;
@@ -2860,6 +2924,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
+        _settings.IgnoreLeadingWordsInArtistSort = IgnoreLeadingWordsInArtistSort;
+        _settings.ArtistSortIgnoredWords = ArtistSortIgnoredWords.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
@@ -3710,6 +3776,18 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) QueueSettingsSave();
     }
 
+    partial void OnPlayCountThresholdPercentChanged(int value)
+    {
+        var snapped = AppSettings.SnapPlayCountThreshold(value);
+        if (snapped != value)
+        {
+            PlayCountThresholdPercent = snapped;
+            return;
+        }
+        OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnImportDroppedMediaChanged(bool value)
     {
         _settings.ImportDroppedMedia = value;
@@ -3936,6 +4014,55 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    partial void OnIgnoreLeadingWordsInArtistSortChanged(bool value) => ApplyArtistSortIgnoredWords();
+
+    /// <summary>
+    /// Swaps the ignored-word chips with one re-sort at the end (same shape as the separators).
+    /// </summary>
+    private void ReplaceArtistSortIgnoredWords(IEnumerable<string>? words)
+    {
+        var normalized = ArtistSortWords.Normalize(words);
+        if (normalized.SequenceEqual(ArtistSortIgnoredWords, StringComparer.Ordinal))
+            return;
+        ArtistSortIgnoredWords.Clear();
+        foreach (var w in normalized)
+            ArtistSortIgnoredWords.Add(w);
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void AddArtistSortIgnoredWord()
+    {
+        var value = NewArtistSortIgnoredWord?.Trim() ?? string.Empty;
+        NewArtistSortIgnoredWord = string.Empty;
+        if (value.Length == 0) return;
+        if (ArtistSortIgnoredWords.Any(w => string.Equals(w, value, StringComparison.OrdinalIgnoreCase)))
+            return;
+        ArtistSortIgnoredWords.Add(value);
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void RemoveArtistSortIgnoredWord(string word)
+    {
+        if (!ArtistSortIgnoredWords.Remove(word)) return;
+        ApplyArtistSortIgnoredWords();
+    }
+
+    [RelayCommand]
+    private void ResetArtistSortIgnoredWords() => ReplaceArtistSortIgnoredWords(ArtistSortWords.DefaultWords);
+
+    /// <summary>
+    /// Announces the new <see cref="ActiveArtistSortIgnoredWords"/> (the Artists grid re-sorts
+    /// from it) and saves. Runs during settings load and reset too, which skip the save.
+    /// </summary>
+    private void ApplyArtistSortIgnoredWords()
+    {
+        OnPropertyChanged(nameof(ActiveArtistSortIgnoredWords));
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
 
     /// <summary>
     /// Pushes the grouping mode and separators into the process-wide tokenizer. Runs during
@@ -6300,6 +6427,8 @@ public partial class SettingsViewModel : ViewModelBase
             MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
+            IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
+            ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             AlbumPageTintStrength = defaultSettings.AlbumPageTintStrength;
@@ -6355,6 +6484,7 @@ public partial class SettingsViewModel : ViewModelBase
             _playbackBarWidth = null;
             PlayPauseFadeEnabled = defaultSettings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = defaultSettings.PlayPauseFadeMs;
+            PlayCountThresholdPercent = defaultSettings.PlayCountThresholdPercent;
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;

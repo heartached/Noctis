@@ -158,6 +158,18 @@ public class AppSettings
 
     public int PlayPauseFadeMs { get; set; } = 300;
 
+    /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
+    /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
+    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>.</summary>
+    public int PlayCountThresholdPercent { get; set; }
+
+    /// <summary>The Settings picker's choices for <see cref="PlayCountThresholdPercent"/>.</summary>
+    public static IReadOnlyList<int> PlayCountThresholdChoices { get; } = new[] { 0, 25, 50, 75, 90 };
+
+    /// <summary>The nearest of <see cref="PlayCountThresholdChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapPlayCountThreshold(int percent) =>
+        PlayCountThresholdChoices.MinBy(c => Math.Abs((long)c - percent));
+
     /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
     public bool SongTransitionsEnabled { get; set; }
     /// <summary>Transition style when enabled: "AutoMix" (key/tempo aware) or "Crossfade" (fixed duration).</summary>
@@ -348,6 +360,11 @@ public class AppSettings
     /// <summary>Artists grid sort direction.</summary>
     public bool ArtistSortAscending { get; set; } = true;
 
+    /// <summary>Artist page Albums / Singles &amp; EPs tab order (GitHub #100): "newest"
+    /// (release date), "oldest" (undated releases last) or "name" (A–Z). One setting for
+    /// both tabs and every artist.</summary>
+    public string ArtistReleaseSortMode { get; set; } = "newest";
+
     /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
     /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
     public string FoldersSortMode { get; set; } = "default";
@@ -387,7 +404,8 @@ public class AppSettings
 
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
-    /// original #66 alpha glass look.</summary>
+    /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
+    /// on it also tints the queue drawer and the island's menus. Key kept so looks carry over.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
@@ -542,6 +560,14 @@ public class AppSettings
     /// <summary>Separators that split a multi-artist tag into credited names ("/", ",", "feat.").
     /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
     public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
+
+    /// <summary>GitHub #99: the Artists grid's name sort skips a leading word from
+    /// <see cref="ArtistSortIgnoredWords"/> ("The Beatles" sorts under B). Off by default.</summary>
+    public bool IgnoreLeadingWordsInArtistSort { get; set; } = false;
+
+    /// <summary>Leading words skipped while <see cref="IgnoreLeadingWordsInArtistSort"/> is on;
+    /// see ArtistSortWords.SortKey for the matching rule.</summary>
+    public List<string> ArtistSortIgnoredWords { get; set; } = ArtistSortWords.DefaultWords.ToList();
 
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
@@ -798,6 +824,7 @@ public class AppSettings
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         PlaybackBarTrackBoxOpacity = double.IsFinite(PlaybackBarTrackBoxOpacity)
             ? Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1)

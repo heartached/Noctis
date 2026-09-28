@@ -47,6 +47,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
+    /// filter Reset the whole list, re-creating every row and cover on each click.</summary>
+    public bool IsSearchCleared => string.IsNullOrEmpty(_currentFilter) && string.IsNullOrEmpty(SearchText);
+
     /// <summary>
     /// Identifies the filter the current rows were built for: the applied search (SearchText
     /// runs ahead of it by the debounce) plus the quality/favorites narrowing. The view resets

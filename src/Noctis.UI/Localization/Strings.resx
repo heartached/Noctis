@@ -123,6 +123,10 @@
   <data name="Settings.RemoveSeparatorTip" xml:space="preserve"><value>Remove separator</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.AddSeparatorEG" xml:space="preserve"><value>Add a separator, e.g. feat. or /</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.Add" xml:space="preserve"><value>Add</value><comment>Content in SettingsView.axaml</comment></data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSort" xml:space="preserve"><value>Ignore Leading Words When Sorting Artists</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.IgnoreLeadingWordsInArtistSortHint" xml:space="preserve"><value>Sort &quot;The Beatles&quot; under B. Names still show in full.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RemoveWordTip" xml:space="preserve"><value>Remove word</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.AddWordEG" xml:space="preserve"><value>Add a word, e.g. A or Los</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.Noctis" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickCopyVersionSystemTip" xml:space="preserve"><value>Click to copy version and system info</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Copied" xml:space="preserve"><value>Copied!</value><comment>Text in SettingsView.axaml</comment></data>
@@ -310,10 +314,10 @@
   <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Show the romanized lyrics a TTML file carries (romaji, pinyin…) under each line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>Show Background Vocals</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Show background vocals and adlibs in a smaller row under the line.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Player Bar Opacity</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Glass Opacity</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar, queue and menus look. The queue and menus use it when Liquid Glass is on.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How much of the desktop shows through the glass.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
@@ -332,6 +336,10 @@
   <data name="Settings.PlayPauseFade" xml:space="preserve"><value>Fade on play and pause</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayPauseFadeHint" xml:space="preserve"><value>Fade the sound out when pausing and back in when resuming instead of stopping dead.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FadeDuration" xml:space="preserve"><value>Fade duration</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayCountAfter" xml:space="preserve"><value>Count a play after</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>How much of a song you need to hear before it counts as played.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayCountAfterImmediately" xml:space="preserve"><value>Immediately</value><comment>"Count a play after" choice: counted as soon as the song starts (SettingsViewModel)</comment></data>
+  <data name="Settings.PlayCountAfterPercent" xml:space="preserve"><value>{0}%</value><comment>"Count a play after" choice; {0} = percent of the song (SettingsViewModel)</comment></data>
   <data name="Settings.GaplessPlayback" xml:space="preserve"><value>Gapless Playback</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TracksFlowIntoEach" xml:space="preserve"><value>Tracks flow into each other without a pause.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
@@ -622,6 +630,9 @@
   <data name="ArtistDetail.Albums" xml:space="preserve"><value>Albums</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SinglesEPs" xml:space="preserve"><value>Singles &amp; EPs</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.NoReleasesMatch" xml:space="preserve"><value>No releases match.</value><comment>Text in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortNewest" xml:space="preserve"><value>Newest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortOldest" xml:space="preserve"><value>Oldest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.SortName" xml:space="preserve"><value>Name (A–Z)</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Appears" xml:space="preserve"><value>Appears On</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Overview" xml:space="preserve"><value>Overview</value><comment>Tab in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Songs" xml:space="preserve"><value>Songs</value><comment>Tab in ArtistDetailView.axaml</comment></data>
@@ -904,6 +915,9 @@
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Written By: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Follow</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.PreviewUnsaved" xml:space="preserve"><value>Preview · unsaved lyrics</value><comment>Text in LyricsView.axaml — Lyrics Studio preview indicator</comment></data>
+  <data name="Lyrics.OffsetEarlier" xml:space="preserve"><value>Lyrics {0:0.0} s earlier</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
+  <data name="Lyrics.OffsetLater" xml:space="preserve"><value>Lyrics {0:0.0} s later</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
+  <data name="Lyrics.OffsetInSync" xml:space="preserve"><value>Lyrics in sync</value><comment>Notice pill after Ctrl+scroll brings the lyrics offset back to 0 (LyricsViewModel)</comment></data>
 
   <!-- MainWindow.axaml (auto-migrated) -->
   <data name="Main.Noctis" xml:space="preserve"><value>Noctis</value><comment>Title in MainWindow.axaml</comment></data>

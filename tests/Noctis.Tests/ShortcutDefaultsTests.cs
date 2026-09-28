@@ -45,7 +45,7 @@ public class ShortcutDefaultsTests
             Assert.True(ShortcutDefaults.IsTextBoxKey(g.Key, g.KeyModifiers), action.ToString());
         }
         foreach (var action in new[] { ShortcutAction.ToggleQueue, ShortcutAction.SearchLibrary,
-                     ShortcutAction.CommandPalette, ShortcutAction.ToggleFavorite })
+                     ShortcutAction.CommandPalette, ShortcutAction.ToggleFavorite, ShortcutAction.ToggleLyrics })
         {
             var g = ShortcutDefaults.For(action, isMac);
             Assert.False(ShortcutDefaults.IsTextBoxKey(g.Key, g.KeyModifiers), action.ToString());

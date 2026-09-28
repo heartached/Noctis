@@ -8,6 +8,7 @@ using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.ComponentModel;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -40,6 +41,7 @@ public partial class SidebarView : UserControl
         PlaylistList.AddHandler(PointerMovedEvent, OnPlaylistRowPointerMoved, RoutingStrategies.Tunnel);
         PlaylistList.AddHandler(PointerReleasedEvent, OnPlaylistRowPointerReleased, RoutingStrategies.Tunnel);
         PlaylistList.AddHandler(PointerCaptureLostEvent, OnPlaylistRowPointerCaptureLost);
+        PlaylistList.ContainerPrepared += OnPlaylistContainerPrepared;
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -60,7 +62,11 @@ public partial class SidebarView : UserControl
         UnsubscribeFromViewModel();
         _vm = DataContext as SidebarViewModel;
         if (_vm != null)
+        {
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+            _vm.FolderRowsInserted += OnFolderRowsInserted;
+            _vm.FoldFolderRows = FoldFolderRowsAsync;
+        }
         AttachTopBar(_vm?.TopBar);
 
         SyncSelectionFromViewModel();
@@ -201,16 +207,23 @@ public partial class SidebarView : UserControl
     // A playlist row lifts into a card (#PlaylistDragCard, drawn with the list's own row
     // template) that springs after the pointer while the other rows slide apart to open a
     // gap where it will land (LiquidReorder). Over a folder header the gap closes and the
-    // folder lights up instead: dropping there moves the playlist into it. On release the
-    // card glides to its spot and SidebarViewModel.MovePlaylistAsync commits.
+    // folder lights up instead: dropping there moves the playlist into it. Near the top edge
+    // of a header (or the bottom edge of a closed one, or of an open folder's last row) the
+    // gap opens above / below the whole folder instead, and the playlist lands there
+    // outside it (SidebarViewModel.MovePlaylistNextToFolderAsync). On release the card
+    // glides to its spot and SidebarViewModel.MovePlaylistAsync commits.
     // A folder header drags the same way, its open playlists riding in the card as one
-    // block that lands between the other folders (SidebarViewModel.MoveFolderAsync).
+    // block that lands anywhere among the other folders and loose playlists
+    // (SidebarViewModel.MoveFolderAsync); the pinned playlists keep their own section.
 
     private const double PlaylistDragThreshold = 6;
     private PlaylistNavItem? _dragItem;
     private Point _dragStart;
     private double _dragGrabY;
     private bool _dragActive;
+    // The press travelled past the drag threshold: even a drag that was refused (a lone
+    // folder) is then no click, so its release must not fold / unfold the header.
+    private bool _dragMoved;
     private LiquidReorder? _liquid;
 
     private LiquidReorder Liquid => _liquid ??= new LiquidReorder(
@@ -241,6 +254,7 @@ public partial class SidebarView : UserControl
         _dragStart = e.GetPosition(PlaylistList);
         _dragGrabY = e.GetPosition(row).Y;
         _dragActive = false;
+        _dragMoved = false;
     }
 
     private void OnPlaylistRowPointerMoved(object? sender, PointerEventArgs e)
@@ -254,37 +268,108 @@ public partial class SidebarView : UserControl
             if (Math.Abs(pos.X - _dragStart.X) < PlaylistDragThreshold &&
                 Math.Abs(pos.Y - _dragStart.Y) < PlaylistDragThreshold)
                 return;
+            _dragMoved = true;
             if (!(_dragItem.IsFolder ? StartFolderDrag(e) : StartPlaylistDrag(e))) return;
         }
 
         var cardTop = e.GetPosition(PlaylistListHost).Y - _dragGrabY;
+        if (_dragItem.IsFolder) cardTop = ClampToTopLevel(cardTop);
         Liquid.MoveCardTo(cardTop);
         if (_dragItem.IsFolder)
         {
-            Liquid.TargetIndex = NearestFolderSlot(cardTop);
+            Liquid.TargetIndex = NearestTopLevelSlot(cardTop);
             e.Handled = true;
             return;
         }
-        var target = LiquidReorder.NearestSlot(PlaylistList, PlaylistListHost, cardTop + Liquid.Pitch / 2);
+        var probe = cardTop + Liquid.Pitch / 2;
+        var target = LiquidReorder.NearestSlot(PlaylistList, PlaylistListHost, probe);
         if (target < 0) return;
 
-        // A folder header is a destination, not a slot: close the gap and light it up.
-        if (target < _vm.SidebarRows.Count && _vm.SidebarRows[target].IsFolder)
+        var rows = _vm.SidebarRows;
+        var edge = target < rows.Count && target != Liquid.SourceIndex ? EdgeOf(target, probe) : 0;
+        _folderTarget = null;
+        _besideFolder = null;
+        if (target < rows.Count && rows[target].IsFolder && edge < 0)
         {
+            // Top edge of a header: above the whole folder, outside it.
+            SetDropHighlight(null);
+            Liquid.TargetIndex = BeforeRow(target);
+            _besideFolder = (rows[target], false);
+        }
+        else if (target < rows.Count && rows[target].IsFolder && edge > 0 && !HasOpenRows(target))
+        {
+            // Bottom edge of a closed header: below the folder, outside it.
+            SetDropHighlight(null);
+            Liquid.TargetIndex = AfterRow(target);
+            _besideFolder = (rows[target], true);
+        }
+        else if (target < rows.Count && rows[target].IsFolder)
+        {
+            // A folder header is a destination, not a slot: close the gap and light it up.
             SetDropHighlight(PlaylistList.ContainerFromIndex(target) as ListBoxItem);
             Liquid.TargetIndex = Liquid.SourceIndex;
-            _folderTarget = _vm.SidebarRows[target];
+            _folderTarget = rows[target];
+        }
+        else if (edge > 0 && LastOpenRowHeader(target) is { } header)
+        {
+            // Bottom edge of an open folder's last row: below the folder, outside it.
+            SetDropHighlight(null);
+            Liquid.TargetIndex = AfterRow(target);
+            _besideFolder = (header, true);
         }
         else
         {
             SetDropHighlight(null);
             Liquid.TargetIndex = target;
-            _folderTarget = null;
         }
         e.Handled = true;
     }
 
     private PlaylistNavItem? _folderTarget;
+    // Dropping lands the playlist outside this folder, right above / below it.
+    private (PlaylistNavItem Header, bool After)? _besideFolder;
+
+    /// <summary>-1 when <paramref name="probe"/> (the card's centre) is in the top quarter of
+    /// row <paramref name="index"/>'s slot, +1 in the bottom quarter, else 0.</summary>
+    private int EdgeOf(int index, double probe)
+    {
+        if (PlaylistList.ContainerFromIndex(index) is not Control row
+            || LiquidReorder.SlotTop(PlaylistList, index, PlaylistListHost) is not { } top)
+            return 0;
+        var offset = probe - (top + row.Bounds.Height / 2);
+        var edge = Liquid.Pitch / 4;
+        return offset < -edge ? -1 : offset > edge ? 1 : 0;
+    }
+
+    /// <summary>Target that opens the gap right above row <paramref name="index"/>.</summary>
+    private int BeforeRow(int index) => Liquid.SourceIndex < index ? index - 1 : index;
+
+    /// <summary>Target that opens the gap right below row <paramref name="index"/>.</summary>
+    private int AfterRow(int index) => Liquid.SourceIndex < index ? index : index + 1;
+
+    /// <summary>The next row after <paramref name="index"/> other than the dragged one.</summary>
+    private int NextRow(int index) => index + 1 == Liquid.SourceIndex ? index + 2 : index + 1;
+
+    /// <summary>The folder header at <paramref name="header"/> shows playlists besides the dragged one.</summary>
+    private bool HasOpenRows(int header)
+    {
+        var rows = _vm!.SidebarRows;
+        var next = NextRow(header);
+        return next < rows.Count && rows[next].IsInFolder;
+    }
+
+    /// <summary>The header of the open folder whose last shown row (besides the dragged one)
+    /// is <paramref name="index"/>; null when that row is not one.</summary>
+    private PlaylistNavItem? LastOpenRowHeader(int index)
+    {
+        var rows = _vm!.SidebarRows;
+        if (index >= rows.Count || !rows[index].IsInFolder) return null;
+        var next = NextRow(index);
+        if (next < rows.Count && rows[next].IsInFolder) return null;
+        var header = index;
+        while (header > 0 && !rows[header].IsFolder) header--;
+        return rows[header].IsFolder ? rows[header] : null;
+    }
 
     private bool StartPlaylistDrag(PointerEventArgs e)
     {
@@ -310,7 +395,11 @@ public partial class SidebarView : UserControl
     private bool StartFolderDrag(PointerEventArgs e)
     {
         if (_vm == null || _dragItem == null) return false;
-        var block = FolderBlocks().Find(b => ReferenceEquals(b.Header, _dragItem));
+        // A folder with no other folder or loose playlist has nowhere to go: the press stays
+        // a click (folds / unfolds on release).
+        var blocks = TopLevelBlocks();
+        if (blocks.Count < 2) return false;
+        var block = blocks.Find(b => ReferenceEquals(b.Header, _dragItem));
         if (block.Header == null || PlaylistList.ContainerFromIndex(block.Start) is not ListBoxItem row) return false;
 
         _dragActive = true;
@@ -336,34 +425,41 @@ public partial class SidebarView : UserControl
         return true;
     }
 
-    /// <summary>Each folder header with the rows it carries: itself plus its open playlists.</summary>
-    private List<(PlaylistNavItem Header, int Start, int Count)> FolderBlocks()
+    /// <summary>The top-level entries below the pinned playlists, each with the rows it
+    /// carries: a folder header plus its open playlists, or one loose playlist.</summary>
+    private List<(PlaylistNavItem Header, int Start, int Count)> TopLevelBlocks()
     {
         var blocks = new List<(PlaylistNavItem Header, int Start, int Count)>();
         if (_vm == null) return blocks;
         var rows = _vm.SidebarRows;
         for (var i = 0; i < rows.Count; i++)
         {
-            if (!rows[i].IsFolder) continue;
-            var end = i + 1;
-            while (end < rows.Count && rows[end].IsInFolder) end++;
-            blocks.Add((rows[i], i, end - i));
+            if (rows[i].IsFolder)
+            {
+                var end = i + 1;
+                while (end < rows.Count && rows[end].IsInFolder) end++;
+                blocks.Add((rows[i], i, end - i));
+            }
+            else if (rows[i] is { IsPinned: false, IsInFolder: false, PlaylistId: not null })
+            {
+                blocks.Add((rows[i], i, 1));
+            }
         }
         return blocks;
     }
 
     /// <summary>
-    /// Row where the dragged folder block would start if dropped now: in front of a folder
+    /// Row where the dragged folder block would start if dropped now: in front of an entry
     /// above it, after one below it (the rows it passes close up behind it), or its own spot,
-    /// whichever is nearest the card. Folders only move among folders; pinned and loose
-    /// playlists keep their sections.
+    /// whichever is nearest the card. The entries are the other folders and the loose
+    /// playlists, the same slots a playlist drag offers; the pinned playlists keep their section.
     /// </summary>
-    private int NearestFolderSlot(double cardTop)
+    private int NearestTopLevelSlot(double cardTop)
     {
         var source = Liquid.SourceIndex;
         var best = source;
         var bestDist = Math.Abs(cardTop - FolderSlotTop(source));
-        foreach (var (_, start, count) in FolderBlocks())
+        foreach (var (_, start, count) in TopLevelBlocks())
         {
             if (start == source) continue;
             var slot = start < source ? start : start + count - Liquid.SourceCount;
@@ -371,6 +467,16 @@ public partial class SidebarView : UserControl
             if (dist < bestDist) { bestDist = dist; best = slot; }
         }
         return best;
+    }
+
+    /// <summary>Keeps the folder card between the first top-level entry's top and the last
+    /// one's bottom, so it never floats over the pinned playlists it cannot land among.</summary>
+    private double ClampToTopLevel(double cardTop)
+    {
+        var blocks = TopLevelBlocks();
+        if (blocks.Count == 0) return cardTop;
+        var (_, lastStart, lastCount) = blocks[^1];
+        return Math.Clamp(cardTop, FolderSlotTop(blocks[0].Start), FolderSlotTop(lastStart + lastCount - Liquid.SourceCount));
     }
 
     /// <summary>Card top for the dragged block starting at row <paramref name="slot"/>. The
@@ -385,9 +491,9 @@ public partial class SidebarView : UserControl
     {
         if (!_dragActive)
         {
-            // A press on a folder header that never became a drag is a click: toggle it.
-            if (_dragItem is { IsFolder: true } clicked && ReferenceEquals(RowOf(e.Source)?.DataContext, clicked))
-                _vm?.ToggleFolderExpansion(clicked.Label);
+            // A press on a folder header that never moved like a drag is a click: toggle it.
+            if (!_dragMoved && _dragItem is { IsFolder: true } clicked && ReferenceEquals(RowOf(e.Source)?.DataContext, clicked))
+                _ = _vm?.ToggleFolderAnimatedAsync(clicked);
             _dragItem = null;
             return;
         }
@@ -396,11 +502,13 @@ public partial class SidebarView : UserControl
         var vm = _vm;
         var dragged = _dragItem;
         var folder = _folderTarget;
+        var beside = _besideFolder;
         var source = Liquid.SourceIndex;
         var target = Liquid.TargetIndex;
         _dragActive = false;
         _dragItem = null;
         _folderTarget = null;
+        _besideFolder = null;
         SetDropHighlight(null);
         // After _dragActive is cleared: releasing the capture raises CaptureLost, which
         // would otherwise read this drop as a cancel.
@@ -415,6 +523,15 @@ public partial class SidebarView : UserControl
         if (vm == null || dragged?.PlaylistId is not { } draggedId || source < 0)
         {
             Liquid.Cancel();
+            return;
+        }
+
+        if (beside is { } besideFolder)
+        {
+            // Outside the folder even when the gap is its own spot (a playlist leaving the
+            // folder it closes, a pinned one joining the loose ones above the first folder).
+            var besideLanding = LiquidReorder.SlotTop(PlaylistList, target, PlaylistListHost) ?? Liquid.CardY;
+            Liquid.Settle(besideLanding, () => _ = MoveNextToFolderSafeAsync(vm, draggedId, besideFolder.Header, besideFolder.After));
             return;
         }
 
@@ -458,11 +575,24 @@ public partial class SidebarView : UserControl
         }
     }
 
+    private static async Task MoveNextToFolderSafeAsync(SidebarViewModel vm, Guid draggedId, PlaylistNavItem folder, bool placeAfter)
+    {
+        try
+        {
+            await vm.MovePlaylistNextToFolderAsync(draggedId, folder, placeAfter);
+        }
+        catch (Exception ex)
+        {
+            // Fire-and-forget from the animation frame: an escaped exception would be lost.
+            System.Diagnostics.Debug.WriteLine($"[SidebarView] Playlist move failed: {ex.Message}");
+        }
+    }
+
     private void SettleFolderDrag(SidebarViewModel vm, PlaylistNavItem folder, int source, int target)
     {
-        // Dragged up, the block lands in front of the folder whose place it took; dragged
-        // down, after the folder whose rows it passed. Back on its own spot nothing moves.
-        var blocks = FolderBlocks();
+        // Dragged up, the block lands in front of the entry whose place it took; dragged
+        // down, after the entry whose rows it passed. Back on its own spot nothing moves.
+        var blocks = TopLevelBlocks();
         var count = Liquid.SourceCount;
         var destination = target < source ? blocks.Find(b => b.Start == target).Header
             : target > source ? blocks.Find(b => b.Start + b.Count == target + count).Header
@@ -498,6 +628,7 @@ public partial class SidebarView : UserControl
         _dragActive = false;
         _dragItem = null;
         _folderTarget = null;
+        _besideFolder = null;
         SetDropHighlight(null);
         Liquid.Cancel();
     }
@@ -778,7 +909,55 @@ public partial class SidebarView : UserControl
     private void UnsubscribeFromViewModel()
     {
         if (_vm != null)
+        {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm.FolderRowsInserted -= OnFolderRowsInserted;
+            if (_vm.FoldFolderRows == FoldFolderRowsAsync) _vm.FoldFolderRows = null;
+        }
         AttachTopBar(null);
     }
+
+    // ── Playlist folder fold ──
+    // A folder's playlists are rows inserted and removed on toggle; these ease them in
+    // and out with the Settings sub-menu Glide (see FoldingListBoxItem).
+
+    /// <summary>Rows an expand just inserted, shut and eased open as their containers are made.</summary>
+    private readonly HashSet<PlaylistNavItem> _pendingUnfold = new();
+
+    private IEnumerable<PlaylistNavItem> FolderRows(string folder)
+        => _vm?.SidebarRows.Where(r => !r.IsFolder && r.IsInFolder
+               && string.Equals(r.Folder.Trim(), folder, StringComparison.OrdinalIgnoreCase))
+           ?? Enumerable.Empty<PlaylistNavItem>();
+
+    private void OnFolderRowsInserted(string folder)
+    {
+        foreach (var row in FolderRows(folder))
+        {
+            if (PlaylistList.ContainerFromItem(row) is FoldingListBoxItem existing)
+            {
+                existing.SnapShut();
+                _ = existing.Unfold();
+            }
+            else _pendingUnfold.Add(row);
+        }
+        // Rows outside the viewport never get a container this pass; don't animate them later.
+        Dispatcher.UIThread.Post(_pendingUnfold.Clear, DispatcherPriority.Background);
+    }
+
+    private void OnPlaylistContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is not FoldingListBoxItem item
+            || e.Container.DataContext is not PlaylistNavItem row
+            || !_pendingUnfold.Remove(row)) return;
+        // Shut before its first layout, so it never flashes in at full height.
+        item.SnapShut();
+        _ = item.Unfold();
+    }
+
+    private Task FoldFolderRowsAsync(string folder)
+        => Task.WhenAll(FolderRows(folder)
+            .Select(r => PlaylistList.ContainerFromItem(r))
+            .OfType<FoldingListBoxItem>()
+            .Select(c => c.Fold())
+            .ToList());
 }

@@ -21,6 +21,18 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
+        <!-- Folder chevron turns with the row fold, on its exact timing (FoldingListBoxItem.FoldDuration / FoldEase). -->
+        <Style Selector="Path.folder-chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static ctrl:FoldingListBoxItem.FoldDuration}" Easing="{x:Static ctrl:FoldingListBoxItem.FoldEase}" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Path.folder-chevron.open">
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        </Style>
         <!-- Row content colours are class-driven (not local values) so the selected accent pill
              (Styles.axaml, GitHub #87) can flip them to the accent-contrast colour, like the
              Settings rail's rail-bitmap. Accent-filled marks invert on the pill so they stay visible. -->
@@ -463,7 +475,7 @@
                     <!-- User playlists: pinned first, then folders, then loose playlists.
                          The Panel hosts the reorder drag card over the list. -->
                     <Panel x:Name="PlaylistListHost" Margin="6,0,6,4">
-                    <ListBox Classes="sidebar"
+                    <ctrl:FoldingListBox Classes="sidebar"
                              x:Name="PlaylistList"
                              ItemsSource="{Binding SidebarRows}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
@@ -483,21 +495,18 @@
                                             CornerRadius="8"
                                             VerticalAlignment="Center"
                                             Background="#22808080">
-                                        <Panel>
-                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
-                                                      Width="11" Height="11"
-                                                      Opacity="0.8"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      IsVisible="{Binding !IsExpanded}" />
-                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
-                                                      Width="11" Height="11"
-                                                      Opacity="0.8"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      RenderTransform="rotate(90deg)"
-                                                      IsVisible="{Binding IsExpanded}" />
-                                        </Panel>
+                                        <!-- Drawn in the button's own 28px box, symmetric about its centre
+                                             (x 11.5-16.5, y 9-19), so it sits dead centre and turns in place.
+                                             The bounds-stretched PathIcon landed ~1px up and left. -->
+                                        <Path Classes="folder-chevron"
+                                              Classes.open="{Binding IsExpanded}"
+                                              Width="28" Height="28"
+                                              Data="M 11.5,9 L 16.5,14 L 11.5,19"
+                                              Stroke="{Binding $parent[ListBoxItem].Foreground}"
+                                              StrokeThickness="1.8"
+                                              StrokeLineCap="Round"
+                                              StrokeJoin="Round"
+                                              Opacity="0.8" />
                                     </Border>
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
@@ -612,7 +621,7 @@
                                 </Panel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
-                    </ListBox>
+                    </ctrl:FoldingListBox>
                     <!-- Floating card for a playlist being reordered: the row's own template
                          in a lifted pill; LiquidReorder drives its transforms per frame and the
                          other rows slide apart under it. -->

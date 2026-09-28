@@ -20,4 +20,10 @@ public interface ISearchable
     /// Empty string clears the filter.
     /// </summary>
     void ApplyFilter(string query);
+
+    /// <summary>
+    /// True when no search query is applied or pending, so a section switch has nothing to
+    /// clear. Views that don't report it are always re-cleared.
+    /// </summary>
+    bool IsSearchCleared => false;
 }

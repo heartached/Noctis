@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
+using Noctis.Helpers;
 
 namespace Noctis.Controls;
 
@@ -41,7 +42,7 @@ public partial class AnimatedCoverImage : UserControl
 
     private readonly Image _image;
     private AnimatedCoverFeed? _feed;
-    private Window? _window;
+    private readonly HostWindowWatch _hostWindow;
     private bool _attached;
     private bool _wasEffectivelyVisible;
 
@@ -64,6 +65,10 @@ public partial class AnimatedCoverImage : UserControl
     {
         InitializeComponent();
         _image = this.FindControl<Image>("FrameImage")!;
+        // Minimized/restored re-checks the lease. A hidden window (the main window while
+        // the mini player is open) reaches us through the IsVisible class handler above.
+        // Created before the handlers below so it has found the window by the time they run.
+        _hostWindow = new HostWindowWatch(this, () => UpdateLease(linger: true));
         // Release on detach, re-lease on re-attach: a TabControl detaches the hosting
         // tab's content when you switch tabs and re-attaches it on return, and
         // Source/IsActive don't change across that, so nothing else restarts us. The
@@ -72,9 +77,6 @@ public partial class AnimatedCoverImage : UserControl
         {
             _attached = true;
             s_attached.Add(this);
-            _window = TopLevel.GetTopLevel(this) as Window;
-            if (_window != null)
-                _window.PropertyChanged += OnWindowPropertyChanged;
             _wasEffectivelyVisible = IsEffectivelyVisible;
             UpdateLease(linger: true);
         };
@@ -82,11 +84,6 @@ public partial class AnimatedCoverImage : UserControl
         {
             _attached = false;
             s_attached.Remove(this);
-            if (_window != null)
-            {
-                _window.PropertyChanged -= OnWindowPropertyChanged;
-                _window = null;
-            }
             UpdateLease(linger: true);
         };
     }
@@ -113,15 +110,6 @@ public partial class AnimatedCoverImage : UserControl
             UpdateLease(linger: false);
     }
 
-    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        // Minimized, or hidden (the main window while the mini player is open). A hidden
-        // window also reaches us through the IsVisible class handler; UpdateLease is
-        // idempotent, so the second call is a no-op.
-        if (e.Property == Window.WindowStateProperty || e.Property == IsVisibleProperty)
-            UpdateLease(linger: true);
-    }
-
     private void UpdateLease(bool linger)
     {
         var source = Source;
@@ -130,8 +118,8 @@ public partial class AnimatedCoverImage : UserControl
             hasSource: !string.IsNullOrEmpty(source),
             isAttached: _attached,
             isEffectivelyVisible: IsEffectivelyVisible,
-            windowShown: _window?.IsVisible ?? true,
-            windowMinimized: _window?.WindowState == WindowState.Minimized);
+            windowShown: _hostWindow.Window?.IsVisible ?? true,
+            windowMinimized: _hostWindow.IsMinimized);
 
         if (wanted && _feed != null && _feed.Source == source)
             return; // already showing it

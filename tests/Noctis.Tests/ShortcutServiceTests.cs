@@ -22,6 +22,18 @@ public class ShortcutServiceTests
     }
 
     [Fact]
+    public void ToggleLyrics_DefaultsToPrimaryShiftL_AndPrimaryLStaysFavorite()
+    {
+        // GitHub #103: the lyrics page gets its own key next to Favorite's Ctrl/⌘+L.
+        Assert.Equal(new KeyGesture(Key.L, KeyModifiers.Control | KeyModifiers.Shift), Win().Get(ShortcutAction.ToggleLyrics));
+        Assert.Equal(new KeyGesture(Key.L, KeyModifiers.Meta | KeyModifiers.Shift), new ShortcutService(isMac: true).Get(ShortcutAction.ToggleLyrics));
+
+        var win = Win();
+        Assert.Equal(ShortcutAction.ToggleLyrics, win.TryMatch(Press(Key.L, KeyModifiers.Control | KeyModifiers.Shift)));
+        Assert.Equal(ShortcutAction.ToggleFavorite, win.TryMatch(Press(Key.L, KeyModifiers.Control)));
+    }
+
+    [Fact]
     public void EveryAction_HasADescriptor_AndADistinctDefault()
     {
         // A new action that forgets its descriptor never shows in Settings › Shortcuts; one

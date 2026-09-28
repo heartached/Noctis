@@ -75,6 +75,11 @@ public partial class LyricsView : UserControl
             LyricsScrollViewer.PropertyChanged += OnScrollViewerPropertyChanged;
         }
 
+        // Ctrl/⌘+wheel over the lyrics shifts them instead of scrolling (GitHub #102).
+        // Tunnel on the view, an ancestor of the ScrollViewer, so the notch is claimed
+        // before SmoothScrollBehavior's handler there sees it.
+        AddHandler(PointerWheelChangedEvent, OnLyricsOffsetWheel, RoutingStrategies.Tunnel);
+
         LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
 
         _flow = new FlowingArtworkAnimator(this, FlowBackdrop, FlowLayer1, FlowLayer2, BeatGlow, GetBeatContext);
@@ -1069,6 +1074,17 @@ public partial class LyricsView : UserControl
     {
         if (!_isProgrammaticScroll)
             PauseAutoFollow();
+    }
+
+    private void OnLyricsOffsetWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!SmoothScrollBehavior.HasCommandModifier(e) || DataContext is not LyricsViewModel vm) return;
+        // Over the lyrics only — not the artwork and controls column.
+        if (LyricsScrollViewer is not { } scroller || e.Source is not Visual source
+            || !(source == scroller || scroller.IsVisualAncestorOf(source))) return;
+        // Handled: no scroll, and the bubble handler above never pauses auto-follow.
+        if (vm.NudgeLyricsOffset(e.Delta.Y))
+            e.Handled = true;
     }
 
     private void PauseAutoFollow()

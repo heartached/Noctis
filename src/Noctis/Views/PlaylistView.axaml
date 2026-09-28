@@ -841,7 +841,8 @@
                                                     Padding="6,1.5"
                                                     Margin="6,0,0,0"
                                                     VerticalAlignment="Center"
-                                                    BorderThickness="1"
+                                                    BorderThickness="1.5"
+                                                    UseLayoutRounding="True"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
                                                     ToolTip.Tip="{loc:T Playlist.AddedLast7DaysTip}">
                                                 <!-- GitHub #74: the badge can be switched off in Settings. -->

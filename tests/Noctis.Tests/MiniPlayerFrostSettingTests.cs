@@ -117,6 +117,34 @@ public class MiniPlayerFrostSettingTests : IDisposable
             MiniPlayerWindow.TransparencyLevels(true));
     }
 
+    [Fact]
+    public void TransparencyLevels_AreOneSharedArrayPerChoice()
+    {
+        // Avalonia compares the hint by reference: a new, equal array re-applies it, and
+        // macOS then drops the window to Opaque (a dark square behind the card).
+        Assert.Same(MiniPlayerWindow.TransparencyLevels(false), MiniPlayerWindow.TransparencyLevels(false));
+        Assert.Same(MiniPlayerWindow.TransparencyLevels(true), MiniPlayerWindow.TransparencyLevels(true));
+    }
+
+    [AvaloniaFact]
+    public void ReattachingTheViewModel_DoesNotChangeTheHintInstance()
+    {
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+
+        var win = new MiniPlayerWindow();
+        var changes = 0;
+        win.PropertyChanged += (_, e) => { if (e.Property == TopLevel.TransparencyLevelHintProperty) changes++; };
+        win.DataContext = vm;   // the constructor already set the hint; this sets it again
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0, changes);
+    }
+
     [AvaloniaFact]
     public void TogglingTheSetting_SwapsTheOpenWindowsHintLive()
     {

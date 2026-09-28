@@ -404,6 +404,11 @@ public partial class Track : ObservableObject
     /// <summary>Per-track EQ preset name. Empty = use global setting.</summary>
     public string EqPreset { get; set; } = string.Empty;
 
+    /// <summary>GitHub #102: the user's lyrics offset for this track in milliseconds, added to
+    /// every lyric timestamp at display time (positive = lyrics later, negative = earlier).
+    /// App-only state: lyric files are never rewritten. 0 = as timed.</summary>
+    public int LyricsOffsetMs { get; set; }
+
     /// <summary>Saved playback position in milliseconds (for RememberPlaybackPosition).</summary>
     public long SavedPositionMs { get; set; }
 

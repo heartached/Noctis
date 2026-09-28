@@ -10,6 +10,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using LibVLCSharp.Shared;
+using Noctis.Helpers;
 using Noctis.Services;
 
 namespace Noctis.Controls;
@@ -144,42 +145,19 @@ public sealed class VideoBackdrop : Control
     private Session? _session;
     private int _generation;
     private WriteableBitmap? _current;   // frame currently painted (owned by the session)
-    private Window? _window;
-    private bool _windowMinimized;
+    private readonly HostWindowWatch _hostWindow;
 
     public VideoBackdrop()
     {
         ClipToBounds = true;
-        AttachedToVisualTree += (_, _) =>
-        {
-            _window = TopLevel.GetTopLevel(this) as Window;
-            if (_window != null)
-            {
-                _window.PropertyChanged += OnWindowPropertyChanged;
-                _windowMinimized = _window.WindowState == WindowState.Minimized;
-            }
-            Refresh();
-        };
-        DetachedFromVisualTree += (_, _) =>
-        {
-            if (_window != null)
-            {
-                _window.PropertyChanged -= OnWindowPropertyChanged;
-                _window = null;
-            }
-            Teardown();
-        };
+        // Created before the handlers below so it has found the window by the time they run.
+        _hostWindow = new HostWindowWatch(this, OnHostMinimizedChanged);
+        AttachedToVisualTree += (_, _) => Refresh();
+        DetachedFromVisualTree += (_, _) => Teardown();
     }
 
-    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        if (e.Property != Window.WindowStateProperty) return;
-        var minimized = _window?.WindowState == WindowState.Minimized;
-        if (minimized == _windowMinimized) return;
-        _windowMinimized = minimized;
-        // Park the decoder while the window can't be seen; resume where it left off.
-        _session?.SetPaused(minimized || IsPaused);
-    }
+    // Park the decoder while the window can't be seen; resume where it left off.
+    private void OnHostMinimizedChanged() => _session?.SetPaused(_hostWindow.IsMinimized || IsPaused);
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -187,7 +165,7 @@ public sealed class VideoBackdrop : Control
         if (change.Property == SourceProperty || change.Property == IsActiveProperty)
             Refresh();
         else if (change.Property == IsPausedProperty)
-            _session?.SetPaused(IsPaused || _windowMinimized);
+            _session?.SetPaused(IsPaused || _hostWindow.IsMinimized);
         else if (change.Property == SyncPositionProperty)
         {
             if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds);
@@ -232,7 +210,7 @@ public sealed class VideoBackdrop : Control
         if (!active || string.IsNullOrEmpty(source)) return;
 
         var generation = _generation;
-        var startPaused = _windowMinimized || IsPaused;
+        var startPaused = _hostWindow.IsMinimized || IsPaused;
         var synced = SyncPosition != null;
         ThreadPool.QueueUserWorkItem(_ =>
         {

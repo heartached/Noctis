@@ -8,32 +8,19 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ClipToBounds="True">
+                    <!-- Each bar draws itself centred in the 12px row (EqBar), so a height change
+                         repaints without a layout pass. -->
                     <StackPanel x:Name="BarsPanel"
                                 Orientation="Horizontal"
                                 Spacing="1.75"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Height="12">
-                        <Rectangle x:Name="Bar1" Width="1.75" Height="1.75"
-                                   RadiusX="0.875" RadiusY="0.875"
-                                   VerticalAlignment="Center"
-                                   Fill="{TemplateBinding Foreground}" />
-                        <Rectangle x:Name="Bar2" Width="1.75" Height="1.75"
-                                   RadiusX="0.875" RadiusY="0.875"
-                                   VerticalAlignment="Center"
-                                   Fill="{TemplateBinding Foreground}" />
-                        <Rectangle x:Name="Bar3" Width="1.75" Height="1.75"
-                                   RadiusX="0.875" RadiusY="0.875"
-                                   VerticalAlignment="Center"
-                                   Fill="{TemplateBinding Foreground}" />
-                        <Rectangle x:Name="Bar4" Width="1.75" Height="1.75"
-                                   RadiusX="0.875" RadiusY="0.875"
-                                   VerticalAlignment="Center"
-                                   Fill="{TemplateBinding Foreground}" />
-                        <Rectangle x:Name="Bar5" Width="1.75" Height="1.75"
-                                   RadiusX="0.875" RadiusY="0.875"
-                                   VerticalAlignment="Center"
-                                   Fill="{TemplateBinding Foreground}" />
+                        <ctrl:EqBar x:Name="Bar1" Width="1.75" Fill="{TemplateBinding Foreground}" />
+                        <ctrl:EqBar x:Name="Bar2" Width="1.75" Fill="{TemplateBinding Foreground}" />
+                        <ctrl:EqBar x:Name="Bar3" Width="1.75" Fill="{TemplateBinding Foreground}" />
+                        <ctrl:EqBar x:Name="Bar4" Width="1.75" Fill="{TemplateBinding Foreground}" />
+                        <ctrl:EqBar x:Name="Bar5" Width="1.75" Fill="{TemplateBinding Foreground}" />
                     </StackPanel>
                 </Grid>
             </ControlTemplate>

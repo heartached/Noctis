@@ -23,6 +23,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private LinuxResumeWatcher? _resumeWatcher;
     private LinuxTrayHost? _trayHost;
 
+    private static readonly WindowTransparencyLevel[] GlassTransparencyLevels =
+    {
+        WindowTransparencyLevel.AcrylicBlur,
+        WindowTransparencyLevel.Mica,
+        WindowTransparencyLevel.Blur,
+        WindowTransparencyLevel.None,
+    };
+
     /// <summary>
     /// Linux, XWayland on NVIDIA: after a suspend the window came back see-through until the
     /// app was restarted (Mistery, Discord 2026-09-22; see <see cref="LinuxResumeWatcher"/>).
@@ -160,6 +168,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Controls.GlassPanel? _settingsGlass;
     private Border? _settingsCard;
     private Border? _queuePopupPanel;
+    private Controls.GlassPanel? _queueGlass;
     private MiniPlayerWindow? _miniPlayer;
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
     private Action? _detachFileActivation;
@@ -358,6 +367,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (acrylic != null) acrylic.IsVisible = false;
             // Every GlassPanel (sidebar, Settings sheet, island) drops back to its plain fill.
             AppGlass.Clear();
+            QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: false);
             return;
         }
 
@@ -367,13 +377,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
         var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
 
-        TransparencyLevelHint = new[]
-        {
-            WindowTransparencyLevel.AcrylicBlur,
-            WindowTransparencyLevel.Mica,
-            WindowTransparencyLevel.Blur,
-            WindowTransparencyLevel.None,
-        };
+        // One shared array: a new, equal array on every glass refresh is re-applied by
+        // Avalonia, and macOS drops a repeated level to Opaque (see MiniPlayerWindow).
+        TransparencyLevelHint = GlassTransparencyLevels;
 
         if (acrylic != null)
         {
@@ -411,6 +417,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // app content beneath them. Dialog windows are left alone: an AcrylicBlur hint on a
         // borderless transparent window painted the whole owner black on Win32 (09-07).
         AppGlass.Set(true, main, sidebar);
+        QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: true);
     }
 
     /// <summary>Card fade/scale plus the glass underlay's own Fade/scale, always together so the
@@ -529,6 +536,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
+                _queueGlass = this.FindControl<Controls.GlassPanel>("QueueGlass");
+                QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, AppGlass.IsActive);
 
                 InitializeQueuePopupBinding(vm);
                 InitializeTaskbarButtons(vm);
@@ -1341,7 +1350,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 selection.Clear();
                 RefreshQueueSelectionVisuals();
             }
-            AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
+            QueueDrawerGlass.Animate(_queuePopupPanel, _queueGlass, vm.Player.IsQueuePopupOpen, AppGlass.IsActive,
                 () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
         };
         vm.Player.PropertyChanged += _queuePopupStateHandler;
@@ -1769,6 +1778,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 // (the bar unmounts), so this is the way in to an empty queue.
                 vm.Player.ShowQueueCommand.Execute(null);
                 return true;
+            case ShortcutAction.ToggleLyrics:
+                // Same toggle as the island's Lyrics button (GitHub #103).
+                vm.ToggleLyricsCommand.Execute(null);
+                return true;
             default:
                 return false;
         }
@@ -2005,41 +2018,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     //   clicks and double-taps continue to work normally for selection/play.
 
     private const double QueueDragThreshold = 6.0;
-
-    /// <summary>
-    /// Open/close animation for the queue popup, mirroring the Settings modal:
-    /// fade + slide/scale settle on open, the reverse on close, then the closed
-    /// panel drops out of the tree so it stops participating in layout/render.
-    /// <paramref name="stillClosed"/> re-checks the state when the close timer
-    /// fires, so a quick re-open never hides an open panel.
-    /// (The lyrics panel intentionally keeps its own width-slide animation.)
-    /// </summary>
-    private static void AnimateSidePanel(Border? panel, bool open, Func<bool> stillClosed)
-    {
-        if (panel == null) return;
-        if (open)
-        {
-            // Show first; the settle runs on the next frame so the transitions animate it.
-            panel.IsVisible = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                panel.Opacity = 1;
-                panel.RenderTransform =
-                    Avalonia.Media.Transformation.TransformOperations.Parse("translateX(0px) scale(1)");
-            }, DispatcherPriority.Render);
-        }
-        else
-        {
-            panel.Opacity = 0;
-            panel.RenderTransform =
-                Avalonia.Media.Transformation.TransformOperations.Parse("translateX(16px) scale(0.97)");
-            DispatcherTimer.RunOnce(() =>
-            {
-                if (stillClosed())
-                    panel.IsVisible = false;
-            }, TimeSpan.FromMilliseconds(200));
-        }
-    }
 
     /// <summary>Stamps the 1-based queue position into a (possibly recycled) row container.</summary>
     private static void SetQueueRowNumber(Control container, int index)

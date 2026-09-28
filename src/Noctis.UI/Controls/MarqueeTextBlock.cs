@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 
 namespace Noctis.Controls;
 
@@ -211,6 +212,7 @@ public class MarqueeTextBlock : UserControl
     private readonly TextBlock _loopCopy;
     private readonly StackPanel _contentPanel;
     private readonly TranslateTransform _transform;
+    private readonly HostWindowWatch _hostWindow;
 
     // ── Animation state ──
     // Frame-clock driven (TopLevel.RequestAnimationFrame), NOT a DispatcherTimer: a 16 ms
@@ -281,6 +283,7 @@ public class MarqueeTextBlock : UserControl
 
         AttachedToVisualTree += OnAttached;
         DetachedFromVisualTree += OnDetached;
+        _hostWindow = new HostWindowWatch(this, OnHostMinimizedChanged);
 
         // Overflow is computed from the viewport width, but nothing recomputed it when
         // that width changed — only Text/FontSize/FontWeight/MaxDisplayWidth/InlineContent
@@ -425,6 +428,23 @@ public class MarqueeTextBlock : UserControl
 
     private void OnGlobalSettingsChanged(object? sender, EventArgs e) => ResetAndRecalc();
 
+    /// <summary>Minimized: stop the lap (and any pending rest) back at the start. Restored:
+    /// start over from the rest pause, exactly as after a text change.</summary>
+    private void OnHostMinimizedChanged()
+    {
+        if (_hostWindow.IsMinimized)
+        {
+            StopScrolling();
+            _offset = 0;
+            _transform.X = 0;
+            if (_fadesLeadingEdge == true) ApplyEdgeFade(false);
+        }
+        else
+        {
+            ResetAndRecalc();
+        }
+    }
+
     private bool IsScrollEnabled => IsLyricsPage
         ? (IsForArtist ? GlobalLyricsArtistScrollEnabled : GlobalLyricsTitleScrollEnabled)
         : IsMiniPlayer
@@ -503,6 +523,8 @@ public class MarqueeTextBlock : UserControl
     private void StartScrolling()
     {
         if (_isRunning || VisualRoot == null) return;
+        // Minimized: no lap and no re-check; restoring the window re-arms it.
+        if (_hostWindow.IsMinimized) return;
         if (!IsEffectivelyVisible)
         {
             // Hidden by an ancestor (the mini player keeps every form attached and hides

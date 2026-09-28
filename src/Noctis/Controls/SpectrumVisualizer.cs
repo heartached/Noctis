@@ -16,8 +16,9 @@ namespace Noctis.Controls;
 /// like the flowing-artwork animator (a DispatcherTimer judders against the compositor);
 /// each frame reads the meter, smooths every band (fast attack, slower release) and
 /// invalidates the visual. Only draws — never touches layout. The loop parks itself while
-/// the control is detached, hidden or <see cref="IsActive"/> is off, and decays to rest
-/// when no live audio is flowing (paused, or an engine without a sample tap).
+/// the control is detached, hidden, its window minimized or <see cref="IsActive"/> is off,
+/// and decays to rest when no live audio is flowing (paused, or an engine without a sample
+/// tap).
 /// </summary>
 public sealed class SpectrumVisualizer : Control
 {
@@ -89,6 +90,7 @@ public sealed class SpectrumVisualizer : Control
     private double _lastFrameMs;
     private bool _running;
     private DispatcherTimer? _visibilityPoll;
+    private readonly HostWindowWatch _hostWindow;
 
     static SpectrumVisualizer()
     {
@@ -106,6 +108,7 @@ public sealed class SpectrumVisualizer : Control
     public SpectrumVisualizer(SpectrumMeter? meter)
     {
         _meter = meter ?? SpectrumMeter.Shared;
+        _hostWindow = new HostWindowWatch(this, OnGateChanged);
     }
 
     /// <summary>The smoothed band levels currently on screen (diagnostics/tests).</summary>
@@ -142,6 +145,13 @@ public sealed class SpectrumVisualizer : Control
     private void TryStart()
     {
         if (_running || !IsActive) return;
+        if (_hostWindow.IsMinimized)
+        {
+            // No poll: restoring the window re-runs the gate. The bars keep their levels
+            // and carry on from the live meter.
+            StopVisibilityPoll();
+            return;
+        }
         if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } topLevel)
         {
             StartVisibilityPoll();
@@ -156,7 +166,7 @@ public sealed class SpectrumVisualizer : Control
     private void OnFrame(TimeSpan _)
     {
         if (!_running) return;
-        if (!IsActive || !IsVisible)
+        if (!IsActive || !IsVisible || _hostWindow.IsMinimized)
         {
             _running = false;
             return;
