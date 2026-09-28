@@ -16,6 +16,11 @@ namespace Noctis.Services;
 ///   - ID3v2 (MP3):    TCMP frame for compilation; TXXX custom frames for work/movement/show-flags
 ///   - Xiph (FLAC/Ogg): native IsCompilation; SetField for custom string fields
 ///   - ASF (WMA):      content descriptors, same key names as Xiph
+///
+/// Writes only create the format's own tag type (<see cref="AdvancedTagIO.CreatesTag(TagFile, TagTypes, bool)"/>)
+/// and update other tag types only when the file already has them: creating every type
+/// gave a rated or edited FLAC a leading ID3v2 header and a trailing APEv2 (ffmpeg
+/// "invalid sync code") and an MP3 an APEv2 trailer.
 /// </summary>
 internal static class ExtendedTagIO
 {
@@ -56,11 +61,12 @@ internal static class ExtendedTagIO
 
     public static void WriteIsCompilation(TagFile file, bool value)
     {
-        if (file.GetTag(TagTypes.Apple, true) is AppleTag apple)
+        // The native tag is created even for false, as before; foreign ones never are.
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, true)) is AppleTag apple)
             apple.IsCompilation = value;
-        if (file.GetTag(TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3)
+        if (file.GetTag(TagTypes.Id3v2, AdvancedTagIO.CreatesTag(file, TagTypes.Id3v2, true)) is TagLib.Id3v2.Tag id3)
             id3.IsCompilation = value;
-        if (file.GetTag(TagTypes.Xiph, true) is XiphComment xiph)
+        if (file.GetTag(TagTypes.Xiph, AdvancedTagIO.CreatesTag(file, TagTypes.Xiph, true)) is XiphComment xiph)
             xiph.IsCompilation = value;
     }
 
@@ -80,7 +86,7 @@ internal static class ExtendedTagIO
     public static void WriteWorkName(TagFile file, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value;
-        if (file.GetTag(TagTypes.Apple, clean != null) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, clean)) is AppleTag apple)
             apple.SetText(AppleWorkAtom, clean);
         WriteCustomString(file, WorkKey, clean);
     }
@@ -101,7 +107,7 @@ internal static class ExtendedTagIO
     public static void WriteMovementName(TagFile file, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value;
-        if (file.GetTag(TagTypes.Apple, clean != null) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, clean)) is AppleTag apple)
             apple.SetText(AppleMovementNameAtom, clean);
         WriteCustomString(file, MovementNameKey, clean);
     }
@@ -124,7 +130,7 @@ internal static class ExtendedTagIO
     public static void WriteMovementNumber(TagFile file, int value)
     {
         var text = value > 0 ? value.ToString() : null;
-        if (file.GetTag(TagTypes.Apple, text != null) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, text)) is AppleTag apple)
             apple.SetText(AppleMovementIndexAtom, text);
         WriteCustomString(file, MovementNumberKey, text);
     }
@@ -143,7 +149,7 @@ internal static class ExtendedTagIO
     public static void WriteMovementCount(TagFile file, int value)
     {
         var text = value > 0 ? value.ToString() : null;
-        if (file.GetTag(TagTypes.Apple, text != null) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, text)) is AppleTag apple)
             apple.SetText(AppleMovementCountAtom, text);
         WriteCustomString(file, MovementTotalKey, text);
     }
@@ -165,7 +171,7 @@ internal static class ExtendedTagIO
     {
         // Apple's shwm is a single enum: 0 off, 1 work/movement, 2 composer.
         // We only touch the atom when this flag is the "active" display mode to avoid clobbering ShowComposer.
-        if (file.GetTag(TagTypes.Apple, value) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, value)) is AppleTag apple)
         {
             if (value)
                 apple.SetText(AppleShowWorkAtom, "1");
@@ -195,7 +201,7 @@ internal static class ExtendedTagIO
 
     public static void WriteShowComposer(TagFile file, bool value)
     {
-        if (file.GetTag(TagTypes.Apple, value) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, value)) is AppleTag apple)
         {
             if (value)
                 apple.SetText(AppleShowWorkAtom, "2");
@@ -360,7 +366,7 @@ internal static class ExtendedTagIO
     {
         stars = System.Math.Clamp(stars, 0, 5);
 
-        if (file.GetTag(TagTypes.Id3v2, stars > 0) is TagLib.Id3v2.Tag id3)
+        if (file.GetTag(TagTypes.Id3v2, AdvancedTagIO.CreatesTag(file, TagTypes.Id3v2, stars > 0)) is TagLib.Id3v2.Tag id3)
         {
             if (stars == 0)
             {
@@ -382,16 +388,16 @@ internal static class ExtendedTagIO
             ? (stars * 20).ToString(System.Globalization.CultureInfo.InvariantCulture)
             : null;
 
-        if (file.GetTag(TagTypes.Apple, stars > 0) is AppleTag apple)
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, stars > 0)) is AppleTag apple)
             apple.SetDashBox(AppleItunesMean, RatingKey, text ?? string.Empty);
 
-        if (file.GetTag(TagTypes.Xiph, stars > 0) is XiphComment xiph)
+        if (file.GetTag(TagTypes.Xiph, AdvancedTagIO.CreatesTag(file, TagTypes.Xiph, stars > 0)) is XiphComment xiph)
         {
             if (text == null) xiph.RemoveField(RatingKey);
             else xiph.SetField(RatingKey, new[] { text });
         }
 
-        if (file.GetTag(TagTypes.Ape, stars > 0) is TagLib.Ape.Tag ape)
+        if (file.GetTag(TagTypes.Ape, AdvancedTagIO.CreatesTag(file, TagTypes.Ape, stars > 0)) is TagLib.Ape.Tag ape)
         {
             if (text == null) ape.RemoveItem(RatingKey);
             else ape.SetValue(RatingKey, text);
@@ -399,7 +405,7 @@ internal static class ExtendedTagIO
 
         // ASF (WMA): mirror to WM/SharedUserRating (WMP's 1-99 scale) so other
         // players' views stay in sync, alongside our 0-100 RATING descriptor.
-        if (file.GetTag(TagTypes.Asf, stars > 0) is TagLib.Asf.Tag asfTag)
+        if (file.GetTag(TagTypes.Asf, AdvancedTagIO.CreatesTag(file, TagTypes.Asf, stars > 0)) is TagLib.Asf.Tag asfTag)
         {
             if (text == null)
             {
@@ -509,7 +515,7 @@ internal static class ExtendedTagIO
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value;
 
-        if (file.GetTag(TagTypes.Id3v2, clean != null) is TagLib.Id3v2.Tag id3)
+        if (file.GetTag(TagTypes.Id3v2, AdvancedTagIO.CreatesTag(file, TagTypes.Id3v2, clean)) is TagLib.Id3v2.Tag id3)
         {
             if (clean == null)
             {
@@ -523,19 +529,19 @@ internal static class ExtendedTagIO
             }
         }
 
-        if (file.GetTag(TagTypes.Xiph, clean != null) is XiphComment xiph)
+        if (file.GetTag(TagTypes.Xiph, AdvancedTagIO.CreatesTag(file, TagTypes.Xiph, clean)) is XiphComment xiph)
         {
             if (clean == null) xiph.RemoveField(key);
             else xiph.SetField(key, new[] { clean });
         }
 
-        if (file.GetTag(TagTypes.Ape, clean != null) is TagLib.Ape.Tag ape)
+        if (file.GetTag(TagTypes.Ape, AdvancedTagIO.CreatesTag(file, TagTypes.Ape, clean)) is TagLib.Ape.Tag ape)
         {
             if (clean == null) ape.RemoveItem(key);
             else ape.SetValue(key, clean);
         }
 
-        if (file.GetTag(TagTypes.Asf, clean != null) is TagLib.Asf.Tag asf)
+        if (file.GetTag(TagTypes.Asf, AdvancedTagIO.CreatesTag(file, TagTypes.Asf, clean)) is TagLib.Asf.Tag asf)
         {
             if (clean == null) asf.RemoveDescriptors(key);
             else asf.SetDescriptorString(clean, key);
