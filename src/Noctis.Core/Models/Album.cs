@@ -95,21 +95,50 @@ public class Album : ObservableObject
             ? $"{(int)TotalDuration.TotalHours}h {TotalDuration.Minutes}m"
             : $"{(int)TotalDuration.TotalMinutes} min";
 
+    public const string MixedQualityBadge = "Mixed";
+    public const string MixedQualityDescription =
+        "This album mixes lossless and compressed tracks.";
+
     /// <summary>Audio quality badge for the album, determined from its tracks:
-    /// "Lossless"/"Hi-Res Lossless", or the best lossy track's codec (e.g. "AAC").</summary>
-    public string AudioQualityBadge =>
-        GetRepresentativeQualityTrack()?.AudioQualityBadge ?? string.Empty;
+    /// "Lossless"/"Hi-Res Lossless", the best lossy track's codec (e.g. "AAC"), or
+    /// "Mixed" when lossless and lossy tracks sit on the same album.</summary>
+    public string AudioQualityBadge => IsMixedQuality
+        ? MixedQualityBadge
+        : GetRepresentativeQualityTrack()?.AudioQualityBadge ?? string.Empty;
 
     /// <summary>Tooltip sentence explaining the badge kind; empty when no badge.</summary>
-    public string AudioQualityDescription =>
-        GetRepresentativeQualityTrack()?.AudioQualityDescription ?? string.Empty;
+    public string AudioQualityDescription => IsMixedQuality
+        ? MixedQualityDescription
+        : GetRepresentativeQualityTrack()?.AudioQualityDescription ?? string.Empty;
+
+    /// <summary>
+    /// True when the album has at least one lossless track and at least one badged
+    /// lossy track. A single lossless track used to label the whole album "Lossless".
+    /// </summary>
+    public bool IsMixedQuality
+    {
+        get
+        {
+            if (Tracks == null || Tracks.Count == 0) return false;
+            bool lossless = false, lossy = false;
+            foreach (var track in Tracks)
+            {
+                if (track.IsLossless) lossless = true;
+                else if (track.CodecShortName.Length > 0) lossy = true;
+                if (lossless && lossy) return true;
+            }
+            return false;
+        }
+    }
 
     /// <summary>Detailed audio quality info for tooltip (e.g. "16-bit/44.1 kHz FLAC"
-    /// or "256 kbps 44.1 kHz AAC" for lossy albums).</summary>
+    /// or "256 kbps 44.1 kHz AAC" for lossy albums, "8 lossless · 2 lossy (MP3)" for mixed).</summary>
     public string AudioQualityDetailedInfo
     {
         get
         {
+            if (IsMixedQuality) return MixedQualityDetailedInfo();
+
             var track = GetRepresentativeQualityTrack();
             if (track == null) return string.Empty;
 
@@ -129,6 +158,14 @@ public class Album : ObservableObject
 
             return string.Join(" ", parts);
         }
+    }
+
+    private string MixedQualityDetailedInfo()
+    {
+        var losslessCount = Tracks.Count(t => t.IsLossless);
+        var lossy = Tracks.Where(t => !t.IsLossless && t.CodecShortName.Length > 0).ToList();
+        var codecs = string.Join(", ", lossy.Select(t => t.CodecShortName).Distinct());
+        return $"{losslessCount} lossless · {lossy.Count} lossy ({codecs})";
     }
 
     /// <summary>Gets the representative track for quality display:
