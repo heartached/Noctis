@@ -817,13 +817,24 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
 
+    <!-- Transitions cleared FIRST (setters apply in order) so selecting / deselecting snaps.
+         The 70ms tween ran hover wash (#14FFFFFF) or Transparent (#00FFFFFF) -> accent in
+         linear light: both rows showed a pale grey half-opaque pill for ~4 frames per click. -->
     <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
         <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="CornerRadius" Value="999" />
     </Style>
 
+    <!-- The clicked row is hovered, so its Background comes from THIS style: it needs its own
+         leading empty Transitions or the hover -> Dark1 tween still runs. -->
     <Style Selector="ListBox.sidebar ListBoxItem:selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
         <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
