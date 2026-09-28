@@ -36,9 +36,27 @@ public static class MetadataHelper
     public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
-        var service = App.Services!.GetRequiredService<IReplayGainScannerService>();
-        var library = App.Services!.GetRequiredService<ILibraryService>();
-        var vm = new ReplayGainScannerViewModel(tracks, service, library);
+        var services = App.Services!;
+        var service = services.GetRequiredService<IReplayGainScannerService>();
+        var library = services.GetRequiredService<ILibraryService>();
+        var metadata = services.GetRequiredService<IMetadataService>();
+        var persistence = services.GetRequiredService<IPersistenceService>();
+        var player = services.GetRequiredService<IAudioPlayer>();
+
+        // "Add files…" resolves a picked path to its library entry when indexed, else
+        // reads it the way a dropped external file is read. Snapshot the path index on
+        // the UI thread: the resolver runs on the thread pool, and _library.Tracks is
+        // mutated on the UI thread.
+        var byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in library.Tracks)
+            byPath[t.FilePath] = t;
+        Track? Resolve(string path) =>
+            byPath.TryGetValue(path, out var known) ? known : ExternalTrackReader.Read(metadata, persistence, path);
+
+        var vm = new ReplayGainScannerViewModel(tracks, service, library, Resolve);
+        // The player caches the playing file's ReplayGain tags; re-read them so a queue
+        // scanned mid-playback is levelled right away, not from the next track on.
+        vm.ScanCompleted += (_, _) => player.ReloadReplayGainTags();
         var window = new ReplayGainScannerDialog(vm);
         await ShowDialogOwned(window);
     }

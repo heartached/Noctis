@@ -1056,6 +1056,19 @@
                                                             </Border>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <!-- GitHub #105: ReplayGain for queued tracks, library or not. -->
+                                                    <MenuItem Header="{loc:T Main.ScanReplayGain}"
+                                                              Click="OnQueueScanReplayGainClick">
+                                                        <MenuItem.Icon>
+                                                            <Border Width="14" Height="14"
+                                                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                                    RenderOptions.BitmapInterpolationMode="HighQuality">
+                                                                <Border.OpacityMask>
+                                                                    <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" />
+                                                                </Border.OpacityMask>
+                                                            </Border>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Height="48"

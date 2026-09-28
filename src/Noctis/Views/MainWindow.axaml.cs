@@ -1927,6 +1927,25 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             vm.Player.RemoveFromQueue(index);
     }
 
+    private async void OnQueueScanReplayGainClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (sender is not MenuItem { DataContext: Track track }) return;
+        var upNext = vm.Player.UpNext;
+        var index = _queueContextRow >= 0 && _queueContextRow < upNext.Count
+                    && ReferenceEquals(upNext[_queueContextRow], track)
+            ? _queueContextRow
+            : upNext.IndexOf(track);
+
+        // GitHub #105: on a selected row the scan covers the whole selection (Ctrl+A in
+        // the panel = the whole queue). The dialog drops repeats of a track queued twice.
+        var tracks = index >= 0 && _queueSelection is { } selection && selection.Contains(index)
+            ? selection.Snapshot().Where(i => i < upNext.Count).Select(i => upNext[i]).ToList()
+            : new List<Track> { track };
+        try { await MetadataHelper.OpenReplayGainScannerDialog(tracks); }
+        catch (Exception ex) { DebugLog.Write("ReplayGain", $"Queue scan failed to open: {ex.Message}"); }
+    }
+
     // ── Queue row selection (GitHub #85) ──
     //
     // Click selects one row, Ctrl+Click toggles, Shift+Click selects the range from the

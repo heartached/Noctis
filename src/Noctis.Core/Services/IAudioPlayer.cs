@@ -91,6 +91,12 @@ public interface IAudioPlayer : IDisposable
     /// <param name="preampDb">Pre-amp in dB.</param>
     void ApplyReplayGain(string mode, double preampDb);
 
+    /// <summary>
+    /// Drops any cached ReplayGain tags and re-applies the current mode, after a scan
+    /// rewrote the tags of files that may be playing or staged.
+    /// </summary>
+    void ReloadReplayGainTags() { }
+
     /// <summary>Path to the currently loaded media, or null. Used to re-apply RG.</summary>
     string? CurrentMediaPath { get; }
 

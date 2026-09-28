@@ -30,15 +30,23 @@
                 </StackPanel>
 
                 <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <!-- GitHub #105: add any audio file, in the library or not. -->
+                        <Button Grid.Column="0" Content="{loc:T ReplayGainScanner.AddFiles}"
+                                Click="OnAddFilesClick"
+                                IsVisible="{Binding CanAddFiles}"
+                                IsEnabled="{Binding !IsScanning}"
+                                Padding="14,8" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,12,0" Cursor="Hand" />
+                        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}"
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="{loc:T ReplayGainScanner.Cancel}" Command="{Binding CancelCommand}"
+                        <Button Grid.Column="2" Content="{loc:T ReplayGainScanner.Cancel}" Command="{Binding CancelCommand}"
                                 IsVisible="{Binding ShowCancel}"
                                 Width="100" Padding="0,8" FontWeight="Bold"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Grid.Column="2" Content="{Binding PrimaryButtonText}" Command="{Binding StartCommand}"
+                        <Button Grid.Column="3" Content="{Binding PrimaryButtonText}" Command="{Binding StartCommand}"
                                 IsEnabled="{Binding !IsScanning}"
                                 Width="100" Padding="0,8"
                                 Classes="accent-btn"
@@ -73,13 +81,18 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:ReplayGainScannerViewModel+RgJobRow">
-                                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
-                                                <StackPanel Grid.Column="0" Spacing="1">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,2">
+                                                <!-- GitHub #105: untick a row to leave that file out of the scan. -->
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsIncluded}"
+                                                          IsEnabled="{Binding !Done}"
+                                                          MinWidth="0" Padding="0" Margin="0,0,8,0"
+                                                          VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" Spacing="1">
                                                     <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding TrackSubtitle}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding GainsText}" FontSize="11" Opacity="0.75" Margin="12,0,12,0" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding GainsText}" FontSize="11" Opacity="0.75" Margin="12,0,12,0" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
