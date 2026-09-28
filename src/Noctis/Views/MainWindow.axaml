@@ -129,6 +129,13 @@
                                          FallbackColor="#2A2A2A" />
         </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
+    <!-- Tint Whole Window (Discord 1v1ctus): while a tinted album page is shown, the
+         window around the sidebar and player islands takes the page's colour. A layer, not
+         a swap of AppWindowBackgroundBrush, so the Settings sheet and menus keep theirs. -->
+    <Border x:Name="WindowTintLayer"
+            Background="{Binding WindowTintBrush}"
+            IsVisible="{Binding IsWindowTinted}"
+            IsHitTestVisible="False" />
     <DockPanel x:Name="RootPanel" Focusable="True" Background="Transparent" Margin="76,0,0,0">
         <DockPanel.RenderTransform>
             <TranslateTransform X="0">
@@ -696,6 +703,10 @@
             <!-- Zone C: Main Content Area + Overlay Panels -->
             <DockPanel x:Name="ContentDockPanel" Grid.Row="1">
                 <Grid Background="{DynamicResource AppMainBackground}">
+                <!-- Tint Whole Window: covers the content surface too (see WindowTintLayer). -->
+                <Border Background="{Binding WindowTintBrush}"
+                        IsVisible="{Binding IsWindowTinted}"
+                        IsHitTestVisible="False" />
                 <ContentControl Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">

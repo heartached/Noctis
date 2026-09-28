@@ -681,6 +681,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>A tinted album page's colour also runs under Other Versions / More By.</summary>
     [ObservableProperty] private bool _albumPageTintWholePage = AppSettings.AlbumPageTintWholePageDefault;
 
+    /// <summary>The window around the islands takes a tinted album page's colour too.</summary>
+    [ObservableProperty] private bool _albumPageTintWholeWindow;
+
     /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
     /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
     /// shape as the Song Transitions style cards.</summary>
@@ -2381,6 +2384,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintEnabled = _settings.AlbumPageTintEnabled;
             AlbumPageTintStrength = Math.Clamp(_settings.AlbumPageTintStrength, 0, 100);
             AlbumPageTintWholePage = _settings.AlbumPageTintWholePage;
+            AlbumPageTintWholeWindow = _settings.AlbumPageTintWholeWindow;
             // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
@@ -2839,6 +2843,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumPageTintEnabled = AlbumPageTintEnabled;
         _settings.AlbumPageTintStrength = AlbumPageTintStrength;
         _settings.AlbumPageTintWholePage = AlbumPageTintWholePage;
+        _settings.AlbumPageTintWholeWindow = AlbumPageTintWholeWindow;
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
@@ -4192,6 +4197,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintWholePageChanged(bool value)
     {
         // Open album pages watch this VM and re-lay out their tint.
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnAlbumPageTintWholeWindowChanged(bool value)
+    {
+        // MainWindowViewModel watches this VM and shows or hides the window tint.
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -6433,6 +6444,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintEnabled = defaultSettings.AlbumPageTintEnabled;
             AlbumPageTintStrength = defaultSettings.AlbumPageTintStrength;
             AlbumPageTintWholePage = defaultSettings.AlbumPageTintWholePage;
+            AlbumPageTintWholeWindow = defaultSettings.AlbumPageTintWholeWindow;
             HomeShowHeavyRotation = defaultSettings.HomeShowHeavyRotation;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;

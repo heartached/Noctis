@@ -2065,6 +2065,17 @@
                                               IsChecked="{Binding AlbumPageTintWholePage}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Whole window: the colour also fills the window around the sidebar and player. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholeWindow}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholeWindowHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AlbumPageTintWholeWindow}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
                 </controls:CollapsibleContent>
                 </StackPanel>
