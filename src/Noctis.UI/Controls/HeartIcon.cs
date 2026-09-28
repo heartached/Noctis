@@ -53,7 +53,13 @@ public sealed class HeartIcon : Panel
     public static readonly StyledProperty<bool> OutlineWhenOffProperty =
         AvaloniaProperty.Register<HeartIcon, bool>(nameof(OutlineWhenOff), true);
 
+    /// <summary>Another glyph for both states (the artist page's favourite star), with the
+    /// same pop. Null draws the heart.</summary>
+    public static readonly StyledProperty<Geometry?> GlyphProperty =
+        AvaloniaProperty.Register<HeartIcon, Geometry?>(nameof(Glyph));
+
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
+    public Geometry? Glyph { get => GetValue(GlyphProperty); set => SetValue(GlyphProperty, value); }
     public double Size { get => GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
     public IBrush? OnBrush { get => GetValue(OnBrushProperty); set => SetValue(OnBrushProperty, value); }
     public IBrush? OffBrush { get => GetValue(OffBrushProperty); set => SetValue(OffBrushProperty, value); }
@@ -88,6 +94,7 @@ public sealed class HeartIcon : Panel
         OffBrushProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyBrushes());
         OffOpacityProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyState(animate: false));
         OutlineWhenOffProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
+        GlyphProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
     }
 
     public HeartIcon()
@@ -129,6 +136,11 @@ public sealed class HeartIcon : Panel
 
     private void ApplyGeometry()
     {
+        if (Glyph is { } glyph)
+        {
+            _on.Data = _off.Data = glyph;
+            return;
+        }
         _on.Data = s_heart;
         _off.Data = OutlineWhenOff && s_heartOutline != null ? s_heartOutline : s_heart;
     }
