@@ -32,6 +32,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     [ObservableProperty] private string _searchText = string.Empty;
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
+    /// filter Reset the whole list, re-creating every row and cover on each click.</summary>
+    public bool IsSearchCleared => string.IsNullOrEmpty(_currentFilter) && string.IsNullOrEmpty(SearchText);
+
     /// <summary>
     /// The applied search the current rows were built for (SearchText runs ahead of it by the
     /// debounce). The view resets its scroll only when this changes, so a rebuild of the same
