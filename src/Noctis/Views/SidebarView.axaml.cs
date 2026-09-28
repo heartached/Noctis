@@ -8,6 +8,7 @@ using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.ComponentModel;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -40,6 +41,7 @@ public partial class SidebarView : UserControl
         PlaylistList.AddHandler(PointerMovedEvent, OnPlaylistRowPointerMoved, RoutingStrategies.Tunnel);
         PlaylistList.AddHandler(PointerReleasedEvent, OnPlaylistRowPointerReleased, RoutingStrategies.Tunnel);
         PlaylistList.AddHandler(PointerCaptureLostEvent, OnPlaylistRowPointerCaptureLost);
+        PlaylistList.ContainerPrepared += OnPlaylistContainerPrepared;
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -60,7 +62,11 @@ public partial class SidebarView : UserControl
         UnsubscribeFromViewModel();
         _vm = DataContext as SidebarViewModel;
         if (_vm != null)
+        {
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+            _vm.FolderRowsInserted += OnFolderRowsInserted;
+            _vm.FoldFolderRows = FoldFolderRowsAsync;
+        }
         AttachTopBar(_vm?.TopBar);
 
         SyncSelectionFromViewModel();
@@ -487,7 +493,7 @@ public partial class SidebarView : UserControl
         {
             // A press on a folder header that never moved like a drag is a click: toggle it.
             if (!_dragMoved && _dragItem is { IsFolder: true } clicked && ReferenceEquals(RowOf(e.Source)?.DataContext, clicked))
-                _vm?.ToggleFolderExpansion(clicked.Label);
+                _ = _vm?.ToggleFolderAnimatedAsync(clicked);
             _dragItem = null;
             return;
         }
@@ -903,7 +909,55 @@ public partial class SidebarView : UserControl
     private void UnsubscribeFromViewModel()
     {
         if (_vm != null)
+        {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm.FolderRowsInserted -= OnFolderRowsInserted;
+            if (_vm.FoldFolderRows == FoldFolderRowsAsync) _vm.FoldFolderRows = null;
+        }
         AttachTopBar(null);
     }
+
+    // ── Playlist folder fold ──
+    // A folder's playlists are rows inserted and removed on toggle; these ease them in
+    // and out with the Settings sub-menu Glide (see FoldingListBoxItem).
+
+    /// <summary>Rows an expand just inserted, shut and eased open as their containers are made.</summary>
+    private readonly HashSet<PlaylistNavItem> _pendingUnfold = new();
+
+    private IEnumerable<PlaylistNavItem> FolderRows(string folder)
+        => _vm?.SidebarRows.Where(r => !r.IsFolder && r.IsInFolder
+               && string.Equals(r.Folder.Trim(), folder, StringComparison.OrdinalIgnoreCase))
+           ?? Enumerable.Empty<PlaylistNavItem>();
+
+    private void OnFolderRowsInserted(string folder)
+    {
+        foreach (var row in FolderRows(folder))
+        {
+            if (PlaylistList.ContainerFromItem(row) is FoldingListBoxItem existing)
+            {
+                existing.SnapShut();
+                _ = existing.Unfold();
+            }
+            else _pendingUnfold.Add(row);
+        }
+        // Rows outside the viewport never get a container this pass; don't animate them later.
+        Dispatcher.UIThread.Post(_pendingUnfold.Clear, DispatcherPriority.Background);
+    }
+
+    private void OnPlaylistContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is not FoldingListBoxItem item
+            || e.Container.DataContext is not PlaylistNavItem row
+            || !_pendingUnfold.Remove(row)) return;
+        // Shut before its first layout, so it never flashes in at full height.
+        item.SnapShut();
+        _ = item.Unfold();
+    }
+
+    private Task FoldFolderRowsAsync(string folder)
+        => Task.WhenAll(FolderRows(folder)
+            .Select(r => PlaylistList.ContainerFromItem(r))
+            .OfType<FoldingListBoxItem>()
+            .Select(c => c.Fold())
+            .ToList());
 }

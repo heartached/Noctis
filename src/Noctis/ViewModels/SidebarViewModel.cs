@@ -31,6 +31,14 @@ public partial class SidebarViewModel : ViewModelBase
 
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _foldingFolders = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Set by the view: eases a folder's rows shut; the collapse removes them once
+    /// the task ends. Null (tests) collapses at once.</summary>
+    public Func<string, Task>? FoldFolderRows { get; set; }
+
+    /// <summary>Raised after an expand inserted a folder's rows, so the view can ease them open.</summary>
+    public event Action<string>? FolderRowsInserted;
 
     /// <summary>
     /// Flattened sidebar playlist rows: pinned playlists first, then folder
@@ -141,10 +149,10 @@ public partial class SidebarViewModel : ViewModelBase
         // ArgumentOutOfRangeException, app crash (reported on Linux/X11).
         if (newValue is PlaylistNavItem { IsFolder: true } folder)
         {
-            Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(async () =>
             {
-                ToggleFolderExpansion(folder.Label);
                 SetSelectedNavItemSilently(oldValue);
+                await ToggleFolderAnimatedAsync(folder);
             });
             return;
         }
@@ -158,6 +166,32 @@ public partial class SidebarViewModel : ViewModelBase
     /// item that is already highlighted (e.g. Home while inside an album opened from Home)
     /// never reaches OnSelectedNavItemChanged — the view routes those clicks here.</summary>
     public void RequestNavigation(NavItem item) => NavigationRequested?.Invoke(this, item.Key);
+
+    /// <summary>
+    /// Toggles a folder header the user clicked, easing its rows (see <see cref="FoldFolderRows"/>
+    /// and <see cref="FolderRowsInserted"/>). A collapse removes the rows only once they have
+    /// folded; a click while they are still folding is ignored, or it would toggle the folder
+    /// back open against rows about to be removed.
+    /// </summary>
+    public async Task ToggleFolderAnimatedAsync(PlaylistNavItem folder)
+    {
+        if (!_foldingFolders.Add(folder.Label)) return;
+        try
+        {
+            if (folder.IsExpanded && FoldFolderRows is { } fold)
+            {
+                folder.IsExpanded = false; // the chevron turns with the fold
+                await fold(folder.Label);
+                ToggleFolderExpansion(folder.Label);
+                return;
+            }
+
+            var opening = !folder.IsExpanded;
+            ToggleFolderExpansion(folder.Label);
+            if (opening) FolderRowsInserted?.Invoke(folder.Label);
+        }
+        finally { _foldingFolders.Remove(folder.Label); }
+    }
 
     /// <summary>Collapses or expands a sidebar playlist folder and rebuilds the rows.
     /// Must never be called from inside a ListBox selection change (see above).</summary>

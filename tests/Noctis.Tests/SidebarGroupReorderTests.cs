@@ -197,6 +197,9 @@ public class SidebarGroupReorderTests
         Assert.Contains("A1", Labels(s.Vm)); // the press alone does not fold it
         s.Win.MouseUp(new Point(at.X + 2, at.Y + 3), MouseButton.Left, RawInputModifiers.None);
         Pump(4);
+        Assert.Contains("A1", Labels(s.Vm)); // the rows fold shut before they are removed
+        Assert.False(s.Vm.SidebarRows[0].IsExpanded); // while the chevron already turns
+        Pump(30);
         Assert.Equal(new[] { "Alpha", "Beta", "B1", "Gamma", "G1", "Loose" }, Labels(s.Vm));
         Assert.False(s.Vm.SidebarRows[0].IsExpanded);
 
@@ -209,6 +212,35 @@ public class SidebarGroupReorderTests
         Assert.False(s.View.FindControl<Border>("PlaylistDragCard")!.IsVisible);
         Assert.Empty(s.Persistence.Saved);
         Assert.Null(s.Vm.SelectedNavItem); // the header never became the selection
+    }
+
+    [AvaloniaFact]
+    public async Task ClickingAFolderHeader_FoldsItsRowsShutAndOpen_InsteadOfSnapping()
+    {
+        var s = await ShowSidebarAsync();
+        var at = Centre(Row(s.List, 0), s.Win);
+        var a1 = Row(s.List, 1);
+        var full = a1.Bounds.Height;
+        Assert.True(full > 20);
+
+        // Closing: the row shrinks over several frames, then is removed.
+        s.Win.MouseDown(at, MouseButton.Left);
+        s.Win.MouseUp(at, MouseButton.Left, RawInputModifiers.None);
+        Pump(6);
+        var mid = a1.Bounds.Height;
+        Assert.InRange(mid, 0.5, full - 0.5);
+        Assert.InRange(a1.Presenter!.Opacity, 0, 0.999);
+        Pump(30);
+        Assert.DoesNotContain("A1", Labels(s.Vm));
+
+        // Opening: the inserted row starts shut and grows back to full height.
+        s.Win.MouseDown(at, MouseButton.Left);
+        s.Win.MouseUp(at, MouseButton.Left, RawInputModifiers.None);
+        Pump(6);
+        var opening = Row(s.List, 1);
+        Assert.InRange(opening.Bounds.Height, 0.5, full - 0.5);
+        Pump(40);
+        Assert.Equal(full, Row(s.List, 1).Bounds.Height, 1);
     }
 
     [AvaloniaFact]
@@ -270,7 +302,7 @@ public class SidebarGroupReorderTests
         // A plain click still folds, and the next one unfolds.
         s.Win.MouseDown(start, MouseButton.Left);
         s.Win.MouseUp(start, MouseButton.Left, RawInputModifiers.None);
-        Pump(4);
+        Pump(30); // the rows fold shut before they are removed
         Assert.Equal(new[] { "Pinned", "Pinned 2", "Alpha" }, Labels(s.Vm));
         s.Win.MouseDown(start, MouseButton.Left);
         s.Win.MouseUp(start, MouseButton.Left, RawInputModifiers.None);
@@ -283,7 +315,7 @@ public class SidebarGroupReorderTests
         s.Win.MouseMove(wobble, RawInputModifiers.LeftMouseButton);
         Pump(2);
         s.Win.MouseUp(wobble, MouseButton.Left, RawInputModifiers.None);
-        Pump(4);
+        Pump(30);
         Assert.Equal(new[] { "Pinned", "Pinned 2", "Alpha" }, Labels(s.Vm));
         Assert.False(card.IsVisible);
         Assert.Empty(s.Persistence.Saved);
