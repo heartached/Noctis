@@ -91,7 +91,8 @@ public interface ILibraryService
     /// already present keeps its instance when its catalog metadata is unchanged, or keeps its
     /// phone-side user state when it changed (rescan rule); a new song takes the state it
     /// arrives with, which is also written to the user-state journal. Rebuilds, saves and
-    /// raises <see cref="LibraryUpdated"/>. Waits for a running scan to finish.
+    /// raises <see cref="LibraryUpdated"/> — unless nothing changed, when it does none of that.
+    /// Waits for a running scan to finish.
     /// </summary>
     Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
         => throw new NotSupportedException();

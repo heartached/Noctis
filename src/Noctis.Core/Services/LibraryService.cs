@@ -1380,6 +1380,7 @@ public class LibraryService : ILibraryService
             merged.AddRange(current.Where(t => !IsServerTrack(t)));
             var added = new List<Track>();
             var seen = new HashSet<Guid>();
+            var kept = 0;
             foreach (var incoming in tracks)
             {
                 if (incoming is null || !seen.Add(incoming.Id)) continue;
@@ -1393,6 +1394,7 @@ public class LibraryService : ILibraryService
                     if (SameRemoteMetadata(existing, incoming))
                     {
                         merged.Add(existing);
+                        kept++;
                     }
                     else
                     {
@@ -1406,6 +1408,10 @@ public class LibraryService : ILibraryService
                     added.Add(incoming);
                 }
             }
+
+            // Every sync hands in the whole catalog; when nothing changed, skip the rebuild, the
+            // library.json rewrite and the page refreshes (the scan's no-change fast path).
+            if (added.Count == 0 && kept == known.Count && kept == seen.Count) return;
 
             _tracks = merged
                 .OrderBy(t => t.Artist).ThenBy(t => t.Album)

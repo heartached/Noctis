@@ -158,6 +158,30 @@ public class NoctisAccountLibraryTests : IDisposable
     }
 
     [Fact]
+    public async Task Replace_WithAnUnchangedCatalog_IsANoOp()
+    {
+        var library = NewLibrary(out _);
+        var a = Remote(Guid.NewGuid(), "a");
+        var b = Remote(Guid.NewGuid(), "b");
+        await library.ReplaceRemoteTracksAsync(new[] { a, b });
+        var updates = 0;
+        library.LibraryUpdated += (_, _) => Interlocked.Increment(ref updates);
+        var libraryJson = Path.Combine(_root, "data", "library.json");
+        var stamp = File.GetLastWriteTimeUtc(libraryJson);
+
+        await library.ReplaceRemoteTracksAsync(new[] { Remote(b.Id, "b"), Remote(a.Id, "a") });
+
+        Assert.Equal(0, updates);
+        Assert.Equal(stamp, File.GetLastWriteTimeUtc(libraryJson));
+        Assert.Same(a, library.GetTrackById(a.Id));
+
+        // One song fewer is a change.
+        await library.ReplaceRemoteTracksAsync(new[] { Remote(a.Id, "a") });
+        Assert.Equal(1, updates);
+        Assert.Null(library.GetTrackById(b.Id));
+    }
+
+    [Fact]
     public async Task RemoveRemoteTracks_DropsOnlyDesktopSongs()
     {
         var library = NewLibrary(out var persistence);
