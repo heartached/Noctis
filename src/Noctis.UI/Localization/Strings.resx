@@ -1895,6 +1895,7 @@
   <data name="LyricsStudio.StageShortTiming" xml:space="preserve"><value>Timing</value><comment>Queue row status while a song runs</comment></data>
   <data name="LyricsStudio.StagePercent" xml:space="preserve"><value>{0} · {1}</value><comment>Queue row status. {0} = step, {1} = percent, e.g. Listening · 42%</comment></data>
   <data name="LyricsStudio.BatchProgress" xml:space="preserve"><value>Song {0} of {1}</value><comment>Run progress over the queue</comment></data>
+  <data name="LyricsStudio.RerunStopped" xml:space="preserve"><value>Stopped · previous timings kept</value><comment>Song status after Stop during a re-sync or Time every word</comment></data>
   <data name="Settings.Desc.General" xml:space="preserve"><value>Language, startup, and how the window and sidebar behave.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Appearance" xml:space="preserve"><value>Themes, accent colour, glass, text animation and artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Player" xml:space="preserve"><value>The player island, the mini player, Cover Flow and Now Playing artwork.</value><comment>Settings page description</comment></data>

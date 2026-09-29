@@ -710,11 +710,38 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     private void Requeue(StudioItem item)
     {
+        // The review goes away while the song re-runs; keep it (as on screen, edits included) so
+        // a Stop, a failure or a run that cannot start puts it back instead of an empty song.
+        if (item.Result is { } result)
+        {
+            var onScreen = ReferenceEquals(Selected, item) && ReviewLines.Count > 0;
+            var shown = onScreen ? result with { Lines = ReviewLines.Select(l => l.ToAlignedLine()).Where(l => l.Text.Length > 0).ToList() } : result;
+            item.BeforeRerun = new StudioItem.Kept(shown, item.Status, item.StatusText, onScreen && _reviewDirty);
+        }
         item.ForceRun = true;
         item.Status = StudioStatus.Waiting;
         item.Result = null;
         if (ReferenceEquals(Selected, item)) ReviewLines.Clear();
         RaiseReviewChanged();
+    }
+
+    /// <summary>A re-run that was stopped, failed or never started: the song gets its review back.</summary>
+    private void RestoreBeforeRerun(StudioItem item, string? statusText)
+    {
+        if (item.BeforeRerun is not { } kept) return;
+        item.BeforeRerun = null;
+        item.ForceRun = false;
+        item.TranscribeNext = false;
+        item.SourceOverride = null;
+        item.Result = kept.Result;
+        item.Status = kept.Status;
+        item.StatusText = statusText ?? kept.StatusText;
+        if (ReferenceEquals(Selected, item))
+        {
+            OnSelectedChanged(item);
+            _reviewDirty = kept.Dirty;
+        }
+        RaiseStartState();
     }
 
     private async Task RunAsync(List<StudioItem> items)
@@ -798,6 +825,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         item.StatusText = "Transcript · fix the words, then Align";
                         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemTranscribed",
                             $"{item.Title} | lines={result.Lines.Count}, heard={result.HeardWords}");
+                        item.BeforeRerun = null;
                         if (Selected is null || Selected.Status is not StudioStatus.Ready)
                             Selected = item;
                         done++;
@@ -810,6 +838,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     item.StatusText = result.Source == LyricsStudioSource.Transcription ? "Transcribed · review" : $"{Math.Round(result.Confidence * 100)}% matched · review";
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemReady",
                         $"{item.Title} | source={result.Source}, lines={result.Lines.Count}, confidence={result.Confidence:0.00}, heard={result.HeardWords}");
+                    item.BeforeRerun = null;
                     if (Selected is null || Selected.Status is not (StudioStatus.Ready))
                         Selected = item;
                     else if (ReferenceEquals(Selected, item))
@@ -825,8 +854,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 {
                     item.Status = StudioStatus.Waiting;
                     item.StatusText = "Stopped";
+                    RestoreBeforeRerun(item, Loc("LyricsStudio.RerunStopped"));
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemStopped", item.Title);
                     break;
+                }
+                catch (Exception ex) when (item.BeforeRerun is not null)
+                {
+                    RestoreBeforeRerun(item, ex.Message);
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ItemFailed", $"{item.Title} (re-run, review kept) | {ex.GetType().Name}: {ex.Message}");
                 }
                 catch (Exception ex)
                 {
@@ -852,6 +887,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         finally
         {
             _working = null;
+            // Songs the run never reached (stopped first, or it could not start) keep their review.
+            foreach (var item in items.Where(i => i.Status == StudioStatus.Waiting))
+                RestoreBeforeRerun(item, null);
             IsRunning = false;
             RaiseStartState();
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunEnd", "session disposed");
@@ -1318,6 +1356,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
         /// <summary>Set by Re-sync / Upgrade so the "skip songs that already have this format" rule does not apply.</summary>
         public bool ForceRun { get; set; }
+
+        /// <summary>The review a re-run replaces, as it was on screen: restored if the re-run does not finish.</summary>
+        internal Kept? BeforeRerun { get; set; }
+        internal sealed record Kept(LyricsStudioResult Result, StudioStatus Status, string StatusText, bool Dirty);
         public string Title => Track.Title;
         public string Subtitle => Track.ArtistDisplay;
 
