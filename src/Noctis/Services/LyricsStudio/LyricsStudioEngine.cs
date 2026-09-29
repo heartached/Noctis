@@ -163,7 +163,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
                 : LyricsAligner.Align(lines, transcript.Words, duration);
         else
         {
-            aligned = TranscriptLines.Group(transcript.Words);
+            aligned = TranscriptLines.Group(transcript.Words, totalDuration: duration);
             source = LyricsStudioSource.Transcription;
         }
 
