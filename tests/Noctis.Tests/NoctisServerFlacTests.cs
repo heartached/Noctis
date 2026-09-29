@@ -239,6 +239,41 @@ public class NoctisServerFlacTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cache_RefusesNewTranscodesPastThePendingCap_ButStillJoinsPendingOnes()
+    {
+        // A client asking for every ALAC song at once and hanging up must not queue hours of
+        // ffmpeg work: the abandoned transcodes still count, and a new one past the cap gets no
+        // copy at once (the server then sends the original).
+        var ct = TestContext.Current.CancellationToken;
+        var fake = new FakeTranscoder(new byte[100]);
+        var cache = new FlacTranscodeCache(CacheDir, fake.RunAsync);
+        var ids = Enumerable.Range(0, FlacTranscodeCache.MaxPending).Select(_ => Guid.NewGuid()).ToList();
+        using (var gone = new CancellationTokenSource())
+        {
+            var waits = ids.Select(id => cache.GetAsync(id, _alac.FilePath, gone.Token)).ToList();
+            gone.Cancel();
+            foreach (var w in waits) await Assert.ThrowsAnyAsync<OperationCanceledException>(() => w);
+        }
+
+        var over = cache.GetAsync(Guid.NewGuid(), _alac.FilePath, ct);
+        Assert.True(over.IsCompleted);
+        Assert.Null(await over);
+
+        // A request for a transcode already pending joins it; it is not refused.
+        var join = cache.GetAsync(ids[0], _alac.FilePath, ct);
+        Assert.False(join.IsCompleted);
+
+        fake.Release.SetResult();
+        Assert.NotNull(await join);
+        Assert.All(await Task.WhenAll(ids.Select(id => cache.GetAsync(id, _alac.FilePath, ct))), Assert.NotNull);
+        Assert.Equal(FlacTranscodeCache.MaxPending, fake.Calls);
+
+        // Drained: new transcodes are taken again.
+        Assert.NotNull(await cache.GetAsync(Guid.NewGuid(), _alac.FilePath, ct));
+        Assert.Equal(FlacTranscodeCache.MaxPending + 1, fake.Calls);
+    }
+
+    [Fact]
     public void IsAlac_ReadsTheLibraryCodec()
     {
         Assert.True(NoctisServer.IsAlac(new Track { Codec = "MPEG-4 Audio (alac)" }));

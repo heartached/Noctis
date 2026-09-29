@@ -13,13 +13,20 @@ namespace Noctis.Services.Server;
 /// named only from the library's Guid and numbers. Written as a unique <c>.part</c> then moved,
 /// so a reader never sees half a file. Single-flight per file: parallel requests (the player's
 /// retry, a download next to a stream) share one transcode, which runs to the end even when the
-/// request that started it goes away. At most <see cref="MaxConcurrent"/> transcodes run at once;
-/// above the size cap the least recently served files go first.
+/// request that started it goes away. At most <see cref="MaxConcurrent"/> transcodes run at once
+/// and <see cref="MaxPending"/> wait or run; above the size cap the least recently served files go first.
 /// </summary>
 public sealed class FlacTranscodeCache
 {
     public const long DefaultMaxBytes = 4L * 1024 * 1024 * 1024;
     public const int MaxConcurrent = 2;
+
+    /// <summary>
+    /// Most distinct transcodes waiting or running at once. Past it a new one is refused (null:
+    /// the server sends the original), so a client asking for every ALAC song and hanging up
+    /// cannot queue hours of ffmpeg work. A phone needs about three (a stream, two downloads).
+    /// </summary>
+    public const int MaxPending = 8;
 
     /// <summary>A .part this old is a crashed run's leftover, not a transcode in progress.</summary>
     private static readonly TimeSpan StalePartAge = TimeSpan.FromHours(1);
@@ -30,6 +37,7 @@ public sealed class FlacTranscodeCache
     private readonly SemaphoreSlim _gate = new(MaxConcurrent, MaxConcurrent);
     private readonly ConcurrentDictionary<string, Lazy<Task<string?>>> _running = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _trimGate = new();
+    private int _pending;
 
     /// <param name="directory">Cache folder (the desktop's is &lt;DataRoot&gt;/server/transcode).</param>
     /// <param name="transcode">(source path, target path, ct) → true when a complete FLAC was written to target.</param>
@@ -57,9 +65,20 @@ public sealed class FlacTranscodeCache
             return Task.FromResult<string?>(target);
         }
 
-        // Lazy: GetOrAdd may run its factory twice under contention, but only the stored Lazy starts.
-        var run = _running.GetOrAdd(name, _ => new Lazy<Task<string?>>(
-            () => RunAsync(sourcePath, target, prefix), LazyThreadSafetyMode.ExecutionAndPublication));
+        if (!_running.TryGetValue(name, out var run))
+        {
+            if (Interlocked.Increment(ref _pending) > MaxPending)
+            {
+                Interlocked.Decrement(ref _pending);
+                DebugLogger.Warn(DebugLogger.Category.State, "Server", "flac transcode refused: too many pending");
+                return Task.FromResult<string?>(null);
+            }
+            // Lazy: only the stored one starts (its run gives the slot back when it ends); a
+            // request that lost the race joins the stored run and gives its own slot back now.
+            var mine = new Lazy<Task<string?>>(() => RunAsync(sourcePath, target, prefix), LazyThreadSafetyMode.ExecutionAndPublication);
+            run = _running.GetOrAdd(name, mine);
+            if (!ReferenceEquals(run, mine)) Interlocked.Decrement(ref _pending);
+        }
         var task = run.Value;
         _ = task.ContinueWith(_ => _running.TryRemove(new KeyValuePair<string, Lazy<Task<string?>>>(name, run)),
             CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
@@ -67,6 +86,12 @@ public sealed class FlacTranscodeCache
     }
 
     private async Task<string?> RunAsync(string sourcePath, string target, string prefix)
+    {
+        try { return await TranscodeOnceAsync(sourcePath, target, prefix).ConfigureAwait(false); }
+        finally { Interlocked.Decrement(ref _pending); }
+    }
+
+    private async Task<string?> TranscodeOnceAsync(string sourcePath, string target, string prefix)
     {
         await _gate.WaitAsync().ConfigureAwait(false);
         try
