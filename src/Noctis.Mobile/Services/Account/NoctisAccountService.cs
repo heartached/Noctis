@@ -1153,9 +1153,16 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
         var queue = new ConcurrentQueue<Guid>(ids);
-        Interlocked.Add(ref _dlPending, ids.Count);
+        // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
+        // "1 failed" are about this run, not every run since the app started.
+        if (Interlocked.Add(ref _dlPending, ids.Count) == ids.Count)
+        {
+            Interlocked.Exchange(ref _dlCompleted, 0);
+            Interlocked.Exchange(ref _dlFailed, 0);
+        }
         RaiseDownloadProgress();
         NoctisServerException? fatal = null;
+        int done = 0, failed = 0;
 
         async Task Worker()
         {
@@ -1171,6 +1178,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         {
                             await DownloadOneAsync(client, id, token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
+                            Interlocked.Increment(ref done);
                         }
                         finally { _downloadSlots.Release(); }
                     }
@@ -1180,11 +1188,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);
                         Interlocked.Increment(ref _dlFailed);
+                        Interlocked.Increment(ref failed);
                         try { linked.Cancel(); } catch (ObjectDisposedException) { }
                     }
                     catch (Exception ex)
                     {
                         Interlocked.Increment(ref _dlFailed);
+                        Interlocked.Increment(ref failed);
                         DebugLog.Write("Account", $"download failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
                     }
                     finally { _inFlight.TryRemove(id, out _); }
@@ -1197,12 +1207,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             }
         }
 
-        var doneBefore = Volatile.Read(ref _dlCompleted);
-        var failedBefore = Volatile.Read(ref _dlFailed);
         await Task.WhenAll(Enumerable.Range(0, DownloadConcurrency).Select(_ => Worker())).ConfigureAwait(false);
         // One line per batch, so a download that silently did nothing is visible in the log.
-        DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref _dlCompleted) - doneBefore} done, " +
-            $"{Volatile.Read(ref _dlFailed) - failedBefore} failed{(token.IsCancellationRequested ? ", cancelled" : "")}");
+        DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref done)} done, " +
+            $"{Volatile.Read(ref failed)} failed{(token.IsCancellationRequested ? ", cancelled" : "")}");
         RaiseStateChanged();
         if (fatal is not null)
         {

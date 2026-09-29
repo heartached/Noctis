@@ -386,6 +386,22 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ANewDownloadBatch_CountsFromZero()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        NoctisDownloadProgress? first = null, last = null;
+        svc.DownloadProgress += (_, p) => { first ??= p; last = p; };
+
+        await svc.DownloadAsync(new[] { Phone(_t2), Phone(_t3) }, ct);
+
+        Assert.Equal(new NoctisDownloadProgress(2, 0, 0, _audio.Length), first);   // "0 of 2", not "1 of 3"
+        Assert.Equal(new NoctisDownloadProgress(0, 2, 0, 3L * _audio.Length), last);
+    }
+
+    [Fact]
     public async Task DownloadAll_FetchesEveryDesktopSong_AndRemoveAllEmptiesTheFolder()
     {
         var svc = await SignedInAsync();
