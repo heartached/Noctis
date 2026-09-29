@@ -182,10 +182,23 @@ public sealed class WhisperModelManager
         var path = ModelPath;
         var hash = _model.Sha256 is null ? SizeOnly : await Task.Run(() => ComputeSha256(path, progress, ct), ct).ConfigureAwait(false);
         WriteMarker(path, hash);
+        RaiseStateChanged();
         var ok = State == WhisperModelState.Ready;
         if (ok) DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelVerified", _model.FileName);
         else DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.ModelDamaged", $"{_model.FileName}: sha256 {hash}");
         return ok;
+    }
+
+    /// <summary>
+    /// A download started or ended (any outcome), or a check finished. Raised on a worker thread;
+    /// a Studio on screen refreshes its model banner from it.
+    /// </summary>
+    public event EventHandler? StateChanged;
+
+    private void RaiseStateChanged()
+    {
+        try { StateChanged?.Invoke(this, EventArgs.Empty); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.StateChangedHandlerFailed", ex.Message); }
     }
 
     /// <summary>True while a download (or its checksum pass) runs.</summary>
@@ -212,6 +225,7 @@ public sealed class WhisperModelManager
     public Task DownloadAsync(WhisperModelSize size, IProgress<ModelDownloadProgress>? progress, CancellationToken ct)
     {
         Task download;
+        var started = false;
         lock (_downloadGate)
         {
             if (progress is not null) _listeners.Add(progress);
@@ -222,9 +236,13 @@ public sealed class WhisperModelManager
                 _lastReport = null;
                 var token = _downloadCts.Token;
                 _download = Task.Run(() => RunDownloadAsync(token));
+                // After completion, so a listener already reads IsDownloading as false.
+                _download.ContinueWith(_ => RaiseStateChanged(), TaskScheduler.Default);
+                started = true;
             }
             download = _download;
         }
+        if (started) RaiseStateChanged();
         if (ct.CanBeCanceled)
         {
             var registration = ct.Register(CancelDownload);

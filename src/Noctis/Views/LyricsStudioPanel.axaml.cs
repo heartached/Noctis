@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -124,10 +125,35 @@ public partial class LyricsStudioPanel : UserControl
             if (DataContext is LyricsStudioViewModel { PickLyricsFile: null } studio)
                 studio.PickLyricsFile = PickLyricsFileAsync;
             WireLyricsPagePreview();
+            if (this.IsAttachedToVisualTree()) WatchModel();
         };
-        AttachedToVisualTree += (_, _) => { WireLyricsPagePreview(); HookKeys(); };
-        DetachedFromVisualTree += (_, _) => UnhookKeys();
+        AttachedToVisualTree += (_, _) => { WireLyricsPagePreview(); HookKeys(); WatchModel(); };
+        DetachedFromVisualTree += (_, _) => { UnhookKeys(); UnwatchModel(); };
     }
+
+    // The model banner follows the shared model manager while the panel is on screen: a download
+    // started or finished in another Studio (the per-song dialog over the page) updates this one.
+    // Subscribed by the view, not the view model, so a replaced Studio is never kept alive.
+    private LyricsStudioViewModel? _modelWatch;
+
+    private void WatchModel()
+    {
+        UnwatchModel();
+        if (DataContext is not LyricsStudioViewModel vm) return;
+        _modelWatch = vm;
+        vm.Models.StateChanged += OnModelStateChanged;
+        vm.RefreshModelState();
+    }
+
+    private void UnwatchModel()
+    {
+        if (_modelWatch is null) return;
+        _modelWatch.Models.StateChanged -= OnModelStateChanged;
+        _modelWatch = null;
+    }
+
+    private void OnModelStateChanged(object? sender, System.EventArgs e) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => _modelWatch?.RefreshModelState());
 
     // The Studio's keys listen on the window, tunnelled, while the panel is on screen: a key
     // only reaches a handler on the panel itself when focus is inside it, and clicking blank

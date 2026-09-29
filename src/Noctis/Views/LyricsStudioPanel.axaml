@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:helpers="using:Noctis.Helpers"
+             xmlns:controls="using:Noctis.Controls"
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:views="using:Noctis.Views"
@@ -61,6 +62,17 @@
                 <Setter Property="Margin" Value="0,8,0,0" />
             </Style>
         </ContainerQuery>
+        <Style Selector="Border.model-banner">
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Background" Value="#12FFFFFF" />
+            <Setter Property="BorderBrush" Value="#1FFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.model-banner.error">
+            <Setter Property="Background" Value="#26FF6B6B" />
+            <Setter Property="BorderBrush" Value="#40FF6B6B" />
+        </Style>
         <Style Selector="Border.review-line">
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="CornerRadius" Value="8" />
@@ -309,12 +321,43 @@
         </Grid>
 
         <!-- Toolbar, above the editor it drives (was a footer under the queue, 09-23): the format
-             to write, the Settings popover (language, run options), then Download / Start /
-             Stop. The format is chosen here before a run, not buried in the options. -->
+             to write, the Settings popover (language, run options), then Start / Stop; the speech
+             model card sits above it until the model is ready. The format is chosen here before a
+             run, not buried in the options. -->
         <StackPanel DockPanel.Dock="Top" Margin="24,0,24,12" Spacing="10">
             <!-- ffmpeg missing -->
             <Border CornerRadius="10" Padding="12,8" Background="#26FF6B6B" IsVisible="{Binding !HasFfmpeg}">
                 <TextBlock Text="{loc:T LyricsStudio.NeedsFfmpeg}" FontSize="12" TextWrapping="Wrap" />
+            </Border>
+            <!-- Speech model (09-29): one model, so one card that says what is needed and does it —
+                 Download (size), then bytes, speed and time left on a gliding bar, retries and the
+                 checksum pass, and a clear failure with Retry. Hidden once the model is ready.
+                 The percent and bar sit in fixed boxes so a changing number never moves the row. -->
+            <Border Classes="model-banner" Classes.error="{Binding ModelBannerIsError}" IsVisible="{Binding ShowModelBanner}">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16">
+                    <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ModelBannerTitle}" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ModelBannerDetail}" FontSize="12" Opacity="0.65" TextWrapping="Wrap" FontFeatures="+tnum" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ModelBannerPercent}" Width="44" TextAlignment="Right" FontSize="15" FontWeight="SemiBold"
+                                   FontFeatures="+tnum" VerticalAlignment="Center"
+                                   IsVisible="{Binding ModelBannerPercent, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Button Command="{Binding CancelModelDownloadCommand}" IsVisible="{Binding ShowModelCancel}"
+                                Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.ModelCancelTip}">
+                            <TextBlock Text="{loc:T LyricsStudio.ModelCancel}" />
+                        </Button>
+                        <Button Command="{Binding DownloadModelCommand}" IsVisible="{Binding ShowModelDownload}"
+                                Classes="studio-btn accent-btn"
+                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                            <TextBlock Text="{Binding ModelActionText}" />
+                        </Button>
+                    </StackPanel>
+                    <controls:SmoothProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="6" Margin="0,12,0,2"
+                                                Value="{Binding ModelBannerProgress}" IsIndeterminate="{Binding ModelBannerIndeterminate}"
+                                                IsVisible="{Binding ShowModelBannerBar}"
+                                                FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1FFFFFFF" />
+                </Grid>
             </Border>
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                 <TextBlock Grid.Column="0" Text="{loc:T LyricsStudio.Format}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
@@ -356,12 +399,6 @@
                             </Border>
                         </Flyout>
                     </Button.Flyout>
-                </Button>
-                <TextBlock Grid.Column="3" Text="{Binding ModelStatusText}" FontSize="11.5" Opacity="0.5" Margin="6,0,0,0"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ModelStatusText}" />
-                <Button Grid.Column="4" Command="{Binding DownloadModelCommand}" IsVisible="{Binding ShowModelDownload}"
-                        Classes="studio-btn pill-outline">
-                    <TextBlock Text="{loc:T LyricsStudio.DownloadModel}" />
                 </Button>
                 <Panel Grid.Column="5" VerticalAlignment="Center">
                     <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !IsRunning}"

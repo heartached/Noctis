@@ -66,9 +66,32 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     // ── Model state ──
     [ObservableProperty] private bool _isModelInstalled;
-    [ObservableProperty] private string _modelStatusText = string.Empty;
     [ObservableProperty] private bool _isDownloadingModel;
-    [ObservableProperty] private double _modelProgress;
+
+    /// <summary>What the model banner above the queue says; Hidden once the model is ready.</summary>
+    public enum ModelBannerState { Hidden, NotInstalled, Paused, Connecting, Downloading, Retrying, Verifying, Checking, Failed, Damaged }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowModelBanner), nameof(ModelBannerIsError), nameof(ShowModelBannerBar), nameof(ShowModelDownload), nameof(ShowModelCancel))]
+    private ModelBannerState _modelBanner;
+    [ObservableProperty] private string _modelBannerTitle = string.Empty;
+    [ObservableProperty] private string _modelBannerDetail = string.Empty;
+    /// <summary>"42%" beside the title while there is a percentage to show.</summary>
+    [ObservableProperty] private string _modelBannerPercent = string.Empty;
+    [ObservableProperty] private double _modelBannerProgress;
+    [ObservableProperty] private bool _modelBannerIndeterminate;
+    /// <summary>The banner's one action: Download (size) / Resume download / Retry / Download again.</summary>
+    [ObservableProperty] private string _modelActionText = string.Empty;
+
+    public bool ShowModelBanner => ModelBanner != ModelBannerState.Hidden;
+    public bool ModelBannerIsError => ModelBanner is ModelBannerState.Failed or ModelBannerState.Damaged;
+    public bool ShowModelBannerBar => ModelBanner is ModelBannerState.Paused or ModelBannerState.Connecting or ModelBannerState.Downloading
+        or ModelBannerState.Retrying or ModelBannerState.Verifying or ModelBannerState.Checking;
+    public bool ShowModelDownload => ModelBanner is ModelBannerState.NotInstalled or ModelBannerState.Paused or ModelBannerState.Failed or ModelBannerState.Damaged;
+    public bool ShowModelCancel => ModelBanner is ModelBannerState.Connecting or ModelBannerState.Downloading or ModelBannerState.Retrying;
+
+    /// <summary>The manager the banner follows (the panel listens to its <see cref="WhisperModelManager.StateChanged"/>).</summary>
+    internal WhisperModelManager Models => _engine.Models;
 
     // ── Run state ──
     [ObservableProperty] private bool _isRunning;
@@ -107,7 +130,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
             : common!.Count() == unrun.Count ? $"· all {StudioItem.FormatTag(shared)}"
             : $"· {StudioItem.FormatTag(shared)} unless marked";
     }
-    public bool ShowModelDownload => !IsModelInstalled && !IsDownloadingModel;
 
     // ── Review ──
     public bool HasReview => Selected is { Status: StudioStatus.Ready or StudioStatus.Saved or StudioStatus.Loaded, Result: not null };
@@ -225,6 +247,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _embedTags = s.LyricsStudioEmbedTags;
         _onlineLyrics = s.LyricsStudioOnlineLyrics;
         _loadingPrefs = false;
+        Clock = () => _clock.Elapsed;
 
         var restored = 0;
         // One listing of the drafts folder instead of a file probe per selected track (UI thread).
@@ -246,9 +269,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
         RefreshQueuePills();
 
         RefreshModelState();
-        // A download started in another Studio (the dialog, or a page Studio since replaced) is
-        // still running: follow it here instead of offering a second one.
-        if (_engine.Models.IsDownloading) _ = DownloadModel();
         var queued = Queue.Count(i => i.Status == StudioStatus.Waiting);
         RunStatusText = !HasFfmpeg
             ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs."
@@ -297,8 +317,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAlignDraft));
         OnPropertyChanged(nameof(CanTranscribeDraft));
     }
-    partial void OnIsModelInstalledChanged(bool value) { RaiseStartState(); OnPropertyChanged(nameof(ShowModelDownload)); OnPropertyChanged(nameof(CanTranscribeDraft)); }
-    partial void OnIsDownloadingModelChanged(bool value) => OnPropertyChanged(nameof(ShowModelDownload));
+    partial void OnIsModelInstalledChanged(bool value) { RaiseStartState(); OnPropertyChanged(nameof(CanTranscribeDraft)); }
 
     partial void OnSelectedChanging(StudioItem? value)
     {
@@ -423,56 +442,195 @@ public partial class LyricsStudioViewModel : ViewModelBase
         catch { /* preferences are a convenience */ }
     }
 
-    private void RefreshModelState()
+    /// <summary>
+    /// Reads the model's state into the banner. Called at open, when the panel comes on screen and
+    /// whenever the model manager reports a change (a download started or ended in another Studio).
+    /// A download already running (started in the dialog, or by a page Studio since replaced) is
+    /// followed here instead of offering a second one.
+    /// </summary>
+    public void RefreshModelState()
     {
-        var model = _engine.Models.Model;
         IsModelInstalled = _engine.Models.IsInstalled();
-        ModelStatusText = _engine.Models.State switch
+        if (IsDownloadingModel || _checkingModel) return;
+        if (_engine.Models.IsDownloading)
         {
-            WhisperModelState.Ready or WhisperModelState.Unverified => string.Empty,
-            WhisperModelState.Damaged => $"The speech model file is damaged · download it again ({model.SizeText})",
-            _ => $"Speech model not installed · {model.SizeText}",
-        };
+            _ = DownloadModel();
+            return;
+        }
+        var model = _engine.Models.Model;
+        switch (_engine.Models.State)
+        {
+            case WhisperModelState.Ready or WhisperModelState.Unverified:
+                SetBanner(ModelBannerState.Hidden);
+                break;
+            case WhisperModelState.Damaged:
+                SetBanner(ModelBannerState.Damaged, Loc("LyricsStudio.ModelDamagedTitle"), Loc("LyricsStudio.ModelDamagedBody", model.SizeText),
+                    action: Loc("LyricsStudio.ModelDownloadAgain"));
+                break;
+            case WhisperModelState.Partial:
+                var part = _engine.Models.PartialBytes;
+                var fraction = part / (double)Math.Max(1, model.Bytes);
+                SetBanner(ModelBannerState.Paused, Loc("LyricsStudio.ModelPausedTitle"),
+                    Loc("LyricsStudio.ModelPausedBody", ByteText.Format(part, precise: true), ByteText.Format(model.Bytes, precise: true)),
+                    fraction, DownloadMeter.PercentText(fraction), action: Loc("LyricsStudio.ModelResume"));
+                break;
+            default:
+                SetBanner(ModelBannerState.NotInstalled, Loc("LyricsStudio.ModelNeededTitle"), Loc("LyricsStudio.ModelNeededBody", model.SizeText),
+                    action: Loc("LyricsStudio.ModelDownloadSize", model.SizeText));
+                break;
+        }
     }
 
+    private static string Loc(string key) => Localization.Loc.T(key);
+    private static string Loc(string key, params object[] args) => Localization.Loc.T(key, args);
+
+    private void SetBanner(ModelBannerState state, string title = "", string detail = "", double progress = 0, string percent = "",
+        bool indeterminate = false, string action = "")
+    {
+        ModelBanner = state;
+        ModelBannerTitle = title;
+        ModelBannerDetail = detail;
+        ModelBannerProgress = progress;
+        ModelBannerPercent = percent;
+        ModelBannerIndeterminate = indeterminate;
+        ModelActionText = action;
+    }
+
+    private DownloadMeter _downloadMeter = new();
+
+    /// <summary>
+    /// Downloads the model (or resumes it, or follows the download already running). Progress is
+    /// sampled on the UI tick (~15 Hz) from the manager rather than posted per 64 KB chunk.
+    /// </summary>
     [RelayCommand]
     private async Task DownloadModel()
     {
         if (IsDownloadingModel) return;
         IsDownloadingModel = true;
-        ModelProgress = 0;
-        var model = _engine.Models.Model;
-        ModelStatusText = $"Downloading the speech model ({model.SizeText})…";
+        _downloadMeter = new DownloadMeter();
+        SetBanner(ModelBannerState.Connecting, Loc("LyricsStudio.ModelDownloadingTitle"), Loc("LyricsStudio.ModelConnecting"), indeterminate: true);
+        EnsureTicking();
         try
         {
-            await _engine.Models.DownloadAsync(model.Size, new Progress<ModelDownloadProgress>(p =>
-                ModelProgress = p.BytesTotal > 0 ? Math.Min(0.999, p.BytesDone / (double)p.BytesTotal) : 0), CancellationToken.None);
+            await _engine.Models.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+            IsDownloadingModel = false;
+            RefreshModelState();
+        }
+        catch (OperationCanceledException)
+        {
+            IsDownloadingModel = false;
+            RefreshModelState(); // Paused, with Resume
         }
         catch (Exception ex)
         {
-            ModelStatusText = $"Download failed — {ex.Message}";
-            DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ModelDownloadFailed", $"{ex.GetType().Name}: {ex.Message}");
             IsDownloadingModel = false;
-            return;
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ModelDownloadFailed", $"{ex.GetType().Name}: {ex.Message}");
+            IsModelInstalled = _engine.Models.IsInstalled();
+            var detail = ex is WhisperModelIntegrityException
+                ? Loc("LyricsStudio.ModelChecksumFailedBody")
+                : Loc("LyricsStudio.ModelFailedBody", ex.Message.TrimEnd('.', ' '));
+            var part = _engine.Models.PartialBytes;
+            SetBanner(ModelBannerState.Failed, Loc("LyricsStudio.ModelFailedTitle"), detail,
+                action: Loc(part > 0 ? "LyricsStudio.ModelResume" : "LyricsStudio.ModelRetry"));
         }
-        IsDownloadingModel = false;
-        RefreshModelState();
     }
+
+    /// <summary>Stops the download; what arrived is kept and Resume continues from there.</summary>
+    [RelayCommand]
+    private void CancelModelDownload() => _engine.Models.CancelDownload();
+
+    /// <summary>The download on screen, from the manager's latest report.</summary>
+    private void UpdateDownloadBanner(TimeSpan now)
+    {
+        _downloadMeter.Sample(_engine.Models.CurrentDownload, now);
+        var d = _downloadMeter.Read(now);
+        var title = Loc("LyricsStudio.ModelDownloadingTitle");
+        switch (d.Phase)
+        {
+            case ModelDownloadPhase.Connecting:
+                if (d.BytesDone > 0)
+                    SetBanner(ModelBannerState.Connecting, title, Loc("LyricsStudio.ModelResuming", ByteText.Format(d.BytesDone, precise: true)),
+                        d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                else
+                    SetBanner(ModelBannerState.Connecting, title, Loc("LyricsStudio.ModelConnecting"), indeterminate: true);
+                break;
+            case ModelDownloadPhase.Downloading:
+                var parts = new List<string> { Loc("LyricsStudio.ModelBytesOf", ByteText.Format(d.BytesDone, precise: true), ByteText.Format(d.BytesTotal, precise: true)) };
+                if (d.BytesPerSecond is { } speed) parts.Add(DownloadMeter.RateText(speed));
+                if (d.Remaining is { } left) parts.Add(DownloadMeter.RemainingText(left));
+                SetBanner(ModelBannerState.Downloading, title, string.Join(" · ", parts), d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                break;
+            case ModelDownloadPhase.Retrying:
+                SetBanner(ModelBannerState.Retrying, title,
+                    d.RetryIn > TimeSpan.Zero
+                        ? Loc("LyricsStudio.ModelRetrying", (int)Math.Ceiling(d.RetryIn.TotalSeconds), d.Attempt)
+                        : Loc("LyricsStudio.ModelReconnecting", d.Attempt),
+                    d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                break;
+            default: // Verifying, Done
+                SetBanner(ModelBannerState.Verifying, Loc("LyricsStudio.ModelVerifyingTitle"), Loc("LyricsStudio.ModelVerifyingBody"),
+                    1, DownloadMeter.PercentText(d.VerifyFraction));
+                break;
+        }
+    }
+
+    private bool _checkingModel;
+    private double _checkFraction;
 
     /// <summary>
     /// A model installed before checksums existed is checked once before its first run (~1.5 GB
-    /// read). False when it failed: the model state then asks for a fresh download.
+    /// read, a few seconds). False when it failed: the banner then asks for a fresh download.
     /// </summary>
     private async Task<bool> EnsureModelVerifiedAsync(CancellationToken ct)
     {
         if (_engine.Models.State != WhisperModelState.Unverified) return true;
-        RunStatusText = "Checking the speech model…";
+        _checkingModel = true;
+        _checkFraction = 0;
+        SetBanner(ModelBannerState.Checking, Loc("LyricsStudio.ModelCheckingTitle"), Loc("LyricsStudio.ModelCheckingBody"), percent: DownloadMeter.PercentText(0));
+        RunStatusText = Loc("LyricsStudio.ModelCheckingTitle");
+        EnsureTicking();
         bool ok;
-        try { ok = await _engine.Models.VerifyAsync(new Progress<double>(f => RunStatusText = $"Checking the speech model… {Math.Round(f * 100)}%"), ct); }
-        catch (OperationCanceledException) { RunStatusText = "Stopped."; return false; }
+        try { ok = await _engine.Models.VerifyAsync(new InlineProgress<double>(f => Volatile.Write(ref _checkFraction, f)), ct); }
+        catch (OperationCanceledException) { ok = false; }
+        finally { _checkingModel = false; }
         RefreshModelState();
-        if (!ok) RunStatusText = "The speech model file is damaged. Download it again.";
+        if (!ok) RunStatusText = ct.IsCancellationRequested ? "Stopped." : Loc("LyricsStudio.ModelDamagedTitle");
         return ok;
+    }
+
+    // ── UI tick: throttled progress (~15 Hz) while something is running ──
+
+    private DispatcherTimer? _tick;
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    /// <summary>Time source for the progress meters (tests replace it).</summary>
+    internal Func<TimeSpan> Clock { get; set; }
+
+    private void EnsureTicking()
+    {
+        if (_tick is null)
+        {
+            _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(66) };
+            _tick.Tick += (_, _) => Tick();
+        }
+        if (!_tick.IsEnabled) _tick.Start();
+    }
+
+    /// <summary>
+    /// One progress refresh: the download banner, the model check and the songs being run. Only
+    /// here do the bound values change, so bars and labels update at most ~15 times a second
+    /// whatever rate the work reports at. Stops itself when nothing is running. Internal for tests.
+    /// </summary>
+    internal void Tick()
+    {
+        var now = Clock();
+        if (IsDownloadingModel) UpdateDownloadBanner(now);
+        if (_checkingModel)
+        {
+            var f = Volatile.Read(ref _checkFraction);
+            ModelBannerProgress = f;
+            ModelBannerPercent = DownloadMeter.PercentText(f);
+        }
+        if (!IsDownloadingModel && !_checkingModel && !IsRunning) _tick?.Stop();
     }
 
     [RelayCommand]

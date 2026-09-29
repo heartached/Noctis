@@ -1850,6 +1850,34 @@
   <data name="LyricsStudio.Tap" xml:space="preserve"><value>Tap</value><comment>Tap bar button</comment></data>
   <data name="LyricsStudio.TapCancel" xml:space="preserve"><value>Done</value><comment>Tap bar leave button</comment></data>
   <data name="LyricsStudio.PlayFromHere" xml:space="preserve"><value>Play from here</value><comment>Time pill tooltip</comment></data>
+  <data name="LyricsStudio.ModelNeededTitle" xml:space="preserve"><value>Download the speech model to start</value><comment>Model card title: no model on disk yet</comment></data>
+  <data name="LyricsStudio.ModelNeededBody" xml:space="preserve"><value>Lyrics Studio listens to songs with the Whisper Medium speech model, on this computer. It is a one-time download of {0}.</value><comment>Model card text. {0} = download size, e.g. 1.4 GB</comment></data>
+  <data name="LyricsStudio.ModelDownloadSize" xml:space="preserve"><value>Download ({0})</value><comment>Model card button. {0} = download size</comment></data>
+  <data name="LyricsStudio.ModelPausedTitle" xml:space="preserve"><value>Speech model download paused</value><comment>Model card title: a stopped download can be resumed</comment></data>
+  <data name="LyricsStudio.ModelPausedBody" xml:space="preserve"><value>{0} of {1} downloaded. Resume continues from there.</value><comment>Model card text. {0} = bytes on disk, {1} = total</comment></data>
+  <data name="LyricsStudio.ModelResume" xml:space="preserve"><value>Resume download</value><comment>Model card button</comment></data>
+  <data name="LyricsStudio.ModelDownloadingTitle" xml:space="preserve"><value>Downloading the speech model</value><comment>Model card title while downloading</comment></data>
+  <data name="LyricsStudio.ModelConnecting" xml:space="preserve"><value>Connecting…</value><comment>Model card text before any bytes arrive</comment></data>
+  <data name="LyricsStudio.ModelResuming" xml:space="preserve"><value>Reconnecting to resume from {0}…</value><comment>Model card text. {0} = bytes already on disk</comment></data>
+  <data name="LyricsStudio.ModelBytesOf" xml:space="preserve"><value>{0} of {1}</value><comment>Model card progress. {0} = downloaded, {1} = total, e.g. 612 MB of 1.43 GB</comment></data>
+  <data name="LyricsStudio.EtaSeconds" xml:space="preserve"><value>about {0} s left</value><comment>Download time left, seconds</comment></data>
+  <data name="LyricsStudio.EtaMinutes" xml:space="preserve"><value>about {0} min left</value><comment>Download time left, minutes</comment></data>
+  <data name="LyricsStudio.EtaHours" xml:space="preserve"><value>about {0} h {1} min left</value><comment>Download time left, hours and minutes</comment></data>
+  <data name="LyricsStudio.ModelRetrying" xml:space="preserve"><value>Connection lost · retrying in {0} s (attempt {1})</value><comment>Model card text. {0} = seconds, {1} = attempt number</comment></data>
+  <data name="LyricsStudio.ModelReconnecting" xml:space="preserve"><value>Connection lost · reconnecting (attempt {0})…</value><comment>Model card text. {0} = attempt number</comment></data>
+  <data name="LyricsStudio.ModelVerifyingTitle" xml:space="preserve"><value>Checking the download</value><comment>Model card title: checksum of the finished download</comment></data>
+  <data name="LyricsStudio.ModelVerifyingBody" xml:space="preserve"><value>Making sure the file arrived complete and intact.</value><comment>Model card text during the checksum</comment></data>
+  <data name="LyricsStudio.ModelCheckingTitle" xml:space="preserve"><value>Checking the speech model</value><comment>Model card title: one-time check of a model downloaded by an older version</comment></data>
+  <data name="LyricsStudio.ModelCheckingBody" xml:space="preserve"><value>A one-time check that the model file is complete and intact.</value><comment>Model card text during the one-time check</comment></data>
+  <data name="LyricsStudio.ModelFailedTitle" xml:space="preserve"><value>Speech model download failed</value><comment>Model card title</comment></data>
+  <data name="LyricsStudio.ModelFailedBody" xml:space="preserve"><value>{0}. What arrived is kept, so the next try continues from there.</value><comment>Model card text. {0} = the error</comment></data>
+  <data name="LyricsStudio.ModelChecksumFailedBody" xml:space="preserve"><value>The downloaded file did not match the published model, so it was discarded. Retry downloads it again.</value><comment>Model card text after a checksum mismatch</comment></data>
+  <data name="LyricsStudio.ModelRetry" xml:space="preserve"><value>Retry</value><comment>Model card button after a failure</comment></data>
+  <data name="LyricsStudio.ModelDamagedTitle" xml:space="preserve"><value>The speech model file is damaged</value><comment>Model card title: the file on disk failed its check</comment></data>
+  <data name="LyricsStudio.ModelDamagedBody" xml:space="preserve"><value>It does not match the published model, so it will not be used. Download it again ({0}).</value><comment>Model card text. {0} = download size</comment></data>
+  <data name="LyricsStudio.ModelDownloadAgain" xml:space="preserve"><value>Download again</value><comment>Model card button for a damaged file</comment></data>
+  <data name="LyricsStudio.ModelCancel" xml:space="preserve"><value>Cancel</value><comment>Model card button while downloading</comment></data>
+  <data name="LyricsStudio.ModelCancelTip" xml:space="preserve"><value>Stop the download. What has arrived is kept, so you can resume later.</value><comment>Tooltip</comment></data>
   <data name="Settings.Desc.General" xml:space="preserve"><value>Language, startup, and how the window and sidebar behave.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Appearance" xml:space="preserve"><value>Themes, accent colour, glass, text animation and artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Player" xml:space="preserve"><value>The player island, the mini player, Cover Flow and Now Playing artwork.</value><comment>Settings page description</comment></data>
