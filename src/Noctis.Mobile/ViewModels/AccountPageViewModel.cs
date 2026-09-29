@@ -354,6 +354,8 @@ public sealed partial class AccountPageViewModel : MobilePage
         NoctisErrorKind.SignedOut => "This phone was removed on your computer. Sign in again.",
         NoctisErrorKind.InvalidAddress =>
             "Enter your computer's address as shown in Pair a device, like 192.168.1.20 or https://192.168.1.20:4747.",
+        NoctisErrorKind.StorageFull =>
+            "Your phone is almost full, so downloads stopped (1.5 GB is always left free). Remove some downloads or free up space.",
         _ => "Your computer couldn't finish that. Try again in a moment.",
     };
 

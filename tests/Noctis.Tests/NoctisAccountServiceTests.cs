@@ -233,6 +233,25 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Downloads_StopWithStorageFull_WhenThePhoneHasNoRoomLeft()
+    {
+        await SignedInAsync();
+        // The same phone, restarted with only the reserve (minus a byte) free.
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            FreeSpace = _ => NoctisAccountService.StorageReserveBytes - 1,
+        };
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAllAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(NoctisErrorKind.StorageFull, ex.Kind);
+        Assert.Equal(0, svc.DownloadedCount);
+        Assert.Empty(Directory.Exists(OfflineDir) ? Directory.GetFiles(OfflineDir) : Array.Empty<string>());
+        Assert.True(svc.IsSignedIn); // a full phone is not a reason to forget the account
+    }
+
+    [Fact]
     public async Task DownloadAll_FetchesEveryDesktopSong_AndRemoveAllEmptiesTheFolder()
     {
         var svc = await SignedInAsync();

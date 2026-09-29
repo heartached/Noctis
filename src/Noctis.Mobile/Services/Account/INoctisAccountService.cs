@@ -41,6 +41,8 @@ public enum NoctisErrorKind
     SignedOut,
     InvalidAddress,
     Server,
+    /// <summary>The phone is too full to download more (a reserve is always left free).</summary>
+    StorageFull,
 }
 
 public sealed class NoctisServerException(NoctisErrorKind kind, string message, Exception? inner = null)

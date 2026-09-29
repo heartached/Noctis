@@ -88,6 +88,22 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
 
     /// <summary>Song suffixes from this process's last catalog (download file extensions).</summary>
     private readonly ConcurrentDictionary<Guid, string> _suffixes = new();
+    private readonly ConcurrentDictionary<Guid, long> _sizes = new();
+
+    /// <summary>Space downloads always leave free on the phone: "Download everything" on a desktop
+    /// library can be far larger than the phone (the owner's is ~306 GB).</summary>
+    internal const long StorageReserveBytes = 1536L * 1024 * 1024;
+
+    /// <summary>Free bytes on the volume holding a path; tests substitute a full phone.</summary>
+    internal Func<string, long> FreeSpace { get; init; } = DefaultFreeSpace;
+
+    private static long DefaultFreeSpace(string path)
+    {
+        // statvfs on the path itself (Unix DriveInfo accepts any directory); unknown = no limit,
+        // so a platform that cannot tell never blocks downloads.
+        try { return new DriveInfo(path).AvailableFreeSpace; }
+        catch (Exception) { return long.MaxValue; }
+    }
     /// <summary>Albums the server had no cover for this process (not re-asked every sync).</summary>
     private readonly ConcurrentDictionary<Guid, byte> _coverMisses = new();
 
@@ -428,6 +444,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             {
                 var track = MapSong(song, albumArtists, now);
                 _suffixes[song.Id] = song.Suffix;
+                if (song.Size > 0) _sizes[song.Id] = song.Size;
                 if (!known.Contains(song.Id))
                 {
                     // New to the phone: the catalog's state (an unsent phone edit wins).
@@ -1076,7 +1093,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
                         finally { _downloadSlots.Release(); }
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged)
+                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull)
                     {
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);
@@ -1116,6 +1133,9 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
     private async Task DownloadOneAsync(NoctisServerClient client, Guid id, CancellationToken ct)
     {
         Directory.CreateDirectory(_offlineDir);
+        var need = _sizes.GetValueOrDefault(id) + StorageReserveBytes;
+        if (FreeSpace(_offlineDir) < need)
+            throw new NoctisServerException(NoctisErrorKind.StorageFull, "The phone is too full to download more.");
         var hex = id.ToString("N");
         var part = InsideOffline(hex + ".part");
         try
