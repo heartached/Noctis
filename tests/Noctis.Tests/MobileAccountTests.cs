@@ -614,6 +614,28 @@ public class MobileAccountTests
         Assert.Equal(0, account.Syncs);
     }
 
+    // ── Stream key scope (Media3AudioPlayer's resolver) ──
+
+    [Theory]
+    [InlineData("https://192.168.1.20:4747/rest/stream?id=tr-0a&c=NoctisAndroid&v=1.16.1", true)]
+    [InlineData("https://192.168.1.20:4747/rest/stream.view?id=tr-0a", true)]
+    [InlineData("HTTPS://192.168.1.20:4747/rest/stream?id=tr-0a", true)]
+    [InlineData("http://192.168.1.20:4747/rest/stream?id=tr-0a", false)]              // cleartext
+    [InlineData("https://192.168.1.21:4747/rest/stream?id=tr-0a", false)]             // another host
+    [InlineData("https://192.168.1.20:4748/rest/stream?id=tr-0a", false)]             // another port
+    [InlineData("https://192.168.1.20:4747/rest/deletePlaylist?id=pl-1", false)]      // another endpoint
+    [InlineData("https://192.168.1.20:4747/rest/stream/../deletePlaylist?id=pl-1", false)]
+    [InlineData("https://x@192.168.1.20:4747/rest/stream?id=tr-0a", false)]
+    [InlineData("https://evil.example/rest/stream?id=tr-0a", false)]
+    [InlineData("file:///data/offline/0a.flac", false)]
+    [InlineData("content://media/external/audio/1", false)]
+    [InlineData(null, false)]
+    public void StreamKey_GoesOnlyToTheDesktopsStreamEndpoint(string? request, bool allowed)
+    {
+        Assert.Equal(allowed, StreamAuthScope.Allows(request, "https://192.168.1.20:4747"));
+        Assert.False(StreamAuthScope.Allows(request, null));
+    }
+
     // ── Logs ──
 
     [Theory]

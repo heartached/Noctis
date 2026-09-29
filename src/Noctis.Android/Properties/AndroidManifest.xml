@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
-	<!-- No INTERNET: the app makes no network requests (privacy policy, Network). Debug builds
-	     add it by themselves for the debugger; Release must not declare it. -->
+	<!-- Network: only to the owner's own Noctis desktop, and only once they sign in to it
+	     (Settings → Account): sign-in, sync, streaming and downloads over TLS pinned to the
+	     desktop's certificate (privacy policy, Network). ACCESS_NETWORK_STATE is
+	     normal-level (no prompt), for reading whether a network is up. Every request is https: usesCleartextTraffic="false" below
+	     states the targetSdk 28+ default explicitly, so API 26-27 devices refuse cleartext too. -->
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<!-- Background playback: the MediaSessionService runs as a mediaPlayback foreground
 	     service (Android 14+ requires the typed permission) and holds a partial wake lock
 	     through ExoPlayer's WakeMode while the screen is off. -->
@@ -21,5 +26,6 @@
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<!-- Adaptive + themed launcher icon (mipmap-anydpi-v26), generated from the logo by
 	     scripts/android/make-icons.py. @drawable/icon (the 2000 px logo) is still the splash icon. -->
-	<application android:label="Noctis" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" />
+	<application android:label="Noctis" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"
+	             android:usesCleartextTraffic="false" />
 </manifest>

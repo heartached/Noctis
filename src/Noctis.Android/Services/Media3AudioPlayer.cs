@@ -2,8 +2,11 @@ using Android.Content;
 using Android.Media;
 using Android.OS;
 using AndroidX.Media3.Common;
+using AndroidX.Media3.DataSource;
 using AndroidX.Media3.ExoPlayer;
+using AndroidX.Media3.ExoPlayer.Source;
 using Avalonia.Threading;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 using AUri = Android.Net.Uri;
@@ -32,6 +35,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IExoPlayer _player;
+    // The signed-in desktop and its device key for stream requests (SetStreamAuth); null when
+    // signed out. Read on ExoPlayer's loader threads by StreamAuthResolver.
+    private volatile StreamAuth? _streamAuth;
     private readonly Listener _listener;
     private readonly SessionForwardingPlayer _sessionPlayer;
     // The position poll runs on the main looper's own Handler, not a DispatcherTimer. At
@@ -79,6 +85,14 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     /// <summary>See <see cref="HasNextInQueue"/>.</summary>
     public Func<bool>? HasPreviousInQueue { get; set; }
 
+    /// <summary>
+    /// Where a desktop song ("noctis-remote://…") plays from: its downloaded file, else its
+    /// https stream URL (INoctisAccountService.ResolvePlaybackUri); null for every other path.
+    /// The MediaItem's id stays the library path, so the gapless handoff and the metadata
+    /// lookup still match by it, and no URL reaches the session's MediaControllers.
+    /// </summary>
+    public Func<string, string?>? ResolveRemote { get; set; }
+
     public Media3AudioPlayer(Context context, ILibraryService library, IPersistenceService persistence)
     {
         _context = context;
@@ -89,7 +103,15 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .SetUsage(C.UsageMedia)
             .SetContentType(C.AudioContentTypeMusic)
             .Build();
+        // The stock source stack with one addition for http: streams from the owner's desktop
+        // authenticate with its device key in a header (SetStreamAuth), never in the URL, so
+        // the key is in no MediaItem URI and no logged address. The resolver adds the header
+        // per request, and only to the signed-in desktop's stream endpoint (StreamAuthScope) —
+        // not as a factory-wide default request property, which would hand the key to any URL
+        // the player were ever given. Files and content:// URIs never reach it.
+        var httpSources = new ResolvingDataSource.Factory(new DefaultHttpDataSource.Factory(), new StreamAuthResolver(this));
         _player = new ExoPlayerBuilder(context)
+            .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources)))
             .SetAudioAttributes(attributes, true)     // true = Media3 handles audio focus (pause on loss, duck on transient)
             .SetHandleAudioBecomingNoisy(true)        // headphones unplugged → pause
             .SetWakeMode(C.WakeModeLocal)             // keep the CPU awake while playing with the screen off
@@ -228,6 +250,16 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             _player.RemoveMediaItem(_player.MediaItemCount - 1);
     }
 
+    /// <summary>
+    /// The signed-in desktop ("https://host:port") and its device key, sent as the
+    /// X-Noctis-Key header with that desktop's stream requests; nulls once signed out. Set only
+    /// while signed in. Any thread: the next request reads it.
+    /// </summary>
+    public void SetStreamAuth(string? serverUrl, string? deviceKey) =>
+        _streamAuth = string.IsNullOrEmpty(serverUrl) || string.IsNullOrEmpty(deviceKey) ? null : new StreamAuth(serverUrl, deviceKey);
+
+    private sealed record StreamAuth(string ServerUrl, string DeviceKey);
+
     public void SetPlaybackRate(double rate)
     {
         if (_disposed) return;
@@ -276,7 +308,8 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         StopPositionPump();
         State = PlaybackState.Stopped;
-        PlaybackError?.Invoke(this, $"{error.ErrorCodeName}: {error.Message}");
+        // Redacted: the text reaches the log and the Now Playing error line.
+        PlaybackError?.Invoke(this, LogRedactor.Redact($"{error.ErrorCodeName}: {error.Message}"));
     }
 
     private void OnIsPlayingChanged(bool isPlaying)
@@ -388,9 +421,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     private MediaItem BuildItem(string path)
     {
-        var uri = path.StartsWith("content://", StringComparison.Ordinal)
-            ? AUri.Parse(path)!
-            : AUri.FromFile(new JFile(path))!;
+        var uri = PlaybackUri(path);
 
         var meta = new MediaMetadata.Builder();
         var track = Lookup(path);
@@ -432,21 +463,52 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .Build();
     }
 
+    /// <summary>What ExoPlayer reads for <paramref name="path"/>: a desktop song's download or
+    /// stream (<see cref="ResolveRemote"/>), a SAF content:// URI, or a file.</summary>
+    private AUri PlaybackUri(string path)
+    {
+        string? resolved = null;
+        try
+        {
+            resolved = ResolveRemote?.Invoke(path);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Resolving a desktop song failed: {ex.Message}");
+        }
+        if (resolved != null)
+        {
+            return resolved.StartsWith("http", StringComparison.OrdinalIgnoreCase) || resolved.StartsWith("file://", StringComparison.OrdinalIgnoreCase)
+                ? AUri.Parse(resolved)!
+                : AUri.FromFile(new JFile(resolved))!;
+        }
+        // An unresolved desktop song (signed out) falls through to a file that is not there:
+        // ExoPlayer reports a source error, which the ViewModel handles like any unreadable file.
+        return path.StartsWith("content://", StringComparison.Ordinal)
+            ? AUri.Parse(path)!
+            : AUri.FromFile(new JFile(path))!;
+    }
+
     /// <summary>
     /// Title for a path with no library match. GetFileNameWithoutExtension is meaningless for
     /// a SAF/MediaStore content:// URI like "content://…/document/…1234" (no file name, just
     /// an opaque id in the path) — decode the URI's last path segment instead, or fall back to
-    /// a plain label when even that is empty.
+    /// a plain label when even that is empty. Any other scheme (a desktop song's
+    /// noctis-remote://, a URL) or a query is never shown: it is no title, and the notification
+    /// and every MediaController would see it.
     /// </summary>
     private static string FallbackTitle(string path)
     {
+        const string unknown = "Unknown track";
         if (path.StartsWith("content://", StringComparison.Ordinal))
         {
             var last = AUri.Parse(path)?.LastPathSegment;
             var decoded = string.IsNullOrEmpty(last) ? null : AUri.Decode(last);
-            return string.IsNullOrWhiteSpace(decoded) ? "Unknown track" : decoded;
+            return string.IsNullOrWhiteSpace(decoded) ? unknown : decoded;
         }
-        return Path.GetFileNameWithoutExtension(path);
+        if (path.Contains("://", StringComparison.Ordinal) || path.Contains('?')) return unknown;
+        var name = Path.GetFileNameWithoutExtension(path);
+        return string.IsNullOrWhiteSpace(name) ? unknown : name;
     }
 
     private Track? Lookup(string path)
@@ -524,6 +586,23 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Adds the device key header to the signed-in desktop's stream requests; every
+    /// other request passes through untouched. Runs on ExoPlayer's loader threads.</summary>
+    private sealed class StreamAuthResolver : Java.Lang.Object, ResolvingDataSource.IResolver
+    {
+        private readonly Media3AudioPlayer _owner;
+        public StreamAuthResolver(Media3AudioPlayer owner) => _owner = owner;
+
+        public DataSpec? ResolveDataSpec(DataSpec? dataSpec)
+        {
+            var auth = _owner._streamAuth;
+            if (dataSpec == null || auth == null || !StreamAuthScope.Allows(dataSpec.Uri?.ToString(), auth.ServerUrl)) return dataSpec;
+            return dataSpec.WithAdditionalHeaders(new Dictionary<string, string> { [StreamAuthScope.HeaderName] = auth.DeviceKey });
+        }
+
+        public AUri? ResolveReportedUri(AUri? uri) => uri;
+    }
 
     /// <summary>Java-side listener; every IPlayerListener method has a default body, so only these four are overridden.</summary>
     private sealed class Listener : Java.Lang.Object, IPlayerListener
