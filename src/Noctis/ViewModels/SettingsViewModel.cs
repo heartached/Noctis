@@ -999,6 +999,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _songsShowOnlyFavorites;
     [ObservableProperty] private string _albumSortMode = "default";
     [ObservableProperty] private bool _albumSortAscending = true;
+    [ObservableProperty] private bool _albumSortNewestFirst;
     [ObservableProperty] private string _artistSortMode = "name";
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
@@ -1009,6 +1010,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortNewestFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -2454,6 +2456,7 @@ public partial class SettingsViewModel : ViewModelBase
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
+            AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
@@ -2902,6 +2905,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
+        _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;

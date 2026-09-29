@@ -488,6 +488,7 @@ public partial class TopBarViewModel : ViewModelBase
     // is. AlbumSortMode is compared per item via StringEqualsConverter.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AlbumSortDirectionEnabled))]
+    [NotifyPropertyChangedFor(nameof(AlbumSortNewestFirstEnabled))]
     [NotifyPropertyChangedFor(nameof(IsAlbumSortActive))]
     private string _albumSortMode = "default";
     [ObservableProperty]
@@ -495,6 +496,10 @@ public partial class TopBarViewModel : ViewModelBase
     private bool _albumSortAscending = true;
 
     public bool AlbumSortDescending => !AlbumSortAscending;
+
+    /// <summary>GitHub #106 "Newest Albums First" toggle; only the Album Artist sort uses it.</summary>
+    [ObservableProperty] private bool _albumSortNewestFirst;
+    public bool AlbumSortNewestFirstEnabled => AlbumSortMode == "albumartist";
 
     /// <summary>"Default" floats recent imports instead of ordering by a single key,
     /// and "Random" is a shuffle — no direction applies to either.</summary>

@@ -943,6 +943,7 @@
   <data name="Main.MostPlayed" xml:space="preserve"><value>Most played</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Random" xml:space="preserve"><value>Random</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Ascending" xml:space="preserve"><value>Ascending</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Newest Albums First</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>Descending</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>

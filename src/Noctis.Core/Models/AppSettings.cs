@@ -377,6 +377,10 @@ public class AppSettings
     /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
     public bool AlbumSortAscending { get; set; } = true;
 
+    /// <summary>GitHub #106: under the "albumartist" sort, list each artist's releases
+    /// newest first instead of chronologically.</summary>
+    public bool AlbumSortNewestFirst { get; set; }
+
     // ── Home section collapse state ──
     // Every Home section can be folded away to its header, so the page can be cut down
     // to only the rows the user currently cares about. All default to expanded — the

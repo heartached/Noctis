@@ -276,6 +276,23 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.False(reloaded.AlbumSortAscending);
     }
 
+    /// <summary>GitHub #106: "Newest Albums First" is off by default and survives a restart.</summary>
+    [AvaloniaFact]
+    public async Task AlbumSortNewestFirst_DefaultsOff_AndSurvivesSaveAndReload()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        Assert.False(vm.AlbumSortNewestFirst);
+
+        vm.AlbumSortNewestFirst = true;
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.True(reloaded.AlbumSortNewestFirst);
+    }
+
     /// <summary>GitHub #89: the Folders track-pane sort defaults to folder order and survives a restart.</summary>
     [AvaloniaFact]
     public async Task FoldersSort_DefaultsToFolderOrder_AndSurvivesSaveAndReload()

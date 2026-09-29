@@ -439,6 +439,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortAscending))
                 TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortNewestFirst))
+                TopBar.AlbumSortNewestFirst = _albumsVm.AlbumSortNewestFirst;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.ReleaseTypeFilterLabel))
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
@@ -2580,6 +2582,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
             TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
             TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
+            TopBar.AlbumSortNewestFirst = _albumsVm.AlbumSortNewestFirst;
             TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         }

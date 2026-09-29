@@ -326,6 +326,11 @@
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding AlbumSortCommand}" CommandParameter="descending" IsEnabled="{Binding AlbumSortDirectionEnabled}">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <Separator />
+                                        <!-- GitHub #106: each artist's releases newest first under Album Artist. -->
+                                        <MenuItem Header="{loc:T Main.NewestAlbumsFirst}" Command="{Binding AlbumSortCommand}" CommandParameter="newestfirst" IsEnabled="{Binding AlbumSortNewestFirstEnabled}">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortNewestFirst}"/></MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
