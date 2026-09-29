@@ -175,7 +175,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 var linked = account.IsSignedIn ? account.Account : null;
                 if (linked != null)
                 {
-                    AndroidStreamTrust.Install(linked.Fingerprint);
+                    AndroidStreamTrust.Install(linked.Fingerprint, new Uri(linked.ServerUrl).Host);
                     _player?.SetStreamAuth(linked.ServerUrl, linked.DeviceKey);
                 }
                 else

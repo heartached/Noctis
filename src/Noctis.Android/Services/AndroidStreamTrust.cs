@@ -16,9 +16,11 @@ namespace Noctis.Android.Services;
 /// <list type="bullet">
 /// <item>a trust manager that accepts a chain only when its leaf's SHA-256 is the pin, and hands
 /// every other chain to the platform's own trust manager (never an empty check);</item>
-/// <item>a hostname verifier that accepts only a session whose peer leaf is the pin (the desktop
-/// is reached by IP, which its certificate need not name) and otherwise defers to the default
-/// it replaced — never true for everything.</item>
+/// <item>a hostname verifier bound to the desktop's host: for that host only the pinned leaf
+/// passes (the desktop is reached by IP, which its certificate need not name — and a CA-issued
+/// certificate for the same name must not, or a DDNS/DNS hijack would get the device key sent
+/// with the stream); for any other host the pinned leaf is refused and the default verifier it
+/// replaced decides — never true for everything.</item>
 /// </list>
 /// Nothing else in the app relies on HttpsURLConnection's defaults (the account service's
 /// HttpClient carries its own check per handler), so the reach is ExoPlayer's streams.
@@ -29,16 +31,17 @@ public static class AndroidStreamTrust
     private static readonly object Gate = new();
     private static SSLSocketFactory? _originalFactory;
     private static IHostnameVerifier? _originalVerifier;
-    private static string? _installedPin;
+    private static string? _installed;
 
-    /// <summary>Trust the desktop whose leaf certificate has this SHA-256 ("AB:CD:…").</summary>
-    public static void Install(string fingerprint)
+    /// <summary>Trust the desktop at <paramref name="host"/> whose leaf certificate has this SHA-256 ("AB:CD:…").</summary>
+    public static void Install(string fingerprint, string host)
     {
         var pin = ParsePin(fingerprint);
-        var pinText = Convert.ToHexString(pin);
+        if (string.IsNullOrWhiteSpace(host)) throw new ArgumentException("No desktop host", nameof(host));
+        var key = Convert.ToHexString(pin) + "@" + host.ToLowerInvariant();
         lock (Gate)
         {
-            if (_installedPin == pinText) return;
+            if (_installed == key) return;
             // The originals once, before the first replacement: a second Install (a new pin)
             // must still restore the platform's, not the previous pin's.
             _originalFactory ??= HttpsURLConnection.DefaultSSLSocketFactory;
@@ -47,8 +50,8 @@ public static class AndroidStreamTrust
             var context = SSLContext.GetInstance("TLS")!;
             context.Init(null, new ITrustManager[] { new PinnedTrustManager(pin, PlatformTrustManager()) }, null);
             HttpsURLConnection.DefaultSSLSocketFactory = context.SocketFactory;
-            HttpsURLConnection.DefaultHostnameVerifier = new PinnedHostnameVerifier(pin, _originalVerifier);
-            _installedPin = pinText;
+            HttpsURLConnection.DefaultHostnameVerifier = new PinnedHostnameVerifier(pin, host, _originalVerifier);
+            _installed = key;
             DebugLog.Write("Account", "Stream trust installed for the pinned desktop");
         }
     }
@@ -58,10 +61,10 @@ public static class AndroidStreamTrust
     {
         lock (Gate)
         {
-            if (_installedPin == null) return;
+            if (_installed == null) return;
             if (_originalFactory != null) HttpsURLConnection.DefaultSSLSocketFactory = _originalFactory;
             if (_originalVerifier != null) HttpsURLConnection.DefaultHostnameVerifier = _originalVerifier;
-            _installedPin = null;
+            _installed = null;
             DebugLog.Write("Account", "Stream trust removed");
         }
     }
@@ -122,25 +125,32 @@ public static class AndroidStreamTrust
     private sealed class PinnedHostnameVerifier : Java.Lang.Object, IHostnameVerifier
     {
         private readonly byte[] _pin;
+        private readonly string _host;
         private readonly IHostnameVerifier? _fallback;
 
-        public PinnedHostnameVerifier(byte[] pin, IHostnameVerifier? fallback)
+        public PinnedHostnameVerifier(byte[] pin, string host, IHostnameVerifier? fallback)
         {
             _pin = pin;
+            _host = host;
             _fallback = fallback;
         }
 
         public bool Verify(string? hostname, ISSLSession? session)
         {
+            var pinned = false;
             try
             {
                 JCertificate[]? peer = session?.GetPeerCertificates();
-                if (peer is { Length: > 0 } && Matches(peer[0].GetEncoded(), _pin)) return true;
+                pinned = peer is { Length: > 0 } && Matches(peer[0].GetEncoded(), _pin);
             }
             catch (Exception)
             {
                 // SSLPeerUnverifiedException and the like: not the pinned desktop.
             }
+            // The desktop's host: its pinned certificate and nothing else.
+            if (string.Equals(hostname, _host, StringComparison.OrdinalIgnoreCase)) return pinned;
+            // Any other host never gets by on the desktop's certificate.
+            if (pinned) return false;
             return _fallback?.Verify(hostname, session) ?? false;
         }
     }

@@ -16,5 +16,7 @@ public static class AndroidNoctisHttp
         new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert != null && acceptCertificate(cert),
+            // The desktop never redirects; following one would send the device key header on.
+            AllowAutoRedirect = false,
         };
 }

@@ -43,6 +43,8 @@ internal sealed class NoctisServerClient : IDisposable
     private const int MaxPages = 2000;
     private const int MaxStringLength = 500;
     private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(15);
+    private const long MaxEnvelopeBytes = 64L * 1024 * 1024;
+    private const long MaxProbeBytes = 64L * 1024;
 
     private readonly HttpClient _http;
     private readonly string _baseUrl;
@@ -63,7 +65,9 @@ internal sealed class NoctisServerClient : IDisposable
             Interlocked.Increment(ref _pinRejections);
             return false;
         });
-        _http = new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
+        // Buffered reads (the JSON envelopes) are capped: a catalog page is well under 1 MB, and a
+        // hostile answer must not buffer gigabytes. Streamed bodies (songs, covers) cap themselves.
+        _http = new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan, MaxResponseContentBufferSize = MaxEnvelopeBytes };
     }
 
     public string BaseUrl => _baseUrl;
@@ -136,7 +140,8 @@ internal sealed class NoctisServerClient : IDisposable
             if (cert is not null) seen = Fingerprint(cert);
             return true;
         });
-        using var http = new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
+        // The probe trusts any certificate, so whoever answers is unvetted: a ping answer is tiny.
+        using var http = new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan, MaxResponseContentBufferSize = MaxProbeBytes };
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(ApiTimeout);
         try

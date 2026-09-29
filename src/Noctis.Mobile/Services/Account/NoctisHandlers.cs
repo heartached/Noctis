@@ -24,5 +24,7 @@ public static class NoctisHandlers
             },
         },
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        // The desktop never redirects; following one would send the device key header on.
+        AllowAutoRedirect = false,
     };
 }
