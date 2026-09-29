@@ -148,6 +148,29 @@ public class WhisperDtwTimingTests
     }
 
     [Fact]
+    public void Resume_AfterWhisperSkippedTheRestOfTheWindow_StartsAtTheLastSegmentsEnd()
+    {
+        // One ad-lib at 1.6–2.4 s, then "single timestamp ending": whisper.cpp would jump 30 s.
+        var step = WhisperTranscriber.NextWindowOffset(TimeSpan.FromSeconds(2.4), 100, Window);
+        Assert.Equal(Window, step);
+        Assert.Equal((int)(2.4 * Sr), WhisperTranscriber.ResumeOffset(step, TimeSpan.FromSeconds(2.4)));
+    }
+
+    [Fact]
+    public void Resume_NotWhenTheWindowEndedAtItsLastSegment_OrHadNone()
+    {
+        Assert.Null(WhisperTranscriber.ResumeOffset((int)(24.3 * Sr), TimeSpan.FromSeconds(24.3)));
+        Assert.Null(WhisperTranscriber.ResumeOffset(Window, TimeSpan.FromSeconds(28))); // under 3 s skipped
+        Assert.Null(WhisperTranscriber.ResumeOffset(Window, null));                      // nothing heard: nothing to resume from
+    }
+
+    [Fact]
+    public void Resume_AlwaysMovesAtLeastASecond()
+    {
+        Assert.Equal(Sr, WhisperTranscriber.ResumeOffset(Window, TimeSpan.FromSeconds(0.2)));
+    }
+
+    [Fact]
     public void DtwShift_PullsMediumEarlier_LeavesBaseAlone()
     {
         Assert.Equal(-10, WhisperTranscriber.DtwShiftCs(WhisperAlignmentHeadsPreset.Medium));

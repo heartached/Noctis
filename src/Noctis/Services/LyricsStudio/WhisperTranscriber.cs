@@ -48,11 +48,13 @@ public sealed class WhisperTranscriber
         public async Task<Transcript> TranscribeAsync(float[] pcm16k, string? language, string? prompt, IProgress<double>? progress, CancellationToken ct)
         {
             // Window bookkeeping for the DTW path (see below); the progress handler maps a
-            // call's own 0–100 onto the whole song.
+            // call's own 0–100 onto the whole song, never backwards (a resumed window starts
+            // before where the previous one ended).
             var seek = 0;
             var span = pcm16k.Length;
             var windows = 0;
             var reportedPercent = 0;
+            var progressShown = 0.0;
             var detectLanguage = string.IsNullOrWhiteSpace(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase);
             string? lang = detectLanguage ? null : language!.Trim().ToLowerInvariant();
 
@@ -71,7 +73,10 @@ public sealed class WhisperTranscriber
                     .WithProgressHandler(p =>
                     {
                         reportedPercent = p;
-                        progress?.Report(Math.Clamp((seek + p / 100.0 * span) / Math.Max(1, pcm16k.Length), 0, 1));
+                        var fraction = Math.Clamp((seek + p / 100.0 * span) / Math.Max(1, pcm16k.Length), 0, 1);
+                        if (fraction < progressShown) return;
+                        progressShown = fraction;
+                        progress?.Report(fraction);
                     });
                 if (lang is null) builder.WithLanguageDetection();
                 else builder.WithLanguage(lang);
@@ -134,6 +139,8 @@ public sealed class WhisperTranscriber
                 // to its own 30 s. Checked on 10 songs: windows tile the song end to end, no word
                 // is repeated or reordered at a boundary. Passing the whole song with WithOffset/
                 // WithDuration instead (identical scaling) measured no better and 55% slower.
+                var resumes = 0;
+                var maxResumes = 2 + pcm16k.Length / WindowSamples;
                 // Like whisper.cpp: stop when less than a second is left.
                 while (seek + PcmDecoder16k.SampleRate < pcm16k.Length)
                 {
@@ -156,7 +163,14 @@ public sealed class WhisperTranscriber
                         lang = detected;
                         detectLanguage = false;
                     }
-                    seek += NextWindowOffset(last?.End, reportedPercent, span);
+                    var step = NextWindowOffset(last?.End, reportedPercent, span);
+                    // whisper.cpp skipped the rest of the window: decode it after all (ResumeOffset).
+                    if (resumes < maxResumes && ResumeOffset(step, last?.End) is { } resumed)
+                    {
+                        step = resumed;
+                        resumes++;
+                    }
+                    seek += step;
                 }
             }
             finally
@@ -222,6 +236,22 @@ public sealed class WhisperTranscriber
             if (reported <= endSamples + second / 10) next = endSamples;
         }
         return next >= second ? next : span;
+    }
+
+    /// <summary>
+    /// Where to go on after a window whose rest whisper.cpp skipped: its "single timestamp ending"
+    /// rule drops everything after the last segment when the model believes nothing more is sung
+    /// — on songs, often a verse over a quiet intro (benchmark 09-29: whole first windows lost,
+    /// 8.8 % of dev lyric lines inside such holes). Returns the last segment's end (at least a
+    /// second) when the window's step jumped more than 3 s past it, so the next window decodes
+    /// from there; null when nothing was skipped.
+    /// </summary>
+    internal static int? ResumeOffset(int step, TimeSpan? lastSegmentEnd)
+    {
+        const int second = PcmDecoder16k.SampleRate;
+        if (lastSegmentEnd is not { } end) return null;
+        var endSamples = Math.Max(second, (int)Math.Round(end.TotalSeconds * second));
+        return step > endSamples + 3 * second ? endSamples : null;
     }
 
     /// <summary>A token as Whisper.net reports it: text, start/end in centiseconds, probability.</summary>
