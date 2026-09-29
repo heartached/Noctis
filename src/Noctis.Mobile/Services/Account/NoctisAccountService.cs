@@ -49,6 +49,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private const int MaxPlaylistDescription = 2000;
     private const long MaxPushBytes = 3L * 1024 * 1024; // the server refuses bodies over 4 MB
     private const int CoverConcurrency = 4;
+    private const int CoverFailureLimit = 8;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.Ordinal)
@@ -625,25 +626,41 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         var done = 0;
         var written = 0;
-        await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = CoverConcurrency, CancellationToken = ct },
-            async (albumId, token) =>
-            {
-                try
+        var failed = 0;
+        // Covers are not worth a sync: a cover that fails (a timeout, a dropped connection) is
+        // skipped and asked again next sync, and the favourites, playlists and plays still go.
+        // Many failures mean the desktop is gone; stop asking and let the next stage say so.
+        using var stage = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try
+        {
+            await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = CoverConcurrency, CancellationToken = stage.Token },
+                async (albumId, token) =>
                 {
-                    if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
-                        Interlocked.Increment(ref written);
-                    else
+                    try
+                    {
+                        if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
+                            Interlocked.Increment(ref written);
+                        else
+                            _coverMisses.TryAdd(albumId, 0);
+                    }
+                    catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
+                    {
                         _coverMisses.TryAdd(albumId, 0);
-                }
-                catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
-                {
-                    _coverMisses.TryAdd(albumId, 0);
-                }
-                RaiseSyncProgress(NoctisSyncStage.Covers, Interlocked.Increment(ref done), due.Count);
-            }).ConfigureAwait(false);
-
-        // Rebuild so albums pick the new files up.
-        if (written > 0) _library.NotifyMetadataChanged();
+                    }
+                    catch (NoctisServerException ex) when (ex.Kind is not (NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged))
+                    {
+                        if (Interlocked.Increment(ref failed) >= CoverFailureLimit) stage.Cancel();
+                    }
+                    RaiseSyncProgress(NoctisSyncStage.Covers, Interlocked.Increment(ref done), due.Count);
+                }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { /* gave up after CoverFailureLimit */ }
+        finally
+        {
+            if (failed > 0) DebugLog.Write("Account", $"covers: {written} saved, {failed} failed{(stage.IsCancellationRequested && !ct.IsCancellationRequested ? ", stopped asking" : "")}");
+            // Rebuild so albums pick the new files up.
+            if (written > 0) _library.NotifyMetadataChanged();
+        }
     }
 
     private static bool CoverIsDue(string path, DateTime now)

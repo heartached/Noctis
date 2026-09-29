@@ -182,6 +182,42 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Same(p1, Phone(_t1));
     }
 
+    /// <summary>The socket handler, with the requests <paramref name="fail"/> picks failing the way
+    /// a dropped connection does.</summary>
+    private sealed class FlakyHandler(HttpMessageHandler inner, Func<HttpRequestMessage, bool> fail) : DelegatingHandler(inner)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            fail(request) ? throw new HttpRequestException("connection reset") : base.SendAsync(request, ct);
+    }
+
+    private NoctisAccountService WithHandler(Func<HttpRequestMessage, bool> fail) =>
+        new(_phoneLibrary, _phonePersistence, accept => new FlakyHandler(NoctisHandlers.Sockets(accept), fail),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+    [Fact]
+    public async Task ACoverThatFailsToDownload_DoesNotStopTheRestOfTheSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var coversFail = true;
+        var svc = WithHandler(r => coversFail && r.RequestUri!.AbsolutePath.EndsWith("getCoverArt.view", StringComparison.Ordinal));
+        _t1.Rating = 2;
+        _sync.RecordTrackStates(new[] { _t1 });
+
+        var result = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(3, result.Songs);
+        Assert.Equal(1, result.Playlists);                 // the stages after covers still ran
+        Assert.Equal(2, Phone(_t1).Rating);
+        Assert.NotNull(svc.Account!.LastSyncUtc);
+        Assert.False(File.Exists(_phonePersistence.GetArtworkPath(AlbumA)));
+
+        // A failed download is not "this album has no cover": the next sync asks again.
+        coversFail = false;
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_art, File.ReadAllBytes(_phonePersistence.GetArtworkPath(AlbumA)));
+    }
+
     [Fact]
     public async Task SyncNow_IsSingleFlight()
     {
