@@ -45,6 +45,19 @@
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="16,4,16,32" Spacing="14">
+                <!-- Only where the head wires an account service (Shell.Account). -->
+                <TextBlock Classes="section" FontSize="16" Text="Account" IsVisible="{Binding Shell.HasAccount}" />
+                <Border Classes="settings-card" Padding="4" IsVisible="{Binding Shell.HasAccount}">
+                    <Button Name="AccountRow" Classes="row" Command="{Binding Shell.OpenAccountCommand}" Padding="12,10">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <PathIcon Data="{DynamicResource PersonIcon}" Width="18" Height="18" />
+                            <TextBlock Grid.Column="1" Name="AccountRowLabel" Margin="12,0,8,0" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" Text="{Binding AccountRowText}" />
+                            <PathIcon Grid.Column="2" Data="{DynamicResource ChevronRightIcon}" Width="14" Height="14" Opacity="0.6" />
+                        </Grid>
+                    </Button>
+                </Border>
+
                 <TextBlock Classes="section" FontSize="16" Text="Library" />
                 <Border Classes="settings-card">
                     <StackPanel Spacing="8">
@@ -120,7 +133,7 @@
                 <Border Classes="settings-card">
                     <StackPanel Spacing="8">
                         <TextBlock Name="VersionLabel" Text="{Binding VersionText}" />
-                        <TextBlock Classes="subtle" TextWrapping="Wrap" Text="Your music stays on this phone. Noctis collects nothing." />
+                        <TextBlock Classes="subtle" TextWrapping="Wrap" Text="Noctis collects nothing. The app only talks to your own computer, and only when you sign in to your Noctis account." />
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button Name="ExportLogsButton" Classes="pill" Content="Export logs" Command="{Binding ExportLogsCommand}" />
                             <TextBlock Name="ExportStatusLabel" Classes="subtle" VerticalAlignment="Center" Text="{Binding ExportStatus}" />

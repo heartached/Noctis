@@ -9,6 +9,7 @@ using Noctis.Android.Services;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
+using Noctis.Mobile.Services.Account;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Services;
@@ -30,6 +31,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
     private AndroidVolumeControl? _volume;
+    private readonly object _accountGate = new();
 
     /// <summary>
     /// The running app, for the activity's lifecycle hooks. Declared <c>new</c> on purpose:
@@ -61,7 +63,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // phone. Mirror it to logcat, where `adb logcat -s Noctis` can read it. AttachSink
         // replays what is already buffered, so attaching here loses nothing logged earlier;
         // the reset callback exists for the desktop's disk mirror and has no analogue here.
-        DebugLog.AttachSink(line => ALog.Info(LogTag, line), static () => { });
+        // Redacted on the way out: logcat is readable over adb, and account errors can carry
+        // a device key or password text (LogRedactor). The crash hooks log through here too.
+        DebugLog.AttachSink(line => ALog.Info(LogTag, LogRedactor.Redact(line)), static () => { });
         HookUnhandledExceptions();
 
         var persistence = new PersistenceService();
@@ -81,6 +85,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
             FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
         };
+        var account = CreateAccountService(context, library, persistence);
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
             nowPlaying,
@@ -90,8 +95,18 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Theme = this,
             Logs = new AndroidLogExporter(context),
             VersionText = DescribeVersion(context),
+            Account = account,
         };
         _shell = shell;
+
+        if (account != null)
+        {
+            // Desktop songs play from their download or the desktop's stream; the stream needs
+            // the pinned certificate trusted and the device key sent, for as long as signed in.
+            _player.ResolveRemote = account.ResolvePlaybackUri;
+            account.StateChanged += (_, _) => ApplyAccountState(account);
+            ApplyAccountState(account);
+        }
 
         // Notification / lock screen / Bluetooth / headset transport. The session player raises
         // these instead of seeking ExoPlayer's own item list, so every transport path runs
@@ -111,6 +126,55 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _ = StartAsync(persistence, library, history);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null until the
+    /// account service is merged: Settings shows no Account section, the sheet no download
+    /// actions, and the player never streams.
+    /// </summary>
+    private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library, IPersistenceService persistence)
+    {
+        // The service's TLS: its pin check wired into AndroidMessageHandler.
+        NoctisHandlerFactory handlerFactory = AndroidNoctisHttp.CreateHandler;
+        // TODO(package B merge): construct the service here. Both directories under
+        // NoBackupFilesDir, so neither the device key nor the downloads are ever backed up:
+        //   var noBackup = context.NoBackupFilesDir!.AbsolutePath;
+        //   return new NoctisAccountService(library, persistence, handlerFactory,
+        //       accountDir: noBackup,
+        //       offlineDir: Path.Combine(noBackup, "offline"),
+        //       deviceName: Build.Manufacturer + " " + Build.Model);   // using Android.OS
+        return null;
+    }
+
+    /// <summary>
+    /// Signed in: ExoPlayer trusts the pinned desktop certificate and sends the device key with
+    /// that desktop's stream requests (header only, see Media3AudioPlayer.SetStreamAuth). Signed out: both undone. At start and on every account change, which
+    /// the service raises on any thread — hence the lock, so two changes cannot interleave.
+    /// </summary>
+    private void ApplyAccountState(INoctisAccountService account)
+    {
+        lock (_accountGate)
+        {
+            try
+            {
+                var linked = account.IsSignedIn ? account.Account : null;
+                if (linked != null)
+                {
+                    AndroidStreamTrust.Install(linked.Fingerprint);
+                    _player?.SetStreamAuth(linked.ServerUrl, linked.DeviceKey);
+                }
+                else
+                {
+                    _player?.SetStreamAuth(null, null);
+                    AndroidStreamTrust.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Account", $"Stream trust update failed: {ex.Message}");
+            }
+        }
     }
 
     /// <summary>

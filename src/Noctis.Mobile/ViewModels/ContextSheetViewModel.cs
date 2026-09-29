@@ -53,6 +53,24 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool CanGoToAlbum => Track != null;
     public bool CanGoToArtist => Track != null || Album != null;
 
+    // ── Desktop songs (Settings → Account): offline copies ──
+
+    /// <summary>The desktop's songs among <see cref="Tracks"/>; empty without an account service.</summary>
+    private IReadOnlyList<Track> RemoteTracks => _remote ??= _shell.Account is { } account
+        ? Tracks.Where(account.IsRemote).ToList()
+        : Array.Empty<Track>();
+    private IReadOnlyList<Track>? _remote;
+
+    private IEnumerable<Track> NotDownloaded => RemoteTracks.Where(t => !_shell.Account!.IsDownloaded(t));
+    private IEnumerable<Track> Downloaded => RemoteTracks.Where(t => _shell.Account!.IsDownloaded(t));
+
+    /// <summary>Signed in and at least one desktop song here has no offline copy yet.</summary>
+    public bool CanDownload => _shell.Account is { IsSignedIn: true } && NotDownloaded.Any();
+    public bool CanRemoveDownload => _shell.Account != null && Downloaded.Any();
+
+    public string DownloadLabel => Album != null ? "Download album" : Playlist != null ? "Download playlist" : "Download";
+    public string RemoveDownloadLabel => Track != null ? "Remove download" : "Remove downloads";
+
     /// <summary>The sheet's second page: pick a playlist or name a new one.</summary>
     [ObservableProperty] private bool _isPickingPlaylist;
 
@@ -125,6 +143,22 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         var name = Track?.GroupingArtist ?? Album?.Artist;
         _shell.CloseSheet();
         if (!string.IsNullOrWhiteSpace(name)) _shell.OpenArtistCommand.Execute(name);
+    }
+
+    [RelayCommand]
+    private async Task DownloadAsync()
+    {
+        var tracks = NotDownloaded.ToList();
+        _shell.CloseSheet();
+        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
+    }
+
+    [RelayCommand]
+    private async Task RemoveDownloadAsync()
+    {
+        var tracks = Downloaded.ToList();
+        _shell.CloseSheet();
+        if (tracks.Count > 0) await _shell.RemoveDownloadsAsync(tracks);
     }
 
     [RelayCommand] private void Close() => _shell.CloseSheet();

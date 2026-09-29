@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Localization;
 using Noctis.Mobile.Services;
+using Noctis.Mobile.Services.Account;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -58,6 +59,19 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
+
+    /// <summary>The link to the owner's Noctis desktop (sign-in, streaming, downloads, sync).
+    /// Null on a host without one and in most tests: Settings → Account and the sheet's
+    /// download actions are then hidden.</summary>
+    public INoctisAccountService? Account { get; init; }
+
+    public bool HasAccount => Account != null;
+
+    /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
+    public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
+
+    /// <summary>The sync started by <see cref="InitializeAsync"/> when signed in; tests await it.</summary>
+    internal Task StartupSync { get; private set; } = Task.CompletedTask;
 
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
@@ -128,11 +142,27 @@ public sealed partial class ShellViewModel : ObservableObject
             OnPropertyChanged(nameof(IsMiniBarVisible));
     }
 
-    /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it.</summary>
+    /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it,
+    /// and a desktop song's play is queued for the desktop (sent as a scrobble on the next sync).</summary>
     private void OnPlayRecorded(object? sender, EventArgs e)
     {
+        RecordRemotePlay();
         Library.RefreshRecents();
         Home.Refresh();
+    }
+
+    private void RecordRemotePlay()
+    {
+        // PlayRecorded fires only while the recorded track is still CurrentTrack.
+        if (Account is not { } account || Player.CurrentTrack is not { } track) return;
+        try
+        {
+            if (account.IsRemote(track)) account.RecordPlay(track, DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Recording a desktop play failed: {ex.Message}");
+        }
     }
 
     partial void OnSelectedTabChanged(MobileTab value)
@@ -386,6 +416,35 @@ public sealed partial class ShellViewModel : ObservableObject
         _ = page.LoadAsync();
     }
 
+    /// <summary>Settings → Account.</summary>
+    [RelayCommand]
+    private void OpenAccount()
+    {
+        if (Account != null) Navigate(new AccountPageViewModel(this, Account));
+    }
+
+    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures
+    /// are logged; the Account page shows the running counts.</summary>
+    public Task DownloadTracksAsync(IReadOnlyList<Track> tracks) =>
+        RunAccountAsync("Download", a => a.DownloadAsync(tracks));
+
+    /// <summary>The sheet's Remove download(s).</summary>
+    public Task RemoveDownloadsAsync(IReadOnlyList<Track> tracks) =>
+        RunAccountAsync("Remove downloads", a => a.RemoveDownloadsAsync(tracks));
+
+    private async Task RunAccountAsync(string what, Func<INoctisAccountService, Task> work)
+    {
+        if (Account == null) return;
+        try
+        {
+            await work(Account);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"{what} failed: {ex.Message}");
+        }
+    }
+
     public async Task InitializeAsync()
     {
         await Library.InitializeAsync();
@@ -393,6 +452,25 @@ public sealed partial class ShellViewModel : ObservableObject
         // that track's lyrics with the saved split-word and layer preferences.
         await Lyrics.InitializeAsync();
         await Player.RestoreStateAsync();
+        // Signed in: pull the desktop's changes and push ours. Fire-and-forget over a loaded
+        // library; a failure (the computer is off, another network) is logged and never
+        // reaches the UI — Settings → Account shows the next manual sync's error instead.
+        if (Account is { IsSignedIn: true } account) StartupSync = SyncOnStartAsync(account);
+    }
+
+    private static async Task SyncOnStartAsync(INoctisAccountService account)
+    {
+        try
+        {
+            if (account.IsSyncing) return;
+            var result = await account.SyncNowAsync();
+            DebugLog.Write("Account", $"Startup sync: {result.Songs} songs, {result.Playlists} playlists, " +
+                $"{result.StateChangesPulled} changes in, {result.StateChangesPushed} out, {result.PlaysSent} plays sent");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Startup sync failed: {(ex as NoctisServerException)?.Kind.ToString() ?? ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     public Task SaveStateAsync() => Player.SaveStateAsync();
