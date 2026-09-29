@@ -148,6 +148,73 @@ public class ReplayGainWriteTests : IDisposable
         Assert.Equal("-2.25 dB", ape.GetItem("REPLAYGAIN_TRACK_GAIN").ToString());
     }
 
+    private static TagLib.IPicture FakeCover(int size)
+    {
+        var data = new byte[size];
+        new Random(7).NextBytes(data);
+        data[0] = 0x89; data[1] = (byte)'P'; data[2] = (byte)'N'; data[3] = (byte)'G';
+        return new TagLib.Picture(new TagLib.ByteVector(data))
+        {
+            Type = TagLib.PictureType.FrontCover,
+            MimeType = "image/png",
+        };
+    }
+
+    [Fact]
+    public void Mp3_cover_copied_into_ape_by_old_scans_is_stripped()
+    {
+        // Spark again, after 1.5.6: scans up to 1.5.5 created an APEv2 tag, and TagLib#
+        // filled it with a copy of the existing tags, cover art included. The megabytes of
+        // image appended after the audio make ffmpeg/VLC size the song by bitrate x file
+        // size (a 3:47 song read as 8:34), so it hangs on a silent tail. Rerunning the scan
+        // on 1.5.6 kept that tag, since existing foreign tags are only updated.
+        var path = CreateMp3WithId3v2Only(_dir);
+        var cover = FakeCover(200_000);
+        using (var f = TagLib.File.Create(path))
+        {
+            f.GetTag(TagLib.TagTypes.Id3v2, true).Pictures = new[] { cover };
+            var ape = (TagLib.Ape.Tag)f.GetTag(TagLib.TagTypes.Ape, true);
+            ape.Pictures = new[] { cover };
+            ape.SetValue("REPLAYGAIN_TRACK_GAIN", "+9.00 dB");
+            f.Save();
+        }
+        var damagedSize = new FileInfo(path).Length;
+
+        var (ok, error) = ReplayGainScannerService.WriteReplayGainTags(path, -2.25, 0.5, null, null);
+        Assert.True(ok, error);
+
+        Assert.True(new FileInfo(path).Length < damagedSize - 150_000,
+            $"{damagedSize} -> {new FileInfo(path).Length}");
+        using var reread = TagLib.File.Create(path);
+        var ape2 = (TagLib.Ape.Tag)reread.GetTag(TagLib.TagTypes.Ape, false);
+        Assert.Empty(ape2.Pictures);
+        Assert.Equal("-2.25 dB", ape2.GetItem("REPLAYGAIN_TRACK_GAIN").ToString());
+        var id3Pictures = reread.GetTag(TagLib.TagTypes.Id3v2, false).Pictures;
+        Assert.Single(id3Pictures);
+        Assert.Equal(cover.Data.Count, id3Pictures[0].Data.Count);
+    }
+
+    [Fact]
+    public void Mp3_cover_held_only_in_ape_moves_to_id3v2()
+    {
+        var path = CreateMp3WithId3v2Only(_dir);
+        var cover = FakeCover(50_000);
+        using (var f = TagLib.File.Create(path))
+        {
+            ((TagLib.Ape.Tag)f.GetTag(TagLib.TagTypes.Ape, true)).Pictures = new[] { cover };
+            f.Save();
+        }
+
+        var (ok, error) = ReplayGainScannerService.WriteReplayGainTags(path, -2.25, 0.5, null, null);
+        Assert.True(ok, error);
+
+        using var reread = TagLib.File.Create(path);
+        Assert.Empty(reread.GetTag(TagLib.TagTypes.Ape, false).Pictures);
+        var id3Pictures = reread.GetTag(TagLib.TagTypes.Id3v2, false).Pictures;
+        Assert.Single(id3Pictures);
+        Assert.Equal(cover.Data.Count, id3Pictures[0].Data.Count);
+    }
+
     [Fact]
     public void Write_replaces_the_file_instead_of_rewriting_it_in_place()
     {

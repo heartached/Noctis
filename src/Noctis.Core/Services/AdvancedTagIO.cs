@@ -650,6 +650,32 @@ internal static class AdvancedTagIO
         var added = file.TagTypes & ~file.TagTypesOnDisk & ~NativeCustomTagType(file)
             & (TagTypes.Id3v1 | TagTypes.Id3v2 | TagTypes.Ape);
         if (added != TagTypes.None) file.RemoveTags(added);
+        RemoveApeArtworkFromMpeg(file);
+    }
+
+    /// <summary>
+    /// Takes the cover art out of an MP3's APEv2 tag (moving it into ID3v2 when that has
+    /// none), and drops the APEv2 tag when nothing else is left in it. Scans up to 1.5.5
+    /// created APEv2 on MP3, and TagLib# filled it with a copy of the existing tags,
+    /// cover included: the image appended after the audio makes ffmpeg and VLC size the
+    /// song by bitrate x file size (a 3:47 song read as 8:34), so playback hangs on a
+    /// silent tail. Text items (mp3gain's gains) stay.
+    /// </summary>
+    internal static void RemoveApeArtworkFromMpeg(TagFile file)
+    {
+        if (file is not TagLib.Mpeg.AudioFile ||
+            file.GetTag(TagTypes.Ape, false) is not TagLib.Ape.Tag ape ||
+            ape.Pictures.Length == 0)
+        {
+            return;
+        }
+
+        var id3 = file.GetTag(TagTypes.Id3v2, false);
+        if (id3 == null || id3.Pictures.Length == 0)
+            file.GetTag(TagTypes.Id3v2, true).Pictures = ape.Pictures;
+
+        ape.Pictures = Array.Empty<IPicture>();
+        if (ape.IsEmpty) file.RemoveTags(TagTypes.Ape);
     }
 
     /// <summary>
