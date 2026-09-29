@@ -203,7 +203,12 @@ public class LibraryService : ILibraryService
         var originalArtists = _artists;
         var originalTrackIndex = _trackIndex;
         var originalAlbumIndex = _albumIndex;
-        var originalTrackCount = originalTracks.Count;
+        // The phone's desktop songs are not files under any folder: a scan must carry them
+        // over untouched (every publish below adds them back) and must not count them when
+        // deciding whether the scan changed anything. _scanGate keeps ReplaceRemoteTracksAsync
+        // from swapping this set mid-scan. Always empty on the desktop.
+        var carriedRemote = originalTracks.Where(IsServerTrack).ToList();
+        var originalTrackCount = originalTracks.Count - carriedRemote.Count;
         var didPublishPartial = false;
 
         void RestoreOriginalLibrary()
@@ -235,7 +240,7 @@ public class LibraryService : ILibraryService
                     if (snapshot.Length == 0 || snapshot.Length == lastCount) continue;
                     lastCount = snapshot.Length;
 
-                    _tracks = snapshot
+                    _tracks = snapshot.Concat(carriedRemote)
                         .GroupBy(t => t.Id).Select(g => g.First())
                         .OrderBy(t => t.Artist).ThenBy(t => t.Album)
                         .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
@@ -559,7 +564,7 @@ public class LibraryService : ILibraryService
         // progressively below.
         // DistinctBy(Id) prevents duplicates from overlapping music folders
         // (e.g., user adds /Music and /Music/Rock — files in the overlap get scanned twice).
-        _tracks = newTracks
+        _tracks = newTracks.Concat(carriedRemote)
             .GroupBy(t => t.Id).Select(g => g.First()) // deduplicate by track ID
             .OrderBy(t => t.Artist).ThenBy(t => t.Album)
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
@@ -1355,6 +1360,114 @@ public class LibraryService : ILibraryService
         await _sqliteIndex.DeleteTracksAsync(idSet);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
+
+    private static bool IsServerTrack(Track t) => t.SourceType == SourceType.NoctisServer;
+
+    /// <inheritdoc />
+    public async Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
+    {
+        // Serialized with scans: a scan carries the remote set it saw at its start through to
+        // its final publish, so a replacement landing mid-scan would be undone by it.
+        await _scanGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var current = _tracks;
+            var known = new Dictionary<Guid, Track>();
+            foreach (var t in current)
+                if (IsServerTrack(t)) known.TryAdd(t.Id, t);
+
+            var merged = new List<Track>(current.Count + tracks.Count);
+            merged.AddRange(current.Where(t => !IsServerTrack(t)));
+            var added = new List<Track>();
+            var seen = new HashSet<Guid>();
+            var kept = 0;
+            foreach (var incoming in tracks)
+            {
+                if (incoming is null || !seen.Add(incoming.Id)) continue;
+                incoming.SourceType = SourceType.NoctisServer;
+                if (known.TryGetValue(incoming.Id, out var existing))
+                {
+                    // Same rule as a rescan: an unchanged song keeps its instance (the queue and
+                    // open pages hold it), a changed one gets the new metadata and keeps the
+                    // phone's user state. State changes reach known songs through the sync
+                    // ledger, never through this call.
+                    if (SameRemoteMetadata(existing, incoming))
+                    {
+                        merged.Add(existing);
+                        kept++;
+                    }
+                    else
+                    {
+                        CopyMutableTrackState(existing, incoming);
+                        merged.Add(incoming);
+                    }
+                }
+                else
+                {
+                    merged.Add(incoming);
+                    added.Add(incoming);
+                }
+            }
+
+            // Every sync hands in the whole catalog; when nothing changed, skip the rebuild, the
+            // library.json rewrite and the page refreshes (the scan's no-change fast path).
+            if (added.Count == 0 && kept == known.Count && kept == seen.Count) return;
+
+            _tracks = merged
+                .OrderBy(t => t.Artist).ThenBy(t => t.Album)
+                .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+            await RebuildIndexesAsync().ConfigureAwait(false);
+            await SaveAsync().ConfigureAwait(false);
+
+            // New songs arrive with the server's state. A journal row left from an earlier
+            // sign-in would overlay stale values on the next load, so write theirs now.
+            if (added.Count > 0 && _userStateJournalHealthy)
+            {
+                try { await _sqliteIndex.UpsertUserStateAsync(added, CancellationToken.None).ConfigureAwait(false); }
+                catch (Exception ex)
+                {
+                    _userStateJournalHealthy = false;
+                    DebugLog.Write("Library", $"User-state journal write failed for remote songs: {ex.Message}");
+                }
+            }
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RemoveRemoteTracksAsync()
+    {
+        await _scanGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var current = _tracks;
+            var removed = current.Where(IsServerTrack).ToList();
+            if (removed.Count == 0) return;
+            _tracks = current.Where(t => !IsServerTrack(t)).ToList();
+            // Covers fetched for the desktop's albums go with them (a phone album sharing the
+            // AlbumId keeps its cover). No exclusion list: these were never files.
+            DeleteOrphanedArtwork(removed);
+            await RebuildIndexesAsync().ConfigureAwait(false);
+            await SaveAsync().ConfigureAwait(false);
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
+    /// <summary>The catalog fields a desktop song can change between syncs.</summary>
+    private static bool SameRemoteMetadata(Track a, Track b) =>
+        a.Title == b.Title && a.Artist == b.Artist && a.AlbumArtist == b.AlbumArtist && a.Album == b.Album
+        && a.AlbumId == b.AlbumId && a.Duration == b.Duration && a.TrackNumber == b.TrackNumber
+        && a.DiscNumber == b.DiscNumber && a.Year == b.Year && a.Genre == b.Genre && a.Bitrate == b.Bitrate
+        && a.SampleRate == b.SampleRate && a.FileSize == b.FileSize && a.Codec == b.Codec
+        && a.FilePath == b.FilePath;
 
     /// <summary>
     /// Deletes cached covers for albums that no longer have any tracks after a
