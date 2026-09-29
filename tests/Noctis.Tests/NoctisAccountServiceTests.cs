@@ -377,6 +377,27 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.IsSignedIn); // a full phone is not a reason to forget the account
     }
 
+    [Fact]
+    public async Task Downloads_StopWithStorageFull_WhenTheReserveRunsOutMidDownload()
+    {
+        await SignedInAsync();
+        // Room when each song starts (the catalog's size may be missing or wrong), none once a
+        // download is under way: the reserve must hold for what arrives, not only what was promised.
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            FreeSpace = dir => Directory.Exists(dir) && Directory.GetFiles(dir, "*.part").Length > 0
+                ? NoctisAccountService.StorageReserveBytes - 1
+                : long.MaxValue,
+        };
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAllAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(NoctisErrorKind.StorageFull, ex.Kind);
+        Assert.Equal(0, svc.DownloadedCount);
+        Assert.Empty(Directory.Exists(OfflineDir) ? Directory.GetFiles(OfflineDir) : Array.Empty<string>());
+    }
+
     /// <summary>The socket handler, with one song's download going silent after its first bytes.</summary>
     private sealed class StallingDownload(HttpMessageHandler inner, Guid stalled) : DelegatingHandler(inner)
     {
