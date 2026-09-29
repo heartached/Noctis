@@ -556,10 +556,11 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                            <controls:SmoothProgressBar Grid.Column="0" Height="6" VerticalAlignment="Center" Value="{Binding Selected.Progress}"
+                        <!-- Equal side columns keep the bar centred under the steps with the percent beside it. -->
+                        <Grid ColumnDefinitions="44,*,44" ColumnSpacing="12">
+                            <controls:SmoothProgressBar Grid.Column="1" Height="6" VerticalAlignment="Center" Value="{Binding Selected.Progress}"
                                                         FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1FFFFFFF" />
-                            <TextBlock Grid.Column="1" Text="{Binding Selected.ProgressText}" Width="44" TextAlignment="Right"
+                            <TextBlock Grid.Column="2" Text="{Binding Selected.ProgressText}" TextAlignment="Left"
                                        FontSize="15" FontWeight="SemiBold" FontFeatures="+tnum" VerticalAlignment="Center" />
                         </Grid>
                         <TextBlock Text="{Binding Selected.StageText}" FontSize="12.5" Opacity="0.7" TextAlignment="Center" />
