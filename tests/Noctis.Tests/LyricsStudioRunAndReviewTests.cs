@@ -192,7 +192,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
                 // The UI thread is held while the report and the run's continuation queue up behind it.
                 Dispatcher.UIThread.Post(() => Thread.Sleep(150));
                 Thread.Sleep(20);
-                progress?.Report(new LyricsStudioProgress(options.SourceLines is null ? "Finding lyrics" : "Ready", 1));
+                progress?.Report(new LyricsStudioProgress(options.SourceLines is null ? LyricsStudioStage.FindingLyrics : LyricsStudioStage.Done, 1));
                 if (options.SourceLines is null) throw new LyricsStudioNeedsLyricsException();
             }
             else if (options.SourceLines is null) throw new LyricsStudioNeedsLyricsException();

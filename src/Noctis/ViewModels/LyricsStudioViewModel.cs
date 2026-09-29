@@ -94,8 +94,20 @@ public partial class LyricsStudioViewModel : ViewModelBase
     internal WhisperModelManager Models => _engine.Models;
 
     // ── Run state ──
-    [ObservableProperty] private bool _isRunning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBatchProgress))]
+    private bool _isRunning;
     [ObservableProperty] private string _runStatusText = string.Empty;
+    /// <summary>The whole run, 0–1: songs finished plus the share of the one being worked on.</summary>
+    [ObservableProperty] private double _batchProgress;
+    /// <summary>"Song 2 of 5" while a run is going.</summary>
+    [ObservableProperty] private string _batchText = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBatchProgress))]
+    private int _batchTotal;
+    public bool ShowBatchProgress => IsRunning && BatchTotal > 1;
+    private int _batchDone;
+    private StudioItem? _working;
 
     /// <summary>The format picker's second chip: line timings (LRC) = word timings off.</summary>
     public bool LineTimings
@@ -630,6 +642,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
             ModelBannerProgress = f;
             ModelBannerPercent = DownloadMeter.PercentText(f);
         }
+        // Late reports are harmless: only the song still marked Working is shown.
+        if (_working is { Status: StudioStatus.Working, Meter: { } meter } item)
+        {
+            var (stage, overall) = meter.Read(now);
+            item.ShowStage(stage, overall);
+            BatchProgress = Math.Max(BatchProgress, (_batchDone + overall) / Math.Max(1, BatchTotal));
+        }
         if (!IsDownloadingModel && !_checkingModel && !IsRunning) _tick?.Stop();
     }
 
@@ -694,6 +713,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var ct = _runCts.Token;
         var done = 0;
         var total = items.Count;
+        BatchTotal = total;
+        BatchProgress = 0;
+        _batchDone = 0;
+        EnsureTicking();
         // Session-log breadcrumbs (Settings > Advanced > Copy Logs): a native crash inside the
         // speech model leaves no managed trace, so the run's own steps are the only record.
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunStart",
@@ -705,6 +728,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", _engine.Models.Model.FileName);
             foreach (var item in items)
             {
+                _batchDone = done;
+                BatchProgress = Math.Max(BatchProgress, done / (double)Math.Max(1, total));
                 if (ct.IsCancellationRequested) break;
                 if (item.Status != StudioStatus.Waiting) continue;
                 var forced = item.ForceRun;
@@ -734,19 +759,19 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     done++;
                     continue;
                 }
+                var meter = new SongProgressMeter(item.Track.Duration, Clock());
+                item.BeginRun(meter, transcribe, WordTimings);
                 item.Status = StudioStatus.Working;
-                item.StatusText = "Starting…";
+                _working = item;
+                BatchText = Loc("LyricsStudio.BatchProgress", done + 1, total);
                 RunStatusText = $"Working on {item.Title} ({done + 1} of {total})";
                 DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemStart",
                     $"{item.Title} ({done + 1}/{total}) | existing={item.ExistingFormat}, sourceLines={(options.SourceLines?.Count.ToString() ?? "none")}");
-                var progress = new Progress<LyricsStudioProgress>(p => Dispatcher.UIThread.Post(() =>
-                {
-                    // Reports are posted, so the last ones land after the run has already set the
-                    // outcome; they must not turn "No lyrics found" back into "Finding lyrics".
-                    if (item.Status != StudioStatus.Working) return;
-                    item.Progress = p.Fraction;
-                    item.StatusText = p.Stage;
-                }));
+                // Reports only feed the song's meter (any thread, any rate); the UI tick shows it at
+                // ~15 Hz. The old per-report post let late reports land after the outcome, and
+                // Progress<T> could deliver them out of order, walking the bar backwards.
+                var clock = Clock;
+                var progress = new InlineProgress<LyricsStudioProgress>(p => meter.Report(p.Stage, p.StageFraction, clock()));
                 try
                 {
                     var result = await Task.Run(() => _engine.ProcessAsync(item.Track, options, progress, ct), ct);
@@ -800,6 +825,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 }
                 done++;
             }
+            _working = null;
             var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics);
             RunStatusText = ct.IsCancellationRequested ? "Stopped."
                 : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review" + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
@@ -814,6 +840,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         finally
         {
+            _working = null;
             IsRunning = false;
             RaiseStartState();
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunEnd", "session disposed");
@@ -1206,6 +1233,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// <see cref="NeedsLyrics"/> = no lyrics found, or a transcript waiting to be corrected: the lyrics box is shown.</summary>
     public enum StudioStatus { Waiting, Working, Ready, Saved, Skipped, Failed, Loaded, NeedsLyrics }
 
+    /// <summary>One step of a song's run in the review pane's step row.</summary>
+    public sealed partial class StudioStageStep(string label) : ObservableObject
+    {
+        [ObservableProperty] private string _label = label;
+        [ObservableProperty] private bool _isActive;
+        [ObservableProperty] private bool _isDone;
+    }
+
     public sealed partial class StudioItem : ObservableObject
     {
         public StudioItem(Track track)
@@ -1287,7 +1322,65 @@ public partial class LyricsStudioViewModel : ViewModelBase
         [NotifyPropertyChangedFor(nameof(HasStatusText))]
         private string _statusText = string.Empty;
         [ObservableProperty] private double _progress;
+        /// <summary>"42%" while the song is worked on.</summary>
+        [ObservableProperty] private string _progressText = string.Empty;
+        /// <summary>What the run is doing now, in words ("Listening to the vocals…"), for the review pane.</summary>
+        [ObservableProperty] private string _stageText = string.Empty;
         [ObservableProperty] private LyricsStudioResult? _result;
+
+        /// <summary>The three steps the review pane shows while the song runs: decode, listen, time.</summary>
+        public IReadOnlyList<StudioStageStep> Steps { get; } = new[]
+        {
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepDecode")),
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepListen")),
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepTime")),
+        };
+
+        /// <summary>The run's progress for this song (set while it is worked on).</summary>
+        internal SongProgressMeter? Meter { get; private set; }
+        private bool _transcribing;
+        private bool _wordTimings;
+
+        /// <summary>A run starts on this song: fresh meter, steps and labels.</summary>
+        internal void BeginRun(SongProgressMeter meter, bool transcribing, bool wordTimings)
+        {
+            Meter = meter;
+            _transcribing = transcribing;
+            _wordTimings = wordTimings;
+            Steps[1].Label = Localization.Loc.T(transcribing ? "LyricsStudio.StepTranscribe" : "LyricsStudio.StepListen");
+            Progress = 0;
+            ShowStage(LyricsStudioStage.FindingLyrics, 0);
+        }
+
+        /// <summary>Shows a step and the song's progress (called on the Studio's UI tick).</summary>
+        internal void ShowStage(LyricsStudioStage stage, double overall)
+        {
+            Progress = overall;
+            ProgressText = DownloadMeter.PercentText(overall);
+            var (longKey, shortKey) = stage switch
+            {
+                LyricsStudioStage.FindingLyrics => ("LyricsStudio.StageFindingLyrics", "LyricsStudio.StageShortFinding"),
+                LyricsStudioStage.Decoding => ("LyricsStudio.StageDecoding", "LyricsStudio.StageShortDecoding"),
+                LyricsStudioStage.Listening => _transcribing
+                    ? ("LyricsStudio.StageTranscribing", "LyricsStudio.StageShortTranscribing")
+                    : ("LyricsStudio.StageListening", "LyricsStudio.StageShortListening"),
+                _ => (_wordTimings ? "LyricsStudio.StageTimingWords" : "LyricsStudio.StageTimingLines", "LyricsStudio.StageShortTiming"),
+            };
+            StageText = Localization.Loc.T(longKey);
+            StatusText = Localization.Loc.T("LyricsStudio.StagePercent", Localization.Loc.T(shortKey), ProgressText);
+            var current = stage switch
+            {
+                LyricsStudioStage.FindingLyrics or LyricsStudioStage.Decoding => 0,
+                LyricsStudioStage.Listening => 1,
+                LyricsStudioStage.Aligning => 2,
+                _ => 3,
+            };
+            for (var i = 0; i < Steps.Count; i++)
+            {
+                Steps[i].IsDone = i < current;
+                Steps[i].IsActive = i == current;
+            }
+        }
 
         public bool IsWorking => Status == StudioStatus.Working;
         public bool IsReady => Status == StudioStatus.Ready;

@@ -116,3 +116,94 @@ internal sealed class DownloadMeter
     internal static string PercentText(double fraction) =>
         ((int)Math.Floor(Math.Clamp(fraction, 0, 1) * 100)).ToString(System.Globalization.CultureInfo.CurrentCulture) + "%";
 }
+
+/// <summary>
+/// One song's progress bar (09-29). The engine reports a step and how far into it; this weights
+/// the steps into one bar (<see cref="LyricsStudioStages"/>), keeps it from stepping back when a
+/// late report lands, and moves it on between reports. Whisper reports once per 30 s window, so
+/// a Medium run on a three-minute song otherwise stood still for several seconds, then jumped a
+/// sixth of the way: here each window is paced by how long the earlier ones took (before the
+/// first, the bar eases toward most of one window) and held short of the next report. Written
+/// from the run's thread, read on the UI tick.
+/// </summary>
+internal sealed class SongProgressMeter
+{
+    /// <summary>Whisper's input window.</summary>
+    private const double WindowSeconds = 30;
+    /// <summary>Pace of the ease before Whisper's first report (Medium on a desktop CPU takes several seconds a window).</summary>
+    internal const double FirstWindowSeconds = 6;
+    /// <summary>The creep never covers more than this share of the gap to the next expected report.</summary>
+    private const double CreepCap = 0.9;
+
+    private readonly object _gate = new();
+    private readonly double _windowStep;
+    private LyricsStudioStage _stage = LyricsStudioStage.FindingLyrics;
+    private double _reported;
+    private TimeSpan _reportedAt;
+    private TimeSpan _stageStartedAt;
+    private double _shown;
+
+    /// <param name="songLength">The track's length (zero when unknown); sets how much of Listening one window is.</param>
+    public SongProgressMeter(TimeSpan songLength, TimeSpan now = default)
+    {
+        var seconds = Math.Min(songLength.TotalSeconds, PcmDecoder16k.MaxSeconds);
+        _windowStep = seconds > 0 ? Math.Clamp(WindowSeconds / seconds, 0.02, 1) : 0.15;
+        _reportedAt = _stageStartedAt = now;
+    }
+
+    public void Report(LyricsStudioStage stage, double stageFraction, TimeSpan now)
+    {
+        lock (_gate)
+        {
+            if (stage < _stage) return; // a late report from a step already left
+            if (stage > _stage)
+            {
+                _stage = stage;
+                _reported = 0;
+                _stageStartedAt = _reportedAt = now;
+            }
+            if (stageFraction > _reported)
+            {
+                _reported = Math.Min(1, stageFraction);
+                _reportedAt = now;
+            }
+        }
+    }
+
+    /// <summary>The step and the whole song's progress to show now: never lower than the last reading, and below 100% until Done.</summary>
+    public (LyricsStudioStage Stage, double Overall) Read(TimeSpan now)
+    {
+        lock (_gate)
+        {
+            var fraction = Math.Min(1, _reported + Creep(now));
+            var overall = LyricsStudioStages.Overall(_stage, fraction);
+            if (_stage != LyricsStudioStage.Done) overall = Math.Min(overall, 0.995);
+            _shown = Math.Max(_shown, overall);
+            return (_stage, _shown);
+        }
+    }
+
+    private double Creep(TimeSpan now)
+    {
+        var since = (now - _reportedAt).TotalSeconds;
+        if (since <= 0) return 0;
+        switch (_stage)
+        {
+            case LyricsStudioStage.Listening:
+                var step = Math.Min(_windowStep, 1 - _reported);
+                var elapsed = (_reportedAt - _stageStartedAt).TotalSeconds;
+                if (_reported > 0.001 && elapsed > 0)
+                {
+                    // Seconds per window so far; the current window is assumed to take as long.
+                    var perWindow = elapsed / (_reported / _windowStep);
+                    return step * Math.Min(CreepCap, since / perWindow);
+                }
+                return step * CreepCap * (1 - Math.Exp(-since / FirstWindowSeconds));
+            case LyricsStudioStage.FindingLyrics or LyricsStudioStage.Aligning:
+                // No reports inside these (an online lookup, the aligner): ease most of the way.
+                return (1 - _reported) * 0.8 * (1 - Math.Exp(-since / 1.5));
+            default:
+                return 0; // Decoding reports every half percent itself
+        }
+    }
+}

@@ -1878,6 +1878,23 @@
   <data name="LyricsStudio.ModelDownloadAgain" xml:space="preserve"><value>Download again</value><comment>Model card button for a damaged file</comment></data>
   <data name="LyricsStudio.ModelCancel" xml:space="preserve"><value>Cancel</value><comment>Model card button while downloading</comment></data>
   <data name="LyricsStudio.ModelCancelTip" xml:space="preserve"><value>Stop the download. What has arrived is kept, so you can resume later.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.StepDecode" xml:space="preserve"><value>Decode audio</value><comment>Step row while a song runs: step 1</comment></data>
+  <data name="LyricsStudio.StepListen" xml:space="preserve"><value>Listen</value><comment>Step row while a song runs: step 2 (the speech model hears the vocals)</comment></data>
+  <data name="LyricsStudio.StepTranscribe" xml:space="preserve"><value>Transcribe</value><comment>Step row, step 2 when transcribing</comment></data>
+  <data name="LyricsStudio.StepTime" xml:space="preserve"><value>Time lyrics</value><comment>Step row while a song runs: step 3</comment></data>
+  <data name="LyricsStudio.StageFindingLyrics" xml:space="preserve"><value>Looking up the lyrics…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageDecoding" xml:space="preserve"><value>Decoding the audio…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageListening" xml:space="preserve"><value>Listening to the vocals…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageTranscribing" xml:space="preserve"><value>Writing down what is sung…</value><comment>Song run status when transcribing</comment></data>
+  <data name="LyricsStudio.StageTimingWords" xml:space="preserve"><value>Timing every word…</value><comment>Song run status (word timings)</comment></data>
+  <data name="LyricsStudio.StageTimingLines" xml:space="preserve"><value>Timing the lines…</value><comment>Song run status (line timings)</comment></data>
+  <data name="LyricsStudio.StageShortFinding" xml:space="preserve"><value>Finding lyrics</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortDecoding" xml:space="preserve"><value>Decoding</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortListening" xml:space="preserve"><value>Listening</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortTranscribing" xml:space="preserve"><value>Transcribing</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortTiming" xml:space="preserve"><value>Timing</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StagePercent" xml:space="preserve"><value>{0} · {1}</value><comment>Queue row status. {0} = step, {1} = percent, e.g. Listening · 42%</comment></data>
+  <data name="LyricsStudio.BatchProgress" xml:space="preserve"><value>Song {0} of {1}</value><comment>Run progress over the queue</comment></data>
   <data name="Settings.Desc.General" xml:space="preserve"><value>Language, startup, and how the window and sidebar behave.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Appearance" xml:space="preserve"><value>Themes, accent colour, glass, text animation and artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Player" xml:space="preserve"><value>The player island, the mini player, Cover Flow and Now Playing artwork.</value><comment>Settings page description</comment></data>

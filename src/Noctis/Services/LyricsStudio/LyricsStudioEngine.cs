@@ -38,7 +38,11 @@ public sealed record LyricsStudioOptions(
     /// <summary>False: a song with no lyrics anywhere stops with <see cref="LyricsStudioNeedsLyricsException"/> instead of being transcribed.</summary>
     bool AllowTranscription = true);
 
-public sealed record LyricsStudioProgress(string Stage, double Fraction);
+/// <summary>A step of the run and how far into it (0–1); <see cref="Fraction"/> is the whole song's.</summary>
+public sealed record LyricsStudioProgress(LyricsStudioStage Stage, double StageFraction)
+{
+    public double Fraction => LyricsStudioStages.Overall(Stage, StageFraction);
+}
 
 public sealed record LyricsStudioResult(
     Track Track,
@@ -122,7 +126,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
             session = _session ?? throw new InvalidOperationException("No model session — call OpenSession first.");
 
         // 1. Source text.
-        progress?.Report(new LyricsStudioProgress("Finding lyrics", 0.02));
+        progress?.Report(new LyricsStudioProgress(LyricsStudioStage.FindingLyrics, 0));
         var (lines, source) = options.ForceTranscription
             ? (null, LyricsStudioSource.Transcription)
             : options.SourceLines is { Count: > 0 } given
@@ -143,18 +147,21 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
             throw new LyricsStudioNeedsLyricsException();
 
         // 2. Decode.
-        progress?.Report(new LyricsStudioProgress("Decoding", 0.08));
-        var pcm = await PcmDecoder16k.DecodeAsync(ffmpeg, track.FilePath, ct).ConfigureAwait(false);
+        progress?.Report(new LyricsStudioProgress(LyricsStudioStage.Decoding, 0));
+        var pcm = await PcmDecoder16k.DecodeAsync(ffmpeg, track.FilePath, ct,
+            new InlineProgress<double>(f => progress?.Report(new LyricsStudioProgress(LyricsStudioStage.Decoding, f))), track.Duration).ConfigureAwait(false);
         if (pcm.Length < PcmDecoder16k.SampleRate)
             throw new InvalidOperationException("The song is too short to analyse.");
 
         // 3. Listen.
-        var listenProgress = new Progress<double>(f => progress?.Report(new LyricsStudioProgress("Listening", 0.1 + 0.8 * f)));
+        // Inline, not Progress<T>: with no UI context that posts each report to the thread pool,
+        // where they can land out of order and walk the bar backwards.
+        var listenProgress = new InlineProgress<double>(f => progress?.Report(new LyricsStudioProgress(LyricsStudioStage.Listening, f)));
         var prompt = lines is { Count: > 0 } ? string.Join('\n', lines) : null;
         var transcript = await session.TranscribeAsync(pcm, options.Language, prompt, listenProgress, ct).ConfigureAwait(false);
 
         // 4. Align or group.
-        progress?.Report(new LyricsStudioProgress("Aligning", 0.95));
+        progress?.Report(new LyricsStudioProgress(LyricsStudioStage.Aligning, 0));
         var duration = track.Duration > TimeSpan.Zero ? track.Duration : TimeSpan.FromSeconds(pcm.Length / (double)PcmDecoder16k.SampleRate);
         IReadOnlyList<AlignedLine> aligned;
         if (lines is { Count: > 0 })
@@ -168,7 +175,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         }
 
         var confidence = aligned.Count == 0 ? 0 : aligned.Average(l => l.Confidence);
-        progress?.Report(new LyricsStudioProgress("Ready", 1));
+        progress?.Report(new LyricsStudioProgress(LyricsStudioStage.Done, 1));
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.Processed",
             $"{track.Title}: source={source}, lines={aligned.Count}, heard={transcript.Words.Count}, confidence={confidence:0.00}, lang={transcript.Language}");
         return new LyricsStudioResult(track, aligned, source, confidence, transcript.Language, transcript.Words.Count, transcript.Words);
