@@ -31,6 +31,14 @@ public interface ILibraryService
     /// </summary>
     bool IsPublishingPartial => false;
 
+    /// <summary>
+    /// True for the whole of a folder scan, first publish to last: <see cref="Tracks"/> may be a
+    /// partial list (<see cref="IsPublishingPartial"/>) or one the scan is about to replace.
+    /// The Noctis Server reports it (getScanStatus) so a phone never takes a song missing from
+    /// a mid-scan catalog for a deleted one.
+    /// </summary>
+    bool IsScanning => IsPublishingPartial;
+
     /// <summary>Fires when track favorites have been toggled (lightweight, no re-index).</summary>
     event EventHandler? FavoritesChanged;
 

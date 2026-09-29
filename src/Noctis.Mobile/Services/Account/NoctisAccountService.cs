@@ -49,6 +49,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private const int MaxPlaylistDescription = 2000;
     private const long MaxPushBytes = 3L * 1024 * 1024; // the server refuses bodies over 4 MB
     private const int CoverConcurrency = 4;
+    private const int CoverFailureLimit = 8;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.Ordinal)
@@ -96,6 +97,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     /// <summary>Free bytes on the volume holding a path; tests substitute a full phone.</summary>
     internal Func<string, long> FreeSpace { get; init; } = DefaultFreeSpace;
+
+    /// <summary>
+    /// Completes once the phone's library has read library.json (AndroidApp: after
+    /// LibraryService.LoadAsync). A sync waits for it: the Account page is reachable before the
+    /// load ends, and importing into a library that has not loaded yet saves library.json with
+    /// the desktop's songs only, dropping every local one.
+    /// </summary>
+    public Task LibraryReady { get; init; } = Task.CompletedTask;
+
+    /// <summary>How long a download may receive nothing before it counts as failed (tests shorten it).</summary>
+    internal TimeSpan DownloadStallTimeout { get; init; } = NoctisServerClient.DefaultStallTimeout;
 
     /// <summary>
     /// This phone has no ALAC decoder: desktop songs that may be ALAC (an MP4-family suffix) are
@@ -172,6 +184,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public event EventHandler? StateChanged;
     public event EventHandler<NoctisSyncProgress>? SyncProgress;
     public event EventHandler<NoctisDownloadProgress>? DownloadProgress;
+    public event EventHandler? PlaylistsChanged;
 
     private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
 
@@ -285,20 +298,30 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         RaiseStateChanged();
 
-        await Task.Run(async () =>
+        var playlistsRemoved = await Task.Run(async () =>
         {
+            // Before the library has loaded there is nothing to remove yet, and the load would
+            // bring the desktop's songs back. A failed load: remove what there is.
+            await LibraryReady.ContinueWith(_ => { }, TaskScheduler.Default).ConfigureAwait(false);
             await _library.RemoveRemoteTracksAsync().ConfigureAwait(false);
+            var removed = false;
             if (syncedPlaylists.Count > 0)
             {
                 var ids = syncedPlaylists.ToHashSet();
                 var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
                 if (playlists.RemoveAll(p => ids.Contains(p.Id)) > 0)
+                {
                     await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
+                    removed = true;
+                }
             }
             if (removeDownloads) DeleteAllDownloadFiles();
             else DeletePartFiles();
             DeleteSavedLyrics();
+            return removed;
         }).ConfigureAwait(false);
+        // Only now: a reload on the StateChanged above would still read the desktop's playlists.
+        if (playlistsRemoved) RaisePlaylistsChanged();
         DebugLog.Write("Account", $"signed out (downloads {(removeDownloads ? "removed" : "kept")})");
         RaiseDownloadProgress();
         RaiseStateChanged();
@@ -328,7 +351,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private NoctisServerClient GetClientLocked()
     {
         var account = _account ?? throw new NoctisServerException(NoctisErrorKind.SignedOut, "Not signed in.");
-        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey);
+        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey)
+        {
+            StallTimeout = DownloadStallTimeout,
+        };
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────
@@ -379,9 +405,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         // 1. Catalog → the library.
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
+        await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
         var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
-        var songs = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
-        var tracks = await ImportCatalogAsync(songs, albumArtists, ct).ConfigureAwait(false);
+        var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
+        var tracks = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count, tracks.Count);
 
         // 2. Covers.
@@ -434,23 +461,37 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return new NoctisSyncResult(tracks.Count, playlistCount, pulled, pushed, plays);
     }
 
-    /// <summary>search3 pages; retried once when the count disagrees with the server's own
-    /// (the desktop library changed between pages).</summary>
-    private async Task<List<RemoteSong>> FetchCatalogAsync(NoctisServerClient client, CancellationToken ct)
+    /// <summary>
+    /// search3 pages between two getScanStatus reads. Settled = neither read saw a scan and both
+    /// counted exactly the songs listed: only then is a song missing from the list really gone.
+    /// While the desktop scans it lists only what the scan has reached (it publishes partial
+    /// lists every 1.5 s), so an unsettled catalog must never remove anything. Re-read once when
+    /// the library merely changed between pages; not during a scan, which outlasts a re-read.
+    /// </summary>
+    private async Task<(List<RemoteSong> Songs, bool Settled)> FetchCatalogAsync(NoctisServerClient client, CancellationToken ct)
     {
         var progress = new InlineProgress(n => RaiseSyncProgress(NoctisSyncStage.Catalog, n, 0));
         List<RemoteSong> songs = new();
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            var expected = await client.GetSongCountAsync(ct).ConfigureAwait(false);
+            var before = await client.GetScanStatusAsync(ct).ConfigureAwait(false);
             songs = await client.GetAllSongsAsync(progress, ct).ConfigureAwait(false);
-            if (expected < 0 || songs.Count == expected) break;
-            DebugLog.Write("Account", $"catalog: {songs.Count} songs listed, server counts {expected}; {(attempt == 0 ? "re-reading" : "keeping")}");
+            var after = await client.GetScanStatusAsync(ct).ConfigureAwait(false);
+            var scanning = before.Scanning || after.Scanning;
+            if (!scanning && before.Count >= 0 && before.Count == after.Count && songs.Count == after.Count) return (songs, true);
+            var retry = attempt == 0 && !scanning;
+            DebugLog.Write("Account", $"catalog: {songs.Count} songs listed, the desktop counts {before.Count}, then {after.Count}" +
+                $"{(scanning ? " (scanning)" : "")}; {(retry ? "re-reading" : "adding only, nothing removed")}");
+            if (!retry) break;
         }
-        return songs;
+        return (songs, false);
     }
 
-    private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists, CancellationToken ct)
+    /// <param name="keepUnlisted">The catalog may be partial (desktop scanning or changing): desktop
+    /// songs already here that it does not list stay, instead of leaving (and dropping out of the
+    /// queue) until the next sync brings them back as new songs.</param>
+    private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
+        bool keepUnlisted, CancellationToken ct)
     {
         var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
         if (songs.Count == 0 && known.Count > 0)
@@ -490,6 +531,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 }
                 tracks.Add(track);
             }
+        }
+        if (keepUnlisted)
+        {
+            var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id)).ToList();
+            if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
+            tracks.AddRange(unlisted);
         }
         SaveSyncState();
         await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);
@@ -596,25 +644,41 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         var done = 0;
         var written = 0;
-        await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = CoverConcurrency, CancellationToken = ct },
-            async (albumId, token) =>
-            {
-                try
+        var failed = 0;
+        // Covers are not worth a sync: a cover that fails (a timeout, a dropped connection) is
+        // skipped and asked again next sync, and the favourites, playlists and plays still go.
+        // Many failures mean the desktop is gone; stop asking and let the next stage say so.
+        using var stage = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try
+        {
+            await Parallel.ForEachAsync(due, new ParallelOptions { MaxDegreeOfParallelism = CoverConcurrency, CancellationToken = stage.Token },
+                async (albumId, token) =>
                 {
-                    if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
-                        Interlocked.Increment(ref written);
-                    else
+                    try
+                    {
+                        if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
+                            Interlocked.Increment(ref written);
+                        else
+                            _coverMisses.TryAdd(albumId, 0);
+                    }
+                    catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
+                    {
                         _coverMisses.TryAdd(albumId, 0);
-                }
-                catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
-                {
-                    _coverMisses.TryAdd(albumId, 0);
-                }
-                RaiseSyncProgress(NoctisSyncStage.Covers, Interlocked.Increment(ref done), due.Count);
-            }).ConfigureAwait(false);
-
-        // Rebuild so albums pick the new files up.
-        if (written > 0) _library.NotifyMetadataChanged();
+                    }
+                    catch (NoctisServerException ex) when (ex.Kind is not (NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged))
+                    {
+                        if (Interlocked.Increment(ref failed) >= CoverFailureLimit) stage.Cancel();
+                    }
+                    RaiseSyncProgress(NoctisSyncStage.Covers, Interlocked.Increment(ref done), due.Count);
+                }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { /* gave up after CoverFailureLimit */ }
+        finally
+        {
+            if (failed > 0) DebugLog.Write("Account", $"covers: {written} saved, {failed} failed{(stage.IsCancellationRequested && !ct.IsCancellationRequested ? ", stopped asking" : "")}");
+            // Rebuild so albums pick the new files up.
+            if (written > 0) _library.NotifyMetadataChanged();
+        }
     }
 
     private static bool CoverIsDue(string path, DateTime now)
@@ -870,7 +934,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 modified, Deleted: false)));
         }
 
-        if (changed) await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
+        if (changed)
+        {
+            await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
+            RaisePlaylistsChanged();
+        }
 
         foreach (var chunk in PushChunks(toPush, p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)))
         {
@@ -1097,9 +1165,16 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
         var queue = new ConcurrentQueue<Guid>(ids);
-        Interlocked.Add(ref _dlPending, ids.Count);
+        // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
+        // "1 failed" are about this run, not every run since the app started.
+        if (Interlocked.Add(ref _dlPending, ids.Count) == ids.Count)
+        {
+            Interlocked.Exchange(ref _dlCompleted, 0);
+            Interlocked.Exchange(ref _dlFailed, 0);
+        }
         RaiseDownloadProgress();
         NoctisServerException? fatal = null;
+        int done = 0, failed = 0;
 
         async Task Worker()
         {
@@ -1115,6 +1190,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         {
                             await DownloadOneAsync(client, id, token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
+                            Interlocked.Increment(ref done);
                         }
                         finally { _downloadSlots.Release(); }
                     }
@@ -1124,11 +1200,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);
                         Interlocked.Increment(ref _dlFailed);
+                        Interlocked.Increment(ref failed);
                         try { linked.Cancel(); } catch (ObjectDisposedException) { }
                     }
                     catch (Exception ex)
                     {
                         Interlocked.Increment(ref _dlFailed);
+                        Interlocked.Increment(ref failed);
                         DebugLog.Write("Account", $"download failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
                     }
                     finally { _inFlight.TryRemove(id, out _); }
@@ -1141,12 +1219,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             }
         }
 
-        var doneBefore = Volatile.Read(ref _dlCompleted);
-        var failedBefore = Volatile.Read(ref _dlFailed);
         await Task.WhenAll(Enumerable.Range(0, DownloadConcurrency).Select(_ => Worker())).ConfigureAwait(false);
         // One line per batch, so a download that silently did nothing is visible in the log.
-        DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref _dlCompleted) - doneBefore} done, " +
-            $"{Volatile.Read(ref _dlFailed) - failedBefore} failed{(token.IsCancellationRequested ? ", cancelled" : "")}");
+        DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref done)} done, " +
+            $"{Volatile.Read(ref failed)} failed{(token.IsCancellationRequested ? ", cancelled" : "")}");
         RaiseStateChanged();
         if (fatal is not null)
         {
@@ -1337,6 +1413,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     }
 
     private void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+    private void RaisePlaylistsChanged() => PlaylistsChanged?.Invoke(this, EventArgs.Empty);
 
     private void RaiseSyncProgress(NoctisSyncStage stage, int done, int total) =>
         SyncProgress?.Invoke(this, new NoctisSyncProgress(stage, done, total));

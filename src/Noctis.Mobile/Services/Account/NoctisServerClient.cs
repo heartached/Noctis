@@ -72,6 +72,11 @@ internal sealed partial class NoctisServerClient : IDisposable
 
     public string BaseUrl => _baseUrl;
 
+    /// <summary>A download that receives nothing for this long has lost its link (a dropped Wi-Fi
+    /// delivers nothing and raises nothing): it fails as Unreachable instead of waiting forever.</summary>
+    public TimeSpan StallTimeout { get; init; } = DefaultStallTimeout;
+    public static readonly TimeSpan DefaultStallTimeout = TimeSpan.FromSeconds(30);
+
     public void Dispose() => _http.Dispose();
 
     // ── Addresses and fingerprints ────────────────────────────────────────
@@ -191,10 +196,16 @@ internal sealed partial class NoctisServerClient : IDisposable
     // ── Catalog ──────────────────────────────────────────────────────────
 
     /// <summary>Song count the server reports (getScanStatus), or -1 when it has none.</summary>
-    public async Task<int> GetSongCountAsync(CancellationToken ct)
+    public async Task<int> GetSongCountAsync(CancellationToken ct) => (await GetScanStatusAsync(ct).ConfigureAwait(false)).Count;
+
+    /// <summary>getScanStatus: the song count (-1 when none) and whether a library scan is running
+    /// (the catalog is then partial). Desktops before the flag always say false.</summary>
+    public async Task<(int Count, bool Scanning)> GetScanStatusAsync(CancellationToken ct)
     {
         var r = await GetJsonAsync("getScanStatus", Array.Empty<KeyValuePair<string, string>>(), ct).ConfigureAwait(false);
-        return r.TryGetProperty("scanStatus", out var s) && s.TryGetProperty("count", out var c) && c.TryGetInt32(out var n) ? n : -1;
+        if (!r.TryGetProperty("scanStatus", out var s) || s.ValueKind != JsonValueKind.Object) return (-1, false);
+        var count = s.TryGetProperty("count", out var c) && c.TryGetInt32(out var n) ? n : -1;
+        return (count, Bool(s, "scanning"));
     }
 
     /// <summary>Every album's artist by album id (search3 with an empty query, paged).</summary>
@@ -324,24 +335,43 @@ internal sealed partial class NoctisServerClient : IDisposable
     /// <summary>The <c>format</c> value that asks the desktop for a FLAC copy of an ALAC song.</summary>
     public const string FlacFormat = "flac";
 
+    /// <summary>Until the answer starts: the desktop may first make a FLAC copy of an ALAC song.</summary>
+    private static readonly TimeSpan DownloadStartTimeout = TimeSpan.FromMinutes(2);
+
     /// <summary>
-    /// Downloads a song's original file to <paramref name="partPath"/> (no timeout — the caller's
-    /// token cancels). Returns the response content type so the caller can pick an extension.
-    /// <paramref name="flac"/> asks for <c>format=flac</c>: an ALAC song then arrives as FLAC
-    /// (audio/flac); anything else, or a desktop without ffmpeg, still sends the original.
+    /// Downloads a song's original file to <paramref name="partPath"/>. No deadline for the whole
+    /// file (a big FLAC over slow Wi-Fi takes minutes), but a transfer that receives nothing for
+    /// <see cref="StallTimeout"/> fails as Unreachable. Returns the response content type so the
+    /// caller can pick an extension. <paramref name="flac"/> asks for <c>format=flac</c>: an ALAC
+    /// song then arrives as FLAC (audio/flac); anything else, or a desktop without ffmpeg, still
+    /// sends the original.
     /// </summary>
     public async Task<string?> DownloadTrackAsync(Guid trackId, string partPath, CancellationToken ct, bool flac = false)
     {
         var query = new List<KeyValuePair<string, string>> { new("id", NoctisRemoteIds.ToServerTrackId(trackId)) };
         if (flac) query.Add(new("format", FlacFormat));
         using var request = Request(HttpMethod.Get, "download", query);
-        using var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, "download", ct, ct).ConfigureAwait(false);
-        await ThrowIfEnvelopeAsync(response, "download", ct, ct).ConfigureAwait(false);
+        // The watchdog: cancels unless it is re-armed, which every read that brings bytes does.
+        using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        stall.CancelAfter(DownloadStartTimeout);
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, "download", stall.Token, ct).ConfigureAwait(false);
+        await ThrowIfEnvelopeAsync(response, "download", stall.Token, ct).ConfigureAwait(false);
         try
         {
-            await using var body = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            await using var body = await response.Content.ReadAsStreamAsync(stall.Token).ConfigureAwait(false);
             await using var file = new FileStream(partPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await body.CopyToAsync(file, 81920, ct).ConfigureAwait(false);
+            var buffer = new byte[81920];
+            while (true)
+            {
+                stall.CancelAfter(StallTimeout);
+                var read = await body.ReadAsync(buffer, stall.Token).ConfigureAwait(false);
+                if (read == 0) break;
+                await file.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw Log(Unreachable(), "download", 0);
         }
         catch (Exception ex) when (ex is IOException or HttpRequestException && !ct.IsCancellationRequested)
         {

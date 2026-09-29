@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.ViewModels;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Server;
@@ -181,6 +182,73 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Same(p1, Phone(_t1));
     }
 
+    /// <summary>The socket handler, with the requests <paramref name="fail"/> picks failing the way
+    /// a dropped connection does.</summary>
+    private sealed class FlakyHandler(HttpMessageHandler inner, Func<HttpRequestMessage, bool> fail) : DelegatingHandler(inner)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            fail(request) ? throw new HttpRequestException("connection reset") : base.SendAsync(request, ct);
+    }
+
+    private NoctisAccountService WithHandler(Func<HttpRequestMessage, bool> fail) =>
+        new(_phoneLibrary, _phonePersistence, accept => new FlakyHandler(NoctisHandlers.Sockets(accept), fail),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+    [Fact]
+    public async Task ACoverThatFailsToDownload_DoesNotStopTheRestOfTheSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var coversFail = true;
+        var svc = WithHandler(r => coversFail && r.RequestUri!.AbsolutePath.EndsWith("getCoverArt.view", StringComparison.Ordinal));
+        _t1.Rating = 2;
+        _sync.RecordTrackStates(new[] { _t1 });
+
+        var result = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(3, result.Songs);
+        Assert.Equal(1, result.Playlists);                 // the stages after covers still ran
+        Assert.Equal(2, Phone(_t1).Rating);
+        Assert.NotNull(svc.Account!.LastSyncUtc);
+        Assert.False(File.Exists(_phonePersistence.GetArtworkPath(AlbumA)));
+
+        // A failed download is not "this album has no cover": the next sync asks again.
+        coversFail = false;
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_art, File.ReadAllBytes(_phonePersistence.GetArtworkPath(AlbumA)));
+    }
+
+    [Fact]
+    public async Task SyncBeforeThePhoneLibraryHasLoaded_WaitsForIt_AndKeepsTheLocalSongs()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, ct);
+        await SignedInAsync();
+
+        // The app starts again and "Sync now" is tapped before library.json has been read.
+        LibraryService NewPhoneLibrary() => new(new MetadataService(), _phonePersistence, new SqliteLibraryIndexService(_phonePersistence),
+            new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: _recorder);
+        var library = NewPhoneLibrary();
+        var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var svc = new NoctisAccountService(library, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
+            _recorder, marshal: a => a()) { LibraryReady = loaded.Task };
+
+        var sync = svc.SyncNowAsync(ct);
+        await Task.Delay(300, ct);
+        await library.LoadAsync();
+        loaded.SetResult();
+        await sync;
+
+        Assert.Equal(4, library.Tracks.Count);
+        var reloaded = NewPhoneLibrary();
+        await reloaded.LoadAsync();
+        Assert.Contains(reloaded.Tracks, t => t.SourceType == SourceType.Local);
+        Assert.Equal(4, reloaded.Tracks.Count);
+    }
+
     [Fact]
     public async Task SyncNow_IsSingleFlight()
     {
@@ -191,6 +259,64 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.IsSyncing || a.IsCompleted);
         await a;
         Assert.False(svc.IsSyncing);
+    }
+
+    [Fact]
+    public async Task CatalogSync_WhileTheDesktopScans_KeepsTheSongsTheScanHasNotReachedYet()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var p2 = Phone(_t2);
+        p2.PlayCount = 7;
+
+        // Mid-scan the desktop lists only what the scan has reached so far.
+        _desk.IsScanning = true;
+        _desk.Show(_t1);
+        var during = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(3, during.Songs);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+        Assert.Same(p2, Phone(_t2));
+        Assert.Equal(7, Phone(_t2).PlayCount);
+
+        // The scan ends without _t3: now it is really gone.
+        _desk.IsScanning = false;
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.Same(p2, Phone(_t2));
+    }
+
+    [Fact]
+    public async Task CatalogSync_NeverDropsMostSongs_WhileTheDesktopListKeepsChanging()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var many = Enumerable.Range(0, 80).Select(i => new Track
+        {
+            Id = Guid.NewGuid(), Title = $"Song {i}", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB,
+            FilePath = _t1.FilePath, Duration = TimeSpan.FromSeconds(60), TrackNumber = i + 2, FileSize = _audio.Length,
+        }).ToList();
+        _desk.Show(new[] { _t1, _t2, _t3 }.Concat(many).ToArray());
+        var svc = await SignedInAsync();
+        Assert.Equal(83, (await svc.SyncNowAsync(ct)).Songs);
+
+        // A desktop that does not report its scans (an older version): the list starts over
+        // and grows between requests, so no two reads agree.
+        var reached = 0;
+        _desk.Show(_t1, _t2, _t3);
+        _desk.BeforeSnapshot = () =>
+        {
+            if (reached < many.Count) _desk.Show(new[] { _t1, _t2, _t3 }.Concat(many.Take(++reached)).ToArray());
+        };
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(83, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+
+        // Settled (two reads agree, not scanning): the 80 are really gone.
+        _desk.BeforeSnapshot = null;
+        _desk.Show(_t1, _t2, _t3);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
     }
 
     // ── Downloads and playback ───────────────────────────────────────────
@@ -249,6 +375,61 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(0, svc.DownloadedCount);
         Assert.Empty(Directory.Exists(OfflineDir) ? Directory.GetFiles(OfflineDir) : Array.Empty<string>());
         Assert.True(svc.IsSignedIn); // a full phone is not a reason to forget the account
+    }
+
+    /// <summary>The socket handler, with one song's download going silent after its first bytes.</summary>
+    private sealed class StallingDownload(HttpMessageHandler inner, Guid stalled) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var response = await base.SendAsync(request, ct);
+            if (!request.RequestUri!.AbsolutePath.EndsWith("download.view", StringComparison.Ordinal)
+                || !request.RequestUri.Query.Contains(stalled.ToString("N"), StringComparison.Ordinal))
+                return response;
+            var real = response.Content;
+            response.Content = new StreamContent(new NoctisAccountClientTests.StallingStream(new byte[] { 1, 2, 3 }));
+            response.Content.Headers.ContentType = real.Headers.ContentType;
+            real.Dispose();
+            return response;
+        }
+    }
+
+    [Fact]
+    public async Task ADownloadThatStalls_FailsThatSong_AndTheBatchCarriesOn()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new StallingDownload(NoctisHandlers.Sockets(accept), _t2.Id),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a())
+        {
+            DownloadStallTimeout = TimeSpan.FromMilliseconds(300),
+        };
+        await svc.SyncNowAsync(ct);
+        NoctisDownloadProgress? last = null;
+        svc.DownloadProgress += (_, p) => last = p;
+
+        await svc.DownloadAllAsync(ct).WaitAsync(TimeSpan.FromSeconds(20), ct);
+
+        Assert.Equal(2, svc.DownloadedCount);
+        Assert.False(svc.IsDownloaded(Phone(_t2)));
+        Assert.Equal(new NoctisDownloadProgress(0, 2, 1, 2L * _audio.Length), last);
+        Assert.Empty(Directory.GetFiles(OfflineDir, "*.part"));
+    }
+
+    [Fact]
+    public async Task ANewDownloadBatch_CountsFromZero()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        NoctisDownloadProgress? first = null, last = null;
+        svc.DownloadProgress += (_, p) => { first ??= p; last = p; };
+
+        await svc.DownloadAsync(new[] { Phone(_t2), Phone(_t3) }, ct);
+
+        Assert.Equal(new NoctisDownloadProgress(2, 0, 0, _audio.Length), first);   // "0 of 2", not "1 of 3"
+        Assert.Equal(new NoctisDownloadProgress(0, 2, 0, 3L * _audio.Length), last);
     }
 
     [Fact]
@@ -564,6 +745,67 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(deviceId, Restart().DeviceId);
     }
 
+    /// <summary>The Library tab over the phone's real library and playlists.json.</summary>
+    private async Task<LibraryViewModel> LibraryTabAsync()
+    {
+        var tab = new LibraryViewModel(_phoneLibrary, _phonePersistence, new MobileFixtures.NoPicker(), marshal: a => a());
+        await tab.InitializeAsync();
+        return tab;
+    }
+
+    [Fact]
+    public async Task SignOut_TheLibraryTabReloadsPlaylists_AfterTheDesktopOnesAreGone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { new() { Name = "Phone only" } });
+        using var rig = MobileFixtures.MakeRig();
+        var tab = await LibraryTabAsync();
+        var svc = await SignedInAsync();
+        var shell = new ShellViewModel(tab, rig.Shell.Player, rig.Shell.Lyrics) { Account = svc, Marshal = a => a() };
+        await svc.SyncNowAsync(ct);
+        await Until(() => tab.Playlists.Any(p => p.Id == _deskMixId));
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        await Until(() => tab.Playlists.All(p => p.Id != _deskMixId));
+        Assert.Equal("Phone only", Assert.Single(tab.Playlists).Name);
+        // A phone edit afterwards does not write them back.
+        await tab.CreatePlaylistAsync("After");
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        GC.KeepAlive(shell);
+    }
+
+    [Fact]
+    public async Task PhonePlaylistEdits_GoOntoWhatTheSyncWrote_NotOntoTheTabsOldCopy()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var tab = await LibraryTabAsync();             // read before the first sync: no desktop playlist
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);                     // writes "Desk mix"; nothing reloads the tab here
+
+        await tab.CreatePlaylistAsync("Phone list");
+
+        var saved = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.Contains(saved, p => p.Id == _deskMixId);
+        Assert.Contains(saved, p => p.Name == "Phone list");
+
+        // The tab (or an open sheet) holds a copy; the desktop renames the playlist meanwhile.
+        await tab.ReloadPlaylistsAsync();
+        var held = tab.Playlists.Single(p => p.Id == _deskMixId);
+        await Task.Delay(20, ct);
+        var deskMix = _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+        deskMix.Name = "Renamed";
+        deskMix.ModifiedAt = DateTime.UtcNow;
+        await svc.SyncNowAsync(ct);
+
+        await tab.AddToPlaylistAsync(held, new[] { Phone(_t2) });
+
+        var mix = (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
+        Assert.Equal("Renamed", mix.Name);
+        Assert.Equal(new[] { _t1.Id, _t3.Id, _t2.Id }, mix.TrackIds);
+        Assert.Contains(await _phonePersistence.LoadPlaylistsAsync(), p => p.Name == "Phone list");
+    }
+
     [Fact]
     public async Task SignOut_KeepingDownloads_LeavesTheFiles()
     {
@@ -689,8 +931,23 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             foreach (var a in _albums) a.Tracks = _tracks.Where(t => t.AlbumId == a.Id).ToList();
         }
 
-        public Task<LibrarySnapshot> SnapshotAsync() =>
-            Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
+        public bool IsScanning { get; set; }
+
+        /// <summary>Runs before every request reads the library (a scan moving along).</summary>
+        public Action? BeforeSnapshot { get; set; }
+
+        /// <summary>What the desktop's library lists from now on.</summary>
+        public void Show(params Track[] tracks)
+        {
+            lock (_tracks) { _tracks.Clear(); _tracks.AddRange(tracks); }
+        }
+
+        public Task<LibrarySnapshot> SnapshotAsync()
+        {
+            BeforeSnapshot?.Invoke();
+            lock (_tracks)
+                return Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
+        }
 
         public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _art : null;
 

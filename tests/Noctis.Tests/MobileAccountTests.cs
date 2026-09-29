@@ -33,6 +33,7 @@ public class MobileAccountTests
         public event EventHandler? StateChanged;
         public event EventHandler<NoctisSyncProgress>? SyncProgress;
         public event EventHandler<NoctisDownloadProgress>? DownloadProgress;
+        public event EventHandler? PlaylistsChanged { add { } remove { } }
 
         public Exception? ProbeError { get; set; }
         public Exception? SignInError { get; set; }

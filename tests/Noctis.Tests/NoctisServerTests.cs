@@ -366,6 +366,18 @@ public class NoctisServerTests : IAsyncLifetime
         }
     }
 
+    /// <summary>A phone must not read a mid-scan (partial) catalog as the whole library.</summary>
+    [Fact]
+    public async Task GetScanStatus_ReportsARunningScan()
+    {
+        var idle = (await Get("getScanStatus")).GetProperty("scanStatus");
+        Assert.False(idle.GetProperty("scanning").GetBoolean());
+        Assert.Equal(3, idle.GetProperty("count").GetInt32());
+
+        _lib.IsScanning = true;
+        Assert.True((await Get("getScanStatus")).GetProperty("scanStatus").GetProperty("scanning").GetBoolean());
+    }
+
     private static bool Contains(byte[] haystack, byte[] needle)
         => Enumerable.Range(0, haystack.Length - needle.Length + 1).Any(i => haystack.Skip(i).Take(needle.Length).SequenceEqual(needle));
 
@@ -386,6 +398,7 @@ public class NoctisServerTests : IAsyncLifetime
             foreach (var a in Albums) a.Tracks = Tracks.Where(t => t.AlbumId == a.Id).ToList();
         }
 
+        public bool IsScanning { get; set; }
         public Task<LibrarySnapshot> SnapshotAsync() => Task.FromResult(new LibrarySnapshot(Tracks.ToList(), Albums.ToList(), Artists.ToList(), Playlists.ToList()));
         public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _artworkPath : null;
         public Task SetStarredAsync(IReadOnlyList<Guid> trackIds, IReadOnlyList<Guid> albumIds, IReadOnlyList<Guid> artistIds, bool starred)

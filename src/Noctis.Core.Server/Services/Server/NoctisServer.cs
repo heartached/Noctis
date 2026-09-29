@@ -623,7 +623,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
             case "getalbuminfo2":
                 return new JsonObject { [method.Equals("getalbuminfo", StringComparison.OrdinalIgnoreCase) ? "albumInfo" : "albumInfo2"] = new JsonObject() };
             case "getscanstatus":
-                return new JsonObject { ["scanStatus"] = new JsonObject { ["scanning"] = false, ["count"] = snap.Tracks.Count } };
+                return new JsonObject { ["scanStatus"] = new JsonObject { ["scanning"] = _library.IsScanning, ["count"] = snap.Tracks.Count } };
             case "getplayqueue":
                 return new JsonObject();
             case "getlyrics":
