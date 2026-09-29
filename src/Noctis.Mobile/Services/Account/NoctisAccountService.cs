@@ -39,7 +39,7 @@ public sealed class NoctisStateRecorder : ITrackStateRecorder
 /// The phone pushes favorite/rating/dislike changes only (play count 0 and no last-played, so
 /// the desktop's max-merge ignores them); plays travel as scrobbles.
 /// </summary>
-public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRecorder
+public sealed partial class NoctisAccountService : INoctisAccountService, ITrackStateRecorder
 {
     private const int PushChunk = 2000;
     private const int ScrobbleBatch = 500;
@@ -277,6 +277,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             }
             if (removeDownloads) DeleteAllDownloadFiles();
             else DeletePartFiles();
+            DeleteSavedLyrics();
         }).ConfigureAwait(false);
         DebugLog.Write("Account", $"signed out (downloads {(removeDownloads ? "removed" : "kept")})");
         RaiseDownloadProgress();
@@ -406,6 +407,9 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             }
         }
         RaiseStateChanged();
+
+        // 6. Lyrics for downloaded songs that have none saved (after LastSyncUtc, so they count as current).
+        await PrefetchDownloadedLyricsAsync(ct).ConfigureAwait(false);
         if (syncOff is not null) throw syncOff;
         return new NoctisSyncResult(tracks.Count, playlistCount, pulled, pushed, plays);
     }
@@ -1063,6 +1067,8 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             _downloadRuns.Add(run);
         }
         _ = run.ContinueWith(t => { lock (_downloadRuns) _downloadRuns.Remove(t); }, TaskScheduler.Default);
+        // New downloads get their lyrics saved too, so they show with the desktop off.
+        _ = run.ContinueWith(_ => PrefetchDownloadedLyricsAsync(CancellationToken.None), TaskScheduler.Default).Unwrap();
         return run;
     }
 

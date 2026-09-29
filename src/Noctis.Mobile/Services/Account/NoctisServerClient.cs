@@ -33,7 +33,7 @@ internal sealed record PushItem(string Kind, string Id, object Payload, DateTime
 /// <see cref="NoctisServerException"/> kinds; nothing here logs a URL with a query, a key, a
 /// password or an HttpClient exception message.
 /// </summary>
-internal sealed class NoctisServerClient : IDisposable
+internal sealed partial class NoctisServerClient : IDisposable
 {
     public const string ClientName = "NoctisAndroid";
     public const string ApiVersion = "1.16.1";
