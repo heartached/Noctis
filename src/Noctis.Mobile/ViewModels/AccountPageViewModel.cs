@@ -288,6 +288,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (progress.Stage is NoctisSyncStage.Done or NoctisSyncStage.Failed or NoctisSyncStage.Idle)
         {
             if (!_syncRunning && progress.Stage == NoctisSyncStage.Done) SyncText = "Sync finished";
+            IsSyncing = _syncRunning || _account.IsSyncing;
             return;
         }
         SyncText = DescribeStage(progress);

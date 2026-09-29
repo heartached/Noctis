@@ -93,6 +93,8 @@ public class MobileAccountTests
 
         public void RecordPlay(Track track, DateTime playedUtc) => Plays.Add((track, playedUtc));
 
+        public void RaiseSyncProgress(NoctisSyncProgress progress) => SyncProgress?.Invoke(this, progress);
+
         public bool IsRemote(Track track) => track.FilePath.StartsWith("noctis-remote://", StringComparison.Ordinal);
         public bool IsDownloaded(Track track) => DownloadedIds.Contains(track.Id);
         public long DownloadedBytes => DownloadedIds.Count * 5L * 1024 * 1024;
@@ -349,6 +351,24 @@ public class MobileAccountTests
         Assert.Equal("Getting your library… 10 of 200", AccountPageViewModel.DescribeStage(new(NoctisSyncStage.Catalog, 10, 200)));
         Assert.Equal("Getting covers…", AccountPageViewModel.DescribeStage(new(NoctisSyncStage.Covers, 0, 0)));
         Assert.Equal("Syncing playlists…", AccountPageViewModel.DescribeStage(new(NoctisSyncStage.Playlists, 0, 0)));
+    }
+
+    [Fact]
+    public void SyncProgress_FromAnotherSync_ShowsThenClears()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var page = OpenAccount(ShellWith(rig, account));
+
+        account.IsSyncing = true;                                          // e.g. the startup sync
+        account.RaiseSyncProgress(new NoctisSyncProgress(NoctisSyncStage.Catalog, 3, 10));
+        Assert.True(page.IsSyncing);
+        Assert.Equal("Getting your library… 3 of 10", page.SyncText);
+
+        account.IsSyncing = false;
+        account.RaiseSyncProgress(new NoctisSyncProgress(NoctisSyncStage.Done, 10, 10));
+        Assert.False(page.IsSyncing);
+        Assert.Equal("Sync finished", page.SyncText);
     }
 
     [Fact]
