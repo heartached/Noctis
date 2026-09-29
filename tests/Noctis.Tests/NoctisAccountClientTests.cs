@@ -109,6 +109,65 @@ public class NoctisAccountClientTests
         }
     }
 
+    /// <summary>Sends <paramref name="head"/>, then nothing ever (until the reader gives up): a
+    /// Wi-Fi that dropped mid-download delivers no bytes and no error.</summary>
+    internal sealed class StallingStream(byte[] head) : System.IO.Stream
+    {
+        private bool _sent;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct) =>
+            ReadAsync(buffer.AsMemory(offset, count), ct).AsTask();
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+        {
+            if (!_sent)
+            {
+                _sent = true;
+                head.CopyTo(buffer);
+                return head.Length;
+            }
+            await Task.Delay(Timeout.Infinite, ct);
+            return 0;
+        }
+    }
+
+    [Fact]
+    public async Task ADownloadThatStopsReceiving_FailsAsUnreachable_InsteadOfWaitingForever()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NoctisTests", "acc-stall-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        try
+        {
+            var handler = new ScriptedHandler(_ =>
+            {
+                var r = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream(new byte[] { 1, 2, 3 })) };
+                r.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/flac");
+                return r;
+            });
+            using var client = new NoctisServerClient(_ => handler, Url, "", Key) { StallTimeout = TimeSpan.FromMilliseconds(300) };
+
+            var ex = await Assert.ThrowsAsync<NoctisServerException>(() =>
+                client.DownloadTrackAsync(Guid.NewGuid(), System.IO.Path.Combine(dir, "t.part"), ct).WaitAsync(TimeSpan.FromSeconds(15), ct));
+
+            Assert.Equal(NoctisErrorKind.Unreachable, ex.Kind);
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(dir, true); } catch { }
+        }
+    }
+
     [Fact]
     public async Task TheProbeSendsNoCredentials()
     {

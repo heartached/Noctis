@@ -346,6 +346,45 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.IsSignedIn); // a full phone is not a reason to forget the account
     }
 
+    /// <summary>The socket handler, with one song's download going silent after its first bytes.</summary>
+    private sealed class StallingDownload(HttpMessageHandler inner, Guid stalled) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var response = await base.SendAsync(request, ct);
+            if (!request.RequestUri!.AbsolutePath.EndsWith("download.view", StringComparison.Ordinal)
+                || !request.RequestUri.Query.Contains(stalled.ToString("N"), StringComparison.Ordinal))
+                return response;
+            var real = response.Content;
+            response.Content = new StreamContent(new NoctisAccountClientTests.StallingStream(new byte[] { 1, 2, 3 }));
+            response.Content.Headers.ContentType = real.Headers.ContentType;
+            real.Dispose();
+            return response;
+        }
+    }
+
+    [Fact]
+    public async Task ADownloadThatStalls_FailsThatSong_AndTheBatchCarriesOn()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new StallingDownload(NoctisHandlers.Sockets(accept), _t2.Id),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a())
+        {
+            DownloadStallTimeout = TimeSpan.FromMilliseconds(300),
+        };
+        await svc.SyncNowAsync(ct);
+        NoctisDownloadProgress? last = null;
+        svc.DownloadProgress += (_, p) => last = p;
+
+        await svc.DownloadAllAsync(ct).WaitAsync(TimeSpan.FromSeconds(20), ct);
+
+        Assert.Equal(2, svc.DownloadedCount);
+        Assert.False(svc.IsDownloaded(Phone(_t2)));
+        Assert.Equal(new NoctisDownloadProgress(0, 2, 1, 2L * _audio.Length), last);
+        Assert.Empty(Directory.GetFiles(OfflineDir, "*.part"));
+    }
+
     [Fact]
     public async Task DownloadAll_FetchesEveryDesktopSong_AndRemoveAllEmptiesTheFolder()
     {

@@ -98,6 +98,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <summary>Free bytes on the volume holding a path; tests substitute a full phone.</summary>
     internal Func<string, long> FreeSpace { get; init; } = DefaultFreeSpace;
 
+    /// <summary>How long a download may receive nothing before it counts as failed (tests shorten it).</summary>
+    internal TimeSpan DownloadStallTimeout { get; init; } = NoctisServerClient.DefaultStallTimeout;
+
     /// <summary>
     /// This phone has no ALAC decoder: desktop songs that may be ALAC (an MP4-family suffix) are
     /// streamed and downloaded with <c>format=flac</c>, and the desktop sends a lossless FLAC copy
@@ -337,7 +340,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private NoctisServerClient GetClientLocked()
     {
         var account = _account ?? throw new NoctisServerException(NoctisErrorKind.SignedOut, "Not signed in.");
-        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey);
+        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey)
+        {
+            StallTimeout = DownloadStallTimeout,
+        };
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────
