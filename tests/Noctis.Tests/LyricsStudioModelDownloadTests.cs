@@ -179,6 +179,7 @@ public class LyricsStudioModelDownloadTests : IDisposable
         var vm = Studio(new ModelOnlyEngine(models));
         var now = TimeSpan.Zero;
         vm.Clock = () => now;
+        vm.AutoTick = false; // the test ticks
 
         var download = vm.DownloadModelCommand.ExecuteAsync(null);
         Assert.Equal(LyricsStudioViewModel.ModelBannerState.Connecting, vm.ModelBanner);

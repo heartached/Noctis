@@ -122,6 +122,7 @@ public class LyricsStudioProgressTests : IDisposable
         var vm = new LyricsStudioViewModel(tracks, engine, new LyricsWriter(null!, null), new FakeLibraryService(), null, () => new AppSettings(), _ => { });
         var now = S(0);
         vm.Clock = () => now;
+        vm.AutoTick = false; // the test ticks
 
         var run = vm.StartCommand.ExecuteAsync(null);
         await Wait(engine.Started);

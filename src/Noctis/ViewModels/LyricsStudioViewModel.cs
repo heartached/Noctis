@@ -628,8 +628,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// <summary>Time source for the progress meters (tests replace it).</summary>
     internal Func<TimeSpan> Clock { get; set; }
 
+    /// <summary>False in tests that call <see cref="Tick"/> themselves.</summary>
+    internal bool AutoTick { get; set; } = true;
+
     private void EnsureTicking()
     {
+        if (!AutoTick) return;
         if (_tick is null)
         {
             _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(66) };
