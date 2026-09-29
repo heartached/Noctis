@@ -37,20 +37,40 @@ public sealed class NoctisServer : IAsyncDisposable
     /// of a cached JPEG, or null when the cover cannot be shrunk safely. Null (the headless host)
     /// serves the original file whatever the size.
     /// </param>
+    /// <param name="flacTranscoder">
+    /// Serves <c>stream</c>/<c>download</c> with <c>format=flac</c> for an ALAC song: (track id,
+    /// source path, ct) → path of a FLAC copy (see <see cref="FlacTranscodeCache.GetAsync"/>), or
+    /// null when none can be made. Null (the headless host) or a null answer → the original file,
+    /// exactly as without <c>format</c>.
+    /// </param>
     public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion, Sync.ILibrarySyncService? sync = null,
-        Func<Guid, string, int, CancellationToken, Task<string?>>? coverResizer = null)
+        Func<Guid, string, int, CancellationToken, Task<string?>>? coverResizer = null,
+        Func<Guid, string, CancellationToken, Task<string?>>? flacTranscoder = null)
     {
         _library = library;
         _users = users;
         _serverVersion = serverVersion;
         _sync = sync;
         _coverResizer = coverResizer;
+        _flacTranscoder = flacTranscoder;
     }
 
     /// <summary>Account &amp; Sync ledger; null or disabled → the sync endpoints answer error 50.</summary>
     private readonly Sync.ILibrarySyncService? _sync;
 
     private readonly Func<Guid, string, int, CancellationToken, Task<string?>>? _coverResizer;
+
+    private readonly Func<Guid, string, CancellationToken, Task<string?>>? _flacTranscoder;
+
+    /// <summary>The one <c>format</c> a client may ask stream/download for; any other value is ignored (original file).</summary>
+    public const string FlacFormat = "flac";
+
+    /// <summary>
+    /// True when the library read the track as ALAC. TagLib names an MP4 sample entry
+    /// "MPEG-4 Audio (alac)"; the extension fallback says "Apple Lossless (ALAC)". Unknown codec → false
+    /// (the original is served).
+    /// </summary>
+    public static bool IsAlac(Track track) => track.Codec?.Contains("alac", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <summary>Largest JSON push a device may send in one call (a seed of a big library is paged by the client).</summary>
     private const long MaxSyncPushBytes = 4L * 1024 * 1024;
@@ -285,12 +305,33 @@ public sealed class NoctisServer : IAsyncDisposable
                 var snap = await _library.SnapshotAsync().ConfigureAwait(false);
                 var track = Ids.Track(snap, id) ?? throw NotFound();
                 if (!File.Exists(track.FilePath)) throw NotFound();
-                var contentType = ContentTypeFor(track.FilePath);
-                ctx.Response.Headers.CacheControl = "private, max-age=0";
+                var path = track.FilePath;
+                var contentType = ContentTypeFor(path);
                 // fileDownloadName writes an RFC 5987 filename* (UTF-8) with an ASCII fallback;
                 // a raw non-ASCII name in the header makes Kestrel throw.
-                var downloadName = method.Equals("download", StringComparison.OrdinalIgnoreCase) ? Path.GetFileName(track.FilePath) : null;
-                await Results.File(track.FilePath, contentType, downloadName, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
+                var downloadName = method.Equals("download", StringComparison.OrdinalIgnoreCase) ? Path.GetFileName(path) : null;
+                // format=flac on an ALAC song: a lossless FLAC copy for phones without an ALAC
+                // decoder. The copy is named from the library's Guid only; the request picks
+                // nothing but the allow-listed format. No copy → the original, as today.
+                if (_flacTranscoder is not null && IsAlac(track)
+                    && string.Equals(p.Get("format"), FlacFormat, StringComparison.OrdinalIgnoreCase))
+                {
+                    string? flac = null;
+                    try { flac = await _flacTranscoder(track.Id, path, ctx.RequestAborted).ConfigureAwait(false); }
+                    catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested) { return true; }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.Warn(DebugLogger.Category.State, "Server", $"flac transcode failed: {ex.GetType().Name}");
+                    }
+                    if (flac is not null && File.Exists(flac))
+                    {
+                        path = flac;
+                        contentType = "audio/flac";
+                        if (downloadName is not null) downloadName = Path.ChangeExtension(downloadName, ".flac");
+                    }
+                }
+                ctx.Response.Headers.CacheControl = "private, max-age=0";
+                await Results.File(path, contentType, downloadName, enableRangeProcessing: true).ExecuteAsync(ctx).ConfigureAwait(false);
                 return true;
             }
             case "getcoverart":

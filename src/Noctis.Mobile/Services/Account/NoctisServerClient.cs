@@ -321,16 +321,20 @@ internal sealed class NoctisServerClient : IDisposable
         }
     }
 
+    /// <summary>The <c>format</c> value that asks the desktop for a FLAC copy of an ALAC song.</summary>
+    public const string FlacFormat = "flac";
+
     /// <summary>
     /// Downloads a song's original file to <paramref name="partPath"/> (no timeout — the caller's
     /// token cancels). Returns the response content type so the caller can pick an extension.
+    /// <paramref name="flac"/> asks for <c>format=flac</c>: an ALAC song then arrives as FLAC
+    /// (audio/flac); anything else, or a desktop without ffmpeg, still sends the original.
     /// </summary>
-    public async Task<string?> DownloadTrackAsync(Guid trackId, string partPath, CancellationToken ct)
+    public async Task<string?> DownloadTrackAsync(Guid trackId, string partPath, CancellationToken ct, bool flac = false)
     {
-        using var request = Request(HttpMethod.Get, "download", new KeyValuePair<string, string>[]
-        {
-            new("id", NoctisRemoteIds.ToServerTrackId(trackId)),
-        });
+        var query = new List<KeyValuePair<string, string>> { new("id", NoctisRemoteIds.ToServerTrackId(trackId)) };
+        if (flac) query.Add(new("format", FlacFormat));
+        using var request = Request(HttpMethod.Get, "download", query);
         using var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, "download", ct, ct).ConfigureAwait(false);
         await ThrowIfEnvelopeAsync(response, "download", ct, ct).ConfigureAwait(false);
         try
