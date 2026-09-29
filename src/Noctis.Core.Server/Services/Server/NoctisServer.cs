@@ -32,19 +32,44 @@ public sealed class NoctisServer : IAsyncDisposable
     private readonly LoginThrottle _throttle = new();
     private WebApplication? _app;
 
-    public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion, Sync.ILibrarySyncService? sync = null)
+    /// <param name="coverResizer">
+    /// Makes a <c>getCoverArt&amp;size=N</c> copy: (album id, source path, longest side, ct) → path
+    /// of a cached JPEG, or null when the cover cannot be shrunk safely. Null (the headless host)
+    /// serves the original file whatever the size.
+    /// </param>
+    public NoctisServer(IServerLibrary library, ServerUserStore users, string serverVersion, Sync.ILibrarySyncService? sync = null,
+        Func<Guid, string, int, CancellationToken, Task<string?>>? coverResizer = null)
     {
         _library = library;
         _users = users;
         _serverVersion = serverVersion;
         _sync = sync;
+        _coverResizer = coverResizer;
     }
 
     /// <summary>Account &amp; Sync ledger; null or disabled → the sync endpoints answer error 50.</summary>
     private readonly Sync.ILibrarySyncService? _sync;
 
+    private readonly Func<Guid, string, int, CancellationToken, Task<string?>>? _coverResizer;
+
     /// <summary>Largest JSON push a device may send in one call (a seed of a big library is paged by the client).</summary>
-    private const long MaxSyncPushBytes = 32L * 1024 * 1024;
+    private const long MaxSyncPushBytes = 4L * 1024 * 1024;
+
+    /// <summary>Most items one sync push may carry; a bigger push is refused whole so the client pages it.</summary>
+    public const int MaxSyncPushItems = 2_000;
+
+    /// <summary>Most ids one scrobble call may carry.</summary>
+    public const int MaxScrobbleIds = 500;
+
+    /// <summary>The only getCoverArt <c>size</c> values served; any other request snaps to the nearest (bounded cache).</summary>
+    public static readonly int[] CoverSizes = { 64, 128, 256, 512, 1024 };
+
+    /// <summary>Nearest of <see cref="CoverSizes"/> (ties go to the larger size).</summary>
+    public static int SnapCoverSize(int requested)
+        => CoverSizes.OrderBy(s => Math.Abs((long)s - requested)).ThenByDescending(s => s).First();
+
+    // \z, not $: $ also matches before a trailing newline.
+    private static readonly System.Text.RegularExpressions.Regex DeviceIdPattern = new(@"^[A-Za-z0-9_-]{8,64}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     public bool IsRunning => _app is not null;
 
@@ -55,6 +80,9 @@ public sealed class NoctisServer : IAsyncDisposable
 
     /// <summary>Raised (from a worker thread) on every authenticated request; the UI shows "phone connected".</summary>
     public event EventHandler<string>? ClientAuthenticated;
+
+    /// <summary>Raised (from a worker thread) when a device signs in or out, so the signed-in devices list can refresh.</summary>
+    public event EventHandler? DevicesChanged;
 
     /// <summary>Starts listening on all interfaces. <paramref name="certificate"/> null = plain HTTP (LAN testing only).</summary>
     public async Task StartAsync(int port, X509Certificate2? certificate, CancellationToken ct = default)
@@ -100,16 +128,42 @@ public sealed class NoctisServer : IAsyncDisposable
 
     private static readonly HashSet<string> NoAuthMethods = new(StringComparer.OrdinalIgnoreCase) { "ping", "getOpenSubsonicExtensions" };
 
+    /// <summary>
+    /// Refuse (HTTP 403, before any auth) clients whose address is not on a private network
+    /// (<see cref="ClientAddressPolicy.IsPrivate"/>). The desktop app turns this on — its server
+    /// is for the home network; the headless host leaves it off (it is meant to sit behind a
+    /// reverse proxy / port forward). Set before <see cref="StartAsync"/>.
+    /// </summary>
+    public bool PrivateClientsOnly { get; set; }
+
+    /// <summary>Request header that carries an API key, so stream/cover URLs never contain one. Wins over <c>apiKey=</c>.</summary>
+    public const string KeyHeader = "X-Noctis-Key";
+
     private void Map(WebApplication app)
     {
+        app.Use(async (ctx, next) =>
+        {
+            if (PrivateClientsOnly && !ClientAddressPolicy.IsPrivate(ctx.Connection.RemoteIpAddress))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            await next(ctx).ConfigureAwait(false);
+        });
         // Subsonic: /rest/<method>[.view], GET or form POST, params in query or form.
         app.Map("/rest/{method}", HandleAsync);
         app.MapGet("/", () => Results.Text("Noctis server is running. Point a Subsonic client at this address.", "text/plain"));
     }
 
+    /// <summary>The request's API key: the <see cref="KeyHeader"/> header, else <c>apiKey=</c>; null when neither.</summary>
+    private static string? ApiKeyOf(HttpContext ctx, Params p)
+        => ctx.Request.Headers[KeyHeader].FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? p.Get("apiKey");
+
     private async Task HandleAsync(HttpContext ctx, string method)
     {
         if (method.EndsWith(".view", StringComparison.OrdinalIgnoreCase)) method = method[..^5];
+        // The sign-in reply carries a new key: no cache (or proxy) may keep it.
+        if (method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase)) ctx.Response.Headers.CacheControl = "no-store";
         var p = await ReadParamsAsync(ctx).ConfigureAwait(false);
         var format = p.Get("f");
 
@@ -117,16 +171,27 @@ public sealed class NoctisServer : IAsyncDisposable
         {
             if (!NoAuthMethods.Contains(method))
             {
+                var apiKey = ApiKeyOf(ctx, p);
+                // noctisSignIn trades the account password for a device key; a key cannot stand in for it.
+                if (method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase) && apiKey is not null)
+                {
+                    await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrAuthMechanismNotSupported,
+                        "Sign in with the account name and password.", format, _serverVersion), 200).ConfigureAwait(false);
+                    return;
+                }
+
                 // Brute-force brake per remote address + account name: after repeated bad
                 // logins for a name, that name is refused for a while, before its password is
                 // even checked. Keyed by name too because behind the documented reverse proxy
                 // every client shares the proxy's address, and one bad client must not lock out
                 // every account. API keys are 256-bit random (not guessable), so a request that
-                // carries one is never throttled.
+                // carries one is never throttled. The attempt is reserved (counted) BEFORE the
+                // password is verified, so parallel requests cannot each get a free guess.
                 var client = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                var name = p.Get("apiKey") is null ? p.Get("u") : null;
+                var name = apiKey is null ? p.Get("u") : null;
                 var throttleKey = name is null ? null : LoginThrottle.Key(client, name);
-                if (throttleKey is not null && _throttle.IsLocked(throttleKey, out var retryAfter))
+                var lockedNow = false;
+                if (throttleKey is not null && !_throttle.TryReserve(throttleKey, out var retryAfter, out lockedNow))
                 {
                     ctx.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
                     await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrWrongCredentials,
@@ -134,20 +199,17 @@ public sealed class NoctisServer : IAsyncDisposable
                     return;
                 }
 
-                var (user, error, errorMessage) = Authenticate(p);
+                var (user, device, error, errorMessage) = Authenticate(p, apiKey);
                 if (user is null)
                 {
-                    if (throttleKey is not null && error is SubsonicResponse.ErrWrongCredentials or SubsonicResponse.ErrTokenAuthNotSupported)
-                    {
-                        if (_throttle.RecordFailure(throttleKey))
-                            DebugLogger.Warn(DebugLogger.Category.State, "Server", $"login lockout for {client}");
-                    }
+                    if (lockedNow) DebugLogger.Warn(DebugLogger.Category.State, "Server", $"login lockout for {client}");
                     await WriteAsync(ctx, SubsonicResponse.Error(error, errorMessage, format, _serverVersion), 200).ConfigureAwait(false);
                     return;
                 }
                 if (throttleKey is not null) _throttle.RecordSuccess(throttleKey);
                 ClientAuthenticated?.Invoke(this, user.Name);
                 ctx.Items["user"] = user;
+                if (device is not null) ctx.Items["device"] = device;
             }
 
             if (await TryHandleBinaryAsync(ctx, method, p).ConfigureAwait(false)) return;
@@ -182,9 +244,9 @@ public sealed class NoctisServer : IAsyncDisposable
 
     // ── Auth ────────────────────────────────────────────────────────────────
 
-    private (ServerUser? User, int Error, string Message) Authenticate(Params p)
+    /// <summary>The requesting user; <c>Device</c> is set when the API key is a signed-in device's key.</summary>
+    private (ServerUser? User, ServerDevice? Device, int Error, string Message) Authenticate(Params p, string? apiKey)
     {
-        var apiKey = p.Get("apiKey");
         var u = p.Get("u");
         var pw = p.Get("p");
         var t = p.Get("t");
@@ -192,21 +254,22 @@ public sealed class NoctisServer : IAsyncDisposable
         if (apiKey is not null)
         {
             if (u is not null || pw is not null || t is not null)
-                return (null, 43, "Multiple conflicting authentication mechanisms provided");
-            var byKey = _users.ByApiKey(apiKey);
-            return byKey is null ? (null, SubsonicResponse.ErrWrongCredentials, "Invalid API key") : (byKey, 0, "");
+                return (null, null, 43, "Multiple conflicting authentication mechanisms provided");
+            // Account keys and device keys alike; a revoked or unknown key is 40 (the phone then signs out).
+            var byKey = _users.ByApiKey(apiKey, out var device);
+            return byKey is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Invalid API key") : (byKey, device, 0, "");
         }
-        if (u is null) return (null, SubsonicResponse.ErrMissingParameter, "Required parameter 'u' is missing");
+        if (u is null) return (null, null, SubsonicResponse.ErrMissingParameter, "Required parameter 'u' is missing");
         if (t is not null || pw is null)
-            return (null, SubsonicResponse.ErrTokenAuthNotSupported, "Token authentication not supported. Use an API key, or a password over HTTPS.");
+            return (null, null, SubsonicResponse.ErrTokenAuthNotSupported, "Token authentication not supported. Use an API key, or a password over HTTPS.");
 
         if (pw.StartsWith("enc:", StringComparison.OrdinalIgnoreCase))
         {
             try { pw = System.Text.Encoding.UTF8.GetString(Convert.FromHexString(pw[4..])); }
-            catch (FormatException) { return (null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password"); }
+            catch (FormatException) { return (null, null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password"); }
         }
         var user = _users.Verify(u, pw);
-        return user is null ? (null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password") : (user, 0, "");
+        return user is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password") : (user, null, 0, "");
     }
 
     // ── Binary endpoints: stream / download / getCoverArt ───────────────────
@@ -236,6 +299,23 @@ public sealed class NoctisServer : IAsyncDisposable
                 var snap = await _library.SnapshotAsync().ConfigureAwait(false);
                 var albumId = Ids.CoverAlbumId(snap, id) ?? throw NotFound();
                 var path = _library.ArtworkPath(albumId) ?? throw NotFound();
+                // size=N: a JPEG whose longest side is N (snapped to CoverSizes, never upscaled).
+                // A cover the resizer refuses (too big to decode safely, or not an image) is 70,
+                // not the original: a client asking for a small cover must never receive a
+                // decode bomb. No size (or no resizer: headless host) → the original file.
+                if (_coverResizer is not null && int.TryParse(p.Get("size"), out var size))
+                {
+                    string? resized = null;
+                    try { resized = await _coverResizer(albumId, path, SnapCoverSize(size), ctx.RequestAborted).ConfigureAwait(false); }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        DebugLogger.Warn(DebugLogger.Category.State, "Server", $"cover resize failed: {ex.Message}");
+                    }
+                    if (resized is null || !File.Exists(resized)) throw NotFound();
+                    ctx.Response.Headers.CacheControl = "private, max-age=86400";
+                    await Results.File(resized, "image/jpeg").ExecuteAsync(ctx).ConfigureAwait(false);
+                    return true;
+                }
                 ctx.Response.Headers.CacheControl = "private, max-age=86400";
                 await Results.File(path, ContentTypeFor(path)).ExecuteAsync(ctx).ConfigureAwait(false);
                 return true;
@@ -274,6 +354,39 @@ public sealed class NoctisServer : IAsyncDisposable
             {
                 var user = (ServerUser)ctx.Items["user"]!;
                 return new JsonObject { ["user"] = UserObject(user) };
+            }
+
+            // ── Noctis extension: device sign-in (the phone trades the password for its own key once) ──
+            case "noctissignin":
+            {
+                // Reached only with a verified password (a key was refused before auth, error 42).
+                var user = (ServerUser)ctx.Items["user"]!;
+                var deviceId = p.Get("deviceId") ?? throw Missing("deviceId");
+                if (!DeviceIdPattern.IsMatch(deviceId))
+                    throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceId' must be 8–64 letters, digits, '-' or '_'");
+                var deviceName = CleanDeviceName(p.Get("deviceName"))
+                    ?? throw new SubsonicException(SubsonicResponse.ErrMissingParameter, "Parameter 'deviceName' must be 1–64 characters");
+                var key = _users.IssueDeviceKey(user.Name, deviceId, deviceName);
+                DebugLogger.Info(DebugLogger.Category.State, "Server", $"device signed in: {deviceName}");
+                DevicesChanged?.Invoke(this, EventArgs.Empty);
+                return new JsonObject
+                {
+                    ["noctisSignIn"] = new JsonObject
+                    {
+                        ["apiKey"] = key,
+                        ["user"] = user.Name,
+                        ["server"] = _sync?.DeviceName ?? Environment.MachineName,
+                        ["syncEnabled"] = _sync is { IsEnabled: true },
+                    },
+                };
+            }
+            case "noctissignout":
+            {
+                if (ctx.Items["device"] is not ServerDevice device)
+                    throw new SubsonicException(SubsonicResponse.ErrAuthMechanismNotSupported, "Sign out with the key this device signed in with.");
+                _users.RevokeDevice(device.User, device.DeviceId);
+                DevicesChanged?.Invoke(this, EventArgs.Empty);
+                return new JsonObject();
             }
         }
 
@@ -398,10 +511,24 @@ public sealed class NoctisServer : IAsyncDisposable
             }
             case "scrobble":
             {
+                var ids = p.All("id").ToList();
+                if (ids.Count > MaxScrobbleIds) throw new SubsonicException(SubsonicResponse.ErrGeneric, $"At most {MaxScrobbleIds} ids per scrobble");
                 var submission = !string.Equals(p.Get("submission"), "false", StringComparison.OrdinalIgnoreCase);
-                if (submission)
-                    foreach (var id in p.All("id"))
-                        if (Ids.TrackGuid(id) is { } g) await _library.ScrobbleAsync(g).ConfigureAwait(false);
+                if (!submission) return new JsonObject();
+                // Optional repeated time= (ms since the Unix epoch), paired with id= by position: a
+                // phone that played offline reports when. A retried batch (the reply was lost)
+                // repeats the same (device, id, time) and is counted once.
+                var times = p.All("time").ToList();
+                var now = DateTime.UtcNow;
+                var user = (ServerUser)ctx.Items["user"]!;
+                var who = ctx.Items["device"] is ServerDevice d ? $"{user.Name}/{d.DeviceId}" : user.Name;
+                for (var i = 0; i < ids.Count; i++)
+                {
+                    if (Ids.TrackGuid(ids[i]) is not { } g) continue;
+                    long? ms = i < times.Count && long.TryParse(times[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
+                    if (ms is not null && !_recentScrobbles.Add($"{who}\n{g:N}\n{ms}")) continue;
+                    await _library.ScrobbleAsync(g, ScrobbleTime(ms, now)).ConfigureAwait(false);
+                }
                 return new JsonObject();
             }
             case "getplaylists":
@@ -492,13 +619,17 @@ public sealed class NoctisServer : IAsyncDisposable
             {
                 var sync = RequireSync();
                 var since = long.TryParse(p.Get("since"), out var s) && s >= 0 ? s : 0;
-                var device = p.Get("device") ?? throw Missing("device");
-                var changes = await sync.GetChangesAsync(since, device, p.Get("name"), ctx.RequestAborted).ConfigureAwait(false);
+                // A device key names its device; only password / account-key callers say who they are.
+                var keyDevice = ctx.Items["device"] as ServerDevice;
+                var device = keyDevice?.DeviceId ?? p.Get("device") ?? throw Missing("device");
+                var changes = await sync.GetChangesAsync(since, device, keyDevice?.DeviceName ?? p.Get("name"), ctx.RequestAborted).ConfigureAwait(false);
                 return new JsonObject
                 {
                     ["noctisSync"] = new JsonObject
                     {
+                        // Truncated page: seq = the last delivered item's, more = true; ask again from seq.
                         ["seq"] = changes.Seq,
+                        ["more"] = changes.More,
                         ["items"] = new JsonArray(changes.Items.Select(SyncItemToJson).ToArray()),
                     },
                 };
@@ -511,22 +642,28 @@ public sealed class NoctisServer : IAsyncDisposable
                 try { root = JsonNode.Parse(body); }
                 catch (System.Text.Json.JsonException) { throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload"); }
                 var obj = root as JsonObject ?? throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload");
-                var device = obj["device"]?.GetValue<string>() ?? p.Get("device") ?? throw Missing("device");
-                var name = obj["name"]?.GetValue<string>() ?? p.Get("name");
+                var keyDevice = ctx.Items["device"] as ServerDevice;
+                var device = keyDevice?.DeviceId ?? StringOf(obj["device"]) ?? p.Get("device") ?? throw Missing("device");
+                var name = keyDevice?.DeviceName ?? StringOf(obj["name"]) ?? p.Get("name");
                 var items = new List<Sync.SyncItem>();
                 if (obj["items"] is JsonArray arr)
                 {
+                    if (arr.Count > MaxSyncPushItems)
+                        throw new SubsonicException(SubsonicResponse.ErrGeneric, $"Too many items in one push (at most {MaxSyncPushItems}); send them in smaller batches.");
                     foreach (var node in arr)
                     {
                         if (node is not JsonObject item) continue;
-                        var kind = item["kind"]?.GetValue<string>();
-                        var id = item["id"]?.GetValue<string>();
+                        var kind = StringOf(item["kind"]);
+                        var id = StringOf(item["id"]);
                         if (string.IsNullOrWhiteSpace(kind) || string.IsNullOrWhiteSpace(id)) continue;
                         var payloadNode = item["payload"];
                         var payload = payloadNode is null ? "{}" : payloadNode.GetValueKind() == System.Text.Json.JsonValueKind.String ? payloadNode.GetValue<string>() : payloadNode.ToJsonString();
-                        var updated = item["updatedUtc"] is { } u && DateTime.TryParse(u.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture,
-                            System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? (dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime()) : DateTime.UtcNow;
-                        items.Add(new Sync.SyncItem(kind, id, payload, updated, item["device"]?.GetValue<string>() ?? device, 0));
+                        // No offset in the stamp = UTC (never the server's local zone). The sync
+                        // service clamps it and validates the payload.
+                        var updated = DateTime.TryParse(StringOf(item["updatedUtc"]), System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt) ? dt : DateTime.UtcNow;
+                        var itemDevice = keyDevice is not null ? device : StringOf(item["device"]) ?? device;
+                        items.Add(new Sync.SyncItem(kind, id, payload, updated, itemDevice, 0));
                     }
                 }
                 var applied = await sync.PushAsync(device, name, items, _library, ctx.RequestAborted).ConfigureAwait(false);
@@ -534,6 +671,50 @@ public sealed class NoctisServer : IAsyncDisposable
             }
         }
         return null;
+    }
+
+    /// <summary>A JSON string member, or null when absent or not a string (never throws on a number/object).</summary>
+    private static string? StringOf(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
+    /// <summary>Device name as shown in Settings: control characters dropped, trimmed, 1–64 chars; null when that leaves nothing valid.</summary>
+    internal static string? CleanDeviceName(string? raw)
+    {
+        if (raw is null) return null;
+        var clean = new string(raw.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        return clean.Length is >= 1 and <= 64 ? clean : null;
+    }
+
+    private static readonly DateTime OldestPlay = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>scrobble time= (ms since the epoch) → UTC, never in the future; missing, invalid or before 2000 → now.</summary>
+    internal static DateTime ScrobbleTime(long? ms, DateTime now)
+    {
+        if (ms is not { } value) return now;
+        DateTime played;
+        try { played = DateTimeOffset.FromUnixTimeMilliseconds(value).UtcDateTime; }
+        catch (ArgumentOutOfRangeException) { return now; }
+        return played < OldestPlay ? now : played > now ? now : played;
+    }
+
+    private readonly RecentKeys _recentScrobbles = new(20_000);
+
+    /// <summary>Bounded set of recently seen keys, oldest forgotten first (in memory: a restart forgets it).</summary>
+    private sealed class RecentKeys(int capacity)
+    {
+        private readonly HashSet<string> _set = new(StringComparer.Ordinal);
+        private readonly Queue<string> _order = new();
+
+        /// <summary>False when <paramref name="key"/> was already seen.</summary>
+        public bool Add(string key)
+        {
+            lock (_set)
+            {
+                if (!_set.Add(key)) return false;
+                _order.Enqueue(key);
+                while (_order.Count > capacity) _set.Remove(_order.Dequeue());
+                return true;
+            }
+        }
     }
 
     private Sync.ILibrarySyncService RequireSync() =>
@@ -567,7 +748,12 @@ public sealed class NoctisServer : IAsyncDisposable
         var sizeFeature = ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
         if (sizeFeature is { IsReadOnly: false }) sizeFeature.MaxRequestBodySize = MaxSyncPushBytes;
         using var reader = new StreamReader(ctx.Request.Body, System.Text.Encoding.UTF8);
-        var body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false);
+        string body;
+        try { body = await reader.ReadToEndAsync(ctx.RequestAborted).ConfigureAwait(false); }
+        catch (BadHttpRequestException)
+        {
+            throw new SubsonicException(SubsonicResponse.ErrGeneric, $"Sync push too large (at most {MaxSyncPushBytes / (1024 * 1024)} MB); send it in smaller batches.");
+        }
         return string.IsNullOrWhiteSpace(body) ? null : body;
     }
 
@@ -743,7 +929,7 @@ internal sealed class LibraryView
             ["coverArt"] = Ids.AlbumId(a.Id),
             ["songCount"] = songs.Count > 0 ? songs.Count : a.TrackCount,
             ["duration"] = (int)(songs.Count > 0 ? songs.Sum(t => t.Duration.TotalSeconds) : a.TotalDuration.TotalSeconds),
-            ["playCount"] = songs.Sum(t => t.PlayCount),
+            ["playCount"] = songs.Sum(t => (long)t.PlayCount), // long: an int Sum throws on overflow
             ["created"] = (songs.Count > 0 ? songs.Min(t => t.DateAdded) : DateTime.UtcNow).ToString("O"),
         };
         if (ArtistIdOf(a) is { } artistId) { obj["artistId"] = artistId; obj["parent"] = artistId; }
@@ -814,7 +1000,7 @@ internal sealed class LibraryView
         {
             "random" => all.OrderBy(_ => Random.Shared.Next()),
             "newest" => all.OrderByDescending(a => _tracksByAlbum[a.Id].Select(t => t.DateAdded).DefaultIfEmpty(DateTime.MinValue).Max()),
-            "frequent" => all.OrderByDescending(a => _tracksByAlbum[a.Id].Sum(t => t.PlayCount)),
+            "frequent" => all.OrderByDescending(a => _tracksByAlbum[a.Id].Sum(t => (long)t.PlayCount)),
             "recent" => all.OrderByDescending(a => _tracksByAlbum[a.Id].Select(t => t.LastPlayed ?? DateTime.MinValue).DefaultIfEmpty(DateTime.MinValue).Max()),
             "starred" => all.Where(a => _tracksByAlbum[a.Id].Any() && _tracksByAlbum[a.Id].All(t => t.IsFavorite)),
             "alphabeticalbyartist" => all.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
