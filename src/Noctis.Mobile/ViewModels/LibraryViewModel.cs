@@ -275,6 +275,14 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
+    /// <summary>Re-reads playlists.json after something other than this view model wrote it
+    /// (the desktop account sync), then refreshes the tabs that list playlists.</summary>
+    public async Task ReloadPlaylistsAsync()
+    {
+        await LoadPlaylistsAsync();
+        RefreshFromLibrary();
+    }
+
     private async Task LoadPlaylistsAsync()
     {
         try

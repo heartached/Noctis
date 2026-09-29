@@ -63,7 +63,39 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The link to the owner's Noctis desktop (sign-in, streaming, downloads, sync).
     /// Null on a host without one and in most tests: Settings → Account and the sheet's
     /// download actions are then hidden.</summary>
-    public INoctisAccountService? Account { get; init; }
+    public INoctisAccountService? Account
+    {
+        get => _account;
+        init
+        {
+            _account = value;
+            if (value == null) return;
+            _accountWasSignedIn = value.IsSignedIn;
+            _accountLastSync = value.Account?.LastSyncUtc;
+            value.StateChanged += OnAccountStateChanged;
+        }
+    }
+    private readonly INoctisAccountService? _account;
+    private DateTime? _accountLastSync;
+    private bool _accountWasSignedIn;
+
+    /// <summary>
+    /// A sync writes the desktop's playlists straight into playlists.json and sign-out drops them,
+    /// but the Library tab reads that file only at start: reload it when a sync ends or the
+    /// account signs out, or synced playlists would appear only after a restart. Keyed on
+    /// LastSyncUtc, not IsSyncing: the handler reads state when it runs, so a quick sync can
+    /// be over before any hop observes it running.
+    /// </summary>
+    private void OnAccountStateChanged(object? sender, EventArgs e) => Marshal(() =>
+    {
+        if (_account is not { } account) return;
+        var lastSync = account.Account?.LastSyncUtc;
+        var signedIn = account.IsSignedIn;
+        var reload = (lastSync != null && lastSync != _accountLastSync) || (_accountWasSignedIn && !signedIn);
+        _accountLastSync = lastSync;
+        _accountWasSignedIn = signedIn;
+        if (reload) _ = Library.ReloadPlaylistsAsync();
+    });
 
     public bool HasAccount => Account != null;
 

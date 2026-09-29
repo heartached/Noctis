@@ -17,6 +17,7 @@ using AApplication = Android.App.Application;
 using AResources = Android.Content.Res.Resources;
 using AUiMode = Android.Content.Res.UiMode;
 using ALog = Android.Util.Log;
+using Build = Android.OS.Build;
 
 namespace Noctis.Android;
 
@@ -72,7 +73,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         var metadata = new MetadataService();
         var index = new SqliteLibraryIndexService(persistence);
         var audit = new AuditTrailService(persistence);
-        var library = new LibraryService(metadata, persistence, index, audit, fileSystem: new AndroidFileSystemSource(context));
+        // Favourite/rating changes to desktop songs go through this to the account service,
+        // which queues them for the next sync (it attaches itself once constructed).
+        var stateRecorder = new NoctisStateRecorder();
+        var library = new LibraryService(metadata, persistence, index, audit, syncRecorder: stateRecorder,
+            fileSystem: new AndroidFileSystemSource(context));
         var history = new PlayHistoryService();
         // The application context, never the activity: the player outlives the activity
         // (it keeps playing in the background service) and holding the activity leaks it.
@@ -85,7 +90,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
             FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
         };
-        var account = CreateAccountService(context, library, persistence);
+        var account = CreateAccountService(context, library, persistence, stateRecorder);
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
             nowPlaying,
@@ -129,22 +134,31 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     }
 
     /// <summary>
-    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null until the
-    /// account service is merged: Settings shows no Account section, the sheet no download
-    /// actions, and the player never streams.
+    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null only if it
+    /// cannot be built: Settings then shows no Account section, the sheet no download actions,
+    /// and the player never streams.
     /// </summary>
-    private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library, IPersistenceService persistence)
+    private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
+        IPersistenceService persistence, NoctisStateRecorder stateRecorder)
     {
         // The service's TLS: its pin check wired into AndroidMessageHandler.
         NoctisHandlerFactory handlerFactory = AndroidNoctisHttp.CreateHandler;
-        // TODO(package B merge): construct the service here. Both directories under
-        // NoBackupFilesDir, so neither the device key nor the downloads are ever backed up:
-        //   var noBackup = context.NoBackupFilesDir!.AbsolutePath;
-        //   return new NoctisAccountService(library, persistence, handlerFactory,
-        //       accountDir: noBackup,
-        //       offlineDir: Path.Combine(noBackup, "offline"),
-        //       deviceName: Build.Manufacturer + " " + Build.Model);   // using Android.OS
-        return null;
+        // Both directories under NoBackupFilesDir, so neither the device key nor the
+        // downloads are ever backed up.
+        try
+        {
+            var noBackup = context.NoBackupFilesDir!.AbsolutePath;
+            return new NoctisAccountService(library, persistence, handlerFactory,
+                accountDir: Path.Combine(noBackup, "account"),
+                offlineDir: Path.Combine(noBackup, "offline"),
+                deviceName: $"{Build.Manufacturer} {Build.Model}".Trim(),
+                stateRecorder: stateRecorder);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Account service unavailable: {ex.GetType().Name}");
+            return null;
+        }
     }
 
     /// <summary>
