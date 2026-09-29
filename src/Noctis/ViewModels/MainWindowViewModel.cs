@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -153,6 +154,42 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Whether the lyrics view is currently active (hides the playback island bar).</summary>
     public bool IsLyricsViewActive => CurrentView == _lyricsVm;
+
+    /// <summary>
+    /// The album page's tint while "Tint Whole Window" is on and a tinted album page is
+    /// shown (Discord 1v1ctus): MainWindow paints it behind the sidebar and player islands.
+    /// Null otherwise, which leaves the theme's own window background.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsWindowTinted))]
+    private IBrush? _windowTintBrush;
+
+    public bool IsWindowTinted => WindowTintBrush != null;
+
+    private AlbumDetailViewModel? _tintSourcePage;
+
+    /// <summary>The window tint for <paramref name="view"/>: its page colour when it is a
+    /// tinted album page and the option is on, else null. Internal for tests.</summary>
+    internal static IBrush? WindowTintFor(bool wholeWindow, ViewModelBase? view) =>
+        wholeWindow && view is AlbumDetailViewModel { HasTint: true } album ? album.BackgroundBrush : null;
+
+    private void UpdateWindowTint()
+    {
+        var album = CurrentView as AlbumDetailViewModel;
+        if (!ReferenceEquals(album, _tintSourcePage))
+        {
+            if (_tintSourcePage != null) _tintSourcePage.PropertyChanged -= OnTintSourcePageChanged;
+            _tintSourcePage = album;
+            if (album != null) album.PropertyChanged += OnTintSourcePageChanged;
+        }
+        WindowTintBrush = WindowTintFor(Settings.AlbumPageTintWholeWindow, CurrentView);
+    }
+
+    private void OnTintSourcePageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AlbumDetailViewModel.BackgroundBrush) or nameof(AlbumDetailViewModel.HasTint))
+            WindowTintBrush = WindowTintFor(Settings.AlbumPageTintWholeWindow, CurrentView);
+    }
 
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
     public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
@@ -638,6 +675,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (e.PropertyName == nameof(SettingsViewModel.CoverFlowLayout))
                 _coverFlowVm.Layout = Settings.CoverFlowLayoutMode;
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintWholeWindow))
+                UpdateWindowTint();
         };
 
         // Forward Player.HasContent changes to IsPlaybackBarVisible
@@ -1435,6 +1474,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
         UpdateSectionActiveFlags();
+        UpdateWindowTint();
         // Artist pages kept in history stay subscribed to LibraryUpdated; only the shown
         // one rebuilds, the rest catch up when navigated back to.
         if (oldValue is ArtistDetailViewModel leftArtistPage) leftArtistPage.IsActive = false;

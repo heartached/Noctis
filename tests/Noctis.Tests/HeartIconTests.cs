@@ -65,6 +65,32 @@ public class HeartIconTests
         Assert.Equal(1, off.Opacity);
     }
 
+    /// <summary>
+    /// The artist page star (ZoomOnToggle): a click after the re-bind window starts the
+    /// zoom and the state still lands. Running the zoom on a bare ScaleTransform threw
+    /// inside the IsFavorite change, so the star never turned red in the app.
+    /// </summary>
+    [AvaloniaFact]
+    public void ZoomOnToggle_ClickZooms_AndTheStateLands_BothWays()
+    {
+        var star = new HeartIcon { ZoomOnToggle = true, Glyph = Geometry.Parse("M0,0 L10,0 L5,10 Z"), Size = 18 };
+        var window = new Window { Content = star };
+        window.Show();
+        var off = star.VisibleGlyph!;
+        Thread.Sleep(200); // past the re-bind window, like a user's click
+
+        star.IsFavorite = true;
+        var on = star.VisibleGlyph!;
+        Assert.NotSame(off, on);
+        Assert.Equal("#ffe74856", ((ISolidColorBrush)on.Foreground!).Color.ToString());
+        Assert.NotNull(star.RenderTransform); // the zoom took the icon's own transform
+
+        // The grey star is back in the tree and fading in (the red one fades out).
+        star.IsFavorite = false;
+        Assert.True(off.IsVisible);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void BadgeMode_ShowsNothingUntilFavorited()
     {

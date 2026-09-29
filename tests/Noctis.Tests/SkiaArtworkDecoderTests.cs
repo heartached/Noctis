@@ -118,4 +118,35 @@ public class SkiaArtworkDecoderTests : IDisposable
         // PNG: native decode resized down to the bound. WebP: the codec's own 1/4 scale (350).
         Assert.InRange(bmp!.Width, 320, 640);
     }
+
+    [Fact]
+    public void DecodeToWidth_LargeShrink_DoesNotAlias()
+    {
+        // Discord (veil 09-28): cover text looked jagged next to mpv. SkiaSharp 3's
+        // SKFilterQuality.High is a Mitchell cubic without mipmaps, so a 3000px cover shrunk
+        // to a 256px slot sampled 4 source pixels of every ~12. One-pixel stripes are the
+        // worst case: a correct shrink averages them to flat grey, an aliasing one keeps
+        // light and dark bands.
+        const int size = 3000;
+        using var bmp = new SKBitmap(size, size, SKColorType.Bgra8888, SKAlphaType.Premul);
+        for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+                bmp.SetPixel(x, y, x % 2 == 0 ? SKColors.Black : SKColors.White);
+        var path = Path.Combine(_dir, "stripes.png");
+        using (var image = SKImage.FromBitmap(bmp))
+        using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+        using (var file = File.Create(path))
+            data.SaveTo(file);
+
+        using var small = SkiaArtworkDecoder.DecodeToWidth(path, 256);
+        Assert.NotNull(small);
+        int min = 255, max = 0;
+        for (var x = 8; x < small!.Width - 8; x++)
+        {
+            var red = small.GetPixel(x, small.Height / 2).Red;
+            min = Math.Min(min, red);
+            max = Math.Max(max, red);
+        }
+        Assert.True(max - min <= 24, $"row spans {min}..{max}");
+    }
 }

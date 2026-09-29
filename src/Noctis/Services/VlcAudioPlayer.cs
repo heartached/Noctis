@@ -2080,6 +2080,17 @@ public class VlcAudioPlayer : IAudioPlayer
         LogReplayGain(_currentMediaPath, track, album);
     }
 
+    public void ReloadReplayGainTags()
+    {
+        if (_disposed) return;
+        lock (_rgCacheLock)
+        {
+            _rgCachePath = null;
+            _rgBorrowCachePath = null;
+        }
+        ApplyReplayGain(_rgMode, _rgPreampDb);
+    }
+
     /// <summary>Amplitude scalar for a track's RG tags under the current mode and
     /// pre-amp; 1 = bypass.</summary>
     private double ReplayGainScalarFor(double? track, double? album)

@@ -301,7 +301,9 @@ public class LibraryService : ILibraryService
                         if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
                         {
                             if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize
-                                && !IsStaleCaseSpelling(existing.FilePath, filePath))
+                                && !IsStaleCaseSpelling(existing.FilePath, filePath)
+                                && !(NeedsWavInfoReread(existing)
+                                     && MetadataService.RiffInfoWouldFill(filePath, existing.Year, existing.Album)))
                             {
                                 newTracks.Add(existing);
                                 Interlocked.Increment(ref unchangedCount);
@@ -2916,6 +2918,19 @@ public class LibraryService : ILibraryService
             System.Text.Encoding.UTF8.GetBytes(normalized));
         return new Guid(hash);
     }
+
+    /// <summary>
+    /// An unchanged WAV that was read before the RIFF INFO fallback (year 0 from an ICRD
+    /// like "2019-05-10", or no album from IPRD) is read again instead of taking the
+    /// unchanged-file fast path, so a rescan repairs it (Discord Tangent). Only a candidate:
+    /// the scan re-reads it only when <see cref="MetadataService.RiffInfoWouldFill"/> finds
+    /// a year or album to fill, so a WAV that truly has no date stays on the fast path
+    /// (and a no-change launch still skips the rebuild). Internal for tests.
+    /// </summary>
+    internal static bool NeedsWavInfoReread(Track existing) =>
+        (existing.Year == 0 || existing.Album == "Unknown Album")
+        && Path.GetExtension(existing.FilePath) is { } ext
+        && (ext.Equals(".wav", StringComparison.OrdinalIgnoreCase) || ext.Equals(".wave", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// True when a known track's stored path and the path just found for the same id

@@ -236,6 +236,10 @@ public class AppSettings
     /// "Album Page Redesign" mockup). Off keeps the tint on the album block alone.</summary>
     public bool AlbumPageTintWholePage { get; set; } = AlbumPageTintWholePageDefault;
 
+    /// <summary>While a tinted album page is open, the window around the sidebar and
+    /// player islands takes the same colour (Discord 1v1ctus). Off by default.</summary>
+    public bool AlbumPageTintWholeWindow { get; set; }
+
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
 

@@ -195,6 +195,8 @@
   <data name="Settings.AlbumPageTintStrengthHint" xml:space="preserve"><value>How strongly the album page takes on its cover colour.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumPageTintWholePage" xml:space="preserve"><value>Tint Whole Page</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumPageTintWholePageHint" xml:space="preserve"><value>Carry the cover colour under Other Versions and More By too.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumPageTintWholeWindow" xml:space="preserve"><value>Tint Whole Window</value><comment>Toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumPageTintWholeWindowHint" xml:space="preserve"><value>Fill the window around the sidebar and player with the cover colour too.</value><comment>Hint in SettingsView.axaml</comment></data>
   <data name="Settings.NowPlayingArtwork" xml:space="preserve"><value>Now Playing Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverAppearsLyrics" xml:space="preserve"><value>How the cover appears on the Lyrics page. Discs spin while playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumCoverAsTip" xml:space="preserve"><value>The album cover as it is</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -1004,6 +1006,7 @@
   <data name="Main.QueueEmptyTitle" xml:space="preserve"><value>Your queue is empty</value><comment>Queue popup empty state in MainWindow.axaml</comment></data>
   <data name="Main.QueueEmptyHint" xml:space="preserve"><value>Drag songs here, or use Play Next / Add to Queue on any song.</value><comment>Queue popup empty state in MainWindow.axaml</comment></data>
   <data name="Main.RemoveFromQueue" xml:space="preserve"><value>Remove from Queue</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.ScanReplayGain" xml:space="preserve"><value>Scan ReplayGain</value><comment>Queue row menu in MainWindow.axaml</comment></data>
   <data name="Main.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.DropFilesImport" xml:space="preserve"><value>Drop files to import</value><comment>Text in MainWindow.axaml</comment></data>
   <data name="Main.DropFilesPlay" xml:space="preserve"><value>Drop files to play them</value><comment>Drag overlay text in MainWindow.axaml.cs: Import dropped files is off and nothing is loaded</comment></data>
@@ -1390,6 +1393,7 @@
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Compute album gain (group by AlbumId)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Queue</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Add files…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
 
   <!-- ServerView.axaml (auto-migrated) -->
   <data name="Server.NoServerConnected" xml:space="preserve"><value>No server connected</value><comment>Text in ServerView.axaml</comment></data>

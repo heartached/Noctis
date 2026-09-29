@@ -233,7 +233,7 @@
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
         </Style>
-        <!-- Grey pill (Latest Release Play): chip fill, no stroke. -->
+        <!-- Grey pill (Latest Release Play, Albums / Singles & EPs Sort): chip fill, no stroke. -->
         <Style Selector="Button.grey-pill">
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -242,22 +242,6 @@
         </Style>
         <Style Selector="Button.grey-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
-        </Style>
-        <!-- Glass pill (Albums / Singles & EPs Sort, GitHub #100): the playlist page's Sort pill style. -->
-        <Style Selector="Button.glass-pill">
-            <Setter Property="Background" Value="{DynamicResource GlassPillBackground}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource GlassPillBorder}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="Button.glass-pill:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource GlassPillHoverBackground}" />
-        </Style>
-        <Style Selector="Button.glass-pill:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource GlassPillPressedBackground}" />
-        </Style>
-        <Style Selector="Button.glass-pill:pressed">
-            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <!-- No hover zoom on covers and portraits: opt out of the global button scale. -->
         <Style Selector="Button.latest-cover:pointerover, Button.similar-tile:pointerover">
@@ -770,16 +754,14 @@
                                     Cursor="Hand"
                                     Command="{Binding ToggleFavoriteCommand}"
                                     ToolTip.Tip="{loc:T ArtistDetail.FavoriteArtistTip}">
-                                <Panel>
-                                    <PathIcon Data="{StaticResource StarIcon}"
-                                              Width="18" Height="18"
-                                              Opacity="0.7"
-                                              IsVisible="{Binding !IsFavorite}" />
-                                    <PathIcon Data="{StaticResource StarIcon}"
-                                              Width="18" Height="18"
-                                              Foreground="{DynamicResource AccentColorBrush}"
-                                              IsVisible="{Binding IsFavorite}" />
-                                </Panel>
+                                <!-- Zooms in on favourite, out on unfavourite, colours crossfading (HeartIcon.ZoomOnToggle). -->
+                                <ctrl:HeartIcon IsFavorite="{Binding IsFavorite}"
+                                                    Glyph="{StaticResource StarIcon}"
+                                                    Size="18"
+                                                    OnBrush="{DynamicResource AccentColorBrush}"
+                                                    OffOpacity="0.7"
+                                                    OutlineWhenOff="False"
+                                                    ZoomOnToggle="True" />
                             </Button>
 
                             <!-- Options -->
@@ -1105,8 +1087,8 @@
                     <TextBlock Text="{loc:T ArtistDetail.Albums}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding AlbumCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
                     <!-- Sort (GitHub #100): one order shared with Singles & EPs and every artist;
-                         the playlist page's Sort pill, same size and flyout. -->
-                    <Button Classes="glass-pill"
+                         a grey chip pill (no outline), the playlist Sort pill's size and flyout. -->
+                    <Button Classes="grey-pill"
                             Height="34"
                             Padding="12,0"
                             VerticalContentAlignment="Center"
@@ -1146,7 +1128,7 @@
                     <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding SingleCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
                     <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
-                    <Button Classes="glass-pill"
+                    <Button Classes="grey-pill"
                             Height="34"
                             Padding="12,0"
                             VerticalContentAlignment="Center"
