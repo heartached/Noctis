@@ -134,7 +134,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .Build();
         _listener = new Listener(this);
         _player.AddListener(_listener);
-        LogDecoders("audio/alac");
+        _ = HasDecoder("audio/alac"); // logged at startup; the account service asks the same (cached) answer
         PlaybackEngine.Player = _player;
 
         // Wraps _player for the MediaSession only (PlaybackEngine.SessionPlayer): intercepts
@@ -365,25 +365,32 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         _ => mime,
     };
 
-    /// <summary>Logs which decoders this phone offers for formats known to be missing on some
-    /// devices, so an exported log answers "why is this song silent" without a debugger.</summary>
-    private static void LogDecoders(params string[] mimes)
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> DecoderCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether this phone has a decoder for <paramref name="mime"/> (e.g. "audio/alac", missing on
+    /// many phones). Asked of MediaCodecList once per type and logged, so an exported log answers
+    /// "why is this song silent" without a debugger. False when the list cannot be read: the
+    /// caller then takes the path that plays everywhere (FLAC from the desktop).
+    /// </summary>
+    internal static bool HasDecoder(string mime) => DecoderCache.GetOrAdd(mime, QueryDecoders);
+
+    private static bool QueryDecoders(string mime)
     {
         try
         {
             var infos = new MediaCodecList(MediaCodecListKind.RegularCodecs).GetCodecInfos() ?? Array.Empty<MediaCodecInfo>();
-            foreach (var mime in mimes)
-            {
-                var names = infos
-                    .Where(i => !i.IsEncoder && i.GetSupportedTypes().Any(t => string.Equals(t, mime, StringComparison.OrdinalIgnoreCase)))
-                    .Select(i => i.Name)
-                    .ToList();
-                DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}");
-            }
+            var names = infos
+                .Where(i => !i.IsEncoder && i.GetSupportedTypes().Any(t => string.Equals(t, mime, StringComparison.OrdinalIgnoreCase)))
+                .Select(i => i.Name)
+                .ToList();
+            DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}");
+            return names.Count > 0;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Audio", $"Decoder list unavailable: {ex.GetType().Name}");
+            return false;
         }
     }
 

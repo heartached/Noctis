@@ -152,7 +152,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 accountDir: Path.Combine(noBackup, "account"),
                 offlineDir: Path.Combine(noBackup, "offline"),
                 deviceName: $"{Build.Manufacturer} {Build.Model}".Trim(),
-                stateRecorder: stateRecorder);
+                stateRecorder: stateRecorder)
+            {
+                // No ALAC decoder (Pixels, the emulator): the desktop sends its ALAC songs as FLAC.
+                PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
+            };
         }
         catch (Exception ex)
         {
