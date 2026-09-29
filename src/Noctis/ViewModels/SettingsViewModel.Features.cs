@@ -133,8 +133,62 @@ public partial class SettingsViewModel
         OnPropertyChanged(nameof(HasSyncDevices));
     }
 
+    /// <summary>
+    /// "Pair a device": everything the phone needs, in one click — the server on (it is how the
+    /// phone connects) and sync on (with its first-enable seeding), then the address and the
+    /// certificate fingerprint to type/compare on the phone.
+    /// </summary>
     [RelayCommand]
-    private void TogglePairing() => IsPairingVisible = !IsPairingVisible;
+    private void TogglePairing()
+    {
+        IsPairingVisible = !IsPairingVisible;
+        if (!IsPairingVisible) return;
+        if (!SyncEnabled) SyncEnabled = true;
+        if (!NoctisServerEnabled) NoctisServerEnabled = true;
+        RefreshSignedInDevices();
+    }
+
+    // ── Signed-in devices (phones that signed in with the account; each has its own key) ──
+
+    public ObservableCollection<SignedInDeviceRow> SignedInDevices { get; } = new();
+    public bool HasSignedInDevices => SignedInDevices.Count > 0;
+
+    private void RefreshSignedInDevices()
+    {
+        SignedInDevices.Clear();
+        try
+        {
+            foreach (var d in ServerUsers.Devices()) SignedInDevices.Add(new SignedInDeviceRow(d));
+        }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
+        OnPropertyChanged(nameof(HasSignedInDevices));
+    }
+
+    /// <summary>Signs the device out: its key stops working on its next request.</summary>
+    [RelayCommand]
+    private void RemoveSignedInDevice(SignedInDeviceRow row)
+    {
+        try { ServerUsers.RevokeDevice(row.Device.User, row.Device.DeviceId); }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
+        RefreshSignedInDevices();
+    }
+
+    public sealed record SignedInDeviceRow(ServerDevice Device)
+    {
+        public string Name => Device.DeviceName;
+        public string LastUsedText
+        {
+            get
+            {
+                var at = Device.LastUsedUtc ?? Device.CreatedUtc;
+                var ago = DateTime.UtcNow - at;
+                if (ago < TimeSpan.FromMinutes(1)) return $"{Device.User} · Used just now";
+                if (ago < TimeSpan.FromHours(1)) return $"{Device.User} · Used {(int)ago.TotalMinutes} min ago";
+                if (ago < TimeSpan.FromDays(1)) return $"{Device.User} · Used {(int)ago.TotalHours} h ago";
+                return $"{Device.User} · Used {at.ToLocalTime():d MMM, HH:mm}";
+            }
+        }
+    }
 
     [RelayCommand]
     private void TurnOnNoctisServer()
@@ -157,9 +211,11 @@ public partial class SettingsViewModel
         ServerUserError = string.Empty;
         try
         {
+            // Also signs out every device and drops the API key (ServerUserStore.ChangePassword).
             ServerUsers.ChangePassword(user.Name, ChangePasswordValue);
             ChangePasswordValue = string.Empty;
             IsChangePasswordVisible = false;
+            RefreshServerUsers();
         }
         catch (Exception ex) { ServerUserError = ex.Message; }
     }
