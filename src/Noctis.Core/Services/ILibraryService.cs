@@ -86,6 +86,21 @@ public interface ILibraryService
     Task RemoveTracksAsync(IEnumerable<Guid> ids);
 
     /// <summary>
+    /// Phone app: replaces the whole <see cref="SourceType.NoctisServer"/> set (the signed-in
+    /// desktop's songs) with <paramref name="tracks"/>; local tracks are untouched. A song
+    /// already present keeps its instance when its catalog metadata is unchanged, or keeps its
+    /// phone-side user state when it changed (rescan rule); a new song takes the state it
+    /// arrives with, which is also written to the user-state journal. Rebuilds, saves and
+    /// raises <see cref="LibraryUpdated"/>. Waits for a running scan to finish.
+    /// </summary>
+    Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
+        => throw new NotSupportedException();
+
+    /// <summary>Phone app sign-out: drops every <see cref="SourceType.NoctisServer"/> track
+    /// (and covers no remaining track uses), rebuilds, saves, raises <see cref="LibraryUpdated"/>.</summary>
+    Task RemoveRemoteTracksAsync() => throw new NotSupportedException();
+
+    /// <summary>
     /// Updates the on-disk location of tracks that have been moved/renamed, preserving
     /// each track's user state (favorites, play count, rating). Because track IDs are
     /// derived from the file path, IDs are recomputed; the returned map (old ID → new ID)
