@@ -9,9 +9,10 @@ namespace Noctis.Tests;
 
 public class WebRemoteServerTests
 {
+    // Loopback, not all interfaces: a LAN listener makes Windows Firewall prompt for the test runner.
     private static WebRemoteServer CreateServer() => new(new PlayerViewModel(
         new FakeAudioPlayer(), new FakeLibraryService(),
-        new TestPersistenceService(), new FakeAnimatedCoverService()));
+        new TestPersistenceService(), new FakeAnimatedCoverService())) { BindAddressOverride = IPAddress.Loopback };
 
     private static async Task<string?> SendRequestAsync(int port, string target)
     {
