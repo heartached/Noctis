@@ -5,6 +5,7 @@ using AndroidX.Media3.Common;
 using AndroidX.Media3.DataSource;
 using AndroidX.Media3.ExoPlayer;
 using AndroidX.Media3.ExoPlayer.Source;
+using AndroidX.Media3.ExoPlayer.Upstream;
 using Avalonia.Threading;
 using Noctis.Mobile.Services;
 using Noctis.Models;
@@ -30,6 +31,11 @@ namespace Noctis.Android.Services;
 public sealed class Media3AudioPlayer : IAudioPlayer
 {
     private const int PositionPollMs = 250;
+
+    private const int StreamConnectTimeoutMs = 5000;
+    private const int StreamReadTimeoutMs = 15000;
+    /// <summary>Retries of a failed load before the error surfaces (the stock policy allows 3).</summary>
+    private const int StreamLoadRetries = 1;
 
     private readonly Context _context;
     private readonly ILibraryService _library;
@@ -109,12 +115,21 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         // per request, and only to the signed-in desktop's stream endpoint (StreamAuthScope) —
         // not as a factory-wide default request property, which would hand the key to any URL
         // the player were ever given. Files and content:// URIs never reach it.
-        var httpSources = new ResolvingDataSource.Factory(new DefaultHttpDataSource.Factory(), new StreamAuthResolver(this));
+        // Timeouts: the stock 8 s connect + three backed-off retries left a desktop song buffering
+        // for over a minute (66 s measured on the emulator) when the desktop was off, before the
+        // queue could move on. A LAN desktop that is up answers in milliseconds, so fail fast.
+        var http = new DefaultHttpDataSource.Factory()
+            .SetConnectTimeoutMs(StreamConnectTimeoutMs)
+            .SetReadTimeoutMs(StreamReadTimeoutMs);
+        var httpSources = new ResolvingDataSource.Factory(http, new StreamAuthResolver(this));
         _player = new ExoPlayerBuilder(context)
-            .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources)))
+            .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources))
+                .SetLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy(StreamLoadRetries)))
             .SetAudioAttributes(attributes, true)     // true = Media3 handles audio focus (pause on loss, duck on transient)
             .SetHandleAudioBecomingNoisy(true)        // headphones unplugged → pause
-            .SetWakeMode(C.WakeModeLocal)             // keep the CPU awake while playing with the screen off
+            // CPU and Wi-Fi awake while playing with the screen off: a desktop stream stalls if
+            // the radio powers down (WakeModeLocal held only the CPU). Files are unaffected.
+            .SetWakeMode(C.WakeModeNetwork)
             .Build();
         _listener = new Listener(this);
         _player.AddListener(_listener);
