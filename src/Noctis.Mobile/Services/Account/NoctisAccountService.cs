@@ -1084,7 +1084,12 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             }
         }
 
+        var doneBefore = Volatile.Read(ref _dlCompleted);
+        var failedBefore = Volatile.Read(ref _dlFailed);
         await Task.WhenAll(Enumerable.Range(0, DownloadConcurrency).Select(_ => Worker())).ConfigureAwait(false);
+        // One line per batch, so a download that silently did nothing is visible in the log.
+        DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref _dlCompleted) - doneBefore} done, " +
+            $"{Volatile.Read(ref _dlFailed) - failedBefore} failed{(token.IsCancellationRequested ? ", cancelled" : "")}");
         RaiseStateChanged();
         if (fatal is not null)
         {
