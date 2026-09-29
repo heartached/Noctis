@@ -215,9 +215,36 @@ public class LyricsStudioFlowBugTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(20.1), vm.ReviewLines[0].Start);
     }
 
+    // ── Loading the model does not freeze the window ──────────────────────
+
+    [AvaloniaFact]
+    public async Task TheSpeechModel_LoadsOffTheUiThread_WithTheCardSayingSo()
+    {
+        // Loading ggml-medium.bin measured 6-46 s here (09-29); on the UI thread the whole app froze.
+        var gate = new ManualResetEventSlim();
+        var engine = new Engine(_root) { OpenGate = gate };
+        var vm = Studio(engine, SongWithLrc("song"));
+
+        var run = vm.StartCommand.ExecuteAsync(null);
+        await Until(() => engine.OpenCalls > 0);
+        Assert.False(engine.OpenedOnUiThread);
+        Assert.Equal(LyricsStudioViewModel.ModelBannerState.Loading, vm.ModelBanner);
+        Assert.True(vm.ShowModelBannerBar);
+        Assert.False(vm.ShowModelDownload);
+        gate.Set();
+        await run;
+
+        Assert.Equal(LyricsStudioViewModel.ModelBannerState.Hidden, vm.ModelBanner);
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Ready, vm.Queue[0].Status);
+    }
+
     private sealed class Engine : ILyricsStudioEngine
     {
         private int _started;
+        private int _openCalls;
+        public ManualResetEventSlim? OpenGate { get; init; }
+        public int OpenCalls => Volatile.Read(ref _openCalls);
+        public bool OpenedOnUiThread { get; private set; }
         public Engine(string root) => Models = StudioTestModel.Installed(root);
         public bool HasFfmpeg => true;
         public WhisperModelManager Models { get; }
@@ -225,8 +252,14 @@ public class LyricsStudioFlowBugTests : IDisposable
         public bool FailToOpen { get; init; }
         public int Started => Volatile.Read(ref _started);
 
-        public IDisposable OpenSession(WhisperModelSize model) =>
-            FailToOpen ? throw new InvalidOperationException("model could not be loaded") : new Handle();
+        public IDisposable OpenSession(WhisperModelSize model)
+        {
+            OpenedOnUiThread = Dispatcher.UIThread.CheckAccess();
+            Interlocked.Increment(ref _openCalls);
+            if (FailToOpen) throw new InvalidOperationException("model could not be loaded");
+            if (OpenGate is { } gate && !OpenedOnUiThread) gate.Wait(TimeSpan.FromSeconds(10));
+            return new Handle();
+        }
 
         public async Task<LyricsStudioResult> ProcessAsync(Track track, LyricsStudioOptions options, IProgress<LyricsStudioProgress>? progress, CancellationToken ct)
         {

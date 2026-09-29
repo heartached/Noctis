@@ -69,7 +69,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [ObservableProperty] private bool _isDownloadingModel;
 
     /// <summary>What the model banner above the queue says; Hidden once the model is ready.</summary>
-    public enum ModelBannerState { Hidden, NotInstalled, Paused, Connecting, Downloading, Retrying, Verifying, Checking, Failed, Damaged }
+    public enum ModelBannerState { Hidden, NotInstalled, Paused, Connecting, Downloading, Retrying, Verifying, Checking, Loading, Failed, Damaged }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowModelBanner), nameof(ModelBannerIsError), nameof(ShowModelBannerBar), nameof(ShowModelDownload), nameof(ShowModelCancel))]
@@ -86,7 +86,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public bool ShowModelBanner => ModelBanner != ModelBannerState.Hidden;
     public bool ModelBannerIsError => ModelBanner is ModelBannerState.Failed or ModelBannerState.Damaged;
     public bool ShowModelBannerBar => ModelBanner is ModelBannerState.Paused or ModelBannerState.Connecting or ModelBannerState.Downloading
-        or ModelBannerState.Retrying or ModelBannerState.Verifying or ModelBannerState.Checking;
+        or ModelBannerState.Retrying or ModelBannerState.Verifying or ModelBannerState.Checking or ModelBannerState.Loading;
     public bool ShowModelDownload => ModelBanner is ModelBannerState.NotInstalled or ModelBannerState.Paused or ModelBannerState.Failed or ModelBannerState.Damaged;
     public bool ShowModelCancel => ModelBanner is ModelBannerState.Connecting or ModelBannerState.Downloading or ModelBannerState.Retrying;
 
@@ -774,7 +774,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
         try
         {
             if (!await EnsureModelVerifiedAsync(ct)) return;
-            using var session = _engine.OpenSession(WhisperModelSize.Medium);
+            // Loading ggml-medium.bin takes seconds (6-46 s measured 09-29, a cold disk the slowest).
+            // It ran on the UI thread and froze the whole window; now the card says it is loading.
+            SetBanner(ModelBannerState.Loading, Loc("LyricsStudio.ModelLoadingTitle"), Loc("LyricsStudio.ModelLoadingBody"), indeterminate: true);
+            RunStatusText = Loc("LyricsStudio.ModelLoadingTitle");
+            IDisposable opened;
+            try { opened = await Task.Run(() => _engine.OpenSession(WhisperModelSize.Medium)); }
+            finally { RefreshModelState(); }
+            using var session = opened;
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", _engine.Models.Model.FileName);
             foreach (var item in items)
             {

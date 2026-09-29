@@ -1878,6 +1878,8 @@
   <data name="LyricsStudio.ModelDownloadAgain" xml:space="preserve"><value>Download again</value><comment>Model card button for a damaged file</comment></data>
   <data name="LyricsStudio.ModelCancel" xml:space="preserve"><value>Cancel</value><comment>Model card button while downloading</comment></data>
   <data name="LyricsStudio.ModelCancelTip" xml:space="preserve"><value>Stop the download. What has arrived is kept, so you can resume later.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.ModelLoadingTitle" xml:space="preserve"><value>Loading the speech model</value><comment>Model card while the model loads at the start of a run</comment></data>
+  <data name="LyricsStudio.ModelLoadingBody" xml:space="preserve"><value>It loads once per run and takes a few seconds, longer the first time.</value><comment>Model card text while the model loads</comment></data>
   <data name="LyricsStudio.StepDecode" xml:space="preserve"><value>Decode audio</value><comment>Step row while a song runs: step 1</comment></data>
   <data name="LyricsStudio.StepListen" xml:space="preserve"><value>Listen</value><comment>Step row while a song runs: step 2 (the speech model hears the vocals)</comment></data>
   <data name="LyricsStudio.StepTranscribe" xml:space="preserve"><value>Transcribe</value><comment>Step row, step 2 when transcribing</comment></data>
