@@ -622,7 +622,7 @@ public sealed class NoctisServer : IAsyncDisposable
                 // A device key names its device; only password / account-key callers say who they are.
                 var keyDevice = ctx.Items["device"] as ServerDevice;
                 var device = keyDevice?.DeviceId ?? p.Get("device") ?? throw Missing("device");
-                var changes = await sync.GetChangesAsync(since, device, keyDevice?.DeviceName ?? p.Get("name"), ctx.RequestAborted).ConfigureAwait(false);
+                var changes = await sync.GetChangesAsync(since, device, keyDevice?.DeviceName ?? CleanDeviceName(p.Get("name")), ctx.RequestAborted).ConfigureAwait(false);
                 return new JsonObject
                 {
                     ["noctisSync"] = new JsonObject
@@ -644,7 +644,7 @@ public sealed class NoctisServer : IAsyncDisposable
                 var obj = root as JsonObject ?? throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload");
                 var keyDevice = ctx.Items["device"] as ServerDevice;
                 var device = keyDevice?.DeviceId ?? StringOf(obj["device"]) ?? p.Get("device") ?? throw Missing("device");
-                var name = keyDevice?.DeviceName ?? StringOf(obj["name"]) ?? p.Get("name");
+                var name = keyDevice?.DeviceName ?? CleanDeviceName(StringOf(obj["name"]) ?? p.Get("name"));
                 var items = new List<Sync.SyncItem>();
                 if (obj["items"] is JsonArray arr)
                 {
@@ -676,11 +676,13 @@ public sealed class NoctisServer : IAsyncDisposable
     /// <summary>A JSON string member, or null when absent or not a string (never throws on a number/object).</summary>
     private static string? StringOf(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
-    /// <summary>Device name as shown in Settings: control characters dropped, trimmed, 1–64 chars; null when that leaves nothing valid.</summary>
+    /// <summary>Device name as shown in Settings: control and format characters (bidi overrides,
+    /// zero-width) dropped, trimmed, 1–64 chars; null when that leaves nothing valid.</summary>
     internal static string? CleanDeviceName(string? raw)
     {
         if (raw is null) return null;
-        var clean = new string(raw.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        var clean = new string(raw.Where(c => !char.IsControl(c)
+            && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).ToArray()).Trim();
         return clean.Length is >= 1 and <= 64 ? clean : null;
     }
 

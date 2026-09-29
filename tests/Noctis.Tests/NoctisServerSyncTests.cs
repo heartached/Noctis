@@ -214,6 +214,13 @@ public class NoctisServerSyncTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pull_CleansTheDeviceName_ACallerGives()
+    {
+        await Get("getNoctisSyncChanges", "since=0&device=phone-002&name=" + Uri.EscapeDataString("‮Tab​let\u0007 "));
+        Assert.Equal("Tablet", _sync.Devices().Single(d => d.Id == "phone-002").Name);
+    }
+
+    [Fact]
     public async Task Pull_PagesByPayloadBytes_Too_AndALoopGetsEverything()
     {
         var now = DateTime.UtcNow;

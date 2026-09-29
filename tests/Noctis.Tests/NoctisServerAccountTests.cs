@@ -169,6 +169,9 @@ public class NoctisServerAccountTests : IAsyncLifetime
         Assert.Equal("Pixel 8", Assert.Single(_users.Devices()).DeviceName);
         Assert.Equal(new string('x', 64), NoctisServer.CleanDeviceName(new string('x', 64)));
         Assert.Null(NoctisServer.CleanDeviceName(new string('x', 65)));
+        // Format characters too: a right-to-left override, zero-width space/joiner, BOM.
+        Assert.Equal("Pixel 8", NoctisServer.CleanDeviceName("‮Pix​el‍ 8﻿ "));
+        Assert.Null(NoctisServer.CleanDeviceName("‮​⁦ "));
 
         var key = _users.RegenerateApiKey("alice");
         var withKey = Envelope(await _http.GetStringAsync($"rest/noctisSignIn.view?f=json&apiKey={key}&deviceId=phone-0003&deviceName=X", TestContext.Current.CancellationToken));
