@@ -689,6 +689,20 @@ public class MobileAccountTests
         Assert.False(StreamAuthScope.Allows(request, null));
     }
 
+    [Theory]
+    // Platform clients (lock screen, Bluetooth, SystemUI; Android gates who reaches them): always.
+    [InlineData(MediaControllerPolicy.PlatformControllerVersion, 10123, false, false, true)]
+    // This app (Media3's notification controller): yes.
+    [InlineData(7, 10050, false, false, true)]
+    // Trusted (system, MEDIA_CONTENT_CONTROL, enabled notification listener): yes.
+    [InlineData(7, 10123, true, false, true)]
+    // Android Auto / car controllers Media3 recognizes by verified package: yes.
+    [InlineData(7, 10123, false, true, true)]
+    // Any other installed app binding to the exported service: no.
+    [InlineData(7, 10123, false, false, false)]
+    public void MediaSession_ConnectsOnlyTheSystemAndThisApp(int version, int uid, bool trusted, bool knownSystem, bool allowed) =>
+        Assert.Equal(allowed, MediaControllerPolicy.Allows(version, uid, ownUid: 10050, trusted, knownSystem));
+
     // ── Logs ──
 
     [Theory]
