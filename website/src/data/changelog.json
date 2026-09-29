@@ -1,6 +1,45 @@
 {
   "releases": [
     {
+      "tag": "v1.5.7",
+      "version": "1.5.7",
+      "name": "v1.5.7",
+      "publishedAt": "2026-09-29T01:16:34Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.7",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added ReplayGain scanning for any files from the queue",
+            "Added Add files button to the ReplayGain scanner",
+            "Added Mixed quality badge for albums with lossless and lossy tracks",
+            "Added Tint Whole Window option for album pages"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved ReplayGain scanner with per-row checkboxes",
+            "Improved artist page Sort buttons",
+            "Improved artist page favourite star animation",
+            "Improved cover art resizing across the app"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed WAV albums showing year 0",
+            "Fixed WAV files tagged by other programs showing no album name",
+            "Fixed editing a WAV cutting its full release date down to the year",
+            "Fixed album quality badge showing Lossless for mixed albums",
+            "Fixed ReplayGain scans making MP3s hang on a silent tail",
+            "Fixed blurry and jagged album art"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.5.6",
       "version": "1.5.6",
       "name": "v1.5.6",
@@ -2880,6 +2919,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-09-28T02:56:40.353Z",
+  "updatedAt": "2026-09-29T01:17:05.745Z",
   "degraded": false
 }
