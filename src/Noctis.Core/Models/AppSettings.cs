@@ -301,8 +301,8 @@ public class AppSettings
 
     // ── Lyrics Studio ──
 
-    /// <summary>Whisper model: Tiny | Base | Small | Medium.</summary>
-    public string LyricsStudioModel { get; set; } = "Base";
+    /// <summary>Whisper model. Only Medium is offered (09-29); older values (Tiny, Base, Small) are read as Medium.</summary>
+    public string LyricsStudioModel { get; set; } = "Medium";
 
     /// <summary>ISO 639-1 language for the speech model, or "auto".</summary>
     public string LyricsStudioLanguage { get; set; } = "auto";

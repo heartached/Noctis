@@ -46,7 +46,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
         new SpeechLanguageOption("hi", "Hindi"),
     };
 
-    public IReadOnlyList<WhisperModelInfo> ModelOptions => WhisperModelManager.Catalog;
     public IReadOnlyList<SpeechLanguageOption> LanguageOptions => Languages;
 
     public ObservableCollection<StudioItem> Queue { get; } = new();
@@ -55,7 +54,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public ObservableCollection<ReviewLine> ReviewLines { get; } = new();
 
     // ── Options ──
-    [ObservableProperty] private WhisperModelInfo _selectedModel;
     [ObservableProperty] private SpeechLanguageOption _selectedLanguage;
     [ObservableProperty] private bool _wordTimings;
     [ObservableProperty] private bool _transcribeOnly;
@@ -221,7 +219,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
         var s = settings();
         _loadingPrefs = true;
-        _selectedModel = WhisperModelManager.Info(WhisperModelManager.Parse(s.LyricsStudioModel));
         _selectedLanguage = Languages.FirstOrDefault(l => l.Code.Equals(s.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase)) ?? Languages[0];
         _wordTimings = s.LyricsStudioWordTimings;
         _skipAlreadyTimed = s.LyricsStudioSkipAlreadyTimed;
@@ -276,12 +273,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.Result = result with { Lines = lines };
         }
         _drafts.Save(item.Track.Id, LyricsStudioDraft.From(item.Result, lines));
-    }
-
-    partial void OnSelectedModelChanged(WhisperModelInfo value)
-    {
-        RefreshModelState();
-        PersistPrefs();
     }
 
     partial void OnSelectedLanguageChanged(SpeechLanguageOption value) => PersistPrefs();
@@ -425,16 +416,20 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(SelectedModel.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Medium.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
         catch { /* preferences are a convenience */ }
     }
 
     private void RefreshModelState()
     {
-        IsModelInstalled = _engine.Models.IsInstalled(SelectedModel.Size);
-        ModelStatusText = IsModelInstalled
-            ? $"{SelectedModel.DisplayName} installed"
-            : $"{SelectedModel.DisplayName} not installed · {SelectedModel.SizeText}";
+        var model = _engine.Models.Model;
+        IsModelInstalled = _engine.Models.IsInstalled();
+        ModelStatusText = _engine.Models.State switch
+        {
+            WhisperModelState.Ready or WhisperModelState.Unverified => string.Empty,
+            WhisperModelState.Damaged => $"The speech model file is damaged · download it again ({model.SizeText})",
+            _ => $"Speech model not installed · {model.SizeText}",
+        };
     }
 
     [RelayCommand]
@@ -443,20 +438,38 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (IsDownloadingModel) return;
         IsDownloadingModel = true;
         ModelProgress = 0;
-        var model = SelectedModel;
-        ModelStatusText = $"Downloading the {model.DisplayName} model ({model.SizeText})…";
+        var model = _engine.Models.Model;
+        ModelStatusText = $"Downloading the speech model ({model.SizeText})…";
         try
         {
-            await _engine.Models.DownloadAsync(model.Size, new Progress<double>(p => Dispatcher.UIThread.Post(() => ModelProgress = p)), CancellationToken.None);
+            await _engine.Models.DownloadAsync(model.Size, new Progress<ModelDownloadProgress>(p =>
+                ModelProgress = p.BytesTotal > 0 ? Math.Min(0.999, p.BytesDone / (double)p.BytesTotal) : 0), CancellationToken.None);
         }
         catch (Exception ex)
         {
             ModelStatusText = $"Download failed — {ex.Message}";
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ModelDownloadFailed", $"{ex.GetType().Name}: {ex.Message}");
             IsDownloadingModel = false;
             return;
         }
         IsDownloadingModel = false;
         RefreshModelState();
+    }
+
+    /// <summary>
+    /// A model installed before checksums existed is checked once before its first run (~1.5 GB
+    /// read). False when it failed: the model state then asks for a fresh download.
+    /// </summary>
+    private async Task<bool> EnsureModelVerifiedAsync(CancellationToken ct)
+    {
+        if (_engine.Models.State != WhisperModelState.Unverified) return true;
+        RunStatusText = "Checking the speech model…";
+        bool ok;
+        try { ok = await _engine.Models.VerifyAsync(new Progress<double>(f => RunStatusText = $"Checking the speech model… {Math.Round(f * 100)}%"), ct); }
+        catch (OperationCanceledException) { RunStatusText = "Stopped."; return false; }
+        RefreshModelState();
+        if (!ok) RunStatusText = "The speech model file is damaged. Download it again.";
+        return ok;
     }
 
     [RelayCommand]
@@ -486,7 +499,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (!ReviewCanUpgrade || Selected is not { } item) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first.";
+            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
             return;
         }
         WordTimings = true;
@@ -523,11 +536,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
         // Session-log breadcrumbs (Settings > Advanced > Copy Logs): a native crash inside the
         // speech model leaves no managed trace, so the run's own steps are the only record.
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunStart",
-            $"songs={total}, model={SelectedModel.Size}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
+            $"songs={total}, model={WhisperModelManager.Medium.FileName}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
         try
         {
-            using var session = _engine.OpenSession(SelectedModel.Size);
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", SelectedModel.Size.ToString());
+            if (!await EnsureModelVerifiedAsync(ct)) return;
+            using var session = _engine.OpenSession(WhisperModelSize.Medium);
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", _engine.Models.Model.FileName);
             foreach (var item in items)
             {
                 if (ct.IsCancellationRequested) break;
@@ -547,7 +561,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 // time, and the engine only looks online when the song has nothing at all. A song
                 // with no lyrics anywhere stops at "Needs lyrics" rather than being guessed by ear.
                 // Loaded line-level lyrics keep their line starts as anchors: words are placed inside each line's own window.
-                var options = new LyricsStudioOptions(SelectedModel.Size, SelectedLanguage.Code, AllowOnlineLyrics: OnlineLyrics, ForceTranscription: transcribe,
+                var options = new LyricsStudioOptions(WhisperModelSize.Medium, SelectedLanguage.Code, AllowOnlineLyrics: OnlineLyrics, ForceTranscription: transcribe,
                     SourceLines: transcribe ? null : pasted ?? item.Existing?.Lines.Select(l => l.Text).ToList(),
                     SourceLineStarts: transcribe || pasted is not null ? null : item.Existing?.Lines.Select(l => l.Start).ToList(),
                     AllowTranscription: false);
@@ -782,7 +796,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (Selected is not { } item || IsRunning) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first (Settings).";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
             return;
         }
         _drafts?.Delete(item.Track.Id);
@@ -846,7 +860,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first (Settings).";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
             return;
         }
         Requeue(item);

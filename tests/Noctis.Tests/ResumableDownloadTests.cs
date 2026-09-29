@@ -161,11 +161,18 @@ public class ResumableDownloadTests : IDisposable
 
     // ── Callers ──────────────────────────────────────────────────────────────
 
+    /// <summary>The Medium entry with this test data's length and checksum (the real file is 1.5 GB).</summary>
+    private static WhisperModelInfo ModelOf(byte[] data) => WhisperModelManager.Medium with
+    {
+        Bytes = data.Length,
+        Sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant(),
+    };
+
     [Fact]
     public async Task WhisperModel_ResumesLeftoverPart_FromAnEarlierFailedRun()
     {
         var server = new FakeServer(Data, Step.Serve());
-        var manager = new WhisperModelManager(_root, server.Client(), Fast);
+        var manager = new WhisperModelManager(_root, server.Client(), Fast, ModelOf(Data));
         var target = manager.PathFor(WhisperModelSize.Base);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         await File.WriteAllBytesAsync(target + ".part", Data.AsSpan(0, 200_000).ToArray());
@@ -175,27 +182,65 @@ public class ResumableDownloadTests : IDisposable
         Assert.Equal(new long?[] { 200_000 }, server.RangeStarts);
         Assert.Equal(Data, await File.ReadAllBytesAsync(target));
         Assert.False(File.Exists(target + ".part"));
-        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Base), server.Urls.Single());
+        Assert.Equal(WhisperModelManager.Medium.Url, server.Urls.Single());
+        Assert.Equal(WhisperModelState.Ready, manager.State);
     }
 
     [Fact]
     public async Task WhisperModel_KeepsPartOnFailure_SoTheNextTryContinues()
     {
         var manager = new WhisperModelManager(_root,
-            new FakeServer(Data, Step.DropAfter(90_000), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0)).Client(), Fast);
+            new FakeServer(Data, Step.DropAfter(90_000), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0)).Client(), Fast, ModelOf(Data));
 
         await Assert.ThrowsAsync<IOException>(() => manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None));
 
         var part = manager.PathFor(WhisperModelSize.Medium) + ".part";
         Assert.Equal(90_000, new FileInfo(part).Length);
+        Assert.Equal(WhisperModelState.Partial, manager.State);
+    }
+
+    [Fact]
+    public async Task WhisperModel_ThatFailsItsChecksum_IsDiscarded_NotInstalled()
+    {
+        var corrupt = Data.ToArray();
+        corrupt[123_456] ^= 0x40; // same length, one bit off in transit
+        var manager = new WhisperModelManager(_root, new FakeServer(corrupt, Step.Serve()).Client(), Fast, ModelOf(Data));
+
+        await Assert.ThrowsAsync<WhisperModelIntegrityException>(() => manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None));
+
+        Assert.False(File.Exists(manager.ModelPath));
+        Assert.False(File.Exists(manager.ModelPath + ".part")); // a resume would keep the bad byte
+        Assert.Equal(WhisperModelState.Missing, manager.State);
+        Assert.False(manager.IsInstalled());
+    }
+
+    [Fact]
+    public async Task WhisperModel_ReportsEachPhase_IncludingTheRetry()
+    {
+        var server = new FakeServer(Data, Step.DropAfter(100_000), Step.Serve());
+        var manager = new WhisperModelManager(_root, server.Client(), Fast, ModelOf(Data));
+        var reports = new List<ModelDownloadProgress>();
+
+        await manager.DownloadAsync(WhisperModelSize.Medium, new InlineProgress<ModelDownloadProgress>(r => { lock (reports) reports.Add(r); }), CancellationToken.None);
+
+        Assert.Equal(ModelDownloadPhase.Connecting, reports[0].Phase);
+        Assert.Equal(ModelDownloadPhase.Done, reports[^1].Phase);
+        Assert.True(reports.FindIndex(r => r.Phase == ModelDownloadPhase.Retrying) > reports.FindIndex(r => r.Phase == ModelDownloadPhase.Downloading));
+        Assert.True(reports.FindIndex(r => r.Phase == ModelDownloadPhase.Verifying) > reports.FindLastIndex(r => r.Phase == ModelDownloadPhase.Downloading));
+        var retry = reports.First(r => r.Phase == ModelDownloadPhase.Retrying);
+        Assert.Equal(1, retry.Attempt);
+        Assert.Equal(100_000, retry.BytesDone);
+        Assert.Equal(Data.Length, reports.Where(r => r.Phase == ModelDownloadPhase.Downloading).Max(r => r.BytesDone));
+        Assert.Equal(1.0, reports.Where(r => r.Phase == ModelDownloadPhase.Verifying).Max(r => r.VerifyFraction));
     }
 
     [Fact]
     public void WhisperModelUrl_MatchesWhisperNetDownloaderLayout()
     {
-        Assert.Equal("https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-base.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Base));
         Assert.Equal("https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-medium.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Medium));
-        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Base), WhisperModelManager.ModelUrl(WhisperModelSize.Tiny));
+        // Retired sizes are the one model.
+        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Base));
+        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Tiny));
     }
 
     [Fact]

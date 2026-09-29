@@ -20,6 +20,8 @@ public static class ResumableDownload
         public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1);
         public TimeSpan MaxRetryDelay { get; init; } = TimeSpan.FromSeconds(15);
         public int BufferSize { get; init; } = 1 << 16;
+        /// <summary>Called before each retry wait with (consecutive failures, delay, the error), so a UI can say it is retrying.</summary>
+        public Action<int, TimeSpan, Exception?>? OnRetry { get; init; }
 
         public static readonly Options Default = new();
     }
@@ -79,6 +81,7 @@ public static class ResumableDownload
                 options.MaxRetryDelay.Ticks,
                 options.RetryDelay.Ticks * (1L << Math.Min(failures - 1, 20))));
             DebugLogger.Warn(DebugLogger.Category.State, "Download.Retry", $"{logName}: at {offset} bytes, retry in {delay.TotalSeconds:0.#}s: {transient?.GetType().Name}: {transient?.Message}");
+            options.OnRetry?.Invoke(failures, delay, transient);
             await Task.Delay(delay, ct).ConfigureAwait(false);
         }
     }

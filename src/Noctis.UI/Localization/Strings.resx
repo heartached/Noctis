@@ -1822,7 +1822,7 @@
   <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let the speech model write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review button</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
-  <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: model, language, run options</comment></data>
+  <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>
   <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the -0.1s / +0.1s buttons</comment></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>

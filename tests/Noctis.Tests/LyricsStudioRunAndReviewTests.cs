@@ -175,12 +175,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
 
         public CapturingEngine(string root)
         {
-            Models = new WhisperModelManager(root);
-            var path = Models.PathFor(WhisperModelSize.Base);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            if (File.Exists(path)) return;
-            using var f = new FileStream(path, FileMode.Create);
-            f.SetLength(WhisperModelManager.Info(WhisperModelSize.Base).ApproxBytes);
+            Models = StudioTestModel.Installed(root);
         }
 
         public IDisposable OpenSession(WhisperModelSize model) => new Handle();

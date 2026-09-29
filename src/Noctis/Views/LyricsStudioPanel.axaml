@@ -4,7 +4,6 @@
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:views="using:Noctis.Views"
-             xmlns:studio="using:Noctis.Services.LyricsStudio"
              x:Class="Noctis.Views.LyricsStudioPanel"
              x:DataType="vm:LyricsStudioViewModel">
 
@@ -310,7 +309,7 @@
         </Grid>
 
         <!-- Toolbar, above the editor it drives (was a footer under the queue, 09-23): the format
-             to write, the Settings popover (model, language, run options), then Download / Start /
+             to write, the Settings popover (language, run options), then Download / Start /
              Stop. The format is chosen here before a run, not buried in the options. -->
         <StackPanel DockPanel.Dock="Top" Margin="24,0,24,12" Spacing="10">
             <!-- ffmpeg missing -->
@@ -325,7 +324,7 @@
                     <ToggleButton Classes="format-chip" Content="{loc:T LyricsStudioPicker.LineTimings}"
                                   IsChecked="{Binding LineTimings}" IsEnabled="{Binding !IsRunning}" />
                 </StackPanel>
-                <!-- Settings: the model, language and run options behind one popover (09-23). -->
+                <!-- Settings: the language and run options behind one popover (09-23). -->
                 <Button Grid.Column="2" Classes="studio-btn studio-options" Margin="8,0,0,0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="{loc:T LyricsStudio.Settings}" VerticalAlignment="Center" />
@@ -340,33 +339,6 @@
                                     BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}" BorderThickness="1"
                                     BoxShadow="0 10 30 0 #90000000">
                                 <StackPanel Spacing="12">
-                                    <!-- Model status ("Medium installed", download progress) sits on the label. -->
-                                    <StackPanel Spacing="4">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{loc:T LyricsStudio.Model}" FontSize="11" Opacity="0.55" />
-                                            <TextBlock Text="·" FontSize="11" Opacity="0.55" />
-                                            <TextBlock Text="{Binding ModelStatusText}" FontSize="11" Opacity="0.55"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="230" ToolTip.Tip="{Binding ModelStatusText}" />
-                                            <ProgressBar Value="{Binding ModelProgress}" Minimum="0" Maximum="1" Width="48" Height="3" CornerRadius="2"
-                                                         VerticalAlignment="Center" IsVisible="{Binding IsDownloadingModel}" />
-                                        </StackPanel>
-                                        <ComboBox Classes="pill" HorizontalAlignment="Stretch"
-                                                      ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" IsEnabled="{Binding !IsRunning}">
-                                                <ComboBox.SelectionBoxItemTemplate>
-                                                    <DataTemplate x:DataType="studio:WhisperModelInfo">
-                                                        <TextBlock Text="{Binding DisplayName}" />
-                                                    </DataTemplate>
-                                                </ComboBox.SelectionBoxItemTemplate>
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="studio:WhisperModelInfo">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <TextBlock Text="{Binding DisplayName}" />
-                                                            <TextBlock Text="{Binding SizeText}" Opacity="0.5" FontSize="11" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                    </StackPanel>
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{loc:T LyricsStudio.Language}" FontSize="11" Opacity="0.55" />
                                         <ComboBox Classes="pill" HorizontalAlignment="Stretch" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" />

@@ -156,8 +156,9 @@ public class WhisperDtwTimingTests
     }
 
     [Theory]
-    [InlineData(WhisperModelSize.Tiny, WhisperAlignmentHeadsPreset.Base)]
-    [InlineData(WhisperModelSize.Base, WhisperAlignmentHeadsPreset.Base)]
+    // One model (09-29): every saved size loads ggml-medium.bin, so every size takes Medium's heads.
+    [InlineData(WhisperModelSize.Tiny, WhisperAlignmentHeadsPreset.Medium)]
+    [InlineData(WhisperModelSize.Base, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Small, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Medium, WhisperAlignmentHeadsPreset.Medium)]
     public void AlignmentHeads_FollowTheModelFileThatIsLoaded(WhisperModelSize size, WhisperAlignmentHeadsPreset expected)

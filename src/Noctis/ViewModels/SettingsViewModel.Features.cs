@@ -268,30 +268,22 @@ public partial class SettingsViewModel
 
     // ── Lyrics Studio ──
 
-    public IReadOnlyList<WhisperModelInfo> LyricsModelOptions => WhisperModelManager.Catalog;
     public IReadOnlyList<SpeechLanguageOption> LyricsLanguageOptions => LyricsStudioViewModel.Languages;
 
-    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Info(WhisperModelSize.Base);
+    /// <summary>The one speech model (09-29); kept so the saved preference is rewritten as Medium.</summary>
+    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Medium;
     [ObservableProperty] private SpeechLanguageOption _lyricsStudioLanguage = LyricsStudioViewModel.Languages[0];
     [ObservableProperty] private bool _lyricsStudioWordTimings = true;
     [ObservableProperty] private bool _lyricsStudioEmbedTags;
     [ObservableProperty] private bool _lyricsStudioOnlineLyrics = true;
     /// <summary>Skip songs that already carry the format being written.</summary>
     [ObservableProperty] private bool _lyricsStudioSkipAlreadyTimed = true;
-    [ObservableProperty] private string _lyricsModelStatus = string.Empty;
-    [ObservableProperty] private bool _isLyricsModelInstalled;
-    [ObservableProperty] private bool _isDownloadingLyricsModel;
-    [ObservableProperty] private double _lyricsModelProgress;
     [ObservableProperty] private string _lyricsStudioStats = string.Empty;
     /// <summary>Per-format song counts for the Lyrics Studio card, empty until the count finishes.</summary>
     [ObservableProperty] private IReadOnlyList<LyricsStudioCount> _lyricsStudioCounts = Array.Empty<LyricsStudioCount>();
-    [ObservableProperty] private string _lyricsStudioFfmpegStatus = string.Empty;
-
-    private ILyricsStudioEngine? LyricsEngine => App.Services?.GetService<ILyricsStudioEngine>();
 
     partial void OnLyricsStudioModelChanged(WhisperModelInfo value)
     {
-        RefreshLyricsModelStatus();
         if (!_settingsLoaded) return;
         _settings.LyricsStudioModel = value.Size.ToString();
         QueueSettingsSave();
@@ -341,17 +333,6 @@ public partial class SettingsViewModel
         LyricsStudioSkipAlreadyTimed = prefs.SkipAlreadyTimed;
         LyricsStudioEmbedTags = prefs.EmbedTags;
         LyricsStudioOnlineLyrics = prefs.OnlineLyrics;
-    }
-
-    private void RefreshLyricsModelStatus()
-    {
-        var engine = LyricsEngine;
-        if (engine is null) { LyricsModelStatus = string.Empty; IsLyricsModelInstalled = false; return; }
-        IsLyricsModelInstalled = engine.Models.IsInstalled(LyricsStudioModel.Size);
-        LyricsModelStatus = IsLyricsModelInstalled
-            ? $"Installed · {LyricsStudioModel.Description}"
-            : $"Not installed ({LyricsStudioModel.SizeText}) · {LyricsStudioModel.Description}";
-        LyricsStudioFfmpegStatus = engine.HasFfmpeg ? string.Empty : "ffmpeg is needed to decode songs — set its path under Advanced → Helper programs.";
     }
 
     private CancellationTokenSource? _lyricsStatsCts;
@@ -427,36 +408,6 @@ public partial class SettingsViewModel
             }
         }
         return $"{elrc} with word timings (ELRC) · {lrc} with line timings (LRC) · {plain} plain only · {none} without lyrics";
-    }
-
-    [RelayCommand]
-    private async Task DownloadLyricsModel()
-    {
-        var engine = LyricsEngine;
-        if (engine is null || IsDownloadingLyricsModel) return;
-        IsDownloadingLyricsModel = true;
-        LyricsModelProgress = 0;
-        var model = LyricsStudioModel;
-        LyricsModelStatus = $"Downloading the {model.DisplayName} model ({model.SizeText})…";
-        try
-        {
-            await engine.Models.DownloadAsync(model.Size, new Progress<double>(p => Dispatcher.UIThread.Post(() => LyricsModelProgress = p)), CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            LyricsModelStatus = $"Download failed — {ex.Message}";
-            IsDownloadingLyricsModel = false;
-            return;
-        }
-        IsDownloadingLyricsModel = false;
-        RefreshLyricsModelStatus();
-    }
-
-    [RelayCommand]
-    private void DeleteLyricsModel()
-    {
-        LyricsEngine?.Models.Delete(LyricsStudioModel.Size);
-        RefreshLyricsModelStatus();
     }
 
     /// <summary>Opens Lyrics Studio with the songs that lack the chosen format — ELRC when word timings are on, any timed LRC when off (first 40, so a run stays reviewable).</summary>
