@@ -283,8 +283,29 @@ public class LyricsStudioElrcStructureTests
         Assert.True(aligned[1].Interpolated);
         Assert.Equal(S(4.0), aligned[1].Start);
         Assert.Equal(S(7.5), aligned[2].Start);
-        Assert.Equal(S(7.5), aligned[1].End); // spread up to where line 3 actually starts
-        Assert.Equal(S(4.0 + 3.5 / 4), aligned[1].Words[1].Start);
+        Assert.Equal(S(4.0 + 4 * 0.42), aligned[1].End); // a natural pace, not across the rest of the window
+        Assert.Equal(S(4.42), aligned[1].Words[1].Start);
+        AssertStructure(aligned, lines, S(20));
+    }
+
+    [Fact]
+    public void AlignWithinLines_UnheardLineShortWindow_ShareItUpToWhereTheNextLineStarts()
+    {
+        var lines = new[] { "First line heard", "Nobody sang these words", "Third line heard" };
+        var stamps = new[] { S(1.0), S(4.0), S(5.2) };
+        var heard = new[]
+        {
+            W("first", 1.0), W("line", 1.3), W("heard", 1.6),
+            W("third", 4.8), W("line", 5.1), W("heard", 5.4),
+        };
+
+        var aligned = LyricsAligner.AlignWithinLines(lines, stamps, heard, S(20));
+
+        // Line 2 would run to its stamp (5.2) at 0.3 s/word; line 3 was heard 0.4 s early, at 4.8,
+        // so line 2's four words share 4.0–4.8.
+        Assert.Equal(S(4.8), aligned[2].Start);
+        Assert.Equal(S(4.8), aligned[1].End);
+        Assert.Equal(S(4.4), aligned[1].Words[2].Start);
         AssertStructure(aligned, lines, S(20));
     }
 

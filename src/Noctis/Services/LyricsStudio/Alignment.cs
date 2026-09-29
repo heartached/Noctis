@@ -189,6 +189,10 @@ public static class LyricsAligner
         // Anchored lines: anchored words, then interpolate the rest.
         var result = new AlignedLine?[cleanLines.Count];
         var timing = new ((RecognizedWord Word, double Sim)?[] Anchors, TimeSpan?[] PullBack)?[cleanLines.Count];
+        // Words the model missed before a line's first heard word (and after its last) are
+        // spread at the song's own pace: at a fixed 0.42 s/word a rap line whose first two
+        // words were missed started ~0.4 s early (benchmark 09-29, dev: lines > 1 s off 83 → 70).
+        var pace = AnchorPace(kept);
         for (var li = 0; li < cleanLines.Count; li++)
         {
             var words = lineWords[li];
@@ -205,7 +209,7 @@ public static class LyricsAligner
             if (anchorCount == 0) continue; // placed by FillUnanchoredLines
 
             var pullBack = PullBackStarts(kept[li], heard);
-            var timed = InterpolateWords(words, lineAnchors, knownStart: null, pullBack);
+            var timed = InterpolateWords(words, lineAnchors, knownStart: null, pullBack, pace: pace);
             var confidence = words.Length == 0 ? 0 : Math.Clamp(simSum / words.Length, 0, 1);
             result[li] = new AlignedLine(cleanLines[li], timed[0].Start, timed[^1].End, timed, confidence, Interpolated: false);
             timing[li] = (lineAnchors, pullBack);
@@ -224,7 +228,7 @@ public static class LyricsAligner
             if (timing[li] is not { } t || result[li] is not { } line || line.Start != placed[li]) continue;
             var next = result[li + 1]!.Start;
             if (line.End <= next || next <= line.Start) continue;
-            var timed = InterpolateWords(lineWords[li], t.Anchors, knownStart: null, t.PullBack, knownEnd: next);
+            var timed = InterpolateWords(lineWords[li], t.Anchors, knownStart: null, t.PullBack, knownEnd: next, pace: pace);
             result[li] = line with { Start = timed[0].Start, End = timed[^1].End, Words = timed };
         }
         return result.Select(r => r!).ToList();
@@ -309,8 +313,11 @@ public static class LyricsAligner
             }
             else
             {
-                // Nothing heard: keep the line where the file had it and spread the words to the next line.
+                // Nothing heard: keep the line where the file had it and spread the words at a
+                // natural pace, at most up to the next line (not across a long instrumental after
+                // it: benchmark 09-29, word starts p90 0.40 → 0.34 s held-out, 0.27 → 0.25 s dev).
                 var lineSpan = nextStart - start;
+                if (perWord * Math.Max(1, words.Length) < lineSpan) lineSpan = perWord * Math.Max(1, words.Length);
                 var slice = words.Length == 0 ? lineSpan : lineSpan / Math.Max(1, words.Length);
                 var timed = new List<AlignedWord>(words.Length);
                 for (var w = 0; w < words.Length; w++)
@@ -738,8 +745,26 @@ public static class LyricsAligner
         return result;
     }
 
-    /// <param name="knownEnd">Where the line's window ends: unheard words after the last heard one that would run past it at the default pace share the room up to it.</param>
-    private static List<AlignedWord> InterpolateWords(string[] words, (RecognizedWord Word, double Sim)?[] anchors, TimeSpan? knownStart, TimeSpan?[] pullBack, TimeSpan? knownEnd = null)
+    /// <summary>
+    /// Seconds per word between consecutive heard words of one line (both matched, heard one
+    /// after the other): the song's own singing pace, median, within 0.18–0.6 s. Null (the
+    /// 0.42 s default) with fewer than 12 such pairs.
+    /// </summary>
+    private static TimeSpan? AnchorPace((Heard H, double Sim)?[][] kept)
+    {
+        var gaps = new List<double>();
+        foreach (var line in kept)
+            for (var wi = 1; wi < line.Length; wi++)
+                if (line[wi] is { } b && line[wi - 1] is { } a && b.H.Index == a.H.Index + 1)
+                    gaps.Add((b.H.Word.Start - a.H.Word.Start).TotalSeconds);
+        if (gaps.Count < 12) return null;
+        gaps.Sort();
+        return TimeSpan.FromSeconds(Math.Clamp(gaps[gaps.Count / 2], 0.18, 0.6));
+    }
+
+    /// <param name="knownEnd">Where the line's window ends: unheard words after the last heard one that would run past it at <paramref name="pace"/> share the room up to it.</param>
+    /// <param name="pace">Seconds per unheard word before the first / after the last heard one (default 0.42 s).</param>
+    private static List<AlignedWord> InterpolateWords(string[] words, (RecognizedWord Word, double Sim)?[] anchors, TimeSpan? knownStart, TimeSpan?[] pullBack, TimeSpan? knownEnd = null, TimeSpan? pace = null)
     {
         var count = words.Length;
         var starts = new TimeSpan?[count];
@@ -755,7 +780,7 @@ public static class LyricsAligner
 
         var first = Array.FindIndex(starts, s => s.HasValue);
         var last = Array.FindLastIndex(starts, s => s.HasValue);
-        var perWord = TimeSpan.FromSeconds(DefaultSecondsPerWord);
+        var perWord = pace ?? TimeSpan.FromSeconds(DefaultSecondsPerWord);
         if (knownStart is { } ks && first > 0 && starts[first]!.Value > ks)
         {
             // Leading words the model missed: spread from the known line start to the first anchor.
