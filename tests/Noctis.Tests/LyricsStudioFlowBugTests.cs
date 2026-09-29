@@ -102,6 +102,29 @@ public class LyricsStudioFlowBugTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task StoppingTranscribeInstead_KeepsTheReviewsDraft_ForTheNextOpen()
+    {
+        var engine = new Engine(_root);
+        var drafts = new LyricsStudioDraftStore(Path.Combine(_root, "drafts"));
+        var song = SongWithLrc("song");
+        var vm = new LyricsStudioViewModel(new[] { song }, engine, new LyricsWriter(null!, null), new FakeLibraryService(), null,
+            () => new AppSettings(), _ => { }, drafts);
+        vm.Confirm = _ => Task.FromResult(true);
+        vm.Selected = vm.Queue[0];
+        await vm.UpgradeToWordTimingsCommand.ExecuteAsync(null); // a model result: Ready, with a draft
+        Assert.True(drafts.TryLoad(song.Id, out _));
+
+        engine.WaitForCancel = true;
+        var redo = vm.RedoAsTranscriptionCommand.ExecuteAsync(null);
+        await Until(() => engine.Started > 1);
+        vm.StopCommand.Execute(null);
+        await redo;
+
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Ready, vm.Queue[0].Status);
+        Assert.True(drafts.TryLoad(song.Id, out _), "the review must still come back after a restart");
+    }
+
+    [AvaloniaFact]
     public async Task ARunThatCannotStart_KeepsTheReview()
     {
         var engine = new Engine(_root) { FailToOpen = true };

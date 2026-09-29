@@ -830,6 +830,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         // Experimental: the transcript goes into the lyrics box to be corrected;
                         // Align then re-times the corrected words against what was heard.
                         item.HeardWords = result.Heard;
+                        // The transcript replaces any review the song had: its draft goes now, not
+                        // when the transcription was asked for (a Stop kept the review, not its draft).
+                        _drafts?.Delete(item.Track.Id);
                         item.DraftText = string.Join('\n', result.Lines.Select(l => l.Text));
                         item.IsTranscriptDraft = true;
                         item.Result = null;
@@ -1051,7 +1054,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
             return;
         }
-        _drafts?.Delete(item.Track.Id);
         item.TranscribeNext = true;
         Requeue(item);
         item.StatusText = "Queued for transcription";
