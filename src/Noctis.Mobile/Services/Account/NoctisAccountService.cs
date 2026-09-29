@@ -1243,7 +1243,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         try
         {
             var flac = WantsFlac(id);
-            var contentType = await client.DownloadTrackAsync(id, part, ct, flac).ConfigureAwait(false);
+            // The reserve holds for what arrives too, not only for the size the catalog gave.
+            var contentType = await client.DownloadTrackAsync(id, part, ct, flac,
+                hasRoom: () => FreeSpace(_offlineDir) >= StorageReserveBytes).ConfigureAwait(false);
             var final = InsideOffline(hex + "." + ExtensionFor(id, contentType, flac));
             if (_downloaded.TryGetValue(id, out var old) && old.Path != final) NoctisServerClient.TryDelete(old.Path);
             File.Move(part, final, overwrite: true);

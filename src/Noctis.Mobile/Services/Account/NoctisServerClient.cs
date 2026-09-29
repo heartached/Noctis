@@ -45,6 +45,9 @@ internal sealed partial class NoctisServerClient : IDisposable
     private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(15);
     private const long MaxEnvelopeBytes = 64L * 1024 * 1024;
     private const long MaxProbeBytes = 64L * 1024;
+    private const long MaxErrorEnvelopeBytes = 1024L * 1024;
+    /// <summary>A download re-checks the phone's free space after this many bytes.</summary>
+    private const long RoomCheckBytes = 8L * 1024 * 1024;
 
     private readonly HttpClient _http;
     private readonly string _baseUrl;
@@ -344,9 +347,12 @@ internal sealed partial class NoctisServerClient : IDisposable
     /// <see cref="StallTimeout"/> fails as Unreachable. Returns the response content type so the
     /// caller can pick an extension. <paramref name="flac"/> asks for <c>format=flac</c>: an ALAC
     /// song then arrives as FLAC (audio/flac); anything else, or a desktop without ffmpeg, still
-    /// sends the original.
+    /// sends the original. <paramref name="hasRoom"/> is asked before the first write and every
+    /// <see cref="RoomCheckBytes"/> after: false fails the download as StorageFull (the size the
+    /// catalog promised may be missing or wrong, so the answer is what counts).
     /// </summary>
-    public async Task<string?> DownloadTrackAsync(Guid trackId, string partPath, CancellationToken ct, bool flac = false)
+    public async Task<string?> DownloadTrackAsync(Guid trackId, string partPath, CancellationToken ct, bool flac = false,
+        Func<bool>? hasRoom = null)
     {
         var query = new List<KeyValuePair<string, string>> { new("id", NoctisRemoteIds.ToServerTrackId(trackId)) };
         if (flac) query.Add(new("format", FlacFormat));
@@ -361,11 +367,17 @@ internal sealed partial class NoctisServerClient : IDisposable
             await using var body = await response.Content.ReadAsStreamAsync(stall.Token).ConfigureAwait(false);
             await using var file = new FileStream(partPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
             var buffer = new byte[81920];
+            var sinceRoomCheck = RoomCheckBytes;
             while (true)
             {
                 stall.CancelAfter(StallTimeout);
                 var read = await body.ReadAsync(buffer, stall.Token).ConfigureAwait(false);
                 if (read == 0) break;
+                if (hasRoom is not null && (sinceRoomCheck += read) >= RoomCheckBytes)
+                {
+                    sinceRoomCheck = 0;
+                    if (!hasRoom()) throw new NoctisServerException(NoctisErrorKind.StorageFull, "The phone is too full to download more.");
+                }
                 await file.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
             }
         }
@@ -545,6 +557,17 @@ internal sealed partial class NoctisServerClient : IDisposable
         var type = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
         var isEnvelope = type.Contains("json", StringComparison.OrdinalIgnoreCase) || type.Contains("xml", StringComparison.OrdinalIgnoreCase);
         if (response.IsSuccessStatusCode && !isEnvelope) return;
+        try
+        {
+            // A streamed answer is not capped by MaxResponseContentBufferSize (that holds for
+            // buffered sends only), and an error envelope is a few hundred bytes.
+            await response.Content.LoadIntoBufferAsync(MaxErrorEnvelopeBytes, token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException
+                                   || (ex is OperationCanceledException && !callerToken.IsCancellationRequested))
+        {
+            throw Log(Unreachable(), what, (int)response.StatusCode);
+        }
         await ReadEnvelopeAsync(response, what, signingIn: false, token, callerToken).ConfigureAwait(false);
         // An "ok" envelope where a file was expected.
         throw Log(new NoctisServerException(NoctisErrorKind.Server, "The server sent no file."), what, (int)response.StatusCode);

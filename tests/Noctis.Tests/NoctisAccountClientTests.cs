@@ -168,6 +168,71 @@ public class NoctisAccountClientTests
         }
     }
 
+    /// <summary>A JSON answer that never ends (a hostile or broken desktop); throws after
+    /// <paramref name="guard"/> bytes so a reader with no cap fails the test instead of the machine.</summary>
+    private sealed class EndlessJsonStream(long guard) : System.IO.Stream
+    {
+        private long _read;
+        public long BytesRead => Interlocked.Read(ref _read);
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (BytesRead >= guard) throw new System.IO.IOException("test guard: read far past any cap");
+            buffer.Fill((byte)' ');
+            if (BytesRead == 0) buffer[0] = (byte)'{';
+            Interlocked.Add(ref _read, buffer.Length);
+            return buffer.Length;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default) => new(Read(buffer.Span));
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct) => Task.FromResult(Read(buffer, offset, count));
+    }
+
+    [Theory]
+    [InlineData("download")]
+    [InlineData("cover")]
+    public async Task AnEnvelopeInPlaceOfAFile_IsReadOnlyUpToASmallCap(string endpoint)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "NoctisTests", "acc-env-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        var body = new EndlessJsonStream(guard: 64L * 1024 * 1024);
+        try
+        {
+            // Streamed answers skip HttpClient.MaxResponseContentBufferSize: without a cap of its
+            // own, the error-envelope check buffered a JSON answer whole (up to 2 GB, as a string).
+            var handler = new ScriptedHandler(_ =>
+            {
+                var r = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) };
+                r.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                return r;
+            });
+            using var client = Client(handler);
+
+            var ex = await Assert.ThrowsAsync<NoctisServerException>(() => endpoint == "download"
+                ? client.DownloadTrackAsync(Guid.NewGuid(), System.IO.Path.Combine(dir, "t.part"), ct)
+                : client.DownloadCoverAsync(Guid.NewGuid(), System.IO.Path.Combine(dir, "c.jpg"), ct));
+
+            Assert.Equal(NoctisErrorKind.Unreachable, ex.Kind);
+            Assert.InRange(body.BytesRead, 1, 4L * 1024 * 1024);
+            Assert.Empty(System.IO.Directory.GetFiles(dir));
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(dir, true); } catch { }
+        }
+    }
+
     [Fact]
     public async Task TheProbeSendsNoCredentials()
     {
