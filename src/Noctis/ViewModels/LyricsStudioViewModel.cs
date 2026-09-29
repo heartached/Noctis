@@ -246,6 +246,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         RefreshQueuePills();
 
         RefreshModelState();
+        // A download started in another Studio (the dialog, or a page Studio since replaced) is
+        // still running: follow it here instead of offering a second one.
+        if (_engine.Models.IsDownloading) _ = DownloadModel();
         var queued = Queue.Count(i => i.Status == StudioStatus.Waiting);
         RunStatusText = !HasFfmpeg
             ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs."

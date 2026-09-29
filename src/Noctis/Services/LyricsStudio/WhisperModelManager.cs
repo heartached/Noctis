@@ -97,6 +97,12 @@ public sealed class WhisperModelManager
     private readonly ResumableDownload.Options? _downloadOptions;
     private readonly WhisperModelInfo _model;
 
+    private readonly object _downloadGate = new();
+    private Task? _download;
+    private CancellationTokenSource? _downloadCts;
+    private readonly List<IProgress<ModelDownloadProgress>> _listeners = new();
+    private ModelDownloadProgress? _lastReport;
+
     public WhisperModelManager(string dataRoot) : this(dataRoot, null, null) { }
 
     /// <summary>Test seam: a fake HTTP handler, short retry delays, and a small stand-in model.</summary>
@@ -182,26 +188,83 @@ public sealed class WhisperModelManager
         return ok;
     }
 
+    /// <summary>True while a download (or its checksum pass) runs.</summary>
+    public bool IsDownloading
+    {
+        get { lock (_downloadGate) return _download is { IsCompleted: false }; }
+    }
+
+    /// <summary>The running download's latest report, or null when none runs.</summary>
+    public ModelDownloadProgress? CurrentDownload
+    {
+        get { lock (_downloadGate) return _download is { IsCompleted: false } ? _lastReport : null; }
+    }
+
     /// <summary>
     /// Downloads the model to a ".part" file, checks its SHA-256 and moves it into place. A
     /// dropped or stalled connection is retried and resumed (<see cref="ResumableDownload"/>), and
-    /// the ".part" survives a failure so the next attempt continues where this one stopped (09-25
-    /// Discord: Medium "fails halfway" on a slow link). A file that fails the checksum is discarded
-    /// and <see cref="WhisperModelIntegrityException"/> thrown.
+    /// the ".part" survives a failure or a cancel so the next attempt continues where this one
+    /// stopped (09-25 Discord: Medium "fails halfway" on a slow link). A download already running
+    /// is joined rather than started twice: two downloads fought over the same ".part" and the
+    /// second failed with "file in use" (reopening the Studio mid-download offered Download again).
+    /// A file that fails the checksum is discarded and <see cref="WhisperModelIntegrityException"/> thrown.
     /// </summary>
-    public Task DownloadAsync(WhisperModelSize size, IProgress<ModelDownloadProgress>? progress, CancellationToken ct) =>
-        RunDownloadAsync(progress, ct);
+    public Task DownloadAsync(WhisperModelSize size, IProgress<ModelDownloadProgress>? progress, CancellationToken ct)
+    {
+        Task download;
+        lock (_downloadGate)
+        {
+            if (progress is not null) _listeners.Add(progress);
+            if (_download is not { IsCompleted: false })
+            {
+                _downloadCts?.Dispose();
+                _downloadCts = new CancellationTokenSource();
+                _lastReport = null;
+                var token = _downloadCts.Token;
+                _download = Task.Run(() => RunDownloadAsync(token));
+            }
+            download = _download;
+        }
+        if (ct.CanBeCanceled)
+        {
+            var registration = ct.Register(CancelDownload);
+            _ = download.ContinueWith(_ => registration.Dispose(), TaskScheduler.Default);
+        }
+        if (progress is not null)
+            _ = download.ContinueWith(_ => { lock (_downloadGate) _listeners.Remove(progress); }, TaskScheduler.Default);
+        return download;
+    }
 
-    private async Task RunDownloadAsync(IProgress<ModelDownloadProgress>? progress, CancellationToken ct)
+    /// <summary>Stops the running download; its ".part" is kept for a later resume.</summary>
+    public void CancelDownload()
+    {
+        lock (_downloadGate)
+        {
+            try { _downloadCts?.Cancel(); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private void Report(ModelDownloadProgress report)
+    {
+        IProgress<ModelDownloadProgress>[] listeners;
+        lock (_downloadGate)
+        {
+            _lastReport = report;
+            listeners = _listeners.ToArray();
+        }
+        foreach (var l in listeners) l.Report(report);
+    }
+
+    private async Task RunDownloadAsync(CancellationToken ct)
     {
         System.IO.Directory.CreateDirectory(_directory);
         var target = ModelPath;
         var temp = PartPath;
         long done = PartialBytes, total = _model.Bytes;
-        progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Connecting, done, total));
+        Report(new ModelDownloadProgress(ModelDownloadPhase.Connecting, done, total));
         var options = (_downloadOptions ?? ResumableDownload.Options.Default) with
         {
-            OnRetry = (attempt, delay, error) => progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Retrying, done, total,
+            OnRetry = (attempt, delay, error) => Report(new ModelDownloadProgress(ModelDownloadPhase.Retrying, done, total,
                 Attempt: attempt, RetryIn: delay, Error: error?.Message)),
         };
         await ResumableDownload.DownloadAsync(
@@ -213,17 +276,17 @@ public sealed class WhisperModelManager
             {
                 done = bytes;
                 if (length > 0) total = length;
-                progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Downloading, done, total));
+                Report(new ModelDownloadProgress(ModelDownloadPhase.Downloading, done, total));
             },
             "Whisper." + _model.FileName,
             ct,
             options).ConfigureAwait(false);
 
-        progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Verifying, done, total));
+        Report(new ModelDownloadProgress(ModelDownloadPhase.Verifying, done, total));
         var length = new FileInfo(temp).Length;
         var hash = length != _model.Bytes || _model.Sha256 is null
             ? SizeOnly
-            : ComputeSha256(temp, new InlineProgress<double>(f => progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Verifying, done, total, f))), ct);
+            : ComputeSha256(temp, new InlineProgress<double>(f => Report(new ModelDownloadProgress(ModelDownloadPhase.Verifying, done, total, f))), ct);
         if (length != _model.Bytes || (_model.Sha256 is not null && !hash.Equals(_model.Sha256, StringComparison.OrdinalIgnoreCase)))
         {
             // Resuming onto these bytes would keep the damage: start the next try from zero.
@@ -236,7 +299,7 @@ public sealed class WhisperModelManager
 
         File.Move(temp, target, overwrite: true);
         WriteMarker(target, hash);
-        progress?.Report(new ModelDownloadProgress(ModelDownloadPhase.Done, length, length, 1));
+        Report(new ModelDownloadProgress(ModelDownloadPhase.Done, length, length, 1));
         DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelInstalled", $"{_model.FileName} ({length} bytes, checksum ok)");
     }
 
