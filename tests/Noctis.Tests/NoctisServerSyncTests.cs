@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -43,7 +44,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
         _sync = new LibrarySyncService(() => _settings, _persistence);
         _lib = new FakeLibrary(new Track { Id = TrackA, Title = "Alpha", Artist = "X", Album = "A", FilePath = Path.Combine(_dir, "a.mp3"), Duration = TimeSpan.FromSeconds(100) });
         _server = new NoctisServer(_lib, _users, "test", _sync);
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
     }
 
