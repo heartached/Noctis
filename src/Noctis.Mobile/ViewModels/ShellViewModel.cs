@@ -70,32 +70,18 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             _account = value;
             if (value == null) return;
-            _accountWasSignedIn = value.IsSignedIn;
-            _accountLastSync = value.Account?.LastSyncUtc;
-            value.StateChanged += OnAccountStateChanged;
+            value.PlaylistsChanged += OnAccountPlaylistsChanged;
         }
     }
     private readonly INoctisAccountService? _account;
-    private DateTime? _accountLastSync;
-    private bool _accountWasSignedIn;
 
     /// <summary>
     /// A sync writes the desktop's playlists straight into playlists.json and sign-out drops them,
-    /// but the Library tab reads that file only at start: reload it when a sync ends or the
-    /// account signs out, or synced playlists would appear only after a restart. Keyed on
-    /// LastSyncUtc, not IsSyncing: the handler reads state when it runs, so a quick sync can
-    /// be over before any hop observes it running.
+    /// but the Library tab reads that file only at start: reload it each time the service says it
+    /// wrote the file, or synced playlists would appear only after a restart. Not on StateChanged:
+    /// sign-out raises that before it removes the desktop's playlists, so a reload there read them back.
     /// </summary>
-    private void OnAccountStateChanged(object? sender, EventArgs e) => Marshal(() =>
-    {
-        if (_account is not { } account) return;
-        var lastSync = account.Account?.LastSyncUtc;
-        var signedIn = account.IsSignedIn;
-        var reload = (lastSync != null && lastSync != _accountLastSync) || (_accountWasSignedIn && !signedIn);
-        _accountLastSync = lastSync;
-        _accountWasSignedIn = signedIn;
-        if (reload) _ = Library.ReloadPlaylistsAsync();
-    });
+    private void OnAccountPlaylistsChanged(object? sender, EventArgs e) => Marshal(() => _ = Library.ReloadPlaylistsAsync());
 
     public bool HasAccount => Account != null;
 

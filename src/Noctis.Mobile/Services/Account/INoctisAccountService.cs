@@ -77,6 +77,10 @@ public interface INoctisAccountService
     event EventHandler<NoctisSyncProgress>? SyncProgress;
     event EventHandler<NoctisDownloadProgress>? DownloadProgress;
 
+    /// <summary>Raised (any thread) right after the service rewrote playlists.json: a sync applied
+    /// the desktop's playlists, or sign-out removed them. Whoever shows playlists re-reads it.</summary>
+    event EventHandler? PlaylistsChanged;
+
     /// <summary>
     /// First contact: connects without credentials and returns the server certificate's
     /// SHA-256 fingerprint for the user to compare with the desktop's Settings.

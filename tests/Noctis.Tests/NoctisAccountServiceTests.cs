@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Noctis.Mobile.Services.Account;
+using Noctis.Mobile.ViewModels;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Server;
@@ -620,6 +621,36 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         await Assert.ThrowsAsync<NoctisServerException>(() => svc.SyncNowAsync(TestContext.Current.CancellationToken));
         // The install keeps its device id for the next sign-in.
         Assert.Equal(deviceId, Restart().DeviceId);
+    }
+
+    /// <summary>The Library tab over the phone's real library and playlists.json.</summary>
+    private async Task<LibraryViewModel> LibraryTabAsync()
+    {
+        var tab = new LibraryViewModel(_phoneLibrary, _phonePersistence, new MobileFixtures.NoPicker(), marshal: a => a());
+        await tab.InitializeAsync();
+        return tab;
+    }
+
+    [Fact]
+    public async Task SignOut_TheLibraryTabReloadsPlaylists_AfterTheDesktopOnesAreGone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { new() { Name = "Phone only" } });
+        using var rig = MobileFixtures.MakeRig();
+        var tab = await LibraryTabAsync();
+        var svc = await SignedInAsync();
+        var shell = new ShellViewModel(tab, rig.Shell.Player, rig.Shell.Lyrics) { Account = svc, Marshal = a => a() };
+        await svc.SyncNowAsync(ct);
+        await Until(() => tab.Playlists.Any(p => p.Id == _deskMixId));
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        await Until(() => tab.Playlists.All(p => p.Id != _deskMixId));
+        Assert.Equal("Phone only", Assert.Single(tab.Playlists).Name);
+        // A phone edit afterwards does not write them back.
+        await tab.CreatePlaylistAsync("After");
+        Assert.DoesNotContain(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        GC.KeepAlive(shell);
     }
 
     [Fact]

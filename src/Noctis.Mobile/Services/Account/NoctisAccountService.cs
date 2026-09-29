@@ -172,6 +172,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public event EventHandler? StateChanged;
     public event EventHandler<NoctisSyncProgress>? SyncProgress;
     public event EventHandler<NoctisDownloadProgress>? DownloadProgress;
+    public event EventHandler? PlaylistsChanged;
 
     private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
 
@@ -285,20 +286,27 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         RaiseStateChanged();
 
-        await Task.Run(async () =>
+        var playlistsRemoved = await Task.Run(async () =>
         {
             await _library.RemoveRemoteTracksAsync().ConfigureAwait(false);
+            var removed = false;
             if (syncedPlaylists.Count > 0)
             {
                 var ids = syncedPlaylists.ToHashSet();
                 var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
                 if (playlists.RemoveAll(p => ids.Contains(p.Id)) > 0)
+                {
                     await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
+                    removed = true;
+                }
             }
             if (removeDownloads) DeleteAllDownloadFiles();
             else DeletePartFiles();
             DeleteSavedLyrics();
+            return removed;
         }).ConfigureAwait(false);
+        // Only now: a reload on the StateChanged above would still read the desktop's playlists.
+        if (playlistsRemoved) RaisePlaylistsChanged();
         DebugLog.Write("Account", $"signed out (downloads {(removeDownloads ? "removed" : "kept")})");
         RaiseDownloadProgress();
         RaiseStateChanged();
@@ -891,7 +899,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 modified, Deleted: false)));
         }
 
-        if (changed) await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
+        if (changed)
+        {
+            await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
+            RaisePlaylistsChanged();
+        }
 
         foreach (var chunk in PushChunks(toPush, p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)))
         {
@@ -1358,6 +1370,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     }
 
     private void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+    private void RaisePlaylistsChanged() => PlaylistsChanged?.Invoke(this, EventArgs.Empty);
 
     private void RaiseSyncProgress(NoctisSyncStage stage, int done, int total) =>
         SyncProgress?.Invoke(this, new NoctisSyncProgress(stage, done, total));
