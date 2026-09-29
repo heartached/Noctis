@@ -145,6 +145,11 @@ public class LyricsStudioModelDownloadTests : IDisposable
         Assert.Equal("Retry", vm.ModelActionText);
         Assert.Contains("404", vm.ModelBannerDetail);
         Assert.False(vm.IsDownloadingModel);
+
+        // The panel comes back on screen (page switch, dialog closed over it): the reason stays.
+        vm.RefreshModelState();
+        Assert.Equal(LyricsStudioViewModel.ModelBannerState.Failed, vm.ModelBanner);
+        Assert.Contains("404", vm.ModelBannerDetail);
     }
 
     [AvaloniaFact]

@@ -470,7 +470,17 @@ public partial class LyricsStudioViewModel : ViewModelBase
             return;
         }
         var model = _engine.Models.Model;
-        switch (_engine.Models.State)
+        var state = _engine.Models.State;
+        if (_downloadFailure is { } failure && state is WhisperModelState.Missing or WhisperModelState.Partial)
+        {
+            // Still not installed: keep saying why the last try failed (a re-attached panel used
+            // to replace it with the plain "Download" card, hiding the error).
+            SetBanner(ModelBannerState.Failed, Loc("LyricsStudio.ModelFailedTitle"), failure,
+                action: Loc(state == WhisperModelState.Partial ? "LyricsStudio.ModelResume" : "LyricsStudio.ModelRetry"));
+            return;
+        }
+        _downloadFailure = null;
+        switch (state)
         {
             case WhisperModelState.Ready or WhisperModelState.Unverified:
                 SetBanner(ModelBannerState.Hidden);
@@ -509,6 +519,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     }
 
     private DownloadMeter _downloadMeter = new();
+    /// <summary>Why the last download failed, shown until the next try or until the model is installed.</summary>
+    private string? _downloadFailure;
 
     /// <summary>
     /// Downloads the model (or resumes it, or follows the download already running). Progress is
@@ -519,6 +531,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (IsDownloadingModel) return;
         IsDownloadingModel = true;
+        _downloadFailure = null;
         _downloadMeter = new DownloadMeter();
         SetBanner(ModelBannerState.Connecting, Loc("LyricsStudio.ModelDownloadingTitle"), Loc("LyricsStudio.ModelConnecting"), indeterminate: true);
         EnsureTicking();
@@ -537,13 +550,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             IsDownloadingModel = false;
             DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ModelDownloadFailed", $"{ex.GetType().Name}: {ex.Message}");
-            IsModelInstalled = _engine.Models.IsInstalled();
-            var detail = ex is WhisperModelIntegrityException
-                ? Loc("LyricsStudio.ModelChecksumFailedBody")
-                : Loc("LyricsStudio.ModelFailedBody", ex.Message.TrimEnd('.', ' '));
-            var part = _engine.Models.PartialBytes;
-            SetBanner(ModelBannerState.Failed, Loc("LyricsStudio.ModelFailedTitle"), detail,
-                action: Loc(part > 0 ? "LyricsStudio.ModelResume" : "LyricsStudio.ModelRetry"));
+            var reason = ex.Message.TrimEnd('.', ' ');
+            _downloadFailure = ex is WhisperModelIntegrityException ? Loc("LyricsStudio.ModelChecksumFailedBody")
+                : _engine.Models.PartialBytes > 0 ? Loc("LyricsStudio.ModelFailedBody", reason)
+                : reason + ".";
+            RefreshModelState();
         }
     }
 
