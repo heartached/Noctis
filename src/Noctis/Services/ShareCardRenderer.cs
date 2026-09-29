@@ -1390,7 +1390,7 @@ public static class ShareCardRenderer
 
             // Downscale once so the color passes and card drawing stay cheap. 1024px keeps
             // the artwork sharp on the 2× supersampled export (poster art draws at ~920px).
-            return raw?.Resize(new SKImageInfo(1024, 1024), SKFilterQuality.High);
+            return Helpers.SkiaArtworkDecoder.Downscale(raw, new SKImageInfo(1024, 1024));
         }
         catch
         {

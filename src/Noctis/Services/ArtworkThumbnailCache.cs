@@ -140,8 +140,15 @@ public static class ArtworkThumbnailCache
         });
     }
 
+    /// <summary>
+    /// Bumped when the decode's pixels change, so thumbnails from an older resize are
+    /// rebuilt instead of served (v2: trilinear, see SkiaArtworkDecoder.Downscale).
+    /// Stale ones age out through the trim.
+    /// </summary>
+    private const string Version = "v2";
+
     internal static string ThumbPath(string dir, string path, int width, long size, long writeTicks)
-        => Path.Combine(dir, $"{PathKey(path)}-{width}-{size:x}-{writeTicks:x}{Extension}");
+        => Path.Combine(dir, $"{PathKey(path)}-{width}-{size:x}-{writeTicks:x}-{Version}{Extension}");
 
     private static string PathKey(string path)
     {

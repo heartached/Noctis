@@ -118,14 +118,31 @@ public static class SkiaArtworkDecoder
 
             using (decoded)
             {
-                return decoded.Resize(new SKImageInfo(targetWidth, targetHeight, SKColorType.Bgra8888, SKAlphaType.Premul),
-                    SKFilterQuality.High);
+                return Downscale(decoded, new SKImageInfo(targetWidth, targetHeight, SKColorType.Bgra8888, SKAlphaType.Premul));
             }
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Resizes <paramref name="source"/> to <paramref name="info"/> with trilinear (mipmapped)
+    /// sampling. Not <c>Resize(info, SKFilterQuality.High)</c>: on SkiaSharp 3 that is a
+    /// Mitchell cubic with no mipmaps, which reads only 4×4 source pixels per output pixel,
+    /// so a 3000px cover shrunk to a 256–1000px slot aliases (jagged cover text; Discord,
+    /// veil 09-28). Against a Lanczos reference over 10 real covers × 5 sizes: mean PSNR
+    /// 33.4 dB → 39.7 dB, worst 22.2 → 32.6. The caller owns the result.
+    /// </summary>
+    public static SKBitmap Downscale(SKBitmap source, SKImageInfo info)
+    {
+        var result = new SKBitmap(info);
+        using var canvas = new SKCanvas(result);
+        using var image = SKImage.FromBitmap(source);
+        canvas.DrawImage(image, new SKRect(0, 0, info.Width, info.Height),
+            new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+        return result;
     }
 
     /// <summary>
