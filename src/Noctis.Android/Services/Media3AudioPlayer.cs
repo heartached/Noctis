@@ -1,6 +1,7 @@
 using Android.Content;
 using Android.Media;
 using Android.OS;
+using Android.Runtime;
 using AndroidX.Media3.Common;
 using AndroidX.Media3.DataSource;
 using AndroidX.Media3.ExoPlayer;
@@ -133,6 +134,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .Build();
         _listener = new Listener(this);
         _player.AddListener(_listener);
+        LogDecoders("audio/alac");
         PlaybackEngine.Player = _player;
 
         // Wraps _player for the MediaSession only (PlaybackEngine.SessionPlayer): intercepts
@@ -325,6 +327,64 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         State = PlaybackState.Stopped;
         // Redacted: the text reaches the log and the Now Playing error line.
         PlaybackError?.Invoke(this, LogRedactor.Redact($"{error.ErrorCodeName}: {error.Message}"));
+    }
+
+    /// <summary>
+    /// A song whose audio no decoder on this phone accepts does not fail in Media3: the audio
+    /// renderer is left disabled and the clock runs, so it "plays" in silence to the end
+    /// (reproduced with an ALAC .m4a on an emulator that has no ALAC decoder: session PLAYING,
+    /// position advancing, AudioFlinger "0 are active"). Surface it as a playback error so the
+    /// queue skips it and the reason is visible, instead of silence.
+    /// </summary>
+    private void OnTracksChanged(Tracks tracks)
+    {
+        if (!tracks.ContainsType(C.TrackTypeAudio) || tracks.IsTypeSupported(C.TrackTypeAudio, true)) return;
+        var mime = FirstAudioMime(tracks) ?? "an unknown format";
+        DebugLog.Write("Audio", $"No decoder on this phone for {mime}; skipping the song");
+        StopPositionPump();
+        State = PlaybackState.Stopped;
+        PlaybackError?.Invoke(this, $"This phone can't decode {DescribeMime(mime)}, so the song was skipped.");
+    }
+
+    private static string? FirstAudioMime(Tracks tracks)
+    {
+        // Groups is an untyped Java list: its items may arrive as plain Java objects.
+        foreach (var item in tracks.Groups)
+        {
+            var group = item as Tracks.Group ?? (item as Java.Lang.Object)?.JavaCast<Tracks.Group>();
+            if (group == null || group.Type != C.TrackTypeAudio) continue;
+            for (var i = 0; i < group.Length; i++)
+                if (group.GetTrackFormat(i).SampleMimeType is { Length: > 0 } mime) return mime;
+        }
+        return null;
+    }
+
+    private static string DescribeMime(string mime) => mime switch
+    {
+        "audio/alac" => "ALAC (Apple Lossless)",
+        _ => mime,
+    };
+
+    /// <summary>Logs which decoders this phone offers for formats known to be missing on some
+    /// devices, so an exported log answers "why is this song silent" without a debugger.</summary>
+    private static void LogDecoders(params string[] mimes)
+    {
+        try
+        {
+            var infos = new MediaCodecList(MediaCodecListKind.RegularCodecs).GetCodecInfos() ?? Array.Empty<MediaCodecInfo>();
+            foreach (var mime in mimes)
+            {
+                var names = infos
+                    .Where(i => !i.IsEncoder && i.GetSupportedTypes().Any(t => string.Equals(t, mime, StringComparison.OrdinalIgnoreCase)))
+                    .Select(i => i.Name)
+                    .ToList();
+                DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}");
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Decoder list unavailable: {ex.GetType().Name}");
+        }
     }
 
     private void OnIsPlayingChanged(bool isPlaying)
@@ -627,6 +687,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlaybackStateChanged(int playbackState) => _owner.OnPlaybackStateChanged(playbackState);
         public void OnMediaItemTransition(MediaItem? mediaItem, int reason) => _owner.OnMediaItemTransition(mediaItem, reason);
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
+        public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
     }
 
