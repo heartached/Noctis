@@ -85,12 +85,18 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
         _volume = new AndroidVolumeControl(context);
         var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
-        var lyrics = new LyricsPageViewModel(_player, nowPlaying, new SafTrackFileAccess(context), persistence)
+        var account = CreateAccountService(context, library, persistence, stateRecorder);
+        // Desktop songs' lyrics come from the desktop (saved on the phone for offline use); every
+        // other song reads its sidecars through SAF as before.
+        var remoteLyrics = account is IRemoteLyricsSource source
+            ? new RemoteLyricsFileAccess(new SafTrackFileAccess(context), source)
+            : null;
+        var lyrics = new LyricsPageViewModel(_player, nowPlaying, (ITrackFileAccess?)remoteLyrics ?? new SafTrackFileAccess(context), persistence)
         {
             // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
             FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
+            PrepareTrack = remoteLyrics is null ? null : remoteLyrics.ForLoad,
         };
-        var account = CreateAccountService(context, library, persistence, stateRecorder);
         var shell = new ShellViewModel(
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
             nowPlaying,
