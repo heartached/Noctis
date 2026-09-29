@@ -654,6 +654,37 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PhonePlaylistEdits_GoOntoWhatTheSyncWrote_NotOntoTheTabsOldCopy()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var tab = await LibraryTabAsync();             // read before the first sync: no desktop playlist
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);                     // writes "Desk mix"; nothing reloads the tab here
+
+        await tab.CreatePlaylistAsync("Phone list");
+
+        var saved = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.Contains(saved, p => p.Id == _deskMixId);
+        Assert.Contains(saved, p => p.Name == "Phone list");
+
+        // The tab (or an open sheet) holds a copy; the desktop renames the playlist meanwhile.
+        await tab.ReloadPlaylistsAsync();
+        var held = tab.Playlists.Single(p => p.Id == _deskMixId);
+        await Task.Delay(20, ct);
+        var deskMix = _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+        deskMix.Name = "Renamed";
+        deskMix.ModifiedAt = DateTime.UtcNow;
+        await svc.SyncNowAsync(ct);
+
+        await tab.AddToPlaylistAsync(held, new[] { Phone(_t2) });
+
+        var mix = (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
+        Assert.Equal("Renamed", mix.Name);
+        Assert.Equal(new[] { _t1.Id, _t3.Id, _t2.Id }, mix.TrackIds);
+        Assert.Contains(await _phonePersistence.LoadPlaylistsAsync(), p => p.Name == "Phone list");
+    }
+
+    [Fact]
     public async Task SignOut_KeepingDownloads_LeavesTheFiles()
     {
         var svc = await SignedInAsync();

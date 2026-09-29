@@ -145,14 +145,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     public Task SetPlaylistPinnedAsync(Playlist playlist, bool pinned)
     {
         playlist.IsPinned = pinned;
-        return SavePlaylistsAsync();
+        return EditPlaylistAsync(playlist, p => p.IsPinned = pinned);
     }
 
     public async Task<Playlist> CreatePlaylistAsync(string name)
     {
         var playlist = new Playlist { Name = name };
-        _playlists.Add(playlist);
-        await SavePlaylistsAsync();
+        await EditPlaylistsAsync(list => list.Add(playlist));
         return playlist;
     }
 
@@ -160,13 +159,46 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// (desktop parity with SidebarViewModel.AddTracksToPlaylist: both apps share playlists.json).</summary>
     public Task AddToPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
     {
+        Append(playlist, tracks);
+        return EditPlaylistAsync(playlist, p => Append(p, tracks));
+    }
+
+    private static void Append(Playlist playlist, IReadOnlyList<Track> tracks)
+    {
         var existing = new HashSet<Guid>(playlist.TrackIds);
         foreach (var t in tracks)
         {
             if (existing.Add(t.Id)) playlist.TrackIds.Add(t.Id);
         }
         playlist.ModifiedAt = DateTime.UtcNow;
-        return SavePlaylistsAsync();
+    }
+
+    /// <summary>Applies an edit of one playlist to the copy in playlists.json now, found by id
+    /// (the caller's instance may be from before a reload). Gone from the file (the desktop
+    /// deleted it, sign-out removed it): nothing to edit.</summary>
+    private Task EditPlaylistAsync(Playlist playlist, Action<Playlist> edit) => EditPlaylistsAsync(list =>
+    {
+        if (list.FirstOrDefault(p => p.Id == playlist.Id) is { } current) edit(current);
+    });
+
+    /// <summary>
+    /// Re-read, edit, save: the account sync also writes playlists.json (the desktop's playlists),
+    /// so saving the list this view model read earlier would drop what the sync wrote — or push
+    /// the old copy of a desktop playlist back to the desktop as a newer edit.
+    /// </summary>
+    private async Task EditPlaylistsAsync(Action<List<Playlist>> edit)
+    {
+        try
+        {
+            _playlists = await _persistence.LoadPlaylistsAsync();
+        }
+        catch (Exception ex)
+        {
+            // Edit what this view model has, as before; better than losing the edit.
+            DebugLog.Write("Library", $"Playlist re-read failed: {ex.Message}");
+        }
+        edit(_playlists);
+        await SavePlaylistsAsync();
     }
 
     private async Task SavePlaylistsAsync()
