@@ -107,7 +107,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
         var stamp = DateTime.UtcNow.ToString("O");
         var r = await Push(new
         {
-            device = "phone-1", name = "Pixel",
+            device = "phone-001", name = "Pixel",
             items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = stamp, payload = new { favorite = true, rating = 4, disliked = false, playCount = 3 } } },
         });
         Assert.Equal("ok", r.GetProperty("status").GetString());
@@ -119,12 +119,12 @@ public class NoctisServerSyncTests : IAsyncLifetime
         Assert.True(applied.State.Favorite);
         Assert.Equal(3, applied.State.PlayCount);
 
-        var pull = await Get("getNoctisSyncChanges", "since=0&device=phone-2&name=Tablet");
+        var pull = await Get("getNoctisSyncChanges", "since=0&device=phone-002&name=Tablet");
         var items = pull.GetProperty("noctisSync").GetProperty("items");
         var item = items.EnumerateArray().Single(i => i.GetProperty("kind").GetString() == "track");
         Assert.Equal(TrackA.ToString("N"), item.GetProperty("id").GetString());
         Assert.Equal(4, item.GetProperty("payload").GetProperty("rating").GetInt32());
-        Assert.Equal("phone-1", item.GetProperty("device").GetString());
+        Assert.Equal("phone-001", item.GetProperty("device").GetString());
         Assert.True(pull.GetProperty("noctisSync").GetProperty("seq").GetInt64() >= 1);
 
         // Both devices are now known.
@@ -138,8 +138,8 @@ public class NoctisServerSyncTests : IAsyncLifetime
     public async Task Push_OlderState_IsIgnored()
     {
         var now = DateTime.UtcNow;
-        await Push(new { device = "phone-1", items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = now.ToString("O"), payload = new { favorite = true, rating = 5 } } } });
-        var r = await Push(new { device = "phone-2", items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = now.AddMinutes(-10).ToString("O"), payload = new { favorite = false, rating = 1 } } } });
+        await Push(new { device = "phone-001", items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = now.ToString("O"), payload = new { favorite = true, rating = 5 } } } });
+        var r = await Push(new { device = "phone-002", items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = now.AddMinutes(-10).ToString("O"), payload = new { favorite = false, rating = 1 } } } });
         Assert.Equal(0, r.GetProperty("noctisSync").GetProperty("applied").GetInt32());
         Assert.Single(_lib.AppliedTracks);
         Assert.Equal(5, _lib.AppliedTracks[0].State.Rating);
@@ -150,11 +150,11 @@ public class NoctisServerSyncTests : IAsyncLifetime
     {
         var id = Guid.NewGuid();
         var t0 = DateTime.UtcNow;
-        var r1 = await Push(new { device = "phone-1", items = new[] { new { kind = "playlist", id = id.ToString("N"), updatedUtc = t0.ToString("O"), payload = new { name = "Road trip", description = "", color = "#ff0000", trackIds = new[] { TrackA }, modifiedAt = t0.ToString("O"), deleted = false } } } });
+        var r1 = await Push(new { device = "phone-001", items = new[] { new { kind = "playlist", id = id.ToString("N"), updatedUtc = t0.ToString("O"), payload = new { name = "Road trip", description = "", color = "#ff0000", trackIds = new[] { TrackA }, modifiedAt = t0.ToString("O"), deleted = false } } } });
         Assert.Equal(1, r1.GetProperty("noctisSync").GetProperty("applied").GetInt32());
         Assert.Contains(_lib.Playlists, p => p.Id == id && p.Name == "Road trip");
 
-        var r2 = await Push(new { device = "phone-1", items = new[] { new { kind = "playlist", id = id.ToString("N"), updatedUtc = t0.AddMinutes(1).ToString("O"), payload = new { name = "", description = "", color = "", trackIds = Array.Empty<Guid>(), modifiedAt = t0.AddMinutes(1).ToString("O"), deleted = true } } } });
+        var r2 = await Push(new { device = "phone-001", items = new[] { new { kind = "playlist", id = id.ToString("N"), updatedUtc = t0.AddMinutes(1).ToString("O"), payload = new { name = "", description = "", color = "", trackIds = Array.Empty<Guid>(), modifiedAt = t0.AddMinutes(1).ToString("O"), deleted = true } } } });
         Assert.Equal(1, r2.GetProperty("noctisSync").GetProperty("applied").GetInt32());
         Assert.DoesNotContain(_lib.Playlists, p => p.Id == id);
     }
@@ -163,7 +163,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
     public async Task Pull_IncludesDesktopPlaylists_FromPersistence()
     {
         _persistence.Playlists.Add(new Playlist { Name = "Desk mix", TrackIds = { TrackA }, ModifiedAt = DateTime.UtcNow });
-        var pull = await Get("getNoctisSyncChanges", "since=0&device=phone-1");
+        var pull = await Get("getNoctisSyncChanges", "since=0&device=phone-001");
         var playlists = pull.GetProperty("noctisSync").GetProperty("items").EnumerateArray().Where(i => i.GetProperty("kind").GetString() == "playlist").ToList();
         var mix = Assert.Single(playlists);
         Assert.Equal("Desk mix", mix.GetProperty("payload").GetProperty("name").GetString());
@@ -174,7 +174,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
     public async Task SyncOff_EndpointsAnswerNotAuthorized()
     {
         _settings.SyncEnabled = false;
-        var r = await Get("getNoctisSyncChanges", "since=0&device=phone-1");
+        var r = await Get("getNoctisSyncChanges", "since=0&device=phone-001");
         Assert.Equal("failed", r.GetProperty("status").GetString());
         Assert.Equal(50, r.GetProperty("error").GetProperty("code").GetInt32());
         var status = await Get("getNoctisSyncStatus");
@@ -186,7 +186,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
     {
         var now = DateTime.UtcNow;
         var ids = Enumerable.Range(0, 3 * PageSize + 1).Select(_ => Guid.NewGuid()).ToList();
-        var push = await Push(new { device = "phone-1", items = ids.Select((id, i) => TrackItem(id, now.AddSeconds(-i), new { favorite = true, rating = 3 })).ToArray() });
+        var push = await Push(new { device = "phone-001", items = ids.Select((id, i) => TrackItem(id, now.AddSeconds(-i), new { favorite = true, rating = 3 })).ToArray() });
         Assert.Equal(ids.Count, push.GetProperty("noctisSync").GetProperty("applied").GetInt32());
 
         var seen = new List<string>();
@@ -194,7 +194,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
         var pages = 0;
         while (true)
         {
-            var sync = (await Get("getNoctisSyncChanges", $"since={since}&device=phone-2")).GetProperty("noctisSync");
+            var sync = (await Get("getNoctisSyncChanges", $"since={since}&device=phone-002")).GetProperty("noctisSync");
             var items = sync.GetProperty("items").EnumerateArray().ToList();
             var more = sync.GetProperty("more").GetBoolean();
             pages++;
@@ -203,7 +203,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
             var seq = sync.GetProperty("seq").GetInt64();
             if (more) Assert.Equal(items[^1].GetProperty("seq").GetInt64(), seq); // resume after the last delivered item
             // The device's checkpoint is what it has actually received.
-            Assert.Equal(seq, _sync.Devices().Single(d => d.Id == "phone-2").LastSeq);
+            Assert.Equal(seq, _sync.Devices().Single(d => d.Id == "phone-002").LastSeq);
             since = seq;
             if (!more) break;
             Assert.True(pages < 20);
@@ -214,11 +214,45 @@ public class NoctisServerSyncTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pull_CleansTheDeviceName_ACallerGives()
+    {
+        await Get("getNoctisSyncChanges", "since=0&device=phone-002&name=" + Uri.EscapeDataString("‮Tab​let\u0007 "));
+        Assert.Equal("Tablet", _sync.Devices().Single(d => d.Id == "phone-002").Name);
+    }
+
+    [Fact]
+    public async Task Pull_PagesByPayloadBytes_Too_AndALoopGetsEverything()
+    {
+        var now = DateTime.UtcNow;
+        var ids = Enumerable.Range(0, 4).Select(_ => Guid.NewGuid()).ToList();
+        await Push(new { device = "phone-001", items = ids.Select((id, i) => TrackItem(id, now.AddSeconds(-i), new { favorite = true, rating = 3 })).ToArray() });
+
+        // Same ledger, a one-byte budget: every page carries exactly one item.
+        var tiny = new LibrarySyncService(() => _settings, _persistence) { ChangesPageSize = 100, ChangesPageBytes = 1 };
+        var seen = new List<string>();
+        long since = 0;
+        var pages = 0;
+        while (true)
+        {
+            var page = await tiny.GetChangesAsync(since, "phone-002", null, TestContext.Current.CancellationToken);
+            pages++;
+            Assert.True(page.Items.Count <= 1);
+            seen.AddRange(page.Items.Select(i => i.Id));
+            if (page.More) Assert.Equal(page.Items[^1].Seq, page.Seq);
+            since = page.Seq;
+            if (!page.More) break;
+            Assert.True(pages < 20);
+        }
+        Assert.Equal(ids.Select(i => i.ToString("N")).OrderBy(x => x), seen.OrderBy(x => x));
+        Assert.Equal(ids.Count, pages);
+    }
+
+    [Fact]
     public async Task Push_FutureStamps_AreClamped_SoTheyCannotWinForever()
     {
         var far = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        await Push(new { device = "phone-1", items = new[] { TrackItem(TrackA, far, new { favorite = true, rating = 4, lastPlayed = far.ToString("O"), favoritedAt = far.ToString("O") }) } });
-        var item = PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-2")).Single(i => i.GetProperty("kind").GetString() == "track");
+        await Push(new { device = "phone-001", items = new[] { TrackItem(TrackA, far, new { favorite = true, rating = 4, lastPlayed = far.ToString("O"), favoritedAt = far.ToString("O") }) } });
+        var item = PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-002")).Single(i => i.GetProperty("kind").GetString() == "track");
         var limit = DateTime.UtcNow + LibrarySyncService.MaxClockSkew + TimeSpan.FromSeconds(5);
         Assert.True(item.GetProperty("updatedUtc").GetDateTime().ToUniversalTime() <= limit);
         Assert.True(item.GetProperty("payload").GetProperty("lastPlayed").GetDateTime().ToUniversalTime() <= limit);
@@ -228,8 +262,8 @@ public class NoctisServerSyncTests : IAsyncLifetime
         // A stamp with no zone is UTC, not this computer's local time.
         var id = Guid.NewGuid();
         var stamp = DateTime.UtcNow.AddHours(-3);
-        await PushRaw($$$"""{"device":"phone-1","items":[{"kind":"track","id":"{{{id:N}}}","updatedUtc":"{{{stamp:yyyy-MM-ddTHH:mm:ss}}}","payload":{"rating":2}}]}""");
-        var local = PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-2")).Single(i => i.GetProperty("id").GetString() == id.ToString("N"));
+        await PushRaw($$$"""{"device":"phone-001","items":[{"kind":"track","id":"{{{id:N}}}","updatedUtc":"{{{stamp:yyyy-MM-ddTHH:mm:ss}}}","payload":{"rating":2}}]}""");
+        var local = PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-002")).Single(i => i.GetProperty("id").GetString() == id.ToString("N"));
         Assert.Equal(new DateTime(stamp.Year, stamp.Month, stamp.Day, stamp.Hour, stamp.Minute, stamp.Second, DateTimeKind.Utc),
             local.GetProperty("updatedUtc").GetDateTime().ToUniversalTime());
     }
@@ -240,7 +274,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
         var now = DateTime.UtcNow;
         var upper = Guid.NewGuid();
         var r = await PushRaw($$$"""
-            {"device":"phone-1","items":[
+            {"device":"phone-001","items":[
               {"kind":"album","id":"{{{Guid.NewGuid():N}}}","updatedUtc":"{{{now:O}}}","payload":{}},
               {"kind":"track","id":"tr-{{{Guid.NewGuid():N}}}","updatedUtc":"{{{now:O}}}","payload":{"rating":1}},
               {"kind":"track","id":"not-a-guid","updatedUtc":"{{{now:O}}}","payload":{"rating":1}},
@@ -253,7 +287,7 @@ public class NoctisServerSyncTests : IAsyncLifetime
         Assert.Equal("ok", r.GetProperty("status").GetString());
         Assert.Equal(1, r.GetProperty("noctisSync").GetProperty("applied").GetInt32());
 
-        var item = Assert.Single(PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-2")));
+        var item = Assert.Single(PulledItems(await Get("getNoctisSyncChanges", "since=0&device=phone-002")));
         Assert.Equal(upper.ToString("N"), item.GetProperty("id").GetString()); // normalised to lower-case "N"
         var payload = item.GetProperty("payload");
         Assert.Equal(5, payload.GetProperty("rating").GetInt32());
@@ -266,11 +300,11 @@ public class NoctisServerSyncTests : IAsyncLifetime
     {
         var now = DateTime.UtcNow;
         var many = Enumerable.Range(0, NoctisServer.MaxSyncPushItems + 1).Select(_ => TrackItem(Guid.NewGuid(), now, new { rating = 1 })).ToArray();
-        var r = await Push(new { device = "phone-1", items = many });
+        var r = await Push(new { device = "phone-001", items = many });
         Assert.Equal("failed", r.GetProperty("status").GetString());
         Assert.Empty(_lib.AppliedTracks);
 
-        var huge = await PushRaw($$"""{"device":"phone-1","pad":"{{new string('x', 5 * 1024 * 1024)}}","items":[]}""");
+        var huge = await PushRaw($$"""{"device":"phone-001","pad":"{{new string('x', 5 * 1024 * 1024)}}","items":[]}""");
         Assert.Equal("failed", huge.GetProperty("status").GetString());
         Assert.Contains("too large", huge.GetProperty("error").GetProperty("message").GetString());
     }
@@ -293,6 +327,34 @@ public class NoctisServerSyncTests : IAsyncLifetime
         var devices = _sync.Devices();
         Assert.Contains(devices, d => d.Id == "phone-key-01" && d.Name == "Pixel Key");
         Assert.DoesNotContain(devices, d => d.Id is "spoofed-device" or "other-spoof");
+    }
+
+    [Fact]
+    public async Task PasswordCallers_CannotNameABadId_AnotherAccountsDevice_OrThisComputer()
+    {
+        _users.Create("bob", "battery staple", isAdmin: false);
+        _users.IssueDeviceKey("bob", "bobs-phone-01", "Bob's phone");
+        static int Code(JsonElement r) => r.GetProperty("error").GetProperty("code").GetInt32();
+
+        // The sign-in id rule: 8–64 letters, digits, '-' or '_'.
+        Assert.Equal(10, Code(await Get("getNoctisSyncChanges", "since=0&device=short")));
+        Assert.Equal(10, Code(await Get("getNoctisSyncChanges", "since=0&device=" + Uri.EscapeDataString("phone 001!"))));
+        // Another account's phone, or this computer's own ledger id.
+        Assert.Equal(10, Code(await Get("getNoctisSyncChanges", "since=0&device=BOBS-PHONE-01")));
+        Assert.Equal(10, Code(await Get("getNoctisSyncChanges", "since=0&device=desktop-test")));
+        Assert.Equal(10, Code(await Push(new { device = "bobs-phone-01", items = Array.Empty<object>() })));
+        var perItem = await Push(new
+        {
+            device = "phone-001",
+            items = new[] { new { kind = "track", id = TrackA.ToString("N"), updatedUtc = DateTime.UtcNow.ToString("O"), device = "bobs-phone-01", payload = (object)new { rating = 3 } } },
+        });
+        Assert.Equal(10, Code(perItem));
+        Assert.Empty(_lib.AppliedTracks);
+        Assert.DoesNotContain(_sync.Devices(), d => d.Id is "short" or "bobs-phone-01" or "BOBS-PHONE-01");
+
+        // A phone signed in to this same account is the caller's to name.
+        _users.IssueDeviceKey("alice", "alices-phone-1", "Alice's phone");
+        Assert.Equal("ok", (await Get("getNoctisSyncChanges", "since=0&device=alices-phone-1")).GetProperty("status").GetString());
     }
 
     private sealed class FakeLibrary : IServerLibrary

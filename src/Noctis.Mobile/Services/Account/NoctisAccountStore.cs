@@ -151,8 +151,24 @@ public sealed class NoctisAccountStore
             fs.Write(bytes, 0, bytes.Length);
             fs.Flush(flushToDisk: true);
         }
-        File.Move(tmp, path, overwrite: true);
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tmp, path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < MoveAttempts && ex is IOException or UnauthorizedAccessException)
+            {
+                // Windows refuses to replace a file someone has open (a virus scanner, the indexer,
+                // anything reading it) for as long as they hold it. Android's rename never does.
+                Thread.Sleep(attempt * 25);
+            }
+        }
     }
+
+    /// <summary>Replace attempts before a write gives up (about 0.7 s of waiting in all).</summary>
+    private const int MoveAttempts = 8;
 
     private sealed class DeviceFile
     {

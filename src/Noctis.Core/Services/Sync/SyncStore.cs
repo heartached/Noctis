@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Microsoft.Data.Sqlite;
 
 namespace Noctis.Services.Sync;
@@ -144,18 +145,23 @@ public sealed class SyncStore
         return list;
     }
 
+    /// <summary>Payload bytes after which a page stops (big playlists would otherwise make one pull huge).</summary>
+    public const long DefaultPageBytes = 4 * 1024 * 1024;
+
     /// <summary>
     /// Up to <paramref name="limit"/> items after <paramref name="since"/> (oldest change first),
-    /// whether more remain, and the ledger's highest sequence — all read in one transaction so
-    /// they describe the same moment (a write landing between separate reads could otherwise be
+    /// stopping early once their payloads pass <paramref name="maxBytes"/> (always at least one
+    /// item), whether more remain, and the ledger's highest sequence — all read in one transaction
+    /// so they describe the same moment (a write landing between separate reads could otherwise be
     /// skipped by a client that jumps to the newer top).
     /// </summary>
-    public (IReadOnlyList<SyncItem> Items, bool More, long CurrentSeq) ChangesPage(long since, int limit)
+    public (IReadOnlyList<SyncItem> Items, bool More, long CurrentSeq) ChangesPage(long since, int limit, long maxBytes = DefaultPageBytes)
     {
         limit = Math.Clamp(limit, 1, 50_000);
         using var con = Open();
         using var tx = con.BeginTransaction(deferred: true);
         var list = new List<SyncItem>();
+        var more = false;
         using (var cmd = con.CreateCommand())
         {
             cmd.Transaction = tx;
@@ -163,7 +169,14 @@ public sealed class SyncStore
             cmd.Parameters.AddWithValue("$s", since);
             cmd.Parameters.AddWithValue("$l", limit + 1);
             using var r = cmd.ExecuteReader();
-            while (r.Read()) list.Add(Read(r));
+            long bytes = 0;
+            while (r.Read())
+            {
+                if (list.Count == limit || bytes >= maxBytes) { more = true; break; }
+                var item = Read(r);
+                list.Add(item);
+                bytes += Encoding.UTF8.GetByteCount(item.Payload);
+            }
         }
         long current;
         using (var max = con.CreateCommand())
@@ -173,8 +186,6 @@ public sealed class SyncStore
             current = Convert.ToInt64(max.ExecuteScalar(), CultureInfo.InvariantCulture);
         }
         tx.Commit();
-        var more = list.Count > limit;
-        if (more) list.RemoveAt(limit);
         return (list, more, current);
     }
 

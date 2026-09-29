@@ -971,10 +971,24 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
                     Plays = _pending.Plays.ToList(),
                 };
             }
-            try { _store.SavePending(copy); }
-            catch (Exception ex) { DebugLog.Write("Account", $"pending save failed ({ex.GetType().Name})"); }
+            try
+            {
+                _store.SavePending(copy);
+                _pendingSaveFailures = 0;
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Account", $"pending save failed ({ex.GetType().Name})");
+                // Until a save lands the queued plays live only in memory, so try again shortly
+                // instead of waiting for the next change (a process kill in between loses them).
+                if (++_pendingSaveFailures <= PendingSaveRetries)
+                    _ = Task.Delay(TimeSpan.FromSeconds(_pendingSaveFailures)).ContinueWith(_ => SavePendingNow(), TaskScheduler.Default);
+            }
         }
     }
+
+    private const int PendingSaveRetries = 5;
+    private int _pendingSaveFailures; // under _saveGate
 
     private void SaveSyncState()
     {

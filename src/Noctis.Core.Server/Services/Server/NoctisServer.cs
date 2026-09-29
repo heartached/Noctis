@@ -621,8 +621,9 @@ public sealed class NoctisServer : IAsyncDisposable
                 var since = long.TryParse(p.Get("since"), out var s) && s >= 0 ? s : 0;
                 // A device key names its device; only password / account-key callers say who they are.
                 var keyDevice = ctx.Items["device"] as ServerDevice;
-                var device = keyDevice?.DeviceId ?? p.Get("device") ?? throw Missing("device");
-                var changes = await sync.GetChangesAsync(since, device, keyDevice?.DeviceName ?? p.Get("name"), ctx.RequestAborted).ConfigureAwait(false);
+                HashSet<string>? taken = null;
+                var device = keyDevice?.DeviceId ?? ClaimedSyncDevice(ctx, sync, p.Get("device"), "device", ref taken);
+                var changes = await sync.GetChangesAsync(since, device, keyDevice?.DeviceName ?? CleanDeviceName(p.Get("name")), ctx.RequestAborted).ConfigureAwait(false);
                 return new JsonObject
                 {
                     ["noctisSync"] = new JsonObject
@@ -643,8 +644,9 @@ public sealed class NoctisServer : IAsyncDisposable
                 catch (System.Text.Json.JsonException) { throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload"); }
                 var obj = root as JsonObject ?? throw new SubsonicException(SubsonicResponse.ErrGeneric, "Malformed sync payload");
                 var keyDevice = ctx.Items["device"] as ServerDevice;
-                var device = keyDevice?.DeviceId ?? StringOf(obj["device"]) ?? p.Get("device") ?? throw Missing("device");
-                var name = keyDevice?.DeviceName ?? StringOf(obj["name"]) ?? p.Get("name");
+                HashSet<string>? taken = null;
+                var device = keyDevice?.DeviceId ?? ClaimedSyncDevice(ctx, sync, StringOf(obj["device"]) ?? p.Get("device"), "device", ref taken);
+                var name = keyDevice?.DeviceName ?? CleanDeviceName(StringOf(obj["name"]) ?? p.Get("name"));
                 var items = new List<Sync.SyncItem>();
                 if (obj["items"] is JsonArray arr)
                 {
@@ -662,7 +664,9 @@ public sealed class NoctisServer : IAsyncDisposable
                         // service clamps it and validates the payload.
                         var updated = DateTime.TryParse(StringOf(item["updatedUtc"]), System.Globalization.CultureInfo.InvariantCulture,
                             System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt) ? dt : DateTime.UtcNow;
-                        var itemDevice = keyDevice is not null ? device : StringOf(item["device"]) ?? device;
+                        var itemDevice = keyDevice is not null || StringOf(item["device"]) is not { } claimed || claimed == device
+                            ? device
+                            : ClaimedSyncDevice(ctx, sync, claimed, "items[].device", ref taken);
                         items.Add(new Sync.SyncItem(kind, id, payload, updated, itemDevice, 0));
                     }
                 }
@@ -673,14 +677,39 @@ public sealed class NoctisServer : IAsyncDisposable
         return null;
     }
 
+    /// <summary>
+    /// The sync device a password or account-key caller names (a device key names its own):
+    /// the same id rule as sign-in, and never this computer's own id or a device signed in to
+    /// another account, whose ledger checkpoint and changes are not the caller's to write.
+    /// </summary>
+    /// <param name="taken">Those other ids, looked up on first use and reused for the rest of the request.</param>
+    private string ClaimedSyncDevice(HttpContext ctx, Sync.ILibrarySyncService sync, string? claimed, string parameter, ref HashSet<string>? taken)
+    {
+        if (claimed is null) throw Missing(parameter);
+        if (!DeviceIdPattern.IsMatch(claimed))
+            throw new SubsonicException(SubsonicResponse.ErrMissingParameter, $"Parameter '{parameter}' must be 8–64 letters, digits, '-' or '_'");
+        if (taken is null)
+        {
+            var user = (ServerUser)ctx.Items["user"]!;
+            taken = new HashSet<string>(_users.Devices()
+                .Where(d => !string.Equals(d.User, user.Name, StringComparison.OrdinalIgnoreCase))
+                .Select(d => d.DeviceId), StringComparer.OrdinalIgnoreCase) { sync.DeviceId };
+        }
+        if (taken.Contains(claimed))
+            throw new SubsonicException(SubsonicResponse.ErrMissingParameter, $"Parameter '{parameter}' names another device");
+        return claimed;
+    }
+
     /// <summary>A JSON string member, or null when absent or not a string (never throws on a number/object).</summary>
     private static string? StringOf(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
-    /// <summary>Device name as shown in Settings: control characters dropped, trimmed, 1–64 chars; null when that leaves nothing valid.</summary>
+    /// <summary>Device name as shown in Settings: control and format characters (bidi overrides,
+    /// zero-width) dropped, trimmed, 1–64 chars; null when that leaves nothing valid.</summary>
     internal static string? CleanDeviceName(string? raw)
     {
         if (raw is null) return null;
-        var clean = new string(raw.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        var clean = new string(raw.Where(c => !char.IsControl(c)
+            && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).ToArray()).Trim();
         return clean.Length is >= 1 and <= 64 ? clean : null;
     }
 

@@ -447,6 +447,26 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(1, Phone(_t1).PlayCount);
     }
 
+    [Fact]
+    public async Task Plays_ReachTheDisk_EvenWhileSomethingIsReadingThePendingFile()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var pendingFile = Path.Combine(AccountDir, "pending.json");
+        Assert.True(File.Exists(pendingFile));
+
+        // A reader (virus scanner, indexer) holding the file open the way File.ReadAllText does:
+        // Windows refuses to replace it until the handle goes, so the save must wait it out.
+        using (new FileStream(pendingFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            svc.RecordPlay(Phone(_t1), DateTime.UtcNow);
+            await Task.Delay(300, TestContext.Current.CancellationToken);
+        }
+
+        await Until(() => File.ReadAllText(pendingFile).Contains(_t1.Id.ToString("N")));
+        Assert.Equal(1, Restart().PendingPlayCount);
+    }
+
     // ── Failures and sign-out ────────────────────────────────────────────
 
     [Fact]
