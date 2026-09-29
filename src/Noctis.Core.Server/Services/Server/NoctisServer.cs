@@ -56,8 +56,9 @@ public sealed class NoctisServer : IAsyncDisposable
     /// <summary>Raised (from a worker thread) on every authenticated request; the UI shows "phone connected".</summary>
     public event EventHandler<string>? ClientAuthenticated;
 
-    /// <summary>Starts listening on all interfaces. <paramref name="certificate"/> null = plain HTTP (LAN testing only).</summary>
-    public async Task StartAsync(int port, X509Certificate2? certificate, CancellationToken ct = default)
+    /// <summary>Starts listening on all interfaces. <paramref name="certificate"/> null = plain HTTP (LAN testing only).
+    /// <paramref name="bindAddress"/> narrows the listener (tests pass loopback so Windows Firewall never prompts).</summary>
+    public async Task StartAsync(int port, X509Certificate2? certificate, CancellationToken ct = default, IPAddress? bindAddress = null)
     {
         if (_app is not null) return;
 
@@ -67,7 +68,7 @@ public sealed class NoctisServer : IAsyncDisposable
         {
             k.AddServerHeader = false;
             k.Limits.MaxRequestBodySize = 1024 * 1024; // form posts only; audio flows the other way
-            k.Listen(IPAddress.Any, port, listen =>
+            k.Listen(bindAddress ?? IPAddress.Any, port, listen =>
             {
                 if (certificate is not null) listen.UseHttps(certificate);
             });

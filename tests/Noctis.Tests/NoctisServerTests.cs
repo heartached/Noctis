@@ -57,7 +57,7 @@ public class NoctisServerTests : IAsyncLifetime
             artworkPath: art);
 
         _server = new NoctisServer(_lib, _users, "test");
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
     }
 
@@ -354,7 +354,7 @@ public class NoctisServerTests : IAsyncLifetime
         {
             var fp = ServerCertificate.Fingerprint(cert);
             await using var server = new NoctisServer(_lib, _users, "test");
-            await server.StartAsync(0, cert, TestContext.Current.CancellationToken);
+            await server.StartAsync(0, cert, TestContext.Current.CancellationToken, IPAddress.Loopback);
             using var handler = new HttpClientHandler
             {
                 // Pin the fingerprint, as the phone does.
