@@ -167,7 +167,8 @@ public class HighlightTextBlock : TextBlock
         var candidates = new List<(int Start, int Length)>();
         AddMatches(candidates, text, query);
 
-        foreach (var term in query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        // Term values without their search tag ("artist:madonna" highlights "madonna", GitHub #107).
+        foreach (var term in Noctis.Helpers.SearchQuery.Parse(query).HighlightTerms)
         {
             if (term.Length >= 2)
                 AddMatches(candidates, text, term);

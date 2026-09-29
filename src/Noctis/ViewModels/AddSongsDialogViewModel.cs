@@ -131,7 +131,7 @@ public partial class AddSongsDialogViewModel : ViewModelBase
 
         var query = (SearchText ?? string.Empty).Trim();
         _matches = query.Length > 0
-            ? _library.Where(t => PlaylistViewModel.MatchesSearch(t, query)).ToList()
+            ? _library.Where(Noctis.Helpers.SearchQuery.Parse(query).Matches).ToList()
             : _shuffledPicks;
 
         foreach (var track in _matches.Take(MaxResults))

@@ -1422,6 +1422,10 @@
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Back</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Search (Ctrl+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Search</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Words can match any field: "radiohead ok computer", "rock 1994".
+Narrow a word with a tag: artist:madonna remix
+Tags: title: artist: albumartist: album: genre: composer: year:
+Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Right-click for New Playlist</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>

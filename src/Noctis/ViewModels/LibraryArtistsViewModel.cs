@@ -290,8 +290,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             var q = query.Trim();
             var qNoSpaces = RemoveWhitespace(q);
+            // GitHub #107: "artist:" tags and words in any order ("swift taylor") match the
+            // name; tags for fields an artist row doesn't show (genre, year) don't narrow it.
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
             filtered = ApplySort(
-                allArtists.Where(a => MatchesSearch(a.Name, q, qNoSpaces))
+                allArtists.Where(a => parsed.MatchesName(a.Name, RemoveWhitespace(a.Name ?? string.Empty)))
                           .OrderBy(a => RankMatch(a.Name, q, qNoSpaces)),
                 sortMode, ascending, ignoredWords);
         }
@@ -448,20 +451,6 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         if (!string.IsNullOrEmpty(oldPath))
             ArtworkCache.Invalidate(oldPath);
         ApplyFilter(_currentFilter);
-    }
-
-    private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
-    {
-        if (string.IsNullOrWhiteSpace(source))
-            return false;
-
-        if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        // Empty for a punctuation-only query ("&"): every key contains "", which matched everyone.
-        if (queryNoSpaces.Length == 0)
-            return false;
-        return RemoveWhitespace(source).Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase);
     }
 
     private static int RankMatch(string? source, string query, string queryNoSpaces)

@@ -612,11 +612,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
+            // GitHub #107: an album matches when one of its tracks satisfies the whole
+            // query, so "artist album" and "genre year" combine across fields.
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
             filtered = filtered.Where(a =>
-                MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
-                MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces) ||
-                a.Tracks.Any(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
-                                  MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces)));
+                (!parsed.HasFieldTerms &&
+                 (MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
+                  MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces))) ||
+                a.Tracks.Any(parsed.Matches));
 
             // Artist discographies read as one timeline: collab albums sit among the
             // artist's own releases by year (Discord request), not after them.
@@ -794,7 +797,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
-            tracks = tracks.Where(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces));
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
+            tracks = tracks.Where(t =>
+                (!parsed.HasFieldTerms && MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces)) ||
+                parsed.Matches(t));
         }
 
         var orderedSongs = tracks

@@ -221,8 +221,8 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
             if (hasFilter)
             {
-                var q = _currentFilter.Trim();
-                var match = sink.FirstOrDefault(t => MatchesFilter(t, q));
+                var query = Helpers.SearchQuery.Parse(_currentFilter);
+                var match = sink.FirstOrDefault(query.Matches);
                 if (match != null)
                     ScrollToTrackRequested?.Invoke(this, match);
             }
@@ -240,8 +240,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
             all = SortTracks(all, SortMode);
             for (int i = 0; i < all.Count; i++)
                 all[i].RowNumber = i + 1;
-            var q = _currentFilter.Trim();
-            all = all.Where(t => MatchesFilter(t, q)).ToList();
+            all = all.Where(Helpers.SearchQuery.Parse(_currentFilter).Matches).ToList();
         }
         SelectedFolderTracks.ReplaceAll(all);
         UpdateFolderSummary();
@@ -265,14 +264,6 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         var size = gb >= 1 ? $"{gb:0.#} GB" : $"{bytes / (1024.0 * 1024.0):0} MB";
         FolderSummaryText = $"{items} · {size}";
     }
-
-    // Routed through the shared normalized matcher, like every other tab. Plain
-    // Contains meant Folders was the one place where "dont" didn't find "Don't Stop"
-    // and "beyonce" didn't find "Beyoncé".
-    private static bool MatchesFilter(Track t, string q) =>
-        Helpers.SearchText.Matches(t.Title, q) ||
-        Helpers.SearchText.Matches(t.Artist, q) ||
-        Helpers.SearchText.Matches(t.Album, q);
 
     private static void Collect(FolderNode node, List<Track> sink)
     {
