@@ -1114,7 +1114,12 @@ public partial class SettingsViewModel : ViewModelBase
                 // Covers shrink to what the phone asks for (cached under server/covers); the
                 // desktop's server is for the home network, so other addresses get a 403.
                 var covers = new ServerCoverResizer(Path.Combine(ServerDataDirectory, "covers"));
-                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync)
+                // ALAC songs as FLAC for phones without an ALAC decoder (format=flac), made with
+                // the converter's ffmpeg and cached under server/transcode. No ffmpeg → originals.
+                var ffmpeg = App.Services?.GetService<IAudioConverterService>();
+                var flac = new FlacTranscodeCache(Path.Combine(ServerDataDirectory, "transcode"),
+                    new ServerFlacTranscoder(() => ffmpeg?.GetFfmpegPath()).TranscodeAsync);
+                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync, flac.GetAsync)
                 {
                     PrivateClientsOnly = true,
                 };
