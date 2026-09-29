@@ -1,3 +1,4 @@
+using Noctis.Helpers;
 using Whisper.net;
 
 namespace Noctis.Services.LyricsStudio;
@@ -39,6 +40,11 @@ public sealed class WhisperTranscriber
                 : WhisperFactory.FromPath(modelPath);
         }
 
+        /// <param name="language">A Whisper language code, or null / "auto" to pick one: the known lyrics' own
+        /// language when they tell it (<see cref="LyricsLanguage"/>), else Whisper's detection summed over three
+        /// windows spread over the song, limited to the languages the lyrics leave open.</param>
+        /// <param name="prompt">The known lyrics, one line per '\n' (null when transcribing): they name the
+        /// language. They are not a decoding prompt: see the note on WithMaxLastTextTokens.</param>
         public async Task<Transcript> TranscribeAsync(float[] pcm16k, string? language, string? prompt, IProgress<double>? progress, CancellationToken ct)
         {
             // Window bookkeeping for the DTW path (see below); the progress handler maps a
@@ -47,92 +53,155 @@ public sealed class WhisperTranscriber
             var span = pcm16k.Length;
             var windows = 0;
             var reportedPercent = 0;
-            var builder = _factory.CreateBuilder()
-                .WithTokenTimestamps()
-                // No text context between 30 s windows. Conditioned on its own output, the
-                // decoder locks into a repetition loop on songs with a repeated hook
-                // (MAMACITA, Base: one line "heard" ~40 times over a minute, alignment off by
-                // 30 s+; Medium: 18 words for the whole song). Measured on three songs, context
-                // off gave the best line starts on every one (median 0.26–0.54 s vs 0.74–33 s).
-                // Note whisper.cpp also skips the initial prompt when this is 0.
-                .WithMaxLastTextTokens(0)
-                .WithThreads(Math.Clamp(Environment.ProcessorCount - 1, 1, 8))
-                .WithProgressHandler(p =>
-                {
-                    reportedPercent = p;
-                    progress?.Report(Math.Clamp((seek + p / 100.0 * span) / Math.Max(1, pcm16k.Length), 0, 1));
-                });
-
             var detectLanguage = string.IsNullOrWhiteSpace(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase);
-            if (detectLanguage)
-                builder.WithLanguageDetection();
-            else
-                builder.WithLanguage(language!.Trim().ToLowerInvariant());
+            string? lang = detectLanguage ? null : language!.Trim().ToLowerInvariant();
 
-            // Known lyrics as the decoding prompt bias the vocabulary toward the actual words
-            // (names, slang, invented spellings). Inert while the text context above is 0;
-            // kept so raising it (or WithCarryInitialPrompt) brings the prompt back.
-            if (!string.IsNullOrWhiteSpace(prompt))
-                builder.WithPrompt(TrimPrompt(prompt));
+            WhisperProcessor Build()
+            {
+                var builder = _factory.CreateBuilder()
+                    .WithTokenTimestamps()
+                    // No text context between 30 s windows. Conditioned on its own output, the
+                    // decoder locks into a repetition loop on songs with a repeated hook
+                    // (MAMACITA, Base: one line "heard" ~40 times over a minute, alignment off by
+                    // 30 s+; Medium: 18 words for the whole song). Measured on three songs, context
+                    // off gave the best line starts on every one (median 0.26–0.54 s vs 0.74–33 s).
+                    // whisper.cpp also ignores any initial prompt when this is 0.
+                    .WithMaxLastTextTokens(0)
+                    .WithThreads(Math.Clamp(Environment.ProcessorCount - 1, 1, 8))
+                    .WithProgressHandler(p =>
+                    {
+                        reportedPercent = p;
+                        progress?.Report(Math.Clamp((seek + p / 100.0 * span) / Math.Max(1, pcm16k.Length), 0, 1));
+                    });
+                if (lang is null) builder.WithLanguageDetection();
+                else builder.WithLanguage(lang);
+                // One window per call on the DTW path (see below): stop before the second encoder pass.
+                if (_dtw) builder.WithEncoderBeginHandler(_ => ++windows == 1);
+                return builder.Build();
+            }
 
-            // whisper.cpp (up to its current master) only hands DTW-timed segments to the
-            // callback while a window's segment count exceeds half the running total — after
-            // the first 30 s nearly everything is silently dropped. So with DTW each call gets
-            // one window: stop before the second encoder pass, then resume where whisper.cpp's
-            // own loop would (NextWindowOffset). No text context crosses windows anyway (above);
-            // the text can still differ a little from one call, as each call scales its log-mel
-            // to its own 30 s. Checked on 10 songs: windows tile the song end to end, no word
-            // is repeated or reordered at a boundary. Passing the whole song with WithOffset/
-            // WithDuration instead (identical scaling) measured no better and 55% slower.
-            if (_dtw)
-                builder.WithEncoderBeginHandler(_ => ++windows == 1);
-
+            var lines = string.IsNullOrWhiteSpace(prompt) ? null : prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var words = new List<RecognizedWord>();
             var detected = language ?? "auto";
             // Async disposal: Whisper.net refuses a synchronous Dispose while a decode is in
             // flight ("Cannot dispose while processing, please use DisposeAsync instead"),
-            // which is exactly the state Stop leaves the processor in. The old `using` threw
-            // that on the row, and the session then freed the native factory under a live
+            // which is exactly the state Stop leaves the processor in. A synchronous dispose
+            // threw that on the row, and the session then freed the native factory under a live
             // processor and took the app down (user report 09-19). DisposeAsync waits for
             // the cancelled decode to let go first.
-            await using var processor = builder.Build();
-            if (!_dtw)
+            WhisperProcessor? processor = null;
+            try
             {
-                await foreach (var segment in processor.ProcessAsync(pcm16k, ct).ConfigureAwait(false))
+                // The song's language, once: the first window that yielded text used to name it for
+                // the whole song, and an intro sample or a lone ad-lib turned a Spanish song into
+                // Russian (benchmark 09-29: WER 0.996, 59 of 63 lines unanchored).
+                if (detectLanguage)
                 {
-                    if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
-                    words.AddRange(WordsFromSegment(segment));
+                    var guess = LyricsLanguage.FromLines(lines);
+                    if (guess.Confident) lang = guess.Code;
+                    else
+                    {
+                        processor = Build();
+                        lang = VoteLanguage(processor, pcm16k, LanguageVotes, guess.Candidates, ct) ?? guess.Code;
+                        if (lang is not null) processor.ChangeLanguage(lang);
+                    }
+                    if (lang is not null)
+                    {
+                        detected = lang;
+                        detectLanguage = false;
+                    }
+                    DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.Language",
+                        $"lyrics={guess.Code ?? "-"} confident={guess.Confident} chosen={lang ?? "auto"}");
                 }
-                return new Transcript(words, detected);
-            }
+                processor ??= Build();
 
-            // Like whisper.cpp: stop when less than a second is left.
-            while (seek + PcmDecoder16k.SampleRate < pcm16k.Length)
+                if (!_dtw)
+                {
+                    await foreach (var segment in processor.ProcessAsync(pcm16k, ct).ConfigureAwait(false))
+                    {
+                        if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        words.AddRange(WordsFromSegment(segment));
+                    }
+                    return new Transcript(words, detected);
+                }
+
+                // whisper.cpp (up to its current master) only hands DTW-timed segments to the
+                // callback while a window's segment count exceeds half the running total — after
+                // the first 30 s nearly everything is silently dropped. So with DTW each call gets
+                // one window: stop before the second encoder pass, then resume where whisper.cpp's
+                // own loop would (NextWindowOffset). No text context crosses windows anyway (above);
+                // the text can still differ a little from one call, as each call scales its log-mel
+                // to its own 30 s. Checked on 10 songs: windows tile the song end to end, no word
+                // is repeated or reordered at a boundary. Passing the whole song with WithOffset/
+                // WithDuration instead (identical scaling) measured no better and 55% slower.
+                // Like whisper.cpp: stop when less than a second is left.
+                while (seek + PcmDecoder16k.SampleRate < pcm16k.Length)
+                {
+                    span = Math.Min(WindowSamples, pcm16k.Length - seek);
+                    windows = 0;
+                    reportedPercent = 0;
+                    var offset = TimeSpan.FromSeconds(seek / (double)PcmDecoder16k.SampleRate);
+                    long? previousEndCs = null;
+                    SegmentData? last = null;
+                    await foreach (var segment in processor.ProcessAsync(new ReadOnlyMemory<float>(pcm16k, seek, span), ct).ConfigureAwait(false))
+                    {
+                        if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
+                        words.AddRange(WordsFromDtwSegment(segment, offset, _dtwShiftCs, ref previousEndCs));
+                        last = segment;
+                    }
+                    // One language per song, as a single whisper.cpp run detects it once.
+                    if (detectLanguage && last is not null && !string.IsNullOrWhiteSpace(detected) && detected != "auto")
+                    {
+                        processor.ChangeLanguage(detected);
+                        lang = detected;
+                        detectLanguage = false;
+                    }
+                    seek += NextWindowOffset(last?.End, reportedPercent, span);
+                }
+            }
+            finally
             {
-                span = Math.Min(WindowSamples, pcm16k.Length - seek);
-                windows = 0;
-                reportedPercent = 0;
-                var offset = TimeSpan.FromSeconds(seek / (double)PcmDecoder16k.SampleRate);
-                long? previousEndCs = null;
-                SegmentData? last = null;
-                await foreach (var segment in processor.ProcessAsync(new ReadOnlyMemory<float>(pcm16k, seek, span), ct).ConfigureAwait(false))
-                {
-                    if (!string.IsNullOrWhiteSpace(segment.Language)) detected = segment.Language;
-                    words.AddRange(WordsFromDtwSegment(segment, offset, _dtwShiftCs, ref previousEndCs));
-                    last = segment;
-                }
-                // One language per song, as a single whisper.cpp run detects it once.
-                if (detectLanguage && last is not null && !string.IsNullOrWhiteSpace(detected) && detected != "auto")
-                {
-                    processor.ChangeLanguage(detected);
-                    detectLanguage = false;
-                }
-                seek += NextWindowOffset(last?.End, reportedPercent, span);
+                if (processor is not null) await processor.DisposeAsync().ConfigureAwait(false);
             }
             return new Transcript(words, detected);
         }
 
         public void Dispose() => _factory.Dispose();
+    }
+
+    /// <summary>Language detection windows when the lyrics leave the language open (or there are none).</summary>
+    private const int LanguageVotes = 3;
+
+    /// <summary>
+    /// Whisper's language detection on <paramref name="count"/> 30 s windows spread over the
+    /// song (the middle, not the intro), probabilities summed per language: one window can be
+    /// an intro sample, a spoken skit or a hook in another language. Restricted to
+    /// <paramref name="candidates"/> when the lyrics narrowed the choice.
+    /// </summary>
+    private static string? VoteLanguage(WhisperProcessor processor, float[] pcm, int count, IReadOnlyList<string> candidates, CancellationToken ct)
+    {
+        var votes = new Dictionary<string, double>(StringComparer.Ordinal);
+        var cands = candidates.ToArray();
+        foreach (var (from, length) in LanguageWindows(pcm.Length, Math.Max(1, count)))
+        {
+            ct.ThrowIfCancellationRequested();
+            var (code, p) = processor.DetectLanguageWithProbability(new ReadOnlySpan<float>(pcm, from, length), cands);
+            if (string.IsNullOrWhiteSpace(code)) continue;
+            votes[code] = votes.GetValueOrDefault(code) + Math.Max(0, p);
+        }
+        return votes.Count == 0 ? null : votes.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).First().Key;
+    }
+
+    /// <summary>Where the language windows go: centred at 1/(n+1) … n/(n+1) of the song, 30 s long (shorter songs: the whole song).</summary>
+    internal static IEnumerable<(int From, int Length)> LanguageWindows(int samples, int count)
+    {
+        if (samples <= WindowSamples) { yield return (0, samples); yield break; }
+        for (var k = 1; k <= count; k++)
+        {
+            var centre = (long)samples * k / (count + 1);
+            var from = (int)Math.Clamp(centre - WindowSamples / 2, 0, samples - WindowSamples);
+            yield return (from, WindowSamples);
+        }
     }
 
     /// <summary>
@@ -153,13 +222,6 @@ public sealed class WhisperTranscriber
             if (reported <= endSamples + second / 10) next = endSamples;
         }
         return next >= second ? next : span;
-    }
-
-    /// <summary>Whisper's prompt window is ~224 tokens; keep the first ~600 characters.</summary>
-    internal static string TrimPrompt(string prompt)
-    {
-        var flat = string.Join(' ', prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-        return flat.Length <= 600 ? flat : flat[..600];
     }
 
     /// <summary>A token as Whisper.net reports it: text, start/end in centiseconds, probability.</summary>
