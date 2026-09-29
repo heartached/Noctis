@@ -43,7 +43,9 @@ internal sealed partial class NoctisServerClient : IDisposable
     private const int MaxPages = 2000;
     private const int MaxStringLength = 500;
     private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(15);
-    private const long MaxEnvelopeBytes = 64L * 1024 * 1024;
+    // A catalog page is ~0.3 MB and a sync page at most 4 MB; parsing builds several copies,
+    // so the cap bounds what a misbehaving desktop can make the phone allocate.
+    private const long MaxEnvelopeBytes = 16L * 1024 * 1024;
     private const long MaxProbeBytes = 64L * 1024;
     private const long MaxErrorEnvelopeBytes = 1024L * 1024;
     /// <summary>A download re-checks the phone's free space after this many bytes.</summary>

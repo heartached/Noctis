@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -24,6 +25,12 @@ namespace Noctis.Services;
 /// </summary>
 public static class TtmlParser
 {
+    private static readonly XmlReaderSettings UntrustedXml = new()
+    {
+        DtdProcessing = DtdProcessing.Ignore,
+        XmlResolver = null,
+    };
+
     /// <summary>Cheap discriminator — TTML documents open with a &lt;tt&gt; root element.</summary>
     public static bool LooksLikeTtml(string? content)
     {
@@ -54,10 +61,13 @@ public static class TtmlParser
         XDocument doc;
         try
         {
-            // DTD stays prohibited (XDocument.Parse default) — sidecars are untrusted input.
+            // Untrusted input (sidecars, and lyrics a desktop sends the phone): a DOCTYPE is
+            // skipped, not processed — XDocument.Parse does process internal DTD entities —
+            // and nothing external is ever resolved.
             // PreserveWhitespace keeps the whitespace-only text nodes between <span>s;
             // they are the word boundaries (spans with none between are syllables).
-            doc = XDocument.Parse(content, LoadOptions.PreserveWhitespace);
+            using var reader = XmlReader.Create(new StringReader(content), UntrustedXml);
+            doc = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
         }
         catch (Exception)
         {

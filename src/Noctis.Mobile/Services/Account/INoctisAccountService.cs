@@ -24,6 +24,9 @@ public sealed record NoctisAccount
     /// <summary>The desktop's name as the server reported it.</summary>
     public string ServerName { get; init; } = "";
     public DateTime? LastSyncUtc { get; init; }
+
+    /// <summary>Never prints <see cref="DeviceKey"/> (a record's generated ToString would).</summary>
+    public override string ToString() => $"NoctisAccount {{ UserName = {UserName}, ServerUrl = {ServerUrl}, DeviceName = {DeviceName} }}";
 }
 
 /// <summary>Why a server call failed, for the UI to word.</summary>

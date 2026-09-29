@@ -16,7 +16,7 @@ namespace Noctis.Mobile.Services.Account;
 public sealed partial class NoctisAccountService : IRemoteLyricsSource
 {
     private const int LyricsMemoryEntries = 8;
-    private const int LyricsPrefetchConcurrency = 4;
+    private const int LyricsPrefetchConcurrency = 2;
     /// <summary>Largest saved-lyrics file read back: five capped texts plus JSON escaping.</summary>
     private const long MaxLyricsFileBytes = 16L * 1024 * 1024;
     /// <summary>After the desktop fails to answer, lookups use saved copies only for this long,

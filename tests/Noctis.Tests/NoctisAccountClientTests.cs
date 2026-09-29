@@ -403,4 +403,17 @@ public class NoctisAccountClientTests
     [InlineData("noctis-remote://tr-0123456789abcdef0123456789abcdeg", false)]
     public void RemotePaths_ParseStrictly(string path, bool valid)
         => Assert.Equal(valid, NoctisRemoteIds.TryParsePath(path, out _));
+
+    [Fact]
+    public void AccountToString_NeverContainsTheDeviceKey()
+    {
+        var account = new Noctis.Mobile.Services.Account.NoctisAccount
+        {
+            ServerUrl = "https://192.168.1.20:4747", UserName = "alice", DeviceKey = "nk_secretsecretsecret",
+            Fingerprint = "AB:CD", DeviceId = "0123456789abcdef", DeviceName = "Phone",
+        };
+
+        Assert.DoesNotContain("nk_", account.ToString());
+        Assert.Contains("alice", account.ToString());
+    }
 }

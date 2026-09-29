@@ -586,4 +586,33 @@ public class TtmlParserTests
 
         Assert.Equal(EnhancedLrcParser.MaxWordsPerLine, line.Words!.Count);
     }
+
+    [Fact]
+    public void Parse_IgnoresADoctypeInsteadOfExpandingItsEntities()
+    {
+        // Untrusted sidecar or desktop-sent lyrics: a DTD-defined entity must never expand.
+        var ttml = $@"<!DOCTYPE tt [<!ENTITY boom ""EXPANDED"">]>
+<tt {Ns}><body><div>
+    <p begin=""0:01.000"" end=""0:02.000"">Safe line</p>
+</div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.NotNull(lines);
+        Assert.Equal("Safe line", Assert.Single(lines!).Text);
+    }
+
+    [Fact]
+    public void Parse_AnEntityReferenceFromADoctype_IsRejected_NotExpanded()
+    {
+        var ttml = $@"<!DOCTYPE tt [<!ENTITY boom ""EXPANDED"">]>
+<tt {Ns}><body><div>
+    <p begin=""0:01.000"" end=""0:02.000"">&boom;</p>
+</div></body></tt>";
+
+        var (lines, plain) = TtmlParser.Parse(ttml);
+
+        Assert.DoesNotContain(lines ?? new(), l => l.Text.Contains("EXPANDED"));
+        Assert.DoesNotContain("EXPANDED", plain ?? string.Empty);
+    }
 }
