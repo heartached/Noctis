@@ -102,7 +102,19 @@ public class LyricsStudioUiProbeTests : IDisposable
             Capture(vm, "model-download-failed");
         }
 
-        // 4. Songs running: decoding, listening, transcribing, and the batch with a review open.
+        // 4. The model loading at the start of a run.
+        {
+            var gate = new ManualResetEventSlim();
+            var engine = new ProbeEngine(StudioTestModel.Installed(Path.Combine(_root, "loading"))) { OpenGate = gate };
+            var vm = Studio(engine, Songs(4));
+            var run = vm.StartCommand.ExecuteAsync(null);
+            Capture(vm, "model-loading", pumpMs: 500);
+            vm.StopCommand.Execute(null);
+            gate.Set();
+            await run;
+        }
+
+        // 5. Songs running: decoding, listening, transcribing, and the batch with a review open.
         foreach (var (name, stage, fraction, transcribe, selectReady) in new[]
         {
             ("song-decoding", LyricsStudioStage.Decoding, 0.55, false, false),
@@ -294,7 +306,12 @@ public class LyricsStudioUiProbeTests : IDisposable
 
         public bool HasFfmpeg => true;
         public WhisperModelManager Models { get; } = models;
-        public IDisposable OpenSession(WhisperModelSize model) => new Handle();
+        public ManualResetEventSlim? OpenGate { get; init; }
+        public IDisposable OpenSession(WhisperModelSize model)
+        {
+            OpenGate?.Wait(TimeSpan.FromSeconds(10));
+            return new Handle();
+        }
         public SemaphoreSlim Started { get; } = new(0);
         public void Report(LyricsStudioProgress p) => _progress!.Report(p);
         public void Finish() => _finish.TrySetResult();
