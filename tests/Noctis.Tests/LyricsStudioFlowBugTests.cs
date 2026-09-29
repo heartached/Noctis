@@ -215,6 +215,49 @@ public class LyricsStudioFlowBugTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(20.1), vm.ReviewLines[0].Start);
     }
 
+    // ── Leaving the page keeps the lyrics box ─────────────────────────────
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ComingBackToThePage_KeepsLyricsTypedOrTranscribedIntoTheBox(bool transcript)
+    {
+        var library = new FakeLibraryService();
+        library.TrackList.Add(new Track { Title = "one", Artist = "A", FilePath = Path.Combine(_root, "one.mp3") });
+        library.TrackList.Add(new Track { Title = "two", Artist = "A", FilePath = Path.Combine(_root, "two.mp3") });
+        var page = new LyricsStudioPageViewModel(library, () => true, tracks => Studio(new Engine(_root), tracks.ToArray()));
+        await page.RefreshAsync();
+        var studio = page.Studio!;
+        studio.Selected = studio.Queue[0]; // no lyrics: the lyrics box
+        Assert.True(studio.IsComposing);
+        studio.Queue[0].DraftText = "lyrics the user pasted";
+        studio.Queue[0].IsTranscriptDraft = transcript;
+
+        library.RaiseLibraryUpdated(); // a scan ran while the user was on another page
+        await page.RefreshAsync();     // back on the Lyrics Studio page
+
+        Assert.Same(studio, page.Studio);
+        Assert.Equal("lyrics the user pasted", page.Studio!.Queue[0].DraftText);
+    }
+
+    [AvaloniaFact]
+    public async Task ComingBackToThePage_StillRefreshes_WhenTheBoxOnlyHoldsTheSongsOwnLyrics()
+    {
+        var library = new FakeLibraryService();
+        var withText = new Track { Title = "one", Artist = "A", FilePath = Path.Combine(_root, "one.mp3"), Lyrics = "plain words" };
+        library.TrackList.Add(withText);
+        var page = new LyricsStudioPageViewModel(library, () => true, tracks => Studio(new Engine(_root), tracks.ToArray()));
+        await page.RefreshAsync();
+        var studio = page.Studio!;
+        studio.Selected = studio.Queue[0]; // prefilled from the plain lyrics tag, not typed
+        Assert.Equal("plain words", studio.Queue[0].DraftText);
+
+        library.RaiseLibraryUpdated();
+        await page.RefreshAsync();
+
+        Assert.NotSame(studio, page.Studio);
+    }
+
     // ── Loading the model does not freeze the window ──────────────────────
 
     [AvaloniaFact]

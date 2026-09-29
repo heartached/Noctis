@@ -199,6 +199,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public string SummaryText => _savedCount == 0 ? string.Empty : $"{_savedCount} saved";
     /// <summary>Lyrics written this session; the page rescans the library on its next visit when > 0.</summary>
     public int SavedCount => _savedCount;
+    /// <summary>A song's lyrics box holds typed, imported or transcribed lyrics that a new Studio would lose.</summary>
+    public bool HasUnsavedLyricsBox => Queue.Any(i => i.HasUnsavedLyricsBox);
 
     public event EventHandler? Closed;
 
@@ -423,7 +425,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 var txt = Path.ChangeExtension(item.Track.FilePath, ".txt");
                 if (File.Exists(txt)) text = LyricsStudioEngine.FirstText(File.ReadAllText(txt));
             }
-            if (text is not null) item.DraftText = string.Join('\n', text);
+            if (text is not null) item.DraftText = item.PrefilledText = string.Join('\n', text);
         }
         catch (Exception ex)
         {
@@ -1373,6 +1375,16 @@ public partial class LyricsStudioViewModel : ViewModelBase
         public List<string>? SourceOverride { get; set; }
         /// <summary>The next run transcribes this song (experimental), whatever the Studio's option says.</summary>
         public bool TranscribeNext { get; set; }
+        /// <summary>What the lyrics box was filled with from the song itself (not the user's work).</summary>
+        internal string? PrefilledText { get; set; }
+
+        /// <summary>
+        /// The lyrics box holds work that lives nowhere else: text typed, pasted or imported, or a
+        /// transcript (minutes of model time). Drafts only keep finished reviews.
+        /// </summary>
+        public bool HasUnsavedLyricsBox => Status is StudioStatus.Waiting or StudioStatus.NeedsLyrics or StudioStatus.Failed
+            && (IsTranscriptDraft || HeardWords is { Count: > 0 }
+                || !string.IsNullOrWhiteSpace(DraftText) && DraftText != PrefilledText);
 
         public void RefreshExistingFormat()
         {
