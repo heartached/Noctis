@@ -94,6 +94,29 @@ public class LyricsStudioUiProbeTests : IDisposable
             Capture(vm, "model-paused");
         }
 
+        // 2b. The link drops at 900 MB: the card counts down to the retry.
+        {
+            var dir = Path.Combine(_root, "retry");
+            var feed = new VirtualServer(WhisperModelManager.Medium.Bytes) { DropAt = 900L << 20 };
+            var slowRetry = Fast with { RetryDelay = TimeSpan.FromSeconds(20), MaxRetryDelay = TimeSpan.FromSeconds(20) };
+            var models = new WhisperModelManager(dir, new HttpClient(feed), slowRetry);
+            Directory.CreateDirectory(models.Directory);
+            using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(880L << 20);
+            var vm = Studio(new ProbeEngine(models), Songs(4));
+            var now = TimeSpan.Zero;
+            vm.Clock = () => now;
+            vm.AutoTick = false;
+            var download = vm.DownloadModelCommand.ExecuteAsync(null);
+            feed.Allow(WhisperModelManager.Medium.Bytes);
+            await Until(() => models.CurrentDownload?.Phase == ModelDownloadPhase.Retrying);
+            vm.Tick();
+            now = TimeSpan.FromSeconds(8);
+            vm.Tick();
+            Capture(vm, "model-retrying");
+            vm.CancelModelDownloadCommand.Execute(null);
+            await download;
+        }
+
         // 3. Download failed: the server keeps answering 503.
         {
             var models = new WhisperModelManager(Path.Combine(_root, "fail"), new HttpClient(new VirtualServer(0) { Status = HttpStatusCode.ServiceUnavailable }), Fast);
@@ -260,6 +283,8 @@ public class LyricsStudioUiProbeTests : IDisposable
     {
         private long _allowed;
         public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
+        /// <summary>Resets the connection once when a body reaches this byte.</summary>
+        public long? DropAt { get; set; }
         public void Allow(long upTo) => Interlocked.Exchange(ref _allowed, upTo);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -279,7 +304,13 @@ public class LyricsStudioUiProbeTests : IDisposable
             {
                 while (Interlocked.Read(ref owner._allowed) <= position)
                     await Task.Delay(5, ct);
-                var n = (int)Math.Min(buffer.Length, Interlocked.Read(ref owner._allowed) - position);
+                if (owner.DropAt is { } drop && position >= drop)
+                {
+                    owner.DropAt = null;
+                    throw new IOException("Connection reset by peer (probe).");
+                }
+                var limit = Math.Min(Interlocked.Read(ref owner._allowed), owner.DropAt ?? long.MaxValue);
+                var n = (int)Math.Min(buffer.Length, limit - position);
                 buffer.Span[..n].Clear();
                 position += n;
                 return n;
