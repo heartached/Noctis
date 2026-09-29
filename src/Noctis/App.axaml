@@ -3,6 +3,7 @@
              xmlns:local="using:Noctis"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:views="using:Noctis.Views"
+             xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.App"
              Name="Noctis"
              RequestedThemeVariant="Dark">
@@ -55,6 +56,12 @@
 
         <!-- Custom controls -->
         <StyleInclude Source="avares://Noctis/Controls/EqVisualizer.axaml" />
+
+        <!-- Grid tile covers are drawn from the width bucket just above the tile, so bilinear
+             is exact enough and a scroll repaints every one per frame (CachedImage.FastDownscale). -->
+        <Style Selector="Button.album-tile ctrl|CachedImage, Button.artist-tile ctrl|CachedImage">
+            <Setter Property="FastDownscale" Value="True" />
+        </Style>
     </Application.Styles>
 
     <!-- Map ViewModels to Views for ContentControl binding -->

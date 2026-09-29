@@ -16,9 +16,10 @@ namespace Noctis.Services.Lyrics;
 /// <param name="Wrote">Some text was saved (to the track and possibly a sidecar).</param>
 /// <param name="SidecarWritten">The .lrc next to the file now holds the synced text.</param>
 /// <param name="ReplacedForeignSidecar">A sidecar the app had not written was moved to the trash first.</param>
-public sealed record LyricsSaveOutcome(bool Wrote, bool SidecarWritten, bool ReplacedForeignSidecar)
+/// <param name="KeptForeignSidecar">A sidecar the app had not written could not be trashed, so it was left in place.</param>
+public sealed record LyricsSaveOutcome(bool Wrote, bool SidecarWritten, bool ReplacedForeignSidecar, bool KeptForeignSidecar)
 {
-    public static readonly LyricsSaveOutcome Nothing = new(false, false, false);
+    public static readonly LyricsSaveOutcome Nothing = new(false, false, false, false);
 }
 
 public sealed class LyricsWriter
@@ -55,7 +56,7 @@ public sealed class LyricsWriter
     /// Lyrics Studio passes true: the user picked the song, reviewed the timings and pressed
     /// Save, and the lyrics page reads the sidecar before the stored text — leaving an old
     /// line-timed .lrc in place would silently hide the word timings they just made. The old
-    /// file goes to the recycle bin, not into the void.
+    /// file goes to the recycle bin, not into the void; when the trash refuses it stays put.
     /// </summary>
     public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar)
     {
@@ -69,6 +70,7 @@ public sealed class LyricsWriter
 
         var sidecarWritten = false;
         var replaced = false;
+        var kept = false;
         var path = track.FilePath;
         if (hasSynced && !string.IsNullOrWhiteSpace(path) && track.SourceType == SourceType.Local)
         {
@@ -79,14 +81,14 @@ public sealed class LyricsWriter
             {
                 // Word timings live in .elrc; the .lrc keeps a line-level projection so
                 // players that only know LRC still work. ELRC is additive, never a replacement.
-                WriteSidecar(elrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced);
-                WriteSidecar(lrcPath, LineLevelProjection(synced!), replaceForeignSidecar, ref sidecarWritten, ref replaced);
+                WriteSidecar(elrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
+                WriteSidecar(lrcPath, LineLevelProjection(synced!), replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
             }
             else
             {
-                WriteSidecar(lrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced);
+                WriteSidecar(lrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
                 // A leftover .elrc would out-rank the new .lrc on the lyrics page.
-                RemoveSidecar(elrcPath, replaceForeignSidecar, ref replaced);
+                RemoveSidecar(elrcPath, replaceForeignSidecar, ref replaced, ref kept);
             }
         }
 
@@ -97,7 +99,7 @@ public sealed class LyricsWriter
             else
                 Task.Run(() => { try { _metadata.WriteTrackMetadata(track); } catch { } });
         }
-        return new LyricsSaveOutcome(true, sidecarWritten, replaced);
+        return new LyricsSaveOutcome(true, sidecarWritten, replaced, kept);
     }
 
     /// <summary>Removes the app's own lyrics artefacts for the track and clears its fields.</summary>
@@ -140,15 +142,20 @@ public sealed class LyricsWriter
     }
 
     /// <summary>Writes one sidecar unless a foreign file sits there and we were not asked to replace it (trash first when we were).</summary>
-    private void WriteSidecar(string sidecarPath, string content, bool replaceForeign, ref bool written, ref bool replaced)
+    private void WriteSidecar(string sidecarPath, string content, bool replaceForeign, ref bool written, ref bool replaced, ref bool kept)
     {
         var foreign = File.Exists(sidecarPath) && !_registry.Contains(sidecarPath);
         if (foreign)
         {
             if (!replaceForeign) return;
-            // Best effort: if the trash refuses, the explicit save still wins.
-            if (!TrashFile(sidecarPath))
+            // The user's own file is only overwritten once it is safely in the trash. If the
+            // trash refuses (e.g. macOS Finder automation denied or timed out), keep it.
+            if (!TrashFile(sidecarPath) && File.Exists(sidecarPath))
+            {
                 DebugLogger.Warn(DebugLogger.Category.Lyrics, "Lyrics.SidecarTrashFailed", sidecarPath);
+                kept = true;
+                return;
+            }
             replaced = true;
         }
         File.WriteAllText(sidecarPath, Normalize(content), new UTF8Encoding(false));
@@ -157,7 +164,7 @@ public sealed class LyricsWriter
     }
 
     /// <summary>Trashes our own sidecar at the path, or a foreign one when asked; leaves a foreign one alone otherwise.</summary>
-    private void RemoveSidecar(string sidecarPath, bool replaceForeign, ref bool replaced)
+    private void RemoveSidecar(string sidecarPath, bool replaceForeign, ref bool replaced, ref bool kept)
     {
         if (!File.Exists(sidecarPath)) return;
         var ours = _registry.Contains(sidecarPath);
@@ -168,7 +175,10 @@ public sealed class LyricsWriter
             if (!ours) replaced = true;
         }
         else
+        {
             DebugLogger.Warn(DebugLogger.Category.Lyrics, "Lyrics.SidecarTrashFailed", sidecarPath);
+            if (!ours) kept = true;
+        }
     }
 
     /// <summary>Enhanced LRC → plain LRC: inline word tags stripped, line stamps and header tags kept.</summary>

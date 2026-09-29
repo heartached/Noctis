@@ -14,6 +14,7 @@
 
     <Window.Styles>
         <Style Selector="Border.job-row">
+            <Setter Property="Margin" Value="0,0,0,4" />
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Background" Value="#10FFFFFF" />
@@ -62,8 +63,11 @@
 
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,4,24,8">
                     <ItemsControl ItemsSource="{Binding Rows}">
+                        <!-- Virtualized: one row per selected track, so a Ctrl+A selection built every
+                             row on open. VirtualizingStackPanel has no Spacing; the 4px gap is the
+                             job-row's bottom margin. -->
                         <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:BulkLyricsViewModel+Row">

@@ -17,6 +17,8 @@ public partial class LyricsStudioView : UserControl
     public LyricsStudioView()
     {
         InitializeComponent();
+        // Choose songs lives in the Studio's queue header (09-23); the panel bubbles the click here.
+        AddHandler(LyricsStudioPanel.ChooseSongsRequestedEvent, (s, e) => OnChooseSongsClick(s, e));
     }
 
     /// <summary>Choose songs: search the library, tick songs or albums, pick ELRC or LRC, and

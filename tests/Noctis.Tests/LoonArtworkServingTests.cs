@@ -87,6 +87,10 @@ public class LoonArtworkServingTests
 
             Assert.False(LoonClient.IsServableArtworkPath(served, stray));
             Assert.True(LoonClient.IsServableArtworkPath(served, Path.Combine(served, "cover.jpg")));
+            // Per-track covers ("tracks/{trackId}.jpg") are served too; other subfolders are not.
+            Assert.True(LoonClient.IsServableArtworkPath(served, Path.Combine(served, "tracks", "cover.jpg")));
+            Assert.False(LoonClient.IsServableArtworkPath(served, Path.Combine(served, "other", "cover.jpg")));
+            Assert.False(LoonClient.IsServableArtworkPath(served, Path.Combine(served, "tracks", "deeper", "cover.jpg")));
         }
         finally
         {

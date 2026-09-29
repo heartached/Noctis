@@ -166,7 +166,12 @@
              at view scope because the stripe/hover/ctrl-select styles above live here
              too and would otherwise outrank the app-level fill. Declared after them
              so the box wins on even, hovered and ctrl-selected rows alike. -->
+        <!-- Snap onto/off the fill; see AlbumDetailView (white flicker on dark accents).
+             Transitions must stay the first setter. -->
         <Style Selector="Border.row-body.now-playing">
+            <Setter Property="Transitions">
+                <Transitions />
+            </Setter>
             <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
         </Style>
 
@@ -581,13 +586,13 @@
                                     <MenuItem Header="{loc:T Playlist.PlayNext}"
                                               Command="{Binding PlayNextAllCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Playlist.AddQueue}"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
@@ -601,7 +606,7 @@
                                     <MenuItem Header="{loc:T Playlist.EditPlaylist}"
                                               Command="{Binding EditPlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskEditPlaylist" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
@@ -645,6 +650,8 @@
                                     <MenuItem Header="{loc:T Playlist.RecentlyAdded}" Command="{Binding SetSortCommand}" CommandParameter="RecentlyAdded" />
                                     <MenuItem Header="{loc:T Playlist.ReleaseDateOldest}" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateOldest" />
                                     <MenuItem Header="{loc:T Playlist.ReleaseDateNewest}" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateNewest" />
+                                    <MenuItem Header="{loc:T Playlist.DateModifiedNewest}" Command="{Binding SetSortCommand}" CommandParameter="DateModifiedNewest" />
+                                    <MenuItem Header="{loc:T Playlist.DateModifiedOldest}" Command="{Binding SetSortCommand}" CommandParameter="DateModifiedOldest" />
                                     <MenuItem Header="{loc:T Playlist.SortBadge}" Command="{Binding SetSortCommand}" CommandParameter="Badge" />
                                 </MenuFlyout>
                             </Button.Flyout>
@@ -834,7 +841,8 @@
                                                     Padding="6,1.5"
                                                     Margin="6,0,0,0"
                                                     VerticalAlignment="Center"
-                                                    BorderThickness="1"
+                                                    BorderThickness="1.5"
+                                                    UseLayoutRounding="True"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
                                                     ToolTip.Tip="{loc:T Playlist.AddedLast7DaysTip}">
                                                 <!-- GitHub #74: the badge can be switched off in Settings. -->

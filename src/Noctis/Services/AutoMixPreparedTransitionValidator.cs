@@ -2,6 +2,8 @@ using Noctis.Models;
 
 namespace Noctis.Services;
 
+/// <summary>PlayPath is the exact path handed to PrepareNext, which the advance then plays:
+/// a music video's clip (music video audio) or FilePath.</summary>
 public sealed record AutoMixPreparedTransitionSnapshot(
     Guid TrackId,
     string FilePath,
@@ -9,7 +11,8 @@ public sealed record AutoMixPreparedTransitionSnapshot(
     bool ShuffleEnabled,
     RepeatMode RepeatMode,
     AutoMixTransitionMode TransitionMode,
-    long PlaybackSessionId);
+    long PlaybackSessionId,
+    string? PlayPath = null);
 
 public sealed record AutoMixPreparedTransitionValidation(bool IsValid, string Reason)
 {

@@ -101,6 +101,16 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+
+        <!-- Queue drawer fill. A style rather than a Background attribute so Liquid Glass can
+             clear it: with glass on the QueueGlass frost under the drawer carries the fill
+             (QueueDrawerGlass adds the "glass" class). -->
+        <Style Selector="Border#QueuePopupPanel">
+            <Setter Property="Background" Value="{DynamicResource QueueDrawerBackground}"/>
+        </Style>
+        <Style Selector="Border#QueuePopupPanel.glass">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
     </Window.Styles>
 
 
@@ -119,6 +129,13 @@
                                          FallbackColor="#2A2A2A" />
         </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
+    <!-- Tint Whole Window (Discord 1v1ctus): while a tinted album page is shown, the
+         window around the sidebar and player islands takes the page's colour. A layer, not
+         a swap of AppWindowBackgroundBrush, so the Settings sheet and menus keep theirs. -->
+    <Border x:Name="WindowTintLayer"
+            Background="{Binding WindowTintBrush}"
+            IsVisible="{Binding IsWindowTinted}"
+            IsHitTestVisible="False" />
     <DockPanel x:Name="RootPanel" Focusable="True" Background="Transparent" Margin="76,0,0,0">
         <DockPanel.RenderTransform>
             <TranslateTransform X="0">
@@ -290,6 +307,9 @@
                                         <MenuItem Header="{loc:T Main.RecentlyAdded}" Command="{Binding AlbumSortCommand}" CommandParameter="dateadded">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=dateadded}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="{loc:T Main.DateModified}" Command="{Binding AlbumSortCommand}" CommandParameter="datemodified">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=datemodified}"/></MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T Main.MostPlayed}" Command="{Binding AlbumSortCommand}" CommandParameter="mostplayed">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=mostplayed}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -399,6 +419,9 @@
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.DateModified}" Command="{Binding PageSortCommand}" CommandParameter="Date Modified">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Modified'}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="{loc:T Main.Ascending}" Command="{Binding PageSortCommand}" CommandParameter="Ascending">
@@ -601,9 +624,31 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Folders: manage icon · shuffle icon · Play (primary). -->
+                    <!-- Folders: sort popover · manage icon · shuffle icon · Play (primary). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
+                        <Panel VerticalAlignment="Center">
+                            <Button Classes="corner-icon">
+                                <ToolTip.Tip>
+                                    <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding FoldersSortLabel}"/></TextBlock>
+                                </ToolTip.Tip>
+                                <PathIcon Data="{StaticResource SortIcon}"/>
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                        <MenuItem Header="{loc:T Main.FoldersSortDefault}" Command="{Binding FoldersSortCommand}" CommandParameter="default">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.FoldersSortModifiedNewest}" Command="{Binding FoldersSortCommand}" CommandParameter="modified-newest">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-newest}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.FoldersSortModifiedOldest}" Command="{Binding FoldersSortCommand}" CommandParameter="modified-oldest">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-oldest}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
+                        </Panel>
                         <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
                             <PathIcon Data="{StaticResource SettingsIcon}"/>
                         </Button>
@@ -658,6 +703,10 @@
             <!-- Zone C: Main Content Area + Overlay Panels -->
             <DockPanel x:Name="ContentDockPanel" Grid.Row="1">
                 <Grid Background="{DynamicResource AppMainBackground}">
+                <!-- Tint Whole Window: covers the content surface too (see WindowTintLayer). -->
+                <Border Background="{Binding WindowTintBrush}"
+                        IsVisible="{Binding IsWindowTinted}"
+                        IsHitTestVisible="False" />
                 <ContentControl Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
@@ -704,17 +753,52 @@
                     </Grid>
                 </Border>
 
+                <!-- Queue drawer frost (Liquid Glass only, GitHub #104). A sibling UNDER the
+                     drawer with its exact geometry and transform, so it is never inside the
+                     drawer's rounded clip or its fading opacity layer (see the Settings sheet):
+                     it fades on its own Fade. Tint = the drawer's colour at Glass Opacity.
+                     Hidden while glass is off, so the drawer paints exactly as before. -->
+                <controls:GlassPanel x:Name="QueueGlass"
+                                     HorizontalAlignment="Right"
+                                     Width="330"
+                                     Margin="0,8,8,8"
+                                     CornerRadius="16"
+                                     Background="{DynamicResource QueueDrawerBackground}"
+                                     GlassTintOpacity="{Binding Player.IslandBackgroundOpacity}"
+                                     BlurRadius="14"
+                                     IsVisible="False"
+                                     Fade="0"
+                                     IsHitTestVisible="False"
+                                     RenderTransformOrigin="100%,50%"
+                                     RenderTransform="translateX(16px) scale(0.97)"
+                                     ZIndex="20">
+                    <controls:GlassPanel.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Fade" Duration="0:0:0.18">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                                <TransformOperationsTransition.Easing>
+                                    <CubicEaseOut/>
+                                </TransformOperationsTransition.Easing>
+                            </TransformOperationsTransition>
+                        </Transitions>
+                    </controls:GlassPanel.Transitions>
+                </controls:GlassPanel>
+
                 <!-- Queue popup panel (right side, rounded, slightly transparent).
                      Visibility and the fade/slide open-close animation are driven from
                      code-behind (IsQueuePopupOpen handler) so the close can play before
-                     the panel leaves the tree — same pattern as the Settings modal. -->
+                     the panel leaves the tree — same pattern as the Settings modal.
+                     Its fill comes from the Border#QueuePopupPanel style (Window.Styles). -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
                         Width="330"
                         Margin="0,8,8,8"
                         CornerRadius="16"
                         ClipToBounds="True"
-                        Background="{DynamicResource QueueDrawerBackground}"
                         TextElement.Foreground="{DynamicResource QueueDrawerForeground}"
                         IsVisible="False"
                         Opacity="0"
@@ -983,6 +1067,19 @@
                                                             </Border>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <!-- GitHub #105: ReplayGain for queued tracks, library or not. -->
+                                                    <MenuItem Header="{loc:T Main.ScanReplayGain}"
+                                                              Click="OnQueueScanReplayGainClick">
+                                                        <MenuItem.Icon>
+                                                            <Border Width="14" Height="14"
+                                                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                                    RenderOptions.BitmapInterpolationMode="HighQuality">
+                                                                <Border.OpacityMask>
+                                                                    <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" />
+                                                                </Border.OpacityMask>
+                                                            </Border>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
                                         <Grid ColumnDefinitions="Auto,*,Auto" Height="48"
@@ -1057,6 +1154,27 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
+                            <!-- GitHub #92: empty-queue hint. Not hit-testable, so a library row
+                                 dragged over it still lands on the ListBox (OnQueueDrop). -->
+                            <StackPanel IsVisible="{Binding !Player.UpNext.Count}"
+                                        IsHitTestVisible="False"
+                                        VerticalAlignment="Top"
+                                        Margin="32,40,32,0"
+                                        Spacing="6">
+                                <TextBlock Text="{loc:T Main.QueueEmptyTitle}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource QueueDrawerForeground}"
+                                           Opacity="0.7"
+                                           TextAlignment="Center" />
+                                <TextBlock Text="{loc:T Main.QueueEmptyHint}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource QueueDrawerForeground}"
+                                           Opacity="0.45"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center" />
+                            </StackPanel>
+
                             <!-- Floating drag preview: follows the pointer Y while reordering.
                                  DataContext starts pinned to null (the state ResetQueueDragState
                                  restores after every drag) so the Track-typed bindings inside never
@@ -1113,6 +1231,22 @@
                                     </StackPanel>
                                 </Grid>
                             </Border>
+
+                            <!-- GitHub #88: rubber-band selection rectangle, sized from code-behind
+                                 (OnQueueBand*). Rim and wash are separate so the fill can be faint
+                                 while the edge stays crisp. -->
+                            <Border x:Name="QueueMarquee"
+                                    IsHitTestVisible="False"
+                                    IsVisible="False"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    CornerRadius="6"
+                                    BorderThickness="1"
+                                    BorderBrush="{DynamicResource AccentColorBrush}">
+                                <Border CornerRadius="5"
+                                        Background="{DynamicResource AccentColorBrush}"
+                                        Opacity="0.18" />
+                            </Border>
                         </Grid>
                     </DockPanel>
                     </Panel>
@@ -1129,7 +1263,7 @@
             IsVisible="False"
             IsHitTestVisible="False"
             Background="#18FFFFFF"
-            BorderBrush="{StaticResource SystemControlHighlightAccentBrush}"
+            BorderBrush="{DynamicResource AccentColorBrush}"
             BorderThickness="2"
             Margin="4"
             CornerRadius="8"
@@ -1139,17 +1273,30 @@
                 <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
             </Transitions>
         </Border.Transitions>
-        <StackPanel HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="8">
-            <PathIcon Data="M12,2 L12,14 M8,10 L12,14 L16,10 M4,18 L20,18"
-                      Width="32" Height="32"
-                      Foreground="{StaticResource SystemControlHighlightAccentBrush}" />
-            <TextBlock Text="{loc:T Main.DropFilesImport}"
-                       FontSize="14" FontWeight="SemiBold"
-                       Foreground="#CCFFFFFF"
-                       HorizontalAlignment="Center" />
-        </StackPanel>
+        <!-- 09-24: the icon and text sit on the island's fill (they were drawn straight over the
+             page and collided with whatever was under the pointer), in the user's accent (a
+             StaticResource froze the pre-accent red), and the import arrow is a filled glyph (the
+             old stroke-only path rendered nothing in a PathIcon). -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="28,18"
+                CornerRadius="20"
+                Background="{DynamicResource IslandBackground}"
+                BorderBrush="#22FFFFFF"
+                BorderThickness="1">
+            <StackPanel Spacing="8">
+                <PathIcon x:Name="DragDropOverlayIcon"
+                          Data="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"
+                          Width="32" Height="32"
+                          HorizontalAlignment="Center"
+                          Foreground="{DynamicResource AccentColorBrush}" />
+                <TextBlock x:Name="DragDropOverlayText"
+                           Text="{loc:T Main.DropFilesImport}"
+                           FontSize="14" FontWeight="SemiBold"
+                           Foreground="{DynamicResource IslandForeground}"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
     </Border>
 
     <!-- Drop-import progress pill (spinner + "Copying files 3 of 10") -->
@@ -1200,8 +1347,31 @@
         </StackPanel>
     </Border>
 
-    <!-- Bottom playback island (Apple Music-style glass pill) -->
+    <!-- Plugin notice pill (IPluginHost.Notify): same glass pill as the drop-import one,
+         near the top so it never covers the playback island; clears itself after a few seconds. -->
+    <Border IsVisible="{Binding PluginNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+            IsHitTestVisible="False"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Margin="0,72,0,0"
+            MaxWidth="560"
+            Background="{DynamicResource IslandBackground}"
+            BorderBrush="#22FFFFFF"
+            BorderThickness="1"
+            CornerRadius="999"
+            Padding="16,9"
+            ZIndex="40">
+        <TextBlock Text="{Binding PluginNotice}"
+                   FontSize="13" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource IslandForeground}"
+                   VerticalAlignment="Center"/>
+    </Border>
+
+    <!-- Bottom playback island (Apple Music-style glass pill). No clip: the island's glass
+         must hear of repaints right beside the pill, which its blur reads (see GlassReach). -->
     <views:PlaybackBarView DataContext="{Binding Player}"
+                           ClipToBounds="False"
                            CompactWhenLyricsPageActive="False"
                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarMounted, FallbackValue=False}"
                            IsHitTestVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarHitTestVisible, FallbackValue=False}"
@@ -1211,6 +1381,53 @@
                            Margin="0,0,0,16"
                            ZIndex="30" />
 
+    <!-- GitHub #92: idle island. The island above unmounts while nothing is loaded, and its
+         Queue button with it; this pill takes its place so the queue (and anything dropped
+         into it) stays one click away. Same glass fill and ring as the island. -->
+    <Border IsVisible="{Binding IsIdleIslandVisible}"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="0,0,0,16"
+            Height="44"
+            CornerRadius="999"
+            BorderBrush="#40FFFFFF"
+            BorderThickness="1.5"
+            ZIndex="30">
+        <controls:GlassPanel CornerRadius="999" BlurRadius="14">
+            <controls:GlassPanel.Background>
+                <SolidColorBrush Color="{DynamicResource IslandBackgroundColor}" Opacity="{Binding Player.IslandBackgroundOpacity}"/>
+            </controls:GlassPanel.Background>
+            <StackPanel Orientation="Horizontal" Spacing="14" Margin="20,0,6,0" VerticalAlignment="Center">
+                <TextBlock Text="{loc:T Main.NothingPlaying}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource IslandForeground}"
+                           Opacity="0.6"
+                           VerticalAlignment="Center" />
+                <Button Classes="accent-pill"
+                        Command="{Binding Player.ShowQueueCommand}"
+                        CornerRadius="999"
+                        Padding="12,6"
+                        VerticalAlignment="Center"
+                        Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Border Width="14" Height="14"
+                                Background="{DynamicResource AccentForegroundBrush}"
+                                RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                        <TextBlock Text="{loc:T Main.Queue}"
+                                   FontSize="13"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </controls:GlassPanel>
+    </Border>
+
     <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
     <Border x:Name="SidebarWrapper"
             HorizontalAlignment="Left"
@@ -1218,7 +1435,6 @@
             Width="60"
             Margin="8,8,8,12"
             CornerRadius="20"
-            ClipToBounds="True"
             ZIndex="10">
         <Border.Transitions>
             <Transitions>
@@ -1230,12 +1446,17 @@
             </Transitions>
         </Border.Transitions>
         <!-- Liquid Glass host: off, paints the sidebar fill the view used to paint
-             itself; on, frosts the page content scrolling past under the rail. -->
+             itself; on, frosts the page content scrolling past under the rail. The
+             rounded clip sits on the content, not on SidebarWrapper: the glass draws its
+             own rounded shape, and a clipping ancestor would hide from it the repaints of
+             the page beside the rail that its blur reads (see GlassReach). -->
         <controls:GlassPanel Background="{DynamicResource IslandBackground}"
                              CornerRadius="20"
                              GlassTintOpacity="0.55">
-            <views:SidebarView HorizontalAlignment="Stretch"
-                               DataContext="{Binding Sidebar}" />
+            <Border CornerRadius="20" ClipToBounds="True">
+                <views:SidebarView HorizontalAlignment="Stretch"
+                                   DataContext="{Binding Sidebar}" />
+            </Border>
         </controls:GlassPanel>
     </Border>
 
@@ -1412,12 +1633,26 @@
                 </Border>
             </Panel>
             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="1">
+                <!-- Title run + the tiles' compact E badge (set from OnDragPreviewStarted). -->
                 <TextBlock x:Name="DragChipTitle"
                            FontSize="13"
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource IslandForeground}"
                            TextTrimming="CharacterEllipsis"
-                           MaxLines="1" />
+                           MaxLines="1">
+                    <Run />
+                    <InlineUIContainer BaselineAlignment="Center">
+                        <Border x:Name="DragChipExplicit"
+                                Classes="explicit-badge compact"
+                                Margin="6,0,0,0"
+                                IsVisible="False">
+                            <TextBlock Text="E"
+                                       Classes="explicit-badge-text compact"
+                                       FontSize="8"
+                                       Opacity="0.9" />
+                        </Border>
+                    </InlineUIContainer>
+                </TextBlock>
                 <TextBlock x:Name="DragChipSubtitle"
                            FontSize="11"
                            FontWeight="SemiBold"

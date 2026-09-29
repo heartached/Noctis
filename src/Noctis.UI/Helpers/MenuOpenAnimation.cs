@@ -56,6 +56,28 @@ public static class MenuOpenAnimation
     public static bool GetEnableFlyoutClose(MenuFlyout flyout) =>
         flyout.GetValue(EnableFlyoutCloseProperty);
 
+    /// <summary>
+    /// Set (by a style) on a menu whose chrome is a <c>GlassPanel</c> (GitHub #104): the motion
+    /// then fades <see cref="FadeProperty"/> instead of <see cref="Visual.Opacity"/>. The GPU
+    /// backend does not apply an ancestor's opacity layer to the glass's custom Skia blur, so an
+    /// Opacity fade would leave the frost at full strength while the menu around it vanishes.
+    /// </summary>
+    public static readonly AttachedProperty<bool> UseFadeProperty =
+        AvaloniaProperty.RegisterAttached<Control, bool>("UseFade", typeof(MenuOpenAnimation));
+
+    public static void SetUseFade(Control control, bool value) => control.SetValue(UseFadeProperty, value);
+    public static bool GetUseFade(Control control) => control.GetValue(UseFadeProperty);
+
+    /// <summary>
+    /// 0..1 fade a <see cref="UseFadeProperty"/> menu's template binds to its GlassPanel's
+    /// <c>Fade</c> and to its content's Opacity, so the frost and the items fade together.
+    /// </summary>
+    public static readonly AttachedProperty<double> FadeProperty =
+        AvaloniaProperty.RegisterAttached<Control, double>("Fade", typeof(MenuOpenAnimation), 1.0);
+
+    public static void SetFade(Control control, double value) => control.SetValue(FadeProperty, value);
+    public static double GetFade(Control control) => control.GetValue(FadeProperty);
+
     private static readonly AttachedProperty<long> LastRunProperty =
         AvaloniaProperty.RegisterAttached<Control, long>("LastRun", typeof(MenuOpenAnimation));
 
@@ -131,11 +153,12 @@ public static class MenuOpenAnimation
 
         // Start hidden + nudged down, then settle into place on the next frame so the
         // transitions animate the change instead of snapping straight to the end state.
-        control.Opacity = 0;
+        var fade = FadePropertyOf(control);
+        control.SetValue(fade, 0.0);
         control.RenderTransform = TransformOperations.Parse($"translateY({OpenOffsetY}px)");
         Dispatcher.UIThread.Post(() =>
         {
-            control.Opacity = 1;
+            control.SetValue(fade, 1.0);
             control.RenderTransform = TransformOperations.Parse("translateY(0px)");
         }, DispatcherPriority.Render);
     }
@@ -227,7 +250,7 @@ public static class MenuOpenAnimation
     private static void RunCloseAnimation(Control control, Action afterAnimation)
     {
         EnsureTransitions(control, TimeSpan.FromMilliseconds(CloseDurationMs));
-        control.Opacity = 0;
+        control.SetValue(FadePropertyOf(control), 0.0);
         control.RenderTransform = TransformOperations.Parse($"translateY({CloseOffsetY}px)");
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(CloseDurationMs) };
@@ -272,14 +295,20 @@ public static class MenuOpenAnimation
     private static void ResetMenuTransform(Control control)
     {
         control.Opacity = 1;
+        if (GetUseFade(control)) SetFade(control, 1);
         control.RenderTransform = TransformOperations.Parse("translateY(0px)");
     }
+
+    /// <summary>The property the open/close fade drives: <see cref="FadeProperty"/> on a glass
+    /// menu (<see cref="UseFadeProperty"/>), Opacity everywhere else.</summary>
+    internal static StyledProperty<double> FadePropertyOf(Control control) =>
+        GetUseFade(control) ? FadeProperty : Visual.OpacityProperty;
 
     private static void EnsureTransitions(Control control, TimeSpan duration)
     {
         control.Transitions = new Transitions
         {
-            new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration, Easing = new CubicEaseOut() },
+            new DoubleTransition { Property = FadePropertyOf(control), Duration = duration, Easing = new CubicEaseOut() },
             new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = new CubicEaseOut() },
         };
     }

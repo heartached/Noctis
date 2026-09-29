@@ -97,6 +97,21 @@ public class AudioKeepAliveTests
         Assert.Equal(expected, VlcSilenceKeepAlive.ShouldStartKeepAlive(isLinux, keepAliveEnv, bundledVlcEnv));
     }
 
+    [Theory]
+    [InlineData(false, false, 600_000, 1_000L, true)]       // playing: the position timer keeps it fresh
+    [InlineData(false, false, 600_000, 600_000L, true)]     // parks only once the limit is PASSED
+    [InlineData(false, false, 600_000, 600_001L, false)]    // stopped past the idle limit: parks
+    [InlineData(false, true, 600_000, 600_001L, true)]      // GitHub #70: paused past the limit stays warm
+    [InlineData(false, true, 600_000, 86_400_000L, true)]   // ...however long the pause
+    [InlineData(false, false, 0, 86_400_000L, true)]        // NOCTIS_KEEPALIVE_IDLE_MS=0: never parks
+    [InlineData(true, false, 600_000, 1_000L, false)]       // exclusive output holds the endpoint
+    [InlineData(true, true, 0, 1_000L, false)]              // ...and wins over a held pause
+    public void ShouldRun_HoldsThroughPause_ParksWhenIdleOrSuspended(
+        bool suspended, bool heldByPause, int idleStopMs, long idleForMs, bool expected)
+    {
+        Assert.Equal(expected, VlcSilenceKeepAlive.ShouldRun(suspended, heldByPause, idleStopMs, idleForMs));
+    }
+
     [Fact]
     public void TryStart_ReturnsNull_OnWindows_EvenWhenOptedIn()
     {

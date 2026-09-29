@@ -109,6 +109,22 @@ public class LrcVoiceMarkerTests
     }
 
     [Fact]
+    public void BgLines_CountTowardLineCap_AndBackgroundRowIsBounded()
+    {
+        // Thousands of "[bg: …]" lines never became LyricLines, so they slipped past the
+        // line cap and all piled onto one main line's background row.
+        var lrc = new List<string> { "[00:01.00]<00:01.00>Hey<00:01.50>" };
+        lrc.AddRange(Enumerable.Repeat("[bg: <00:01.00>(ooh)<00:01.50>]", 5000));
+        lrc.Add("[00:09.00]Past the cap");
+
+        var lines = LyricsViewModel.ParseLrcContent(string.Join("\n", lrc));
+
+        var main = Assert.Single(lines);
+        Assert.Equal("Hey", main.Text);
+        Assert.Equal(Noctis.Services.EnhancedLrcParser.MaxWordsPerLine, main.BackgroundWords!.Count);
+    }
+
+    [Fact]
     public void BgLine_WithoutPrecedingLine_DroppedNotShownAsText()
     {
         var lines = LyricsViewModel.ParseLrcContent(string.Join("\n",

@@ -128,7 +128,10 @@ public class PersistenceService : IPersistenceService
             DebugLogger.Error(DebugLogger.Category.Error, "settings.json corrupt", quarantined);
         }
 
-        var settings = loaded ?? new AppSettings();
+        // Defaults decide the community-plugins switch (restricted). Left null, the plugin
+        // host would read them as an install that predates the switch and approve and start
+        // every plugin still in the plugins folder.
+        var settings = loaded ?? new AppSettings { CommunityPluginsEnabled = false };
         settings.ClampToValidRanges();
         // Decrypt at-rest-protected credentials (see SaveSettingsAsync).
         // Legacy plaintext values pass through unchanged.

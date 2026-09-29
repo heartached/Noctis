@@ -301,6 +301,14 @@ public partial class MiniPlayerWindow : Window
 
         DataContextChanged += (_, _) => HookViewModel();
 
+        // What the OS actually granted, for "Copy Logs": on macOS a hint that falls back to
+        // None paints the window opaque (square card on a dark rectangle).
+        Opened += (_, _) => LogTransparency("opened");
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ActualTransparencyLevelProperty) LogTransparency("changed");
+        };
+
         // The root border starts faded/scaled-down in XAML; flipping the values once
         // the window is shown lets its transitions play the open animation.
         Opened += (_, _) =>
@@ -393,10 +401,35 @@ public partial class MiniPlayerWindow : Window
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
         UpdateDesignSegment();
         ApplyTransparencyHint();
+        ApplyPin();
 
         // A DataContext arriving after Opened would otherwise leave every form hidden.
         SyncFormVisual();
         UpdateFlowAnimationState();
+    }
+
+    // ── Pin (Windows) ──
+    // Pinned: no minimize box, so Show desktop / Minimize all pass the window over (it keeps
+    // its taskbar button), plus a foreground hook that puts it back on top of a game that
+    // raised itself. Unpinned is exactly the old window. Evidence in MiniPlayerPin.
+
+    private TopmostKeeper? _topmostKeeper;
+
+    private void ApplyPin()
+    {
+        var pinned = Vm is { IsPinned: true } && MiniPlayerPin.IsSupported;
+        CanMinimize = MiniPlayerPin.CanMinimize(pinned);
+        if (pinned)
+        {
+            _topmostKeeper ??= new TopmostKeeper(
+                () => TryGetPlatformHandle() is { HandleDescriptor: "HWND" } h ? h.Handle : IntPtr.Zero,
+                () => IsVisible && !_closeAnimationDone);
+        }
+        else
+        {
+            _topmostKeeper?.Dispose();
+            _topmostKeeper = null;
+        }
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -405,6 +438,9 @@ public partial class MiniPlayerWindow : Window
         {
             case nameof(MiniPlayerViewModel.Drawer):
                 OnDrawerChanged();
+                break;
+            case nameof(MiniPlayerViewModel.IsPinned):
+                ApplyPin();
                 break;
             case nameof(MiniPlayerViewModel.Form):
                 // Leaving the split view ends the lyrics session the pre-lyrics capture
@@ -928,10 +964,17 @@ public partial class MiniPlayerWindow : Window
     // not anti-aliased, and the design grounds' drop shadows fall outside it. Mica is left
     // out on purpose: it tints from the wallpaper instead of blurring what is behind.
 
-    /// <summary>The transparency levels asked for, and what the frost toggle maps to.</summary>
-    internal static WindowTransparencyLevel[] TransparencyLevels(bool frosted) => frosted
-        ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
-        : new[] { WindowTransparencyLevel.Transparent };
+    /// <summary>The transparency levels asked for, and what the frost toggle maps to.
+    /// One shared array per choice: the hint is set again whenever the view model is
+    /// (re)attached, and Avalonia compares arrays by reference. On macOS a second, equal
+    /// hint that arrives as a new array is re-applied, the native backend skips the level
+    /// it already has and falls back to Opaque, and the window paints its fallback brush
+    /// behind the card as a dark square (Avalonia.Native TopLevelImpl, 12.1.3).</summary>
+    internal static WindowTransparencyLevel[] TransparencyLevels(bool frosted) => frosted ? FrostedLevels : ClearLevels;
+
+    private static readonly WindowTransparencyLevel[] FrostedLevels =
+        { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent };
+    private static readonly WindowTransparencyLevel[] ClearLevels = { WindowTransparencyLevel.Transparent };
 
     private bool _frosted;
 
@@ -1062,8 +1105,10 @@ public partial class MiniPlayerWindow : Window
             _ => 0,
         };
         DesignSegmentThumb.Width = segment;
-        DesignSegmentThumb.RenderTransform =
-            Avalonia.Media.Transformation.TransformOperations.Parse($"translateX({segment * index:0.##}px)");
+        // Invariant: on a comma-decimal locale "54,67px" parses as two values and throws
+        // (GitHub #79 log) — mid OnMoreMenuClick, leaving the popup open at opacity 0.
+        DesignSegmentThumb.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
+            FormattableString.Invariant($"translateX({segment * index:0.##}px)"));
     }
 
     // Wheel over a design card: volume, 5 per notch (the classic forms have their own bar
@@ -1111,7 +1156,10 @@ public partial class MiniPlayerWindow : Window
         _drawerHideTimer?.Stop();
         _lyricsScrollTimer?.Stop();
         _lyricsFontTimer?.Stop();
+        _pillSpinner?.Stop();
         _flow?.Dispose();
+        _topmostKeeper?.Dispose();
+        _topmostKeeper = null;
         if (_lyricsSurfaceRegistered && _hookedVm != null)
         {
             _lyricsSurfaceRegistered = false;
@@ -1344,6 +1392,10 @@ public partial class MiniPlayerWindow : Window
 
     private string MenuState() =>
         $"isOpen={MorePopup.IsOpen} opacity={MenuCard.Opacity:0.##} active={IsActive} gen={_menuCloseGeneration}";
+
+    private void LogTransparency(string when) =>
+        Noctis.Services.DebugLog.Write("MiniPlayer",
+            $"transparency {when}: hint=[{string.Join(",", TransparencyLevelHint)}] actual={ActualTransparencyLevel}");
 
     // GitHub #79 diagnostics. Written straight to the session log behind Settings →
     // Developer Mode → "Copy Logs" (DebugLogger's UI entries are never shown anywhere),

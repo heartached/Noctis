@@ -45,7 +45,7 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         ToolInstalled = service.Tool.IsAvailable;
         DestinationFolder = service.ResolveDownloadFolder();
         StatusMessage = HasDestination ? string.Empty : "Add a music folder in Settings → Library first.";
-        _ = RefreshVersionAsync();
+        _ = CheckToolUpdateAsync();
         if (!string.IsNullOrWhiteSpace(initialQuery))
         {
             Query = initialQuery;
@@ -60,7 +60,20 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
     {
         if (!ToolInstalled) { ToolVersionText = string.Empty; return; }
         var v = await _service.Tool.GetVersionAsync(CancellationToken.None);
-        ToolVersionText = v is null ? string.Empty : $"yt-dlp {v}";
+        ToolVersionText = YtDlpParsing.VersionLabel(v, _service.Tool.LatestKnownVersion);
+    }
+
+    /// <summary>Opening the downloader: show the version, then the quiet once-per-session update check.</summary>
+    private async Task CheckToolUpdateAsync()
+    {
+        try
+        {
+            await RefreshVersionAsync();
+            if (!ToolInstalled) return;
+            await _service.Tool.EnsureSessionUpdateCheckAsync();
+            await RefreshVersionAsync();
+        }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "YtDlp.DialogCheckFailed", ex.Message); }
     }
 
     [RelayCommand]
@@ -171,10 +184,13 @@ public partial class YouTubeDownloadViewModel : ViewModelBase
         {
             row.Failed = true;
             row.StatusText = ex.Message.Length > 90 ? ex.Message[..90] + "…" : ex.Message;
+            // The row clips long messages; the full one (e.g. "YouTube blocked this download…") goes up top.
+            if (ex.Message.Length > 90) StatusMessage = ex.Message;
         }
         finally
         {
             row.IsBusy = false;
+            _ = RefreshVersionAsync(); // a blocked download may have updated yt-dlp
         }
     }
 

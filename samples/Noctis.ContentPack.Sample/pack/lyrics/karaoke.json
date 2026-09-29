@@ -1,0 +1,17 @@
+{
+  "id": "karaoke",
+  "name": "Karaoke night",
+  "settings": {
+    "minLineOpacity": 35,
+    "fullScreenFocus": true,
+    "joinSplitWords": true,
+    "showTranslations": false,
+    "showRomanization": true,
+    "flowingBackground": "Kawarp",
+    "kawarpWarp": 1.6,
+    "kawarpBlur": 9,
+    "visualizer": true,
+    "visualizerStyle": "Mirror",
+    "visualizerArtworkColor": true
+  }
+}

@@ -751,6 +751,9 @@ public static class ShareCardRenderer
     private static readonly ConcurrentDictionary<string, string> _vibrantHexCache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Whether <see cref="GetVibrantColorHex"/> would answer from cache (no decode).</summary>
+    public static bool HasVibrantColor(string artworkPath) => _vibrantHexCache.ContainsKey(artworkPath);
+
     /// <summary>
     /// The vibrant background color this renderer derives for <paramref name="artworkPath"/>,
     /// as a "#RRGGBB" hex string — so the dialog's "Auto" swatch and the lyrics page's
@@ -1387,7 +1390,7 @@ public static class ShareCardRenderer
 
             // Downscale once so the color passes and card drawing stay cheap. 1024px keeps
             // the artwork sharp on the 2× supersampled export (poster art draws at ~920px).
-            return raw?.Resize(new SKImageInfo(1024, 1024), SKFilterQuality.High);
+            return Helpers.SkiaArtworkDecoder.Downscale(raw, new SKImageInfo(1024, 1024));
         }
         catch
         {

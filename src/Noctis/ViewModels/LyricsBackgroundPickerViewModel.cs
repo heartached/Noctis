@@ -100,6 +100,9 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
     [ObservableProperty] private string _youTubeStatus = string.Empty;
     [ObservableProperty] private bool _toolInstalled;
     [ObservableProperty] private bool _isInstallingTool;
+    /// <summary>"yt-dlp 2026.08.19" (+ "update available"), small secondary text in the YouTube panel.</summary>
+    [ObservableProperty] private string _toolVersionText = string.Empty;
+    private bool _toolUpdateChecked;
     /// <summary>Row the download is for; null = the default video.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(YouTubeTargetLabel))]
@@ -121,7 +124,33 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
         RefreshResults();
     }
 
-    partial void OnSearchTextChanged(string value) => RefreshResults();
+    // Debounced, like Add Songs: RefreshResults scans the whole library on the UI thread
+    // (Take only stops early on a broad query), and it ran for every character typed.
+    private const int SearchDebounceMs = 250;
+    private CancellationTokenSource? _searchDebounceCts;
+
+    /// <summary>The last debounced search refresh (tests await it).</summary>
+    internal Task SearchRefresh { get; private set; } = Task.CompletedTask;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _searchDebounceCts = cts;
+        SearchRefresh = DebouncedRefreshAsync(cts.Token);
+    }
+
+    private async Task DebouncedRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            RefreshResults();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
+    }
 
     private void RefreshResults()
     {
@@ -133,12 +162,15 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
         }
         else
         {
+            // Normalize the query once and match the cached keys, not every field per row.
+            var queryKey = Noctis.Helpers.SearchText.Normalize(query);
             foreach (var album in _library.Albums
-                         .Where(a => Noctis.Helpers.SearchText.Matches(a.Name, query) || Noctis.Helpers.SearchText.Matches(a.Artist, query))
+                         .Where(a => Noctis.Helpers.SearchText.Matches(a.Name, a.SearchNameKey, query, queryKey)
+                                  || Noctis.Helpers.SearchText.Matches(a.Artist, a.SearchArtistKey, query, queryKey))
                          .Take(MaxAlbumRows))
                 Results.Add(RowForAlbum(album));
             foreach (var track in _library.Tracks
-                         .Where(t => PlaylistViewModel.MatchesSearch(t, query))
+                         .Where(t => PlaylistViewModel.MatchesSearch(t, query, queryKey))
                          .Take(MaxTrackRows))
                 Results.Add(RowForTrack(track));
         }
@@ -267,6 +299,32 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
         YouTubeTarget = target;
         YouTubeStatus = string.Empty;
         ShowYouTube = true;
+        if (!_toolUpdateChecked)
+        {
+            _toolUpdateChecked = true;
+            _ = CheckToolUpdateAsync();
+        }
+    }
+
+    /// <summary>First use of the YouTube panel: show the version, then the quiet session update check.</summary>
+    private async Task CheckToolUpdateAsync()
+    {
+        if (_ytDlp is null) return;
+        try
+        {
+            await RefreshToolVersionAsync();
+            if (!ToolInstalled) return;
+            await _ytDlp.EnsureSessionUpdateCheckAsync();
+            await RefreshToolVersionAsync();
+        }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "YtDlp.PanelCheckFailed", ex.Message); }
+    }
+
+    private async Task RefreshToolVersionAsync()
+    {
+        if (_ytDlp is null || !ToolInstalled) { ToolVersionText = string.Empty; return; }
+        var version = await _ytDlp.GetVersionAsync(CancellationToken.None);
+        ToolVersionText = YtDlpParsing.VersionLabel(version, _ytDlp.LatestKnownVersion);
     }
 
     [RelayCommand]
@@ -288,6 +346,7 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
             await _ytDlp.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => DownloadProgress = p)), CancellationToken.None);
             ToolInstalled = true;
             YouTubeStatus = string.Empty;
+            await RefreshToolVersionAsync();
         }
         catch (Exception ex)
         {
@@ -317,7 +376,8 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
             string? ffmpeg = null;
             try { ffmpeg = _ffmpegPath?.Invoke(); } catch { }
             produced = await _ytDlp.DownloadVideoAsync(url, scratchRoot, ffmpeg, SelectedQuality.MaxHeight,
-                new Progress<double>(p => Dispatcher.UIThread.Post(() => DownloadProgress = p)), cts.Token);
+                new Progress<double>(p => Dispatcher.UIThread.Post(() => DownloadProgress = p)), cts.Token,
+                status => Dispatcher.UIThread.Post(() => { DownloadProgress = 0; YouTubeStatus = status; }));
 
             if (target is null)
             {
@@ -347,6 +407,8 @@ public partial class LyricsBackgroundPickerViewModel : ObservableObject
             if (produced is not null) YtDlpTool.CleanupScratch(produced);
             IsDownloading = false;
             if (ReferenceEquals(_downloadCts, cts)) _downloadCts = null;
+            _ = RefreshToolVersionAsync(); // a blocked download may have updated yt-dlp
+
         }
     }
 

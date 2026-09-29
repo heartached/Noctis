@@ -5824,10 +5824,6 @@
     <value>Estudio de Letras</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>Revisar las letras de la grabación o transcribir cuando no hay ninguna.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>Modelo</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>Transcribir por oído (ignorar la letra existente)</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>El modelo del discurso escucha la canción y escribe las palabras en sí, incluso cuando la canción ya tiene letras. Las canciones sin letras siempre se transcriban.</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>Busca letras en línea cuando una canción no tiene ninguna</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>Las letras planas son obtenidas de LRCLIB primero, así que el modelo sólo tiene que cortarlas. Desactivado, el modelo escribe las palabras por oído.</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>Descargar modelo</value>

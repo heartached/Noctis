@@ -65,7 +65,8 @@ public sealed partial class ReviewLine : ObservableObject
     {
         Confidence = line.Confidence;
         Interpolated = line.Interpolated;
-        HasWordTimings = line.Words.Count > 0;
+        // An interpolated line's words are the aligner's even spread, not heard times.
+        HasWordTimings = line.Words.Count > 0 && !line.Interpolated;
         var start = line.Start;
         var end = line.End > line.Start ? line.End : line.Start;
 
@@ -102,6 +103,19 @@ public sealed partial class ReviewLine : ObservableObject
 
     /// <summary>Word strip open under the line.</summary>
     [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>ELRC chosen in the Studio toolbar: the row shows, and edits, the line as ELRC will save it.</summary>
+    [ObservableProperty] private bool _showWordTags;
+
+    /// <summary>Why the last row edit was refused (a bad or backwards time); null when the row is fine.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEditError))]
+    private string? _editError;
+
+    public bool HasEditError => EditError is not null;
+
+    partial void OnShowWordTagsChanged(bool value) => RaiseRow();
+    partial void OnHasWordTimingsChanged(bool value) => RaiseRow();
 
     private readonly TimeSpan _fallbackStart;
     public TimeSpan Start => Words.Count > 0 ? Words[0].Start : _fallbackStart;
@@ -170,8 +184,116 @@ public sealed partial class ReviewLine : ObservableObject
         if (_applyingWords) return;
         _text = JoinWords();
         OnPropertyChanged(nameof(Text));
+        RaiseRow();
         SnapshotBaseline();
         Changed?.Invoke();
+    }
+
+    // ── Row text (the review row's text box) ──────────────────────────────────
+
+    // ELRC typing waits here until Enter / focus loss, so a half-typed time never reaches the words.
+    private string? _rowDraft;
+
+    /// <summary>
+    /// What the row shows. LRC: <see cref="Text"/>, applied per keystroke as always. ELRC: the
+    /// line exactly as it will be saved (<see cref="TimedLyricsBuilder.BuildElrcBody"/>, without
+    /// the line stamp the time pill shows) — a line with no word timings is its plain text.
+    /// ELRC typing is held until <see cref="CommitRowText"/>.
+    /// </summary>
+    public string RowText
+    {
+        get => _rowDraft ?? (ShowWordTags ? TimedLyricsBuilder.BuildElrcBody(ToAlignedLine()) : Text);
+        set
+        {
+            if (!ShowWordTags) { Text = value; return; }
+            _rowDraft = value ?? string.Empty;
+            EditError = null;
+        }
+    }
+
+    /// <summary>
+    /// Reads the typed ELRC row back into words (Enter, focus loss). Tags become word times;
+    /// with no tags left it is a plain text edit (times kept as in LRC). A bad or backwards time
+    /// changes nothing and sets <see cref="EditError"/>; the typing stays until
+    /// <see cref="RevertRowText"/>. Returns false when the edit was refused.
+    /// </summary>
+    public bool CommitRowText()
+    {
+        if (_rowDraft is not { } draft) return true;
+        _rowDraft = null;
+        if (draft == RowText) { EditError = null; return true; }
+        if (!TimedLyricsBuilder.TryParseElrcBody(draft, Start, End, out var words, out var error))
+        {
+            _rowDraft = draft;
+            EditError = error;
+            return false;
+        }
+        if (words is null) Text = draft;
+        else ApplyWords(words);
+        RaiseRow();
+        return true;
+    }
+
+    /// <summary>
+    /// Drops unapplied typing so the row shows the line again (Esc; or focus leaving a refused
+    /// edit, which keeps its mark until the row is typed in again). False when there was nothing to undo.
+    /// </summary>
+    public bool RevertRowText(bool keepError = false)
+    {
+        if (_rowDraft is null && EditError is null) return false;
+        _rowDraft = null;
+        if (!keepError) EditError = null;
+        OnPropertyChanged(nameof(RowText));
+        return true;
+    }
+
+    /// <summary>
+    /// Puts parsed row words on the line. A time the row showed unchanged keeps its full
+    /// precision (the row rounds to 10 ms), so fixing one word never moves the others.
+    /// </summary>
+    private void ApplyWords(IReadOnlyList<AlignedWord> parsed)
+    {
+        var old = Words.Select(w => w.Start).ToList();
+        TimeSpan Keep(TimeSpan t, int i)
+        {
+            var shown = TimedLyricsBuilder.FormatTimestamp(t);
+            if (i < old.Count && TimedLyricsBuilder.FormatTimestamp(old[i]) == shown) return old[i];
+            foreach (var o in old)
+                if (TimedLyricsBuilder.FormatTimestamp(o) == shown) return o;
+            return t;
+        }
+
+        _applyingWords = true;
+        try
+        {
+            while (Words.Count > parsed.Count) Words.RemoveAt(Words.Count - 1);
+            var floor = TimeSpan.Zero;
+            for (var i = 0; i < parsed.Count; i++)
+            {
+                var start = Keep(parsed[i].Start, i);
+                if (start < floor) start = floor;
+                floor = start;
+                if (i < Words.Count) { Words[i].Text = parsed[i].Text; Words[i].Start = start; }
+                else Words.Add(new ReviewWord(this, parsed[i].Text, start));
+            }
+        }
+        finally { _applyingWords = false; }
+        var end = TimedLyricsBuilder.FormatTimestamp(parsed[^1].End) == TimedLyricsBuilder.FormatTimestamp(End) ? End : parsed[^1].End;
+        End = end < Words[^1].Start ? Words[^1].Start : end;
+        _text = JoinWords();
+        HasWordTimings = true;
+        SnapshotBaseline();
+        OnPropertyChanged(nameof(Text));
+        RaiseTimes();
+        Changed?.Invoke();
+    }
+
+    /// <summary>The line changed under the row: show it, dropping unapplied typing and a stale refusal.</summary>
+    private void RaiseRow()
+    {
+        _rowDraft = null;
+        EditError = null;
+        OnPropertyChanged(nameof(RowText));
     }
 
     // ── Times ─────────────────────────────────────────────────────────────────
@@ -276,7 +398,8 @@ public sealed partial class ReviewLine : ObservableObject
         IReadOnlyList<AlignedWord> words = HasWordTimings
             ? Words.Select(w => new AlignedWord(w.Text, w.Start, w.End)).ToList()
             : Array.Empty<AlignedWord>();
-        return new AlignedLine(text, Start, end, words, Confidence, Interpolated);
+        // A line the user timed by hand is no longer a guess: keep its words on the next rebuild.
+        return new AlignedLine(text, Start, end, words, Confidence, Interpolated && !HasWordTimings);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -294,6 +417,7 @@ public sealed partial class ReviewLine : ObservableObject
         OnPropertyChanged(nameof(End));
         OnPropertyChanged(nameof(TimeText));
         foreach (var w in Words) w.OnEndChanged();
+        RaiseRow();
     }
 }
 

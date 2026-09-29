@@ -1,0 +1,20 @@
+{
+  "id": "paper",
+  "name": "Paper",
+  "base": "light",
+  "accent": "#2F6F5E",
+  "colors": {
+    "AppWindowBackgroundBrush": "#F7F3EA",
+    "AppMainBackground": "#F7F3EA",
+    "AppSidebarBackground": "#EDE6D6",
+    "PrimaryTextBrush": "#2B2620",
+    "SecondaryTextBrush": "#6B6255",
+    "TertiaryTextBrush": "#968B7B",
+    "HomeCardBackground": "#EFE8DA",
+    "HomeCardHoverBackground": "#E6DDCB",
+    "IslandBackground": "#F5E4DBC8",
+    "IslandBorder": "#26000000",
+    "IslandForeground": "#2B2620",
+    "IslandForegroundSecondary": "#6B6255"
+  }
+}

@@ -49,6 +49,7 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
         new SongSortOption("Bitrate", "Bitrate"),
         new SongSortOption("SampleRate", "Sample Rate"),
         new SongSortOption("Date Added", "Date Added"),
+        new SongSortOption("Date Modified", "Date Modified"),
     };
 
     public SongsViewOptionsViewModel(LibrarySongsViewModel songs, SettingsViewModel settings)

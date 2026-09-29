@@ -1,0 +1,19 @@
+{
+  "id": "dev.noctis.samples.tracktools",
+  "name": "Track Tools",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Reference for plugin API 1.1: a \"More by this artist\" track-menu command, a lyrics provider stub, and a greeting logged on every scrobble.",
+  "type": "dotnet",
+  "entry": "Noctis.SamplePlugin.TrackTools.dll",
+  "apiVersion": "1.1",
+  "minAppVersion": "1.5.3",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["menu.commands", "library.read", "lyrics.provider", "notifications"],
+  "settings": [
+    { "key": "greeting", "label": "Scrobble log greeting", "type": "string", "default": "Listened to" },
+    { "key": "searchLimit", "label": "Tracks to look at for \"More by this artist\"", "type": "number", "default": 25, "min": 1, "max": 200 },
+    { "key": "stubLyrics", "label": "Answer lyrics searches with placeholder text", "description": "Demo only: shows how a provider joins the lyrics search.", "type": "bool", "default": false }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/samples/Noctis.SamplePlugin.TrackTools"
+}

@@ -139,4 +139,73 @@ public class AlbumPageTintProbeTests
             .First(t => t.Classes.Contains("artist-credit-text") && t.Text == "B");
         Assert.Equal(dark, ((ISolidColorBrush)credit.Foreground!).Color);
     }
+
+    /// <summary>Discord "Album Page Redesign" (Jafezy mockup): with More By below a short
+    /// album, the tint runs under the related rows (Tint whole page, on by default) and they
+    /// follow the tracks directly — no viewport-tall stretch of empty colour first. Turning
+    /// the option off restores the album-block-only tint.</summary>
+    [AvaloniaFact]
+    public void WholePageTint_CoversRelatedRows_WithoutViewportPadding()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var album = new Album { Id = Guid.NewGuid(), Name = "A", Artist = "B", Tracks = new List<Track>() };
+        for (var i = 1; i <= 3; i++)
+            album.Tracks.Add(new Track
+            {
+                Id = Guid.NewGuid(),
+                FilePath = TestPaths.Primary("tint-whole", "A", $"{i:00} Song {i}.flac"),
+                Title = $"Song {i}", Artist = "B", AlbumArtist = "B", Album = "A", TrackNumber = i,
+            });
+        lib.ArtistAlbums.Add(new Album { Id = Guid.NewGuid(), Name = "Other", Artist = "B", Year = 2020, Tracks = new List<Track>() });
+        var artPath = persistence.GetArtworkPath(album.Id);
+        Directory.CreateDirectory(Path.GetDirectoryName(artPath)!);
+        using (var bmp = new SKBitmap(600, 600))
+        {
+            using (var c = new SKCanvas(bmp)) c.Clear(new SKColor(0xF2, 0xC1, 0xD1));
+            using var img = SKImage.FromBitmap(bmp);
+            using var data = img.Encode(SKEncodedImageFormat.Png, 90);
+            using var fs = File.Create(artPath); data.SaveTo(fs);
+        }
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumPageTintEnabled = true;
+        Assert.True(settings.AlbumPageTintWholePage, "whole-page tint ships on");
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new AlbumDetailViewModel(album, player, persistence, lib, new SidebarViewModel(persistence, lib), new FakeLastFm(), settings);
+        var view = new AlbumDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        for (var i = 0; i < 40 && vm.BackgroundBrush == null; i++) { Thread.Sleep(50); Dispatcher.UIThread.RunJobs(); }
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+
+        Assert.NotNull(vm.BackgroundBrush);
+        Assert.True(vm.HasMoreByArtist);
+        var bg = view.FindControl<Border>("AlbumTintBg")!;
+        var related = view.FindControl<StackPanel>("RelatedSections")!;
+        var scroller = view.FindControl<ScrollViewer>("TrackScrollViewer")!;
+        var footer = view.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text?.Contains("songs,") == true);
+        double Top(Visual v) => v.TranslatePoint(default, view)!.Value.Y;
+        double Bottom(Visual v) => v.TranslatePoint(new Point(0, v.Bounds.Height), view)!.Value.Y;
+
+        _out.WriteLine($"whole: footer bottom={Bottom(footer)} related top={Top(related)} related bottom={Bottom(related)} tint bottom={Bottom(bg)} viewport={scroller.Viewport.Height}");
+        Assert.True(Top(related) - Bottom(footer) < 80, "related rows must follow the tracks, not a viewport of padding");
+        Assert.True(Bottom(bg) >= Bottom(related) - 0.5, "the tint must run under the related rows");
+        Assert.True(Bottom(bg) >= scroller.Viewport.Height - 0.5, "the tint must still reach the bottom of the viewport");
+        var moreByTitle = related.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == vm.MoreByArtistTitle);
+        var tileTitle = related.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("page-text") && t.Inlines?.Count > 0);
+        var dark = Color.FromRgb(0x11, 0x11, 0x11);
+        Assert.Equal(dark, ((ISolidColorBrush)moreByTitle.Foreground!).Color);
+        Assert.Equal(dark, ((ISolidColorBrush)tileTitle.Foreground!).Color);
+
+        settings.AlbumPageTintWholePage = false;
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+        _out.WriteLine($"block only: related top={Top(related)} tint bottom={Bottom(bg)}");
+        Assert.True(Bottom(bg) <= Top(related) + 0.5, "off: the tint stops above the related rows");
+        Assert.True(Bottom(bg) >= scroller.Viewport.Height - 0.5, "off: the album block still fills the viewport");
+        Assert.NotEqual(dark, ((ISolidColorBrush)moreByTitle.Foreground!).Color);
+        win.Close();
+    }
 }

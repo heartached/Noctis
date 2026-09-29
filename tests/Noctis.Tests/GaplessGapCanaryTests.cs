@@ -42,6 +42,34 @@ public class GaplessGapCanaryTests
     }
 
     [Fact]
+    public void SpeedAndPitch_RenderThroughNAudioWaveBufferPun()
+    {
+        // Speed ≠ 1× or any pitch shift switches on the WSOLA / resample stages,
+        // which Array.Copy'd into the render buffer. On the pun (runtime type
+        // byte[]) that throws ArrayTypeMismatchException on the render thread
+        // and WASAPI stops: silence. Pitch back to ±0 drains the resampler's
+        // buffered frames through the same kind of copy.
+        var provider = new GaplessSpliceProvider(48000, 2, startThresholdMs: 200, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(48000, 2, source: null, capacitySeconds: 20);
+        provider.Enqueue(seg);
+        seg.Write(Enumerable.Repeat((short)12000, 48000 * 2 * 4).ToArray());
+        var bytes = new byte[960 * 4];
+        var punned = new NAudio.Wave.WaveBuffer(bytes).FloatBuffer;
+
+        provider.PlaybackRate = 1.5;
+        provider.PitchRatio = PitchShiftProvider.RatioFromSemitones(2);
+        for (var r = 0; r < 20; r++)
+            Assert.Equal(960, provider.Read(punned, 0, 960));
+        Assert.InRange(punned[958], 0.3f, 0.4f);                      // audio, not a pad
+
+        provider.PitchRatio = 1.0;
+        provider.PlaybackRate = 1.0;
+        for (var r = 0; r < 20; r++)
+            Assert.Equal(960, provider.Read(punned, 0, 960));
+        Assert.InRange(punned[958], 0.3f, 0.4f);
+    }
+
+    [Fact]
     public void IdleProvider_WritesEveryRequestedSample()
     {
         var provider = new GaplessSpliceProvider(48000, 2, startThresholdMs: 200, startFadeMs: 5);

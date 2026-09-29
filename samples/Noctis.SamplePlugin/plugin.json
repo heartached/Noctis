@@ -1,0 +1,15 @@
+{
+  "id": "dev.noctis.samples.pulsering",
+  "name": "Pulse Ring",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "A ring behind the lyrics that breathes with the beat. Reference visual-layer plugin.",
+  "type": "dotnet",
+  "entry": "Noctis.SamplePlugin.dll",
+  "entryType": "Noctis.SamplePlugin.PulseRingPlugin",
+  "apiVersion": "1.1",
+  "minAppVersion": "1.5.3",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": [],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/samples/Noctis.SamplePlugin"
+}

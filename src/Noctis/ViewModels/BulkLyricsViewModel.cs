@@ -44,6 +44,26 @@ public partial class BulkLyricsViewModel : ViewModelBase
         foreach (var t in tracks)
             Rows.Add(new Row(t));
         StatusMessage = remove ? "Nothing removed yet." : "Ready.";
+        RowStatusesLoaded = LoadRowStatusesAsync();
+    }
+
+    /// <summary>Completes once the rows' lyrics states have been read and posted to the UI thread.</summary>
+    internal Task RowStatusesLoaded { get; }
+
+    // Each row's lyrics state is a lyrics-store read (a file probe per track), so it runs off the
+    // UI thread: a big selection opens the dialog at once instead of freezing before it shows.
+    private Task LoadRowStatusesAsync()
+    {
+        var rows = Rows.ToArray();
+        return Task.Run(() =>
+        {
+            var states = Array.ConvertAll(rows, r => Row.LyricsState(r.Track));
+            Dispatcher.UIThread.Post(() =>
+            {
+                for (var i = 0; i < rows.Length; i++)
+                    if (!rows[i].Done) rows[i].Status = states[i]; // a run already reported this row
+            });
+        });
     }
 
     partial void OnIsRunningChanged(bool value) => OnPropertyChanged(nameof(CanStart));
@@ -110,8 +130,10 @@ public partial class BulkLyricsViewModel : ViewModelBase
         public Row(Track track)
         {
             Track = track;
-            Status = string.IsNullOrWhiteSpace(track.SyncedLyrics) ? (string.IsNullOrWhiteSpace(track.Lyrics) ? "no lyrics" : "plain lyrics") : "synced";
         }
+
+        internal static string LyricsState(Track track)
+            => string.IsNullOrWhiteSpace(track.SyncedLyrics) ? (string.IsNullOrWhiteSpace(track.Lyrics) ? "no lyrics" : "plain lyrics") : "synced";
 
         public Track Track { get; }
         public string Title => Track.Title;

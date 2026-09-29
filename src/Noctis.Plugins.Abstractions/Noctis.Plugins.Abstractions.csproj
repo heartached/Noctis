@@ -5,12 +5,26 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noctis.Plugins</RootNamespace>
     <AssemblyName>Noctis.Plugins.Abstractions</AssemblyName>
-    <Version>1.0.0</Version>
-    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, storage) and the visual-layer extension point.</Description>
+    <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step. -->
+    <Version>1.1.0</Version>
+    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search, settings, storage) and extension points (visual layers, lyrics providers, track menu commands).</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- NuGet metadata (not published yet; `dotnet pack -c Release` produces the package). -->
+    <IsPackable>true</IsPackable>
+    <PackageId>Noctis.Plugins.Abstractions</PackageId>
+    <Authors>heartached</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>noctis;plugin;music-player;avalonia</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/heartached/Noctis</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/heartached/Noctis</RepositoryUrl>
+    <PackageReleaseNotes>1.1: plugin.json manifest, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notifications. Additive over 1.0.</PackageReleaseNotes>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Visual plugins return Avalonia controls; keep the version in step with the app. -->
-    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia" Version="12.1.3" />
   </ItemGroup>
 </Project>

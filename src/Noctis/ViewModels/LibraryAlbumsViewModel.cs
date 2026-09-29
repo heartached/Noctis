@@ -127,6 +127,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         "title" => "Title",
         "dateadded" => "Recently added",
+        "datemodified" => "Date Modified",
         "mostplayed" => "Most played",
         "albumartist" => "Album Artist",
         "year" => "Year",
@@ -244,7 +245,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// </summary>
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
     internal static bool IsDescendingByDefault(string sortMode) =>
-        sortMode is "dateadded" or "mostplayed" or "year";
+        sortMode is "dateadded" or "datemodified" or "mostplayed" or "year";
 
     /// <summary>Applies the grid sort persisted from the previous session.</summary>
     private void AdoptPersistedSort()
@@ -286,6 +287,17 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
+    /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
+    /// filter Reset the whole list, re-creating every row and cover on each click.</summary>
+    public bool IsSearchCleared => string.IsNullOrEmpty(_currentFilter) && string.IsNullOrEmpty(SearchText);
+
+    /// <summary>
+    /// Identifies the filter the current rows were built for: artist, applied search (SearchText
+    /// runs ahead of it by the debounce) and chips. The view resets its scroll only when this
+    /// changes, so a library reload or column-count rebuild of the same results keeps its place.
+    /// </summary>
+    internal string FilterKey => $"{ArtistFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
+
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 
@@ -300,6 +312,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
+
+    /// <summary>The Ctrl-selection when the acted-on album is part of it (or none was given), else just that album.</summary>
+    private List<Album> SelectionOr(Album? album) =>
+        album == null || CtrlSelectedAlbums.Contains(album) ? CtrlSelectedAlbums.ToList() : new List<Album> { album };
 
     /// <summary>
     /// Filtered albums grouped into rows for the virtualized grid. Mixed row types:
@@ -369,7 +385,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             // LibraryUpdated every ~1.5 s and hidden views catch up via the dirty
             // flag when activated instead of rebuilding the grid each event.
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("AlbumsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
@@ -684,7 +700,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
 
     /// <summary>
-    /// Orders the grid for an explicit sort mode ("title", "dateadded", "mostplayed",
+    /// Orders the grid for an explicit sort mode ("title", "dateadded", "datemodified", "mostplayed",
     /// "albumartist", "year", "random"); any other mode returns the input unchanged.
     /// <para>
     /// <paramref name="ascending"/> flips the primary key only — tie-breakers stay
@@ -707,6 +723,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             "dateadded" => ascending
                 ? albums.OrderBy(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue)
                 : albums.OrderByDescending(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
+            // GitHub #89: an album counts as modified when its newest file was (a re-tag
+            // or a replaced track), so updated albums surface like new ones.
+            "datemodified" => (ascending
+                    ? albums.OrderBy(LatestModified)
+                    : albums.OrderByDescending(LatestModified))
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
             "mostplayed" => (ascending
                     ? albums.OrderBy(a => a.Tracks.Sum(t => (long)t.PlayCount))
                     : albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount)))
@@ -730,6 +752,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             "random" => ShuffleBySeed(albums, randomSeed),
             _ => albums,
         };
+
+    private static DateTime LatestModified(Album album) =>
+        album.Tracks.Count > 0 ? album.Tracks.Max(t => t.LastModified) : DateTime.MinValue;
 
     private static List<Album> ShuffleBySeed(IEnumerable<Album> albums, int seed)
     {
@@ -1087,7 +1112,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task AddToNewPlaylist(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (tracks.Count == 0) return;
@@ -1098,7 +1123,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var changed = new List<Track>();
         foreach (var a in albums)
@@ -1121,9 +1146,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         // Multi-album selection: edit every track across the selected albums in the
         // shared multi-select editor (Mixed fields, edits fan out to all tracks).
-        if (CtrlSelectedAlbums.Count > 1)
+        var selection = SelectionOr(album);
+        if (selection.Count > 1)
         {
-            var tracks = CtrlSelectedAlbums.SelectMany(a => a.Tracks ?? new()).ToList();
+            var tracks = selection.SelectMany(a => a.Tracks ?? new()).ToList();
             CtrlSelectedAlbums.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(tracks);
             return;
@@ -1178,7 +1204,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums.ToList() : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = SelectionOr(album);
         if (albums.Count == 0) return;
         var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
@@ -1275,8 +1301,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// parsed tokens (handles "&amp;", "feat.", etc.), or as an exact match.
     /// Both sides are tokenised so that filtering by "A &amp; B" matches fields
     /// containing either "A" or "B", and vice versa.
+    /// A whole-library pass passes <paramref name="filterTokens"/> (the parsed
+    /// <paramref name="artistName"/>) so the name isn't re-parsed for every track.
     /// </summary>
-    internal static bool ContainsArtistToken(string? artistField, string artistName)
+    internal static bool ContainsArtistToken(string? artistField, string artistName, string[]? filterTokens = null)
     {
         if (string.IsNullOrWhiteSpace(artistField))
             return false;
@@ -1285,8 +1313,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (artistField.Equals(artistName, StringComparison.OrdinalIgnoreCase))
             return true;
 
+        filterTokens ??= Track.ParseArtistTokens(artistName);
+
+        // Every parsed token is a substring of its field, so a field missing any filter
+        // token can't match either branch below: skip the regex split for the (vast)
+        // non-matching majority of a library.
+        foreach (var ft in filterTokens)
+        {
+            if (!artistField.Contains(ft, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
         var fieldTokens = Track.ParseArtistTokens(artistField);
-        var filterTokens = Track.ParseArtistTokens(artistName);
 
         if (filterTokens.Length > 1)
         {

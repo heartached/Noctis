@@ -21,7 +21,7 @@ public class MemoryTrimTests
     {
         var quiet = MemoryTrim.Quiet;
         var runs = 0;
-        MemoryTrim.Collector = () => Interlocked.Increment(ref runs);
+        MemoryTrim.Collector = _ => Interlocked.Increment(ref runs);
         MemoryTrim.Quiet = TimeSpan.FromMilliseconds(150);
         try
         {
@@ -38,6 +38,39 @@ public class MemoryTrimTests
         finally
         {
             MemoryTrim.Collector = null;
+            MemoryTrim.Quiet = quiet;
+        }
+    }
+
+    [Fact]
+    public async Task WhileAudioPlays_TheTrimDoesNotBlock()
+    {
+        // R2: the trim after the startup scan ran a forced blocking compacting gen2 while
+        // music played, and the render thread stalled 39 ms (gcPauseMs=34.1) inside it.
+        var quiet = MemoryTrim.Quiet;
+        var playing = true;
+        var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
+        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
+        MemoryTrim.IsAudioPlaying = () => Volatile.Read(ref playing);
+        MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            MemoryTrim.RequestAfterIdle("playing");
+            await WaitUntil(() => !modes.IsEmpty);
+            Assert.NotEmpty(modes);
+            Assert.DoesNotContain(true, modes); // background collection only
+
+            modes.Clear();
+            Volatile.Write(ref playing, false);
+            MemoryTrim.RequestAfterIdle("idle");
+            await WaitUntil(() => !modes.IsEmpty);
+            Assert.NotEmpty(modes);
+            Assert.DoesNotContain(false, modes); // nothing playing: the full compacting trim
+        }
+        finally
+        {
+            MemoryTrim.Collector = null;
+            MemoryTrim.IsAudioPlaying = null;
             MemoryTrim.Quiet = quiet;
         }
     }
@@ -67,6 +100,12 @@ public class MemoryTrimTests
         Assert.True(open >= 0, $"no TagLib.File.Create after {method}");
         var line = src.Substring(open, src.IndexOf('\n', open) - open);
         Assert.Contains("ReadStyle.PictureLazy", line);
+    }
+
+    private static async Task WaitUntil(Func<bool> done)
+    {
+        for (var i = 0; i < 200 && !done(); i++)
+            await Task.Delay(10);
     }
 
     private static string FindRepoRoot()

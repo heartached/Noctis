@@ -33,6 +33,15 @@ public class MusicVideoLocatorTests : IDisposable
     }
 
     [Fact]
+    public void UpperCaseExtension_IsFound()
+    {
+        // Exact ".mp4" probes missed "song.MP4" on case-sensitive file systems (Linux).
+        var audio = Audio();
+        var video = Path.Combine(_dir, "09 - Runaway.MP4"); File.WriteAllBytes(video, new byte[] { 1 });
+        Assert.Equal(video, MusicVideoLocator.Find(audio));
+    }
+
+    [Fact]
     public void DifferentStem_OrNothing_ReturnsNull()
     {
         var audio = Audio();

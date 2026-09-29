@@ -14,10 +14,17 @@ namespace Noctis.Helpers;
 ///
 /// Each menu's <c>Opening</c> handler calls <see cref="NotifyOpening"/>, which
 /// closes the previously opened menu before the new one is shown.
+///
+/// The reference is dropped when the menu closes: a closed menu needs no closing, and
+/// held in this static it kept its owner tile — and through it the whole page and its
+/// view-model (an album page long since left) — alive until some other menu opened.
 /// </summary>
 public static class ContextMenuCoordinator
 {
     private static ContextMenu? _current;
+
+    /// <summary>The menu being tracked (tests).</summary>
+    internal static ContextMenu? Current => _current;
 
     public static void NotifyOpening(ContextMenu? menu)
     {
@@ -28,5 +35,17 @@ public static class ContextMenuCoordinator
             _current.Close();
 
         _current = menu;
+        menu.Closed -= OnMenuClosed;
+        menu.Closed += OnMenuClosed;
+    }
+
+    private static void OnMenuClosed(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is ContextMenu menu)
+        {
+            menu.Closed -= OnMenuClosed;
+            if (ReferenceEquals(_current, menu))
+                _current = null;
+        }
     }
 }

@@ -1,0 +1,44 @@
+<Project>
+  <!--
+    Packs a Noctis plugin after a Release build: the plugin DLL (+ its private dependencies,
+    minus the shared kit) and plugin.json into bin/<Configuration>/<AssemblyName>-<Version>.zip,
+    ready for Settings → Plugins → "Install from file…".
+    plugin.json is deliberately NOT a CopyToOutputDirectory item: that would flow into every
+    project referencing the plugin (the test project references several).
+  -->
+  <Target Name="PackNoctisPlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And Exists('$(MSBuildProjectDirectory)\plugin.json')">
+    <PropertyGroup>
+      <_PluginStage>$(BaseIntermediateOutputPath)plugin-package\$(AssemblyName)\</_PluginStage>
+      <_PluginZip>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(AssemblyName)-$(Version).zip</_PluginZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <_PluginFiles Include="$(OutDir)*.dll" Exclude="$(OutDir)Noctis.Plugins.Abstractions.dll;$(OutDir)Avalonia*.dll;$(OutDir)SkiaSharp*.dll;$(OutDir)HarfBuzzSharp*.dll" />
+      <_PluginFiles Include="$(OutDir)$(AssemblyName).deps.json" Condition="Exists('$(OutDir)$(AssemblyName).deps.json')" />
+      <_PluginFiles Include="$(MSBuildProjectDirectory)\plugin.json" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_PluginStage)" />
+    <Copy SourceFiles="@(_PluginFiles)" DestinationFolder="$(_PluginStage)" />
+    <Delete Files="$(_PluginZip)" />
+    <ZipDirectory SourceDirectory="$(_PluginStage)" DestinationFile="$(_PluginZip)" />
+    <Message Importance="high" Text="Noctis plugin package: $(_PluginZip)" />
+  </Target>
+
+  <!--
+    Content packs (<NoctisContentPack>true</NoctisContentPack>): data only, so nothing from the
+    build output goes in. The pack/ folder (plugin.json at its top) is zipped as is into
+    bin/<Configuration>/<AssemblyName>-<Version>.zip. Keep only .json, text and images in pack/:
+    anything else makes Noctis refuse the pack.
+  -->
+  <Target Name="PackNoctisContentPack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(NoctisContentPack)' == 'true'">
+    <PropertyGroup>
+      <_ContentPackDir>$(MSBuildProjectDirectory)\pack\</_ContentPackDir>
+      <_ContentPackOut>$(MSBuildProjectDirectory)\bin\$(Configuration)\</_ContentPackOut>
+      <_ContentPackZip>$(_ContentPackOut)$(AssemblyName)-$(Version).zip</_ContentPackZip>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_ContentPackDir)plugin.json')" Text="Content pack: $(_ContentPackDir)plugin.json is missing." />
+    <MakeDir Directories="$(_ContentPackOut)" />
+    <Delete Files="$(_ContentPackZip)" />
+    <ZipDirectory SourceDirectory="$(_ContentPackDir)" DestinationFile="$(_ContentPackZip)" />
+    <Message Importance="high" Text="Noctis content pack: $(_ContentPackZip)" />
+  </Target>
+</Project>

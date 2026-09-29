@@ -100,9 +100,13 @@ public static partial class LrcParser
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
         var offsetMs = ParseLrcOffsetMilliseconds(rawLines);
 
+        // "[bg: …]" lines attach to a main line instead of adding one, but still
+        // spend the line budget so a file of them cannot run unbounded.
+        var bgLines = 0;
+
         foreach (var rawLine in rawLines)
         {
-            if (lines.Count >= MaxLines) break;
+            if (lines.Count + bgLines >= MaxLines) break;
 
             var trimmed = rawLine.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
@@ -125,6 +129,7 @@ public static partial class LrcParser
                 var lastMain = lines.LastOrDefault(l => l.Timestamp.HasValue);
                 if (lastMain != null)
                     AttachBackgroundLine(lastMain, trimmed, offsetMs);
+                bgLines++;
                 continue;
             }
 
@@ -142,6 +147,9 @@ public static partial class LrcParser
                 // the timestamp block and any word tags; strip it before word parsing
                 // so it never reaches display text.
                 var (unvoiced, voice) = EnhancedLrcParser.StripVoiceMarker(body);
+                // "[t]word <t>word" ELRC: the untagged first word is timed by the line stamp.
+                if (matches.Count == 1 && ParseLrcTimestamp(matches[0].Value) is { } lineStamp)
+                    unvoiced = EnhancedLrcParser.TagLeadingText(unvoiced, lineStamp);
                 var (text, words) = EnhancedLrcParser.ParseLine(unvoiced);
 
                 // Skip empty timestamp lines — LRC files often end with
@@ -158,7 +166,7 @@ public static partial class LrcParser
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
                 {
-                    if (lines.Count >= MaxLines) break;
+                    if (lines.Count + bgLines >= MaxLines) break;
 
                     var timestamp = ParseLrcTimestamp(match.Value);
                     if (timestamp.HasValue)

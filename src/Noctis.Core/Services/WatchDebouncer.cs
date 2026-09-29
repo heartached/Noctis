@@ -26,7 +26,8 @@ public readonly record struct WatchBatch(IReadOnlyList<string> ToImport, IReadOn
 /// Coalescing rule: the latest event for a path wins. A create-then-delete
 /// collapses to a single Delete; a delete-then-create (rename churn, an editor's
 /// save-replace, a download's <c>.part</c> → final rename) collapses to a single
-/// CreatedOrChanged. Paths are compared case-insensitively.
+/// CreatedOrChanged. Paths are compared case-insensitively, and the latest spelling
+/// is the one kept.
 /// </summary>
 public sealed class WatchDebouncer
 {
@@ -38,7 +39,7 @@ public sealed class WatchDebouncer
     public void Record(string path, FileChangeKind kind)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
-        _pending[path] = kind;
+        Set(path, kind);
     }
 
     /// <summary>
@@ -55,8 +56,20 @@ public sealed class WatchDebouncer
     /// <summary>Records a rename as a delete of the old path plus a create of the new path.</summary>
     public void RecordRename(string? oldPath, string? newPath)
     {
-        if (!string.IsNullOrWhiteSpace(oldPath)) _pending[oldPath!] = FileChangeKind.Deleted;
-        if (!string.IsNullOrWhiteSpace(newPath)) _pending[newPath!] = FileChangeKind.CreatedOrChanged;
+        if (!string.IsNullOrWhiteSpace(oldPath)) Set(oldPath!, FileChangeKind.Deleted);
+        if (!string.IsNullOrWhiteSpace(newPath)) Set(newPath!, FileChangeKind.CreatedOrChanged);
+    }
+
+    /// <summary>
+    /// Latest event wins, key included. A case-only rename (song.mp3 → Song.mp3)
+    /// coalesces to one entry, and it must carry the new spelling: an indexer set kept
+    /// the old key, which on a case-sensitive filesystem no longer exists, so the
+    /// import dropped it and the track kept pointing at the old path.
+    /// </summary>
+    private void Set(string path, FileChangeKind kind)
+    {
+        _pending.Remove(path);
+        _pending[path] = kind;
     }
 
     /// <summary>Returns the coalesced batch and clears pending state.</summary>

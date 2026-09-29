@@ -2071,7 +2071,7 @@
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="{loc:T Metadata.Equalizer}" FontSize="12" Opacity="0.5" />
                             <ComboBox Classes="metadata-info-field"
-                                      ItemsSource="{x:Static vm:MetadataViewModel.OptionsEqPresets}"
+                                      ItemsSource="{Binding EqPresetOptions}"
                                       SelectedItem="{Binding SelectedEqPreset}"
                                       HorizontalAlignment="Stretch" />
                         </StackPanel>

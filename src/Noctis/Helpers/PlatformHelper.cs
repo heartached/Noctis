@@ -75,12 +75,14 @@ public static class PlatformHelper
             }
             else
             {
-                Process.Start(new ProcessStartInfo
+                var psi = new ProcessStartInfo
                 {
                     FileName = appPath,
                     ArgumentList = { filePath },
                     UseShellExecute = false
-                });
+                };
+                ScrubAppImageEnvironment(psi);
+                Process.Start(psi);
             }
         }
         catch
@@ -166,11 +168,17 @@ public static class PlatformHelper
 
         try
         {
-            Process.Start(new ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 FileName = url,
                 UseShellExecute = true
-            });
+            };
+            // Unix shell-execute hands psi.Environment to xdg-open and the
+            // browser it spawns, so the AppImage runtime must be scrubbed here
+            // too. Linux only: Windows ShellExecute rejects a touched Environment.
+            if (IsLinux)
+                ScrubAppImageEnvironment(psi);
+            Process.Start(psi);
         }
         catch
         {
@@ -434,6 +442,7 @@ public static class PlatformHelper
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            ScrubAppImageEnvironment(psi);
             using var proc = Process.Start(psi);
             if (proc == null) return null;
             var output = proc.StandardOutput.ReadToEnd().Trim();
@@ -491,6 +500,7 @@ public static class PlatformHelper
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            ScrubAppImageEnvironment(psi);
             using var proc = Process.Start(psi);
             if (proc == null) return null;
             var output = proc.StandardOutput.ReadToEnd().Trim().Trim('\'');

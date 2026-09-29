@@ -540,4 +540,50 @@ public class TtmlParserTests
         Assert.Equal("body", Assert.Single(lines!).Text);
         Assert.Equal("body", plain);
     }
+
+    [Fact]
+    public void Parse_MoreParagraphsThanLineCap_StopsAtCap()
+    {
+        // The lyrics list is not virtualized: a hostile sidecar of 200k <p>s realized
+        // every line on the UI thread.
+        var body = string.Concat(Enumerable.Range(0, EnhancedLrcParser.MaxLyricLines + 50)
+            .Select(i => $"<p begin=\"{i}s\">l{i}</p>"));
+        var ttml = $"<tt {Ns}><body><div>{body}</div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.Equal(EnhancedLrcParser.MaxLyricLines, lines!.Count);
+        Assert.Equal("l0", lines[0].Text);
+    }
+
+    [Fact]
+    public void Parse_LineWithMoreWordsThanCap_KeepsTextDropsWordTiming()
+    {
+        var spans = string.Join(" ", Enumerable.Range(0, EnhancedLrcParser.MaxWordsPerLine + 1)
+            .Select(i => $"<span begin=\"1s\" end=\"2s\">w{i}</span>"));
+        var bg = string.Join(" ", Enumerable.Range(0, EnhancedLrcParser.MaxWordsPerLine + 1)
+            .Select(i => $"<span begin=\"1s\" end=\"2s\">b{i}</span>"));
+        var ttml = $@"<tt {Ns} xmlns:ttm=""http://www.w3.org/ns/ttml#metadata""><body><div>
+            <p begin=""1s"" end=""2s"">{spans} <span ttm:role=""x-bg"">{bg}</span></p>
+        </div></body></tt>";
+
+        var line = Assert.Single(TtmlParser.Parse(ttml).Lines!);
+
+        Assert.Null(line.Words);
+        Assert.False(line.HasBackgroundWords);
+        Assert.StartsWith("w0 w1 ", line.Text);
+        Assert.EndsWith($"w{EnhancedLrcParser.MaxWordsPerLine}", line.Text);
+    }
+
+    [Fact]
+    public void Parse_LineWithWordsAtCap_KeepsWordTiming()
+    {
+        var spans = string.Join(" ", Enumerable.Range(0, EnhancedLrcParser.MaxWordsPerLine)
+            .Select(i => $"<span begin=\"1s\" end=\"2s\">w{i}</span>"));
+        var ttml = $"<tt {Ns}><body><div><p begin=\"1s\" end=\"2s\">{spans}</p></div></body></tt>";
+
+        var line = Assert.Single(TtmlParser.Parse(ttml).Lines!);
+
+        Assert.Equal(EnhancedLrcParser.MaxWordsPerLine, line.Words!.Count);
+    }
 }

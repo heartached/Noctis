@@ -40,6 +40,32 @@ public class SearchPopupOverlayTests
         Assert.True(popup.ShouldUseOverlayLayer);
     }
 
+    /// <summary>GitHub #96: the icon's "Volume" tooltip sits above the button (bar tooltips
+    /// are Placement=Top), right where the slider popup opens, so hover + scroll covered the
+    /// slider. The tooltip is muted while the popup is open and comes back once it closes.</summary>
+    [AvaloniaFact]
+    public void VolumeTooltip_IsSuppressedWhileTheSliderPopupIsOpen()
+    {
+        var bar = new PlaybackBarView();
+        var window = new Window { Width = 900, Height = 200, Content = bar };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var popup = bar.FindControl<Popup>("VolumeFlyout")!;
+        var button = bar.FindControl<Button>("VolumeButton")!;
+        ToolTip.SetIsOpen(button, true);
+        Dispatcher.UIThread.RunJobs();
+
+        popup.IsOpen = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(ToolTip.GetIsOpen(button), "the tooltip stayed over the slider");
+        Assert.False(ToolTip.GetServiceEnabled(button), "hovering would reopen it over the slider");
+
+        popup.IsOpen = false;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(ToolTip.GetServiceEnabled(button), "the tooltip never came back");
+        window.Close();
+    }
+
     // Non-light-dismiss is deliberate while the pill holds text (it stays up while
     // the user works with the filtered page) — but an EMPTY pill filters nothing,
     // so a click anywhere else collapses it. These pin both halves of that rule.

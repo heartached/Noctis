@@ -13,6 +13,17 @@ public enum LyricsStudioSource
     Transcription,
     /// <summary>Not a model run: timed lyrics the track already had, loaded for review.</summary>
     ExistingFile,
+    /// <summary>Lyrics the user pasted or imported in the Studio, timed against the audio.</summary>
+    PastedLyrics,
+}
+
+/// <summary>
+/// No lyrics were found for the song (own, sidecar or online) and transcription was not
+/// allowed: the Studio asks the user to paste or import them instead of guessing by ear.
+/// </summary>
+public sealed class LyricsStudioNeedsLyricsException : Exception
+{
+    public LyricsStudioNeedsLyricsException() : base("No lyrics found — paste or import them.") { }
 }
 
 public sealed record LyricsStudioOptions(
@@ -23,7 +34,9 @@ public sealed record LyricsStudioOptions(
     /// <summary>Text to time, when the caller already has it (re-sync / upgrade of loaded lyrics).</summary>
     IReadOnlyList<string>? SourceLines = null,
     /// <summary>Known start per source line (same count): words are then placed inside each line's own window.</summary>
-    IReadOnlyList<TimeSpan>? SourceLineStarts = null);
+    IReadOnlyList<TimeSpan>? SourceLineStarts = null,
+    /// <summary>False: a song with no lyrics anywhere stops with <see cref="LyricsStudioNeedsLyricsException"/> instead of being transcribed.</summary>
+    bool AllowTranscription = true);
 
 public sealed record LyricsStudioProgress(string Stage, double Fraction);
 
@@ -33,7 +46,9 @@ public sealed record LyricsStudioResult(
     LyricsStudioSource Source,
     double Confidence,
     string Language,
-    int HeardWords);
+    int HeardWords,
+    /// <summary>What the model heard, word by word (null for results that did not run it, e.g. restored drafts).</summary>
+    IReadOnlyList<RecognizedWord>? Heard = null);
 
 public interface ILyricsStudioEngine
 {
@@ -77,7 +92,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         lock (_sessionGate)
         {
             _session?.Dispose();
-            _session = new WhisperTranscriber.Session(path);
+            _session = new WhisperTranscriber.Session(path, WhisperModelManager.AlignmentHeads(model));
             return new SessionHandle(this);
         }
     }
@@ -123,6 +138,9 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         }
         else if (lines is not null)
             lines = lines.Where(l => l.Length > 0).ToList();
+        // Checked before decoding: a song with nothing to time costs no model run.
+        if (!options.ForceTranscription && !options.AllowTranscription && lines is not { Count: > 0 })
+            throw new LyricsStudioNeedsLyricsException();
 
         // 2. Decode.
         progress?.Report(new LyricsStudioProgress("Decoding", 0.08));
@@ -153,7 +171,7 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
         progress?.Report(new LyricsStudioProgress("Ready", 1));
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.Processed",
             $"{track.Title}: source={source}, lines={aligned.Count}, heard={transcript.Words.Count}, confidence={confidence:0.00}, lang={transcript.Language}");
-        return new LyricsStudioResult(track, aligned, source, confidence, transcript.Language, transcript.Words.Count);
+        return new LyricsStudioResult(track, aligned, source, confidence, transcript.Language, transcript.Words.Count, transcript.Words);
     }
 
     private async Task<(List<string>? Lines, LyricsStudioSource Source)> ResolveSourceLinesAsync(Track track, bool allowOnline, CancellationToken ct)

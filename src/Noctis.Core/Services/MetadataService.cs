@@ -204,7 +204,8 @@ public class MetadataService : IMetadataService
         if (string.IsNullOrWhiteSpace(explicitAlbumArtist))
             explicitAlbumArtist = tag.FirstAlbumArtist ?? string.Empty;
         var albumArtist = Track.ResolveAlbumArtist(explicitAlbumArtist, tag.FirstPerformer, isCompilation);
-        var album = string.IsNullOrWhiteSpace(tag.Album) ? "Unknown Album" : tag.Album;
+        var riff = ReadRiffInfoFallback(file);
+        var album = FirstNonEmpty(tag.Album, riff.Album, "Unknown Album");
         var title = string.IsNullOrWhiteSpace(tag.Title)
             ? Path.GetFileNameWithoutExtension(fileName)
             : tag.Title;
@@ -226,7 +227,7 @@ public class MetadataService : IMetadataService
             DiscCount = tag.DiscCount > 0 ? (int)tag.DiscCount : 1,
             Bpm = (int)tag.BeatsPerMinute,
             MusicalKey = ReadMusicalKey(file),
-            Year = (int)tag.Year,
+            Year = tag.Year > 0 ? (int)tag.Year : riff.Year,
             Duration = duration,
             AlbumId = Track.ComputeAlbumId(albumArtist, album),
             FileSize = length,
@@ -237,7 +238,7 @@ public class MetadataService : IMetadataService
             Lyrics = tag.Lyrics ?? string.Empty,
             Comment = tag.Comment ?? string.Empty,
             Copyright = ReadCopyright(file),
-            ReleaseDate = ReadReleaseDate(file, tag),
+            ReleaseDate = FirstNonEmpty(ReadReleaseDate(file, tag), riff.ReleaseDate),
             IsCompilation = isCompilation,
             Grouping = tag.Grouping ?? string.Empty,
             ShowComposerInAllViews = ExtendedTagIO.ReadShowComposer(file),
@@ -427,14 +428,19 @@ public class MetadataService : IMetadataService
         if (string.IsNullOrWhiteSpace(directory)) return null;
         try
         {
+            // One listing matched case-insensitively: probing exact lower-case names with
+            // File.Exists missed Folder.jpg / Cover.JPG on case-sensitive file systems (Linux).
+            var found = Directory.EnumerateFiles(directory).Where(IsFolderArtCandidate).ToList();
             var candidates = new List<FileInfo>();
             foreach (var name in FolderArtNames)
             {
                 foreach (var ext in FolderArtExtensions)
                 {
-                    var artPath = Path.Combine(directory, name + ext);
-                    if (File.Exists(artPath))
-                        candidates.Add(new FileInfo(artPath));
+                    foreach (var artPath in found)
+                    {
+                        if (string.Equals(Path.GetFileName(artPath), name + ext, StringComparison.OrdinalIgnoreCase))
+                            candidates.Add(new FileInfo(artPath));
+                    }
                 }
             }
 
@@ -555,7 +561,26 @@ public class MetadataService : IMetadataService
     private static bool SaveTagsAtomically(string targetFilePath, Action<TagLib.File> applyTags, out string? error)
     {
         error = null;
+        try
+        {
+            SaveTagsAtomicallyOrThrow(targetFilePath, applyTags);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            DebugLog.Write("Metadata", $"Tag save failed for '{targetFilePath}': {ex.Message}");
+            return false;
+        }
+    }
 
+    /// <summary>
+    /// The temp-copy + atomic-rename save behind <see cref="SaveTagsAtomically(string, Action{TagLib.File})"/>,
+    /// throwing on failure (after removing the temp copy) so callers that retry on a
+    /// transient <see cref="IOException"/> — the ReplayGain scanner — can tell it apart.
+    /// </summary>
+    internal static void SaveTagsAtomicallyOrThrow(string targetFilePath, Action<TagLib.File> applyTags)
+    {
         // Same directory keeps the rename on one filesystem (so it is atomic); the
         // leading dot hides the transient file; the original extension is preserved
         // so TagLib still detects the format from the work copy.
@@ -584,14 +609,11 @@ public class MetadataService : IMetadataService
                 file.Save();
             }
             File.Move(tempPath, targetFilePath, overwrite: true);
-            return true;
         }
-        catch (Exception ex)
+        catch
         {
-            error = ex.Message;
             try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
-            DebugLog.Write("Metadata", $"Tag save failed for '{targetFilePath}': {ex.Message}");
-            return false;
+            throw;
         }
     }
 
@@ -1444,6 +1466,65 @@ public class MetadataService : IMetadataService
                 apple.SetText(TagLib.ByteVector.FromString("\u00A9day", TagLib.StringType.Latin1), new[] { value });
         }
         catch { }
+
+        try
+        {
+            // WAV: the year setter wrote a bare "2019" into ICRD.
+            if (file.GetTag(TagLib.TagTypes.RiffInfo) is TagLib.Riff.InfoTag info)
+                info.SetValue(TagLib.ByteVector.FromString("ICRD", TagLib.StringType.Latin1), value);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// WAV album / date from the RIFF INFO fields TagLib# misreads (Discord Tangent,
+    /// "album dates going missing"). TagLib# reads the year only when ICRD holds a bare
+    /// "2019", so the "2019-05-10" most taggers write read as year 0; and it keeps the
+    /// album in DIRC, while ffmpeg, Windows and most taggers write the standard IPRD.
+    /// Empty values when the file has no INFO chunk. Internal for tests.
+    /// </summary>
+    internal static (int Year, string Album, string ReleaseDate) ReadRiffInfoFallback(TagLib.File file)
+    {
+        try
+        {
+            if (file.GetTag(TagLib.TagTypes.RiffInfo) is not TagLib.Riff.InfoTag info)
+                return (0, string.Empty, string.Empty);
+
+            string Field(string id) =>
+                (info.GetValuesAsStrings(TagLib.ByteVector.FromString(id, TagLib.StringType.Latin1))
+                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty).Trim();
+
+            var created = Field("ICRD");
+            var year = 0;
+            var match = System.Text.RegularExpressions.Regex.Match(created, @"(?<!\d)(1[89]\d\d|2\d\d\d)(?!\d)");
+            if (match.Success) year = int.Parse(match.Value, System.Globalization.CultureInfo.InvariantCulture);
+            var releaseDate = created.Length > 4 && Track.TryParseReleaseDate(created, out _) ? created : string.Empty;
+            return (year, Field("IPRD"), releaseDate);
+        }
+        catch
+        {
+            return (0, string.Empty, string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Whether the WAV at <paramref name="path"/> carries a RIFF INFO year or album that a
+    /// track stored with <paramref name="storedYear"/> / <paramref name="storedAlbum"/> is
+    /// missing. Reads the chunk headers only; false when the file can't be opened.
+    /// </summary>
+    internal static bool RiffInfoWouldFill(string path, int storedYear, string storedAlbum)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(path);
+            var riff = ReadRiffInfoFallback(file);
+            return (storedYear == 0 && riff.Year > 0)
+                || (storedAlbum == "Unknown Album" && riff.Album.Length > 0);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string ReadReleaseDate(TagLib.File file, TagLib.Tag tag)

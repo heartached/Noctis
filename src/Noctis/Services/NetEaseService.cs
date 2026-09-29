@@ -16,7 +16,16 @@ public class NetEaseService : INetEaseService
     private const string SearchUrl = "https://music.163.com/api/search/get/web";
     private const string LyricsUrl = "https://music.163.com/api/song/lyric";
     private readonly HttpClient _http;
+
+    // One entry per distinct track looked up this session (a hit holds the whole LRC
+    // twice: synced + stripped plain). It used to grow for the life of the process; the
+    // lyrics a hit fetched are written to a sidecar, so a replay reads them locally and
+    // this memo only saves repeat lookups within a short window. Capped the same way as
+    // DominantColorExtractor's caches: cleared when full.
+    internal const int MaxCacheEntries = 256;
     private readonly ConcurrentDictionary<string, LrcLibResult?> _cache = new();
+
+    internal int CacheCount => _cache.Count;
 
     public NetEaseService(HttpClient httpClient)
     {
@@ -35,13 +44,13 @@ public class NetEaseService : INetEaseService
             var songId = await FindSongIdAsync(artist, trackName, durationSeconds, ct);
             if (songId == null)
             {
-                _cache[cacheKey] = null;
+                Remember(cacheKey, null);
                 return null;
             }
 
             // Step 2: Fetch lyrics for the song
             var result = await FetchLyricsAsync(songId.Value, artist, trackName, ct);
-            _cache[cacheKey] = result;
+            Remember(cacheKey, result);
             return result;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -56,6 +65,13 @@ public class NetEaseService : INetEaseService
             // so a later attempt can succeed.
             throw new LyricsProviderException("NetEase", ex);
         }
+    }
+
+    private void Remember(string key, LrcLibResult? value)
+    {
+        if (_cache.Count >= MaxCacheEntries)
+            _cache.Clear();
+        _cache[key] = value;
     }
 
     private async Task<long?> FindSongIdAsync(string artist, string trackName, double durationSeconds, CancellationToken ct)

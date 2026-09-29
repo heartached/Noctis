@@ -57,7 +57,12 @@ public partial class LyricsStudioPickerDialog : Window
         base.OnKeyDown(e);
     }
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e) => e.Handled = true;
+    /// <summary>A press on the dimmed backdrop (not the card) closes, like Esc and Cancel.</summary>
+    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
+        if (ReferenceEquals(e.Source, DialogOverlay)) _ = CloseAnimatedAsync();
+    }
 
     private void OnOverlayWheel(object? sender, PointerWheelEventArgs e) => e.Handled = true;
 }

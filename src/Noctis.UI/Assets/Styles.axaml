@@ -810,17 +810,33 @@
         <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
     </Style>
 
+    <!-- Selected row = accent pill with accent-contrast content, same as the Settings rail's
+         active item (GitHub #87: the sidebar didn't follow the accent / album-art accent). -->
     <Style Selector="ListBox.sidebar ListBoxItem:selected">
-        <Setter Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
 
+    <!-- Transitions cleared FIRST (setters apply in order) so selecting / deselecting snaps.
+         The 70ms tween ran hover wash (#14FFFFFF) or Transparent (#00FFFFFF) -> accent in
+         linear light: both rows showed a pale grey half-opaque pill for ~4 frames per click. -->
     <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="CornerRadius" Value="999" />
     </Style>
 
+    <!-- The clicked row is hovered, so its Background comes from THIS style: it needs its own
+         leading empty Transitions or the hover -> Dark1 tween still runs. -->
     <Style Selector="ListBox.sidebar ListBoxItem:selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SidebarSelectedHoverBrush}" />
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
 
     <!-- Track list styling -->

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Reference content pack: pure data, no code. The pack itself is the pack/ folder (plugin.json,
+    themes, a lyrics preset, a language); this project only packages it.
+    `dotnet build -c Release` writes bin/Release/Noctis.ContentPack.Sample-<version>.zip: install it
+    from Settings → Plugins → "Install from file…", or drop pack/ into the plugins folder and reload.
+    See docs/PLUGINS.md, "Content packs".
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>1.0.0</Version>
+    <NoctisContentPack>true</NoctisContentPack>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <Import Project="..\PluginPackage.targets" />
+</Project>

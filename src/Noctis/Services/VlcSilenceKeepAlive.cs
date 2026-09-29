@@ -20,8 +20,9 @@ namespace Noctis.Services;
 ///
 /// Mirrors the Windows behavior: streams from construction (covers first play),
 /// idle-parks via Stop() after NOCTIS_KEEPALIVE_IDLE_MS (default 10 min) so the
-/// OS audio power request is released, and resumes on NotifyActivity(). All
-/// play/stop happens on the worker thread, never inside a VLC event handler.
+/// OS audio power request is released, and resumes on NotifyActivity(). On Linux
+/// a paused track holds it instead of letting it park (see <see cref="ShouldRun"/>).
+/// All play/stop happens on the worker thread, never inside a VLC event handler.
 /// </summary>
 internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
 {
@@ -33,12 +34,15 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _wake = new(false);
     private readonly int _idleStopMs;
+    private readonly Func<bool>? _holdWhilePaused;
     private long _lastActivityTicks;
     private volatile bool _disposed;
     private volatile bool _suspended;
     private volatile bool _running;
 
-    public static VlcSilenceKeepAlive? TryStart(LibVLC libVlc)
+    /// <param name="isPaused">True while a track sits paused and can be resumed; on Linux
+    /// the loop holds through the pause instead of idle-parking (see <see cref="ShouldRun"/>).</param>
+    public static VlcSilenceKeepAlive? TryStart(LibVLC libVlc, Func<bool>? isPaused = null)
     {
         if (OperatingSystem.IsWindows()) return null; // Windows uses WasapiSilenceKeepAlive
         if (!ShouldStartKeepAlive(
@@ -46,7 +50,7 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
                 Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE"),
                 Environment.GetEnvironmentVariable("NOCTIS_BUNDLED_VLC")))
             return null;
-        try { return new VlcSilenceKeepAlive(libVlc); }
+        try { return new VlcSilenceKeepAlive(libVlc, isPaused); }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.Playback, "VlcKeepAlive.StartFailed",
@@ -77,10 +81,31 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     internal static bool ShouldStartKeepAlive(bool isLinux, string? keepAliveEnv, string? bundledVlcEnv)
         => keepAliveEnv == "1" || (keepAliveEnv != "0" && isLinux && bundledVlcEnv == "1");
 
-    private VlcSilenceKeepAlive(LibVLC libVlc)
+    /// <summary>
+    /// Whether the silent loop should be streaming. Exclusive output
+    /// (<see cref="SetSuspended"/>) always parks it; otherwise it parks once
+    /// <paramref name="idleForMs"/> passes <paramref name="idleStopMs"/> (0 = never),
+    /// unless a paused track holds it (<paramref name="heldByPause"/>, Linux only).
+    /// GitHub #70: Pause() corks VLC's PulseAudio stream and PipeWire treats a corked
+    /// stream as inactive, so during a pause this loop is all that keeps the sink
+    /// running. The pause also stops the position-timer heartbeat, so 10 min into the
+    /// pause the loop parked, WirePlumber suspended the idle sink 5 s later, and Resume()
+    /// uncorked against a suspended sink: the same two ~500 ms dropouts as a cold
+    /// first play. Resume's NotifyActivity() can't prevent that — the loop restarts
+    /// on this worker and LibVLC's Play() is asynchronous, while the resume worker
+    /// uncorks straight away. A paused track can resume at any moment, so a pause
+    /// doesn't count as idle. Pure; internal for tests.
+    /// </summary>
+    internal static bool ShouldRun(bool suspended, bool heldByPause, int idleStopMs, long idleForMs)
+        => !suspended && (heldByPause || idleStopMs <= 0 || idleForMs <= idleStopMs);
+
+    private VlcSilenceKeepAlive(LibVLC libVlc, Func<bool>? isPaused)
     {
         _idleStopMs = int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE_IDLE_MS"), out var ms) && ms >= 0
             ? ms : DefaultIdleStopMs;
+        // Linux only (GitHub #70, see ShouldRun): macOS (opt-in) keeps the plain idle
+        // park, so a long pause there still releases the output after 10 min.
+        _holdWhilePaused = OperatingSystem.IsLinux() ? isPaused : null;
 
         var path = SilentWavFile.EnsureCached(AppPaths.DataRoot);
         _silence = new Media(libVlc, path, FromType.FromPath);
@@ -137,9 +162,11 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
                 _wake.Reset();
                 if (_disposed) break;
 
-                var idleExceeded = _idleStopMs > 0 &&
-                    Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs;
-                var shouldRun = !_suspended && !idleExceeded;
+                var shouldRun = ShouldRun(
+                    _suspended,
+                    _holdWhilePaused?.Invoke() == true,
+                    _idleStopMs,
+                    Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks));
 
                 if (shouldRun)
                 {

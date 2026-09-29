@@ -37,10 +37,10 @@ public class CollapsibleContent : Decorator
     /// it folds away calmly instead of mirroring the open's long tail in reverse.
     /// </summary>
     // Our own bezier, not Avalonia.SplineEasing: see CubicBezierEase for why.
-    private static readonly TimeSpan GlideOpenDuration = TimeSpan.FromMilliseconds(360);
-    private static readonly TimeSpan GlideCloseDuration = TimeSpan.FromMilliseconds(240);
-    private static readonly Easing GlideOpenEase = new Noctis.Helpers.CubicBezierEase(0.22, 1.0, 0.36, 1.0);
-    private static readonly Easing GlideCloseEase = new Noctis.Helpers.CubicBezierEase(0.45, 0.0, 0.55, 1.0);
+    internal static readonly TimeSpan GlideOpenDuration = TimeSpan.FromMilliseconds(360);
+    internal static readonly TimeSpan GlideCloseDuration = TimeSpan.FromMilliseconds(240);
+    internal static readonly Easing GlideOpenEase = new Noctis.Helpers.CubicBezierEase(0.22, 1.0, 0.36, 1.0);
+    internal static readonly Easing GlideCloseEase = new Noctis.Helpers.CubicBezierEase(0.45, 0.0, 0.55, 1.0);
 
     /// <summary>
     /// Fraction of the glide over which the body fades up. Tying opacity to the whole
@@ -48,7 +48,7 @@ public class CollapsibleContent : Decorator
     /// washed-out text rather than as motion; landing it early keeps the body legible for
     /// most of the reveal and lets the height do the animating.
     /// </summary>
-    private const double GlideFadeWindow = 0.55;
+    internal const double GlideFadeWindow = 0.55;
 
     /// <summary>Below this the section counts as shut (float dust off the transition).</summary>
     private const double ShutEpsilon = 0.0001;

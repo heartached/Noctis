@@ -25,9 +25,9 @@
         <!-- Choose songs: the same quiet chip as Backdrops, as a plain button (09-19). -->
         <Style Selector="Button.studio-chip">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="14,5"/>
+            <Setter Property="Padding" Value="16,7"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -49,9 +49,9 @@
              while the section is open so the header shows what is folded out. -->
         <Style Selector="ToggleButton.studio-disclosure">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="14,5"/>
+            <Setter Property="Padding" Value="16,7"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -97,9 +97,10 @@
     </UserControl.Styles>
 
     <DockPanel Margin="24,20,24,0">
-        <!-- Header: library counts on the left, the Backdrops disclosure on the right (09-17:
-             the title went, so the readout takes the left edge instead of leaving it empty). -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+        <!-- Header: library counts on the left, the lyrics-page Backdrops disclosure on the right.
+             Choose songs moved into the queue header it fills (09-23), so this row is readout +
+             settings only. -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                 <ItemsControl ItemsSource="{Binding Counts}" IsVisible="{Binding HasCounts}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
@@ -122,11 +123,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-            <Button Grid.Column="1" Classes="studio-chip"
-                    Content="{loc:T LyricsStudio.ChooseSongs}"
-                    ToolTip.Tip="{loc:T LyricsStudio.ChooseSongsTip}"
-                    Click="OnChooseSongsClick"/>
-            <ToggleButton Grid.Column="2" Classes="studio-disclosure"
+            <ToggleButton Grid.Column="1" Classes="studio-disclosure"
                           Content="{loc:T LyricsStudio.Backdrops}"
                           ToolTip.Tip="{loc:T LyricsStudio.BackdropsTip}"
                           IsChecked="{Binding ShowBackdrops}"/>
@@ -159,7 +156,7 @@
                 </StackPanel>
                 <Button Grid.Column="2" Classes="accent-btn"
                         Content="{loc:T Settings.Modify}"
-                        Padding="16,6" CornerRadius="999"
+                        Padding="16,7" CornerRadius="999" FontSize="12.5"
                         Background="{DynamicResource AccentButtonBackground}"
                         Foreground="{DynamicResource AccentForegroundBrush}"
                         FontWeight="SemiBold" Cursor="Hand" VerticalAlignment="Center"
@@ -173,17 +170,27 @@
                 Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                 DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings}"
                 x:DataType="vm:SettingsViewModel">
-            <Grid ColumnDefinitions="*,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{loc:T Settings.MusicVideos}" FontSize="15" FontWeight="SemiBold"/>
                     <TextBlock Text="{loc:T Settings.MusicVideosHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="24,0,20,0"
-                            ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}">
-                    <TextBlock Text="{loc:T Settings.MusicVideoRounded}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
+                <!-- Every toggle carries its label (09-23): the on/off switch first, then its
+                     sub-option, which greys out while music videos are off. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="24,0,20,0">
+                    <TextBlock Text="{loc:T LyricsStudio.ShowMusicVideos}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
+                    <controls:LottieToggle IsChecked="{Binding MusicVideosEnabled}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                            ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}" IsEnabled="{Binding MusicVideosEnabled}">
+                    <TextBlock Text="{loc:T LyricsStudio.RoundedCorners}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
                     <controls:LottieToggle IsChecked="{Binding MusicVideoRoundedCorners}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <controls:LottieToggle Grid.Column="2" IsChecked="{Binding MusicVideosEnabled}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="20,0,0,0"
+                            ToolTip.Tip="{loc:T Settings.MusicVideoAudioHint}" IsEnabled="{Binding MusicVideosEnabled}">
+                    <TextBlock Text="{loc:T LyricsStudio.MusicVideoAudio}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
+                    <controls:LottieToggle IsChecked="{Binding MusicVideoUseVideoAudio}" VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -200,11 +207,16 @@
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" MaxWidth="420" IsVisible="{Binding ShowEmpty}">
                     <TextBlock Text="{loc:T LyricsStudio.Title}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center" Opacity="0.7"/>
                     <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.5" TextWrapping="Wrap" TextAlignment="Center"/>
+                    <!-- With no queue there is no queue header, so Choose songs sits here too. -->
+                    <Button Classes="studio-chip" HorizontalAlignment="Center" Margin="0,8,0,0"
+                            Content="{loc:T LyricsStudio.ChooseSongs}"
+                            ToolTip.Tip="{loc:T LyricsStudio.ChooseSongsTip}"
+                            Click="OnChooseSongsClick"/>
                 </StackPanel>
                 <ContentControl Content="{Binding Studio}" IsVisible="{Binding Studio, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <ContentControl.ContentTemplate>
                         <DataTemplate x:DataType="vm:LyricsStudioViewModel">
-                            <views:LyricsStudioPanel ShowHeader="False" Margin="0,8,0,0"/>
+                            <views:LyricsStudioPanel ShowHeader="False" ShowChooseSongs="True" Margin="0,16,0,0"/>
                         </DataTemplate>
                     </ContentControl.ContentTemplate>
                 </ContentControl>

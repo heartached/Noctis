@@ -119,6 +119,7 @@ public sealed class SmtcService : IDisposable
         var button = args.Button;
         Dispatcher.UIThread.Post(() =>
         {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Smtc.Button", $"{button} vmState={_player.State}");
             switch (button)
             {
                 case SystemMediaTransportControlsButton.Play:
@@ -176,6 +177,8 @@ public sealed class SmtcService : IDisposable
         var requested = args.RequestedPlaybackPosition;
         Dispatcher.UIThread.Post(() =>
         {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Smtc.Button",
+                $"PlaybackPosition requestedMs={requested.TotalMilliseconds:0} vmState={_player.State}");
             var duration = _player.Duration;
             if (duration <= TimeSpan.Zero) return;
             var fraction = Math.Clamp(requested.Ticks / (double)duration.Ticks, 0.0, 1.0);

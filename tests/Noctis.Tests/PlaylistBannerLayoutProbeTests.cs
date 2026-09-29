@@ -88,7 +88,7 @@ public class PlaylistBannerLayoutProbeTests
         // joined the control row (no row of its own above the column headers).
         var cover = hero.GetVisualDescendants().OfType<Border>().First(b => b.Width == 156 && b.Height == 156);
         var cp = cover.TranslatePoint(new Point(0, 0), win)!.Value;
-        var sort = view.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout mf && mf.Items.Count == 9);
+        var sort = view.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("glass-pill") && b.Flyout is MenuFlyout mf && mf.Items.Count == 11);
         var sp2 = sort.TranslatePoint(new Point(0, 0), win)!.Value;
         _o.WriteLine($"cover at ({cp.X:0.#},{cp.Y:0.#}) | sort pill at ({sp2.X:0.#},{sp2.Y:0.#}) inHero={hero.IsVisualAncestorOf(sort)} | name x={np.X:0.#}");
         Assert.InRange(cp.Y + 156, 0, 236);

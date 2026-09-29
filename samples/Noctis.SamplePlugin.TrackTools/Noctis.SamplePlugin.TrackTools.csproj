@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    API 1.1 reference plugin: a track-menu command, a lyrics provider stub, the scrobble hook,
+    read-only library search and settings declared in plugin.json.
+    `dotnet build -c Release` writes bin/Release/Noctis.SamplePlugin.TrackTools-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.SamplePlugin.TrackTools</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Outside this repo: <PackageReference Include="Noctis.Plugins.Abstractions" Version="1.1.*" ExcludeAssets="runtime" PrivateAssets="all" /> -->
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="..\PluginPackage.targets" />
+</Project>

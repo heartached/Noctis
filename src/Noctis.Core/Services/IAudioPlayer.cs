@@ -91,6 +91,12 @@ public interface IAudioPlayer : IDisposable
     /// <param name="preampDb">Pre-amp in dB.</param>
     void ApplyReplayGain(string mode, double preampDb);
 
+    /// <summary>
+    /// Drops any cached ReplayGain tags and re-applies the current mode, after a scan
+    /// rewrote the tags of files that may be playing or staged.
+    /// </summary>
+    void ReloadReplayGainTags() { }
+
     /// <summary>Path to the currently loaded media, or null. Used to re-apply RG.</summary>
     string? CurrentMediaPath { get; }
 
@@ -132,6 +138,11 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 
+    /// <summary>True when <see cref="PrepareNext"/> also stages remote http(s) streams, so a
+    /// gapless/AutoMix transition may hand off to a media-server track early. False: a remote
+    /// next track waits for <see cref="TrackEnded"/> and opens cold.</summary>
+    bool PreparesRemoteStreams => false;
+
     /// <summary>Cancels and releases any prepared inactive media item.</summary>
     void CancelPreparedNext();
 
@@ -144,6 +155,11 @@ public interface IAudioPlayer : IDisposable
 
     /// <summary>Loads and begins playing an audio file.</summary>
     void Play(string filePath);
+
+    /// <summary>Music video audio: plays <paramref name="filePath"/> (a clip), or the song file
+    /// <paramref name="fallbackPath"/> when the clip won't open or has no audio stream.
+    /// Engines without that fallback play <paramref name="filePath"/> as-is.</summary>
+    void Play(string filePath, string? fallbackPath) => Play(filePath);
 
     /// <summary>Pauses playback. No-op if not currently playing.</summary>
     void Pause();

@@ -37,6 +37,22 @@ public class DragChipPreviewTests
     }
 
     [Fact]
+    public void ExplicitFlag_FollowsTheDraggedTrackOrAlbum()
+    {
+        var clean = T("Clean", "Artist");
+        var dirty = T("DEMO WRECK", "Juice WRLD");
+        dirty.IsExplicit = true;
+
+        Assert.True(DragFileBehavior.BuildPreview(dirty, new[] { dirty })!.IsExplicit);
+        Assert.False(DragFileBehavior.BuildPreview(clean, new[] { clean })!.IsExplicit);
+
+        // An album carries the E when any of its tracks does, as its tile title does.
+        var tracks = new List<Track> { clean, dirty };
+        var album = new Album { Id = Guid.NewGuid(), Name = "DEMO WRECK - Single", Artist = "Juice WRLD", Tracks = tracks };
+        Assert.True(DragFileBehavior.BuildPreview(album, tracks)!.IsExplicit);
+    }
+
+    [Fact]
     public void NoTracks_NoChip()
         => Assert.Null(DragFileBehavior.BuildPreview(null, Array.Empty<Track>()));
 }

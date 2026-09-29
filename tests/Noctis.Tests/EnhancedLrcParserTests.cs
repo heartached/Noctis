@@ -138,6 +138,103 @@ public class EnhancedLrcParserTests
     }
 
     [Fact]
+    public void ParseLine_MoreWordsThanCap_FallsBackToPlainText()
+    {
+        // One hostile line carrying thousands of word tags would realize a cell per
+        // word; past the cap the line keeps its text but drops word timing.
+        var body = string.Concat(Enumerable.Range(0, EnhancedLrcParser.MaxWordsPerLine + 1)
+            .Select(i => $"<00:01.00>w{i} "));
+
+        var (text, words) = EnhancedLrcParser.ParseLine(body);
+
+        Assert.Null(words);
+        Assert.StartsWith("w0 w1 ", text);
+        Assert.EndsWith($"w{EnhancedLrcParser.MaxWordsPerLine}", text);
+    }
+
+    [Fact]
+    public void ParseLine_WordsAtCap_KeepsWordTiming()
+    {
+        var body = string.Concat(Enumerable.Range(0, EnhancedLrcParser.MaxWordsPerLine)
+            .Select(i => $"<00:01.00>w{i} ")) + "<00:02.00>";
+
+        var (_, words) = EnhancedLrcParser.ParseLine(body);
+
+        Assert.Equal(EnhancedLrcParser.MaxWordsPerLine, words!.Count);
+        Assert.Equal(TimeSpan.FromSeconds(2), words[^1].End);
+    }
+
+    [Fact]
+    public void MergeSyllables_LongJoinableRun_MergesInLinearTime()
+    {
+        // TTML/Lyricsfile word lists are not capped: a run of 200k one-letter joinable
+        // syllables used to be re-concatenated per syllable (~2e10 char copies).
+        const int count = 200_000;
+        var words = Enumerable.Range(0, count).Select(i => new Noctis.Models.WordTiming
+        {
+            Text = "a",
+            Start = TimeSpan.FromMilliseconds(i),
+            End = TimeSpan.FromMilliseconds(i + 1),
+        }).ToList();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var merged = EnhancedLrcParser.MergeSyllables(words);
+        sw.Stop();
+
+        var word = Assert.Single(merged);
+        Assert.Equal(count, word.Text.Length);
+        Assert.Equal(count, word.Syllables!.Count);
+        Assert.Equal(TimeSpan.Zero, word.Start);
+        Assert.Equal(TimeSpan.FromMilliseconds(count), word.End);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"MergeSyllables took {sw.Elapsed}");
+    }
+
+    [Fact]
+    public void MergeSyllables_MixedRuns_KeepTextTimesAndSyllables()
+    {
+        var words = new List<Noctis.Models.WordTiming>
+        {
+            new() { Text = "tal", Start = TimeSpan.FromSeconds(1), End = TimeSpan.FromSeconds(2) },
+            new() { Text = "king ", Start = TimeSpan.FromSeconds(2), End = TimeSpan.FromSeconds(3) },
+            new() { Text = "to ", Start = TimeSpan.FromSeconds(3), End = TimeSpan.FromSeconds(4) },
+            new() { Text = "com", Start = TimeSpan.FromSeconds(4), End = TimeSpan.FromSeconds(5) },
+            new() { Text = "pro", Start = TimeSpan.FromSeconds(5), End = null },
+            new() { Text = "mise", Start = TimeSpan.FromSeconds(6), End = TimeSpan.FromSeconds(7) },
+        };
+
+        var merged = EnhancedLrcParser.MergeSyllables(words);
+
+        Assert.Equal(3, merged.Count);
+        Assert.Equal("talking ", merged[0].Text);
+        Assert.Equal(TimeSpan.FromSeconds(1), merged[0].Start);
+        Assert.Equal(TimeSpan.FromSeconds(3), merged[0].End);
+        // Trailing space is discounted from the last syllable's length.
+        Assert.Equal(new[] { 3, 4 }, merged[0].Syllables!.Select(s => s.Length));
+        Assert.Same(words[2], merged[1]);
+        Assert.Null(merged[1].Syllables);
+        Assert.Equal("compromise", merged[2].Text);
+        Assert.Equal(TimeSpan.FromSeconds(4), merged[2].Start);
+        Assert.Equal(TimeSpan.FromSeconds(7), merged[2].End);
+        Assert.Equal(new[] { 3, 3, 4 }, merged[2].Syllables!.Select(s => s.Length));
+        Assert.Null(merged[2].Syllables![1].End);
+    }
+
+    [Fact]
+    public void AppendBackground_StopsGrowingPastWordCap()
+    {
+        var target = new Noctis.Models.LyricLine { Timestamp = TimeSpan.FromSeconds(1), Text = "Hey" };
+        var adlib = new List<Noctis.Models.WordTiming>
+        {
+            new() { Text = "(ooh)", Start = TimeSpan.FromSeconds(1), End = TimeSpan.FromSeconds(2) },
+        };
+
+        for (int i = 0; i < EnhancedLrcParser.MaxWordsPerLine + 50; i++)
+            EnhancedLrcParser.AppendBackground(target, adlib, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(EnhancedLrcParser.MaxWordsPerLine, target.BackgroundWords!.Count);
+    }
+
+    [Fact]
     public void ContainsWordTags_DetectsInlineTags()
     {
         Assert.True(EnhancedLrcParser.ContainsWordTags("<00:05.41>Hi"));

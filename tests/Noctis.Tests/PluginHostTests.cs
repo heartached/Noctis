@@ -76,12 +76,15 @@ public class PluginHostTests : IDisposable
         var ring = host.Plugins.Single();
         var layerEvents = 0;
         host.VisualLayersChanged += (_, _) => layerEvents++;
+        // The first LoadAll also settles the community-plugins switch (one save); count from here.
+        var savesBefore = _saves;
 
         host.SetEnabled(ring, false);
         Assert.Equal("Disabled", ring.Status);
         Assert.False(ring.IsEnabled);
+        // A legacy plugin (no plugin.json) is identified by its folder name.
         Assert.Contains("PulseRingPlugin", _settings.DisabledPlugins!);
-        Assert.Equal(1, _saves);
+        Assert.Equal(savesBefore + 1, _saves);
         Assert.Empty(host.VisualLayers);
         Assert.Equal(1, layerEvents);
 

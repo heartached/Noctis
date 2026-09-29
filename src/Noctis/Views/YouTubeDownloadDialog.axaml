@@ -142,7 +142,7 @@
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                         BorderThickness="0,1,0,0">
                     <StackPanel Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="13" Opacity="0.8" TextTrimming="CharacterEllipsis"
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="13" Opacity="0.8" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
                                    IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasDestination}">
                             <TextBlock Text="{loc:T YouTube.SavesTo}" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />

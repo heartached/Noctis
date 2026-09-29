@@ -85,6 +85,22 @@ public class LyricsStudioDraftStoreTests : IDisposable
         Assert.False(_store.TryLoad(id, out _));
     }
 
+    [Fact]
+    public void ListTrackIds_ReturnsOnlyTracksWithADraft_AndMissingFolderIsEmpty()
+    {
+        Assert.Empty(_store.ListTrackIds()); // folder not created yet
+
+        var a = new Track { Title = "A" };
+        var b = new Track { Title = "B" };
+        _store.Save(a.Id, LyricsStudioDraft.From(SampleResult(a)));
+        _store.Save(b.Id, LyricsStudioDraft.From(SampleResult(b)));
+        _store.Delete(b.Id);
+        File.WriteAllText(Path.Combine(_dir, "notes.json"), "{}");
+        File.WriteAllText(Path.Combine(_dir, Guid.NewGuid().ToString("N") + ".json.tmp"), "{}");
+
+        Assert.Equal(new[] { a.Id }, _store.ListTrackIds());
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_dir, recursive: true); } catch { }

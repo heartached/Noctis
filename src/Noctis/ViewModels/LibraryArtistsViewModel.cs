@@ -32,6 +32,17 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     [ObservableProperty] private string _searchText = string.Empty;
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
+    /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
+    /// filter Reset the whole list, re-creating every row and cover on each click.</summary>
+    public bool IsSearchCleared => string.IsNullOrEmpty(_currentFilter) && string.IsNullOrEmpty(SearchText);
+
+    /// <summary>
+    /// The applied search the current rows were built for (SearchText runs ahead of it by the
+    /// debounce). The view resets its scroll only when this changes, so a rebuild of the same
+    /// results (library reload, portrait refresh, favorite toggle) keeps its place.
+    /// </summary>
+    internal string FilterKey => _currentFilter;
+
     // ── Sort (Name / Songs / Albums + direction) ──
     // Mirrored into the top bar by MainWindowViewModel, persisted through SettingsViewModel
     // (same pattern as the Albums grid sort). Favorites float to the top only for the
@@ -69,6 +80,23 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     partial void OnSortModeChanged(string value) => ApplyFilter(_currentFilter);
     partial void OnSortAscendingChanged(bool value) => ApplyFilter(_currentFilter);
 
+    // Leading words the name sort skips (GitHub #99, "The Beatles" under B). Empty while the
+    // Settings toggle is off, which is the plain name order. Pushed in by MainWindowViewModel.
+    private IReadOnlyList<string> _sortIgnoredWords = Array.Empty<string>();
+
+    /// <summary>
+    /// Sets the leading words the name sort skips and re-sorts. Gated like a library update:
+    /// while hidden (including beneath the Settings modal the toggle lives in) it only marks
+    /// dirty, and activation catches up.
+    /// </summary>
+    public void SetSortIgnoredWords(IReadOnlyList<string> words)
+    {
+        if (words.SequenceEqual(_sortIgnoredWords, StringComparer.Ordinal)) return;
+        _sortIgnoredWords = words;
+        if (_isActive) ApplyFilter(_currentFilter);
+        else _isDirty = true;
+    }
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
@@ -91,7 +119,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("ArtistsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
@@ -233,9 +261,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         var artists = _allArtists;
         var sortMode = SortMode;
         var ascending = SortAscending;
+        var ignoredWords = _sortIgnoredWords;
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var rows = BuildRows(artists, query, sortMode, ascending);
+            var rows = BuildRows(artists, query, sortMode, ascending, ignoredWords);
             if (Volatile.Read(ref _rebuildGeneration) == generation)
                 Dispatcher.UIThread.Post(() =>
                 {
@@ -251,8 +280,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>
     /// Pure ordering logic (static for unit tests). Under a search the match rank stays
     /// first and the chosen sort only breaks ties inside a rank, so relevance is intact.
+    /// <paramref name="ignoredWords"/> are leading words the name key skips (GitHub #99).
     /// </summary>
-    internal static List<ArtistRow> BuildRows(List<Artist> allArtists, string query, string sortMode, bool ascending)
+    internal static List<ArtistRow> BuildRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
+        IReadOnlyList<string>? ignoredWords = null)
     {
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
@@ -262,11 +293,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
             filtered = ApplySort(
                 allArtists.Where(a => MatchesSearch(a.Name, q, qNoSpaces))
                           .OrderBy(a => RankMatch(a.Name, q, qNoSpaces)),
-                sortMode, ascending);
+                sortMode, ascending, ignoredWords);
         }
         else
         {
-            filtered = ApplySort(allArtists, sortMode, ascending);
+            filtered = ApplySort(allArtists, sortMode, ascending, ignoredWords);
         }
 
         // Chunk into fixed-width rows so the outer ListBox can virtualize
@@ -290,24 +321,29 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// in which case it only orders within equal ranks. Favorites stay on top for the
     /// name sort (GitHub #41); count sorts rank everyone by the number.
     /// </summary>
-    private static IEnumerable<Artist> ApplySort(IEnumerable<Artist> source, string sortMode, bool ascending)
+    private static IEnumerable<Artist> ApplySort(IEnumerable<Artist> source, string sortMode, bool ascending,
+        IReadOnlyList<string>? ignoredWords)
     {
         var ordered = source as IOrderedEnumerable<Artist> ?? source.OrderBy(_ => 0);
         var nameCmp = StringComparer.OrdinalIgnoreCase;
+        // With no ignored words the key is the plain name, i.e. the pre-#99 order.
+        Func<Artist, string> name = ignoredWords is { Count: > 0 }
+            ? a => ArtistSortWords.SortKey(a.Name, ignoredWords)
+            : a => a.Name;
         switch (sortMode)
         {
             case "songs":
                 return ascending
-                    ? ordered.ThenBy(a => a.TrackCount).ThenBy(a => a.Name, nameCmp)
-                    : ordered.ThenByDescending(a => a.TrackCount).ThenBy(a => a.Name, nameCmp);
+                    ? ordered.ThenBy(a => a.TrackCount).ThenBy(name, nameCmp)
+                    : ordered.ThenByDescending(a => a.TrackCount).ThenBy(name, nameCmp);
             case "albums":
                 return ascending
-                    ? ordered.ThenBy(a => a.AlbumCount).ThenBy(a => a.Name, nameCmp)
-                    : ordered.ThenByDescending(a => a.AlbumCount).ThenBy(a => a.Name, nameCmp);
+                    ? ordered.ThenBy(a => a.AlbumCount).ThenBy(name, nameCmp)
+                    : ordered.ThenByDescending(a => a.AlbumCount).ThenBy(name, nameCmp);
             default:
                 return ascending
-                    ? ordered.ThenByDescending(a => a.IsFavorite).ThenBy(a => a.Name, nameCmp)
-                    : ordered.ThenByDescending(a => a.IsFavorite).ThenByDescending(a => a.Name, nameCmp);
+                    ? ordered.ThenByDescending(a => a.IsFavorite).ThenBy(name, nameCmp)
+                    : ordered.ThenByDescending(a => a.IsFavorite).ThenByDescending(name, nameCmp);
         }
     }
 

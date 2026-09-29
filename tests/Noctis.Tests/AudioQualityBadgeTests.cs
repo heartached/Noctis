@@ -118,21 +118,34 @@ public class AudioQualityBadgeTests
     private static Album MakeAlbum(params Track[] tracks) => new() { Tracks = new(tracks) };
 
     [Fact]
-    public void Album_HiResBeatsLosslessAndLossy()
+    public void Album_HiResBeatsLossless()
     {
         var album = MakeAlbum(
-            MakeTrack(codec: "MPEG-4 Audio (mp4a)", filePath: "a.m4a", bitrate: 256),
             MakeTrack(codec: "FLAC", filePath: "b.flac", sampleRate: 96000, bitsPerSample: 24),
             MakeTrack(codec: "FLAC", filePath: "c.flac", sampleRate: 44100, bitsPerSample: 16));
         Assert.Equal("Hi-Res Lossless", album.AudioQualityBadge);
     }
 
     [Fact]
-    public void Album_LosslessBeatsLossy()
+    public void Album_LosslessAndLossy_ShowsMixed()
     {
         var album = MakeAlbum(
             MakeTrack(codec: "MPEG Version 1 Audio, Layer 3", filePath: "a.mp3", bitrate: 320),
-            MakeTrack(codec: "FLAC", filePath: "b.flac", sampleRate: 44100, bitsPerSample: 16));
+            MakeTrack(codec: "FLAC", filePath: "b.flac", sampleRate: 44100, bitsPerSample: 16),
+            MakeTrack(codec: "FLAC", filePath: "c.flac", sampleRate: 96000, bitsPerSample: 24));
+        Assert.True(album.IsMixedQuality);
+        Assert.Equal("Mixed", album.AudioQualityBadge);
+        Assert.Contains("mixes lossless and compressed", album.AudioQualityDescription);
+        Assert.Equal("2 lossless · 1 lossy (MP3)", album.AudioQualityDetailedInfo);
+    }
+
+    [Fact]
+    public void Album_UnknownFormatTrack_DoesNotMakeLosslessAlbumMixed()
+    {
+        var album = MakeAlbum(
+            MakeTrack(codec: "FLAC", filePath: "a.flac", sampleRate: 44100, bitsPerSample: 16),
+            MakeTrack(filePath: "b.dsf", bitrate: 5645, sampleRate: 2822400));
+        Assert.False(album.IsMixedQuality);
         Assert.Equal("Lossless", album.AudioQualityBadge);
     }
 

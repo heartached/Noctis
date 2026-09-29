@@ -41,7 +41,7 @@ public static class DebugLogger
     /// (they must be recorded even when this logger is off), so mirroring them would
     /// double every line.</summary>
     private static readonly HashSet<string> SessionLogSelfWriters =
-        new(StringComparer.Ordinal) { "PositionTimer.Stall" };
+        new(StringComparer.Ordinal) { "PositionTimer.Stall", "Audio.SilentMode" };
 
     /// <summary>Also write to System.Diagnostics.Debug output.</summary>
     public static bool MirrorToDebugOutput { get; set; }
@@ -87,6 +87,22 @@ public static class DebugLogger
 
     public static void Error(Category category, string action, string? metadata = null)
         => Log(category, Level.Error, action, metadata);
+
+    /// <summary>
+    /// <see cref="Log"/> from the thread pool instead of the caller, for real-time audio
+    /// threads (the render thread, libvlc's decoder callbacks): with the session-log mirror
+    /// on, a write takes <see cref="DebugLog"/>'s lock and appends to crash.log under it,
+    /// time those threads cannot spend. Rate-limit at the call site.
+    /// </summary>
+    public static void LogOffThread(Category category, Level level, string action, string? metadata = null)
+    {
+        if (!IsEnabled) return;
+        ThreadPool.QueueUserWorkItem(static s =>
+        {
+            try { Log(s.category, s.level, s.action, s.metadata); }
+            catch { /* diagnostic only */ }
+        }, (category, level, action, metadata), preferLocal: false);
+    }
 
     /// <summary>Returns a snapshot of all entries (oldest first).</summary>
     public static LogEntry[] GetEntries() => _entries.ToArray();

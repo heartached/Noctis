@@ -41,6 +41,35 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>"2,144 items · 61.2 GB" line for the selected folder's header.</summary>
     [ObservableProperty] private string _folderSummaryText = string.Empty;
 
+    /// <summary>Track-pane order (GitHub #89): "default" (folder order), "modified-newest"
+    /// or "modified-oldest" (file last-modified time).</summary>
+    [ObservableProperty] private string _sortMode = "default";
+
+    public string SortLabel => SortMode switch
+    {
+        "modified-newest" => "Date Modified (Newest)",
+        "modified-oldest" => "Date Modified (Oldest)",
+        _ => "Folder Order",
+    };
+
+    partial void OnSortModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(SortLabel));
+        RebuildTrackPane();
+    }
+
+    [RelayCommand]
+    private void SetSort(string mode) => SortMode = mode;
+
+    /// <summary>Orders the flattened folder tracks for display. LINQ's OrderBy is stable,
+    /// so tracks sharing a timestamp (a batch retag) keep their folder order.</summary>
+    public static List<Track> SortTracks(List<Track> tracks, string mode) => mode switch
+    {
+        "modified-newest" => tracks.OrderByDescending(t => t.LastModified).ToList(),
+        "modified-oldest" => tracks.OrderBy(t => t.LastModified).ToList(),
+        _ => tracks,
+    };
+
     /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
     public event EventHandler? NavigateToSettingsRequested;
 
@@ -58,7 +87,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             _isDirty = true;
             if (_isActive)
-                Dispatcher.UIThread.Post(Refresh);
+                Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("FoldersRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
@@ -108,6 +137,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
         var settings = await _persistence.LoadSettingsAsync();
         var roots = settings.MusicFolders;
+        // Read before the snapshot: a scan ending in between errs toward "partial", and
+        // the authoritative publish that follows refreshes again.
+        var partial = _library.IsPublishingPartial;
         var tracks = _library.Tracks.ToList();
 
         // Capture the selected folder's path before the rebuild swaps in fresh
@@ -124,6 +156,17 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
         var forest = await Task.Run(() => FolderTreeBuilder.Build(tracks, roots));
 
+        // A scan's progressive fill carries only the folders walked so far, so a selected
+        // folder missing from it is "not walked yet", not removed. Deselecting here stuck:
+        // the next pass read selectedPath from the null node, so the user stayed kicked out
+        // of their folder after the scan. Keep the current tree until a later publish.
+        var reselected = selectedPath != null ? FindNode(forest, selectedPath) : null;
+        if (partial && selectedPath != null && reselected == null)
+        {
+            _isDirty = true;
+            return;
+        }
+
         foreach (var root in forest)
             RestoreExpansion(root, expansion);
 
@@ -134,7 +177,6 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         // Re-select the equivalent node in the rebuilt forest (matched by path) so the
         // user stays in their folder and the track pane refreshes against the NEW node —
         // which includes any just-added tracks in folder order.
-        var reselected = selectedPath != null ? FindNode(forest, selectedPath) : null;
         if (reselected != null)
         {
             SelectedNode = reselected;
@@ -171,6 +213,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             var sink = new List<Track>();
             Collect(SelectedNode, sink);
+            sink = SortTracks(sink, SortMode);
             for (int i = 0; i < sink.Count; i++)
                 sink[i].RowNumber = i + 1;
             SelectedFolderTracks.ReplaceAll(sink);
@@ -194,6 +237,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             foreach (var root in RootNodes)
                 Collect(root, all);
+            all = SortTracks(all, SortMode);
             for (int i = 0; i < all.Count; i++)
                 all[i].RowNumber = i + 1;
             var q = _currentFilter.Trim();

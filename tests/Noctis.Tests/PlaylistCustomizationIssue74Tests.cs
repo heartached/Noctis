@@ -84,6 +84,51 @@ public class PlaylistCustomizationIssue74Tests
         Assert.Equal("Old", player.CurrentTrack?.Title);
     }
 
+    // Discord (aaron, 2026-09-23): start at track 3, Next to track 4, Previous landed on
+    // track 2 — the pre-start tracks were consulted before the track just left.
+    [Fact]
+    public void Previous_AfterNextInsideAPlaylistStartedFromTheMiddle_ReturnsToTheTrackJustLeft()
+    {
+        var lib = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var p = "P1,P2,P3,P4".Split(',').Select(T).ToList();
+        player.ReplaceQueueAndPlay(p, 2);
+        player.NextCommand.Execute(null);
+        Assert.Equal("P4", player.CurrentTrack?.Title);
+
+        player.PreviousCommand.Execute(null);
+        Assert.Equal("P3", player.CurrentTrack?.Title);
+        Assert.Equal("P4", player.UpNext[0].Title);
+
+        // Only once the started-from track is left does Previous step into the pre-start part.
+        player.PreviousCommand.Execute(null);
+        Assert.Equal("P2", player.CurrentTrack?.Title);
+        Assert.Equal("P3", player.UpNext[0].Title);
+
+        player.PreviousCommand.Execute(null);
+        Assert.Equal("P1", player.CurrentTrack?.Title);
+    }
+
+    [Fact]
+    public void Previous_AfterNextThenBackToTheStartTrack_NextAgainThenPrevious_StillUndoesTheLatestNext()
+    {
+        var lib = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var p = "P1,P2,P3,P4".Split(',').Select(T).ToList();
+        player.ReplaceQueueAndPlay(p, 2);
+        player.NextCommand.Execute(null);      // P4
+        player.PreviousCommand.Execute(null);  // P3
+        player.PreviousCommand.Execute(null);  // P2 (pre-start)
+        player.NextCommand.Execute(null);      // P3 again
+        Assert.Equal("P3", player.CurrentTrack?.Title);
+
+        player.PreviousCommand.Execute(null);
+        Assert.Equal("P2", player.CurrentTrack?.Title);
+
+        player.PreviousCommand.Execute(null);
+        Assert.Equal("P1", player.CurrentTrack?.Title);
+    }
+
     [Fact]
     public void Previous_PrecedingTracks_NeverShowUpInHistory()
     {

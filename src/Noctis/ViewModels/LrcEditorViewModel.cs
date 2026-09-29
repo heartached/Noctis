@@ -191,6 +191,7 @@ public partial class LrcEditorViewModel : ViewModelBase
     private void StampCurrent()
     {
         if (SelectedIndex < 0 || SelectedIndex >= Lines.Count) return;
+        if (StampingBlockedByMusicVideoAudio()) return;
         Lines[SelectedIndex].Timestamp = _player.Position;
         if (SelectedIndex < Lines.Count - 1)
             SelectedIndex++;
@@ -200,10 +201,20 @@ public partial class LrcEditorViewModel : ViewModelBase
     private void StampLine(LrcEditorLine? line)
     {
         if (line == null) return;
+        if (StampingBlockedByMusicVideoAudio()) return;
         line.Timestamp = _player.Position;
         var index = Lines.IndexOf(line);
         if (index >= 0 && index < Lines.Count - 1)
             SelectedIndex = index + 1;
+    }
+
+    /// <summary>Lines are timed against the song file; a music video's audio runs on the
+    /// clip's own clock, so stamping waits until the song file plays again.</summary>
+    private bool StampingBlockedByMusicVideoAudio()
+    {
+        if (!_player.IsPlayingMusicVideoAudio) return false;
+        StatusText = "Stamping is off while the music video's audio plays — turn off Music video audio and restart the song";
+        return true;
     }
 
     [RelayCommand]

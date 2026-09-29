@@ -69,6 +69,25 @@ public partial class MiniPlayerViewModel : ViewModelBase
         };
         if (StyleForm is { } styled)
             Form = styled;
+
+        _isPinned = CanPin && Settings.MiniPlayerPinned;
+    }
+
+    // ── Pin (Windows): survive Show desktop / Minimize all, stay above games ──
+
+    /// <summary>The pin exists only where it does something (see <see cref="MiniPlayerPin"/>).</summary>
+    public bool CanPin => MiniPlayerPin.IsSupported;
+
+    /// <summary>Pinned: the window drops its minimize box and re-asserts always-on-top on
+    /// every foreground change (the window applies it). Persisted like the placement.</summary>
+    [ObservableProperty] private bool _isPinned;
+
+    partial void OnIsPinnedChanged(bool value) => Settings.SetMiniPlayerPinned(value);
+
+    [RelayCommand]
+    private void TogglePin()
+    {
+        if (CanPin) IsPinned = !IsPinned;
     }
 
     // ── Fixed designs (Settings ▸ Mini Player Design) ──

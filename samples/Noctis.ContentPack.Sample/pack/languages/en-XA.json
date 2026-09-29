@@ -1,0 +1,23 @@
+{
+  "culture": "en-XA",
+  "name": "English (Pseudo)",
+  "strings": {
+    "Nav.Home": "[Ĥöɱé]",
+    "Nav.Songs": "[Šöñĝš]",
+    "Nav.Albums": "[Åļƀûɱš]",
+    "Nav.Artists": "[Åŕţîšţš]",
+    "Nav.Playlists": "[Þļåýļîšţš]",
+    "Nav.Favorites": "[Ƒåvöŕîţéš]",
+    "Nav.Settings": "[Šéţţîñĝš]",
+    "Settings.Tab.General": "[Ĝéñéŕåļ]",
+    "Settings.Tab.Appearance": "[Åþþéåŕåñçé]",
+    "Settings.Tab.Lyrics": "[Ļýŕîçš]",
+    "Settings.Tab.Plugins": "[Þļûĝîñš]",
+    "Settings.Themes": "[Ţĥéɱéš]",
+    "Settings.ChooseHowNoctisLooks": "[Çĥööšé ĥöŵ Ñöçţîš ļööķš öñ ýöûŕ ðévîçé.]",
+    "Settings.AccentColor": "[Åççéñţ Çöļöŕ]",
+    "Plugins.Title": "[Þļûĝîñš]",
+    "Plugins.ByPack": "[ƀý {0}]",
+    "Plugins.Installed": "[Îñšţåļļéð {0} {1}. Šŵîţçĥ îţ öñ ƀéļöŵ.]"
+  }
+}

@@ -4,17 +4,57 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
+using Noctis.Services.LocalApi;
 using Noctis.ViewModels;
 
 namespace Noctis.Services;
 
+/// <summary>Which audience a <see cref="WebRemoteServer"/> instance serves.</summary>
+public enum WebRemoteMode
+{
+    /// <summary>Phone remote page on the local network (0.0.0.0, private addresses only,
+    /// per-session "k" token in the URL). Behaviour unchanged since before the Local API.</summary>
+    Lan,
+
+    /// <summary>Local automation API: /api/v1 JSON + SSE, bound to 127.0.0.1 only,
+    /// persistent Bearer/?token= token from local-api.json. See docs/LOCAL-API.md.</summary>
+    LocalApi,
+}
+
+/// <summary>Dependencies and limits of the Local API mode.</summary>
+public sealed class LocalApiOptions
+{
+    public ILibraryService? Library { get; init; }
+
+    /// <summary>Resolves album artwork files; null serves only per-track embedded covers.</summary>
+    public IPersistenceService? Persistence { get; init; }
+
+    public ILocalApiLyricsSource? Lyrics { get; init; }
+
+    /// <summary>Runs an action on the UI thread. Default: Avalonia's dispatcher.</summary>
+    public Func<Action, Task>? Marshal { get; init; }
+
+    public TimeSpan Heartbeat { get; init; } = TimeSpan.FromSeconds(15);
+    public int MaxEventStreams { get; init; } = 8;
+    public int MaxBodyBytes { get; init; } = 16 * 1024;
+    public int AuthFailureLimit { get; init; } = 10;
+    public TimeSpan AuthFailureWindow { get; init; } = TimeSpan.FromMinutes(1);
+    public TimeSpan AuthLockout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Reported by /api/v1/status; defaults to the running build's version.</summary>
+    public string? AppVersion { get; init; }
+}
+
 /// <summary>
-/// Minimal local-network web remote: a small hand-rolled HTTP server
-/// (TcpListener, no admin URL-ACL needed, no extra dependencies) serving a
-/// single mobile-friendly control page plus a tiny JSON API for
-/// play/pause/next/prev/volume/seek and the current queue.
+/// Small hand-rolled HTTP server (TcpListener, no admin URL-ACL needed, no extra
+/// dependencies). One class, two modes — see <see cref="WebRemoteMode"/>. Settings runs
+/// up to two instances side by side: the LAN phone remote and the loopback Local API.
+/// They share the socket plumbing and hardening (bounded reads, slot cap, timeouts)
+/// but differ in bind address, audience check, token and routes, so a LAN user's
+/// remote keeps working exactly as before and turning on the Local API never exposes
+/// the automation surface to the network.
 ///
-/// Security posture (LAN-only by design):
+/// LAN security posture:
 /// - Off by default; started only from the Settings toggle.
 /// - Requests from non-private remote addresses are rejected outright.
 /// - Every route requires the per-session access token (the "k" query value
@@ -22,45 +62,113 @@ namespace Noctis.Services;
 ///   that don't have the link, and CSRF/DNS-rebinding pages that can reach
 ///   the port but can't know the token. A new token is minted on each start.
 /// - Only fixed routes are served; no filesystem paths are exposed.
+///
+/// Local API posture: listens on 127.0.0.1 only and drops non-loopback peers; rejects
+/// Host headers that aren't a loopback name (DNS rebinding); every /api/v1 route needs
+/// the token (constant-time compare, failures rate-limited); bodies are capped; no
+/// route reads a caller-supplied path or runs anything.
 /// </summary>
-public sealed class WebRemoteServer : IDisposable
+public sealed partial class WebRemoteServer : IDisposable
 {
     private readonly PlayerViewModel _player;
+    private readonly LocalApiOptions? _local;
+    private readonly LocalApiEventHub? _hub;
+    private readonly Func<Action, Task> _marshal;
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
+    private volatile string _token = string.Empty;
 
+    public WebRemoteMode Mode { get; }
     public int Port { get; private set; }
     public bool IsRunning => _listener != null;
 
-    /// <summary>Per-session access token required on every request; regenerated on Start.</summary>
-    public string Token { get; private set; } = string.Empty;
+    /// <summary>Access token required on every request. LAN: regenerated on each Start.
+    /// Local API: supplied by the caller (persisted in local-api.json).</summary>
+    public string Token => _token;
+
+    /// <summary>Open SSE streams (Local API mode; 0 otherwise).</summary>
+    public int ActiveEventStreams => _hub?.ActiveStreams ?? 0;
 
     /// <summary>Raised on every authorized request, from a worker thread. The first one
     /// proves a phone actually reached this PC — Settings turns it into connection
     /// feedback, so "scanned but nothing loaded" is diagnosable from the card.</summary>
     public event EventHandler? ClientConnected;
 
-    public WebRemoteServer(PlayerViewModel player) => _player = player;
+    public WebRemoteServer(PlayerViewModel player)
+    {
+        _player = player;
+        Mode = WebRemoteMode.Lan;
+        _marshal = DefaultMarshal;
+    }
+
+    /// <summary>Local API instance (loopback only, /api/v1).</summary>
+    public WebRemoteServer(PlayerViewModel player, LocalApiOptions options)
+    {
+        _player = player;
+        Mode = WebRemoteMode.LocalApi;
+        _local = options;
+        _marshal = options.Marshal ?? DefaultMarshal;
+        _hub = new LocalApiEventHub(player, options.Lyrics, _marshal, options.Heartbeat, options.MaxEventStreams);
+    }
+
+    private static Task DefaultMarshal(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+        return Dispatcher.UIThread.InvokeAsync(action).GetTask();
+    }
 
     /// <summary>Binds the remote. Pass 0 to let the OS pick a free port; read
     /// <see cref="Port"/> afterwards for what was actually bound — it is no longer the
-    /// requested value, because the requested one may have been in use.</summary>
+    /// requested value, because the requested one may have been in use.
+    /// LAN mode mints a fresh token; Local API mode needs <see cref="Start(int, string)"/>.</summary>
     public void Start(int port)
     {
+        if (Mode == WebRemoteMode.LocalApi)
+            throw new InvalidOperationException("The Local API is started with its persisted token.");
+        StartCore(port, Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant());
+    }
+
+    /// <summary>Starts the Local API on 127.0.0.1 with the given token.</summary>
+    public void Start(int port, string token)
+    {
+        if (Mode != WebRemoteMode.LocalApi)
+            throw new InvalidOperationException("The LAN remote mints its own per-session token.");
+        if (string.IsNullOrEmpty(token)) throw new ArgumentException("A token is required.", nameof(token));
+        StartCore(port, token);
+    }
+
+    private void StartCore(int port, string token)
+    {
         Stop();
-        Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
+        _token = token;
         _cts = new CancellationTokenSource();
-        _listener = new TcpListener(IPAddress.Any, port);
+        var bind = Mode == WebRemoteMode.LocalApi ? IPAddress.Loopback : IPAddress.Any;
+        _listener = new TcpListener(bind, port);
         _listener.Start();
         Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _ = AcceptLoopAsync(_listener, _cts.Token);
-        DebugLogger.Info(DebugLogger.Category.State, "WebRemote.Start", $"port={Port}");
+        DebugLogger.Info(DebugLogger.Category.State, Mode == WebRemoteMode.LocalApi ? "LocalApi.Start" : "WebRemote.Start",
+            $"port={Port}");
+    }
+
+    /// <summary>Swaps the Local API token in place (Regenerate). Open event streams were
+    /// authorized with the old one, so they are closed.</summary>
+    public void SetToken(string token)
+    {
+        if (string.IsNullOrEmpty(token)) throw new ArgumentException("A token is required.", nameof(token));
+        _token = token;
+        _hub?.DisconnectAll();
     }
 
     public void Stop()
     {
         try
         {
+            _hub?.DisconnectAll();
             _cts?.Cancel();
             _listener?.Stop();
         }
@@ -110,6 +218,14 @@ public sealed class WebRemoteServer : IDisposable
             || (b[0] == 169 && b[1] == 254);
     }
 
+    /// <summary>True only for 127.0.0.0/8 and ::1 (IPv4-mapped forms included).</summary>
+    public static bool IsLoopbackAddress(IPAddress? address)
+    {
+        if (address == null) return false;
+        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+        return IPAddress.IsLoopback(address);
+    }
+
     // Bounds simultaneous request handlers so a LAN host can't exhaust
     // threads/sockets by holding connections open; excess connections are
     // dropped immediately. A phone remote uses 1-2 at a time.
@@ -152,8 +268,9 @@ public sealed class WebRemoteServer : IDisposable
             try
             {
                 var remote = (client.Client.RemoteEndPoint as IPEndPoint)?.Address;
-                if (!IsPrivateAddress(remote))
-                    return; // fail closed: drop non-LAN callers without a response
+                var allowed = Mode == WebRemoteMode.LocalApi ? IsLoopbackAddress(remote) : IsPrivateAddress(remote);
+                if (!allowed)
+                    return; // fail closed: drop non-LAN (or, for the Local API, non-loopback) callers without a response
 
                 client.ReceiveTimeout = 5000;
                 client.SendTimeout = 5000;
@@ -178,13 +295,23 @@ public sealed class WebRemoteServer : IDisposable
                 var method = parts[0];
                 var target = parts[1];
 
-                // Drain headers (ignored; no bodies are accepted). Bounded so a peer
-                // can't stream header lines forever inside the timeout window.
+                // Headers: the LAN remote ignores them (no bodies are accepted); the Local
+                // API reads Authorization / Host / Content-Length. Bounded so a peer can't
+                // stream header lines forever inside the timeout window.
                 const int MaxHeaderLines = 64;
+                var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 for (var i = 0; i < MaxHeaderLines; i++)
                 {
-                    if (await reader.ReadLineAsync(readCt) is not { Length: > 0 }) break;
+                    if (await reader.ReadLineAsync(readCt) is not { Length: > 0 } line) break;
                     if (i == MaxHeaderLines - 1) return; // too many headers — drop
+                    var colon = line.IndexOf(':');
+                    if (colon > 0) headers[line[..colon].Trim()] = line[(colon + 1)..].Trim();
+                }
+
+                if (Mode == WebRemoteMode.LocalApi)
+                {
+                    await HandleLocalApiAsync(stream, reader, method, target, headers, readCt, ct);
+                    return;
                 }
 
                 var (status, contentType, body) = await RouteAsync(method, target);
@@ -210,7 +337,7 @@ public sealed class WebRemoteServer : IDisposable
     /// <summary>
     /// Buffered line reader over the request stream — the previous implementation
     /// awaited one ReadAsync per byte (thousands of awaits per request). One reader
-    /// per connection; over-read bytes stay buffered for the next line.
+    /// per connection; over-read bytes stay buffered for the next line (or the body).
     /// </summary>
     private sealed class LineReader
     {
@@ -238,6 +365,28 @@ public sealed class WebRemoteServer : IDisposable
                 sb.Append(c);
             }
             return sb.ToString();
+        }
+
+        /// <summary>Exactly <paramref name="count"/> body bytes (buffered ones first), or
+        /// null if the peer closed early.</summary>
+        public async Task<byte[]?> ReadBytesAsync(int count, CancellationToken ct)
+        {
+            var result = new byte[count];
+            var filled = 0;
+            var buffered = Math.Min(_len - _pos, count);
+            if (buffered > 0)
+            {
+                Buffer.BlockCopy(_buf, _pos, result, 0, buffered);
+                _pos += buffered;
+                filled = buffered;
+            }
+            while (filled < count)
+            {
+                var n = await _stream.ReadAsync(result.AsMemory(filled, count - filled), ct);
+                if (n == 0) return null;
+                filled += n;
+            }
+            return result;
         }
     }
 
@@ -310,8 +459,15 @@ public sealed class WebRemoteServer : IDisposable
         return result;
     }
 
-    private static Task<string> OnUiThread(Func<string> action) =>
-        Dispatcher.UIThread.InvokeAsync(action).GetTask();
+    private Task<string> OnUiThread(Func<string> action) => OnUi(action);
+
+    /// <summary>Runs <paramref name="func"/> on the UI thread (via the marshal) and returns its result.</summary>
+    private async Task<T> OnUi<T>(Func<T> func)
+    {
+        T result = default!;
+        await _marshal(() => result = func());
+        return result;
+    }
 
     private string BuildStatus()
     {

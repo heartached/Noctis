@@ -187,6 +187,7 @@ public static partial class ExistingLyricsLoader
             if (stamps.Count == 0) continue;
 
             var (body, _) = EnhancedLrcParser.StripVoiceMarker(rest);
+            if (stamps.Count == 1) body = EnhancedLrcParser.TagLeadingText(body, stamps[0]);
             var (plain, words) = EnhancedLrcParser.ParseLine(body);
             if (string.IsNullOrWhiteSpace(plain)) continue;
             // Word times are absolute, so they only make sense on a single-stamp line.

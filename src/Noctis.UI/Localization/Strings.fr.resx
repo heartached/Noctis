@@ -5824,10 +5824,6 @@
     <value>Lyrics Studio</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>Temps les paroles de l'enregistrement, ou transcrive quand il n'y en a pas.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>Modélisation</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>Transcrire par oreille (ignorer les paroles existantes)</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>Le modèle de parole écoute la chanson et écrit les mots lui-même, même si la chanson a déjà des paroles. Les chansons sans paroles sont toujours transcrites.</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>Rechercher les paroles en ligne quand une chanson n'en a pas</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>Les paroles pleines sont extraites de LRCLIB en premier, donc le modèle a seulement pour les chronométrer.</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>Télécharger le modèle</value>

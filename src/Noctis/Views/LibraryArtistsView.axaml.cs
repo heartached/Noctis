@@ -14,6 +14,8 @@ public partial class LibraryArtistsView : UserControl
 {
     private LibraryArtistsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
+    /// <summary>The VM FilterKey the grid last reset its scroll for (see OnArtistRowsChanged).</summary>
+    private string? _scrollResetFilterKey;
 
     public LibraryArtistsView()
     {
@@ -106,16 +108,24 @@ public partial class LibraryArtistsView : UserControl
 
         _vm = DataContext as LibraryArtistsViewModel;
         if (_vm != null)
+        {
             _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
+            _scrollResetFilterKey = _vm.FilterKey;
+        }
     }
 
     private void OnArtistRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        // Scroll to top when rows change due to an active filter (search text)
+        // Scroll to top when the active filter (search text) changes, not on every rebuild:
+        // a library reload, portrait refresh or favorite toggle keeps the user's place.
         // BUT skip if a scroll restore is pending (returning from artist detail)
-        if (_vm?.HasActiveFilter != true)
+        if (_vm == null || _vm.FilterKey == _scrollResetFilterKey)
             return;
-        if (_pendingScrollRestore != null || (_vm != null && _vm.SavedScrollOffset > 0))
+        _scrollResetFilterKey = _vm.FilterKey;
+
+        if (!_vm.HasActiveFilter)
+            return;
+        if (_pendingScrollRestore != null)
             return;
 
         Dispatcher.UIThread.Post(() =>
@@ -160,6 +170,7 @@ public partial class LibraryArtistsView : UserControl
         {
             _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
             _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
+            _scrollResetFilterKey = _vm.FilterKey;
         }
 
         if (DataContext is LibraryArtistsViewModel vm && vm.SavedScrollOffset > 0)

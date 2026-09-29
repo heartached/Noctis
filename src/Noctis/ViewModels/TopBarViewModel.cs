@@ -23,7 +23,11 @@ public partial class TopBarViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
     [NotifyPropertyChangedFor(nameof(CurrentTabTitle))]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
+    [NotifyPropertyChangedFor(nameof(IsBetaPage))]
     private string _currentTabName = "Library";
+
+    /// <summary>Sections still in beta carry a "Beta" pill next to the header title (Lyrics Studio, 09-23).</summary>
+    public bool IsBetaPage => CurrentTabName == "Lyrics Studio";
 
     /// <summary>Localized display name of the current section.</summary>
     public string CurrentTabTitle => Loc.T(TabTitleKey(CurrentTabName));
@@ -299,6 +303,14 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageShuffleFolderCommand;
     [ObservableProperty] private ICommand? _pageManageFoldersCommand;
 
+    // Folders track-pane sort (GitHub #89), mirrored from LibraryFoldersViewModel like
+    // the Playlists sort; rides HasFoldersActions for visibility.
+    [ObservableProperty] private ICommand? _foldersSortCommand;
+    [ObservableProperty] private string _foldersSortLabel = "Folder Order";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFoldersSortActive))]
+    private string _foldersSortMode = "default";
+
     // Favorites action buttons
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
@@ -399,11 +411,13 @@ public partial class TopBarViewModel : ViewModelBase
         PagePlayArtistCommand = null;
     }
 
-    public void ShowFoldersActions(ICommand playCommand, ICommand shuffleCommand, ICommand manageCommand)
+    public void ShowFoldersActions(ICommand playCommand, ICommand shuffleCommand, ICommand manageCommand,
+        ICommand? sortCommand = null)
     {
         PagePlayFolderCommand = playCommand;
         PageShuffleFolderCommand = shuffleCommand;
         PageManageFoldersCommand = manageCommand;
+        FoldersSortCommand = sortCommand;
         HasFoldersActions = true;
     }
 
@@ -413,6 +427,7 @@ public partial class TopBarViewModel : ViewModelBase
         PagePlayFolderCommand = null;
         PageShuffleFolderCommand = null;
         PageManageFoldersCommand = null;
+        FoldersSortCommand = null;
     }
 
     public void ShowFavoritesActions(ICommand shuffleCommand, ICommand playCommand)
@@ -521,6 +536,7 @@ public partial class TopBarViewModel : ViewModelBase
     public bool IsSongsSortActive => PageSortColumn is not ("" or "Date Added");
     public bool IsArtistSortActive => ArtistSortMode != "name";
     public bool IsPlaylistSortActive => PlaylistSortMode != "default";
+    public bool IsFoldersSortActive => FoldersSortMode != "default";
 
     public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand,
         ObservableCollection<QualityChip>? qualityChips = null, ICommand? qualityCommand = null,

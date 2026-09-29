@@ -88,6 +88,32 @@ public class FileSystemSourceScanTests : IDisposable
         Assert.Equal(2, library.Tracks.Count);
     }
 
+    /// <summary>
+    /// Track ids fold case, so a case-only rename on a case-sensitive filesystem
+    /// ("01 - first" → "01 - First", size and mtime untouched) maps onto the known track.
+    /// The unchanged-file fast path used to keep the old spelling — a path that no longer
+    /// exists — through every rescan.
+    /// </summary>
+    [Fact]
+    public async Task CaseOnlyRename_RescanPicksUpTheNewSpelling_AndKeepsUserState()
+    {
+        var source = new StreamOnlySource(_music) { NameOf = n => n.ToLowerInvariant() };
+        var (library, _) = MakeLibrary(source);
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
+        var before = library.Tracks.Single(t => t.Title == "First");
+        Assert.Equal("fake://tree/music/01 - first.mp3", before.FilePath);
+        before.PlayCount = 7;
+
+        source.NameOf = n => n;
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, library.Tracks.Count);
+        var after = library.Tracks.Single(t => t.Title == "First");
+        Assert.Equal(before.Id, after.Id);
+        Assert.Equal("fake://tree/music/01 - First.mp3", after.FilePath);
+        Assert.Equal(7, after.PlayCount);
+    }
+
     [Fact]
     public async Task MissingRoot_AbortsThroughTheSource_NotThroughDirectoryExists()
     {
@@ -146,6 +172,7 @@ public class FileSystemSourceScanTests : IDisposable
         private readonly string _dir;
         public int Opened;
         public bool RootAvailable = true;
+        public Func<string, string> NameOf = n => n;
         public StreamOnlySource(string dir) => _dir = dir;
 
         public bool RootExists(string root) => RootAvailable;
@@ -158,7 +185,7 @@ public class FileSystemSourceScanTests : IDisposable
                 if (!MetadataService.SupportedExtensions.Contains(Path.GetExtension(file))) continue;
                 var fi = new FileInfo(file);
                 var captured = file;
-                yield return new ScanEntry(root + "/" + fi.Name, fi.Name, fi.Length, fi.LastWriteTimeUtc, LocalPath: null,
+                yield return new ScanEntry(root + "/" + NameOf(fi.Name), NameOf(fi.Name), fi.Length, fi.LastWriteTimeUtc, LocalPath: null,
                     OpenRead: () => { Interlocked.Increment(ref Opened); return File.OpenRead(captured); });
             }
         }

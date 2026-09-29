@@ -5824,10 +5824,6 @@
     <value>歌詞工作室</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>將歌詞記錄到錄音的時間，或在沒有錄音的情況下進行抄送。</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>模型</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>用耳機翻譯(忽略現有歌詞)</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>語音模型聆聽歌曲並寫詞本身，即使歌曲已經有歌詞。 沒有歌詞的歌曲總是被翻譯的。</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>當歌曲沒有歌曲時線上查詢歌詞</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>純歌詞先從 LRCLIB 獲取，所以模型只需要時間。關閉，模型用耳邊寫字。</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>下載模型</value>

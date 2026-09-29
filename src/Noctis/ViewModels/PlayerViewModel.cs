@@ -27,6 +27,8 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IAnimatedCoverService _animatedCovers;
+    // Re-reads queued non-library files on restore (GitHub #86). Null: they are dropped.
+    private readonly IMetadataService? _metadata;
 
     // ── Recently-played memory (feeds shuffle recency deprioritization) ──
     private readonly LinkedList<Guid> _recentlyPlayedOrder = new();
@@ -86,17 +88,177 @@ public partial class PlayerViewModel : ViewModelBase
     /// showed for songs with no video), and stays while the feature is off so it can be
     /// switched back on.</summary>
     [ObservableProperty] private bool _currentTrackHasMusicVideoFile;
-    partial void OnCurrentMusicVideoPathChanged(string? value) => OnPropertyChanged(nameof(HasMusicVideo));
-    partial void OnMusicVideosEnabledChanged(bool value) => ResolveMusicVideo();
+    partial void OnCurrentMusicVideoPathChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasMusicVideo));
+        OnPropertyChanged(nameof(MusicVideoSyncPosition));
+    }
+
+    partial void OnMusicVideosEnabledChanged(bool value)
+    {
+        ResolveMusicVideo();
+        if (MusicVideoAudioEnabled) ForgetPreparedMusicVideoAudio();
+    }
+
+    // The clip ResolveMusicVideo found for CurrentTrack, whatever the toggle: a song start
+    // reuses it for music video audio instead of probing the disk again.
+    private string? _resolvedMusicVideoPath;
 
     private void ResolveMusicVideo()
     {
         var track = CurrentTrack;
         var found = track != null && !track.IsRemoteStream
-            ? Helpers.MusicVideoLocator.Find(track.FilePath)
+            ? (TakeNextClipProbe(track, out var probed) ? probed : Helpers.MusicVideoLocator.Find(track.FilePath))
             : null;
+        _resolvedMusicVideoPath = found;
         CurrentTrackHasMusicVideoFile = found != null;
         CurrentMusicVideoPath = MusicVideosEnabled ? found : null;
+    }
+
+    /// <summary>What the music video follows: the song's position minus the engine's output
+    /// latency (the gapless engine reports what it has fed, ~100 ms ahead of the speaker),
+    /// so the picture shows what is being heard.</summary>
+    public TimeSpan MusicVideoSyncPosition
+    {
+        get
+        {
+            var position = Position - OutputLatency;
+            return position > TimeSpan.Zero ? position : TimeSpan.Zero;
+        }
+    }
+
+    partial void OnPositionChanged(TimeSpan value)
+    {
+        if (HasMusicVideo) OnPropertyChanged(nameof(MusicVideoSyncPosition));
+    }
+
+    // ── Music video audio (Discord, aaron): with the setting on, a song whose clip was found
+    // plays the clip's own audio, the song file being the engine's fallback for a clip that
+    // won't open or has no audio. Decided at song start only (PlayTrack): toggling, the
+    // lyrics page, seeks and Previous never switch the source mid-song.
+
+    /// <summary>Settings → Lyrics Studio → Music videos (off by default).</summary>
+    [ObservableProperty] private bool _musicVideoAudioEnabled;
+
+    /// <summary>True while the engine plays the current song's music video audio (false
+    /// again once it fell back to the song file). Refreshed at song start and on engine ticks.</summary>
+    [ObservableProperty] private bool _isPlayingMusicVideoAudio;
+
+    /// <summary>The playing clip's length is more than <see cref="MusicVideoLengthToleranceSeconds"/>
+    /// off the song's: synced lyrics (timed to the song file) open on Plain, and Discord/MPRIS
+    /// re-read the length. Only ever raised mid-song; reset at song start.</summary>
+    [ObservableProperty] private bool _musicVideoAudioLengthDiffers;
+
+    public const double MusicVideoLengthToleranceSeconds = 2.0;
+
+    // The clip handed to the engine at this song's start; null when the song file plays.
+    private string? _musicVideoAudioPath;
+    // A lyric-authoring surface asked for the song file (see RequestOriginalAudio).
+    private Guid _originalAudioTrackId;
+    // UpNext[0]'s clip, looked for once and off the UI thread (a slow or sleeping disk must
+    // not stall AutoMix/gapless ticks), then handed to ResolveMusicVideo when it plays.
+    private Guid _nextClipProbeTrackId;
+    private Task<string?>? _nextClipProbe;
+
+    /// <summary>
+    /// Whether a start of <paramref name="track"/> plays <paramref name="clip"/>'s audio: music
+    /// videos and video audio on, a local file whose clip is not the file itself, no start/stop
+    /// trim, no remembered position, and no lyric-authoring surface asking for the song file.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool UsesMusicVideoAudio(Track track, string? clip, bool videosOn, bool audioOn, bool originalAudioRequested)
+    {
+        if (!videosOn || !audioOn || originalAudioRequested || string.IsNullOrEmpty(clip))
+            return false;
+        if (track.IsRemoteStream || string.IsNullOrWhiteSpace(track.FilePath) || VlcAudioPlayer.IsPathlessMedia(track.FilePath))
+            return false;
+        if (track.StartTimeMs > 0 || track.StopTimeMs > 0 || track.RememberPlaybackPosition)
+            return false;
+        try
+        {
+            return !string.Equals(Path.GetFullPath(clip), Path.GetFullPath(track.FilePath), PathComparison.Comparison);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The exact path a start of <paramref name="track"/> hands the engine.</summary>
+    private string ResolvePlayPath(Track track, string? clip) =>
+        UsesMusicVideoAudio(track, clip, MusicVideosEnabled, MusicVideoAudioEnabled, track.Id == _originalAudioTrackId)
+            ? clip!
+            : track.FilePath;
+
+    /// <summary><see cref="ResolvePlayPath"/> for the next queued song, or null while its clip
+    /// is still being looked for: probed once per song on the thread pool, and not at all
+    /// while the feature is off.</summary>
+    private string? ResolveNextPlayPath(Track next)
+    {
+        if (!MusicVideosEnabled || !MusicVideoAudioEnabled)
+            return next.FilePath;
+        if (_nextClipProbeTrackId != next.Id || _nextClipProbe == null)
+        {
+            var file = next.FilePath;
+            _nextClipProbe = next.IsRemoteStream
+                ? Task.FromResult<string?>(null)
+                : Task.Run(() => Helpers.MusicVideoLocator.Find(file));
+            _nextClipProbeTrackId = next.Id;
+        }
+        if (!_nextClipProbe.IsCompleted)
+            return null;
+        return ResolvePlayPath(next, _nextClipProbe.IsCompletedSuccessfully ? _nextClipProbe.Result : null);
+    }
+
+    /// <summary>The next-song probe's answer for <paramref name="track"/>, taken once when it
+    /// becomes current, so its clip is not looked for twice.</summary>
+    private bool TakeNextClipProbe(Track track, out string? clip)
+    {
+        clip = null;
+        if (_nextClipProbeTrackId != track.Id || _nextClipProbe is not { IsCompletedSuccessfully: true } probe)
+            return false;
+        clip = probe.Result;
+        _nextClipProbe = null;
+        _nextClipProbeTrackId = Guid.Empty;
+        return true;
+    }
+
+    /// <summary>Lyric-authoring surfaces time lines against the song file: starts of
+    /// <paramref name="track"/> play its own audio until another song plays.</summary>
+    public void RequestOriginalAudio(Track track) => _originalAudioTrackId = track.Id;
+
+    partial void OnMusicVideoAudioEnabledChanged(bool value) => ForgetPreparedMusicVideoAudio();
+
+    /// <summary>The setting moved: a next song already staged with the old choice is dropped
+    /// so it re-prepares with the new one ("takes effect from the next song"). The playing
+    /// song keeps its source.</summary>
+    private void ForgetPreparedMusicVideoAudio()
+    {
+        _nextClipProbe = null;
+        _nextClipProbeTrackId = Guid.Empty;
+        if (_autoMixPreparedSnapshot != null && !_autoMixAdvanceQueued)
+            CancelAutoMixTransition("settings changed");
+    }
+
+    /// <summary>Re-reads which file the engine actually plays (a broken clip falls back to the
+    /// song file on the engine's worker) and, given the engine's length, whether the clip's
+    /// length differs from the song's.</summary>
+    private void RefreshMusicVideoAudio(TimeSpan engineDuration = default)
+    {
+        var clip = _musicVideoAudioPath;
+        IsPlayingMusicVideoAudio = clip != null &&
+            string.Equals(_audioPlayer.CurrentMediaPath, clip, StringComparison.Ordinal);
+        if (!IsPlayingMusicVideoAudio)
+            MusicVideoAudioLengthDiffers = false;
+        else if (engineDuration > TimeSpan.Zero && CurrentTrack is { } track && track.Duration > TimeSpan.Zero &&
+                 Math.Abs((engineDuration - track.Duration).TotalSeconds) > MusicVideoLengthToleranceSeconds)
+            MusicVideoAudioLengthDiffers = true;
+    }
+
+    partial void OnIsPlayingMusicVideoAudioChanged(bool value)
+    {
+        RefreshSignalPath();
+        UpdateWaveformForMusicVideoAudio();
     }
     [ObservableProperty] private string _positionText = "0:00";
     [ObservableProperty] private string _durationText = "0:00";
@@ -138,6 +300,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _islandShowSleepTimer;
     /// <summary>GitHub #59: shuffle on the island, after Repeat.</summary>
     [ObservableProperty] private bool _islandShowShuffle;
+    /// <summary>GitHub #94: EQ on/off on the island, after Shuffle.</summary>
+    [ObservableProperty] private bool _islandShowEqualizer;
     /// <summary>Repeat after Next, and the favorite heart on the right: opt-in since the
     /// track-box layout, so the stock bar is transport + box + lyrics/queue/volume.</summary>
     [ObservableProperty] private bool _islandShowRepeat;
@@ -201,8 +365,10 @@ public partial class PlayerViewModel : ViewModelBase
         if (int.TryParse(semitones, out var st) && st is >= -12 and <= 12)
             PitchSemitones = st;
     }
-    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
-    /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
+    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings (Glass
+    /// Opacity); default 0.4 matches the original #66 alpha. Background only — controls/text
+    /// stay opaque. With Liquid Glass on the queue drawer and the island's menus tint their
+    /// frost with it too (GitHub #104).</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
     /// <summary>Opacity of the white track box (song-info card) inside the bar (0–1).
     /// Driven by Settings; 0 removes the card, leaving art/text straight on the pill.</summary>
@@ -330,6 +496,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Fires when a new track starts playing.</summary>
     public event EventHandler<Track>? TrackStarted;
 
+    /// <summary>Fires when a play is counted (play count, Last Played, play log): at the
+    /// start, or once enough of the song was heard (GitHub #101).</summary>
+    public event EventHandler<Track>? PlayCounted;
+
     /// <summary>Fires when the user seeks to a new position.</summary>
     public event EventHandler<TimeSpan>? Seeked;
 
@@ -360,7 +530,8 @@ public partial class PlayerViewModel : ViewModelBase
     // Repeat All used to rebuild the queue from History, but TrimHistory caps History at
     // 50 entries — so cycling a 120-track playlist restarted at track 71 and permanently
     // dropped tracks 1-70, with no UI indication. History is a *display* list with a
-    // display-sized cap; the repeat cycle needs the real queue.
+    // display-sized cap; the repeat cycle needs the real queue. Queue adds/removes are
+    // mirrored into it (AddNext … ClearQueue) so a wrap replays the queue as edited.
     private List<Track> _repeatCycleTracks = new();
     private Action<string>? _navigateAction; // injected navigation action
     private Action<Track>? _viewAlbumAction; // injected from MainWindowViewModel
@@ -396,12 +567,14 @@ public partial class PlayerViewModel : ViewModelBase
     // Up Next so the queue popup shows where playback is heading.
     private const int AutoplayBatchSize = 5;
 
-    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
+    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers,
+        IMetadataService? metadata = null)
     {
         _audioPlayer = audioPlayer;
         _library = library;
         _persistence = persistence;
         _animatedCovers = animatedCovers;
+        _metadata = metadata;
 
         // Subscribe to audio player events
         _audioPlayer.PositionChanged += OnPositionChanged;
@@ -458,6 +631,13 @@ public partial class PlayerViewModel : ViewModelBase
                     // Track loaded but stopped — replay it
                     PlayTrack(CurrentTrack);
                 }
+                else if (UpNext.Count > 0)
+                {
+                    // Nothing loaded but the queue was filled (GitHub #92: songs added to
+                    // the queue opened on an empty player) — play it, don't replace it
+                    // with a library shuffle.
+                    AdvanceQueue(QueueAdvanceReason.UserSkip);
+                }
                 else if (_library.Tracks.Count > 0)
                 {
                     // No track loaded — shuffle entire library.
@@ -503,8 +683,10 @@ public partial class PlayerViewModel : ViewModelBase
                       (_repeatCycleTracks.Count > 0 || History.Count > 0);
         if (UpNext.Count == 0 && !canWrap) return;
 
-        // A user skip before the halfway point counts as a skip in the play log.
-        if (CurrentTrack != null && PositionFraction < 0.5)
+        // A user skip before the halfway point counts as a skip in the play log. A play
+        // not counted yet has no log event, and RecordSkip would mark an earlier play of
+        // the same song instead (GitHub #101).
+        if (CurrentTrack != null && PositionFraction < 0.5 && !_playCountPending)
             _playHistory?.RecordSkip(CurrentTrack);
 
         AdvanceQueue(QueueAdvanceReason.UserSkip);
@@ -518,7 +700,8 @@ public partial class PlayerViewModel : ViewModelBase
         {
             // Restart current track
             CancelAutoMixTransition("user skipped");
-            _audioPlayer.Seek(TimeSpan.Zero);
+            if (!DeferSeekWhileStopped(TimeSpan.Zero))
+                _audioPlayer.Seek(TimeSpan.Zero);
             _lastSeekTime = DateTime.UtcNow;
             _lastCommittedSeekTarget = TimeSpan.Zero;
             Position = TimeSpan.Zero;
@@ -526,6 +709,15 @@ public partial class PlayerViewModel : ViewModelBase
             PositionText = "0:00";
             RemainingTimeText = FormatTime(Duration);
             Seeked?.Invoke(this, TimeSpan.Zero);
+        }
+        else if (Math.Min(_queueHistoryDepth, History.Count) > 0)
+        {
+            // Undo the Next / natural advances made inside this queue before touching the
+            // pre-start tracks: started at 3, Next to 4, Previous must return to 3 — it went
+            // to 2 because the pre-start branch below was consulted first (Discord, aaron
+            // 2026-09-23). Entries deeper than _queueHistoryDepth predate this queue.
+            CancelAutoMixTransition("user skipped");
+            GoBackInQueue(QueueAdvanceReason.Previous);
         }
         else if (_precedingInQueue.Count > 0)
         {
@@ -547,6 +739,12 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Queue entries before the one the user started from, newest-first is the
     /// END of the list; consumed by <see cref="Previous"/> before <see cref="History"/>.</summary>
     private readonly List<Track> _precedingInQueue = new();
+
+    /// <summary>How many leading <see cref="History"/> entries were pushed by advances inside
+    /// the current queue (Next / natural end). <see cref="Previous"/> walks these back before
+    /// it steps into <see cref="_precedingInQueue"/>; anything deeper played before the queue
+    /// was started and is only reached once its first track is passed (GitHub #74).</summary>
+    private int _queueHistoryDepth;
 
     /// <summary>Island speed menu; parameter is a percent ("75" … "200").</summary>
     [RelayCommand]
@@ -597,17 +795,36 @@ public partial class PlayerViewModel : ViewModelBase
         PositionFraction = fraction;
         RemainingTimeText = FormatTime(remaining);
         CancelAutoMixTransition("user seeked");
-        _audioPlayer.Seek(target);
+        DebugLogger.Info(DebugLogger.Category.Playback, "SeekToPosition",
+            $"targetMs={target.TotalMilliseconds:F0}, state={State}, track={CurrentTrack.Id}");
+        if (!DeferSeekWhileStopped(target))
+            _audioPlayer.Seek(target);
         _lastSeekTime = DateTime.UtcNow;
         _lastCommittedSeekTarget = target;
         Seeked?.Invoke(this, target);
+    }
+
+    /// <summary>
+    /// A seek on a Stopped track (restored session, or halted by stop-after-current) has
+    /// no playing media to move: the player dropped it (nothing loaded yet, so Play then
+    /// jumped back to the stale restored position) or restarted the ended media behind a
+    /// Stopped UI. Keep it as the one-shot resume target PlayTrack applies on Play instead.
+    /// </summary>
+    private bool DeferSeekWhileStopped(TimeSpan target)
+    {
+        if (State != PlaybackState.Stopped || CurrentTrack == null) return false;
+        _resumePositionMs = target > TimeSpan.Zero ? (long)target.TotalMilliseconds : -1;
+        _resumeTrackId = CurrentTrack.Id;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Deferred",
+            $"reason=stopped, targetMs={target.TotalMilliseconds:F0}, track={CurrentTrack.Id}");
+        return true;
     }
 
     [RelayCommand]
     private void ToggleMute()
     {
         IsMuted = !IsMuted;
-        _audioPlayer.IsMuted = IsMuted;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mute", $"muted={IsMuted}, source=toggle");
     }
 
     // ── Sleep timer ──────────────────────────────────────────
@@ -770,7 +987,25 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
-    public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
+    public void SetSettingsViewModel(SettingsViewModel settings)
+    {
+        _settings = settings;
+        settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.EqualizerEnabled))
+                OnPropertyChanged(nameof(IsEqualizerEnabled));
+        };
+        OnPropertyChanged(nameof(IsEqualizerEnabled));
+    }
+
+    /// <summary>GitHub #94: the EQ master switch (Settings → Audio), for the island's EQ button.</summary>
+    public bool IsEqualizerEnabled => _settings?.EqualizerEnabled ?? false;
+
+    [RelayCommand]
+    private void ToggleEqualizer()
+    {
+        if (_settings != null) _settings.EqualizerEnabled = !_settings.EqualizerEnabled;
+    }
 
     /// <summary>Commits a finished playback-bar resize (drag release or grip
     /// double-click reset): updates the live width and persists it through the
@@ -828,6 +1063,16 @@ public partial class PlayerViewModel : ViewModelBase
         var artist = track?.Artist;
         if (!string.IsNullOrWhiteSpace(artist))
             _viewArtistAction?.Invoke(artist);
+    }
+
+    /// <summary>One name out of a multi-artist credit — the island resolves the name under
+    /// the pointer (see <see cref="Helpers.ArtistCreditSpans"/>); <see cref="ViewArtist"/> with
+    /// the whole credit opens the primary artist only.</summary>
+    [RelayCommand]
+    private void ViewArtistNamed(string? artistName)
+    {
+        if (!string.IsNullOrWhiteSpace(artistName))
+            _viewArtistAction?.Invoke(artistName);
     }
 
     [RelayCommand]
@@ -1101,6 +1346,7 @@ public partial class PlayerViewModel : ViewModelBase
             History.Insert(0, CurrentTrack);
             TrimHistory();
         }
+        _queueHistoryDepth = 0; // that entry belongs to what played before this queue
 
         // Clear stale shuffle state — a new queue replaces whatever was shuffled.
         _originalQueue.Clear();
@@ -1136,6 +1382,13 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Insert(0, track);
+        if (_repeatCycleTracks.Count > 0)
+        {
+            // In the cycle it follows the playing track, as it does in this pass.
+            var current = CurrentTrack;
+            var at = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
+            _repeatCycleTracks.Insert(at < 0 ? _repeatCycleTracks.Count : at + 1, track);
+        }
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
@@ -1145,6 +1398,7 @@ public partial class PlayerViewModel : ViewModelBase
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Add(track);
+        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
     }
 
     /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch.</summary>
@@ -1161,6 +1415,7 @@ public partial class PlayerViewModel : ViewModelBase
             _suppressHasContentNotify = false;
             OnPropertyChanged(nameof(HasContent));
         }
+        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -1171,6 +1426,7 @@ public partial class PlayerViewModel : ViewModelBase
             DebugLogger.Info(DebugLogger.Category.Queue, "RemoveFromQueue", $"idx={index}, track={UpNext[index].Title}");
             CancelAutoMixTransition("queue changed");
             MarkQueueChanged();
+            RemoveFromRepeatCycle(new[] { UpNext[index] });
             UpNext.RemoveAt(index);
         }
     }
@@ -1181,13 +1437,17 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "ClearQueue", $"cleared={UpNext.Count} tracks");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        RemoveFromRepeatCycle(UpNext);
         UpNext.Clear();
         _parkedExplicit.Clear();
     }
 
     /// <summary>Stops playback and clears all queue data.</summary>
-    public void StopAndClear()
+    /// <param name="reason">Why the queue is being wiped; recorded in the log.</param>
+    public void StopAndClear(string reason = "unspecified")
     {
+        DebugLogger.Info(DebugLogger.Category.Playback, "StopAndClear",
+            $"reason={reason}, track={CurrentTrack?.Id}, upNext={UpNext.Count}, history={History.Count}");
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
@@ -1202,9 +1462,11 @@ public partial class PlayerViewModel : ViewModelBase
         CurrentTrack = null;
         UpNext.Clear();
         History.Clear();
+        _queueHistoryDepth = 0;
         _precedingInQueue.Clear();
         _originalQueue.Clear();
         _parkedExplicit.Clear();
+        _repeatCycleTracks.Clear(); // a queue started on the emptied player is not this cycle
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         PositionFraction = 0;
@@ -1214,6 +1476,9 @@ public partial class PlayerViewModel : ViewModelBase
         // AlbumArt bitmaps are owned by the shared ArtworkCache — drop the reference,
         // don't dispose (other UI surfaces and the cache may still hold it).
         AlbumArt = null;
+        // The island draws the path, not the bitmap: songs queued onto the emptied player
+        // (GitHub #92) showed the last song's cover over a blank title (09-24).
+        CurrentArtPath = null;
         // Stop the animated cover with playback — otherwise the loop keeps
         // playing over the "No track playing" state after the queue drains.
         CurrentAnimatedCoverPath = null;
@@ -1244,9 +1509,35 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "RemoveManyFromQueue", $"count={rows.Count}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        RemoveFromRepeatCycle(rows.Select(i => UpNext[i]).ToList());
         // High → low so the lower indices stay valid.
         foreach (var i in rows)
             UpNext.RemoveAt(i);
+    }
+
+    /// <summary>
+    /// Drops tracks removed from UpNext out of the Repeat All cycle too, or the next
+    /// wrap brought them back. One entry per track given, last occurrence first: a
+    /// pending track sits after any copy of it that already played this pass.
+    /// </summary>
+    private void RemoveFromRepeatCycle(IEnumerable<Track> removed)
+    {
+        if (_repeatCycleTracks.Count == 0) return;
+        var pending = new Dictionary<Guid, int>();
+        foreach (var t in removed)
+            pending[t.Id] = pending.GetValueOrDefault(t.Id) + 1;
+        var drop = new HashSet<int>();
+        for (var i = _repeatCycleTracks.Count - 1; i >= 0; i--)
+        {
+            var id = _repeatCycleTracks[i].Id;
+            if (pending.TryGetValue(id, out var n) && n > 0)
+            {
+                pending[id] = n - 1;
+                drop.Add(i);
+            }
+        }
+        if (drop.Count > 0)
+            _repeatCycleTracks = _repeatCycleTracks.Where((_, i) => !drop.Contains(i)).ToList();
     }
 
     /// <summary>
@@ -1314,6 +1605,7 @@ public partial class PlayerViewModel : ViewModelBase
         var target = History[index];
         for (var i = index; i >= 0; i--)
             History.RemoveAt(i);
+        _queueHistoryDepth = Math.Max(0, _queueHistoryDepth - (index + 1));
         PlayTrack(target);
     }
 
@@ -1356,9 +1648,29 @@ public partial class PlayerViewModel : ViewModelBase
             RepeatMode = RepeatMode,
             IsShuffleEnabled = IsShuffleEnabled,
             IsMuted = IsMuted,
-            RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList()
+            RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
+            ExternalTrackPaths = BuildExternalTrackPaths()
         };
         await _persistence.SaveQueueStateAsync(state);
+    }
+
+    /// <summary>
+    /// GitHub #86: Id → file of every non-library track the snapshot references, so the
+    /// next launch can re-read them (their Ids exist only in this session). Null when none.
+    /// </summary>
+    private Dictionary<Guid, string>? BuildExternalTrackPaths()
+    {
+        Dictionary<Guid, string>? map = null;
+        void Add(Track? t)
+        {
+            if (t is not { IsExternal: true } || string.IsNullOrEmpty(t.FilePath)) return;
+            (map ??= new Dictionary<Guid, string>())[t.Id] = t.FilePath;
+        }
+        Add(CurrentTrack);
+        foreach (var t in UpNext) Add(t);
+        foreach (var t in History) Add(t);
+        foreach (var t in _repeatCycleTracks) Add(t);
+        return map;
     }
 
     /// <summary>
@@ -1394,7 +1706,8 @@ public partial class PlayerViewModel : ViewModelBase
                 RepeatMode = RepeatMode,
                 IsShuffleEnabled = IsShuffleEnabled,
                 IsMuted = IsMuted,
-                RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList()
+                RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
+                ExternalTrackPaths = BuildExternalTrackPaths()
             };
         }
         catch
@@ -1411,9 +1724,8 @@ public partial class PlayerViewModel : ViewModelBase
                 .Unwrap()
                 .ContinueWith(t =>
                 {
-                    if (t.IsFaulted)
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[Player] Queue snapshot failed: {t.Exception?.GetBaseException().Message}");
+                    if (t.IsFaulted && t.Exception?.GetBaseException() is { } ex)
+                        DebugLog.Write("Queue", $"Queue snapshot failed: {ex.GetType().Name}: {ex.Message}");
                 }, TaskScheduler.Default);
         }
     }
@@ -1424,11 +1736,16 @@ public partial class PlayerViewModel : ViewModelBase
         var state = await _persistence.LoadQueueStateAsync();
         if (state == null) return;
 
+        // GitHub #86: non-library tracks (dropped with "Import dropped files" off) are
+        // unknown to the library, so they are re-read from their saved files.
+        var external = await ResolveSavedExternalTracksAsync(state);
+        Track? Resolve(Guid id) => _library.GetTrackById(id) ?? external.GetValueOrDefault(id);
+
         // Restore history
         var restoredHistory = new List<Track>();
         foreach (var id in state.HistoryIds)
         {
-            var track = _library.GetTrackById(id);
+            var track = Resolve(id);
             if (track != null) restoredHistory.Add(track);
         }
         History.AddRange(restoredHistory);
@@ -1437,7 +1754,7 @@ public partial class PlayerViewModel : ViewModelBase
         var restoredUpNext = new List<Track>();
         foreach (var id in state.UpNextIds)
         {
-            var track = _library.GetTrackById(id);
+            var track = Resolve(id);
             if (track != null) restoredUpNext.Add(track);
         }
         UpNext.AddRange(restoredUpNext);
@@ -1446,29 +1763,42 @@ public partial class PlayerViewModel : ViewModelBase
         // silently reset to Off and the app un-muted on every restart.
         RepeatMode = state.RepeatMode;
         IsShuffleEnabled = state.IsShuffleEnabled;
+        if (IsMuted != state.IsMuted)
+            DebugLogger.Info(DebugLogger.Category.Playback, "Mute", $"muted={state.IsMuted}, source=restore");
         IsMuted = state.IsMuted;
 
         var restoredCycle = new List<Track>(state.RepeatCycleIds.Count);
         foreach (var id in state.RepeatCycleIds)
         {
-            var track = _library.GetTrackById(id);
+            var track = Resolve(id);
             if (track != null) restoredCycle.Add(track);
         }
         _repeatCycleTracks = restoredCycle;
 
         // Restore current track (paused, not auto-playing)
+        var usedUpNextFallback = false;
         if (state.CurrentTrackId.HasValue)
         {
-            var track = _library.GetTrackById(state.CurrentTrackId.Value);
+            var track = Resolve(state.CurrentTrackId.Value);
+            var positionSeconds = state.PositionSeconds;
+            if (track == null && UpNext.Count > 0)
+            {
+                // Its file was moved or deleted since (GitHub #91): load the next queued
+                // track from its start instead of leaving the island without a track.
+                usedUpNextFallback = true;
+                track = UpNext[0];
+                UpNext.RemoveAt(0);
+                positionSeconds = 0;
+            }
             if (track != null)
             {
                 CurrentTrack = track;
                 LoadAlbumArt(track);
                 Duration = track.Duration;
                 DurationText = FormatTime(track.Duration);
-                Position = TimeSpan.FromSeconds(state.PositionSeconds);
+                Position = TimeSpan.FromSeconds(positionSeconds);
                 PositionFraction = Duration.TotalSeconds > 0
-                    ? state.PositionSeconds / Duration.TotalSeconds
+                    ? positionSeconds / Duration.TotalSeconds
                     : 0;
                 PositionText = FormatTime(Position);
                 RemainingTimeText = FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
@@ -1476,7 +1806,7 @@ public partial class PlayerViewModel : ViewModelBase
 
                 // Pressing Play on this restored track resumes where the user
                 // left off (consumed one-shot inside PlayTrack's seek chain).
-                _resumePositionMs = (long)(state.PositionSeconds * 1000);
+                _resumePositionMs = (long)(positionSeconds * 1000);
                 _resumeTrackId = track.Id;
 
                 // Ensure UI updates on UI thread
@@ -1487,6 +1817,88 @@ public partial class PlayerViewModel : ViewModelBase
                 }, DispatcherPriority.Render);
             }
         }
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "Queue.Restored",
+            $"current={CurrentTrack?.Id.ToString() ?? (state.CurrentTrackId.HasValue ? "unresolved" : "none")}, " +
+            $"savedPosSec={state.PositionSeconds:F1}, resumeMs={Interlocked.Read(ref _resumePositionMs)}, " +
+            $"upNext={restoredUpNext.Count}/{state.UpNextIds.Count}, history={restoredHistory.Count}/{state.HistoryIds.Count}, " +
+            $"cycle={restoredCycle.Count}/{state.RepeatCycleIds.Count}, upNextFallback={usedUpNextFallback}, " +
+            $"shuffle={IsShuffleEnabled}, repeat={RepeatMode}, muted={IsMuted}");
+    }
+
+    /// <summary>
+    /// Saved non-library tracks by their saved Id. A file that has since joined the library
+    /// resolves to the library entry; otherwise it is re-read off the UI thread, keeping the
+    /// saved Id so the Id lists (and Home's play log) still point at it. Missing files drop.
+    /// </summary>
+    private async Task<Dictionary<Guid, Track>> ResolveSavedExternalTracksAsync(QueueState state)
+    {
+        var result = new Dictionary<Guid, Track>();
+        if (state.ExternalTrackPaths is not { Count: > 0 } saved) return result;
+
+        var wanted = saved
+            .Where(p => !string.IsNullOrWhiteSpace(p.Value) && _library.GetTrackById(p.Key) == null)
+            .ToList();
+        if (wanted.Count == 0) return result;
+
+        // Path index snapshot here — _library.Tracks is mutated on the UI thread.
+        var wantedPaths = new HashSet<string>(wanted.Select(p => p.Value), StringComparer.OrdinalIgnoreCase);
+        var byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in _library.Tracks)
+            if (wantedPaths.Contains(t.FilePath))
+                byPath[t.FilePath] = t;
+
+        var metadata = _metadata;
+        var persistence = _persistence;
+        var resolved = await Task.Run(() =>
+        {
+            var list = new List<KeyValuePair<Guid, Track>>(wanted.Count);
+            foreach (var (id, path) in wanted)
+            {
+                if (byPath.TryGetValue(path, out var libraryTrack))
+                {
+                    list.Add(new(id, libraryTrack));
+                    continue;
+                }
+                if (metadata == null) continue;
+                try
+                {
+                    var track = ExternalTrackReader.Read(metadata, persistence, path);
+                    if (track == null) continue;
+                    track.Id = id;
+                    list.Add(new(id, track));
+                }
+                catch (Exception ex)
+                {
+                    // Type only: IO/tag exception messages carry the full path.
+                    DebugLog.Write("Queue", $"External track restore failed for {Path.GetFileName(path)}: {ex.GetType().Name}");
+                }
+            }
+            return list;
+        });
+
+        foreach (var (id, track) in resolved)
+            result[id] = track;
+        return result;
+    }
+
+    /// <summary>
+    /// The non-library tracks the player currently holds (current, Up Next, History, repeat
+    /// cycle) by Id. Lets Home's Last Played resolve dropped files the library cannot
+    /// (GitHub #86) without touching the disk.
+    /// </summary>
+    public Dictionary<Guid, Track> GetExternalTracksById()
+    {
+        var map = new Dictionary<Guid, Track>();
+        void Add(Track? t)
+        {
+            if (t is { IsExternal: true }) map.TryAdd(t.Id, t);
+        }
+        Add(CurrentTrack);
+        foreach (var t in UpNext) Add(t);
+        foreach (var t in History) Add(t);
+        foreach (var t in _repeatCycleTracks) Add(t);
+        return map;
     }
 
     // ── Volume property change handler ───────────────────────
@@ -1500,7 +1912,13 @@ public partial class PlayerViewModel : ViewModelBase
         RefreshSignalPath();
     }
 
-    partial void OnIsMutedChanged(bool value) => RefreshSignalPath();
+    partial void OnIsMutedChanged(bool value)
+    {
+        // Every writer (toggle, adjust, queue restore) reaches the audio player here; the
+        // restore used to set only this property, so a saved mute showed Muted but played.
+        _audioPlayer.IsMuted = value;
+        RefreshSignalPath();
+    }
 
     /// <summary>
     /// Flush the final volume to VLC immediately — call on slider drag-end
@@ -1516,7 +1934,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!IsMuted) return;
         IsMuted = false;
-        _audioPlayer.IsMuted = false;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Mute", "muted=False, source=adjust");
     }
 
     partial void OnCurrentTrackChanged(Track? value)
@@ -1530,6 +1948,16 @@ public partial class PlayerViewModel : ViewModelBase
         // path changes can leave us here without a Play() call.
         if (_settings != null)
             _audioPlayer.ApplyReplayGain(_settings.ReplayGainMode, _settings.ReplayGainPreampDb);
+        // Nothing playing any more (stop / cleared queue): drop the last track's per-track
+        // EQ preset, or switching the EQ back on would re-push it (GitHub #94).
+        if (value == null)
+            _settings?.ClearTrackEqPresetOverride();
+        // Nothing playing: no music video audio either (the next PlayTrack re-decides).
+        if (value == null && _musicVideoAudioPath != null)
+        {
+            _musicVideoAudioPath = null;
+            RefreshMusicVideoAudio();
+        }
 
         RefreshSignalPath();
         // The player applies ReplayGain / opens the output on a worker shortly
@@ -1622,6 +2050,11 @@ public partial class PlayerViewModel : ViewModelBase
             sourceDetail += $" {track.SampleRate / 1000.0:0.#} kHz";
         if (!track.IsLossless && track.Bitrate > 0)
             sourceDetail += $" ({track.Bitrate} kbps)";
+        // Music video audio: the source is the clip, not the song file these tags describe.
+        var clip = IsPlayingMusicVideoAudio ? _musicVideoAudioPath : null;
+        if (clip != null)
+            sourceDetail = $"Music video audio ({Path.GetExtension(clip).TrimStart('.').ToUpperInvariant()})";
+        var lossless = track.IsLossless && clip == null;
 
         var rgDetail = !rgOn
             ? "Off"
@@ -1629,10 +2062,14 @@ public partial class PlayerViewModel : ViewModelBase
                 ? $"{rgMode} — {rgDb:+0.0;-0.0} dB"
                 : $"{rgMode} — no tags (bypass)";
 
+        // Index 0 is the Custom curve; a user preset rides it under its own name (GitHub #95).
+        var eqName = _settings?.SelectedEqPresetName;
         var eqDetail = !eqEnabled
             ? "Off"
             : eqOn
-                ? (_settings?.SelectedEqPresetIndex == 0 ? "Parametric (custom)" : _settings?.SelectedEqPresetName ?? "On")
+                ? (_settings?.SelectedEqPresetIndex == 0 && (string.IsNullOrEmpty(eqName) || eqName == SettingsViewModel.EqPresetNames[0])
+                    ? "Parametric (custom)"
+                    : eqName ?? "On")
                 : "Flat — bypass";
 
         var crossfadeDetail = crossfadeOn
@@ -1656,12 +2093,12 @@ public partial class PlayerViewModel : ViewModelBase
             SignalPathQuality = "Bit-perfect";
             SignalPathColor = "#B197FC"; // violet — untouched samples reach the DAC
         }
-        else if (track.IsLossless && !dspActive)
+        else if (lossless && !dspActive)
         {
             SignalPathQuality = track.IsHiResLossless ? "Hi-Res Lossless" : "Lossless";
             SignalPathColor = "#4ADE80"; // green
         }
-        else if (track.IsLossless)
+        else if (lossless)
         {
             SignalPathQuality = "Enhanced";
             SignalPathColor = "#60A5FA"; // blue — lossless source with DSP applied
@@ -1742,6 +2179,12 @@ public partial class PlayerViewModel : ViewModelBase
         // This prevents hammering VLC with rapid seeks that cause audio crackling.
         DebugLogger.Info(DebugLogger.Category.Playback, "EndSeek", $"targetMs={target.TotalMilliseconds:F0}, debounce={SeekDebounceMs}ms");
         _seekDebounceTimer?.Dispose();
+        _seekDebounceTimer = null;
+        if (DeferSeekWhileStopped(target))
+        {
+            Seeked?.Invoke(this, target);
+            return;
+        }
         _seekDebounceTimer = new System.Threading.Timer(_ =>
         {
             DebugLogger.Info(DebugLogger.Category.Playback, "SeekDebounce.Fire", $"targetMs={target.TotalMilliseconds:F0}");
@@ -1763,13 +2206,16 @@ public partial class PlayerViewModel : ViewModelBase
 
     private void MarkPlayStateDirty(Track? track)
     {
-        if (track == null) return;
+        // A non-library track has no library row: journaling it only left orphan
+        // user-state rows in library.db under its per-session Id (GitHub #86).
+        if (track == null || track.IsExternal) return;
         lock (_pendingPlayStateSaves)
             _pendingPlayStateSaves.Add(track);
     }
 
-    /// <summary>Writes the accumulated play-state changes as user-state journal rows.</summary>
-    private async Task FlushPendingPlayStateAsync()
+    /// <summary>Writes the accumulated play-state changes as user-state journal rows
+    /// (shutdown calls it before its slow steps; see MainWindowViewModel.ShutdownAsync).</summary>
+    public async Task FlushPendingPlayStateAsync()
     {
         List<Track> pending;
         lock (_pendingPlayStateSaves)
@@ -1781,9 +2227,68 @@ public partial class PlayerViewModel : ViewModelBase
         await _library.SaveTrackUserStateAsync(pending);
     }
 
+    // Persist play count/LastPlayed with a debounce: rapid skips coalesce
+    // into a single write. Only the changed tracks' journal rows are written
+    // (library.db) — not the whole library.json.
+    private void ScheduleLibrarySave()
+    {
+        _librarySaveDebounce?.Dispose();
+        _librarySaveDebounce = new System.Threading.Timer(
+            _ => _ = FlushPendingPlayStateAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+    }
+
+    // ── Counting a play (GitHub #101) ──
+    // With Settings → Playback → "Count a play after" above Immediately, PlayTrack leaves the
+    // play uncounted and the position ticks add up what is actually heard; the play counts
+    // once that reaches the chosen share of the song. UI thread only.
+    private bool _playCountPending;
+    private TimeSpan _listenedTime;
+    private TimeSpan _listenAnchor;
+    private DateTime _listenAnchorSeekTime;
+    // A bigger forward step between two ticks is a jump (a seek, a stall), not listening.
+    private const double MaxListenStepSeconds = 2;
+
+    private void CountPlay(Track track)
+    {
+        track.PlayCount++;
+        track.LastPlayed = DateTime.UtcNow;
+        MarkPlayStateDirty(track);
+        _playHistory?.RecordPlay(track);
+        PlayCounted?.Invoke(this, track);
+    }
+
+    /// <summary>
+    /// Adds what was heard since the previous tick and counts a pending play once that
+    /// reaches the threshold. The song start and every seek set _lastSeekTime and
+    /// _lastCommittedSeekTarget, so the first tick after either re-anchors at that target:
+    /// a seek is never listening, and a mid-song start counts only from where it began.
+    /// </summary>
+    private void AccumulateListenedTime(TimeSpan position, TimeSpan duration)
+    {
+        if (!_playCountPending || CurrentTrack == null) return;
+        if (_listenAnchorSeekTime != _lastSeekTime)
+        {
+            _listenAnchorSeekTime = _lastSeekTime;
+            _listenAnchor = _lastCommittedSeekTarget;
+        }
+        var step = position - _listenAnchor;
+        _listenAnchor = position;
+        if (State == PlaybackState.Playing && step > TimeSpan.Zero
+            && step.TotalSeconds <= MaxListenStepSeconds * Math.Max(1.0, PlaybackRate))
+            _listenedTime += step;
+
+        // Read per tick: a change of the setting applies to the rest of this play.
+        var percent = _settings?.PlayCountThresholdPercent ?? 0;
+        if (duration > TimeSpan.Zero && _listenedTime.TotalSeconds < duration.TotalSeconds * percent / 100.0)
+            return;
+        _playCountPending = false;
+        CountPlay(CurrentTrack);
+        ScheduleLibrarySave();
+    }
+
     private void PlayTrack(Track track)
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack", $"title={track.Title}, id={track.Id}, duration={track.Duration}");
+        var playTrackStart = Stopwatch.GetTimestamp();
         _seekDebounceTimer?.Dispose();
         _seekDebounceTimer = null;
         CancelNaturalEndFallback();
@@ -1791,6 +2296,8 @@ public partial class PlayerViewModel : ViewModelBase
         _autoMixAdvanceQueued = false;
         _autoMixPreparedTrackId = Guid.Empty;
         _autoMixCommitGuardUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        // A staged next song must start on exactly the path it was staged with (below).
+        var prepared = _autoMixPreparedSnapshot;
         _autoMixPreparedSnapshot = null;
 
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
@@ -1816,11 +2323,13 @@ public partial class PlayerViewModel : ViewModelBase
 
         State = PlaybackState.Playing;
 
-        // Update play count and last played time
-        track.PlayCount++;
-        track.LastPlayed = DateTime.UtcNow;
-        MarkPlayStateDirty(track);
-        _playHistory?.RecordPlay(track);
+        // Update play count and last played time — now, or once enough of the song has
+        // been heard (GitHub #101, AccumulateListenedTime). A song with no known length
+        // can't be measured against, so it counts now as before.
+        _listenedTime = TimeSpan.Zero;
+        _playCountPending = (_settings?.PlayCountThresholdPercent ?? 0) > 0 && track.Duration > TimeSpan.Zero;
+        if (!_playCountPending)
+            CountPlay(track);
         MarkRecentlyPlayed(track);
 
         // Apply per-track volume adjustment
@@ -1829,28 +2338,36 @@ public partial class PlayerViewModel : ViewModelBase
         // Set pending seek position BEFORE Play() so VlcAudioPlayer applies it
         // inside PlayInternal after the media is loaded (avoids race condition).
         long seekMs = -1;
+        var seekSource = "none";
         var autoMixStartMs = Interlocked.Exchange(ref _pendingAutoMixNextStartMs, -1);
         // One-shot: any track change consumes the restored-session resume target.
         var resumeMs = Interlocked.Exchange(ref _resumePositionMs, -1);
         if (autoMixStartMs > 0 && TimeSpan.FromMilliseconds(autoMixStartMs) < track.Duration)
         {
             seekMs = autoMixStartMs;
+            seekSource = "automix";
         }
         else if (resumeMs > 0 && track.Id == _resumeTrackId
                  && TimeSpan.FromMilliseconds(resumeMs) < track.Duration)
         {
             seekMs = resumeMs;
+            seekSource = "restore";
         }
         else if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
         {
             seekMs = track.StartTimeMs;
+            seekSource = "startTime";
         }
         else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0
                  && TimeSpan.FromMilliseconds(track.SavedPositionMs) < track.Duration)
         {
             seekMs = track.SavedPositionMs;
+            seekSource = "savedPosition";
         }
         _audioPlayer.PendingSeekMs = seekMs;
+        // Logged here rather than on entry so it can say which start position won.
+        DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack",
+            $"title={track.Title}, id={track.Id}, duration={track.Duration}, seekMs={seekMs}, seekSource={seekSource}");
 
         if (seekMs > 0)
         {
@@ -1863,7 +2380,21 @@ public partial class PlayerViewModel : ViewModelBase
                 : 0;
         }
 
-        _audioPlayer.Play(track.FilePath);
+        // Music video audio: decided here, once per song start. A staged next song keeps the
+        // choice it was staged with (a clip: that exact path); a lyric-authoring request only
+        // covers its own song.
+        if (_originalAudioTrackId != track.Id) _originalAudioTrackId = Guid.Empty;
+        var playPath = prepared != null && prepared.TrackId == track.Id && prepared.PlayPath != null
+            ? (string.Equals(prepared.PlayPath, prepared.FilePath, StringComparison.Ordinal) ? track.FilePath : prepared.PlayPath)
+            : ResolvePlayPath(track, _resolvedMusicVideoPath);
+        _musicVideoAudioPath = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? null : playPath;
+        MusicVideoAudioLengthDiffers = false;
+
+        if (_musicVideoAudioPath == null)
+            _audioPlayer.Play(track.FilePath);
+        else
+            _audioPlayer.Play(_musicVideoAudioPath, track.FilePath);
+        RefreshMusicVideoAudio();
 
         // Apply per-track EQ preset (or restore global)
         _settings?.ApplyEqPresetByName(
@@ -1879,16 +2410,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Fire event to notify that a new track started
         TrackStarted?.Invoke(this, track);
 
-        // Persist play count/LastPlayed with a debounce: rapid skips coalesce
-        // into a single write. Only the changed tracks' journal rows are written
-        // (library.db) — not the whole library.json.
-        _librarySaveDebounce?.Dispose();
-        _librarySaveDebounce = new System.Threading.Timer(
-            _ => _ = FlushPendingPlayStateAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+        ScheduleLibrarySave();
 
         // Keep the on-disk queue snapshot current so a non-graceful exit
         // (tray + OS shutdown, task kill) still restores this session.
         SaveQueueStateInBackground();
+        UiStallWatchdog.ReportIfSlow("PlayTrack", playTrackStart);
     }
 
     private enum QueueAdvanceReason
@@ -1903,7 +2430,11 @@ public partial class PlayerViewModel : ViewModelBase
     private void AdvanceQueue(QueueAdvanceReason reason = QueueAdvanceReason.Natural)
     {
         // Re-entrancy guard — if TrackEnded fires twice (VLC race), ignore the second.
-        if (_isAdvancingQueue) return;
+        if (_isAdvancingQueue)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "AdvanceQueue.Reentrant", $"reason={reason}");
+            return;
+        }
         _isAdvancingQueue = true;
         try
         {
@@ -2083,6 +2614,7 @@ public partial class PlayerViewModel : ViewModelBase
                 MarkPlayStateDirty(CurrentTrack);
             }
             History.Insert(0, CurrentTrack);
+            _queueHistoryDepth++;
             TrimHistory();
         }
 
@@ -2114,9 +2646,26 @@ public partial class PlayerViewModel : ViewModelBase
                 allTracks.RemoveAll(IsBlockedExplicit);
 
             History.Clear();
+            _queueHistoryDepth = 0;
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
 
-            if (allTracks.Count == 0) { StopAndClear(); return; }
+            if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
+
+            // Shuffle stays on across the wrap. The cycle holds the order the queue was
+            // started in, so replaying it as-is played every pass after the first in
+            // album order with Shuffle still lit. Reshuffle the new pass as ToggleShuffle
+            // does, keeping the in-order cycle as the un-shuffle target.
+            if (IsShuffleEnabled)
+            {
+                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                    allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
+                if (shuffled.Count > 0)
+                {
+                    _originalQueue = new List<Track>(allTracks);
+                    _originalQueue.Remove(shuffled[0]); // about to play, not pending
+                    allTracks = shuffled;
+                }
+            }
 
             UpNext.ReplaceAll(allTracks.Skip(1).ToList());
             PlayTrack(allTracks[0]);
@@ -2130,7 +2679,7 @@ public partial class PlayerViewModel : ViewModelBase
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
-            StopAndClear();
+            StopAndClear("queueEnded");
         }
     }
 
@@ -2271,6 +2820,7 @@ public partial class PlayerViewModel : ViewModelBase
 
         var prev = History[0];
         History.RemoveAt(0);
+        if (_queueHistoryDepth > 0) _queueHistoryDepth--;
         PlayTrack(prev);
     }
 
@@ -2391,7 +2941,23 @@ public partial class PlayerViewModel : ViewModelBase
                 if (Duration.TotalSeconds > 0)
                     PositionFraction = Position.TotalSeconds / Duration.TotalSeconds;
             }
+            RefreshMusicVideoAudio(resolvedDuration);
         });
+    }
+
+    private long _lastPositionRejectedLogTick; // UI thread only
+
+    // Rate-limited (1/s): a tick one of the seek guards below dropped. The slider
+    // snap-back / frozen-position evidence.
+    private void NotePositionRejected(string guard, TimeSpan latest, double msSinceSeek)
+    {
+        if (!DebugLogger.IsEnabled) return;
+        var now = Environment.TickCount64;
+        if (now - _lastPositionRejectedLogTick < 1000) return;
+        _lastPositionRejectedLogTick = now;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Position.Rejected",
+            $"guard={guard}, latestMs={latest.TotalMilliseconds:F0}, targetMs={_lastCommittedSeekTarget.TotalMilliseconds:F0}, " +
+            $"msSinceSeek={msSinceSeek:F0}, rate={PlaybackRate}");
     }
 
     private void OnPositionChanged(object? sender, TimeSpan pos)
@@ -2408,6 +2974,7 @@ public partial class PlayerViewModel : ViewModelBase
             _positionUpdateQueued = false;
             // Audio is demonstrably playing — the error-cascade breaker resets.
             if (_consecutivePlaybackErrors != 0) _consecutivePlaybackErrors = 0;
+            if (_errorSkippedTracks.Count != 0) _errorSkippedTracks.Clear();
             var latest = _latestVlcPosition;
 
             if (_isSeeking) return; // don't update while user is dragging
@@ -2416,17 +2983,25 @@ public partial class PlayerViewModel : ViewModelBase
             // VLC needs time to flush old buffers and settle at the new position.
             var msSinceSeek = (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds;
             if (msSinceSeek < SeekSettleWindowMs)
+            {
+                NotePositionRejected("settle", latest, msSinceSeek);
                 return;
+            }
 
             // After PlayTrack() updates CurrentTrack, the single VLC player can still
             // report positions from the outgoing song while it fades/stops. Those old
             // near-end positions must not drive AutoMix for the newly selected track.
+            // Media time advances at the playback rate (VLC rate / engine stretch), so
+            // the elapsed allowance scales with it — else 2× ticks are dropped from ~4s.
             if (msSinceSeek < TrackStartStalePositionGuardMs)
             {
                 var expectedSeconds = _lastCommittedSeekTarget.TotalSeconds;
-                var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) + 4;
+                var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) * Math.Max(1.0, PlaybackRate) + 4;
                 if (latest.TotalSeconds > maxPlausibleSeconds)
+                {
+                    NotePositionRejected("trackStartStale", latest, msSinceSeek);
                     return;
+                }
             }
 
             // Extended settle: even after the base window, reject positions that are
@@ -2435,7 +3010,10 @@ public partial class PlayerViewModel : ViewModelBase
             if (msSinceSeek < SeekSettleWindowMs * 2 &&
                 _lastCommittedSeekTarget > TimeSpan.Zero &&
                 Math.Abs((latest - _lastCommittedSeekTarget).TotalSeconds) > 2.0)
+            {
+                NotePositionRejected("extendedSettle", latest, msSinceSeek);
                 return;
+            }
 
             // Clamp position to duration — VLC may report a position slightly past
             // the stored metadata duration. Prefer decoder-reported duration and
@@ -2458,6 +3036,8 @@ public partial class PlayerViewModel : ViewModelBase
                 DurationText = FormatTime(Duration);
             }
 
+            RefreshMusicVideoAudio(decoderDuration);
+
             // Calculate ALL values FIRST before setting any properties
             var newPosition = latest;
             var newPositionText = FormatTime(latest);
@@ -2478,6 +3058,9 @@ public partial class PlayerViewModel : ViewModelBase
             PositionText = newPositionText;
             PositionFraction = newPositionFraction;
             RemainingTimeText = newRemainingTimeText;
+
+            // Before the advances below: the outgoing song's last ticks still count for it.
+            AccumulateListenedTime(newPosition, effectiveDuration);
 
             if (TryAdvanceForAutoMix(newPosition, effectiveDuration))
                 return;
@@ -2570,7 +3153,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
     internal bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
     {
+        // Stop-after-current: no early handoff. The stop branch in AdvanceQueueCore only
+        // flips State, so an advance before the real end let the track play out and its
+        // TrackEnded then started the next one. Let the track end naturally instead.
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
+            StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
             UpNext.Count == 0)
@@ -2585,7 +3172,15 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
 
         var nextTrack = UpNext[0];
-        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions());
+        var nextPlayPath = ResolveNextPlayPath(nextTrack);
+        // Its music video is still being looked for (off the UI thread): plan on a later tick.
+        if (nextPlayPath == null)
+            return false;
+        // A music video's audio runs on the clip's timeline, not the song file's that the
+        // beat and silence data describe: either side playing one keeps both off.
+        var musicVideoAudio = IsPlayingMusicVideoAudio ||
+                              !string.Equals(nextPlayPath, nextTrack.FilePath, StringComparison.Ordinal);
+        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions(musicVideoAudio));
         LogAutoMixPlan(CurrentTrack, nextTrack, plan);
 
         if (!plan.IsEnabled)
@@ -2628,8 +3223,9 @@ public partial class PlayerViewModel : ViewModelBase
                 IsShuffleEnabled,
                 RepeatMode,
                 AutoMixTransitionMode,
-                _audioPlayer.CurrentSessionId);
-            _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+                _audioPlayer.CurrentSessionId,
+                nextPlayPath);
+            _audioPlayer.PrepareNext(nextPlayPath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
             // Prepared late (already inside the window): give the async prepare a
             // tick of head start rather than committing against a cold standby.
             if (position >= fadeStart)
@@ -2654,7 +3250,7 @@ public partial class PlayerViewModel : ViewModelBase
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+        if (!CanHandOffEarly(nextTrack.FilePath))
         {
             DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.PreparedInvalid", "next track unavailable");
             CancelAutoMixTransition("next track unavailable");
@@ -2695,13 +3291,21 @@ public partial class PlayerViewModel : ViewModelBase
         return true;
     }
 
-    private AutoMixPlannerOptions CreateAutoMixOptions() =>
+    // An early advance needs a target the player can hand off to: a file on disk, or a
+    // media-server stream when the player stages streams (the splice engine). A URL
+    // never passes File.Exists; unstaged, it waits for TrackEnded and opens cold
+    // rather than cutting the outgoing tail early.
+    private bool CanHandOffEarly(string? path) =>
+        !string.IsNullOrWhiteSpace(path) &&
+        (VlcAudioPlayer.IsRemoteStreamPath(path) ? _audioPlayer.PreparesRemoteStreams : File.Exists(path));
+
+    private AutoMixPlannerOptions CreateAutoMixOptions(bool musicVideoAudio = false) =>
         new(
             AutoMixTransitionMode,
             AutoMixStrength,
-            AutoMixRemoveSilence,
+            AutoMixRemoveSilence && !musicVideoAudio,
             AutoMixAvoidAlbums,
-            AutoMixBeatMatch,
+            AutoMixBeatMatch && !musicVideoAudio,
             RepeatMode,
             IsShuffleEnabled,
             false,
@@ -2725,10 +3329,13 @@ public partial class PlayerViewModel : ViewModelBase
     private const int AutoMixOverlapSeconds = 3;
     private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
 
-    private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
     {
+        // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
         if (!GaplessEnabled ||
             AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
             UpNext.Count == 0 ||
@@ -2754,7 +3361,8 @@ public partial class PlayerViewModel : ViewModelBase
         {
             if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
                 _autoMixPreparedTrackId != nextTrack.Id &&
-                !string.IsNullOrWhiteSpace(nextTrack.FilePath))
+                !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
+                ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
             {
                 _autoMixPreparedTrackId = nextTrack.Id;
                 _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
@@ -2764,15 +3372,16 @@ public partial class PlayerViewModel : ViewModelBase
                     IsShuffleEnabled,
                     RepeatMode,
                     AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId);
+                    _audioPlayer.CurrentSessionId,
+                    nextPlayPath);
                 _audioPlayer.PrepareNext(
-                    nextTrack.FilePath,
+                    nextPlayPath,
                     nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
             }
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+        if (!CanHandOffEarly(nextTrack.FilePath))
             return false;
 
         var validation = AutoMixPreparedTransitionValidator.Validate(
@@ -2826,6 +3435,15 @@ public partial class PlayerViewModel : ViewModelBase
             CancelAutoMixTransition("repeat-one enabled");
     }
 
+    // Arming stop-after-current also drops a successor already prepared for the
+    // gapless/AutoMix handoff: the splice engine (and Media3's playlist) plays a staged
+    // next track on its own at the seam, so the stop would otherwise land a track late.
+    partial void OnStopAfterCurrentTrackChanged(bool value)
+    {
+        if (value && _autoMixPreparedTrackId != Guid.Empty)
+            CancelAutoMixTransition("stop after current track");
+    }
+
     private void CancelAutoMixTransition(string reason)
     {
         var hadPending = _autoMixAdvanceQueued ||
@@ -2876,6 +3494,10 @@ public partial class PlayerViewModel : ViewModelBase
     private const int MaxConsecutivePlaybackErrors = 5;
     private int _consecutivePlaybackErrors;
 
+    // The tracks the current error run skipped past, oldest first, each with the position
+    // its start was aimed at, so ending the run can put them back (StopAfterPlaybackErrors).
+    private readonly List<(Track Track, TimeSpan StartAt)> _errorSkippedTracks = new();
+
     private void OnPlaybackError(object? sender, string message)
     {
         DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError", $"msg={message}, track={CurrentTrack?.Title}");
@@ -2897,16 +3519,76 @@ public partial class PlayerViewModel : ViewModelBase
                 if (UnreachableRootHint(CurrentTrack?.FilePath, Directory.Exists) is { } hint)
                     DebugLog.Write("Audio", hint);
                 _consecutivePlaybackErrors = 0;
-                StopAndClear();
+                StopAfterPlaybackErrors("errorCascade");
                 return;
             }
 
             // Skip to next track on error
             if (UpNext.Count > 0)
+            {
+                if (CurrentTrack != null) _errorSkippedTracks.Add((CurrentTrack, Position));
                 AdvanceQueue(QueueAdvanceReason.Error);
+            }
             else
-                StopAndClear();
+                StopAfterPlaybackErrors("errorNoNext");
         });
+    }
+
+    /// <summary>
+    /// Ends an error run without wiping the session. StopAndClear here emptied the current
+    /// track, Up Next and History — and the next queue snapshot saved that, so a Play pressed
+    /// while the music drive was asleep or unplugged lost the whole queue for good. Stops on
+    /// the track the run started from, with the ones it skipped past back in Up Next, so Play
+    /// retries from there (at the position it was aimed at) once the files can be read again.
+    /// </summary>
+    private void StopAfterPlaybackErrors(string reason)
+    {
+        _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("player stopped");
+        CancelNaturalEndFallback();
+        MarkQueueChanged();
+        _audioPlayer.Stop();
+        State = PlaybackState.Stopped;
+
+        var resumeAt = Position;
+        int rewound = 0;
+        for (int i = _errorSkippedTracks.Count - 1; i >= 0; i--)
+        {
+            var (track, startAt) = _errorSkippedTracks[i];
+            // Only while it is still the newest History entry: a slow run can outlive a queue
+            // replacement or a Previous, and those tracks are no longer this run's to undo.
+            if (History.Count == 0 || !ReferenceEquals(History[0], track)) break;
+            History.RemoveAt(0);
+            if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+            if (CurrentTrack != null) UpNext.Insert(0, CurrentTrack);
+            CurrentTrack = track;
+            resumeAt = startAt;
+            rewound++;
+        }
+        _errorSkippedTracks.Clear();
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "StopAfterPlaybackErrors",
+            $"reason={reason}, track={CurrentTrack?.Id}, rewound={rewound}, upNext={UpNext.Count}, history={History.Count}");
+        if (CurrentTrack == null) return;
+
+        if (rewound > 0)
+        {
+            LoadAlbumArt(CurrentTrack);
+            Duration = CurrentTrack.Duration;
+            DurationText = FormatTime(CurrentTrack.Duration);
+        }
+        Position = resumeAt;
+        PositionText = FormatTime(resumeAt);
+        PositionFraction = Duration.TotalSeconds > 0 ? resumeAt.TotalSeconds / Duration.TotalSeconds : 0;
+        RemainingTimeText = FormatTime(Duration > resumeAt ? Duration - resumeAt : TimeSpan.Zero);
+        _resumePositionMs = resumeAt > TimeSpan.Zero ? (long)resumeAt.TotalMilliseconds : -1;
+        _resumeTrackId = CurrentTrack.Id;
+        if (CurrentTrack.RememberPlaybackPosition)
+        {
+            CurrentTrack.SavedPositionMs = (long)resumeAt.TotalMilliseconds;
+            MarkPlayStateDirty(CurrentTrack);
+        }
+        SaveQueueStateInBackground();
     }
 
     /// <summary>
@@ -2932,6 +3614,11 @@ public partial class PlayerViewModel : ViewModelBase
               "(or the music folder is re-added under its new drive letter).";
     }
 
+    /// <summary>Library publishes reconciled this session (UI thread only). The first
+    /// <see cref="ReconcileLogCap"/> are bracketed in the session log (#97).</summary>
+    private int _libraryReconcileCount;
+    private const int ReconcileLogCap = 20;
+
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
@@ -2944,57 +3631,130 @@ public partial class PlayerViewModel : ViewModelBase
             if (_library.IsPublishingPartial)
                 return;
 
+            // #97: a startup scan that found new albums ended the process with no managed
+            // exception logged. Only such a scan reconciles a restored track here (the load
+            // publish lands before the queue restore), and it runs while the scan thread
+            // writes its own [Scan] lines, so without these the journal's last line would
+            // blame whichever scan step was running. Always on, first few publishes only.
+            var reconcile = ++_libraryReconcileCount;
+            var log = reconcile <= ReconcileLogCap;
+            if (log)
+                DebugLog.Write("Player", $"library reconcile #{reconcile}: start " +
+                    $"(library={_library.Tracks.Count}, current={(CurrentTrack != null ? "set" : "none")})");
+            else if (reconcile == ReconcileLogCap + 1)
+                DebugLog.Write("Player", "library reconcile: later ones are not logged");
+
             // If library is now empty, stop playback and clear everything — unless dropped
             // files are playing from outside the library (GitHub #84); the prune below
             // then drops only the library entries.
             if (_library.Tracks.Count == 0 &&
                 CurrentTrack?.IsExternal != true && !UpNext.Any(t => t.IsExternal))
             {
-                StopAndClear();
+                StopAndClear("libraryEmpty");
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done (library empty)");
                 return;
             }
 
             // Clean up UpNext and History FIRST so that if we need to advance,
             // we only advance into tracks that still exist in the library.
             // External (dropped, non-library) tracks were never indexed — not "deleted".
-            var deletedTracks = UpNext.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
-            if (deletedTracks.Count > 0)
+            // One pass and one Reset per list: a Remove per deleted track was a linear search
+            // plus a queue-panel renumber each, thousands of them when a removed folder was
+            // under a whole-library shuffle.
+            var keptUpNext = UpNext.Where(t => t.IsExternal || _library.GetTrackById(t.Id) != null).ToList();
+            if (keptUpNext.Count != UpNext.Count)
             {
                 CancelAutoMixTransition("queue changed");
                 MarkQueueChanged();
+                UpNext.ReplaceAll(keptUpNext);
             }
-            foreach (var track in deletedTracks)
-                UpNext.Remove(track);
 
-            var deletedHistory = History.Where(t => !t.IsExternal && _library.GetTrackById(t.Id) == null).ToList();
-            foreach (var track in deletedHistory)
-                History.Remove(track);
+            var keptHistory = History.Where(t => t.IsExternal || _library.GetTrackById(t.Id) != null).ToList();
+            if (keptHistory.Count != History.Count)
+                History.ReplaceAll(keptHistory);
 
             // Check if current track was deleted
             if (CurrentTrack is { IsExternal: false } && _library.GetTrackById(CurrentTrack.Id) == null)
             {
+                DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrackRemoved",
+                    $"track={CurrentTrack.Id}, state={State}, upNext={UpNext.Count}, " +
+                    $"action={(UpNext.Count == 0 ? "stop" : State == PlaybackState.Playing ? "advance" : "load")}");
                 // Current track was deleted, skip to next or stop
-                if (UpNext.Count > 0)
+                if (UpNext.Count > 0 && State == PlaybackState.Playing)
                 {
-                    AdvanceQueue();
+                    // Not a natural end: Repeat One replayed the removed file and the
+                    // stop-after branch flagged Stopped over a track still playing. Move on
+                    // like a skip, but a pending stop-after (the sleep timer's end of track)
+                    // carries over to the track that now plays.
+                    var stopAfter = StopAfterCurrentTrack;
+                    AdvanceQueue(QueueAdvanceReason.UserSkip);
+                    if (stopAfter && State == PlaybackState.Playing)
+                        StopAfterCurrentTrack = true;
+                }
+                else if (UpNext.Count > 0)
+                {
+                    LoadNextWithoutPlaying();
                 }
                 else
                 {
-                    StopAndClear();
+                    StopAndClear("currentTrackRemoved");
                 }
             }
 
             // Reload album art in case artwork was changed via metadata editor
             if (CurrentTrack != null)
             {
+                // The decodes LoadAlbumArt starts run on the pool; "album art" brackets
+                // only its UI-thread part (cache hit, CurrentArtPath, animated cover).
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: album art");
                 LoadAlbumArt(CurrentTrack);
                 // Force converter-based bindings on CurrentTrack.* to re-evaluate
+                if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: CurrentTrack re-raise");
                 OnPropertyChanged(nameof(CurrentTrack));
             }
 
             // The playing track's album may have just been imported (or removed).
             ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+            if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done");
         });
+    }
+
+    /// <summary>
+    /// The paused or stopped current track left the library: stage the next queued track
+    /// the way a restored session is staged — loaded, Stopped, waiting for Play. Advancing
+    /// played it, so audio started by itself when a startup scan dropped the restored
+    /// track's moved file, or when a paused track's album was removed.
+    /// </summary>
+    private void LoadNextWithoutPlaying()
+    {
+        _seekDebounceTimer?.Dispose();
+        _seekDebounceTimer = null;
+        _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("current track removed");
+        CancelNaturalEndFallback();
+        _audioPlayer.Stop();
+
+        // Same pick as an advance: explicit tracks the filter blocks are passed over.
+        PruneBlockedExplicit();
+        if (UpNext.Count == 0)
+        {
+            StopAndClear("currentTrackRemoved");
+            return;
+        }
+
+        MarkQueueChanged();
+        var next = UpNext[0];
+        UpNext.RemoveAt(0);
+        _resumePositionMs = -1;
+        State = PlaybackState.Stopped;
+        CurrentTrack = next;
+        Duration = next.Duration;
+        DurationText = FormatTime(next.Duration);
+        RemainingTimeText = FormatTime(next.Duration);
+        Position = TimeSpan.Zero;
+        PositionFraction = 0;
+        PositionText = "0:00";
+        SaveQueueStateInBackground();
     }
 
     private static string FormatTime(TimeSpan ts)

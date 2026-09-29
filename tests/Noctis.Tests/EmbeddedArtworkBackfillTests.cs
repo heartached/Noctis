@@ -158,7 +158,44 @@ public class EmbeddedArtworkBackfillTests : IDisposable
         }
         finally
         {
+            // Its background init copies this test's "off" into the static mirror; let it
+            // finish first, or it lands in a later test's scan.
+            await library.BackgroundInit;
             MetadataService.UseEmbeddedArtwork = true;
+        }
+    }
+
+    [Fact]
+    public async Task BackfillMissingArtwork_AlbumWithNoPictureAnywhere_IsNamedInTheSessionLog()
+    {
+        // 09-24 "some covers don't load": REVIVE+ / JACKBOYS / I'VE MINE - EP were FLACs
+        // re-encoded without their picture block, in a folder with no cover image. The
+        // note placeholder was right; the session log now says so, so the next report
+        // can be answered from "Copy Logs" instead of the reporter's files.
+        const string album = "No Picture Anywhere";
+        var path = Path.Combine(_musicDir, "bare.wav");
+        using (var fs = File.Create(path))
+            SilentWavFile.Write(fs, seconds: 1, sampleRate: 8000, channels: 1);
+        using (var f = TagLib.File.Create(path))
+        {
+            f.Tag.Album = album;
+            f.Tag.Performers = new[] { "Backfill Artist" };
+            f.Save();
+        }
+        var track = MakeTrack(path, album);
+        var (library, persistence) = MakeLibrary(track);
+        using (persistence)
+        {
+            await library.LoadAsync();
+            var expected = $"no embedded picture and no folder cover image: {album} — Backfill Artist";
+            for (var i = 0; i < 100 && !DebugLog.Snapshot().Contains(expected); i++)
+            {
+                await library.BackfillMissingArtworkAsync();
+                await Task.Delay(50);
+            }
+
+            Assert.Contains(expected, DebugLog.Snapshot());
+            Assert.False(File.Exists(persistence.GetArtworkPath(track.AlbumId)));
         }
     }
 

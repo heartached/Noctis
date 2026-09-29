@@ -137,12 +137,15 @@ public class ArtistDetailViewMountTests
             .Count(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible);
         Assert.Equal(1, tiles);
 
-        // Songs tab: every song, ranked; the first slice lands synchronously.
+        // Songs tab: every song, ranked; the list is virtualized (09-24), so only the rows
+        // inside the viewport are realized.
         vm.SelectTabCommand.Execute("songs");
         Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+        Assert.Equal(23, vm.AllSongs.Count);
         var songRows = view.FindControl<StackPanel>("SongsPanel")!
-            .GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("song-row"));
-        Assert.Equal(23, songRows);
+            .GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("song-row") && b.IsEffectivelyVisible);
+        Assert.InRange(songRows, 1, 22);
     }
 
     // -- Song-row hover (09-14): the rows used to set Button.Background on :pointerover,

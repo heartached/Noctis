@@ -32,6 +32,18 @@ public class Playlist
     /// <summary>Sidebar folder name. Empty = not in a folder.</summary>
     public string Folder { get; set; } = string.Empty;
 
+    /// <summary>Sidebar position of this playlist's folder once folders have been dragged
+    /// into an order (1 = top). 0 = never ordered: such folders stay alphabetical, after
+    /// the ordered ones. Every playlist in a folder carries the same value.</summary>
+    public int FolderOrder { get; set; }
+
+    /// <summary>Sidebar position of this playlist's top-level entry (its folder, or the
+    /// playlist itself when it is in none) among the folders and loose playlists, once one
+    /// of them has been dragged (1 = top). 0 = never placed: such entries keep the old
+    /// layout after the placed ones (folders by FolderOrder, then loose playlists in saved
+    /// order). Every playlist in a folder carries the same value.</summary>
+    public int SidebarOrder { get; set; }
+
     /// <summary>View sort for the playlist page, stored as a PlaylistSortMode enum name
     /// ("Manual" = saved order). A string so the model stays decoupled from the
     /// view-model enum; unknown values fall back to Manual at parse time.</summary>

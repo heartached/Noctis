@@ -36,9 +36,27 @@ public static class MetadataHelper
     public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
-        var service = App.Services!.GetRequiredService<IReplayGainScannerService>();
-        var library = App.Services!.GetRequiredService<ILibraryService>();
-        var vm = new ReplayGainScannerViewModel(tracks, service, library);
+        var services = App.Services!;
+        var service = services.GetRequiredService<IReplayGainScannerService>();
+        var library = services.GetRequiredService<ILibraryService>();
+        var metadata = services.GetRequiredService<IMetadataService>();
+        var persistence = services.GetRequiredService<IPersistenceService>();
+        var player = services.GetRequiredService<IAudioPlayer>();
+
+        // "Add files…" resolves a picked path to its library entry when indexed, else
+        // reads it the way a dropped external file is read. Snapshot the path index on
+        // the UI thread: the resolver runs on the thread pool, and _library.Tracks is
+        // mutated on the UI thread.
+        var byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in library.Tracks)
+            byPath[t.FilePath] = t;
+        Track? Resolve(string path) =>
+            byPath.TryGetValue(path, out var known) ? known : ExternalTrackReader.Read(metadata, persistence, path);
+
+        var vm = new ReplayGainScannerViewModel(tracks, service, library, Resolve);
+        // The player caches the playing file's ReplayGain tags; re-read them so a queue
+        // scanned mid-playback is levelled right away, not from the next track on.
+        vm.ScanCompleted += (_, _) => player.ReloadReplayGainTags();
         var window = new ReplayGainScannerDialog(vm);
         await ShowDialogOwned(window);
     }
@@ -203,6 +221,14 @@ public static class MetadataHelper
     /// tracks: blank artwork, "N artists / M songs selected" header, Mixed fields, and
     /// edits that fan out to every selected track.
     /// </summary>
+    /// <summary>Lists the user's saved EQ presets in the Options tab (GitHub #95). Must run
+    /// before the window binds: swapping a ComboBox's ItemsSource later nulls its selection.</summary>
+    private static void AddUserEqPresets(MetadataViewModel vm)
+    {
+        if (App.Services!.GetService<MainWindowViewModel>() is { } main)
+            vm.SetUserEqPresets(main.Settings.UserEqPresetNames);
+    }
+
     public static async Task OpenMultiTrackMetadataWindow(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -218,6 +244,7 @@ public static class MetadataHelper
         var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
             albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true,
             autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
+        AddUserEqPresets(vm);
 
         var window = new MetadataWindow(vm);
         await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
@@ -247,6 +274,7 @@ public static class MetadataHelper
         var itunes = App.Services!.GetService<ITunesArtworkService>();
         var lrcLib = App.Services!.GetService<ILrcLibService>();
         var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib, autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
+        AddUserEqPresets(vm);
 
         vm.AnimatedCoverChanging += (_, _) =>
         {

@@ -82,6 +82,7 @@ public static class TtmlParser
         // Lines come from the body only — header metadata never renders or reaches the plain text.
         foreach (var p in root.Descendants().Where(e => LocalNameIs(e, "p") && !IsInHead(e)))
         {
+            if (lines.Count >= EnhancedLrcParser.MaxLyricLines) break;
             var line = ParseLine(p, ignoreFormattingWhitespace);
             if (line != null)
             {
@@ -143,6 +144,12 @@ public static class TtmlParser
 
         var lineText = text.ToString().Trim();
         var bgLineText = bgText.ToString().Trim();
+
+        // Too many words to be a real karaoke line (each realizes its own cell): keep the
+        // text, drop word timing. An oversized background row is dropped, as in
+        // EnhancedLrcParser.AppendBackground.
+        if (words.Count > EnhancedLrcParser.MaxWordsPerLine) words.Clear();
+        if (bgWords.Count > EnhancedLrcParser.MaxWordsPerLine) bgWords.Clear();
 
         // Background-only paragraph (entire <p> is an x-bg span): keep it — it renders
         // as just the small bg row; its Text feeds the Unsync tab.
@@ -241,7 +248,7 @@ public static class TtmlParser
         {
             var (text, words) = CollectLayer(transliteration, ignoreFormattingWhitespace);
             if (text.Length > 0) line.Transliteration = text;
-            if (words.Count > 0)
+            if (words.Count > 0 && words.Count <= EnhancedLrcParser.MaxWordsPerLine)
             {
                 var finished = FinishWords(words, line.EndTimestamp);
                 line.TransliterationEndTimestamp = finished[^1].End;

@@ -5824,10 +5824,6 @@
     <value>가사 스튜디오</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>녹음에 맞춰 가사를 타이밍하거나, 가사가 없으면 받아 적습니다.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>모델</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>듣고 받아 적기 (기존 가사 무시)</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>곡에 이미 가사가 있어도 음성 모델이 곡을 듣고 직접 가사를 씁니다. 가사가 없는 곡은 항상 받아 적습니다.</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>가사가 없는 곡은 온라인에서 찾기</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>먼저 LRCLIB에서 일반 가사를 가져와 모델은 타이밍만 맞춥니다. 끄면 모델이 듣고 가사를 씁니다.</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>모델 다운로드</value>

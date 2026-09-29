@@ -1,0 +1,15 @@
+{
+  "id": "dev.noctis.samples.contentpack",
+  "name": "Sample Content Pack",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Two themes (Dusk and Paper), a lyrics-page preset and an English pseudo-locale. Reference content pack.",
+  "type": "content",
+  "minAppVersion": "1.5.3",
+  "homepage": "https://github.com/heartached/Noctis/tree/main/samples/Noctis.ContentPack.Sample",
+  "contents": {
+    "themes": ["themes/dusk.json", "themes/paper.json"],
+    "lyricsPresets": ["lyrics/karaoke.json"],
+    "languages": ["languages/en-XA.json"]
+  }
+}

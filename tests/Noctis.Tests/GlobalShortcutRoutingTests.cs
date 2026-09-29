@@ -176,4 +176,54 @@ public class GlobalShortcutRoutingTests
         Assert.Equal(1, fired);
         Assert.Equal("p", box.Text);
     }
+
+    /// <summary>
+    /// Ctrl+←/→ are the default Previous / Next keys, and also the TextBox word jumps. The
+    /// tunnel handler used to exempt only unmodified keys from edit boxes, so Ctrl+← in the
+    /// search box or the Lyrics Studio editor skipped the track and the caret never moved.
+    /// The same handler as MainWindow: caret keys stay with the TextBox, the shortcut still
+    /// fires everywhere else, and Ctrl+U (no editing key) still works from the box.
+    /// </summary>
+    [AvaloniaFact]
+    public void DefaultCtrlArrows_MoveCaretByWordInTextBox_AndSkipTracksElsewhere()
+    {
+        var shortcuts = new ShortcutService(isMac: false);
+        var button = new Button { Content = "Seek here" };
+        var box = new TextBox { Text = "hello world" };
+        var window = new Window { Width = 400, Height = 300, Content = new StackPanel { Children = { button, box } } };
+        var fired = new List<ShortcutAction>();
+
+        window.AddHandler(
+            InputElement.KeyDownEvent,
+            (object? _, KeyEventArgs e) =>
+            {
+                if (shortcuts.TryMatch(e) is not { } action) return;
+                if (e.Source is TextBox && ShortcutDefaults.IsTextBoxKey(e.Key, e.KeyModifiers)) return;
+                fired.Add(action);
+                e.Handled = true;
+            },
+            RoutingStrategies.Tunnel);
+
+        window.Show();
+        box.Focus();
+        box.CaretIndex = box.Text!.Length;
+
+        window.KeyPressQwerty(PhysicalKey.ArrowLeft, RawInputModifiers.Control);
+        window.KeyReleaseQwerty(PhysicalKey.ArrowLeft, RawInputModifiers.Control);
+        Assert.Empty(fired);
+        Assert.Equal(6, box.CaretIndex);   // start of "world"
+
+        window.KeyPressQwerty(PhysicalKey.ArrowUp, RawInputModifiers.Control);
+        window.KeyReleaseQwerty(PhysicalKey.ArrowUp, RawInputModifiers.Control);
+        Assert.Empty(fired);
+
+        window.KeyPressQwerty(PhysicalKey.U, RawInputModifiers.Control);
+        window.KeyReleaseQwerty(PhysicalKey.U, RawInputModifiers.Control);
+        Assert.Equal(new[] { ShortcutAction.ToggleQueue }, fired);
+
+        button.Focus();
+        window.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.Control);
+        window.KeyReleaseQwerty(PhysicalKey.ArrowRight, RawInputModifiers.Control);
+        Assert.Equal(new[] { ShortcutAction.ToggleQueue, ShortcutAction.NextTrack }, fired);
+    }
 }

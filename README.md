@@ -148,14 +148,21 @@ Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - [x] English, Arabic, French, Japanese, Korean, Spanish, Simplified Chinese and Traditional Chinese
 - [x] Switch language from Settings without a restart
 
-### Plugins
-
-- [x] Plugin system with an SDK (`Noctis.Plugins.Abstractions`) and a sample plugin under `plugins/`
-- [x] Each plugin loads in its own context, so one that fails is contained
-
 <p align="center">
   <img src="docs/images/discord.png" width="380" alt="Discord Rich Presence" />
 </p>
+
+---
+
+## Plugins
+
+Noctis can be extended three ways, from safest to most powerful:
+
+- **Content packs**: themes, lyrics presets and languages as plain JSON, with no code. They keep working in restricted mode. See [Content packs](docs/PLUGINS.md#content-packs).
+- **Local API**: HTTP + JSON on 127.0.0.1 for Stream Deck buttons, OBS overlays and scripts in any language. Nothing runs inside Noctis. See the [Local API reference](docs/LOCAL-API.md).
+- **Plugins**: .NET libraries built on the `Noctis.Plugins.Abstractions` SDK, with a `plugin.json` manifest and permissions, installed from a .zip. See the [plugin guide](docs/PLUGINS.md).
+
+Community plugins start off (restricted mode) and ask for approval before they run. Sample plugins, a sample content pack and Local API examples are in [`samples/`](samples/).
 
 ---
 

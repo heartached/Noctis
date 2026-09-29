@@ -6,8 +6,9 @@ namespace Noctis.Services;
 /// <summary>
 /// Applies tag-derived file moves and supports undo. Planning is delegated to the pure
 /// <see cref="FileOrganizePlanner"/>; this service owns the side effects: moving files,
-/// relocating tracks in the library, remapping playlist references, and persisting an
-/// undo log per applied batch under <c>%APPDATA%\Noctis\organize_undo\</c>.
+/// relocating tracks in the library, reporting their id changes (the caller remaps the
+/// live playlists), and persisting an undo log per applied batch under
+/// <c>%APPDATA%\Noctis\organize_undo\</c>.
 /// </summary>
 public sealed class FileOrganizerService : IFileOrganizerService
 {
@@ -98,8 +99,8 @@ public sealed class FileOrganizerService : IFileOrganizerService
     }
 
     /// <summary>
-    /// Moves files off the UI thread, then relocates the tracks + remaps playlists for the
-    /// moves that actually succeeded. Optionally records an undo log for the applied set.
+    /// Moves files off the UI thread, then relocates the tracks for the moves that actually
+    /// succeeded and returns their id remap. Optionally records an undo log for the applied set.
     /// </summary>
     private Task<OrganizeResult> RunAsync(
         List<(string From, string To)> moves, int skipped, bool writeUndoLog, CancellationToken ct)
@@ -134,11 +135,11 @@ public sealed class FileOrganizerService : IFileOrganizerService
             }
         }
 
+        IReadOnlyDictionary<Guid, Guid> remap = new Dictionary<Guid, Guid>();
         if (done.Count > 0)
         {
-            var remap = await _library.RelocateTracksAsync(
+            remap = await _library.RelocateTracksAsync(
                 done.Select(d => (d.From, d.To)).ToList(), ct);
-            await RemapPlaylistsAsync(remap);
 
             if (writeUndoLog)
                 await WriteUndoLogAsync(done, ct);
@@ -148,34 +149,10 @@ public sealed class FileOrganizerService : IFileOrganizerService
 
         return new OrganizeResult(done.Count, skipped, errors.Count, errors)
         {
-            RestoredPaths = done.Select(d => d.From).ToList()
+            RestoredPaths = done.Select(d => d.From).ToList(),
+            TrackIdRemap = remap
         };
     }, ct);
-
-    private async Task RemapPlaylistsAsync(IReadOnlyDictionary<Guid, Guid> remap)
-    {
-        if (remap.Count == 0) return;
-
-        var playlists = await _persistence.LoadPlaylistsAsync();
-        var anyChanged = false;
-        foreach (var pl in playlists)
-        {
-            if (pl.TrackIds.Count == 0) continue;
-            var changed = false;
-            for (var i = 0; i < pl.TrackIds.Count; i++)
-            {
-                if (remap.TryGetValue(pl.TrackIds[i], out var newId))
-                {
-                    pl.TrackIds[i] = newId;
-                    changed = true;
-                }
-            }
-            if (changed) { pl.ModifiedAt = DateTime.UtcNow; anyChanged = true; }
-        }
-
-        if (anyChanged)
-            await _persistence.SavePlaylistsAsync(playlists);
-    }
 
     private async Task WriteUndoLogAsync(IReadOnlyList<(string From, string To)> done, CancellationToken ct)
     {

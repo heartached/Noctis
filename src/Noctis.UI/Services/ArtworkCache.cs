@@ -207,6 +207,7 @@ public static class ArtworkCache
             if (Cache.TryRemove(BuildKey(path, width), out var removed))
                 OnEntryRemoved(removed);
         }
+        ArtworkThumbnailCache.Invalidate(path);
         Invalidated?.Invoke(path);
     }
 
@@ -249,8 +250,9 @@ public static class ArtworkCache
             {
                 // Not Bitmap.DecodeToWidth(Stream): that path rents a file-sized buffer
                 // from ArrayPool<byte>.Shared per decode, and the pool kept 224 MB of
-                // them after one screen of covers. Skia reads the file itself here.
-                using var decoded = Helpers.SkiaArtworkDecoder.DecodeToWidth(path, width);
+                // them after one screen of covers. Skia reads the file itself here, or
+                // the downscaled copy the thumbnail cache kept from an earlier decode.
+                using var decoded = ArtworkThumbnailCache.DecodeToWidth(path, width);
                 bitmap = decoded is null ? null : Helpers.SkiaArtworkDecoder.ToAvaloniaBitmap(decoded);
             }
             if (bitmap is null)

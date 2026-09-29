@@ -68,6 +68,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         PlaylistSortMode.ReleaseDateOldest => "Release Date (Oldest)",
         PlaylistSortMode.ReleaseDateNewest => "Release Date (Newest)",
         PlaylistSortMode.Badge => "Badge",
+        PlaylistSortMode.DateModifiedNewest => "Date Modified (Newest)",
+        PlaylistSortMode.DateModifiedOldest => "Date Modified (Oldest)",
         _ => "Manual"
     };
 
@@ -257,6 +259,16 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             || Noctis.Helpers.SearchText.Matches(track.Album, query);
     }
 
+    /// <summary><see cref="MatchesSearch(Track, string)"/> against the track's cached search keys,
+    /// with <paramref name="queryKey"/> = SearchText.Normalize(query) computed once per scan.</summary>
+    public static bool MatchesSearch(Track track, string query, string queryKey)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        return Noctis.Helpers.SearchText.Matches(track.Title, track.SearchTitleKey, query, queryKey)
+            || Noctis.Helpers.SearchText.Matches(track.Artist, track.SearchArtistKey, query, queryKey)
+            || Noctis.Helpers.SearchText.Matches(track.Album, track.SearchAlbumKey, query, queryKey);
+    }
+
     [RelayCommand]
     private void SetSort(string mode)
     {
@@ -293,6 +305,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                 .OrderBy(IsUndated).ThenByDescending(ReleaseKey)
                 .ThenByDescending(t => t.Album, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
+            // GitHub #89: file last-write time; Title keeps same-timestamp tracks
+            // (a batch retag) in a stable order in both directions.
+            PlaylistSortMode.DateModifiedNewest => tracks
+                .OrderByDescending(t => t.LastModified)
+                .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase).ToList(),
+            PlaylistSortMode.DateModifiedOldest => tracks
+                .OrderBy(t => t.LastModified)
+                .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase).ToList(),
             _ => tracks
         };
     }
@@ -655,7 +675,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task RemoveTrack(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        // Smart playlist contents come from its rules, not TrackIds: the row would just
+        // come back on the next reload.
+        if (IsSmartPlaylist) return;
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
         {
             var displayIdx = Tracks.IndexOf(t);
@@ -787,7 +810,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -795,9 +818,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
-        if (CtrlSelectedTracks.Count > 1)
+        var sel = SelectionOr(track);
+        if (sel.Count > 1)
         {
-            var sel = CtrlSelectedTracks.ToList();
             CtrlSelectedTracks.Clear();
             await MetadataHelper.OpenBatchMetadataWindow(sel);
         }
@@ -810,7 +833,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ConvertTracks(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
@@ -818,7 +841,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ScanReplayGain(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenReplayGainScannerDialog(tracks);
     }
@@ -826,7 +849,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var tracks = SelectionOr(track);
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
         await _library.SaveTrackUserStateAsync(tracks);
@@ -1036,7 +1059,12 @@ public enum PlaylistSortMode
     ReleaseDateNewest,
 
     /// <summary>GitHub #74: grouped by the user badge (A→Z), unbadged tracks last.</summary>
-    Badge
+    Badge,
+
+    /// <summary>GitHub #89: by the file's last-modified time, one mode per direction
+    /// like ReleaseDate*. Appended so saved sort names stay valid.</summary>
+    DateModifiedNewest,
+    DateModifiedOldest
 }
 
 public partial class PlaylistFeaturedArtist : ObservableObject

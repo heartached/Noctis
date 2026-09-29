@@ -36,6 +36,8 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     private readonly Dictionary<string, int> _importAttempts = new(PathComparison.Comparer);
     private System.Threading.Timer? _flushTimer;
     private bool _disposed;
+    // Guarded by _gate: a watcher setup error was already logged during the current rebuild.
+    private bool _setupErrorLogged;
 
     public LibraryWatcherService(ILibraryService library, Func<AppSettings> settingsAccessor)
     {
@@ -48,14 +50,27 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     {
         if (_disposed) return;
 
-        AppSettings settings;
-        try { settings = _settingsAccessor() ?? new AppSettings(); }
-        catch { return; }
+        // Rebuild on the thread pool: callers include the UI thread (launch, music-folder
+        // changes, the Watch Folders toggle), and on Linux enabling a recursive watcher
+        // walks the whole folder tree on the calling thread (one inotify watch per
+        // directory), which takes seconds on a cold disk or a network mount.
+        _ = Task.Run(RebuildWatchers);
+    }
 
+    private void RebuildWatchers()
+    {
         lock (_gate)
         {
             if (_disposed) return;
+
+            // Read under the lock so overlapping rebuilds, which may run in any order,
+            // all settle on the latest folder set and toggle state.
+            AppSettings settings;
+            try { settings = _settingsAccessor() ?? new AppSettings(); }
+            catch { return; }
+
             DisposeWatchers();
+            _setupErrorLogged = false;
 
             if (!settings.WatchFoldersEnabled) return;
 
@@ -256,6 +271,21 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         var ex = e.GetException();
         DebugLogger.Error(DebugLogger.Category.Error, "LibraryWatcher",
             $"watcher error: {ex?.Message}");
+
+        // On Linux a folder that can't be watched (inotify watch limit reached, unreadable
+        // subfolder) raises Error synchronously from inside EnableRaisingEvents, i.e. on the
+        // rebuild thread that holds _gate, once per failing folder. A rebuild hits the same
+        // errors again, so rebuilding for them queued rebuilds without end. Keep the
+        // partially working watchers instead and say why once per rebuild.
+        if (Monitor.IsEntered(_gate))
+        {
+            if (!_setupErrorLogged)
+            {
+                _setupErrorLogged = true;
+                DebugLog.Write("LibraryWatcher", $"Some folders can't be watched: {ex?.Message}");
+            }
+            return;
+        }
 
         // Rebuild the watcher set.
         Refresh();

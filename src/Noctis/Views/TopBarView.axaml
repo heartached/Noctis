@@ -64,6 +64,19 @@
                        FontSize="22"
                        FontWeight="Bold" />
 
+            <!-- "Beta" pill next to the title of sections still in beta (Lyrics Studio). -->
+            <!-- Small, 8 px from the title, centred on its capitals (checked in a render, 09-24).
+                 1.5 px rim like the app's other pill outlines: a 1 px rim at 125 % scaling lands on
+                 1.25 device px and the rounded ends read thin/broken. -->
+            <Border IsVisible="{Binding IsBetaPage}"
+                    CornerRadius="999" Padding="6,0,6,1" Margin="-8,1,0,0"
+                    BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="1.5"
+                    UseLayoutRounding="True" VerticalAlignment="Center">
+                <TextBlock Text="{loc:T LyricsStudio.Beta}" FontSize="9" FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AccentColorBrush}" />
+            </Border>
+
             <!-- Songs page: "2,144 songs · 138 hours" summary next to the title -->
             <TextBlock Text="{Binding SongsSummaryText}"
                        IsVisible="{Binding SongsFiltersVisible}"

@@ -270,7 +270,8 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
         return null;
     }
 
-    private static (bool ok, string error) WriteReplayGainTags(
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static (bool ok, string error) WriteReplayGainTags(
         string filePath, double trackGainDb, double trackPeakLinear, double? albumGainDb, double? albumPeakLinear)
     {
         // ReplayGain 2.0 standard tag keys: dB suffix on gain, linear (0..1+) peak.
@@ -287,20 +288,25 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
         {
             try
             {
-                using var file = TagLib.File.Create(filePath);
-
-                // AdvancedTagIO.WriteCustomField writes to whichever tag the file carries —
-                // ID3v2 (mp3), Xiph (flac/ogg/opus), and MP4 freeform atoms (m4a/alac/aac) —
-                // so ReplayGain now works for every format the app supports, not just mp3/flac.
-                AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_GAIN", Gain(trackGainDb));
-                AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_PEAK", Peak(trackPeakLinear));
-                if (albumGainDb.HasValue)
+                // Temp copy + atomic rename, like every other tag write in the app: an
+                // in-place file.Save() on Linux/macOS corrupts the player's open read of
+                // the track being scanned (the audio stops early while the clock keeps
+                // ticking — "songs don't end properly after ReplayGain").
+                MetadataService.SaveTagsAtomicallyOrThrow(filePath, file =>
                 {
-                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_GAIN", Gain(albumGainDb.Value));
-                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_PEAK", Peak(albumPeakLinear ?? 0.0));
-                }
-
-                file.Save();
+                    // AdvancedTagIO.WriteCustomField writes to whichever tag the file carries —
+                    // ID3v2 (mp3), Xiph (flac/ogg/opus), and MP4 freeform atoms (m4a/alac/aac) —
+                    // so ReplayGain now works for every format the app supports, not just mp3/flac.
+                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_GAIN", Gain(trackGainDb));
+                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_PEAK", Peak(trackPeakLinear));
+                    if (albumGainDb.HasValue)
+                    {
+                        AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_GAIN", Gain(albumGainDb.Value));
+                        AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_PEAK", Peak(albumPeakLinear ?? 0.0));
+                    }
+                    // Only the gain values change: no new ID3v1 trailer on an MP3 that had none.
+                    AdvancedTagIO.RemoveAddedForeignTags(file);
+                });
                 return (true, string.Empty);
             }
             catch (System.IO.IOException ex)

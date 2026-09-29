@@ -41,6 +41,13 @@ public class QueueState
     /// the desktop player writes its own QueueState and simply leaves this empty.
     /// </summary>
     public List<Guid> OriginalOrderIds { get; set; } = new();
+
+    /// <summary>
+    /// GitHub #86: file path of every queued track that is not in the library (dropped or
+    /// opened with "Import dropped files" off). Their Ids are minted per session, so the
+    /// Id lists alone could never resolve them on the next launch. Null in older files.
+    /// </summary>
+    public Dictionary<Guid, string>? ExternalTrackPaths { get; set; }
 }
 
 /// <summary>

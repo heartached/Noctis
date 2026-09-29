@@ -10,9 +10,9 @@ public class PlaylistSortTests
 {
     private static List<Track> Sample() => new()
     {
-        new() { Title = "Cherry", Artist = "Beta", Album = "Zed",   Duration = TimeSpan.FromSeconds(200), DateAdded = new DateTime(2026, 1, 1) },
-        new() { Title = "Apple",  Artist = "Alpha", Album = "Yarn", Duration = TimeSpan.FromSeconds(100), DateAdded = new DateTime(2026, 3, 1) },
-        new() { Title = "Banana", Artist = "Gamma", Album = "Xyz",  Duration = TimeSpan.FromSeconds(300), DateAdded = new DateTime(2026, 2, 1) },
+        new() { Title = "Cherry", Artist = "Beta", Album = "Zed",   Duration = TimeSpan.FromSeconds(200), DateAdded = new DateTime(2026, 1, 1), LastModified = new DateTime(2026, 5, 1) },
+        new() { Title = "Apple",  Artist = "Alpha", Album = "Yarn", Duration = TimeSpan.FromSeconds(100), DateAdded = new DateTime(2026, 3, 1), LastModified = new DateTime(2025, 5, 1) },
+        new() { Title = "Banana", Artist = "Gamma", Album = "Xyz",  Duration = TimeSpan.FromSeconds(300), DateAdded = new DateTime(2026, 2, 1), LastModified = new DateTime(2026, 8, 1) },
     };
 
     [Fact]
@@ -49,6 +49,49 @@ public class PlaylistSortTests
     {
         var result = PlaylistViewModel.SortTracks(Sample(), PlaylistSortMode.RecentlyAdded);
         Assert.Equal(new[] { "Apple", "Banana", "Cherry" }, result.Select(t => t.Title));
+    }
+
+    // ── date modified (GitHub #89) ───────────────────────────────────
+
+    [Fact]
+    public void SortTracks_DateModifiedNewest_NewestFileFirst()
+    {
+        var result = PlaylistViewModel.SortTracks(Sample(), PlaylistSortMode.DateModifiedNewest);
+        Assert.Equal(new[] { "Banana", "Cherry", "Apple" }, result.Select(t => t.Title));
+    }
+
+    [Fact]
+    public void SortTracks_DateModifiedOldest_OldestFileFirst()
+    {
+        var result = PlaylistViewModel.SortTracks(Sample(), PlaylistSortMode.DateModifiedOldest);
+        Assert.Equal(new[] { "Apple", "Cherry", "Banana" }, result.Select(t => t.Title));
+    }
+
+    [Theory]
+    [InlineData(PlaylistSortMode.DateModifiedNewest)]
+    [InlineData(PlaylistSortMode.DateModifiedOldest)]
+    public void SortTracks_DateModified_TiesBreakByTitle(PlaylistSortMode mode)
+    {
+        var stamp = new DateTime(2026, 1, 1);
+        var tracks = new List<Track>
+        {
+            new() { Title = "Zulu",  LastModified = stamp },
+            new() { Title = "Alpha", LastModified = stamp },
+        };
+
+        var result = PlaylistViewModel.SortTracks(tracks, mode);
+        Assert.Equal(new[] { "Alpha", "Zulu" }, result.Select(t => t.Title));
+    }
+
+    [Theory]
+    [InlineData("DateModifiedNewest", PlaylistSortMode.DateModifiedNewest)]
+    [InlineData("DateModifiedOldest", PlaylistSortMode.DateModifiedOldest)]
+    public void DateModifiedModes_RoundTripByName(string saved, PlaylistSortMode expected)
+    {
+        // Playlist.SortMode persists the enum name; the menu's CommandParameter uses it too.
+        Assert.True(Enum.TryParse<PlaylistSortMode>(saved, ignoreCase: true, out var parsed));
+        Assert.Equal(expected, parsed);
+        Assert.Equal(saved, expected.ToString());
     }
 
     // ── release date ─────────────────────────────────────────────────

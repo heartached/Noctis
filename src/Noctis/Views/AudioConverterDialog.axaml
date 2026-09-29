@@ -163,6 +163,14 @@
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="220">
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Jobs}">
+                                    <!-- Virtualized like the ReplayGain queue: Jobs holds one entry per
+                                         selected track, so a Ctrl+A selection built every row on the UI
+                                         thread the moment the dialog opened. -->
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:AudioConverterViewModel+JobRow">
                                             <Grid ColumnDefinitions="*,Auto" Margin="0,2">

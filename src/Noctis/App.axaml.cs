@@ -25,7 +25,8 @@ public partial class App : Application
     public static bool LaunchedAtStartup { get; set; }
 
     /// <summary>Audio files passed on this launch's command line ("Open with
-    /// Noctis"), consumed by the main window once the player is ready.</summary>
+    /// Noctis"), or opened through macOS's open-documents event before startup
+    /// finished, consumed by the main window once the player is ready.</summary>
     public static IReadOnlyList<string> PendingOpenFiles { get; set; } = Array.Empty<string>();
 
     /// <summary>True when the autostart entry additionally requested a minimized (tray)
@@ -101,10 +102,47 @@ public partial class App : Application
         Noctis.Helpers.ComboBoxDropDownAnimator.Install();
     }
 
+    /// <summary>
+    /// For "scrolling is choppy" reports, which only reproduce on the reporter's machine.
+    /// Scroll frames repaint the whole page, and on the software renderer that raster is
+    /// the frame cost (a 5-column Albums page measured ~11 ms/frame on a fast core, far more
+    /// with Liquid Glass on), so the session log (Developer Mode → Copy Logs) records which
+    /// renderer this machine got. NOCTIS_RENDER_OVERLAY=1 draws Avalonia's own FPS, layout
+    /// and render time graphs over the window to see the per-frame costs live.
+    /// </summary>
+    private static void AttachRenderDiagnostics(Window window)
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_RENDER_OVERLAY") == "1")
+            window.RendererDiagnostics.DebugOverlays = Avalonia.Rendering.RendererDebugOverlays.Fps
+                | Avalonia.Rendering.RendererDebugOverlays.LayoutTimeGraph
+                | Avalonia.Rendering.RendererDebugOverlays.RenderTimeGraph;
+
+        async void LogRenderer(object? sender, EventArgs e)
+        {
+            window.Opened -= LogRenderer;
+            try
+            {
+                // GPU backends (ANGLE/D3D11, Vulkan) expose GPU interop; the software renderer does not.
+                var compositor = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(window)?.Compositor;
+                var interop = compositor == null ? null : await compositor.TryGetCompositionGpuInterop();
+                DebugLog.Write("Startup", interop != null
+                    ? $"renderer: GPU ({interop.GetType().Name})"
+                    : "renderer: software (no GPU interop) — scroll frames are rasterized on the CPU");
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Startup", $"renderer: unknown ({ex.Message})");
+            }
+        }
+        window.Opened += LogRenderer;
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
         // The core rewrites cover files without knowing about the UI's bitmap cache.
         global::Noctis.Services.LibraryService.ArtworkFileReplaced += global::Noctis.Services.ArtworkCache.Invalidate;
+        // Downscaled cover decodes kept on disk: a 3000px cover is decoded at full size once.
+        ArtworkThumbnailCache.Enable(System.IO.Path.Combine(Noctis.Helpers.AppPaths.DataRoot, "cache", "artwork_thumbs"));
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             Noctis.Services.StartupTrace.Mark("avalonia-initialized");
@@ -138,6 +176,7 @@ public partial class App : Application
             }
 
             desktop.MainWindow = mainWindow;
+            AttachRenderDiagnostics(mainWindow);
 
             // Background BPM/key analysis: kick a backfill pass after each library
             // update (initial scan, incremental rescans, imports), plus one now to
@@ -233,6 +272,13 @@ public partial class App : Application
     /// </summary>
     public Func<string, Noctis.Models.CustomThemeDefinition?>? CustomThemeResolver { get; set; }
 
+    /// <summary>Theme names from content packs: "Pack:&lt;pack id&gt;/&lt;theme id&gt;".</summary>
+    public const string PackThemePrefix = "Pack:";
+
+    /// <summary>Resolves the part after <see cref="PackThemePrefix"/> to a content-pack theme
+    /// (registered by SettingsViewModel over the plugin host's content catalog).</summary>
+    public Func<string, Noctis.Services.Plugins.PackTheme?>? PackThemeResolver { get; set; }
+
     /// <summary>
     /// Switches the application theme at runtime. Light-variant themes (see
     /// <see cref="IsLightVariantTheme"/>) run on the Light dictionary, every other theme on
@@ -316,6 +362,30 @@ public partial class App : Application
                 return;
             }
             // Unknown id falls through to default handling (Gray).
+            themeName = ThemeGray;
+        }
+
+        // Content-pack themes: pure data (colours for whitelisted keys), expanded the same way
+        // as custom themes. A pack that was switched off or removed falls back to Gray.
+        if (themeName != null && themeName.StartsWith(PackThemePrefix, StringComparison.Ordinal))
+        {
+            var theme = PackThemeResolver?.Invoke(themeName.Substring(PackThemePrefix.Length));
+            if (theme != null)
+            {
+                var resources = Noctis.Services.Plugins.PackThemeBuilder.Build(theme);
+                RequestedThemeVariant = theme.IsLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+                var rd = new Avalonia.Controls.ResourceDictionary();
+                foreach (var (key, value) in resources)
+                {
+                    if (key.StartsWith("__")) continue;
+                    rd[key] = value;
+                }
+                Resources.MergedDictionaries.Add(rd);
+                _activeCustomOverlay = rd;
+                // The user's accent (seeded from the theme's accent when it was picked) wins.
+                SetAccent(_activeAccentHex ?? theme.AccentHex);
+                return;
+            }
             themeName = ThemeGray;
         }
 

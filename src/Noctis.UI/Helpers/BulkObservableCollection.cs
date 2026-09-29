@@ -38,4 +38,24 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
+
+    /// <summary>
+    /// Appends multiple items to the end, firing a single Add event that carries them all
+    /// and their starting index. Unlike <see cref="AddRange"/>'s Reset, an ItemsControl keeps
+    /// the containers it already has and only realizes the new items: a list filled in
+    /// slices through AddRange tore down and rebuilt every earlier row on each slice.
+    /// </summary>
+    public void AppendRange(IEnumerable<T> items)
+    {
+        var added = new List<T>(items);
+        if (added.Count == 0) return;
+        CheckReentrancy();
+        var start = Items.Count;
+        foreach (var item in added)
+            Items.Add(item);
+
+        OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+        OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, added, start));
+    }
 }

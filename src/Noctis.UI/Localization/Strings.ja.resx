@@ -5824,10 +5824,6 @@
     <value>歌詞スタジオ</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>レコードがないときに歌詞を書いたり、転写したりします。</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>モデル</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>耳で書き換える（既存の歌詞は無視）</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>スピーチモデルは、曲に歌詞が既にある場合でも、曲を聴き、単語自体を書き込みます。 歌詞のない曲は常に書き換えられます。</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>曲がない場合、オンラインで歌詞を検索する</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>プレーンな歌詞は最初にLRCLIBから取得されるので、モデルはそれらの時間だけを取得する必要があります。オフ、モデルは耳で単語を書き込みます。</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>モデルをダウンロード</value>

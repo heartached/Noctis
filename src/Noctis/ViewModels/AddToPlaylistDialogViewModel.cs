@@ -32,7 +32,8 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
 
     public AddToPlaylistDialogViewModel(ObservableCollection<PlaylistNavItem> playlists, int trackCount)
     {
-        Playlists = playlists;
+        // Smart playlists are filled by their rules, so they can't take added tracks.
+        Playlists = new ObservableCollection<PlaylistNavItem>(playlists.Where(p => !p.IsSmartPlaylist));
         TrackCount = trackCount;
     }
 

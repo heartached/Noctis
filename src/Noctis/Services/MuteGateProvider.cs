@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using NAudio.Wave;
 
 namespace Noctis.Services;
@@ -14,8 +15,9 @@ namespace Noctis.Services;
 ///
 /// Unmuted at rest it is a pure pass-through (no multiply), so the bit-exact splice
 /// stays bit-exact. Each transition ramps the gain linearly per FRAME over a few
-/// milliseconds so neither edge clicks. Runs on the render thread; the flag is the only
-/// cross-thread state.
+/// milliseconds so neither edge clicks. It also holds a rebuilt output silent until the
+/// owner has put the user volume on the new audio session (<see cref="Hold"/>). Runs on
+/// the render thread; the flag and the hold deadline are the only cross-thread state.
 /// </summary>
 internal sealed class MuteGateProvider : ISampleProvider
 {
@@ -24,6 +26,7 @@ internal sealed class MuteGateProvider : ISampleProvider
     private readonly float _stepPerFrame;
     private volatile bool _muted;
     private float _gain = 1f; // render thread only
+    private long _holdUntilMs; // Environment.TickCount64 deadline of a hold; 0 = none
 
     public MuteGateProvider(ISampleProvider source, int rampMs = 8)
     {
@@ -45,12 +48,28 @@ internal sealed class MuteGateProvider : ISampleProvider
     /// <summary>Current applied gain (1 = open, 0 = fully muted); for diagnostics and tests.</summary>
     public float CurrentGain => _gain;
 
+    /// <summary>
+    /// Silence from the next read on, with no ramp down, until <see cref="ReleaseHold"/> or
+    /// <paramref name="maxMs"/> pass; the gain then ramps back up. Only for an output that
+    /// has not rendered yet (a rebuilt one): snapping to 0 mid-stream would click.
+    /// </summary>
+    public void Hold(int maxMs) => Interlocked.Exchange(ref _holdUntilMs, Environment.TickCount64 + Math.Max(1, maxMs));
+
+    /// <summary>Ends a hold. Returns false when none was set.</summary>
+    public bool ReleaseHold() => Interlocked.Exchange(ref _holdUntilMs, 0) != 0;
+
     public int Read(float[] buffer, int offset, int count)
     {
         var read = _source.Read(buffer, offset, count);
         if (read <= 0) return read;
 
         var target = _muted ? 0f : 1f;
+        var holdUntil = Interlocked.Read(ref _holdUntilMs);
+        if (holdUntil != 0 && Environment.TickCount64 < holdUntil)
+        {
+            _gain = 0f; // nothing played before the hold, so nothing to ramp down from
+            target = 0f;
+        }
         if (_gain == target)
         {
             if (target == 0f)

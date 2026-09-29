@@ -225,6 +225,15 @@
         <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton /template/ Border">
             <Setter Property="Background" Value="#50FFFFFF"/>
         </Style>
+        <!-- Waveform seek bar on (Settings → Player, GitHub #93): the WaveformSeekBar under
+             each seek slider draws the line/waveform, so the slider keeps only its thumb and
+             its hit area — clicks and drags still commit through BeginSeek/EndSeek. The Pill
+             and Sleeve designs sit on the theme's own background (light in the Light theme),
+             so their waveforms take the theme-aware BaseMediumLow for the unplayed bars
+             instead of the classic card's white-on-dark #50FFFFFF. -->
+        <Style Selector="Slider.mini-seek.waveform /template/ RepeatButton /template/ Border">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
         <Style Selector="Slider.mini-seek /template/ Thumb">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -750,6 +759,25 @@
                 </Panel>
                 <Border Classes="icon-overlay" Background="#66000000">
                     <Panel>
+                        <!-- Pin (Windows): the icon form has no "…" menu, so it gets the
+                             pin here, mirroring the close glyph in the opposite corner. -->
+                        <Panel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8"
+                               IsVisible="{Binding CanPin}">
+                            <Button Classes="mini-transport" Width="26" Height="26"
+                                    IsVisible="{Binding !IsPinned}"
+                                    ToolTip.Tip="{loc:T MiniPlayer.PinOnTop}"
+                                    ToolTip.Placement="Right"
+                                    Command="{Binding TogglePinCommand}">
+                                <PathIcon Data="{StaticResource PinIcon}" Width="13" Height="13" Foreground="White"/>
+                            </Button>
+                            <Button Classes="mini-transport" Width="26" Height="26"
+                                    IsVisible="{Binding IsPinned}"
+                                    ToolTip.Tip="{loc:T MiniPlayer.Unpin}"
+                                    ToolTip.Placement="Right"
+                                    Command="{Binding TogglePinCommand}">
+                                <PathIcon Data="{StaticResource PinFilledIcon}" Width="13" Height="13" Foreground="{DynamicResource AccentColorBrush}"/>
+                            </Button>
+                        </Panel>
                         <Button Classes="mini-transport" Width="26" Height="26"
                                 HorizontalAlignment="Right" VerticalAlignment="Top"
                                 Margin="8"
@@ -852,7 +880,13 @@
                     <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
-                    <Slider Grid.Column="1" x:Name="BarSeekSlider" Classes="mini-seek"
+                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
+                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                              Waveform="{Binding Player.CurrentWaveform}"
+                                              Value="{Binding #BarSeekSlider.Value}"
+                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
+                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                    <Slider Grid.Column="1" x:Name="BarSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
@@ -1007,7 +1041,13 @@
                     <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
-                    <Slider Grid.Column="1" x:Name="SeekSlider" Classes="mini-seek"
+                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
+                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                              Waveform="{Binding Player.CurrentWaveform}"
+                                              Value="{Binding #SeekSlider.Value}"
+                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
+                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                    <Slider Grid.Column="1" x:Name="SeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
@@ -1016,12 +1056,18 @@
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                     hidden while a music video's own audio plays (it describes the song file). -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center"
                             Background="Transparent"
-                            Margin="0,4,0,0"
-                            IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                            Margin="0,4,0,0">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <ToolTip.Tip>
                         <StackPanel Width="220" Spacing="4">
                             <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
@@ -1252,7 +1298,13 @@
                     <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
-                    <Slider Grid.Column="1" x:Name="LargeSeekSlider" Classes="mini-seek"
+                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
+                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                              Waveform="{Binding Player.CurrentWaveform}"
+                                              Value="{Binding #LargeSeekSlider.Value}"
+                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
+                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                    <Slider Grid.Column="1" x:Name="LargeSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
@@ -1261,12 +1313,18 @@
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                     hidden while a music video's own audio plays (it describes the song file). -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center"
                             Background="Transparent"
-                            Margin="0,4,0,0"
-                            IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                            Margin="0,4,0,0">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <ToolTip.Tip>
                         <StackPanel Width="220" Spacing="4">
                             <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
@@ -1510,17 +1568,29 @@
                         </StackPanel>
                     </Grid>
 
-                    <Slider Grid.Row="1" x:Name="LyricsSeekSlider" Classes="mini-seek"
+                    <controls:WaveformSeekBar Grid.Row="1" Margin="0,4,0,0" Height="16" VerticalAlignment="Center"
+                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                              Waveform="{Binding Player.CurrentWaveform}"
+                                              Value="{Binding #LyricsSeekSlider.Value}"
+                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
+                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                    <Slider Grid.Row="1" x:Name="LyricsSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="0,4,0,0" VerticalAlignment="Center"/>
 
-                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
+                         hidden while a music video's own audio plays (it describes the song file). -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
                                 HorizontalAlignment="Center"
                                 Background="Transparent"
-                                Margin="0,3,0,0"
-                                IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                                Margin="0,3,0,0">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
                         <ToolTip.Tip>
                             <StackPanel Width="220" Spacing="4">
                                 <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
@@ -1978,7 +2048,13 @@
                             <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
                                 <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="10"
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="26"/>
-                                <Slider Grid.Column="1" x:Name="PillSeekSlider" Classes="mini-seek"
+                                <controls:WaveformSeekBar Grid.Column="1" Margin="4,0" Height="16" VerticalAlignment="Center"
+                                                          IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                                          Waveform="{Binding Player.CurrentWaveform}"
+                                                          Value="{Binding #PillSeekSlider.Value}"
+                                                          PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                                          TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                                <Slider Grid.Column="1" x:Name="PillSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                                         Minimum="0" Maximum="1" Focusable="False"
                                         Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                                         Margin="4,0" VerticalAlignment="Center"/>
@@ -2113,7 +2189,13 @@
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0" MinWidth="240">
                                 <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="11" FontWeight="SemiBold"
                                            Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" MinWidth="30"/>
-                                <Slider Grid.Column="1" x:Name="SleeveSeekSlider" Classes="mini-seek"
+                                <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
+                                                          IsVisible="{Binding Player.WaveformSeekBarEnabled}"
+                                                          Waveform="{Binding Player.CurrentWaveform}"
+                                                          Value="{Binding #SleeveSeekSlider.Value}"
+                                                          PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                                          TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
+                                <Slider Grid.Column="1" x:Name="SleeveSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
                                         Minimum="0" Maximum="1" Focusable="False"
                                         Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                                         Margin="6,0" VerticalAlignment="Center"/>
@@ -2515,6 +2597,28 @@
                                 <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <!-- EQ on/off (GitHub #94): the Settings → Audio master switch, reachable
+                             from every form that has this menu. Accent glyph + "On" while enabled. -->
+                        <Button Classes="mini-menu-item" Command="{Binding Settings.ToggleEqualizerCommand}"
+                                Click="OnMenuItemClick" HorizontalContentAlignment="Stretch"
+                                ToolTip.Tip="{loc:T MiniPlayer.EqualizerTip}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Panel Width="14" Height="14">
+                                    <PathIcon Data="{StaticResource EqualizerIcon}" Width="14" Height="14" IsVisible="{Binding !Settings.EqualizerEnabled}"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <PathIcon Data="{StaticResource EqualizerIcon}" Width="14" Height="14" IsVisible="{Binding Settings.EqualizerEnabled}"
+                                              Foreground="{DynamicResource AccentColorBrush}"/>
+                                </Panel>
+                                <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.Equalizer}" FontSize="13"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <Panel Grid.Column="2">
+                                    <TextBlock Text="{loc:T MiniPlayer.EqualizerOn}" IsVisible="{Binding Settings.EqualizerEnabled}"
+                                               FontSize="12" Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:T MiniPlayer.EqualizerOff}" IsVisible="{Binding !Settings.EqualizerEnabled}"
+                                               FontSize="12" Opacity="0.5" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                </Panel>
+                            </Grid>
+                        </Button>
                         <!-- Design switcher: the Settings ▸ Mini Player Design picker within reach.
                              Same setting, so Settings and this segment stay in step. -->
                         <Border Height="1" Margin="8,4"
@@ -2554,6 +2658,25 @@
                              window takes the popup with it. -->
                         <Border Height="1" Margin="8,4"
                                 Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <!-- Pin (Windows): survives Show desktop / Minimize all and stays
+                             above games; the label says which way it goes. -->
+                        <Button x:Name="PinMenuItem" Classes="mini-menu-item" Command="{Binding TogglePinCommand}"
+                                Click="OnMenuItemClick" IsVisible="{Binding CanPin}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Panel Width="14" Height="14">
+                                    <PathIcon Data="{StaticResource PinIcon}" Width="14" Height="14" IsVisible="{Binding !IsPinned}"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    <PathIcon Data="{StaticResource PinFilledIcon}" Width="14" Height="14" IsVisible="{Binding IsPinned}"
+                                              Foreground="{DynamicResource AccentColorBrush}"/>
+                                </Panel>
+                                <Panel>
+                                    <TextBlock Text="{loc:T MiniPlayer.PinOnTop}" IsVisible="{Binding !IsPinned}"
+                                               FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:T MiniPlayer.Unpin}" IsVisible="{Binding IsPinned}"
+                                               FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                </Panel>
+                            </StackPanel>
+                        </Button>
                         <Button Classes="mini-menu-item" Click="OnCloseClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>

@@ -21,6 +21,8 @@ public enum ShortcutAction
     SearchLibrary,
     CommandPalette,
     NewPlaylist,
+    ToggleQueue,
+    ToggleLyrics,
 }
 
 /// <summary>Display metadata for one rebindable action.</summary>
@@ -42,6 +44,8 @@ public static class ShortcutDefaults
         new ShortcutDescriptor(ShortcutAction.VolumeDown, "Volume down", GroupPlayback),
         new ShortcutDescriptor(ShortcutAction.ToggleFavorite, "Favorite current track", GroupPlayback),
         new ShortcutDescriptor(ShortcutAction.ToggleFullscreen, "Toggle fullscreen", GroupWindow),
+        new ShortcutDescriptor(ShortcutAction.ToggleQueue, "Show / hide queue", GroupWindow),
+        new ShortcutDescriptor(ShortcutAction.ToggleLyrics, "Show / hide lyrics", GroupWindow),
         new ShortcutDescriptor(ShortcutAction.SearchLibrary, "Search library", GroupNavigation),
         new ShortcutDescriptor(ShortcutAction.CommandPalette, "Command palette", GroupNavigation),
         new ShortcutDescriptor(ShortcutAction.NewPlaylist, "New playlist", GroupNavigation),
@@ -67,6 +71,11 @@ public static class ShortcutDefaults
             ShortcutAction.SearchLibrary => new KeyGesture(Key.F, primary),
             ShortcutAction.CommandPalette => new KeyGesture(Key.K, primary),
             ShortcutAction.NewPlaylist => new KeyGesture(Key.N, primary),
+            // U for Up Next. Not Ctrl/⌘+Q (quit on macOS / Linux desktops) and not a bare
+            // letter; Ctrl+U is no TextBox editing key, so it works from the search box too.
+            ShortcutAction.ToggleQueue => new KeyGesture(Key.U, primary),
+            // GitHub #103. Ctrl/⌘+L is Favorite, so the Shift variant of the same letter.
+            ShortcutAction.ToggleLyrics => new KeyGesture(Key.L, primary | KeyModifiers.Shift),
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
     }
@@ -84,4 +93,15 @@ public static class ShortcutDefaults
         Key.LWin or Key.RWin => false,
         _ => true,
     };
+
+    /// <summary>
+    /// True when a focused edit box needs this key itself, so a window-level shortcut must
+    /// let it through: an unmodified key types, and the caret / delete keys keep their
+    /// meaning under any modifier (Ctrl+←/→ jumps words, Ctrl+Backspace deletes one,
+    /// ⌘←/→ goes to line start/end on macOS) even though Previous / Next use them.
+    /// </summary>
+    public static bool IsTextBoxKey(Key key, KeyModifiers modifiers) =>
+        modifiers == KeyModifiers.None
+        || key is Key.Left or Key.Right or Key.Up or Key.Down
+            or Key.Home or Key.End or Key.Back or Key.Delete;
 }

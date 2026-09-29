@@ -21,6 +21,52 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
+        <!-- Folder chevron turns with the row fold, on its exact timing (FoldingListBoxItem.FoldDuration / FoldEase). -->
+        <Style Selector="Path.folder-chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static ctrl:FoldingListBoxItem.FoldDuration}" Easing="{x:Static ctrl:FoldingListBoxItem.FoldEase}" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Path.folder-chevron.open">
+            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        </Style>
+        <!-- Row content colours are class-driven (not local values) so the selected accent pill
+             (Styles.axaml, GitHub #87) can flip them to the accent-contrast colour, like the
+             Settings rail's rail-bitmap. Accent-filled marks invert on the pill so they stay visible. -->
+        <Style Selector="ListBox.sidebar Border.nav-bitmap">
+            <Setter Property="Background" Value="{DynamicResource IslandForeground}" />
+        </Style>
+        <Style Selector="ListBox.sidebar PathIcon.nav-icon">
+            <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
+        </Style>
+        <Style Selector="ListBox.sidebar Ellipse.nav-badge">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar Border.fav-heart">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar Path.fav-heart-glyph">
+            <Setter Property="Fill" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected Border.nav-bitmap">
+            <Setter Property="Background" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected PathIcon.nav-icon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected Ellipse.nav-badge">
+            <Setter Property="Fill" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected Border.fav-heart">
+            <Setter Property="Background" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected Path.fav-heart-glyph">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
         <!-- Drop target highlight while a track drag (or a playlist drag onto a folder)
              hovers a sidebar row. The 1.5px rim is ALWAYS there, transparent, with the
              padding trimmed to match (10 - 1.5): toggling BorderThickness on the hovered
@@ -235,11 +281,11 @@
                        Closed="OnSearchPopupClosed">
                     <Border x:Name="SearchPopupContent"
                             Background="{DynamicResource IslandBackground}"
-                            BorderBrush="{DynamicResource IslandBorder}"
-                            BorderThickness="1"
+                            BorderBrush="{DynamicResource TextControlBorderBrush}"
+                            BorderThickness="1.5"
                             CornerRadius="999"
                             Width="40" Height="32"
-                            Padding="8,0,0,0"
+                            Padding="7,0,0,0"
                             ClipToBounds="True">
                         <Grid ColumnDefinitions="30,Auto" HorizontalAlignment="Left">
                             <!-- Left cap: same 16px magnifier as the (hidden) rail button
@@ -319,7 +365,7 @@
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"
                                                 RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Background="{DynamicResource IslandForeground}"
+                                                Classes="nav-bitmap"
                                                 IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsBitmap}}">
                                             <Border.OpacityMask>
                                                 <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
@@ -329,13 +375,13 @@
                                         <!-- Geometry icons (Visualizer, Lyrics Studio): same 20px box as the PNG masks. -->
                                         <PathIcon Width="20" Height="20"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                  Foreground="{DynamicResource IslandForeground}"
+                                                  Classes="nav-icon"
                                                   Data="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.Instance}}"
                                                   IsVisible="{Binding IconGlyph, Converter={x:Static helpers:IconKeyConverter.IsGeometry}}" />
                                         <!-- Update-available dot (top-right of icon; visible in
                                              both expanded and icon-only rail) -->
                                         <Ellipse Width="8" Height="8"
-                                                 Fill="{DynamicResource AccentColorBrush}"
+                                                 Classes="nav-badge"
                                                  HorizontalAlignment="Right"
                                                  VerticalAlignment="Top"
                                                  Margin="0,-1,-1,0"
@@ -372,7 +418,7 @@
                                             CornerRadius="14"
                                             ClipToBounds="True"
                                             VerticalAlignment="Center"
-                                            Background="{DynamicResource AccentColorBrush}">
+                                            Classes="fav-heart">
                                         <!-- Heart badge. Width/Height = icon SIZE.
                                              To nudge position, change X and Y below:
                                                X  -> sideways  (positive = RIGHT, negative = LEFT)
@@ -381,7 +427,7 @@
                                         <Path Data="{StaticResource FavoritesFilledIcon}"
                                               Width="14" Height="10"
                                               Stretch="Uniform"
-                                              Fill="{DynamicResource AccentForegroundBrush}"
+                                              Classes="fav-heart-glyph"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center">
                                             <Path.RenderTransform>
@@ -429,7 +475,7 @@
                     <!-- User playlists: pinned first, then folders, then loose playlists.
                          The Panel hosts the reorder drag card over the list. -->
                     <Panel x:Name="PlaylistListHost" Margin="6,0,6,4">
-                    <ListBox Classes="sidebar"
+                    <ctrl:FoldingListBox Classes="sidebar"
                              x:Name="PlaylistList"
                              ItemsSource="{Binding SidebarRows}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
@@ -449,21 +495,18 @@
                                             CornerRadius="8"
                                             VerticalAlignment="Center"
                                             Background="#22808080">
-                                        <Panel>
-                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
-                                                      Width="11" Height="11"
-                                                      Opacity="0.8"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      IsVisible="{Binding !IsExpanded}" />
-                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
-                                                      Width="11" Height="11"
-                                                      Opacity="0.8"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      RenderTransform="rotate(90deg)"
-                                                      IsVisible="{Binding IsExpanded}" />
-                                        </Panel>
+                                        <!-- Drawn in the button's own 28px box, symmetric about its centre
+                                             (x 11.5-16.5, y 9-19), so it sits dead centre and turns in place.
+                                             The bounds-stretched PathIcon landed ~1px up and left. -->
+                                        <Path Classes="folder-chevron"
+                                              Classes.open="{Binding IsExpanded}"
+                                              Width="28" Height="28"
+                                              Data="M 11.5,9 L 16.5,14 L 11.5,19"
+                                              Stroke="{Binding $parent[ListBoxItem].Foreground}"
+                                              StrokeThickness="1.8"
+                                              StrokeLineCap="Round"
+                                              StrokeJoin="Round"
+                                              Opacity="0.8" />
                                     </Border>
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
@@ -578,7 +621,7 @@
                                 </Panel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
-                    </ListBox>
+                    </ctrl:FoldingListBox>
                     <!-- Floating card for a playlist being reordered: the row's own template
                          in a lifted pill; LiquidReorder drives its transforms per frame and the
                          other rows slide apart under it. -->

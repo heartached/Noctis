@@ -227,21 +227,21 @@ public sealed class MacNowPlayingService : IDisposable
 
     // Rooted in static fields so the reverse-P/Invoke thunks outlive any GC.
     private static readonly RemoteCommandCallback s_handlePlay = (_, _, _) =>
-        DispatchToPlayer(p => { if (!p.IsPlaying) p.PlayPauseCommand.Execute(null); });
+        DispatchToPlayer("Play", p => { if (!p.IsPlaying) p.PlayPauseCommand.Execute(null); });
     private static readonly RemoteCommandCallback s_handlePause = (_, _, _) =>
-        DispatchToPlayer(p => { if (p.IsPlaying) p.PlayPauseCommand.Execute(null); });
+        DispatchToPlayer("Pause", p => { if (p.IsPlaying) p.PlayPauseCommand.Execute(null); });
     private static readonly RemoteCommandCallback s_handleToggle = (_, _, _) =>
-        DispatchToPlayer(p => p.PlayPauseCommand.Execute(null));
+        DispatchToPlayer("TogglePlayPause", p => p.PlayPauseCommand.Execute(null));
     private static readonly RemoteCommandCallback s_handleNext = (_, _, _) =>
-        DispatchToPlayer(p => p.NextCommand.Execute(null));
+        DispatchToPlayer("Next", p => p.NextCommand.Execute(null));
     private static readonly RemoteCommandCallback s_handlePrevious = (_, _, _) =>
-        DispatchToPlayer(p => p.PreviousCommand.Execute(null));
+        DispatchToPlayer("Previous", p => p.PreviousCommand.Execute(null));
     private static readonly RemoteCommandCallback s_handleChangePosition = (_, _, evt) =>
     {
         // The event object is only valid for the duration of the callback, so the
         // position must be read before dispatching.
         var seconds = MsgSendDouble(evt, Sel("positionTime"));
-        return DispatchToPlayer(p =>
+        return DispatchToPlayer($"ChangePosition seconds={seconds:0.0}", p =>
         {
             var duration = p.Duration;
             if (duration <= TimeSpan.Zero) return;
@@ -250,11 +250,15 @@ public sealed class MacNowPlayingService : IDisposable
         });
     };
 
-    private static nint DispatchToPlayer(Action<PlayerViewModel> action)
+    private static nint DispatchToPlayer(string command, Action<PlayerViewModel> action)
     {
         var service = s_service;
         if (service is { _disposed: false })
-            Dispatcher.UIThread.Post(() => action(service._player));
+            Dispatcher.UIThread.Post(() =>
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "MacRemote.Command", $"{command} vmState={service._player.State}");
+                action(service._player);
+            });
         return CommandHandlerSuccess;
     }
 

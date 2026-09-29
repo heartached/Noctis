@@ -162,7 +162,8 @@ public sealed class LoonClient : IDisposable
                 $"({Path.GetDirectoryName(localArtworkPath)}).", null);
 
         var fileName = Path.GetFileName(localArtworkPath);
-        var path = $"artwork/{ArtworkVersion(localArtworkPath)}/{fileName}";
+        var folder = IsTrackArtworkPath(_artworkDirectory, localArtworkPath) ? TrackArtworkFolder + "/" : "";
+        var path = $"artwork/{ArtworkVersion(localArtworkPath)}/{folder}{fileName}";
         var hash = ComputeHmac(_clientId, path, _secret);
         var url = $"{_baseUrl}/{_clientId}/{hash}/{path}";
 
@@ -540,15 +541,29 @@ public sealed class LoonClient : IDisposable
     // ── Handle incoming requests ──
 
     /// <summary>
+    /// The one subfolder of the artwork directory this client serves: per-track covers
+    /// ("tracks/{trackId}.jpg", see IPersistenceService.GetTrackArtworkPath) sit beside the
+    /// album covers there.
+    /// </summary>
+    private const string TrackArtworkFolder = "tracks";
+
+    /// <summary>
     /// Whether <paramref name="localArtworkPath"/> lives directly in the directory this
-    /// client serves, and can therefore be fetched back through the minted URL (which
-    /// carries only the file name).
+    /// client serves, or in its per-track covers folder, and can therefore be fetched back
+    /// through the minted URL (which carries only the file name and that folder).
     /// </summary>
     internal static bool IsServableArtworkPath(string artworkDirectory, string localArtworkPath)
+        => IsDirectlyIn(artworkDirectory, localArtworkPath)
+           || IsTrackArtworkPath(artworkDirectory, localArtworkPath);
+
+    private static bool IsTrackArtworkPath(string artworkDirectory, string localArtworkPath)
+        => IsDirectlyIn(Path.Combine(artworkDirectory, TrackArtworkFolder), localArtworkPath);
+
+    private static bool IsDirectlyIn(string directory, string localArtworkPath)
     {
         try
         {
-            var root = Path.GetFullPath(artworkDirectory);
+            var root = Path.GetFullPath(directory);
             var full = Path.GetFullPath(localArtworkPath);
             var dir = Path.GetDirectoryName(full);
             if (dir == null) return false;
@@ -569,10 +584,11 @@ public sealed class LoonClient : IDisposable
     /// when the request escapes <paramref name="artworkDirectory"/> (path traversal).
     /// The relay controls the request string, so callers must reject a null result rather
     /// than read an arbitrary file off the local disk.
-    /// Accepts exactly the two shapes this client mints: "artwork/{version}/{file}", and the
-    /// older "artwork/{file}" — URLs of that shape can still be sitting in Discord's cache
-    /// after an upgrade. The version segment is a cache-buster with no counterpart on disk,
-    /// so only the final segment names the file.
+    /// Accepts exactly the shapes this client mints: "artwork/{version}/{file}",
+    /// "artwork/{version}/tracks/{file}" for per-track covers, and the older "artwork/{file}"
+    /// — URLs of that shape can still be sitting in Discord's cache after an upgrade. The
+    /// version segment is a cache-buster with no counterpart on disk, so only the file name
+    /// (and the fixed "tracks" folder) name the file.
     /// </summary>
     internal static string? ResolveArtworkPath(string artworkDirectory, string requestPath)
     {
@@ -589,12 +605,19 @@ public sealed class LoonClient : IDisposable
 
         var slash = rest.IndexOf('/');
         var fileName = slash < 0 ? rest : rest[(slash + 1)..];
+        var inTrackFolder = slash >= 0 && fileName.StartsWith(TrackArtworkFolder + "/", StringComparison.Ordinal);
+        if (inTrackFolder) fileName = fileName[(TrackArtworkFolder.Length + 1)..];
         if (string.IsNullOrEmpty(fileName)) return null;
         if (fileName.Contains('/')) return null;   // deeper than anything this client mints
 
         var root = Path.GetFullPath(artworkDirectory);
         string fullPath;
-        try { fullPath = Path.GetFullPath(Path.Combine(root, fileName)); }
+        try
+        {
+            fullPath = Path.GetFullPath(inTrackFolder
+                ? Path.Combine(root, TrackArtworkFolder, fileName)
+                : Path.Combine(root, fileName));
+        }
         catch { return null; } // illegal characters etc.
 
         var rootWithSep = root.EndsWith(Path.DirectorySeparatorChar)

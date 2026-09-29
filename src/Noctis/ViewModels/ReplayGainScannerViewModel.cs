@@ -11,14 +11,18 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 {
     private readonly IReplayGainScannerService _service;
     private readonly ILibraryService _library;
-    private readonly IReadOnlyList<Track> _tracks;
+    private readonly List<Track> _tracks = new();
+    // Resolves a file picked with "Add files…" to a Track (the library entry when the
+    // path is indexed, else a tag read). Null hides the button.
+    private readonly Func<string, Track?>? _resolveFile;
     private CancellationTokenSource? _cts;
     // Cancels the background "already scanned" tag reads so they never hold a file
     // handle while a scan writes to the same file (or after the dialog is closed).
     private readonly CancellationTokenSource _initCts = new();
 
-    public string TitleText { get; }
+    [ObservableProperty] private string _titleText = string.Empty;
     public bool IsServiceAvailable => _service.IsAvailable;
+    public bool CanAddFiles => _resolveFile != null;
 
     [ObservableProperty] private bool _albumMode = true;
     [ObservableProperty] private bool _isScanning;
@@ -49,19 +53,17 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
-    public ReplayGainScannerViewModel(IReadOnlyList<Track> tracks, IReplayGainScannerService service, ILibraryService library)
+    /// <summary>Raised when a scan finishes, so the player can re-read the new tags.</summary>
+    public event EventHandler? ScanCompleted;
+
+    public ReplayGainScannerViewModel(IReadOnlyList<Track> tracks, IReplayGainScannerService service, ILibraryService library,
+        Func<string, Track?>? resolveFile = null)
     {
-        _tracks = tracks;
         _service = service;
         _library = library;
+        _resolveFile = resolveFile;
 
-        TitleText = $"Scan ReplayGain · {tracks.Count} track{(tracks.Count == 1 ? string.Empty : "s")}";
-        foreach (var t in tracks)
-        {
-            var row = new RgJobRow { Track = t, Status = "Pending" };
-            Jobs.Add(row);
-            _rowsByTrack[t] = row;
-        }
+        AddRows(tracks);
 
         if (!_service.IsAvailable)
             StatusMessage = "ffmpeg not found — set the path in Settings → Advanced → Helper programs.";
@@ -71,9 +73,57 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         _ = MarkAlreadyScannedAsync();
     }
 
+    /// <summary>
+    /// Adds a row per track, skipping any file already listed (the queue can hold the
+    /// same Track twice, and a picked file may already be in the list).
+    /// </summary>
+    private List<Track> AddRows(IEnumerable<Track> tracks)
+    {
+        var added = new List<Track>();
+        foreach (var t in tracks)
+        {
+            if (_rowsByTrack.ContainsKey(t)
+                || _tracks.Any(x => string.Equals(x.FilePath, t.FilePath, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            var row = new RgJobRow { Track = t, Status = "Pending" };
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(RgJobRow.IsIncluded)) UpdateTitle();
+            };
+            _tracks.Add(t);
+            Jobs.Add(row);
+            _rowsByTrack[t] = row;
+            added.Add(t);
+        }
+        UpdateTitle();
+        return added;
+    }
+
+    private void UpdateTitle()
+    {
+        var count = Jobs.Count(j => j.IsIncluded);
+        TitleText = $"Scan ReplayGain · {count} track{(count == 1 ? string.Empty : "s")}";
+    }
+
+    /// <summary>
+    /// "Add files…" (GitHub #105): any audio file, in the library or not, joins the list.
+    /// Tag reads run off the UI thread.
+    /// </summary>
+    public async Task AddFilesAsync(IReadOnlyList<string> paths)
+    {
+        if (_resolveFile is not { } resolve || IsScanning || HasFinished || paths.Count == 0) return;
+        var resolved = await Task.Run(() => paths
+            .Select(p => { try { return resolve(p); } catch { return null; } })
+            .OfType<Track>()
+            .ToList());
+        var added = AddRows(resolved);
+        if (added.Count > 0)
+            _ = MarkAlreadyScannedAsync(added);
+    }
+
     /// <summary>Reads each track's tags and labels rows that already have a
     /// REPLAYGAIN_TRACK_GAIN value as "Already scanned" (re-scanning still works).</summary>
-    private async Task MarkAlreadyScannedAsync()
+    private async Task MarkAlreadyScannedAsync(IReadOnlyList<Track>? tracks = null)
     {
         // Wrapped whole. This is started fire-and-forget, and Start() cancels _initCts —
         // which made the pending `await Task.Run(..., ct)` throw TaskCanceledException out
@@ -81,7 +131,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         // surfaced a logged error via TaskScheduler.UnobservedTaskException.
         try
         {
-            await MarkAlreadyScannedCoreAsync().ConfigureAwait(false);
+            await MarkAlreadyScannedCoreAsync(tracks ?? _tracks.ToList()).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { /* superseded by Start() or dialog close */ }
         catch (Exception ex)
@@ -90,10 +140,10 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         }
     }
 
-    private async Task MarkAlreadyScannedCoreAsync()
+    private async Task MarkAlreadyScannedCoreAsync(IReadOnlyList<Track> tracks)
     {
         var ct = _initCts.Token;
-        foreach (var t in _tracks)
+        foreach (var t in tracks)
         {
             if (ct.IsCancellationRequested) return;
 
@@ -127,6 +177,15 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
             return;
         }
         if (IsScanning || !_service.IsAvailable) return;
+        // Only the ticked rows are measured and tagged (GitHub #105).
+        var selected = Jobs.Where(j => j.IsIncluded).Select(j => j.Track).ToList();
+        if (selected.Count == 0)
+        {
+            StatusMessage = "Tick at least one track to scan.";
+            return;
+        }
+        foreach (var row in Jobs.Where(j => !j.IsIncluded))
+            row.Status = "Skipped";
         // Stop the pre-scan tag reads so they can't hold a handle while we write.
         _initCts.Cancel();
         IsScanning = true;
@@ -152,12 +211,13 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
         try
         {
-            var summary = await Task.Run(() => _service.ScanAsync(_tracks, AlbumMode, progress, _cts.Token));
+            var summary = await Task.Run(() => _service.ScanAsync(selected, AlbumMode, progress, _cts.Token));
             StatusMessage = $"Finished · {summary.Scanned} scanned"
                 + (summary.Failed > 0 ? $" · {summary.Failed} failed" : string.Empty);
             // Refresh the library so any in-app view (e.g. metadata window) that
             // reads RG tags picks up the new values.
             _library.NotifyMetadataChanged();
+            ScanCompleted?.Invoke(this, EventArgs.Empty);
             HasFinished = true;
         }
         catch (OperationCanceledException)
@@ -196,6 +256,8 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         public Track Track { get; set; } = null!;
         public string TrackTitle => Track?.Title ?? string.Empty;
         public string TrackSubtitle => Track == null ? string.Empty : ($"{Track.Artist} · {Track.Album}");
+        /// <summary>Ticked rows are scanned; unticked ones are left untouched.</summary>
+        [ObservableProperty] private bool _isIncluded = true;
         [ObservableProperty] private string _status = string.Empty;
         [ObservableProperty] private bool _done;
         [ObservableProperty] private bool _failed;

@@ -233,7 +233,7 @@
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
         </Style>
-        <!-- Grey pill (Latest Release Play): chip fill, no stroke. -->
+        <!-- Grey pill (Latest Release Play, Albums / Singles & EPs Sort): chip fill, no stroke. -->
         <Style Selector="Button.grey-pill">
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -754,16 +754,14 @@
                                     Cursor="Hand"
                                     Command="{Binding ToggleFavoriteCommand}"
                                     ToolTip.Tip="{loc:T ArtistDetail.FavoriteArtistTip}">
-                                <Panel>
-                                    <PathIcon Data="{StaticResource StarIcon}"
-                                              Width="18" Height="18"
-                                              Opacity="0.7"
-                                              IsVisible="{Binding !IsFavorite}" />
-                                    <PathIcon Data="{StaticResource StarIcon}"
-                                              Width="18" Height="18"
-                                              Foreground="{DynamicResource AccentColorBrush}"
-                                              IsVisible="{Binding IsFavorite}" />
-                                </Panel>
+                                <!-- Zooms in on favourite, out on unfavourite, colours crossfading (HeartIcon.ZoomOnToggle). -->
+                                <ctrl:HeartIcon IsFavorite="{Binding IsFavorite}"
+                                                    Glyph="{StaticResource StarIcon}"
+                                                    Size="18"
+                                                    OnBrush="{DynamicResource AccentColorBrush}"
+                                                    OffOpacity="0.7"
+                                                    OutlineWhenOff="False"
+                                                    ZoomOnToggle="True" />
                             </Button>
 
                             <!-- Options -->
@@ -1088,6 +1086,31 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
                     <TextBlock Text="{loc:T ArtistDetail.Albums}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding AlbumCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): one order shared with Singles & EPs and every artist;
+                         a grey chip pill (no outline), the playlist Sort pill's size and flyout. -->
+                    <Button Classes="grey-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Playlist.Text}"
+                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding AlbumReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasAlbums}">
                     <ItemsControl.ItemsPanel>
@@ -1104,6 +1127,30 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" Margin="2,0,0,2">
                     <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding SingleCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
+                    <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
+                    <Button Classes="grey-pill"
+                            Height="34"
+                            Padding="12,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T Playlist.Text}"
+                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="{loc:T ArtistDetail.SortNewest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="newest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortOldest}" Command="{Binding SetReleaseSortCommand}" CommandParameter="oldest" />
+                                <MenuItem Header="{loc:T ArtistDetail.SortName}" Command="{Binding SetReleaseSortCommand}" CommandParameter="name" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding SingleReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasSingles}">
                     <ItemsControl.ItemsPanel>
@@ -1142,10 +1189,16 @@
                     <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.Shuffle}"
                             Command="{Binding ShuffleAllCommand}" VerticalAlignment="Center" />
                 </Grid>
+                <!-- Virtualized (09-24): only the rows inside the page's viewport exist. The
+                     panel reads its window from the outer PageScrollViewer's effective
+                     viewport, so it works nested in the page. As a plain StackPanel every
+                     song was a live row: a 175-song artist realized all 175 on the tab
+                     switch (~0.7 MB and ~7 ms each in the headless probe), a multi-second
+                     stall and hundreds of MB of garbage for the GC (ArtistPageStreamingTests). -->
                 <ItemsControl ItemsSource="{Binding AllSongs}" ItemTemplate="{StaticResource SongPill}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel />
+                            <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

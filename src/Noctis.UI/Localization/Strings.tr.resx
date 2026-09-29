@@ -1590,16 +1590,13 @@
   <data name="LyricsStudioSettings.NotInstalled" xml:space="preserve"><value>Kurulu değil</value><comment>Model state chip</comment></data>
 
   <data name="LyricsStudio.Title" xml:space="preserve"><value>Söz Stüdyosu</value><comment>Dialog title</comment></data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve"><value>Sözleri kayda göre zamanlar ya da söz yoksa sesten yazıya döker.</value><comment>Dialog subtitle</comment></data>
   <data name="LyricsStudio.Model" xml:space="preserve"><value>Model</value><comment>Footer label</comment></data>
   <data name="LyricsStudio.Language" xml:space="preserve"><value>Dil</value><comment>Footer label</comment></data>
   <data name="LyricsStudio.WordTimings" xml:space="preserve"><value>Kelime zamanlaması</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve"><value>Zaten bu biçimde olan şarkıları atla</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve"><value>Kelime zamanlaması (ELRC) ve satır zamanlaması (LRC) farklı biçimlerdir. Yalnızca satır zamanlaması olan şarkılar yine işlenir.</value><comment>Footer checkbox tooltip</comment></data>
   <data name="LyricsStudio.TranscribeOnly" xml:space="preserve"><value>Kulaktan yazıya dök (mevcut sözleri yok say)</value><comment>Footer checkbox</comment></data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>Konuşma modeli şarkıyı dinler ve şarkının sözleri olsa bile kelimeleri kendisi yazar. Sözü olmayan şarkılar her zaman yazıya dökülür.</value><comment>Footer checkbox tooltip</comment></data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve"><value>Şarkının sözü yoksa çevrimiçi ara</value><comment>Footer checkbox</comment></data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve"><value>Düz sözler önce LRCLIB'den alınır; böylece modelin yalnızca zamanlaması gerekir. Kapalıyken model kelimeleri kulaktan yazar.</value><comment>Footer checkbox tooltip</comment></data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve"><value>Modeli indir</value><comment>Footer button</comment></data>
   <data name="LyricsStudio.Start" xml:space="preserve"><value>Başlat</value><comment>Footer button</comment></data>
   <data name="LyricsStudio.Stop" xml:space="preserve"><value>Durdur</value><comment>Footer button</comment></data>

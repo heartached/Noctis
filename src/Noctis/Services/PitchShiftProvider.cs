@@ -24,7 +24,6 @@ public sealed class PitchShiftProvider : ISampleProvider
     private float[] _in = new float[4096];
     private int _inFrames;
     private double _pos = 1.0;
-    private bool _ended;
 
     public WaveFormat WaveFormat => _source.WaveFormat;
 
@@ -54,7 +53,7 @@ public sealed class PitchShiftProvider : ISampleProvider
         {
             // Unity: hand back any buffered frames verbatim, then stream straight through.
             var produced = DrainBufferedAtUnity(buffer, offset, frames);
-            if (produced < frames && !_ended)
+            if (produced < frames)
             {
                 var n = _source.Read(buffer, offset + produced * _channels, (frames - produced) * _channels);
                 produced += n / _channels;
@@ -69,7 +68,7 @@ public sealed class PitchShiftProvider : ISampleProvider
             // Need frames i-1 .. i+2 present.
             if (i + 2 >= _inFrames)
             {
-                if (_ended || !Fill(i + 3 - _inFrames + 512)) break;
+                if (!Fill(i + 3 - _inFrames + 512)) break;
                 continue;
             }
 
@@ -97,8 +96,11 @@ public sealed class PitchShiftProvider : ISampleProvider
         var i = (int)Math.Round(_pos);
         var available = Math.Max(0, _inFrames - i);
         var take = Math.Min(frames, available);
-        if (take > 0)
-            Array.Copy(_in, i * _channels, buffer, offset, take * _channels);
+        // Element stores, never Array.Copy: the render buffer can be NAudio's
+        // WaveBuffer pun (a byte[] seen as float[]) and Array.Copy throws on it.
+        var src = i * _channels;
+        for (var s = 0; s < take * _channels; s++)
+            buffer[offset + s] = _in[src + s];
         // Whatever remains stays buffered; reset position bookkeeping for the next shift.
         var rest = available - take;
         if (rest > 0)
@@ -114,7 +116,11 @@ public sealed class PitchShiftProvider : ISampleProvider
         return take;
     }
 
-    /// <summary>Reads at least <paramref name="wantFrames"/> more frames from the source; false at end of stream.</summary>
+    /// <summary>
+    /// Reads up to <paramref name="wantFrames"/> more frames from the source; false when it has
+    /// none right now. Never latched: the segment ring also returns 0 on a mid-track underrun,
+    /// and the next Read must retry (the splice provider decides when the segment is finished).
+    /// </summary>
     private bool Fill(int wantFrames)
     {
         if (_inFrames == 0)
@@ -128,10 +134,7 @@ public sealed class PitchShiftProvider : ISampleProvider
         EnsureCapacity(_inFrames + wantFrames);
         var got = _source.Read(_in, _inFrames * _channels, wantFrames * _channels);
         if (got <= 0)
-        {
-            _ended = true;
             return false;
-        }
         _inFrames += got / _channels;
         return true;
     }

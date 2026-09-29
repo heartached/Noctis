@@ -82,6 +82,201 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
+    /// Center-weighted average of the pixels that are neither near-black nor near-white.
+    /// <paramref name="pixels"/> is BGRA, <paramref name="rowBytes"/> per row. Pure, so it
+    /// runs on any thread.
+    /// </summary>
+    private static Color DominantFromPixels(byte[] pixels, int width, int height, int rowBytes)
+    {
+        const int brightnessMin = 15;
+        const int brightnessMax = 240;
+
+        double totalR = 0, totalG = 0, totalB = 0;
+        double totalWeight = 0;
+
+        double cx = width / 2.0;
+        double cy = height / 2.0;
+        double maxDist = Math.Sqrt(cx * cx + cy * cy);
+
+        for (int y = 0; y < height; y++)
+        {
+            int rowStart = y * rowBytes;
+            for (int x = 0; x < width; x++)
+            {
+                // Bgra8888 format: B, G, R, A
+                int offset = rowStart + x * 4;
+                byte b = pixels[offset];
+                byte g = pixels[offset + 1];
+                byte r = pixels[offset + 2];
+
+                // Perceived brightness (fast approximation)
+                int brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+                if (brightness < brightnessMin || brightness > brightnessMax)
+                    continue;
+
+                // Center-weighted: pixels closer to center count more
+                double dx = x - cx;
+                double dy = y - cy;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+                double weight = 1.0 + (1.0 - dist / maxDist); // 1.0 to 2.0
+
+                totalR += r * weight;
+                totalG += g * weight;
+                totalB += b * weight;
+                totalWeight += weight;
+            }
+        }
+
+        if (totalWeight < 1.0)
+            return FallbackColor;
+
+        return Color.FromRgb(
+            (byte)(totalR / totalWeight),
+            (byte)(totalG / totalWeight),
+            (byte)(totalB / totalWeight));
+    }
+
+    /// <summary>
+    /// Two-means clustering of the usable pixels into a darker dominant and a secondary
+    /// colour. <paramref name="pixels"/> is BGRA. Pure, so it runs on any thread.
+    /// </summary>
+    private static (Color Dominant, Color Secondary) PaletteFromPixels(byte[] pixels, int width, int height, int rowBytes)
+    {
+        const int brightnessMin = 15;
+        const int brightnessMax = 240;
+
+        // Collect valid pixels
+        var validPixels = new List<(byte R, byte G, byte B, double Weight)>();
+        double cx = width / 2.0, cy = height / 2.0;
+        double maxDist = Math.Sqrt(cx * cx + cy * cy);
+
+        for (int y = 0; y < height; y++)
+        {
+            int rowStart = y * rowBytes;
+            for (int x = 0; x < width; x++)
+            {
+                int offset = rowStart + x * 4;
+                byte b = pixels[offset], g = pixels[offset + 1], r = pixels[offset + 2];
+                int brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                if (brightness < brightnessMin || brightness > brightnessMax) continue;
+
+                double dx = x - cx, dy = y - cy;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+                double weight = 1.0 + (1.0 - dist / maxDist);
+                validPixels.Add((r, g, b, weight));
+            }
+        }
+
+        if (validPixels.Count < 2)
+            return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
+
+        // Simple 2-means clustering (3 iterations)
+        var rng = new Random(42);
+        var idx1 = rng.Next(validPixels.Count);
+        var idx2 = rng.Next(validPixels.Count);
+        double c1R = validPixels[idx1].R, c1G = validPixels[idx1].G, c1B = validPixels[idx1].B;
+        double c2R = validPixels[idx2].R, c2G = validPixels[idx2].G, c2B = validPixels[idx2].B;
+
+        for (int iter = 0; iter < 3; iter++)
+        {
+            double s1R = 0, s1G = 0, s1B = 0, w1 = 0;
+            double s2R = 0, s2G = 0, s2B = 0, w2 = 0;
+
+            foreach (var (r, g, b, w) in validPixels)
+            {
+                double d1 = (r - c1R) * (r - c1R) + (g - c1G) * (g - c1G) + (b - c1B) * (b - c1B);
+                double d2 = (r - c2R) * (r - c2R) + (g - c2G) * (g - c2G) + (b - c2B) * (b - c2B);
+                if (d1 <= d2) { s1R += r * w; s1G += g * w; s1B += b * w; w1 += w; }
+                else          { s2R += r * w; s2G += g * w; s2B += b * w; w2 += w; }
+            }
+
+            if (w1 > 0) { c1R = s1R / w1; c1G = s1G / w1; c1B = s1B / w1; }
+            if (w2 > 0) { c2R = s2R / w2; c2G = s2G / w2; c2B = s2B / w2; }
+        }
+
+        var dominant = Color.FromRgb((byte)c1R, (byte)c1G, (byte)c1B);
+        var secondary = Color.FromRgb((byte)c2R, (byte)c2G, (byte)c2B);
+
+        // Ensure dominant is the darker one (better for backgrounds)
+        double lum1 = 0.2126 * c1R + 0.7152 * c1G + 0.0722 * c1B;
+        double lum2 = 0.2126 * c2R + 0.7152 * c2G + 0.0722 * c2B;
+        if (lum2 < lum1)
+            (dominant, secondary) = (secondary, dominant);
+
+        return (dominant, secondary);
+    }
+
+    /// <summary>Longest side the file warm-up decodes at before the 50px downscale.</summary>
+    private const int WarmDecodeDimension = 512;
+
+    /// <summary>
+    /// Whether the dominant, palette and average colours for <paramref name="artworkPath"/>
+    /// are all cached, so the Get* calls on the UI thread do no rendering.
+    /// </summary>
+    public static bool HasCachedColors(string artworkPath)
+        => ColorCache.ContainsKey(artworkPath)
+           && PaletteCache.ContainsKey(artworkPath)
+           && AverageColorCache.ContainsKey(artworkPath);
+
+    /// <summary>
+    /// Fills the dominant, palette and average caches for <paramref name="artworkPath"/> by
+    /// decoding the FILE with SkiaSharp, so it is safe (and meant) to run on a worker
+    /// thread. The Bitmap-based extractors render through a RenderTargetBitmap on the UI
+    /// thread and stalled track-change animations; they also keyed the colours of
+    /// whatever bitmap was on screen, which at a track change can still be the previous
+    /// cover. Same algorithms over the same 50×50 sample. Returns false when the file
+    /// can't be read (the caches are left alone).
+    /// </summary>
+    public static bool WarmFromFile(string artworkPath)
+    {
+        const int sampleSize = 50;
+        try
+        {
+            using var raw = Helpers.SkiaArtworkDecoder.DecodeSubsampled(artworkPath, WarmDecodeDimension);
+            if (raw == null) return false;
+            using var small = raw.Resize(new SkiaSharp.SKImageInfo(sampleSize, sampleSize,
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), SkiaSharp.SKFilterQuality.High);
+            if (small == null) return false;
+
+            var pixels = small.Bytes;
+            int rowBytes = small.RowBytes;
+
+            // The UI path downscales to a single pixel; the mean of the 50×50 sample is
+            // the same average without a GPU round-trip.
+            long sumR = 0, sumG = 0, sumB = 0;
+            for (int y = 0; y < sampleSize; y++)
+            {
+                int row = y * rowBytes;
+                for (int x = 0; x < sampleSize; x++)
+                {
+                    int o = row + x * 4;
+                    sumB += pixels[o];
+                    sumG += pixels[o + 1];
+                    sumR += pixels[o + 2];
+                }
+            }
+            const int count = sampleSize * sampleSize;
+            var average = Color.FromRgb((byte)(sumR / count), (byte)(sumG / count), (byte)(sumB / count));
+
+            AddCapped(ColorCache, artworkPath, DominantFromPixels(pixels, sampleSize, sampleSize, rowBytes));
+            AddCapped(PaletteCache, artworkPath, PaletteFromPixels(pixels, sampleSize, sampleSize, rowBytes));
+            AddCapped(AverageColorCache, artworkPath, average);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void AddCapped<T>(ConcurrentDictionary<string, T> cache, string key, T value)
+    {
+        if (cache.Count >= MaxCacheSize) cache.Clear();
+        cache[key] = value;
+    }
+
+    /// <summary>
     /// Extracts the dominant color from a bitmap using center-weighted pixel sampling.
     /// Downscales to ~50x50 for performance and skips near-black/near-white pixels.
     /// </summary>
@@ -91,8 +286,6 @@ public static class DominantColorExtractor
             return FallbackColor;
 
         const int sampleSize = 50;
-        const int brightnessMin = 15;
-        const int brightnessMax = 240;
 
         try
         {
@@ -116,59 +309,11 @@ public static class DominantColorExtractor
             using var decoded = WriteableBitmap.Decode(ms);
             using var fb = decoded.Lock();
 
-            int width = fb.Size.Width;
-            int height = fb.Size.Height;
-            int rowBytes = fb.RowBytes;
-
-            double totalR = 0, totalG = 0, totalB = 0;
-            double totalWeight = 0;
-
-            double cx = width / 2.0;
-            double cy = height / 2.0;
-            double maxDist = Math.Sqrt(cx * cx + cy * cy);
-
             // Copy pixel data to managed array for safe access
-            int bufferSize = rowBytes * height;
+            int bufferSize = fb.RowBytes * fb.Size.Height;
             var pixels = new byte[bufferSize];
             Marshal.Copy(fb.Address, pixels, 0, bufferSize);
-
-            for (int y = 0; y < height; y++)
-            {
-                int rowStart = y * rowBytes;
-                for (int x = 0; x < width; x++)
-                {
-                    // Bgra8888 format: B, G, R, A
-                    int offset = rowStart + x * 4;
-                    byte b = pixels[offset];
-                    byte g = pixels[offset + 1];
-                    byte r = pixels[offset + 2];
-
-                    // Perceived brightness (fast approximation)
-                    int brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-                    if (brightness < brightnessMin || brightness > brightnessMax)
-                        continue;
-
-                    // Center-weighted: pixels closer to center count more
-                    double dx = x - cx;
-                    double dy = y - cy;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
-                    double weight = 1.0 + (1.0 - dist / maxDist); // 1.0 to 2.0
-
-                    totalR += r * weight;
-                    totalG += g * weight;
-                    totalB += b * weight;
-                    totalWeight += weight;
-                }
-            }
-
-            if (totalWeight < 1.0)
-                return FallbackColor;
-
-            return Color.FromRgb(
-                (byte)(totalR / totalWeight),
-                (byte)(totalG / totalWeight),
-                (byte)(totalB / totalWeight));
+            return DominantFromPixels(pixels, fb.Size.Width, fb.Size.Height, fb.RowBytes);
         }
         catch
         {
@@ -186,8 +331,6 @@ public static class DominantColorExtractor
             return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
 
         const int sampleSize = 50;
-        const int brightnessMin = 15;
-        const int brightnessMax = 240;
 
         try
         {
@@ -206,73 +349,10 @@ public static class DominantColorExtractor
             using var decoded = WriteableBitmap.Decode(ms);
             using var fb = decoded.Lock();
 
-            int width = fb.Size.Width;
-            int height = fb.Size.Height;
-            int rowBytes = fb.RowBytes;
-
-            int bufferSize = rowBytes * height;
+            int bufferSize = fb.RowBytes * fb.Size.Height;
             var pixels = new byte[bufferSize];
             Marshal.Copy(fb.Address, pixels, 0, bufferSize);
-
-            // Collect valid pixels
-            var validPixels = new List<(byte R, byte G, byte B, double Weight)>();
-            double cx = width / 2.0, cy = height / 2.0;
-            double maxDist = Math.Sqrt(cx * cx + cy * cy);
-
-            for (int y = 0; y < height; y++)
-            {
-                int rowStart = y * rowBytes;
-                for (int x = 0; x < width; x++)
-                {
-                    int offset = rowStart + x * 4;
-                    byte b = pixels[offset], g = pixels[offset + 1], r = pixels[offset + 2];
-                    int brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                    if (brightness < brightnessMin || brightness > brightnessMax) continue;
-
-                    double dx = x - cx, dy = y - cy;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
-                    double weight = 1.0 + (1.0 - dist / maxDist);
-                    validPixels.Add((r, g, b, weight));
-                }
-            }
-
-            if (validPixels.Count < 2)
-                return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
-
-            // Simple 2-means clustering (3 iterations)
-            var rng = new Random(42);
-            var idx1 = rng.Next(validPixels.Count);
-            var idx2 = rng.Next(validPixels.Count);
-            double c1R = validPixels[idx1].R, c1G = validPixels[idx1].G, c1B = validPixels[idx1].B;
-            double c2R = validPixels[idx2].R, c2G = validPixels[idx2].G, c2B = validPixels[idx2].B;
-
-            for (int iter = 0; iter < 3; iter++)
-            {
-                double s1R = 0, s1G = 0, s1B = 0, w1 = 0;
-                double s2R = 0, s2G = 0, s2B = 0, w2 = 0;
-
-                foreach (var (r, g, b, w) in validPixels)
-                {
-                    double d1 = (r - c1R) * (r - c1R) + (g - c1G) * (g - c1G) + (b - c1B) * (b - c1B);
-                    double d2 = (r - c2R) * (r - c2R) + (g - c2G) * (g - c2G) + (b - c2B) * (b - c2B);
-                    if (d1 <= d2) { s1R += r * w; s1G += g * w; s1B += b * w; w1 += w; }
-                    else          { s2R += r * w; s2G += g * w; s2B += b * w; w2 += w; }
-                }
-
-                if (w1 > 0) { c1R = s1R / w1; c1G = s1G / w1; c1B = s1B / w1; }
-                if (w2 > 0) { c2R = s2R / w2; c2G = s2G / w2; c2B = s2B / w2; }
-            }
-
-            var dominant = Color.FromRgb((byte)c1R, (byte)c1G, (byte)c1B);
-            var secondary = Color.FromRgb((byte)c2R, (byte)c2G, (byte)c2B);
-
-            // Ensure dominant is the darker one (better for backgrounds)
-            double lum1 = 0.2126 * c1R + 0.7152 * c1G + 0.0722 * c1B;
-            double lum2 = 0.2126 * c2R + 0.7152 * c2G + 0.0722 * c2B;
-            if (lum2 < lum1)
-                (dominant, secondary) = (secondary, dominant);
-
-            return (dominant, secondary);
+            return PaletteFromPixels(pixels, fb.Size.Width, fb.Size.Height, fb.RowBytes);
         }
         catch
         {

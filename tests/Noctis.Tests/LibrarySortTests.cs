@@ -132,6 +132,33 @@ public class LibrarySortTests
         Assert.Equal(new[] { "1", "2", "3", "4" }, result.Select(t => t.FilePath));
     }
 
+    // ── Songs: Date Modified (GitHub #89) ──
+
+    private static List<Track> Modified() => new()
+    {
+        new() { Title = "Mid",   LastModified = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc) },
+        new() { Title = "Old",   LastModified = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+        new() { Title = "NewB",  LastModified = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) },
+        new() { Title = "NewA",  LastModified = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) },
+    };
+
+    [Fact]
+    public void Songs_DateModified_DescendingIsNewestFirst()
+    {
+        var result = SortSongs(Modified(), "Date Modified", sortAsc: false);
+
+        // Same-timestamp tracks tie-break by title in both directions.
+        Assert.Equal(new[] { "NewA", "NewB", "Mid", "Old" }, result.Select(t => t.Title));
+    }
+
+    [Fact]
+    public void Songs_DateModified_AscendingIsOldestFirst()
+    {
+        var result = SortSongs(Modified(), "Date Modified", sortAsc: true);
+
+        Assert.Equal(new[] { "Old", "Mid", "NewA", "NewB" }, result.Select(t => t.Title));
+    }
+
     // ── Albums grid sort modes ──
 
     private static Album Alb(string name, string artist, int year,
@@ -213,6 +240,26 @@ public class LibrarySortTests
         // Unrecognized/default mode leaves the incoming order untouched.
         Assert.Equal(new[] { "Older", "Newer" },
             LibraryAlbumsViewModel.ApplySortMode(albums, "default", ascending: true).Select(a => a.Name));
+    }
+
+    [Fact]
+    public void Albums_DateModifiedMode_UsesEachAlbumsNewestFile()
+    {
+        // GitHub #89: "Retagged" has one old file and one just re-tagged — it leads.
+        var fresh = Alb("Fresh", "A", 2000);
+        fresh.Tracks[0].LastModified = new DateTime(2026, 5, 1);
+        var retagged = Alb("Retagged", "B", 2000);
+        retagged.Tracks[0].LastModified = new DateTime(2020, 1, 1);
+        retagged.Tracks.Add(new Track { Title = "t2", LastModified = new DateTime(2026, 9, 1) });
+        var old = Alb("Old", "C", 2000);
+        old.Tracks[0].LastModified = new DateTime(2019, 1, 1);
+        var albums = new List<Album> { old, fresh, retagged };
+
+        Assert.Equal(new[] { "Retagged", "Fresh", "Old" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "datemodified", ascending: false).Select(a => a.Name));
+        Assert.Equal(new[] { "Old", "Fresh", "Retagged" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "datemodified", ascending: true).Select(a => a.Name));
+        Assert.True(LibraryAlbumsViewModel.IsDescendingByDefault("datemodified"));
     }
 
     // ── Albums: alphabetical sort + direction (issue #33) ──

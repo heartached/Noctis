@@ -5824,10 +5824,6 @@
     <value>استوديو الكلمات</value>
     <comment>Dialog title</comment>
   </data>
-  <data name="LyricsStudio.Subtitle" xml:space="preserve">
-    <value>أوقات كلمات الأغاني للتسجيل، أو تنسخ عندما لا يكون هناك أحد.</value>
-    <comment>Dialog subtitle</comment>
-  </data>
   <data name="LyricsStudio.Model" xml:space="preserve">
     <value>الموديل</value>
     <comment>Footer label</comment>
@@ -5852,17 +5848,9 @@
     <value>انسخ بواسطة الأذن (تجاهل الكلمات الموجودة)</value>
     <comment>Footer checkbox</comment>
   </data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
-    <value>نموذج الكلام يستمع إلى الأغنية ويكتب الكلمات نفسها، حتى عندما تكون للأغنية كلمات بالفعل. الأغاني التي لا تحتوي على كلمات تنتشر دائمًا.</value>
-    <comment>Footer checkbox tooltip</comment>
-  </data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
     <value>ابحث عن كلمات الاغاني على الانترنت عندما لا تملك الاغنية</value>
     <comment>Footer checkbox</comment>
-  </data>
-  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
-    <value>يتم جلب كلمات الأغاني السهلة من LRCLIB أولا، لذا يجب على النموذج فقط أن يوقفها. يوقف، النموذج يكتب الكلمات عن طريق الأذن.</value>
-    <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
     <value>نموذج التحميل</value>

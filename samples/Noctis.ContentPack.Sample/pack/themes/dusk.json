@@ -1,0 +1,22 @@
+{
+  "id": "dusk",
+  "name": "Dusk",
+  "base": "dark",
+  "accent": "#FF8A5B",
+  "colors": {
+    "AppWindowBackgroundBrush": "#17131F",
+    "AppMainBackground": "#17131F",
+    "AppSidebarBackground": "#1F1929",
+    "PrimaryTextBrush": "#F1ECF7",
+    "SecondaryTextBrush": "#A99DBB",
+    "TertiaryTextBrush": "#7A6F8C",
+    "HomeCardBackground": "#241D30",
+    "HomeCardHoverBackground": "#2D2440",
+    "TrackListHoverBrush": "#16FFFFFF",
+    "SidebarHoverBrush": "#16FFFFFF",
+    "IslandBackground": "#F21F1929",
+    "IslandForeground": "#F1ECF7",
+    "IslandForegroundSecondary": "#A99DBB",
+    "QueueDrawerBackground": "#F21F1929"
+  }
+}

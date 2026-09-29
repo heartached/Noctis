@@ -669,4 +669,30 @@ public class MiniPlayerDesignTests
         }
         finally { win.Close(); }
     }
+
+    // The Pill cover's spin loop queues on the app-wide frame clock, so closing the window
+    // mid-playback must end it; otherwise it keeps turning the closed window's cover (and
+    // rooting that window) every frame for the rest of the session.
+    [AvaloniaFact]
+    public async Task ClosingThePillWhilePlaying_StopsTheCoverSpinLoop()
+    {
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        vm.Player.CurrentTrack = new Track { Title = "T", Artist = "A", FilePath = @"C:\t.flac" };
+        vm.SetDesignCommand.Execute("Pill");
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 340, Height = 432 };
+        win.Show();
+        await PumpFor(300);
+        var spin = Assert.IsType<RotateTransform>(win.FindControl<Panel>("PillCoverSpin")!.RenderTransform);
+
+        vm.Player.State = PlaybackState.Playing;
+        await PumpFor(400);
+        Assert.NotEqual(0, spin.Angle);
+
+        win.Close();
+        await PumpFor(500); // past the close fade: the window is really closed now
+        var angleAtClose = spin.Angle;
+        await PumpFor(400);
+        Assert.Equal(angleAtClose, spin.Angle);
+    }
 }

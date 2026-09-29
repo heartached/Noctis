@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Noctis.Services;
@@ -46,6 +47,29 @@ public class CachedImage : Image
         set => SetValue(DecodeWidthProperty, value);
     }
 
+    public static readonly StyledProperty<bool> FastDownscaleProperty =
+        AvaloniaProperty.Register<CachedImage, bool>(nameof(FastDownscale));
+
+    /// <summary>
+    /// Draw with plain bilinear sampling when the bitmap lands at 0.5–1 device pixels per
+    /// bitmap pixel — what a grid tile always does, since it decodes the smallest width
+    /// bucket that covers its slot (a 318px album tile shows a 384px decode).
+    ///
+    /// A scroll repaints every cover on every frame, and on the software renderer the
+    /// sampling was most of that frame: 15 Albums covers at HighQuality (MediumQuality
+    /// measured the same) cost ~17 ms of a 25 ms frame, LowQuality ~3 ms (headless Skia,
+    /// 09-24). At this ratio the two are indistinguishable (46 dB PSNR, same sharpness on the
+    /// Albums grid) — the decode already did the high-quality shrink. Stronger downscales (a
+    /// 128px decode in a 36px row thumbnail) and upscales keep the configured mode. Opt-in,
+    /// set by the tile style in App.axaml: surfaces under a 3D transform (Cover Flow) must
+    /// not use it.
+    /// </summary>
+    public bool FastDownscale
+    {
+        get => GetValue(FastDownscaleProperty);
+        set => SetValue(FastDownscaleProperty, value);
+    }
+
     public static readonly StyledProperty<bool> ClearOnSourceChangeProperty =
         AvaloniaProperty.Register<CachedImage, bool>(nameof(ClearOnSourceChange), defaultValue: true);
 
@@ -75,6 +99,59 @@ public class CachedImage : Image
     {
         SourcePathProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
         DecodeWidthProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
+    }
+
+    /// <summary>The mode the XAML configured, while <see cref="FastDownscale"/> has swapped in LowQuality.</summary>
+    private BitmapInterpolationMode? _configuredInterpolation;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == SourceProperty || change.Property == BoundsProperty
+            || change.Property == FastDownscaleProperty || change.Property == StretchProperty)
+            UpdateInterpolation();
+    }
+
+    /// <summary>
+    /// Image.Render is sealed, so the sampling choice is made on the control's own render
+    /// options: LowQuality while the current bitmap is a mild downscale, the configured mode
+    /// otherwise (an upscaled fallback bitmap, a hidden tile, the property off).
+    /// </summary>
+    private void UpdateInterpolation()
+    {
+        var fast = FastDownscale && Source is Bitmap bitmap
+            && IsMildDownscale(Bounds.Size, bitmap.Size, bitmap.PixelSize, Stretch, StretchDirection,
+                (VisualRoot as TopLevel)?.RenderScaling ?? 1.0);
+        if (fast)
+        {
+            if (_configuredInterpolation != null) return;
+            var configured = RenderOptions.GetBitmapInterpolationMode(this);
+            // None is a deliberate choice (pixel art); LowQuality already is the cheap path.
+            if (configured is BitmapInterpolationMode.None or BitmapInterpolationMode.LowQuality) return;
+            _configuredInterpolation = configured;
+            RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.LowQuality);
+        }
+        else if (_configuredInterpolation is { } configured)
+        {
+            _configuredInterpolation = null;
+            RenderOptions.SetBitmapInterpolationMode(this, configured);
+        }
+    }
+
+    /// <summary>
+    /// True when the bitmap is drawn at 0.5–1 device pixels per bitmap pixel on both axes:
+    /// a shrink bilinear filtering handles without aliasing (see <see cref="FastDownscale"/>).
+    /// </summary>
+    internal static bool IsMildDownscale(Size bounds, Size bitmapSize, PixelSize bitmapPixels,
+        Stretch stretch, StretchDirection direction, double renderScaling)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0 || bitmapPixels.Width <= 0 || bitmapPixels.Height <= 0)
+            return false;
+        var scale = stretch.CalculateScaling(bounds, bitmapSize, direction);
+        var densityX = scale.X * renderScaling * bitmapSize.Width / bitmapPixels.Width;
+        var densityY = scale.Y * renderScaling * bitmapSize.Height / bitmapPixels.Height;
+        // 1.01: layout rounding can land a 1:1 draw a hair above one.
+        return densityX is >= 0.5 and <= 1.01 && densityY is >= 0.5 and <= 1.01;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -259,8 +336,12 @@ public class CachedImage : Image
         // Add-to-Playlist thumbnails. When that bitmap is at least as wide as we need
         // (and not absurdly wider) it IS the result: no second decode, no second copy.
         // This is safe for recycled list containers: the fallback is the NEW item's art.
+        // Single-cover surfaces (ClearOnSourceChange off: the lyrics page, player, mini
+        // player) take it only when it is big enough. Their cache is usually a 128-384px
+        // tile decode, which stretched to a ~1000px cover showed blurry for the length of
+        // the full decode and then snapped sharp. The previous cover stays up instead.
         var fallback = ArtworkCache.TryGetAnyWidth(path, decodeWidth, out var sufficient);
-        if (fallback != null)
+        if (fallback != null && (sufficient || ClearOnSourceChange || fallback.PixelSize.Width >= decodeWidth))
         {
             SetSource(fallback);
             if (sufficient) return;
@@ -275,7 +356,7 @@ public class CachedImage : Image
 
         try
         {
-            var bitmap = await Task.Run(() => ArtworkCache.LoadAndCache(path, decodeWidth));
+            var bitmap = await Task.Run(() => DecodeInBackground(path, decodeWidth, generation));
 
             // Discard result if the control was recycled (SourcePath changed again)
             bool isCurrentGeneration;
@@ -290,6 +371,34 @@ public class CachedImage : Image
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CachedImage] Failed to load artwork '{path}': {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Pool-thread half of a cache miss. Cover files are commonly 3000px PNGs, which no codec
+    /// can shrink while decoding: each miss is a full 36 MB decode (~80 ms on a fast core).
+    /// A wheel glide realizes a row of tiles every few frames, so misses queue faster than
+    /// the pool drains them. A tile scrolled past before its turn skips the decode instead
+    /// of paying for a cover nobody will see, and decodes run below normal priority so, when
+    /// they saturate the cores, the UI and render threads still get theirs.
+    /// </summary>
+    internal Bitmap? DecodeInBackground(string path, int decodeWidth, int generation)
+    {
+        lock (_generationLock)
+        {
+            if (generation != _loadGeneration) return null;
+        }
+
+        var thread = Thread.CurrentThread;
+        var priority = thread.Priority;
+        try
+        {
+            thread.Priority = ThreadPriority.BelowNormal;
+            return ArtworkCache.LoadAndCache(path, decodeWidth);
+        }
+        finally
+        {
+            thread.Priority = priority;
         }
     }
 }

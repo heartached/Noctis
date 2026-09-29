@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Avalonia.Platform.Storage;
+using Avalonia.Controls.ApplicationLifetimes;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -13,12 +14,104 @@ using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IPageKeyOverlayHost
 {
 
     private TaskbarIntegrationService? _taskbar;
     private SmtcService? _smtc;
     private MprisService? _mpris;
+    private LinuxResumeWatcher? _resumeWatcher;
+    private LinuxTrayHost? _trayHost;
+
+    private static readonly WindowTransparencyLevel[] GlassTransparencyLevels =
+    {
+        WindowTransparencyLevel.AcrylicBlur,
+        WindowTransparencyLevel.Mica,
+        WindowTransparencyLevel.Blur,
+        WindowTransparencyLevel.None,
+    };
+
+    /// <summary>
+    /// Linux, XWayland on NVIDIA: after a suspend the window came back see-through until the
+    /// app was restarted (Mistery, Discord 2026-09-22; see <see cref="LinuxResumeWatcher"/>).
+    /// Each visible window gets a real size change and is put back: a size change gives a
+    /// redirected window a new backing pixmap in the X server, XWayland drops its window
+    /// buffers with it, and Avalonia rebuilds its render layer and redraws everything (an
+    /// expose only redraws what it thinks is dirty). Normal windows grow 1px; maximized
+    /// ones are restored and re-maximized, because KWin refuses client resizes of maximized
+    /// windows. See <see cref="LinuxResumeWatcher.ChooseWindowRefresh"/> for what is skipped.
+    /// The 1.5.3 Hide() + Show() remap is gone: Window.Hide() hides the owner's dialogs and
+    /// completes their ShowDialog as if cancelled, and the loop then skipped them, hidden.
+    /// </summary>
+    private void RefreshWindowsAfterResume(int pass)
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+        foreach (var window in new List<Window>(desktop.Windows))
+        {
+            var name = window.GetType().Name;
+            var refresh = LinuxResumeWatcher.ChooseWindowRefresh(window.IsVisible, window.WindowState, window.SizeToContent);
+            try
+            {
+                switch (refresh)
+                {
+                    case LinuxResumeWatcher.WindowRefresh.NudgeSize:
+                        NudgeWindowSizeAfterResume(window, name, pass);
+                        break;
+                    case LinuxResumeWatcher.WindowRefresh.Remaximize:
+                        window.WindowState = WindowState.Normal;
+                        DispatcherTimer.RunOnce(() =>
+                        {
+                            try
+                            {
+                                if (window.WindowState == WindowState.Normal)
+                                    window.WindowState = WindowState.Maximized;
+                                LinuxResumeWatcher.Log("ResumeWatch.Refreshed", $"pass {pass}: {name} restored and re-maximized");
+                            }
+                            catch (Exception ex)
+                            {
+                                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
+                            }
+                        }, LinuxResumeWatcher.RefreshHold);
+                        break;
+                    default:
+                        LinuxResumeWatcher.Log("ResumeWatch.Skipped", $"pass {pass}: {name} ({refresh})");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Grows the window by 1px and puts it back after <see cref="LinuxResumeWatcher.RefreshHold"/>.
+    /// The put-back waits for the window manager's answer: X11Window.Resize drops a request
+    /// equal to the size it last heard back, so an immediate restore would be lost.
+    /// </summary>
+    private static void NudgeWindowSizeAfterResume(Window window, string name, int pass)
+    {
+        var before = window.ClientSize;
+        var height = window.Height;
+        window.Height = before.Height + 1;
+        DispatcherTimer.RunOnce(() =>
+        {
+            try
+            {
+                var grew = window.ClientSize.Height > before.Height;
+                window.Height = double.IsNaN(height) ? before.Height : height;
+                LinuxResumeWatcher.Log("ResumeWatch.Refreshed",
+                    $"pass {pass}: {name} {before.Width:0}x{before.Height:0} " +
+                    (grew ? "grew 1px and was put back" : "did not grow (window manager kept its size, e.g. tiled)"));
+            }
+            catch (Exception ex)
+            {
+                LinuxResumeWatcher.Warn("ResumeWatch.Refresh", $"pass {pass}: {name}: {ex.Message}");
+            }
+        }, LinuxResumeWatcher.RefreshHold);
+    }
     private MacNowPlayingService? _macNowPlaying;
     private TrayIcon? _trayIcon;
     private bool _exitRequestedFromTray;
@@ -75,8 +168,11 @@ public partial class MainWindow : Window
     private Controls.GlassPanel? _settingsGlass;
     private Border? _settingsCard;
     private Border? _queuePopupPanel;
+    private Controls.GlassPanel? _queueGlass;
     private MiniPlayerWindow? _miniPlayer;
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
+    private Action? _detachFileActivation;
+    private Action? _detachReopenActivation;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -183,6 +279,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
 
+        // Windows 10: Avalonia leaves the native caption white under the dark theme.
+        // The handle exists from construction, so this lands before the first paint.
+        Win10DarkTitleBar.Apply(this);
+        ActualThemeVariantChanged += (_, _) => Win10DarkTitleBar.Apply(this);
+
         // Initialize the application once the window is fully loaded.
         //
         // The whole body is guarded. This is an async void handler running *inside*
@@ -266,6 +367,7 @@ public partial class MainWindow : Window
             if (acrylic != null) acrylic.IsVisible = false;
             // Every GlassPanel (sidebar, Settings sheet, island) drops back to its plain fill.
             AppGlass.Clear();
+            QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: false);
             return;
         }
 
@@ -275,13 +377,9 @@ public partial class MainWindow : Window
         var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
         var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
 
-        TransparencyLevelHint = new[]
-        {
-            WindowTransparencyLevel.AcrylicBlur,
-            WindowTransparencyLevel.Mica,
-            WindowTransparencyLevel.Blur,
-            WindowTransparencyLevel.None,
-        };
+        // One shared array: a new, equal array on every glass refresh is re-applied by
+        // Avalonia, and macOS drops a repeated level to Opaque (see MiniPlayerWindow).
+        TransparencyLevelHint = GlassTransparencyLevels;
 
         if (acrylic != null)
         {
@@ -319,6 +417,7 @@ public partial class MainWindow : Window
         // app content beneath them. Dialog windows are left alone: an AcrylicBlur hint on a
         // borderless transparent window painted the whole owner black on Win32 (09-07).
         AppGlass.Set(true, main, sidebar);
+        QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: true);
     }
 
     /// <summary>Card fade/scale plus the glass underlay's own Fade/scale, always together so the
@@ -437,26 +536,27 @@ public partial class MainWindow : Window
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
+                _queueGlass = this.FindControl<Controls.GlassPanel>("QueueGlass");
+                QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, AppGlass.IsActive);
 
                 InitializeQueuePopupBinding(vm);
                 InitializeTaskbarButtons(vm);
                 InitializeTrayIcon(vm);
+                _trayHost = LinuxTrayHost.TryStart();
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
+                _resumeWatcher = LinuxResumeWatcher.TryStart(pass => Dispatcher.UIThread.Post(() => RefreshWindowsAfterResume(pass)));
                 _macNowPlaying = MacNowPlayingService.TryStart(vm.Player);
                 InitializeMacMenuBar(vm);
                 Services.StartupTrace.Mark("tray-smtc-mpris-ready");
 
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load). App already
-                // minimized the window before it was realized; drop it out of the
-                // taskbar now that the tray icon exists to get it back. Guarded on
-                // _trayIcon != null so a platform where the tray failed to initialize
-                // never leaves the app running with no window AND no tray icon.
-                if (App.StartMinimizedAtLogin && _trayIcon != null)
-                {
-                    Hide();
-                }
+                // minimized the window and took it off the taskbar before it was
+                // realized; settle it into the tray, or back onto the taskbar when there
+                // is no tray to get it back from.
+                if (App.StartMinimizedAtLogin)
+                    _ = SettleStartMinimizedAsync();
 
                 await vm.InitializeAsync();
                 Services.StartupTrace.Mark("initialize-async-done");
@@ -480,11 +580,16 @@ public partial class MainWindow : Window
                         SetQueueRowNumber(e.Container, e.Index);
                         e.Container.Classes.Set(QueueSelectedClass, queueSelection.Contains(e.Index));
                     };
+                    var queueRowsSyncPending = false;
                     vm.Player.UpNext.CollectionChanged += (_, e) =>
                     {
                         queueSelection.Apply(e);
+                        // One re-stamp per burst: a block remove / move raises an event per row (audit U03).
+                        if (queueRowsSyncPending) return;
+                        queueRowsSyncPending = true;
                         Dispatcher.UIThread.Post(() =>
                         {
+                            queueRowsSyncPending = false;
                             RenumberQueueRows(queueList);
                             SyncQueueSelectionVisuals(queueList);
                         }, DispatcherPriority.Loaded);
@@ -502,6 +607,7 @@ public partial class MainWindow : Window
                                 EnsureLyricsPanelLoaded(mainVm2);
                                 _lyricsPanelWrapper.IsVisible = true;
                                 _lyricsPanelWrapper.Width = 356;
+                                GetLyricsPanelView()?.SetShown(true);
                             }
                             else
                             {
@@ -513,7 +619,13 @@ public partial class MainWindow : Window
                                 {
                                     if (_lyricsPanelWrapper != null &&
                                         DataContext is MainWindowViewModel m && !m.IsLyricsPanelOpen)
+                                    {
                                         _lyricsPanelWrapper.IsVisible = false;
+                                        // Hiding does not detach the view, so un-register it
+                                        // as a lyrics surface explicitly (parks the sync
+                                        // timer, word clock and flowing backdrop).
+                                        GetLyricsPanelView()?.SetShown(false);
+                                    }
                                 }, TimeSpan.FromMilliseconds(240));
                             }
                         }
@@ -681,6 +793,9 @@ public partial class MainWindow : Window
         host.Content = new LyricsPanelView { DataContext = vm.Lyrics };
     }
 
+    private LyricsPanelView? GetLyricsPanelView() =>
+        this.FindControl<ContentControl>("LyricsPanelHost")?.Content as LyricsPanelView;
+
     private void EnsureSettingsViewLoaded()
     {
         var host = this.FindControl<ContentControl>("SettingsViewHost");
@@ -704,8 +819,9 @@ public partial class MainWindow : Window
         // ShortcutService so Settings › Shortcuts can change any of them at runtime.
         AddHandler(KeyDownEvent, OnGlobalShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnGlobalShortcutKeyUp, RoutingStrategies.Tunnel);
-        // Queue-row keys (GitHub #85). Tunnel at the window and registered before any page's
-        // WindowKeyForwarder, so Ctrl+A / Escape inside the queue don't also hit the page.
+        // Queue-row keys (GitHub #85). Tunnel at the window. A page's WindowKeyForwarder is
+        // added later and so runs first (newest first); it stands aside through
+        // IsOverlayCapturingKeys, so Ctrl+A / Escape inside the queue don't hit the page.
         AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
 
         // Volume control via mouse wheel and keyboard
@@ -727,6 +843,30 @@ public partial class MainWindow : Window
         });
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
+        // macOS delivers "Open With Noctis", Finder double-clicks and Dock-icon drops as
+        // an open-documents event instead (see FileActivation) — at a cold launch too,
+        // once the run loop starts, which is before InitializeAsync has restored the queue.
+        _detachFileActivation = Helpers.FileActivation.Subscribe(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            files => Dispatcher.UIThread.Post(() =>
+            {
+                ShowFromTray();
+                if (DataContext is MainWindowViewModel vm)
+                    vm.OpenExternalFilesWhenReady(files);
+            }));
+
+        // macOS: a Dock-icon click or relaunch only sends the running app a reopen, so a
+        // window hidden into the menu-bar tray (close/minimize to tray, start minimized)
+        // had no way back but the status item. With the mini player up there is a visible
+        // window, and AppKit's convention then is to just activate — leave it.
+        _detachReopenActivation = Helpers.FileActivation.SubscribeReopen(
+            Application.Current?.TryGetFeature<IActivatableLifetime>(),
+            () => Dispatcher.UIThread.Post(() =>
+            {
+                if (_miniPlayer == null)
+                    ShowFromTray();
+            }));
+
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
         // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
         // rule here — F11, Escape and WM-initiated transitions all funnel through
@@ -738,7 +878,7 @@ public partial class MainWindow : Window
             UpdateImmersiveLyricsState();
             if (WindowState != WindowState.Minimized)
                 return;
-            if (_trayIcon != null
+            if (IsTrayUsable
                 && DataContext is MainWindowViewModel trayVm
                 && trayVm.Settings.MinimizeToTray
                 && _miniPlayer == null)
@@ -979,6 +1119,48 @@ public partial class MainWindow : Window
 
     private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
 
+    /// <summary>
+    /// Whether hiding into the tray leaves a way back. A TrayIcon object alone does not: on
+    /// Linux Avalonia creates one even with nothing hosting it (stock GNOME), so every
+    /// hide-to-tray path also needs a live StatusNotifierWatcher (audit P29).
+    /// </summary>
+    private bool IsTrayUsable => LinuxTrayHost.IsTrayUsable(
+        _trayIcon != null, OperatingSystem.IsLinux(), _trayHost?.IsAvailable == true);
+
+    private async Task SettleStartMinimizedAsync()
+    {
+        try
+        {
+            if (_trayHost != null)
+            {
+                // At login the panel may register its tray a moment after we start.
+                await _trayHost.WaitForHostAsync(TimeSpan.FromSeconds(5));
+                // Brought up meanwhile (second launch): ShowFromTray already settled it.
+                if (ShowInTaskbar)
+                    return;
+            }
+            SettleStartMinimized(this, IsTrayUsable);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "TrayIcon.StartMinimized", ex.Message);
+            ShowInTaskbar = true;
+        }
+    }
+
+    /// <summary>
+    /// A login launch arrives minimized with no taskbar button (see App). Into the tray when
+    /// there is one; otherwise give the taskbar button back, or the app runs with no window,
+    /// no taskbar entry and no tray icon. Internal for tests.
+    /// </summary>
+    internal static void SettleStartMinimized(Window window, bool trayUsable)
+    {
+        if (trayUsable)
+            window.Hide();
+        else
+            window.ShowInTaskbar = true;
+    }
+
     private static string Truncate(string s, int max)
         => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
 
@@ -1010,7 +1192,7 @@ public partial class MainWindow : Window
         // explicit app shutdown (tray Exit) always pass through.
         if (!_exitRequestedFromTray
             && e.CloseReason == WindowCloseReason.WindowClosing
-            && _trayIcon != null
+            && IsTrayUsable
             && _miniPlayer == null
             && DataContext is MainWindowViewModel vm
             && vm.Settings.CloseToTray)
@@ -1075,12 +1257,20 @@ public partial class MainWindow : Window
             Helpers.SingleInstanceGuard.ActivationRequested -= _singleInstanceActivationHandler;
             _singleInstanceActivationHandler = null;
         }
+        _detachFileActivation?.Invoke();
+        _detachFileActivation = null;
+        _detachReopenActivation?.Invoke();
+        _detachReopenActivation = null;
 
         _taskbar?.Dispose();
         _smtc?.Dispose();
         _smtc = null;
         _mpris?.Dispose();
         _mpris = null;
+        _resumeWatcher?.Dispose();
+        _resumeWatcher = null;
+        _trayHost?.Dispose();
+        _trayHost = null;
         _macNowPlaying?.Dispose();
         _macNowPlaying = null;
         if (_trayIcon != null)
@@ -1160,7 +1350,7 @@ public partial class MainWindow : Window
                 selection.Clear();
                 RefreshQueueSelectionVisuals();
             }
-            AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
+            QueueDrawerGlass.Animate(_queuePopupPanel, _queueGlass, vm.Player.IsQueuePopupOpen, AppGlass.IsActive,
                 () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
         };
         vm.Player.PropertyChanged += _queuePopupStateHandler;
@@ -1294,7 +1484,12 @@ public partial class MainWindow : Window
     private void OnDragPreviewStarted(TopLevel top, Helpers.DragFileBehavior.DragPreview preview)
     {
         if (!ReferenceEquals(top, this)) return;
-        if (this.FindControl<TextBlock>("DragChipTitle") is { } title) title.Text = preview.Title;
+        // Set the title Run, not TextBlock.Text: Text would replace the inline E badge.
+        if (this.FindControl<TextBlock>("DragChipTitle") is { Inlines: { } inlines }
+            && inlines.OfType<Avalonia.Controls.Documents.Run>().FirstOrDefault() is { } titleRun)
+            titleRun.Text = preview.Title;
+        if (this.FindControl<Border>("DragChipExplicit") is { } explicitBadge)
+            explicitBadge.IsVisible = preview.IsExplicit;
         if (this.FindControl<TextBlock>("DragChipSubtitle") is { } subtitle)
         {
             subtitle.Text = preview.Subtitle;
@@ -1378,10 +1573,44 @@ public partial class MainWindow : Window
         }
     }
 
+    private enum DropMode { Import, Play, Queue }
+
+    /// <summary>The overlay's import arrow from the XAML, kept so the icon can switch back to it.</summary>
+    private Avalonia.Media.Geometry? _dropImportIconData;
+
+    /// <summary>"Add to queue": three list lines with a plus (GitHub #90).</summary>
+    private static readonly Avalonia.Media.Geometry DropQueueIconData = Avalonia.Media.Geometry.Parse(
+        "M3 5h13v2H3z M3 10h13v2H3z M3 15h8v2H3z M17 12h2v4h4v2h-4v4h-2v-4h-4v-2h4z");
+
     private void ShowDragOverlay(bool show)
     {
         var overlay = this.FindControl<Avalonia.Controls.Border>("DragDropOverlay");
         if (overlay == null) return;
+        // GitHub #86 / #90: with "Import dropped files" off the drop plays / queues in place,
+        // so "Drop files to import" promised something that would not happen. The overlay says
+        // what this drop will do — play (nothing loaded) or add to the queue — with its own icon.
+        if (show && DataContext is MainWindowViewModel vm
+            && this.FindControl<TextBlock>("DragDropOverlayText") is { } text)
+        {
+            var mode = vm.Settings.ImportDroppedMedia ? DropMode.Import
+                : vm.DropStartsPlayback ? DropMode.Play : DropMode.Queue;
+            text.Text = Localization.Loc.T(mode switch
+            {
+                DropMode.Import => "Main.DropFilesImport",
+                DropMode.Play => "Main.DropFilesPlay",
+                _ => "Main.DropFilesQueue",
+            });
+            if (this.FindControl<PathIcon>("DragDropOverlayIcon") is { } icon)
+            {
+                _dropImportIconData ??= icon.Data;
+                icon.Data = mode switch
+                {
+                    DropMode.Import => _dropImportIconData,
+                    DropMode.Play => this.FindResource("PlayIcon") as Avalonia.Media.Geometry ?? _dropImportIconData,
+                    _ => DropQueueIconData,
+                };
+            }
+        }
         overlay.IsVisible = show;
         overlay.Opacity = show ? 1 : 0;
     }
@@ -1484,8 +1713,9 @@ public partial class MainWindow : Window
         if (shortcuts.TryMatch(e) is not { } action) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an
-        // edit box: typing a space in the search box stays typing a space.
-        if (e.KeyModifiers == KeyModifiers.None && e.Source is TextBox) return;
+        // edit box: typing a space in the search box stays typing a space. Ctrl+←/→ in
+        // the search box or Lyrics Studio moves the caret by a word, not the track.
+        if (e.Source is TextBox && ShortcutDefaults.IsTextBoxKey(e.Key, e.KeyModifiers)) return;
 
         if (!ExecuteShortcut(vm, action)) return;
         _consumedShortcut = action;
@@ -1542,6 +1772,15 @@ public partial class MainWindow : Window
                 return true;
             case ShortcutAction.NewPlaylist:
                 vm.Sidebar.CreatePlaylistCommand.Execute(null);
+                return true;
+            case ShortcutAction.ToggleQueue:
+                // GitHub #86: the island's Queue button is gone while nothing is loaded
+                // (the bar unmounts), so this is the way in to an empty queue.
+                vm.Player.ShowQueueCommand.Execute(null);
+                return true;
+            case ShortcutAction.ToggleLyrics:
+                // Same toggle as the island's Lyrics button (GitHub #103).
+                vm.ToggleLyricsCommand.Execute(null);
                 return true;
             default:
                 return false;
@@ -1688,6 +1927,25 @@ public partial class MainWindow : Window
             vm.Player.RemoveFromQueue(index);
     }
 
+    private async void OnQueueScanReplayGainClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (sender is not MenuItem { DataContext: Track track }) return;
+        var upNext = vm.Player.UpNext;
+        var index = _queueContextRow >= 0 && _queueContextRow < upNext.Count
+                    && ReferenceEquals(upNext[_queueContextRow], track)
+            ? _queueContextRow
+            : upNext.IndexOf(track);
+
+        // GitHub #105: on a selected row the scan covers the whole selection (Ctrl+A in
+        // the panel = the whole queue). The dialog drops repeats of a track queued twice.
+        var tracks = index >= 0 && _queueSelection is { } selection && selection.Contains(index)
+            ? selection.Snapshot().Where(i => i < upNext.Count).Select(i => upNext[i]).ToList()
+            : new List<Track> { track };
+        try { await MetadataHelper.OpenReplayGainScannerDialog(tracks); }
+        catch (Exception ex) { DebugLog.Write("ReplayGain", $"Queue scan failed to open: {ex.Message}"); }
+    }
+
     // ── Queue row selection (GitHub #85) ──
     //
     // Click selects one row, Ctrl+Click toggles, Shift+Click selects the range from the
@@ -1732,6 +1990,11 @@ public partial class MainWindow : Window
         && FocusManager?.GetFocusedElement() is Visual focused
         && (focused == panel || panel.IsVisualAncestorOf(focused));
 
+    /// <summary>Page shortcuts (Ctrl+A, Escape) stay off the page while the Settings sheet
+    /// covers it or the queue panel holds focus; the sheet and panel handle those keys.</summary>
+    bool IPageKeyOverlayHost.IsOverlayCapturingKeys =>
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsFocusInQueuePanel();
+
     private void OnQueueKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || _queueSelection is not { } selection) return;
@@ -1774,41 +2037,6 @@ public partial class MainWindow : Window
     //   clicks and double-taps continue to work normally for selection/play.
 
     private const double QueueDragThreshold = 6.0;
-
-    /// <summary>
-    /// Open/close animation for the queue popup, mirroring the Settings modal:
-    /// fade + slide/scale settle on open, the reverse on close, then the closed
-    /// panel drops out of the tree so it stops participating in layout/render.
-    /// <paramref name="stillClosed"/> re-checks the state when the close timer
-    /// fires, so a quick re-open never hides an open panel.
-    /// (The lyrics panel intentionally keeps its own width-slide animation.)
-    /// </summary>
-    private static void AnimateSidePanel(Border? panel, bool open, Func<bool> stillClosed)
-    {
-        if (panel == null) return;
-        if (open)
-        {
-            // Show first; the settle runs on the next frame so the transitions animate it.
-            panel.IsVisible = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                panel.Opacity = 1;
-                panel.RenderTransform =
-                    Avalonia.Media.Transformation.TransformOperations.Parse("translateX(0px) scale(1)");
-            }, DispatcherPriority.Render);
-        }
-        else
-        {
-            panel.Opacity = 0;
-            panel.RenderTransform =
-                Avalonia.Media.Transformation.TransformOperations.Parse("translateX(16px) scale(0.97)");
-            DispatcherTimer.RunOnce(() =>
-            {
-                if (stillClosed())
-                    panel.IsVisible = false;
-            }, TimeSpan.FromMilliseconds(200));
-        }
-    }
 
     /// <summary>Stamps the 1-based queue position into a (possibly recycled) row container.</summary>
     private static void SetQueueRowNumber(Control container, int index)
@@ -2067,6 +2295,179 @@ public partial class MainWindow : Window
         _queueDragRow = null;
     }
 
+    // ── GitHub #88: rubber-band selection ────────────────────────────────────
+    // A band starts from the popup's empty space (the row gutters, below the last row) or
+    // from a Ctrl/Shift press on a row; a plain press on a row stays click / drag-to-reorder.
+    // Rows are virtualized, so the band's start is kept in fractional ROW units measured off
+    // a realized row (rows are a fixed height). That keeps it pinned to its rows while the
+    // list auto-scrolls under a band held near the top or bottom edge.
+
+    private const double QueueBandEdge = 28.0;
+    private bool _queueBandPending;
+    private bool _queueBandActive;
+    private bool _queueBandClearOnClick;
+    private Point _queueBandStartPos;
+    private double _queueBandStartRow;
+    private Point _queueBandLastPos;
+    private int[]? _queueBandKeep;
+    private DispatcherTimer? _queueBandScrollTimer;
+
+    /// <summary>First on-screen realized row: its index, its top (margin included) in
+    /// <paramref name="listBox"/> coordinates, and the row pitch.</summary>
+    private static bool TryQueueRowMetrics(ListBox listBox, out int index, out double top, out double pitch)
+    {
+        index = -1; top = 0; pitch = 0;
+        foreach (var container in listBox.GetRealizedContainers())
+        {
+            var i = listBox.IndexFromContainer(container);
+            if (i < 0 || !container.IsVisible || (index >= 0 && i >= index)) continue;
+            if (container.TranslatePoint(new Point(0, 0), listBox) is not { } p) continue;
+            var h = container.Bounds.Height + container.Margin.Top + container.Margin.Bottom;
+            // Skip a container kept realized far off-screen (e.g. the focused one).
+            if (h <= 0 || p.Y + h < -h || p.Y > listBox.Bounds.Height + h) continue;
+            index = i;
+            top = p.Y - container.Margin.Top;
+            pitch = h;
+        }
+        return index >= 0;
+    }
+
+    private void OnQueueBandPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not ListBox listBox || _queueSelection is null) return;
+        if (e.Pointer.Type == PointerType.Touch) return;
+        if (!e.GetCurrentPoint(listBox).Properties.IsLeftButtonPressed) return;
+        if (QueueLiquid is { IsSettling: true }) return;
+
+        var onRow = (e.Source as Visual)?.GetSelfAndVisualAncestors()
+            .Any(v => v is Border b && b.Classes.Contains("queue-row")) == true;
+        var modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Shift);
+        if (onRow && modifiers == KeyModifiers.None) return;
+
+        var pos = e.GetPosition(listBox);
+        if (!TryQueueRowMetrics(listBox, out var index, out var top, out var pitch)) return;
+
+        _queueBandPending = true;
+        _queueBandActive = false;
+        _queueBandClearOnClick = !onRow && modifiers == KeyModifiers.None;
+        _queueBandStartPos = _queueBandLastPos = pos;
+        _queueBandStartRow = index + (pos.Y - top) / pitch;
+        // The row press handler already ran (it sits deeper), so a Ctrl/Shift band keeps
+        // what that click just selected.
+        _queueBandKeep = modifiers != KeyModifiers.None ? _queueSelection.Snapshot() : null;
+    }
+
+    private void OnQueueBandMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_queueBandPending || sender is not ListBox listBox) return;
+        var pos = e.GetPosition(listBox);
+        if (!_queueBandActive)
+        {
+            if (!e.GetCurrentPoint(listBox).Properties.IsLeftButtonPressed)
+            {
+                EndQueueBand();
+                return;
+            }
+            if (Math.Abs(pos.X - _queueBandStartPos.X) < QueueDragThreshold &&
+                Math.Abs(pos.Y - _queueBandStartPos.Y) < QueueDragThreshold)
+                return;
+            _queueBandActive = true;
+            e.Pointer.Capture(listBox);
+            _queueBandScrollTimer ??= CreateQueueBandScrollTimer();
+            _queueBandScrollTimer.Start();
+        }
+        _queueBandLastPos = pos;
+        UpdateQueueBand(listBox);
+        e.Handled = true;
+    }
+
+    private void OnQueueBandReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_queueBandPending) return;
+        var wasActive = _queueBandActive;
+        // A plain click on empty space (no band) clears the selection, like a file list.
+        if (!wasActive && _queueBandClearOnClick && _queueSelection is { } selection
+            && sender is ListBox listBox)
+        {
+            selection.Clear();
+            SyncQueueSelectionVisuals(listBox);
+        }
+        EndQueueBand();
+        if (wasActive)
+        {
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        }
+    }
+
+    private void OnQueueBandCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!ReferenceEquals(e.Source, sender) || !_queueBandActive) return;
+        EndQueueBand();
+    }
+
+    private void UpdateQueueBand(ListBox listBox)
+    {
+        if (_queueSelection is not { } selection
+            || !TryQueueRowMetrics(listBox, out var index, out var top, out var pitch))
+            return;
+
+        var currentRow = index + (_queueBandLastPos.Y - top) / pitch;
+        selection.SelectBand((int)Math.Floor(_queueBandStartRow), (int)Math.Floor(currentRow), _queueBandKeep);
+        SyncQueueSelectionVisuals(listBox);
+
+        if (this.FindControl<Grid>("QueueListWrapper") is not { } wrapper
+            || this.FindControl<Border>("QueueMarquee") is not { } marquee)
+            return;
+        // The start row may have scrolled away: draw the band clipped to the list.
+        var startY = top + (_queueBandStartRow - index) * pitch;
+        var y1 = Math.Clamp(Math.Min(startY, _queueBandLastPos.Y), 0, listBox.Bounds.Height);
+        var y2 = Math.Clamp(Math.Max(startY, _queueBandLastPos.Y), 0, listBox.Bounds.Height);
+        var x1 = Math.Clamp(Math.Min(_queueBandStartPos.X, _queueBandLastPos.X), 0, listBox.Bounds.Width);
+        var x2 = Math.Clamp(Math.Max(_queueBandStartPos.X, _queueBandLastPos.X), 0, listBox.Bounds.Width);
+        if (listBox.TranslatePoint(new Point(x1, y1), wrapper) is not { } origin) return;
+        marquee.Margin = new Thickness(origin.X, origin.Y, 0, 0);
+        marquee.Width = x2 - x1;
+        marquee.Height = y2 - y1;
+        marquee.IsVisible = true;
+    }
+
+    private DispatcherTimer CreateQueueBandScrollTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        timer.Tick += (_, _) =>
+        {
+            if (!_queueBandActive
+                || this.FindControl<ListBox>("QueuePopupListBox") is not { } listBox
+                || listBox.FindDescendantOfType<ScrollViewer>() is not { } scroller)
+                return;
+            var y = _queueBandLastPos.Y;
+            var height = listBox.Bounds.Height;
+            var depth = y < QueueBandEdge ? y - QueueBandEdge
+                : y > height - QueueBandEdge ? y - (height - QueueBandEdge)
+                : 0;
+            if (depth == 0) return;
+            var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
+            var next = Math.Clamp(scroller.Offset.Y + Math.Clamp(depth, -60, 60) * 0.5, 0, max);
+            if (Math.Abs(next - scroller.Offset.Y) < 0.5) return;
+            scroller.Offset = scroller.Offset.WithY(next);
+            // Realize/arrange the rows at the new offset before measuring off them.
+            listBox.UpdateLayout();
+            UpdateQueueBand(listBox);
+        };
+        return timer;
+    }
+
+    private void EndQueueBand()
+    {
+        _queueBandPending = false;
+        _queueBandActive = false;
+        _queueBandKeep = null;
+        _queueBandScrollTimer?.Stop();
+        if (this.FindControl<Border>("QueueMarquee") is { } marquee)
+            marquee.IsVisible = false;
+    }
+
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
@@ -2103,6 +2504,11 @@ public partial class MainWindow : Window
             DragDrop.SetAllowDrop(queueDropTarget, true);
             queueDropTarget.AddHandler(DragDrop.DragOverEvent, OnQueueDragOver);
             queueDropTarget.AddHandler(DragDrop.DropEvent, OnQueueDrop);
+            // GitHub #88 rubber band. handledEventsToo: rows / ListBoxItems handle presses.
+            queueDropTarget.AddHandler(PointerPressedEvent, OnQueueBandPressed, RoutingStrategies.Bubble, handledEventsToo: true);
+            queueDropTarget.AddHandler(PointerMovedEvent, OnQueueBandMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+            queueDropTarget.AddHandler(PointerReleasedEvent, OnQueueBandReleased, RoutingStrategies.Bubble, handledEventsToo: true);
+            queueDropTarget.AddHandler(PointerCaptureLostEvent, OnQueueBandCaptureLost, RoutingStrategies.Direct);
         }
     }
 

@@ -106,6 +106,16 @@ public class SecurityHardeningTests
         Assert.Equal(Path.Combine(Path.GetFullPath(root), "abc123.jpg"), resolved);
     }
 
+    [Fact]
+    public void ResolveArtworkPath_acceptsPerTrackCoversInTheTracksFolder()
+    {
+        // Per-track covers live in "<artwork>/tracks/{trackId}.jpg" and are minted as
+        // "artwork/{version}/tracks/{file}".
+        var root = Path.Combine(Path.GetTempPath(), "noctis-art-test");
+        var resolved = LoonClient.ResolveArtworkPath(root, "artwork/1f4a-8ddc0f1e2a3b4c5/tracks/abc123.jpg");
+        Assert.Equal(Path.Combine(Path.GetFullPath(root), "tracks", "abc123.jpg"), resolved);
+    }
+
     [Theory]
     [InlineData("artwork/../../escape.txt")]
     [InlineData("../escape.txt")]
@@ -118,6 +128,11 @@ public class SecurityHardeningTests
     // Deeper than anything this client mints, and prefix-less paths it never mints either.
     [InlineData("artwork/1f4a-8ddc/nested/abc123.jpg")]
     [InlineData("abc123.jpg")]
+    // Only the one "tracks" folder, one level deep, and never a traversal through it.
+    [InlineData("artwork/1f4a-8ddc/tracks/nested/abc123.jpg")]
+    [InlineData("artwork/1f4a-8ddc/tracks/")]
+    [InlineData("artwork/1f4a-8ddc/tracks/../../escape.txt")]
+    [InlineData("artwork/1f4a-8ddc/other/abc123.jpg")]
     public void ResolveArtworkPath_rejectsTraversalAndEmpty(string requestPath)
     {
         var root = Path.Combine(Path.GetTempPath(), "noctis-art-test");

@@ -68,11 +68,57 @@ public static class LibraryRemovalHelper
         return Task.Run(async () =>
         {
             var protectedDirs = protectedRoots ?? await GetProtectedRootsAsync().ConfigureAwait(false);
+            var (trashFile, trashDirectory) = SkipDeclinedTrash(
+                RecycleBin.TryMoveToTrash, RecycleBin.TryMoveDirectoryToTrash);
             await TrashLocalFilesCoreAsync(
                 paths, protectedDirs,
-                RecycleBin.TryMoveToTrash, RecycleBin.TryMoveDirectoryToTrash,
+                trashFile, trashDirectory,
                 TrashRetryDelaysMs, FolderTrashRetryDelaysMs).ConfigureAwait(false);
         });
+    }
+
+    /// <summary>One trash attempt; <paramref name="declined"/> means the user said No
+    /// to the shell's "delete permanently?" prompt.</summary>
+    internal delegate bool TrashAttempt(string path, out bool declined);
+
+    /// <summary>
+    /// Wraps the trash calls for one removal so a No to Windows' "delete permanently?"
+    /// prompt (drive's Recycle Bin off, or item over its quota) isn't asked again.
+    /// Without this, every retry and every sidecar or folder sweep raised the prompt again.
+    /// A declined folder is not tried again, but its files still go one by one, since each
+    /// may fit the quota. A declined file means the drive has no usable bin, so the rest
+    /// of this removal skips that drive and leaves its files in place.
+    /// </summary>
+    internal static (Func<string, bool> File, Func<string, bool> Directory) SkipDeclinedTrash(
+        TrashAttempt tryTrashFile, TrashAttempt tryTrashDirectory)
+    {
+        var declinedDrives = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var declinedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static string DriveOf(string path)
+        {
+            try { return Path.GetPathRoot(Path.GetFullPath(path)) ?? string.Empty; }
+            catch { return string.Empty; }
+        }
+
+        bool TrashFile(string path)
+        {
+            var drive = DriveOf(path);
+            if (declinedDrives.Contains(drive)) return false;
+            if (tryTrashFile(path, out var declined)) return true;
+            if (declined) declinedDrives.Add(drive);
+            return false;
+        }
+
+        bool TrashDirectory(string dir)
+        {
+            if (declinedDrives.Contains(DriveOf(dir)) || declinedDirs.Contains(dir)) return false;
+            if (tryTrashDirectory(dir, out var declined)) return true;
+            if (declined) declinedDirs.Add(dir);
+            return false;
+        }
+
+        return (TrashFile, TrashDirectory);
     }
 
     /// <summary>Trash orchestration with injectable trash/delay seams; internal for tests.</summary>

@@ -204,6 +204,29 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     public int AlbumCount => _tabAlbums.Count;
     public int SingleCount => _tabSingles.Count;
 
+    // ── Albums / Singles & EPs tab sort (GitHub #100) ──
+    /// <summary>"newest" (the page's order since the redesign), "oldest" or "name". One
+    /// setting for both tabs and every artist (<see cref="SettingsViewModel.ArtistReleaseSortMode"/>);
+    /// the Overview rows, Latest Release and Appears On stay newest-first.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReleaseSortLabel))]
+    private string _releaseSortMode = "newest";
+    public string ReleaseSortLabel => ReleaseSortMode switch
+    {
+        "oldest" => Loc.T("ArtistDetail.SortOldest"),
+        "name" => Loc.T("ArtistDetail.SortName"),
+        _ => Loc.T("ArtistDetail.SortNewest"),
+    };
+
+    partial void OnReleaseSortModeChanged(string value)
+    {
+        if (_settings != null) _settings.ArtistReleaseSortMode = value;
+        if (_allReleases.Count > 0) ApplyLists(); // re-sorts the tab lists; an open grid refills
+    }
+
+    [RelayCommand]
+    private void SetReleaseSort(string? mode) => ReleaseSortMode = mode is "oldest" or "name" ? mode : "newest";
+
     // ── Latest release (by release date, falling back to year) ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLatestRelease))]
@@ -317,6 +340,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         ArtistName = (artistName ?? string.Empty).Trim();
         _settings = settings;
+        ReleaseSortMode = settings?.ArtistReleaseSortMode ?? "newest";
         _library = library;
         _player = player;
         LibraryAlbumsVm = libraryAlbumsVm;
@@ -336,7 +360,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _ = LoadAboutAsync();
         _ = LoadSimilarAsync(); // the Overview carries a Similar Artists row, so load on open
 
-        _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(Rebuild);
+        // A scan's progressive fill publishes only the tracks found SO FAR every 1.5 s, so
+        // rebuilding on it shrank the lists mid-scan and re-ran Classify each time; the
+        // authoritative publish follows with IsPublishingPartial false (checked at raise
+        // time, as on the album page). A page kept in history stays subscribed, so it
+        // only marks itself stale and catches up once it is current again (IsActive).
+        _libraryUpdatedHandler = (_, _) =>
+        {
+            if (_library.IsPublishingPartial) return;
+            Dispatcher.UIThread.Post(OnLibraryUpdated);
+        };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         // Hearts on the rows bind Track.IsFavorite; the Top Favorites section itself
         // must follow the set, so re-derive the lists when favourites change anywhere.
@@ -351,8 +384,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     internal static (List<Album> Releases, List<Album> AppearsOn, List<Track> Songs) Classify(
         IReadOnlyList<Album> allAlbums, string artistName)
     {
+        // Parsed once: this walks every track of the library (twice).
+        var nameTokens = Track.ParseArtistTokens(artistName);
+        bool Credits(string? field) => LibraryAlbumsViewModel.ContainsArtistToken(field, artistName, nameTokens);
+
         var releases = allAlbums
-            .Where(a => LibraryAlbumsViewModel.ContainsArtistToken(a.Artist, artistName))
+            .Where(a => Credits(a.Artist))
             .OrderByDescending(ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -360,14 +397,14 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
         var appearsOn = allAlbums
             .Where(a => !releaseIds.Contains(a.Id)
-                        && a.Tracks.Any(t => LibraryAlbumsViewModel.ContainsArtistToken(t.Artist, artistName)))
+                        && a.Tracks.Any(t => Credits(t.Artist)))
             .OrderByDescending(ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var songs = allAlbums
             .SelectMany(a => a.Tracks)
-            .Where(t => LibraryAlbumsViewModel.ContainsArtistToken(t.Artist, artistName))
+            .Where(t => Credits(t.Artist))
             .GroupBy(t => t.Id).Select(g => g.First())
             .ToList();
 
@@ -419,6 +456,25 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _ => releases,
     };
 
+    /// <summary>Tab grid order (GitHub #100) over releases already newest-first from
+    /// <see cref="Classify"/>: "oldest" = release date ascending with undated releases last
+    /// (not first), ties by name; "name" = A–Z, ties newest first; anything else keeps
+    /// newest-first.</summary>
+    internal static List<Album> SortReleases(IEnumerable<Album> releases, string? mode)
+    {
+        static DateTime OldestKey(Album a)
+        {
+            var date = ReleaseSortDate(a);
+            return date == DateTime.MinValue ? DateTime.MaxValue : date;
+        }
+        return mode switch
+        {
+            "oldest" => releases.OrderBy(OldestKey).ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            "name" => releases.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(ReleaseSortDate).ToList(),
+            _ => releases.ToList(),
+        };
+    }
+
     /// <summary>An album answers a search when its name or any of its track titles matches,
     /// accent- and punctuation-insensitively ("ultimo" finds "EL ÚLTIMO TOUR DEL MUNDO").</summary>
     internal static bool AlbumMatches(Album album, string query)
@@ -429,6 +485,41 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Overview row contents: the newest <paramref name="cap"/> (0 = all).</summary>
     internal static List<Album> OverviewRow(IReadOnlyList<Album> releases, int cap)
         => cap > 0 ? releases.Take(cap).ToList() : releases.ToList();
+
+    /// <summary>
+    /// Set by MainWindowViewModel as the page becomes (or stops being) the current view.
+    /// True from construction: the page is shown as soon as it is built.
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            if (value && _rebuildPending)
+            {
+                _rebuildPending = false;
+                Rebuild();
+            }
+            // The tab sort is shared by every artist page: a pick made on another page
+            // while this one sat in history applies on the way back.
+            if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
+        }
+    }
+
+    private bool _isActive = true;
+    private bool _rebuildPending;
+
+    private void OnLibraryUpdated()
+    {
+        if (!_isActive)
+        {
+            _rebuildPending = true;
+            return;
+        }
+        Rebuild();
+    }
 
     private void Rebuild()
     {
@@ -501,8 +592,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var singles = FilterReleases(matching, "singles").ToList();
 
         ReplaceAlbums(Releases, matching);
-        _tabAlbums = albums;
-        _tabSingles = singles;
+        _tabAlbums = SortReleases(albums, ReleaseSortMode);
+        _tabSingles = SortReleases(singles, ReleaseSortMode);
         if (IsTabAlbums) FillTabAlbums();
         else { _albumsFilled = null; ++_albumsGeneration; AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabSingles) FillTabSingles();

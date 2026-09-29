@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!--
+  Noctis "now playing" overlay for OBS (or any browser).
+
+  1. Settings > Account & Devices > Local API: turn it on, press Copy next to the token.
+  2. In OBS add a Browser source, tick "Local file", pick this file, and put this in
+     the URL box instead if your OBS build wants a URL:
+       file:///C:/path/to/obs-now-playing.html?token=PASTE_TOKEN&port=9421
+     (Or open that URL in a normal browser to preview it.)
+  3. Suggested size: 640 x 160. Background is transparent.
+
+  Query parameters:
+    token   required. The Local API token.
+    port    optional. Default 9421 (see local-api.json if you changed it).
+    lyrics  optional. "1" shows the current synced lyric line under the artist.
+    theme   optional. "light" for a light card.
+
+  Uses only /api/v1/events (Server-Sent Events) and /api/v1/artwork/{trackId}.
+  Reference: docs/LOCAL-API.md
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noctis now playing</title>
+<style>
+  :root {
+    --card: rgba(14, 16, 24, 0.78);
+    --text: #ffffff;
+    --muted: rgba(255, 255, 255, 0.66);
+    --track: rgba(255, 255, 255, 0.18);
+    --accent: #8b9bff;
+  }
+  :root[data-theme="light"] {
+    --card: rgba(255, 255, 255, 0.86);
+    --text: #111318;
+    --muted: rgba(17, 19, 24, 0.62);
+    --track: rgba(17, 19, 24, 0.14);
+    --accent: #4b5cff;
+  }
+  html, body { margin: 0; background: transparent; }
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    padding: 16px;
+  }
+  .card {
+    display: flex; align-items: center; gap: 16px;
+    width: 100%; max-width: 608px; box-sizing: border-box;
+    padding: 14px; border-radius: 18px;
+    background: var(--card);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    transition: opacity 400ms ease;
+  }
+  .card.hidden { opacity: 0; }
+  .cover {
+    flex: none; width: 100px; height: 100px; border-radius: 12px;
+    background: var(--track) center / cover no-repeat;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+  .meta { flex: 1; min-width: 0; }
+  .kicker {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 4px;
+  }
+  .title, .artist, .lyric { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+  .title { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .artist { font-size: 15px; color: var(--muted); margin-top: 2px; }
+  .lyric { font-size: 14px; font-style: italic; color: var(--text); opacity: 0.85; margin-top: 6px; min-height: 18px; }
+  .lyric:empty { display: none; }
+  .bar { position: relative; height: 4px; border-radius: 2px; background: var(--track); margin-top: 12px; overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); border-radius: 2px; }
+  .times { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);
+           margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .error { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="card hidden" id="card">
+  <div class="cover" id="cover"></div>
+  <div class="meta">
+    <p class="kicker" id="kicker">Now playing</p>
+    <p class="title" id="title"></p>
+    <p class="artist" id="artist"></p>
+    <p class="lyric" id="lyric"></p>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="times"><span id="pos">0:00</span><span id="dur">0:00</span></div>
+  </div>
+</div>
+<p class="error" id="error" hidden></p>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token') || '';
+  const port = params.get('port') || '9421';
+  const wantLyrics = params.get('lyrics') === '1';
+  if (params.get('theme') === 'light') document.documentElement.dataset.theme = 'light';
+
+  const base = `http://127.0.0.1:${port}`;
+  const $ = id => document.getElementById(id);
+  const withToken = path => `${base}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+
+  if (!token) {
+    $('error').hidden = false;
+    $('error').textContent = 'Add ?token=... (Settings > Account & Devices > Local API > Copy) to this page URL.';
+    return;
+  }
+
+  // Local clock between the server's ~1/s position events, so the bar moves smoothly.
+  let positionMs = 0, durationMs = 0, playing = false, anchor = performance.now(), trackId = null;
+
+  const fmt = ms => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  function renderTrack(np) {
+    const card = $('card');
+    if (!np.track) { card.classList.add('hidden'); trackId = null; return; }
+    card.classList.remove('hidden');
+    $('title').textContent = np.title;
+    $('artist').textContent = np.artists.join(', ');
+    if (np.trackId !== trackId) {
+      trackId = np.trackId;
+      $('lyric').textContent = '';
+      const url = withToken(np.artworkUrl);
+      const probe = new Image();
+      probe.onload = () => { $('cover').style.backgroundImage = `url("${url}")`; };
+      probe.onerror = () => { $('cover').style.backgroundImage = 'none'; };
+      probe.src = url;
+    }
+    setClock(np.positionMs, np.durationMs, np.playing);
+  }
+
+  function setClock(pos, dur, isPlaying) {
+    positionMs = pos; durationMs = dur; playing = isPlaying; anchor = performance.now();
+  }
+
+  function tick() {
+    const now = playing ? positionMs + (performance.now() - anchor) : positionMs;
+    const clamped = durationMs > 0 ? Math.min(now, durationMs) : now;
+    $('fill').style.width = durationMs > 0 ? `${(100 * clamped / durationMs).toFixed(2)}%` : '0';
+    $('pos').textContent = fmt(clamped);
+    $('dur').textContent = fmt(durationMs);
+    $('kicker').textContent = playing ? 'Now playing' : 'Paused';
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function connect() {
+    const es = new EventSource(withToken('/api/v1/events' + (wantLyrics ? '?lyrics=1' : '')));
+    es.addEventListener('track-changed', e => renderTrack(JSON.parse(e.data)));
+    es.addEventListener('state-changed', e => {
+      const s = JSON.parse(e.data);
+      setClock(s.positionMs, s.durationMs, s.playing);
+    });
+    es.addEventListener('position', e => {
+      const p = JSON.parse(e.data);
+      setClock(p.positionMs, p.durationMs, p.state === 'playing');
+    });
+    es.addEventListener('lyrics-line', e => {
+      const l = JSON.parse(e.data);
+      if (l.trackId === trackId) $('lyric').textContent = l.text;
+    });
+    es.onopen = () => { $('error').hidden = true; };
+    es.onerror = () => {
+      // EventSource retries by itself (the server asks for 3 s). A 401 closes it for
+      // good, so reconnect by hand after a pause in that case.
+      if (es.readyState === EventSource.CLOSED) {
+        $('error').hidden = false;
+        $('error').textContent = 'Waiting for Noctis (is the Local API on, and the token current?)';
+        setTimeout(connect, 5000);
+      }
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

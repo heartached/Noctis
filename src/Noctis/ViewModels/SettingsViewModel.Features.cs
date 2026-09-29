@@ -222,8 +222,15 @@ public partial class SettingsViewModel
         var path = svc.Tool.Resolve();
         if (path is null) { YtDlpStatus = "Not installed — Noctis can download it for you (about 15 MB)."; return; }
         var version = await svc.Tool.GetVersionAsync(CancellationToken.None);
-        YtDlpStatus = version is null ? $"Found at {path} but it could not run." : $"yt-dlp {version} · {path}";
+        YtDlpStatus = version is null ? $"Found at {path} but it could not run." : $"{YtDlpParsing.VersionLabel(version, svc.Tool.LatestKnownVersion)} · {path}";
+        if (version is null || _ytDlpUpdateCheckStarted) return;
+        // First time the row shows this session: quiet update check (updates only Noctis's own copy), then re-render.
+        _ytDlpUpdateCheckStarted = true;
+        var check = await svc.Tool.EnsureSessionUpdateCheckAsync();
+        if (check.Updated || check.UpdateAvailable) await RefreshYtDlpStatusAsync();
     }
+
+    private bool _ytDlpUpdateCheckStarted;
 
     [RelayCommand]
     private async Task InstallYtDlp()

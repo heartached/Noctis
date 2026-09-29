@@ -1,3 +1,4 @@
+using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -5,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -134,6 +136,64 @@ public class LyricsFlowingBackdropTests
         Assert.Equal(frozen, RotationOf(layer1));
 
         win.Close();
+    }
+
+    private static object? PrivateField(object o, string name) =>
+        o.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(o);
+
+    private static int VisibleSurfaces(LyricsViewModel vm) => (int)PrivateField(vm, "_visibleLyricsSurfaces")!;
+
+    /// <summary>
+    /// Closing the side panel only hides its wrapper (IsVisible=false); the view stays
+    /// attached, so DetachedFromVisualTree never fires. It used to stay counted as a
+    /// visible lyrics surface for the rest of the session, keeping the sync timer and
+    /// per-frame word clock alive, and its flowing backdrop fell into a 250 ms
+    /// visibility poll. MainWindow now calls SetShown around the wrapper's visibility.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Panel_HiddenButAttached_LeavesTheSurfaceTally_AndParksTheFlow()
+    {
+        var vm = MakeViewModel();
+        var view = new LyricsPanelView { DataContext = vm };
+        // Same shape as MainWindow: the panel lives in a wrapper that closing only hides.
+        var wrapper = new Border { Child = view };
+        var win = new Window { Width = 360, Height = 720, Content = wrapper };
+        win.Show();
+        vm.IsColorModeArtwork = true;
+        vm.Player.LyricsFlowingLightEnabled = true;
+        await Pump(60);
+
+        var flow = (FlowingArtworkAnimator)PrivateField(view, "_flow")!;
+        Assert.Equal(1, VisibleSurfaces(vm));
+        Assert.True(flow.IsRunning);
+
+        // Close: slide shut, hide the wrapper, then MainWindow un-shows the view.
+        wrapper.IsVisible = false;
+        view.SetShown(false);
+        await Pump(400);
+        Assert.NotNull(TopLevel.GetTopLevel(view));
+        Assert.Equal(0, VisibleSurfaces(vm));
+        Assert.False(flow.IsRunning);
+        Assert.Null(PrivateField(flow, "_visibilityPoll"));
+
+        // A repeated close must not drive the tally below the other surfaces' counts.
+        vm.SetLyricsSurfaceVisible(true);
+        view.SetShown(false);
+        Assert.Equal(1, VisibleSurfaces(vm));
+        vm.SetLyricsSurfaceVisible(false);
+
+        // Reopen: counted once again (idempotent) and the backdrop flows.
+        wrapper.IsVisible = true;
+        view.SetShown(true);
+        view.SetShown(true);
+        await Pump(60);
+        Assert.Equal(1, VisibleSurfaces(vm));
+        Assert.True(flow.IsRunning);
+
+        // Window teardown still detaches and un-counts.
+        win.Close();
+        await Pump(20);
+        Assert.Equal(0, VisibleSurfaces(vm));
     }
 
     [AvaloniaFact]

@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Android", "src\Nocti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Mobile", "src\Noctis.Mobile\Noctis.Mobile.csproj", "{E14852B4-7046-4A5A-95A8-3FD09AFDDCD0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.SamplePlugin.TrackTools", "samples\Noctis.SamplePlugin.TrackTools\Noctis.SamplePlugin.TrackTools.csproj", "{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -169,6 +171,18 @@ Global
 		{E14852B4-7046-4A5A-95A8-3FD09AFDDCD0}.Release|x64.Build.0 = Release|Any CPU
 		{E14852B4-7046-4A5A-95A8-3FD09AFDDCD0}.Release|x86.ActiveCfg = Release|Any CPU
 		{E14852B4-7046-4A5A-95A8-3FD09AFDDCD0}.Release|x86.Build.0 = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|x64.Build.0 = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Debug|x86.Build.0 = Debug|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|x64.ActiveCfg = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|x64.Build.0 = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|x86.ActiveCfg = Release|Any CPU
+		{A7F4F3BA-F8A3-4F2F-A589-BDC6F9FBBE68}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

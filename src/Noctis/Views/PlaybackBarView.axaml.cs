@@ -14,6 +14,7 @@ using Noctis.Controls;
 using Noctis.ViewModels;
 using Avalonia.LogicalTree;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Views;
@@ -118,6 +119,17 @@ public partial class PlaybackBarView : UserControl
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
+        // GitHub #96: bar tooltips sit above their button (Placement=Top, the #52 fix) —
+        // exactly where the slider popup opens, and the tooltip's native window draws over
+        // the overlay-hosted slider. Hovering the icon and scrolling left "Volume" covering
+        // the pill. The popup already shows what the tooltip names, so mute it while open.
+        VolumeFlyout.Opened += (_, _) =>
+        {
+            ToolTip.SetIsOpen(VolumeButton, false);
+            ToolTip.SetServiceEnabled(VolumeButton, false);
+        };
+        VolumeFlyout.Closed += (_, _) => ToolTip.SetServiceEnabled(VolumeButton, true);
+
         // Shape follows the ARRANGED width, so a window squeeze (MaxWidth clamping the
         // island) morphs the layout exactly like a user drag does.
         IslandBorder.SizeChanged += OnIslandBorderSizeChanged;
@@ -128,6 +140,14 @@ public partial class PlaybackBarView : UserControl
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
         ArtistNameTextBlock.PropertyChanged += OnArtistNameTextBlockPropertyChanged;
         ArtistNameViewport.PropertyChanged += OnArtistNameViewportPropertyChanged;
+        // Button's own PointerPressed handler marks the event handled before instance
+        // handlers run, hence handledEventsToo; Click fires from inside its PointerReleased,
+        // before any PointerReleased subscriber, so the name is resolved on press/move.
+        ArtistNameButton.AddHandler(PointerPressedEvent, OnArtistNamePointerPressed,
+            RoutingStrategies.Bubble, handledEventsToo: true);
+        ArtistNameButton.PointerMoved += OnArtistNamePointerMoved;
+        ArtistNameButton.PointerExited += OnArtistNamePointerExited;
+        ArtistNameButton.Click += OnArtistNameClick;
         AttachedToVisualTree += OnPlaybackBarAttachedToVisualTree;
         DetachedFromVisualTree += OnPlaybackBarDetachedFromVisualTree;
         DataContextChanged += OnPlaybackBarDataContextChanged;
@@ -233,6 +253,7 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowPlaybackSpeed) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowSleepTimer) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowShuffle) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandShowEqualizer) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowRepeat) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowFavorite) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowMiniPlayer) ||
@@ -556,6 +577,63 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.Property == Visual.BoundsProperty)
             ScheduleArtistNameMarqueeUpdate();
+    }
+
+    // ── Island artist link: one marquee run, one target per credited name ──
+    // The credit is a single TextBlock (the ticker measures and scrolls exactly one run), so
+    // the artist under the pointer is resolved from the character the pointer is over rather
+    // than from separate link controls. Discord (aaron, 2026-09-23): "Kanye West, GLC,
+    // Consequence" showed and behaved as a single artist.
+    private string? _artistNameUnderPointer;
+
+    private void OnArtistNamePointerPressed(object? sender, PointerPressedEventArgs e) => UpdateArtistNameUnderPointer(e);
+
+    private void OnArtistNamePointerMoved(object? sender, PointerEventArgs e) => UpdateArtistNameUnderPointer(e);
+
+    private void OnArtistNamePointerExited(object? sender, PointerEventArgs e)
+    {
+        if (_artistNameUnderPointer == null) return;
+        _artistNameUnderPointer = null;
+        ToolTip.SetTip(ArtistNameButton, Loc.T("PlaybackBar.ViewArtistTip"));
+    }
+
+    private void UpdateArtistNameUnderPointer(PointerEventArgs e)
+    {
+        var text = ArtistNameTextBlock.Text;
+        var name = ArtistCreditSpans.Locate(text).Count > 1 ? ResolveArtistNameAt(text, e) : null;
+        if (name == _artistNameUnderPointer) return;
+        _artistNameUnderPointer = name;
+        ToolTip.SetTip(ArtistNameButton, name != null
+            ? Loc.T("PlaybackBar.ViewNamedArtistTip", name)
+            : Loc.T("PlaybackBar.ViewArtistTip"));
+    }
+
+    /// <summary>The credited name under the pointer, from whichever of the two marquee runs
+    /// (text or its loop copy) the pointer is over; null over a separator or outside both.
+    /// GetPosition includes the runs' TranslateTransform, so a scrolling ticker resolves too.</summary>
+    private string? ResolveArtistNameAt(string? text, PointerEventArgs e)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        foreach (var run in new[] { ArtistNameTextBlock, ArtistNameLoopCopy })
+        {
+            if (!run.IsVisible) continue;
+            var p = e.GetPosition(run);
+            if (p.X < 0 || p.Y < 0 || p.X > run.Bounds.Width || p.Y > run.Bounds.Height) continue;
+            var hit = run.TextLayout.HitTestPoint(p);
+            return ArtistCreditSpans.NameAt(text, hit.TextPosition);
+        }
+        return null;
+    }
+
+    private void OnArtistNameClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PlayerViewModel vm) return;
+        // Keyboard activation and clicks on a separator fall back to the primary artist —
+        // the behaviour every other artist link in the app has.
+        if (_artistNameUnderPointer is { } name)
+            vm.ViewArtistNamedCommand.Execute(name);
+        else
+            vm.ViewArtistCommand.Execute(vm.CurrentTrack);
     }
 
     private void ScheduleArtistNameMarqueeUpdate(bool resetAnimation = false)
@@ -1187,6 +1265,7 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowPlaybackSpeed ? 1 : 0)
                         + (vm.IslandShowSleepTimer ? 1 : 0)
                         + (vm.IslandShowShuffle ? 1 : 0)
+                        + (vm.IslandShowEqualizer ? 1 : 0)
                         + (vm.IslandShowRepeat ? 1 : 0)
                         + (vm.IslandShowFavorite ? 1 : 0)
                         + (vm.IslandShowMiniPlayer ? 1 : 0);

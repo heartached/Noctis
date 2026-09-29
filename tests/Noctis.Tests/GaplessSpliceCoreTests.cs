@@ -282,6 +282,66 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void Park_RampsToSilenceWithoutConsuming_AndResumeFadesBackIn()
+    {
+        // Pause parks the provider, not the device stream: WasapiOut.Pause() only
+        // stops filling, so the device starved mid-waveform (a click) and resume
+        // stepped back in at full level (another). Parked, the pause edge ramps to
+        // zero, the ring is held untouched, and resume fades the held audio in.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5); // 40-sample ramp
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 1000))); // ≈ +0.5f steady
+        var live = new float[200];
+        provider.Read(live, 0, 200); // past the cold-start fade, tail ≈ +0.5
+
+        provider.Parked = true;
+        var buffered = seg.BufferedSamples;
+        var positionMs = seg.PositionMs;
+        var paused = new float[400];
+        provider.Read(paused, 0, 200);
+        provider.Read(paused, 200, 200);
+
+        Assert.True(Math.Abs(paused[0] - live[199]) < 0.1f, $"pause edge stepped: {live[199]} -> {paused[0]}");
+        for (var i = 1; i < paused.Length; i++)
+            Assert.True(Math.Abs(paused[i] - paused[i - 1]) < 0.1f,
+                $"step of {Math.Abs(paused[i] - paused[i - 1]):F3} at parked sample {i}");
+        Assert.All(paused.Skip(60), s => Assert.Equal(0f, s));
+        Assert.Equal(buffered, seg.BufferedSamples); // nothing consumed while parked
+        Assert.Equal(positionMs, seg.PositionMs);
+
+        provider.Parked = false;
+        var resumed = new float[200];
+        provider.Read(resumed, 0, 200);
+
+        Assert.True(Math.Abs(resumed[0]) < 0.05f, $"resume edge stepped: 0 -> {resumed[0]}");
+        for (var i = 1; i < resumed.Length; i++)
+            Assert.True(Math.Abs(resumed[i] - resumed[i - 1]) < 0.1f,
+                $"step of {Math.Abs(resumed[i] - resumed[i - 1]):F3} at resumed sample {i}");
+        Assert.True(resumed[199] > 0.45f, $"held audio not resumed: {resumed[199]}");
+        Assert.Equal(buffered - 200, seg.BufferedSamples); // continues from the held position
+    }
+
+    [Fact]
+    public void Park_UndoneBeforeAnyRead_ContinuesUntouched()
+    {
+        // A pause/resume that lands between two render reads emitted no silence,
+        // so there is no edge to hide: the audio must continue bit-exact, unfaded.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 1000)));
+        var buffer = new float[200];
+        provider.Read(buffer, 0, 200);
+
+        provider.Parked = true;
+        provider.Parked = false;
+        provider.Read(buffer, 0, 200);
+
+        Assert.All(buffer, s => Assert.Equal(16384 / 32768f, s));
+    }
+
+    [Fact]
     public void FadeIn_AppliedAfterSilence_NeverAtTheSpliceSeam()
     {
         // Segment heads can carry decoder warm-up garble; a short fade-in from
@@ -370,6 +430,43 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void SeekCut_At44k1Stereo_KeepsChannelsFrameAligned()
+    {
+        // At 44.1 kHz stereo a 5 ms ramp is 441 SAMPLES — half a frame. The
+        // fast-refill junction ramp then left the post-cut read at an odd offset,
+        // so the ring's L landed in R slots (a channel swap) for the rest of that
+        // read, plus a 1-sample underrun. Ramps must span whole frames.
+        var provider = new GaplessSpliceProvider(44100, 2, startThresholdMs: 100, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(44100, 2, source: null);
+        provider.Enqueue(seg);
+
+        short[] Stereo(short l, short r, int frames)
+        {
+            var b = new short[frames * 2];
+            for (var i = 0; i < frames; i++) { b[2 * i] = l; b[2 * i + 1] = r; }
+            return b;
+        }
+
+        Assert.True(seg.Write(Stereo(16384, -16384, 10000))); // L ≈ +0.5, R ≈ -0.5, past the gate
+        var buffer = new float[1764];
+        provider.Read(buffer, 0, buffer.Length);             // live render
+
+        seg.Flush(60_000);                                   // the seek cut...
+        Assert.True(seg.Write(Stereo(8192, -8192, 10000)));  // ...refilled before any read
+
+        var post = new float[1764];
+        provider.Read(post, 0, post.Length);
+
+        for (var i = 0; i < post.Length; i += 2)
+        {
+            Assert.True(post[i] >= 0f, $"L slot {i} carried R audio: {post[i]}");
+            Assert.True(post[i + 1] <= 0f, $"R slot {i + 1} carried L audio: {post[i + 1]}");
+        }
+        Assert.True(post[^2] > 0.2f && post[^1] < -0.2f,
+            $"post-seek audio not flowing: L={post[^2]} R={post[^1]}");
+    }
+
+    [Fact]
     public void SeekFlush_ReopensAtShortThreshold_NotFullPrebuffer()
     {
         // A fresh track legitimately pre-buffers 200ms, but after an in-place
@@ -390,6 +487,66 @@ public class GaplessSpliceCoreTests
         // Junction ramp + fade occupy the first ~80 samples; by the end of this
         // 50ms read the post-seek audio must be flowing, not gated silence.
         Assert.True(buffer[399] > 0.4f, $"still gated with 62ms buffered: {buffer[399]}");
+    }
+
+    [Fact]
+    public void SeekFlush_DiscardsTheStaleResamplerTail_NoStepInsideTheFade()
+    {
+        // Silent-harness capture (2026-09-25): VLC's speex resampler is not reset
+        // by a seek flush, so the first post-seek block opens with 139 frames of
+        // the PRE-seek waveform (44.1 kHz source → 48 kHz) and then steps into the
+        // new position. The 5 ms fade starts at the block head, so the step landed
+        // at ~58% gain — a click on every seek. The flush must drop that tail.
+        var provider = new GaplessSpliceProvider(48000, 2, startThresholdMs: 200, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(48000, 2, source: null, capacitySeconds: 20);
+        provider.Enqueue(seg);
+
+        // 375 Hz (128-frame period) sweep stand-in: L 0.3, R 0.25 phase-shifted.
+        short[] Sine(long firstFrame, int frames)
+        {
+            var b = new short[frames * 2];
+            for (var i = 0; i < frames; i++)
+            {
+                var ph = 2 * Math.PI * (firstFrame + i) / 128;
+                b[2 * i] = (short)(0.3 * Math.Sin(ph) * 32767);
+                b[2 * i + 1] = (short)(0.25 * Math.Sin(ph + 1) * 32767);
+            }
+            return b;
+        }
+
+        var output = new System.Collections.Generic.List<float>();
+        var buf = new float[960];
+        void Render(int reads)
+        {
+            for (var r = 0; r < reads; r++)
+            {
+                provider.Read(buf, 0, buf.Length);
+                output.AddRange(buf);
+            }
+        }
+
+        Assert.True(seg.Write(Sine(0, 24000)));             // 500 ms pre-seek
+        Render(30);                                          // playing live
+
+        seg.Flush(10_000, discardFrames: 960);               // the seek (EngineFlush: 20 ms)
+        var head = Sine(24000, 139)                          // stale resampler tail...
+            .Concat(Sine(24000 + 139 + 64, 24000))           // ...then the new position, half a period off
+            .ToArray();
+        Assert.True(seg.Write(head));
+        Assert.Equal(10_020, seg.PositionMs);                // dropped frames still count as media time
+        Render(30);
+
+        for (var i = 2; i < output.Count; i++)
+            Assert.True(Math.Abs(output[i] - output[i - 2]) < 0.05f,
+                $"step of {Math.Abs(output[i] - output[i - 2]):F3} at sample {i} (ch {i % 2})");
+        Assert.True(output.Skip(output.Count - 960).Max(s => Math.Abs(s)) > 0.29f, "post-seek audio never played");
+
+        // A flush before any audio (input-open) has no stale history: drop nothing.
+        var fresh = new GaplessTrackSegment(48000, 2, source: null);
+        fresh.Flush(5_000, discardFrames: 960);
+        Assert.True(fresh.Write(Sine(0, 1000)));
+        Assert.Equal(2000, fresh.BufferedSamples);
+        Assert.Equal(5_000, fresh.PositionMs);
     }
 
     [Fact]

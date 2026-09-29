@@ -70,7 +70,11 @@ public static class StreamingFill
                 DispatcherTimer.RunOnce(Step, TimeSpan.FromMilliseconds(GateRetryMs), DispatcherPriority.Background);
                 return;
             }
-            target.AddRange(slices[next++]);
+            // Append, not AddRange: AddRange raises Reset, and a Reset makes the ItemsControl
+            // drop every row realized so far and build them all again — a 175-song list
+            // filled in five slices realized 535 rows, the last slice all 175 in one pass,
+            // and every cover already on screen went blank until it reloaded (09-24).
+            target.AppendRange(slices[next++]);
             if (next < slices.Count)
                 Dispatcher.UIThread.Post(Step, DispatcherPriority.Background);
         }

@@ -21,8 +21,16 @@ public static class MemoryTrim
     /// <summary>How long after the last request the trim runs.</summary>
     public static TimeSpan Quiet { get; set; } = TimeSpan.FromSeconds(6);
 
-    /// <summary>Test seam: what runs when the quiet period elapses. Null = the real collection.</summary>
-    internal static Action? Collector { get; set; }
+    /// <summary>
+    /// Set by the app: true while music plays. A blocking compacting gen2 suspends
+    /// every managed thread for its whole pause, the audio render thread included
+    /// (a trim after the startup scan put a 34 ms GC inside a 39 ms render gap), so
+    /// while this is true the trim runs as a background collection instead.
+    /// </summary>
+    public static Func<bool>? IsAudioPlaying { get; set; }
+
+    /// <summary>Test seam: what runs when the quiet period elapses, given whether it may block. Null = the real collection.</summary>
+    internal static Action<bool>? Collector { get; set; }
 
     private static readonly object Gate = new();
     private static int _pending;
@@ -48,14 +56,25 @@ public static class MemoryTrim
 
     private static void Run()
     {
-        if (Collector is { } custom)
-        {
-            custom();
-            return;
-        }
         try
         {
+            var blocking = IsAudioPlaying?.Invoke() != true;
+            if (Collector is { } custom)
+            {
+                custom(blocking);
+                return;
+            }
             var before = GC.GetTotalMemory(false);
+            if (!blocking)
+            {
+                // Background gen2: dead objects are freed while the render thread keeps
+                // running (only short suspensions). No compaction, and no CompactOnce, which
+                // would otherwise ride along on the next blocking gen2 during playback.
+                GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
+                DebugLog.Write("Memory",
+                    $"trim after {_reason}: managed {before / 1048576} MB, background collection (audio playing)");
+                return;
+            }
             System.Runtime.GCSettings.LargeObjectHeapCompactionMode =
                 System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);

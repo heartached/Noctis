@@ -74,7 +74,13 @@ public sealed class TempoStretchProvider : ISampleProvider
             if (avail > 0)
             {
                 var n = Math.Min(avail, count - written);
-                Array.Copy(_out, _outRead, buffer, offset + written, n);
+                // NEVER Array.Copy here: the render buffer arrives as NAudio's
+                // WaveBuffer pun (a byte[] reinterpreted as float[]) and Array.Copy
+                // checks the RUNTIME type — it throws on the render thread and
+                // WASAPI stops. Element stores are safe.
+                var dst = offset + written;
+                for (var i = 0; i < n; i++)
+                    buffer[dst + i] = _out[_outRead + i];
                 _outRead += n;
                 written += n;
                 if (_outRead == _outSamples) { _outRead = 0; _outSamples = 0; }

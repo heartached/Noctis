@@ -48,6 +48,10 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     /// <summary>FavoriteItems currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<FavoriteItem> CtrlSelectedItems { get; set; } = new();
 
+    /// <summary>The Ctrl-selection when the acted-on item is part of it, else just that item.</summary>
+    private List<FavoriteItem> SelectionOr(FavoriteItem item) =>
+        CtrlSelectedItems.Contains(item) ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+
     /// <summary>Favorite items (albums where all tracks are favorited, plus individual tracks).</summary>
     public BulkObservableCollection<FavoriteItem> FavoriteItems { get; } = new();
 
@@ -466,7 +470,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private async Task AddItemToNewPlaylist(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
+        var items = SelectionOr(item);
         var tracks = new List<Track>();
         foreach (var fi in items)
         {
@@ -483,7 +487,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private async Task RemoveItemFavorite(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
+        var items = SelectionOr(item);
         var changed = new List<Track>();
         foreach (var fi in items)
         {
@@ -512,9 +516,9 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private async Task OpenItemMetadata(FavoriteItem item)
     {
         // If the user multi-selected, expand to tracks and open the batch dialog.
-        if (CtrlSelectedItems.Count > 1)
+        var selection = SelectionOr(item);
+        if (selection.Count > 1)
         {
-            var selection = CtrlSelectedItems.ToList();
             CtrlSelectedItems.Clear();
             var tracks = ExpandToTracks(selection);
             if (tracks.Count > 1) { await MetadataHelper.OpenBatchMetadataWindow(tracks); return; }
@@ -528,7 +532,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private async Task ConvertItem(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        var items = SelectionOr(item);
         CtrlSelectedItems.Clear();
         var tracks = ExpandToTracks(items);
         if (tracks.Count == 0) return;
@@ -538,7 +542,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private async Task ScanItemReplayGain(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        var items = SelectionOr(item);
         CtrlSelectedItems.Clear();
         var tracks = ExpandToTracks(items);
         if (tracks.Count == 0) return;
@@ -573,7 +577,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     [RelayCommand]
     private async Task RemoveItemFromLibrary(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        var items = SelectionOr(item);
         var tracks = new List<Track>();
         foreach (var fi in items)
         {

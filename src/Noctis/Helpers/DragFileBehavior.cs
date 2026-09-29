@@ -35,8 +35,10 @@ public static class DragFileBehavior
     private static Guid? _playlistId;
 
     /// <summary>What the floating drag chip shows while tracks / an album are dragged:
-    /// artwork, a title line, a subtitle line, and how many songs ride along.</summary>
-    public sealed record DragPreview(string Title, string Subtitle, string? ArtworkPath, int Count);
+    /// artwork, a title line (with the E badge when explicit, like the tile / row it came
+    /// from), a subtitle line, and how many songs ride along.</summary>
+    public sealed record DragPreview(string Title, string Subtitle, string? ArtworkPath, int Count,
+        bool IsExplicit = false);
 
     /// <summary>A track / album drag began in <see cref="TopLevel"/> (the OS drag shows no
     /// picture of what is being dragged; MainWindow draws a chip that follows the pointer).</summary>
@@ -55,9 +57,11 @@ public static class DragFileBehavior
                 album.Name,
                 album.Artist,
                 album.ArtworkPath ?? tracks.FirstOrDefault(t => t.HasAlbumArt)?.AlbumArtworkPath,
-                tracks.Count);
+                tracks.Count,
+                album.IsExplicit);
         var track = tracks[0];
-        return new DragPreview(track.TitleDisplay, track.Artist, track.AlbumArtworkPath, tracks.Count);
+        return new DragPreview(track.TitleDisplay, track.Artist, track.AlbumArtworkPath, tracks.Count,
+            track.IsExplicit);
     }
 
     public static readonly AttachedProperty<bool> EnableFileDragProperty =

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
+        xmlns:sys="using:System"
         x:Class="Noctis.Views.ConfirmationDialog"
         Title="{loc:T Confirmation.Confirm}"
         CanResize="False"
@@ -64,9 +65,10 @@
                             Margin="0,0,8,0"
                             Cursor="Hand" />
                     <Button Grid.Column="2"
+                            x:Name="ConfirmButton"
                             Content="{loc:T Confirmation.Confirm}"
                             Click="OnConfirmClick"
-                            Width="100"
+                            MinWidth="100"
                             Padding="0,8"
                             Classes="accent-btn"
                             Background="{DynamicResource AccentButtonBackground}"
@@ -78,12 +80,37 @@
                 </Grid>
             </Border>
 
-            <!-- Message -->
-            <StackPanel Margin="24,16,24,8" VerticalAlignment="Center">
+            <!-- Message (+ optional title, detail lines, note and checkbox; see ConfirmationRequest) -->
+            <StackPanel Margin="24,16,24,8" VerticalAlignment="Center" Spacing="10">
+                <TextBlock x:Name="TitleText"
+                           IsVisible="False"
+                           FontSize="16" FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
                 <TextBlock x:Name="MessageText"
                            Text="{loc:T Confirmation.AreYouSure}"
                            FontSize="14"
                            TextWrapping="Wrap" />
+                <ItemsControl x:Name="DetailsList" IsVisible="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="6"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="sys:String">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Ellipse Width="5" Height="5" Margin="2,7,10,0" VerticalAlignment="Top"
+                                         Fill="{DynamicResource AccentColorBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding}" FontSize="13" TextWrapping="Wrap"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="NoteText"
+                           IsVisible="False"
+                           FontSize="12" Opacity="0.65"
+                           TextWrapping="Wrap" />
+                <CheckBox x:Name="OptionCheck" IsVisible="False" FontSize="13"/>
             </StackPanel>
         </DockPanel>
         </Border>

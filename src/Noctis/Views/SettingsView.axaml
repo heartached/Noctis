@@ -55,6 +55,11 @@
         <Style Selector="Button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SettingsButtonHoverBrush}"/>
         </Style>
+        <!-- accent-pill (e.g. Plugins "Install from file"): the wash above beat the global
+             Styles.axaml accent hover, turning the pill grey. Stay accent, just deeper. -->
+        <Style Selector="Button.accent-pill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
+        </Style>
 
         <!-- About-tab update pill: accent by default, subdued while showing the
              transient "✓ Up to date" confirmation so it stops reading as a CTA. -->
@@ -1266,7 +1271,7 @@
                                                     <Ellipse.IsVisible>
                                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                             <Binding Path="IsAbout"/>
-                                                            <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).IsUpdateAvailable"/>
+                                                            <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).ShowUpdateBadge"/>
                                                         </MultiBinding>
                                                     </Ellipse.IsVisible>
                                                 </Ellipse>
@@ -1671,6 +1676,50 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
+                        <!-- Content-pack themes: same tile, plus "by <pack>" under the name. -->
+                        <ItemsControl ItemsSource="{Binding PackThemes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PackThemeTile">
+                                    <Button Classes="theme-btn"
+                                            Classes.active="{Binding IsActive}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyPackThemeCommand}"
+                                            CommandParameter="{Binding Key}"
+                                            ToolTip.Tip="{Binding ByLabel}"
+                                            Margin="0,0,10,10">
+                                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                            <Border Width="64" Height="40" CornerRadius="6"
+                                                    Background="{Binding MainHex}"
+                                                    BorderBrush="{Binding SidebarHex}"
+                                                    BorderThickness="1">
+                                                <StackPanel Margin="6,5" Spacing="3">
+                                                    <Border Height="3" Width="30" CornerRadius="1.5"
+                                                            Background="{Binding AccentHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="20" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="36" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" Opacity="0.65"
+                                                            HorizontalAlignment="Left"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <StackPanel Spacing="0" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontSize="12"
+                                                           HorizontalAlignment="Center"
+                                                           MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding ByLabel}" FontSize="10" Opacity="0.5"
+                                                           HorizontalAlignment="Center"
+                                                           MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <!-- "+ Custom" add tile -->
                         <Button Classes="theme-btn"
                                 Command="{Binding OpenThemeEditorCommand}"
@@ -1975,6 +2024,9 @@
                 </Grid>
             </Border>
             <Border Classes="setting-row">
+                <!-- Toggle + its Tint strength slider share a spacing-free panel so the gap folds
+                     with the body (see the Crossfade block). -->
+                <StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.AlbumPageColour}" FontSize="15" FontWeight="SemiBold"/>
@@ -1985,6 +2037,48 @@
                                           IsChecked="{Binding AlbumPageTintEnabled}"
                                           VerticalAlignment="Center"/>
                 </Grid>
+                <!-- Tint strength (only while the page colour is on): how much of the cover
+                     colour the page takes on; 100% is the full cover colour. -->
+                <controls:CollapsibleContent IsOpen="{Binding AlbumPageTintEnabled}" Lift="10" Motion="Glide">
+                <StackPanel Classes="sub-setting" Spacing="6" Margin="2,10,0,0">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumPageTintStrength}" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumPageTintStrengthHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider x:Name="AlbumPageTintStrengthSlider" Grid.Column="0" Classes="accent-slider"
+                                Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                Value="{Binding AlbumPageTintStrength, Mode=TwoWay}" VerticalAlignment="Center"
+                                DoubleTapped="OnAlbumPageTintStrengthSliderDoubleTapped"/>
+                        <TextBlock Grid.Column="1" Text="{Binding AlbumPageTintStrength, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
+                    </Grid>
+                    <!-- Whole page: the colour also runs under Other Versions / More By. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholePage}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholePageHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AlbumPageTintWholePage}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- Whole window: the colour also fills the window around the sidebar and player. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholeWindow}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumPageTintWholeWindowHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AlbumPageTintWholeWindow}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
@@ -2085,6 +2179,15 @@
                                               IsChecked="{Binding PlaybackBarShowMiniPlayer}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.IdleQueuePill}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.IdleQueuePillHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowIdlePill}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -2144,6 +2247,15 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.EqualizerButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.EqualizerButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding PlaybackBarShowEqualizer}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.PlaybackTime}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.PlaybackTimeInTrackBox}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -2152,6 +2264,19 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
+            </Border>
+            <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.WaveformSeekBar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.WaveformSeekBarHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding WaveformSeekBarEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
@@ -2418,6 +2543,40 @@
 
             <StackPanel x:Name="LyricsTabPanel" Classes="tab-page" IsVisible="{Binding IsLyricsTabVisible}" Spacing="4">
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.LyricsPage}" Margin="0,2,0,8"/>
+            <!-- Style presets from content packs (only while an enabled pack provides some). -->
+            <Border Classes="setting-card" IsVisible="{Binding HasLyricsPresets}" Margin="0,0,0,8">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsPresets.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsPresets.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding LyricsPresets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LyricsPresetItem">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding Name}" FontSize="13"/>
+                                        <TextBlock Text="{Binding ByLabel}" FontSize="11" Opacity="0.5"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyLyricsPresetCommand}"
+                                            CommandParameter="{Binding Key}">
+                                        <TextBlock Text="{loc:T Settings.LyricsPresets.Apply}" FontSize="12"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding LyricsPresetStatus}" FontSize="12" Opacity="0.8"
+                               IsVisible="{Binding LyricsPresetStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-card group-card">
             <StackPanel>
             <Border Classes="setting-row">
@@ -2854,6 +3013,24 @@
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
+            <!-- GitHub #101: how much of a song has to be heard before it counts as played. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.PlayCountAfter}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlayCountAfterHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              Classes="pill-list"
+                              ItemsSource="{Binding PlayCountThresholdOptions}"
+                              SelectedItem="{Binding SelectedPlayCountThresholdOption}"
+                              MinWidth="140"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
@@ -3029,8 +3206,9 @@
 
             <Border Classes="setting-card" Padding="22,16,38,16" ClipToBounds="False" Margin="0,14,0,10">
                 <StackPanel Spacing="16">
-                    <!-- Header row with icon, preset selector, and reset button -->
-                    <Grid ColumnDefinitions="*,Auto,Auto">
+                    <!-- Header row: title + master switch (GitHub #94). Off bypasses the EQ but
+                         keeps every value below, so switching back on restores the same curve. -->
+                    <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <StackPanel Spacing="2">
                                 <TextBlock Text="{loc:T Settings.Equalizer}" FontSize="15" FontWeight="SemiBold"/>
@@ -3038,16 +3216,96 @@
                                            FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
-                        <ComboBox Grid.Column="1"
-                                  x:Name="EqPresetCombo"
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding EqualizerEnabled}"
+                                              ToolTip.Tip="{loc:T Settings.EqualizerOnOffTip}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Everything below greys out (values kept) while the EQ is off. -->
+                    <StackPanel Spacing="16"
+                                IsEnabled="{Binding EqualizerEnabled}"
+                                Opacity="{Binding EqualizerControlsOpacity}">
+                    <!-- Preset row (GitHub #95): selector, save / delete / restore, reset.
+                         Wraps rather than overflowing on a narrow Settings pane. -->
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                        <ComboBox x:Name="EqPresetCombo"
                                   Classes="pill-combo stable-popup"
                                   Width="164"
                                   ItemsSource="{Binding VisibleEqPresets}"
                                   SelectedItem="{Binding SelectedEqPresetName}"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,10,0" />
-                        <Button Grid.Column="2"
+                                  VerticalAlignment="Center" />
+                        <Button x:Name="EqSavePresetButton"
                                 Classes="pill-action"
+                                CornerRadius="999"
+                                Padding="14,8"
+                                Cursor="Hand"
+                                ToolTip.Tip="{loc:T Settings.SaveEqPresetTip}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.SaveEqPreset}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <Button.Flyout>
+                                <!-- One row: pill name box + Save. Fades/scales in and out like
+                                     the custom theme editor (code-behind). -->
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel x:Name="EqPresetFlyoutBody" Spacing="6" Width="280">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <TextBox Text="{Binding NewEqPresetName}"
+                                                     MaxLength="40"
+                                                     CornerRadius="999"
+                                                     Padding="14,7"
+                                                     VerticalContentAlignment="Center"
+                                                     Watermark="{loc:T Settings.EqPresetName}"
+                                                     AttachedToVisualTree="OnEqPresetNameBoxAttached"
+                                                     KeyDown="OnEqPresetNameKeyDown"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="pill-action"
+                                                    CornerRadius="999"
+                                                    Padding="16,7"
+                                                    Cursor="Hand"
+                                                    VerticalAlignment="Center"
+                                                    Click="OnEqSavePresetClick">
+                                                <TextBlock Text="{loc:T Settings.SaveEqPreset}" FontSize="13" FontWeight="SemiBold"/>
+                                            </Button>
+                                        </Grid>
+                                        <TextBlock Text="{Binding EqPresetSaveError}"
+                                                   IsVisible="{Binding EqPresetSaveError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   Margin="14,0,0,0"
+                                                   FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        <Button Classes="pill-action"
+                                Command="{Binding DeleteSelectedEqPresetCommand}"
+                                IsEnabled="{Binding CanDeleteSelectedEqPreset}"
+                                CornerRadius="999"
+                                Padding="14,8"
+                                Cursor="Hand"
+                                ToolTip.Tip="{loc:T Settings.DeleteEqPresetTip}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.DeleteEqPreset}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </Button>
+                        <!-- Only while a built-in has been deleted (hidden). -->
+                        <Button Classes="pill-action"
+                                Command="{Binding RestoreBuiltInEqPresetsCommand}"
+                                IsVisible="{Binding HasHiddenEqPresets}"
+                                CornerRadius="999"
+                                Padding="14,8"
+                                Cursor="Hand"
+                                ToolTip.Tip="{loc:T Settings.RestoreEqPresetsTip}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.RestoreEqPresets}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </Button>
+                        <Button Classes="pill-action"
                                 Command="{Binding ResetEqualizerCommand}"
                                 CornerRadius="999"
                                 Padding="14,8"
@@ -3058,7 +3316,7 @@
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
                         </Button>
-                    </Grid>
+                    </WrapPanel>
 
                     <!-- Pre-amp: level relative to native, applied before the curve.
                          Negative values create the headroom that keeps boosted bands
@@ -3140,6 +3398,7 @@
                                 HorizontalAlignment="Left">
                             <TextBlock Text="{loc:T Settings.AddBand}" FontSize="13" FontWeight="SemiBold"/>
                         </Button>
+                    </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -3454,6 +3713,71 @@
                         <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Add}" FontSize="13" Padding="16,6"
                                 Command="{Binding AddArtistSeparatorCommand}"/>
                     </Grid>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row">
+                <!-- GitHub #99. Toggle + its word list share a spacing-free panel so the gap folds
+                     with the body (see the Album page colour block). -->
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.IgnoreLeadingWordsInArtistSort}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.IgnoreLeadingWordsInArtistSortHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding IgnoreLeadingWordsInArtistSort}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding IgnoreLeadingWordsInArtistSort}" Lift="10" Motion="Glide">
+                <StackPanel Classes="sub-setting" Spacing="12" Margin="0,12,0,0">
+                    <ItemsControl ItemsSource="{Binding ArtistSortIgnoredWords}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Border Padding="12,4,6,4" Margin="0,0,6,6" CornerRadius="14"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Content="{loc:T Settings.Text}"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveArtistSortIgnoredWordCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontSize="11"
+                                                Opacity="0.5"
+                                                Cursor="Hand"
+                                                Padding="4,2"
+                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Classes="settings-search"
+                                 Text="{Binding NewArtistSortIgnoredWord, Mode=TwoWay}"
+                                 PlaceholderText="{loc:T Settings.AddWordEG}"
+                                 Padding="14,6"
+                                 MaxWidth="320" HorizontalAlignment="Left" MinWidth="220">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding AddArtistSortIgnoredWordCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Add}" FontSize="13" Padding="16,6"
+                                Command="{Binding AddArtistSortIgnoredWordCommand}"/>
+                        <Button Grid.Column="2" Classes="pill" Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Center"
+                                Command="{Binding ResetArtistSortIgnoredWordsCommand}"/>
+                    </Grid>
+                </StackPanel>
+                </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -4452,6 +4776,83 @@
             </Border>
             </StackPanel>
             </Border>
+
+            <!-- Local API: loopback automation for Stream Deck / OBS / scripts (docs/LOCAL-API.md).
+                 The token is masked until revealed, like the remote's key. -->
+            <Border Classes="setting-card group-card" Margin="0,4,0,10">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="10">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.LocalApi}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LocalApiDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LocalApiEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding LocalApiRunning}" Lift="10" Motion="Glide">
+                    <Border Background="#18000000" CornerRadius="8" Padding="12,10" Margin="0,10,0,0">
+                        <StackPanel Spacing="8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{loc:T Settings.LocalApiAddress}" FontSize="10" Opacity="0.5"/>
+                                <SelectableTextBlock Text="{Binding LocalApiBaseUrl}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{loc:T Settings.LocalApiToken}" FontSize="10" Opacity="0.5"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding LocalApiTokenDisplay}" FontSize="12"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               VerticalAlignment="Center"/>
+                                    <Button Classes="pill-action" Command="{Binding ToggleLocalApiTokenRevealCommand}">
+                                        <Panel>
+                                            <TextBlock Text="{loc:T Settings.LocalApiShowToken}" FontSize="11"
+                                                       IsVisible="{Binding !LocalApiTokenRevealed}"/>
+                                            <TextBlock Text="{loc:T Settings.LocalApiHideToken}" FontSize="11"
+                                                       IsVisible="{Binding LocalApiTokenRevealed}"/>
+                                        </Panel>
+                                    </Button>
+                                    <Button Classes="pill-action" Command="{Binding CopyLocalApiTokenCommand}">
+                                        <TextBlock Text="{loc:T Settings.Copy}" FontSize="11"/>
+                                    </Button>
+                                    <Button Classes="pill-action" Command="{Binding RegenerateLocalApiTokenCommand}"
+                                            ToolTip.Tip="{loc:T Settings.LocalApiRegenerateTip}">
+                                        <TextBlock Text="{loc:T Settings.LocalApiRegenerate}" FontSize="11"/>
+                                    </Button>
+                                    <TextBlock Text="{loc:T Settings.Copied}" FontSize="11"
+                                               Foreground="{DynamicResource AccentColorBrush}"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding LocalApiTokenCopied}"/>
+                                </StackPanel>
+                                <!-- Full token glides open under the row on Show and folds away on
+                                     Hide; the row above never re-flows. -->
+                                <controls:CollapsibleContent IsOpen="{Binding LocalApiTokenRevealed}"
+                                                             Lift="8" Motion="Glide">
+                                    <Border Background="#14FFFFFF" CornerRadius="6"
+                                            Padding="10,8" Margin="0,6,0,0">
+                                        <SelectableTextBlock Text="{Binding LocalApiToken}" FontSize="12"
+                                                             FontFamily="Consolas,Menlo,monospace"
+                                                             TextWrapping="Wrap"/>
+                                    </Border>
+                                </controls:CollapsibleContent>
+                            </StackPanel>
+                            <TextBlock Text="{loc:T Settings.LocalApiWarning}"
+                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.LocalApiDiscovery}"
+                                       FontSize="11" Opacity="0.45" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                    <TextBlock Text="{Binding LocalApiError}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                               IsVisible="{Binding LocalApiError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
             </StackPanel>
 
             <StackPanel x:Name="IntegrationsTabPanel" Classes="tab-page" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
@@ -4898,25 +5299,47 @@
             </StackPanel>
 
             <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
+            <!-- Community plugins switch (restricted mode when off, Obsidian-style). -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Plugins.CommunityTitle}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Plugins.CommunityDescription}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding CommunityPluginsEnabled, Mode=TwoWay}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{loc:T Plugins.Warning}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    <Border IsVisible="{Binding !CommunityPluginsEnabled}" CornerRadius="12" Padding="12,9"
+                            Background="#14FFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1">
+                        <TextBlock Text="{loc:T Plugins.RestrictedNotice}" FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Plugins.Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Plugins.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <TextBlock Text="{loc:T Plugins.Warning}" FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <WrapPanel Orientation="Horizontal">
+                        <Button Classes="accent-pill" Command="{Binding InstallPluginFromFileCommand}"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
+                            <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="13" FontWeight="SemiBold"/>
+                        </Button>
                         <Button Classes="pill-action" Command="{Binding OpenPluginsFolderCommand}"
-                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
                             <TextBlock Text="{loc:T Plugins.OpenFolder}" FontSize="13"/>
                         </Button>
                         <Button Classes="pill-action" Command="{Binding ReloadPluginsCommand}"
-                                Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
                             <TextBlock Text="{loc:T Plugins.Reload}" FontSize="13"/>
                         </Button>
-                    </StackPanel>
+                    </WrapPanel>
                     <TextBlock Text="{Binding Plugins.PluginsDirectory}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.7"
+                    <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap"
                                IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
             </Border>
@@ -4933,28 +5356,119 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="plugins:LoadedPlugin">
                         <Border Classes="setting-card">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
-                                        <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Status}" FontSize="10.5" FontWeight="SemiBold"/>
-                                        </Border>
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0">
+                                        <WrapPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                <TextBlock Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"/>
+                                            </Border>
+                                            <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
+                                                    VerticalAlignment="Center" IsVisible="{Binding IsLegacy}">
+                                                <TextBlock Text="{loc:T Plugins.LegacyBadge}" FontSize="10.5" Opacity="0.8"/>
+                                            </Border>
+                                            <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
+                                                    VerticalAlignment="Center" IsVisible="{Binding IsContentPack}">
+                                                <TextBlock Text="{loc:T Plugins.ContentBadge}" FontSize="10.5" Opacity="0.8"/>
+                                            </Border>
+                                        </WrapPanel>
+                                        <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.45"
+                                                   IsVisible="{Binding HasAuthor}"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasDescription}"/>
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"
-                                               IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.4"
-                                               IsVisible="{Binding Author, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <TextBlock Text="{Binding Extensions}" FontSize="11" Opacity="0.6"
-                                               IsVisible="{Binding Extensions, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
-                                               IsVisible="{Binding HasError}"/>
+                                    <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host
+                                         (approval dialog on first enable, start/stop + persist). -->
+                                    <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                          IsEnabled="{Binding CanToggle}"
+                                                          VerticalAlignment="Top"/>
+                                </Grid>
+
+                                <TextBlock Text="{loc:T Plugins.LegacyNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
+                                           IsVisible="{Binding IsLegacy}"/>
+
+                                <TextBlock Text="{loc:T Plugins.ContentNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
+                                           IsVisible="{Binding IsContentPack}"/>
+
+                                <!-- Permissions as quiet chips (code plugins only: a content pack has none). -->
+                                <StackPanel Spacing="5" IsVisible="{Binding IsCodePlugin}">
+                                    <TextBlock Text="{loc:T Plugins.Permissions}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
+                                    <ItemsControl ItemsSource="{Binding PermissionChips}" IsVisible="{Binding HasPermissions}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <Border CornerRadius="999" Padding="9,2" Margin="0,0,6,6"
+                                                        Background="#12FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                                    <TextBlock Text="{Binding}" FontSize="11"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{loc:T Plugins.NoPermissionsShort}" FontSize="11" Opacity="0.5"
+                                               IsVisible="{Binding !HasPermissions}"/>
                                 </StackPanel>
-                                <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host (start/stop + persist). -->
-                                <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                      VerticalAlignment="Center"/>
-                            </Grid>
+
+                                <TextBlock Text="{Binding Extensions}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasExtensions}"/>
+                                <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasError}"/>
+                                <TextBlock Text="{Binding Warnings}" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasWarnings}"/>
+
+                                <!-- Settings declared in plugin.json, drawn by Noctis. -->
+                                <StackPanel Spacing="8" IsVisible="{Binding HasSettings}">
+                                    <TextBlock Text="{loc:T Plugins.Settings}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
+                                    <ItemsControl ItemsSource="{Binding SettingItems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="8"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="plugins:PluginSettingItem">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                        <TextBlock Text="{Binding Label}" FontSize="13" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                                                   IsVisible="{Binding HasDescription}"/>
+                                                    </StackPanel>
+                                                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                                                        <controls:LottieToggle IsVisible="{Binding IsBool}"
+                                                                              IsChecked="{Binding BoolValue, Mode=TwoWay}"/>
+                                                        <TextBox IsVisible="{Binding IsString}" Text="{Binding TextValue, Mode=TwoWay}"
+                                                                 Width="220" CornerRadius="999" Padding="14,6" BorderThickness="1.5" MinHeight="0"/>
+                                                        <NumericUpDown IsVisible="{Binding IsNumber}" Value="{Binding NumberValue, Mode=TwoWay}"
+                                                                       Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                                                                       Width="150" CornerRadius="999" FormatString="0.###"/>
+                                                        <ComboBox IsVisible="{Binding IsChoice}" Classes="pill-list"
+                                                                  ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
+                                                                  MinWidth="160" CornerRadius="999" Padding="14,6"/>
+                                                    </Panel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginDirectoryCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Plugins.OpenPluginFolder}" FontSize="12"/>
+                                    </Button>
+                                    <Button Classes="pill-action danger-ghost-pill" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemovePluginCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{loc:T Plugins.Remove}" FontSize="12"/>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -5198,6 +5712,15 @@
                                            FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                             </Button>
 
+                            <!-- Postpone a queued automatic install by 24 h (auto-update only) -->
+                            <Button Command="{Binding PostponeAutoInstallCommand}"
+                                    Classes="pill"
+                                    Padding="16,6"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding ShowPostponeButton}">
+                                <TextBlock Text="{loc:T Settings.Postpone}" FontSize="12" />
+                            </Button>
+
                             <!-- Install & Restart button (replaces Update when ready) -->
                             <Button Command="{Binding InstallUpdateCommand}"
                                     Classes="pill red-pill"
@@ -5216,6 +5739,14 @@
                         <TextBlock Text="{Binding UpdateStatusText}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" />
+                        <!-- After an automatic update: the release notes on GitHub -->
+                        <Button Command="{Binding OpenLatestReleaseCommand}"
+                                Classes="pill"
+                                Padding="12,4"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding ShowWhatsNew}">
+                            <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
+                        </Button>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="12"
@@ -5232,6 +5763,23 @@
                             <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12" />
                         </Button>
                     </StackPanel>
+
+                    <!-- Auto-update (opt-in): background download + install at next launch. Hidden for Scoop /
+                         portable / read-only copies, which update through their own channel. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2" IsVisible="{Binding CanAutoUpdate}">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AutoInstallUpdates}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AutoInstallUpdatesCaption}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                       IsVisible="{Binding AutoUpdateInstallsAtLaunch}"/>
+                            <TextBlock Text="{loc:T Settings.AutoDownloadUpdatesCaption}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                       IsVisible="{Binding AutoUpdateDownloadOnly}"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AutoInstallUpdates}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
 
                     <!-- Row 2: three equal-width brand tiles (GitHub / Discord / Website),
                          each a solid brand fill (star yellow, Discord blurple, Noctis red)

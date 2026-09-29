@@ -82,7 +82,8 @@ public sealed class YouTubeImportService : IYouTubeImportService
 
         progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
         var downloadProgress = new Progress<double>(f => progress?.Report(new YouTubeImportProgress("Downloading", 0.05 + 0.75 * f)));
-        var produced = await Tool.DownloadAsync(info.Url, folder, _ffmpeg.GetFfmpegPath(), downloadProgress, ct).ConfigureAwait(false);
+        var produced = await Tool.DownloadAsync(info.Url, folder, _ffmpeg.GetFfmpegPath(), downloadProgress, ct,
+            status => progress?.Report(new YouTubeImportProgress(status, 0.05))).ConfigureAwait(false);
 
         try
         {

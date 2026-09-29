@@ -40,8 +40,26 @@ public class AppSettings
     /// <summary>UI language: a culture name shipped in Localization/ ("es") or "" to follow the OS.</summary>
     public string Language { get; set; } = "";
 
-    /// <summary>Plugin folders (names under data/plugins) the user switched off in Settings → Plugins.</summary>
+    /// <summary>Plugin ids (plugin.json "id"; the folder name for a legacy plugin without one)
+    /// the user switched off in Settings → Plugins. Older builds stored folder names; the
+    /// plugin host rewrites those to ids on load.</summary>
     public List<string> DisabledPlugins { get; set; } = new();
+
+    /// <summary>
+    /// "Community plugins" switch (Settings → Plugins). False = restricted mode: no
+    /// third-party plugin code is loaded. Null = never decided (a settings.json from before
+    /// this switch existed): the plugin host sets it on first load, ON when plugins were
+    /// already installed (they ran before this switch existed), OFF for everyone else.
+    /// Defaults the app creates itself (no usable settings file, Reset) set it to false.
+    /// </summary>
+    public bool? CommunityPluginsEnabled { get; set; }
+
+    /// <summary>Plugin id → the permissions the user approved when enabling it. A plugin
+    /// whose plugin.json asks for more (after an update) waits for approval again.</summary>
+    public Dictionary<string, List<string>> PluginPermissionGrants { get; set; } = new();
+
+    /// <summary>Plugin id → setting key → value (invariant text) for settings declared in plugin.json.</summary>
+    public Dictionary<string, Dictionary<string, string>> PluginSettingValues { get; set; } = new();
 
     /// <summary>
     /// Marker for the v2 theme migration. In v1, "Dark" denoted today's Gray colours.
@@ -106,6 +124,10 @@ public class AppSettings
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 
+    /// <summary>Opt-in: download new releases in the background and install them at the next launch
+    /// (Windows Inno install, Linux AppImage/tarball; macOS downloads only). Off = manual Update button.</summary>
+    public bool AutoInstallUpdates { get; set; } = false;
+
     /// <summary>Shows the Developer section (version manager + debug logs) in Settings → About.</summary>
     public bool DeveloperMode { get; set; } = false;
 
@@ -146,6 +168,18 @@ public class AppSettings
     public bool PlayPauseFadeEnabled { get; set; }
 
     public int PlayPauseFadeMs { get; set; } = 300;
+
+    /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
+    /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
+    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>.</summary>
+    public int PlayCountThresholdPercent { get; set; }
+
+    /// <summary>The Settings picker's choices for <see cref="PlayCountThresholdPercent"/>.</summary>
+    public static IReadOnlyList<int> PlayCountThresholdChoices { get; } = new[] { 0, 25, 50, 75, 90 };
+
+    /// <summary>The nearest of <see cref="PlayCountThresholdChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapPlayCountThreshold(int percent) =>
+        PlayCountThresholdChoices.MinBy(c => Math.Abs((long)c - percent));
 
     /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
     public bool SongTransitionsEnabled { get; set; }
@@ -195,6 +229,28 @@ public class AppSettings
     /// the Appearance toggle turns it off for users who want the flat theme page.</summary>
     public bool AlbumPageTintEnabled { get; set; } = false;
 
+    /// <summary>Fresh-install value of <see cref="AlbumPageTintStrength"/>: the full cover
+    /// colour, the look the album page had before the slider existed. Double-tapping the
+    /// slider in Settings snaps back to it.</summary>
+    public const int AlbumPageTintStrengthDefault = 100;
+
+    /// <summary>How strongly a tinted album page takes on its cover colour, in percent
+    /// (0–100). Below 100 the cover colour is blended into the theme's own page colour, so
+    /// the page reads calmer and its buttons stand further apart from it (Discord ask).</summary>
+    public int AlbumPageTintStrength { get; set; } = AlbumPageTintStrengthDefault;
+
+    /// <summary>Fresh-install value of <see cref="AlbumPageTintWholePage"/>.</summary>
+    public const bool AlbumPageTintWholePageDefault = true;
+
+    /// <summary>A tinted album page carries the cover colour under Other Versions / More By
+    /// too, with no viewport-tall padding between the tracks and those rows (Discord
+    /// "Album Page Redesign" mockup). Off keeps the tint on the album block alone.</summary>
+    public bool AlbumPageTintWholePage { get; set; } = AlbumPageTintWholePageDefault;
+
+    /// <summary>While a tinted album page is open, the window around the sidebar and
+    /// player islands takes the same colour (Discord 1v1ctus). Off by default.</summary>
+    public bool AlbumPageTintWholeWindow { get; set; }
+
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
 
@@ -215,6 +271,14 @@ public class AppSettings
 
     /// <summary>TCP port for the web remote.</summary>
     public int WebRemotePort { get; set; } = 9420;
+
+    /// <summary>Local automation API on 127.0.0.1 (/api/v1, docs/LOCAL-API.md). Off by default.
+    /// The token lives in local-api.json, never here.</summary>
+    public bool LocalApiEnabled { get; set; }
+
+    /// <summary>Preferred TCP port for the Local API (a free one is used when it's taken;
+    /// local-api.json records the real one).</summary>
+    public int LocalApiPort { get; set; } = 9421;
 
     /// <summary>Built-in Noctis server (OpenSubsonic API over HTTPS for phones and other clients). Off by default.</summary>
     public bool NoctisServerEnabled { get; set; }
@@ -311,6 +375,15 @@ public class AppSettings
     /// <summary>Artists grid sort direction.</summary>
     public bool ArtistSortAscending { get; set; } = true;
 
+    /// <summary>Artist page Albums / Singles &amp; EPs tab order (GitHub #100): "newest"
+    /// (release date), "oldest" (undated releases last) or "name" (A–Z). One setting for
+    /// both tabs and every artist.</summary>
+    public string ArtistReleaseSortMode { get; set; } = "newest";
+
+    /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
+    /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
+    public string FoldersSortMode { get; set; } = "default";
+
     /// <summary>Albums sort direction. Only meaningful outside "default"; each mode
     /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
     public bool AlbumSortAscending { get; set; } = true;
@@ -346,7 +419,8 @@ public class AppSettings
 
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
-    /// original #66 alpha glass look.</summary>
+    /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
+    /// on it also tints the queue drawer and the island's menus. Key kept so looks carry over.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
@@ -363,6 +437,11 @@ public class AppSettings
     /// the OS for a blur-behind backdrop, so the desktop behind the card reads frosted.
     /// Off by default.</summary>
     public bool MiniPlayerFrostedBackground { get; set; } = false;
+
+    /// <summary>The mini player's pin (Windows only): it survives Show desktop / Minimize all
+    /// and re-asserts always-on-top when another window (e.g. a borderless game) takes the
+    /// foreground. Written by the mini player itself, like its placement. Off by default.</summary>
+    public bool MiniPlayerPinned { get; set; } = false;
 
     /// <summary>User-chosen width of the floating playback bar island, set by dragging its
     /// edges (double-click a grip resets). 536 is the full layout (626 with the old long
@@ -415,6 +494,10 @@ public class AppSettings
     /// shuffle already lives in the Queue panel header.</summary>
     public bool PlaybackBarShowShuffle { get; set; }
 
+    /// <summary>GitHub #94: an EQ on/off button on the island, after Shuffle. Off by
+    /// default like the other extras (the switch also lives in Settings → Audio).</summary>
+    public bool PlaybackBarShowEqualizer { get; set; }
+
     /// <summary>Repeat (after Next) and the favorite heart (right cluster) on the island.
     /// Off by default since the track-box layout: the stock bar mirrors the Apple-Music
     /// reference — transport, track box, lyrics / queue / volume.</summary>
@@ -426,10 +509,19 @@ public class AppSettings
     /// default so the mini player is discoverable; like the heart it adds 36px when shown.</summary>
     public bool PlaybackBarShowMiniPlayer { get; set; } = true;
 
+    /// <summary>GitHub #92: the "Nothing playing · Queue" pill that stands in for the island
+    /// while nothing is loaded. Off by default (owner, 2026-09-24).</summary>
+    public bool PlaybackBarShowIdlePill { get; set; }
+
     /// <summary>Discord (Luwi, 2026-09-21): elapsed / remaining time of the current title in
     /// the island's track box, stacked beside the title. Off by default — the stock LCD
     /// carries no time labels.</summary>
     public bool PlaybackBarShowTime { get; set; }
+
+    /// <summary>GitHub #93: the island and mini player seek bars draw the track's waveform
+    /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by
+    /// default — when off nothing is decoded and the plain seek line stays.</summary>
+    public bool WaveformSeekBarEnabled { get; set; }
 
     /// <summary>Whether tracks marked explicit (ITUNESADVISORY=1) may play automatically.
     /// On by default. When off they are skipped on queue advance, excluded from shuffle,
@@ -484,6 +576,14 @@ public class AppSettings
     /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
     public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
 
+    /// <summary>GitHub #99: the Artists grid's name sort skips a leading word from
+    /// <see cref="ArtistSortIgnoredWords"/> ("The Beatles" sorts under B). Off by default.</summary>
+    public bool IgnoreLeadingWordsInArtistSort { get; set; } = false;
+
+    /// <summary>Leading words skipped while <see cref="IgnoreLeadingWordsInArtistSort"/> is on;
+    /// see ArtistSortWords.SortKey for the matching rule.</summary>
+    public List<string> ArtistSortIgnoredWords { get; set; } = ArtistSortWords.DefaultWords.ToList();
+
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
 
@@ -518,6 +618,18 @@ public class AppSettings
     /// before the EQ curve, so a negative value creates the headroom that keeps
     /// boosted bands from clipping — the post-mix volume slider cannot.</summary>
     public double EqPreampDb { get; set; } = 0.0;
+
+    /// <summary>GitHub #95: user-saved presets (parametric bands + pre-amp), listed after
+    /// the built-ins in the preset dropdown.</summary>
+    public List<UserEqPreset> UserEqPresets { get; set; } = new();
+
+    /// <summary>GitHub #95: built-in preset names the user deleted. Hidden from the
+    /// dropdown rather than removed, so "Restore built-in presets" can bring them back.</summary>
+    public List<string> HiddenEqPresets { get; set; } = new();
+
+    /// <summary>The selected user preset, by name. Null when a built-in or Custom is
+    /// selected (see <see cref="EqualizerPresetIndex"/>, which is -1 while this is set).</summary>
+    public string? SelectedUserEqPreset { get; set; }
 
     // ── Integration settings ──
 
@@ -625,6 +737,10 @@ public class AppSettings
     /// <summary>Music video frame: rounded like the cover (true) or flat (false).</summary>
     public bool MusicVideoRoundedCorners { get; set; } = true;
 
+    /// <summary>A song with a music video plays the clip's own audio instead of the song file
+    /// (decided at each song start; the song file is the fallback). Off by default.</summary>
+    public bool MusicVideoUseVideoAudio { get; set; }
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }
@@ -717,11 +833,13 @@ public class AppSettings
         Volume = Math.Clamp(Volume, 0, 100);
         // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
         WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
+        LocalApiPort = LocalApiPort is >= 1024 and <= 65535 ? LocalApiPort : 9421;
         NoctisServerPort = NoctisServerPort is >= 1024 and <= 65535 ? NoctisServerPort : 4747;
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         PlaybackBarTrackBoxOpacity = double.IsFinite(PlaybackBarTrackBoxOpacity)
             ? Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1)

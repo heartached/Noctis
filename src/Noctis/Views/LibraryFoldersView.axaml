@@ -69,7 +69,12 @@
         </Style>
         <!-- MUST stay last: equal-origin Avalonia styles resolve by declaration order, so
              this is what makes the box win on striped and hovered rows alike. -->
+        <!-- Snap onto/off the fill; see AlbumDetailView (white flicker on dark accents).
+             Transitions must stay the first setter. -->
         <Style Selector="Border.row-body.now-playing">
+            <Setter Property="Transitions">
+                <Transitions />
+            </Setter>
             <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
         </Style>
     </UserControl.Styles>

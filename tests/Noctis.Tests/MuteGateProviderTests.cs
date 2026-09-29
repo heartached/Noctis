@@ -103,6 +103,73 @@ public class MuteGateProviderTests
         Assert.Equal(0f, tail[^1]);
     }
 
+    // A rebuilt output (device switch) opens a new audio session at that session's own
+    // level; the gate holds it silent until the user volume is on it (GaplessSink.Rebuilt).
+
+    [Fact]
+    public void Hold_SilencesFromTheFirstRead_WithoutARampDown()
+    {
+        var gate = new MuteGateProvider(new ConstantSource(0.5f), rampMs: 8);
+        Render(gate, 256); // open, playing
+        Assert.Equal(1f, gate.CurrentGain);
+
+        gate.Hold(60_000);
+        var held = Render(gate, 1024);
+
+        Assert.All(held, s => Assert.Equal(0f, s));
+        Assert.Equal(0f, gate.CurrentGain);
+    }
+
+    [Fact]
+    public void ReleaseHold_RampsBackUp_ThenPassesThroughAgain()
+    {
+        var gate = new MuteGateProvider(new ConstantSource(0.5f), rampMs: 8);
+        gate.Hold(60_000);
+        Render(gate, 1024);
+
+        Assert.True(gate.ReleaseHold());
+        var ramp = Render(gate, Rate * 8 / 1000);
+        var left = Enumerable.Range(0, ramp.Length / Channels).Select(f => ramp[f * Channels]).ToArray();
+        Assert.True(left[0] < 0.5f, "first frame after the hold starts from silence");
+        for (var f = 1; f < left.Length; f++)
+            Assert.True(left[f] >= left[f - 1] - 1e-6f, $"gain fell at frame {f}");
+
+        var after = Render(gate, 256);
+        Assert.All(after, s => Assert.Equal(0.5f, s));
+        Assert.Equal(1f, gate.CurrentGain);
+    }
+
+    [Fact]
+    public void ReleaseHold_WhileMuted_StaysSilent()
+    {
+        var gate = new MuteGateProvider(new ConstantSource(0.5f), rampMs: 8) { IsMuted = true };
+        gate.Hold(60_000);
+        Render(gate, 256);
+        gate.ReleaseHold();
+
+        Assert.All(Render(gate, 1024), s => Assert.Equal(0f, s));
+    }
+
+    [Fact]
+    public void Hold_ExpiresOnItsOwn_WhenNeverReleased()
+    {
+        var gate = new MuteGateProvider(new ConstantSource(0.5f), rampMs: 8);
+        gate.Hold(1);
+        System.Threading.Thread.Sleep(50); // past the deadline at TickCount64's ~16 ms resolution
+
+        Render(gate, 1024); // ramp up (1024 frames > 384-frame ramp)
+        Assert.All(Render(gate, 256), s => Assert.Equal(0.5f, s));
+    }
+
+    [Fact]
+    public void ReleaseHold_WithoutAHold_ReturnsFalse()
+    {
+        var gate = new MuteGateProvider(new ConstantSource(0.5f));
+
+        Assert.False(gate.ReleaseHold());
+        Assert.All(Render(gate, 64), s => Assert.Equal(0.5f, s));
+    }
+
     [Fact]
     public void Read_PassesTheSourceCountThrough()
     {

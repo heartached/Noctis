@@ -25,9 +25,19 @@ public sealed class Loc : INotifyPropertyChanged
     /// Cultures that ship a translation, English first — discovered from the satellite
     /// assemblies next to the app (<c>&lt;culture&gt;/Noctis.resources.dll</c>), so a translation
     /// merged from Crowdin (https://crowdin.com/project/noctis) appears in the Language picker
-    /// with no code change.
+    /// with no code change. Cultures that only a language pack provides
+    /// (<see cref="SetOverlays"/>) follow the shipped ones.
     /// </summary>
-    public static IReadOnlyList<string> Supported => _supported ??= DiscoverSupported();
+    public static IReadOnlyList<string> Supported
+    {
+        get
+        {
+            var shipped = _supported ??= DiscoverSupported();
+            var extra = Instance._overlayCultures;
+            if (extra.Count == 0) return shipped;
+            return shipped.Concat(extra.Where(c => !shipped.Contains(c, StringComparer.OrdinalIgnoreCase))).ToList();
+        }
+    }
     private static IReadOnlyList<string>? _supported;
 
     /// <summary>
@@ -101,8 +111,57 @@ public sealed class Loc : INotifyPropertyChanged
 
     private string Get(string key)
     {
+        // Language-pack strings win over the compiled ones, walking the culture chain the way
+        // ResourceManager does (en-XA → en); a key a pack lacks falls through to the resx,
+        // which ends at English.
+        var overlays = _overlays;
+        if (overlays.Count > 0)
+            for (var c = _culture; !c.Equals(CultureInfo.InvariantCulture); c = c.Parent)
+                if (overlays.TryGetValue(c.Name, out var strings) && strings.TryGetValue(key, out var value))
+                    return value;
         try { return _resources.GetString(key, _culture) ?? key; }
         catch (MissingManifestResourceException) { return key; }
+    }
+
+    private IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> _overlays =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<string> _overlayCultures = Array.Empty<string>();
+
+    /// <summary>Raised after <see cref="SetOverlays"/> changed the set of language-pack cultures or strings.</summary>
+    public event EventHandler? OverlaysChanged;
+
+    /// <summary>The English (neutral) string for <paramref name="key"/>, or null when the app has no such key.</summary>
+    public static string? English(string key)
+    {
+        try { return Instance._resources.GetString(key, CultureInfo.InvariantCulture); }
+        catch (MissingManifestResourceException) { return null; }
+    }
+
+    /// <summary>
+    /// Replaces the language-pack layer: culture name → (key → text). Only keys the app knows
+    /// should be passed (the pack loader filters them). Bound strings re-read when the change
+    /// touches the current culture; <see cref="Supported"/> then lists the pack cultures too.
+    /// </summary>
+    public void SetOverlays(IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? overlays)
+    {
+        var next = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (culture, strings) in overlays ?? new Dictionary<string, IReadOnlyDictionary<string, string>>())
+            if (strings.Count > 0) next[culture] = strings;
+
+        var touchesCurrent = false;
+        for (var c = _culture; !c.Equals(CultureInfo.InvariantCulture); c = c.Parent)
+        {
+            _overlays.TryGetValue(c.Name, out var before);
+            next.TryGetValue(c.Name, out var after);
+            if (!ReferenceEquals(before, after)) touchesCurrent = true;
+        }
+
+        _overlays = next;
+        _overlayCultures = next.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+        // Only a change to what is on screen re-reads the bindings: this can run while the
+        // pack host loads, and nothing needs a refresh for a culture nobody is using.
+        if (touchesCurrent) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item"));
+        OverlaysChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

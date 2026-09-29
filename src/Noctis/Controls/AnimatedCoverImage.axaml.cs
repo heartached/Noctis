@@ -1,30 +1,24 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
-using Avalonia.Threading;
-using LibVLCSharp.Shared;
-using Noctis.Services;
+using Noctis.Helpers;
 
 namespace Noctis.Controls;
 
 /// <summary>
-/// Plays a looping animated cover by decoding frames (via LibVLC video callbacks) into a
-/// <see cref="WriteableBitmap"/> shown in a plain <c>Image</c> element — so it composes
+/// Plays a looping animated cover by showing frames decoded (via LibVLC video callbacks)
+/// into a <see cref="WriteableBitmap"/> in a plain <c>Image</c> element — so it composes
 /// inside transparent windows, clips to its parent's rounded border, and never spawns a
-/// native output window. Software-decoded; fine for a small muted loop. Minor frame tearing
-/// under load is accepted (single shared buffer).
+/// native output window.
 ///
-/// All LibVLC calls (first-use core initialization, Play, Stop, Dispose) run on worker
-/// threads: they block for hundreds of milliseconds and froze the UI when a cover was
-/// applied or replaced. Each playback attempt is an isolated <see cref="Session"/> so a
-/// stale startup can never corrupt the current one.
+/// The decoding itself lives in <see cref="AnimatedCoverFeed"/>: every control showing the
+/// same file shares one decoder, and a control only holds a lease on it while it could be
+/// seen — attached, effectively visible, and in a shown, non-minimized window. Hidden mini
+/// player forms, inactive Cover Flow modes and the main window's page behind an open mini
+/// player therefore decode nothing.
 /// </summary>
 public partial class AnimatedCoverImage : UserControl
 {
@@ -46,326 +40,115 @@ public partial class AnimatedCoverImage : UserControl
         set => SetValue(IsActiveProperty, value);
     }
 
-    // VLC scales every frame into a square RV32 (BGRA in memory) buffer of this size.
-    // Animated covers are square; a non-square source gets scaled to fit this square.
-    private const int RenderSize = 600;
-    private const int Stride = RenderSize * 4;
-    private const int BufferBytes = Stride * RenderSize;
-
     private readonly Image _image;
-    private Session? _session;
+    private AnimatedCoverFeed? _feed;
+    private readonly HostWindowWatch _hostWindow;
+    private bool _attached;
+    private bool _wasEffectivelyVisible;
 
-    // Bumped on every Refresh/Teardown (UI thread only). A background session
-    // startup that finishes after the control was restarted sees a stale value
-    // and shuts itself down instead of becoming current.
-    private int _sessionGeneration;
+    // Attached instances (UI thread only). IsVisible=False anywhere up the tree does not
+    // detach a control, and Avalonia keeps its IsEffectivelyVisibleChanged event internal,
+    // so every IsVisible change in the app (a window hidden, a form, costume or page
+    // collapsed) re-checks these few controls' effective visibility.
+    private static readonly List<AnimatedCoverImage> s_attached = new();
 
-    // Last decoded frame of the previous session, kept on screen while a
-    // same-source session warms up (page re-attach), so the static cover
-    // never flashes through. Disposed when the new session paints or the
-    // source changes. _liveSource is the source of the running session.
-    private WriteableBitmap? _lingerBitmap;
-    private string? _lingerSource;
-    private string? _liveSource;
-
-    // Process-wide bridge-frame cache (UI thread only): the last decoded frame of
-    // recently played covers, keyed by source path. On a track skip the control shows
-    // the cached frame immediately while VLC warms up, instead of flashing the static
-    // cover underneath. Cached bitmaps are owned by the cache and are not referenced
-    // by any Image while they sit here; TakeCachedFrame transfers ownership out.
-    private const int FrameCacheCapacity = 8;
-    private static readonly List<(string Source, WriteableBitmap Bitmap)> s_frameCache = new();
-
-    private static void CacheFrame(string source, WriteableBitmap bitmap)
+    static AnimatedCoverImage()
     {
-        for (var i = 0; i < s_frameCache.Count; i++)
+        IsVisibleProperty.Changed.AddClassHandler<Visual>((_, _) =>
         {
-            if (s_frameCache[i].Source == source)
-            {
-                var old = s_frameCache[i].Bitmap;
-                s_frameCache.RemoveAt(i);
-                if (!ReferenceEquals(old, bitmap))
-                    Dispatcher.UIThread.Post(old.Dispose);
-                break;
-            }
-        }
-
-        s_frameCache.Add((source, bitmap));
-        if (s_frameCache.Count > FrameCacheCapacity)
-        {
-            var evicted = s_frameCache[0].Bitmap;
-            s_frameCache.RemoveAt(0);
-            Dispatcher.UIThread.Post(evicted.Dispose);
-        }
-    }
-
-    private static WriteableBitmap? TakeCachedFrame(string source)
-    {
-        for (var i = 0; i < s_frameCache.Count; i++)
-        {
-            if (s_frameCache[i].Source == source)
-            {
-                var bitmap = s_frameCache[i].Bitmap;
-                s_frameCache.RemoveAt(i);
-                return bitmap;
-            }
-        }
-
-        return null;
+            for (var i = s_attached.Count - 1; i >= 0; i--)
+                s_attached[i].OnVisibilityMayHaveChanged();
+        });
     }
 
     public AnimatedCoverImage()
     {
         InitializeComponent();
         _image = this.FindControl<Image>("FrameImage")!;
-        // Teardown on detach, rebuild on re-attach: a TabControl detaches the
-        // hosting tab's content when you switch tabs and re-attaches it on return,
-        // and Source/IsActive don't change across that, so nothing else restarts us.
-        // The last frame is kept so the return trip doesn't flash the static cover.
-        AttachedToVisualTree += (_, _) => Refresh();
-        DetachedFromVisualTree += (_, _) => Teardown(keepLastFrame: true);
+        // Minimized/restored re-checks the lease. A hidden window (the main window while
+        // the mini player is open) reaches us through the IsVisible class handler above.
+        // Created before the handlers below so it has found the window by the time they run.
+        _hostWindow = new HostWindowWatch(this, () => UpdateLease(linger: true));
+        // Release on detach, re-lease on re-attach: a TabControl detaches the hosting
+        // tab's content when you switch tabs and re-attaches it on return, and
+        // Source/IsActive don't change across that, so nothing else restarts us. The
+        // feed's frame cache makes the return trip seamless.
+        AttachedToVisualTree += (_, _) =>
+        {
+            _attached = true;
+            s_attached.Add(this);
+            _wasEffectivelyVisible = IsEffectivelyVisible;
+            UpdateLease(linger: true);
+        };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            _attached = false;
+            s_attached.Remove(this);
+            UpdateLease(linger: true);
+        };
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
+    private void OnVisibilityMayHaveChanged()
+    {
+        var visible = IsEffectivelyVisible;
+        if (visible == _wasEffectivelyVisible) return;
+        _wasEffectivelyVisible = visible;
+        UpdateLease(linger: true);
+    }
+
+    /// <summary>True while this control holds a lease on a decoder (tests, diagnostics).</summary>
+    internal bool IsDecoding => _feed != null;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        // A new source or the animation switched off: the old file is no longer wanted,
+        // so its decoder (if this was the last viewer) stops at once and unlocks the file.
         if (change.Property == SourceProperty || change.Property == IsActiveProperty)
-            Refresh();
+            UpdateLease(linger: false);
     }
 
-    private void Refresh()
+    private void UpdateLease(bool linger)
     {
         var source = Source;
-        var active = IsActive && !string.IsNullOrEmpty(source) && File.Exists(source);
-        // Bridge the VLC warm-up with the previous frame only when restarting
-        // the same video; a different source must clear to the static cover.
-        var keep = active && (source == _liveSource || source == _lingerSource);
-        Teardown(keepLastFrame: keep);
+        var wanted = AnimatedCoverPolicy.ShouldDecode(
+            IsActive,
+            hasSource: !string.IsNullOrEmpty(source),
+            isAttached: _attached,
+            isEffectivelyVisible: IsEffectivelyVisible,
+            windowShown: _hostWindow.Window?.IsVisible ?? true,
+            windowMinimized: _hostWindow.IsMinimized);
 
-        if (!active || string.IsNullOrEmpty(source))
+        if (wanted && _feed != null && _feed.Source == source)
+            return; // already showing it
+
+        if (_feed != null)
+        {
+            var feed = _feed;
+            _feed = null;
+            // Let go of the shared frame: once the feed ends it belongs to the frame
+            // cache, which may dispose it.
+            _image.Source = null;
+            feed.Release(this, linger);
+        }
+
+        if (!wanted || !File.Exists(source))
             return;
 
-        // Seamless track skip: bridge the warm-up with the last frame this source
-        // rendered anywhere in the app, so the static cover never flashes through.
-        if (_lingerBitmap == null && TakeCachedFrame(source) is { } cached)
-        {
-            _lingerBitmap = cached;
-            _lingerSource = source;
-            _image.Source = cached;
-        }
-
-        _liveSource = source;
-        var generation = _sessionGeneration;
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            Session session;
-            try
-            {
-                session = new Session(this);
-            }
-            catch
-            {
-                return; // LibVLC unavailable — leave the static cover in place
-            }
-
-            try
-            {
-                using var media = new Media(SharedLibVlc.Instance, source, FromType.FromPath,
-                    ":no-audio", ":input-repeat=65535");
-                session.Player.Play(media);
-                DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Play", $"src={Path.GetFileName(source)}");
-            }
-            catch
-            {
-                session.ShutDown();
-                return;
-            }
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (generation != _sessionGeneration)
-                {
-                    // Control was torn down or restarted while this session was
-                    // starting up — it must never become current.
-                    session.ShutDown();
-                    return;
-                }
-                _session = session;
-            });
-        });
+        _feed = AnimatedCoverFeed.Acquire(source!, this);
     }
 
-    private void Teardown(bool keepLastFrame = false)
+    /// <summary>Called by the feed: show <paramref name="frame"/> (null = nothing yet, the
+    /// static cover underneath shows through). Must not change leases.</summary>
+    internal void ShowFrame(WriteableBitmap? frame)
     {
-        _sessionGeneration++;
-        var session = _session;
-        _session = null;
-
-        if (keepLastFrame)
-        {
-            // Leave whatever frame is showing (the ending session's bitmap or an
-            // earlier lingering one) so a same-source restart is seamless.
-            if (session != null && ReferenceEquals(_image.Source, session.Bitmap))
-            {
-                var previous = _lingerBitmap;
-                _lingerBitmap = session.Bitmap;
-                _lingerSource = _liveSource;
-                if (previous != null)
-                    Dispatcher.UIThread.Post(previous.Dispose);
-                session.ShutDown(keepBitmap: true);
-            }
-            else
-            {
-                session?.ShutDown();
-            }
-        }
-        else
-        {
-            // Retire whatever frame was showing into the bridge cache (keyed by its
-            // source) so a later session for the same file starts seamlessly. A session
-            // that never painted still holds uninitialized pixels — never cache those.
-            var sessionPainted = session != null && ReferenceEquals(_image.Source, session.Bitmap);
-            _image.Source = null;
-            if (session != null && sessionPainted && _liveSource != null)
-            {
-                session.ShutDown(keepBitmap: true);
-                CacheFrame(_liveSource, session.Bitmap);
-            }
-            else
-            {
-                session?.ShutDown();
-            }
-
-            var linger = _lingerBitmap;
-            var lingerSource = _lingerSource;
-            _lingerBitmap = null;
-            _lingerSource = null;
-            if (linger != null)
-            {
-                if (lingerSource != null)
-                    CacheFrame(lingerSource, linger);
-                else
-                    Dispatcher.UIThread.Post(linger.Dispose);
-            }
-        }
-
-        _liveSource = null;
+        if (!ReferenceEquals(_image.Source, frame))
+            _image.Source = frame;
+        _image.InvalidateVisual();
     }
 
-    /// <summary>Drops the lingering bridge frame once the live session has painted
-    /// over it; the bitmap can only be disposed after it left the Image.</summary>
-    private void ReleaseLingerFrame(WriteableBitmap current)
-    {
-        var linger = _lingerBitmap;
-        if (linger == null || ReferenceEquals(linger, current)) return;
-        _lingerBitmap = null;
-        _lingerSource = null;
-        Dispatcher.UIThread.Post(linger.Dispose);
-    }
-
-    /// <summary>
-    /// One playback attempt: owns its MediaPlayer, native frame buffer, and bitmap.
-    /// Constructed and played on a worker thread; shut down from the UI thread.
-    /// </summary>
-    private sealed class Session
-    {
-        private readonly AnimatedCoverImage _owner;
-        public readonly MediaPlayer Player;
-        private readonly IntPtr _buffer;                // native frame buffer VLC writes into
-        private readonly byte[] _scratch = new byte[BufferBytes]; // managed hop for the IntPtr->IntPtr copy
-        private readonly WriteableBitmap _bitmap;
-        private volatile bool _framePending;            // coalesce UI invalidations
-        private volatile bool _dead;
-
-        /// <summary>The frame target; the owner adopts it as a bridge frame on teardown.</summary>
-        public WriteableBitmap Bitmap => _bitmap;
-
-        // Keep delegate instances alive for the player's lifetime — VLC stores raw
-        // function pointers and will crash if these are garbage-collected.
-        private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
-        private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
-
-        public Session(AnimatedCoverImage owner)
-        {
-            _owner = owner;
-            _buffer = Marshal.AllocHGlobal(BufferBytes);
-            _bitmap = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
-                PixelFormat.Bgra8888, AlphaFormat.Opaque);
-            // The bitmap holds uninitialized pixels until the first decoded frame
-            // arrives; OnDisplay assigns _image.Source on the first frame so no
-            // garbage ever flashes.
-
-            _lockCb = OnLock;
-            _displayCb = OnDisplay;
-
-            // Software decoding is required for the frame-callback path.
-            Player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
-            Player.SetVideoFormat("RV32", RenderSize, RenderSize, Stride);
-            Player.SetVideoCallbacks(_lockCb, null, _displayCb);
-        }
-
-        // VLC asks where to write the next frame; hand back the single shared buffer.
-        private IntPtr OnLock(IntPtr opaque, IntPtr planes)
-        {
-            Marshal.WriteIntPtr(planes, _buffer);
-            return _buffer; // picture id — unused
-        }
-
-        // A decoded frame is in _buffer. Push it to the WriteableBitmap on the UI thread.
-        private void OnDisplay(IntPtr opaque, IntPtr picture)
-        {
-            if (_framePending || _dead) return;
-            _framePending = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                _framePending = false;
-                // _dead is set on the UI thread before the shutdown worker is queued,
-                // so any closure dequeued after ShutDown() always bails here — the
-                // buffer/bitmap are only freed after that point.
-                if (_dead) return;
-                Marshal.Copy(_buffer, _scratch, 0, BufferBytes);
-                using (var fb = _bitmap.Lock())
-                    Marshal.Copy(_scratch, 0, fb.Address, BufferBytes);
-                if (_owner._session == this)
-                {
-                    _owner._image.Source = _bitmap; // no-op after the first frame; reveals real content
-                    _owner._image.InvalidateVisual();
-                    _owner.ReleaseLingerFrame(_bitmap);
-                }
-            }, DispatcherPriority.Render);
-        }
-
-        /// <summary>
-        /// Stops and disposes the player on a worker thread (Stop blocks in LibVLC 3.x).
-        /// Safe to call multiple times; called on the UI thread or a startup worker.
-        /// With <paramref name="keepBitmap"/> the owner adopted <see cref="Bitmap"/>
-        /// as a bridge frame and now owns its disposal.
-        /// </summary>
-        public void ShutDown(bool keepBitmap = false)
-        {
-            if (_dead) return;
-            _dead = true;
-            DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Stop");
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                // Stop() is synchronous — after it returns, no more callbacks fire,
-                // so the native buffer can be freed safely.
-                try { Player.Stop(); } catch { }
-                // Nulls are the documented way to detach LibVLCSharp's video callbacks;
-                // the parameters just aren't annotated nullable. This one call is the
-                // entire reason CS8625 used to be suppressed project-wide.
-#pragma warning disable CS8625
-                try { Player.SetVideoCallbacks(null, null, null); } catch { }
-#pragma warning restore CS8625
-                try { Player.Dispose(); } catch { }
-                Marshal.FreeHGlobal(_buffer);
-                if (!keepBitmap)
-                    Dispatcher.UIThread.Post(_bitmap.Dispose);
-            });
-        }
-
-        // NEVER dispose the shared LibVLC — it's reused across surfaces.
-    }
+    /// <summary>Called by the feed after it copied a new frame into the shared bitmap.</summary>
+    internal void InvalidateFrame() => _image.InvalidateVisual();
 }
