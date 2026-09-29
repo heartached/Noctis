@@ -34,6 +34,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private AndroidVolumeControl? _volume;
     private readonly object _accountGate = new();
 
+    /// <summary>Completes when StartAsync has loaded the library (faulted if that failed); the
+    /// account service's syncs wait for it.</summary>
+    private readonly TaskCompletionSource _libraryLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>
     /// The running app, for the activity's lifecycle hooks. Declared <c>new</c> on purpose:
     /// the inherited <see cref="Avalonia.Application.Current"/> is typed <c>Application?</c>,
@@ -85,7 +89,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
         _volume = new AndroidVolumeControl(context);
         var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
-        var account = CreateAccountService(context, library, persistence, stateRecorder);
+        var account = CreateAccountService(context, library, persistence, stateRecorder, _libraryLoaded.Task);
         // Desktop songs' lyrics come from the desktop (saved on the phone for offline use); every
         // other song reads its sidecars through SAF as before.
         var remoteLyrics = account is IRemoteLyricsSource source
@@ -145,7 +149,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// and the player never streams.
     /// </summary>
     private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
-        IPersistenceService persistence, NoctisStateRecorder stateRecorder)
+        IPersistenceService persistence, NoctisStateRecorder stateRecorder, Task libraryReady)
     {
         // The service's TLS: its pin check wired into AndroidMessageHandler.
         NoctisHandlerFactory handlerFactory = AndroidNoctisHttp.CreateHandler;
@@ -160,6 +164,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 deviceName: $"{Build.Manufacturer} {Build.Model}".Trim(),
                 stateRecorder: stateRecorder)
             {
+                LibraryReady = libraryReady,
                 // No ALAC decoder (Pixels, the emulator): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
             };
@@ -236,10 +241,13 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             _shell!.Player.SetGapless(settings.GaplessPlaybackEnabled);
             await history.PreloadAsync();
             await library.LoadAsync();
+            _libraryLoaded.TrySetResult();
             await _shell.InitializeAsync();
         }
         catch (Exception ex)
         {
+            // Failed before the library loaded: syncs fail rather than save a library.json without the local songs.
+            if (_libraryLoaded.TrySetException(ex)) _ = _libraryLoaded.Task.Exception; // logged below, not "unobserved"
             DebugLog.Write("Startup", $"Android startup failed: {ex}");
         }
     }

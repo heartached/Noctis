@@ -98,6 +98,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <summary>Free bytes on the volume holding a path; tests substitute a full phone.</summary>
     internal Func<string, long> FreeSpace { get; init; } = DefaultFreeSpace;
 
+    /// <summary>
+    /// Completes once the phone's library has read library.json (AndroidApp: after
+    /// LibraryService.LoadAsync). A sync waits for it: the Account page is reachable before the
+    /// load ends, and importing into a library that has not loaded yet saves library.json with
+    /// the desktop's songs only, dropping every local one.
+    /// </summary>
+    public Task LibraryReady { get; init; } = Task.CompletedTask;
+
     /// <summary>How long a download may receive nothing before it counts as failed (tests shorten it).</summary>
     internal TimeSpan DownloadStallTimeout { get; init; } = NoctisServerClient.DefaultStallTimeout;
 
@@ -292,6 +300,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         var playlistsRemoved = await Task.Run(async () =>
         {
+            // Before the library has loaded there is nothing to remove yet, and the load would
+            // bring the desktop's songs back. A failed load: remove what there is.
+            await LibraryReady.ContinueWith(_ => { }, TaskScheduler.Default).ConfigureAwait(false);
             await _library.RemoveRemoteTracksAsync().ConfigureAwait(false);
             var removed = false;
             if (syncedPlaylists.Count > 0)
@@ -394,6 +405,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         // 1. Catalog → the library.
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
+        await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
         var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
         var tracks = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);

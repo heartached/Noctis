@@ -219,6 +219,37 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SyncBeforeThePhoneLibraryHasLoaded_WaitsForIt_AndKeepsTheLocalSongs()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, ct);
+        await SignedInAsync();
+
+        // The app starts again and "Sync now" is tapped before library.json has been read.
+        LibraryService NewPhoneLibrary() => new(new MetadataService(), _phonePersistence, new SqliteLibraryIndexService(_phonePersistence),
+            new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: _recorder);
+        var library = NewPhoneLibrary();
+        var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var svc = new NoctisAccountService(library, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
+            _recorder, marshal: a => a()) { LibraryReady = loaded.Task };
+
+        var sync = svc.SyncNowAsync(ct);
+        await Task.Delay(300, ct);
+        await library.LoadAsync();
+        loaded.SetResult();
+        await sync;
+
+        Assert.Equal(4, library.Tracks.Count);
+        var reloaded = NewPhoneLibrary();
+        await reloaded.LoadAsync();
+        Assert.Contains(reloaded.Tracks, t => t.SourceType == SourceType.Local);
+        Assert.Equal(4, reloaded.Tracks.Count);
+    }
+
+    [Fact]
     public async Task SyncNow_IsSingleFlight()
     {
         var svc = await SignedInAsync();
