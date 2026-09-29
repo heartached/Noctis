@@ -15,7 +15,12 @@ public interface ISyncApplier
     Task ApplyPlaylistStateAsync(Guid playlistId, PlaylistSyncState state);
 }
 
-public sealed record SyncChanges(long Seq, IReadOnlyList<SyncItem> Items);
+/// <summary>
+/// One page of ledger changes. <see cref="Seq"/> is where the next pull starts: the last
+/// delivered item's sequence when <see cref="More"/> (the page was truncated), else the
+/// ledger's top.
+/// </summary>
+public sealed record SyncChanges(long Seq, IReadOnlyList<SyncItem> Items, bool More = false);
 
 /// <summary>
 /// Cross-device sync of favorites, ratings, play counts and playlists, hosted by this
@@ -167,33 +172,122 @@ public sealed class LibrarySyncService : ILibrarySyncService
 
     // ── Devices ↔ ledger ─────────────────────────────────────────────────────
 
+    /// <summary>Most items one pull returns; the device pages with <see cref="SyncChanges.More"/>. Settable for tests.</summary>
+    public int ChangesPageSize { get; init; } = 5000;
+
     public async Task<SyncChanges> GetChangesAsync(long since, string deviceId, string? deviceName, CancellationToken ct = default)
     {
         var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
-        var items = await Task.Run(() =>
+        var changes = await Task.Run(() =>
         {
             RefreshPlaylists(playlists);
-            var changes = Store.ChangesSince(since);
-            Store.TouchDevice(deviceId, deviceName, since);
-            return changes;
+            var page = Store.ChangesPage(since, ChangesPageSize);
+            // Truncated: resume after the last item handed out, not at the ledger's top (that
+            // skipped everything past the page). The device's checkpoint is what it now holds.
+            var seq = page.More ? page.Items[^1].Seq : page.CurrentSeq;
+            Store.TouchDevice(deviceId, deviceName, seq);
+            return new SyncChanges(seq, page.Items, page.More);
         }, ct).ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);
-        return new SyncChanges(Store.CurrentSeq, items);
+        return changes;
+    }
+
+    // ── Push validation: a device's items are untrusted input ──
+
+    /// <summary>Earliest stamp a device may send; older ones are raised to it.</summary>
+    public static readonly DateTime OldestStamp = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>How far past this computer's clock a device's stamp may be. A far-future stamp would win last-writer-wins forever.</summary>
+    public static readonly TimeSpan MaxClockSkew = TimeSpan.FromMinutes(2);
+
+    public const int MaxPlaylistTracks = 10_000, MaxPlaylistName = 200, MaxPlaylistDescription = 2000;
+
+    /// <summary>A push may raise a track's play count by at most this much over what the ledger holds.</summary>
+    public const int MaxPlayCountJump = 10_000;
+
+    private static readonly System.Text.RegularExpressions.Regex ColorPattern =
+        new(@"^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>UTC (a stamp without a zone is UTC, never local), within [<see cref="OldestStamp"/>, now + <see cref="MaxClockSkew"/>].</summary>
+    internal static DateTime ClampStamp(DateTime value, DateTime now)
+    {
+        value = ToUtc(value);
+        var max = now + MaxClockSkew;
+        return value < OldestStamp ? OldestStamp : value > max ? max : value;
+    }
+
+    /// <summary>As <see cref="ClampStamp"/> for optional dates, except one before 2000 means "unknown" (null).</summary>
+    private static DateTime? ClampOptional(DateTime? value, DateTime now)
+        => value is not { } v || ToUtc(v) < OldestStamp ? null : ClampStamp(v, now);
+
+    private static DateTime ToUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
+
+    /// <summary>
+    /// The item as it may enter the ledger, or null to reject it: kind is track or playlist, the
+    /// id a 32-hex Guid ("N", lower-cased), the payload a valid state (stored re-serialized, never
+    /// raw), stamps clamped, rating 0–5, play count at most <see cref="MaxPlayCountJump"/> above
+    /// the ledger's, playlists within their size limits and a #RRGGBB[AA] colour (or none).
+    /// </summary>
+    internal SyncItem? Normalize(SyncItem item, DateTime now)
+    {
+        if (item is null || !Guid.TryParseExact(item.Id, "N", out var guid)) return null;
+        var id = guid.ToString("N");
+        string payload;
+        switch (item.Kind)
+        {
+            case SyncKinds.Track:
+            {
+                if (SyncJson.Deserialize<TrackSyncState>(item.Payload) is not { } s) return null;
+                var known = Store.Get(SyncKinds.Track, id) is { } stored && SyncJson.Deserialize<TrackSyncState>(stored.Payload) is { } k ? k.PlayCount : 0;
+                var maxPlays = Math.Min(int.MaxValue, Math.Max(0L, known) + MaxPlayCountJump);
+                s = s with
+                {
+                    Rating = Math.Clamp(s.Rating, 0, 5),
+                    PlayCount = (int)Math.Clamp(s.PlayCount, 0L, maxPlays),
+                    LastPlayed = ClampOptional(s.LastPlayed, now),
+                    FavoritedAt = ClampOptional(s.FavoritedAt, now),
+                };
+                payload = SyncJson.Serialize(s);
+                break;
+            }
+            case SyncKinds.Playlist:
+            {
+                if (SyncJson.Deserialize<PlaylistSyncState>(item.Payload) is not { } s) return null;
+                var trackIds = s.TrackIds ?? new List<Guid>();
+                var name = s.Name ?? string.Empty;
+                var description = s.Description ?? string.Empty;
+                var color = s.Color ?? string.Empty;
+                if (trackIds.Count > MaxPlaylistTracks || name.Length > MaxPlaylistName || description.Length > MaxPlaylistDescription) return null;
+                if (color.Length > 0 && !ColorPattern.IsMatch(color)) return null;
+                s = s with { Name = name, Description = description, Color = color, TrackIds = trackIds, ModifiedAt = ClampStamp(s.ModifiedAt, now) };
+                payload = SyncJson.Serialize(s);
+                break;
+            }
+            default:
+                return null;
+        }
+        return item with { Id = id, Payload = payload, UpdatedUtc = ClampStamp(item.UpdatedUtc, now) };
     }
 
     public async Task<int> PushAsync(string deviceId, string? deviceName, IReadOnlyList<SyncItem> items, ISyncApplier applier, CancellationToken ct = default)
     {
         var applied = 0;
-        foreach (var item in items)
+        var now = DateTime.UtcNow;
+        foreach (var raw in items)
         {
             ct.ThrowIfCancellationRequested();
-            if (item is null || string.IsNullOrWhiteSpace(item.Id)) continue;
+            if (Normalize(raw, now) is not { } item) continue;
             var device = string.IsNullOrWhiteSpace(item.Device) ? deviceId : item.Device;
             bool won;
             lock (_storeGate) { won = Store.Upsert(item.Kind, item.Id, item.Payload, item.UpdatedUtc, device); }
             if (!won) continue;
             applied++;
-            if (!Guid.TryParseExact(item.Id, "N", out var guid) && !Guid.TryParse(item.Id, out guid)) continue;
+            var guid = Guid.ParseExact(item.Id, "N");
             try
             {
                 switch (item.Kind)

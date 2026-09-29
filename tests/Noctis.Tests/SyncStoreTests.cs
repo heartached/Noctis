@@ -40,6 +40,26 @@ public sealed class SyncStoreTests : IDisposable
     }
 
     [Fact]
+    public void ChangesPage_SaysWhetherMoreRemain_AndTheTopSeq()
+    {
+        foreach (var id in new[] { "a", "b", "c", "d", "e" })
+            _store.Upsert(SyncKinds.Track, id, "{}", T0, "desktop");
+
+        var first = _store.ChangesPage(0, 2);
+        Assert.Equal(new[] { "a", "b" }, first.Items.Select(i => i.Id));
+        Assert.True(first.More);
+        Assert.Equal(5, first.CurrentSeq);
+
+        var last = _store.ChangesPage(first.Items[^1].Seq, 3);
+        Assert.Equal(new[] { "c", "d", "e" }, last.Items.Select(i => i.Id));
+        Assert.False(last.More); // exactly a page left: not "more"
+
+        var none = _store.ChangesPage(5, 3);
+        Assert.Empty(none.Items);
+        Assert.False(none.More);
+    }
+
+    [Fact]
     public void OlderWrite_IsIgnored_NewerWins()
     {
         _store.Upsert(SyncKinds.Track, "a", "new", T0.AddMinutes(5), "phone");
