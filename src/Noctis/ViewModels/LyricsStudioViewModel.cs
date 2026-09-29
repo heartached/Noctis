@@ -744,6 +744,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
         RaiseStartState();
     }
 
+    /// <summary>
+    /// The song on screen is being worked on — a result under review, or the song's own lyrics
+    /// being edited or tapped — so a song that finishes waits in the list instead of taking the
+    /// pane (it used to take it from an edited or tapped .lrc, ending tap mode mid-line).
+    /// </summary>
+    private bool KeepsSelection => Selected is { Status: StudioStatus.Ready }
+        || Selected is { Status: StudioStatus.Loaded } && (_reviewDirty || IsTapping);
+
     private async Task RunAsync(List<StudioItem> items)
     {
         IsRunning = true;
@@ -826,7 +834,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemTranscribed",
                             $"{item.Title} | lines={result.Lines.Count}, heard={result.HeardWords}");
                         item.BeforeRerun = null;
-                        if (Selected is null || Selected.Status is not StudioStatus.Ready)
+                        if (!ReferenceEquals(Selected, item) && !KeepsSelection)
                             Selected = item;
                         done++;
                         continue;
@@ -839,10 +847,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemReady",
                         $"{item.Title} | source={result.Source}, lines={result.Lines.Count}, confidence={result.Confidence:0.00}, heard={result.HeardWords}");
                     item.BeforeRerun = null;
-                    if (Selected is null || Selected.Status is not (StudioStatus.Ready))
-                        Selected = item;
-                    else if (ReferenceEquals(Selected, item))
+                    if (ReferenceEquals(Selected, item))
                         OnSelectedChanged(item);
+                    else if (!KeepsSelection)
+                        Selected = item;
                 }
                 catch (LyricsStudioNeedsLyricsException)
                 {

@@ -115,6 +115,50 @@ public class LyricsStudioFlowBugTests : IDisposable
         Assert.Equal(2, vm.ReviewLines.Count);
     }
 
+    // ── A finished song does not pull the review away mid-edit ────────────
+
+    [AvaloniaFact]
+    public async Task AFinishedSong_DoesNotPullAwayALoadedReviewBeingEdited()
+    {
+        var engine = new Engine(_root);
+        var vm = Studio(engine, SongWithLrc("open"), SongWithLrc("queued"));
+        vm.Selected = vm.Queue[0]; // shows its .lrc (Loaded); the other song stays queued
+        vm.NudgeLaterCommand.Execute(null);
+
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Ready, vm.Queue[1].Status);
+        Assert.Same(vm.Queue[0], vm.Selected);
+        Assert.Equal(TimeSpan.FromSeconds(5.1), vm.ReviewLines[0].Start);
+    }
+
+    [AvaloniaFact]
+    public async Task AFinishedSong_DoesNotEndTapMode()
+    {
+        var engine = new Engine(_root);
+        var vm = Studio(engine, SongWithLrc("open"), SongWithLrc("queued"));
+        vm.Selected = vm.Queue[0];
+        await vm.StartTapCommand.ExecuteAsync(vm.ReviewLines[0]);
+        Assert.True(vm.IsTapping);
+
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.Same(vm.Queue[0], vm.Selected);
+        Assert.True(vm.IsTapping);
+    }
+
+    [AvaloniaFact]
+    public async Task AFinishedSong_StillOpens_WhenTheSongOnScreenIsOnlyBeingLookedAt()
+    {
+        var engine = new Engine(_root);
+        var vm = Studio(engine, SongWithLrc("open"), SongWithLrc("queued"));
+        vm.Selected = vm.Queue[0]; // looked at, not edited
+
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.Same(vm.Queue[1], vm.Selected);
+    }
+
     private sealed class Engine : ILyricsStudioEngine
     {
         private int _started;
