@@ -933,6 +933,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
             var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true));
+            // What was written, edits included: reopening the saved song showed the result from
+            // before the edits (drafts stop at Save, so nothing else carried them).
+            item.Result = item.Result! with { Lines = lines };
             item.Status = StudioStatus.Saved;
             _drafts?.Delete(item.Track.Id);
             item.Existing = null;

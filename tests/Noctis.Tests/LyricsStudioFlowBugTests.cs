@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services.Lyrics;
 using Noctis.Services.LyricsStudio;
@@ -157,6 +158,38 @@ public class LyricsStudioFlowBugTests : IDisposable
         await vm.StartCommand.ExecuteAsync(null);
 
         Assert.Same(vm.Queue[1], vm.Selected);
+    }
+
+    // ── A saved song shows what was saved ─────────────────────────────────
+
+    [AvaloniaFact]
+    public async Task ASavedSong_ReopensWithWhatWasSaved_NotTheUneditedResult()
+    {
+        var engine = new Engine(_root);
+        var song = SongWithLrc("song");
+        var other = new Track { Title = "other", Artist = "A", FilePath = Path.Combine(_root, "other.mp3") };
+        var writer = new LyricsWriter(null!, null, new AppWrittenSidecarRegistry(Path.Combine(_root, "registry.json")), Path.Combine(_root, "cache"))
+        {
+            TrashFile = _ => true,
+        };
+        var vm = new LyricsStudioViewModel(new[] { song, other }, engine, writer, new FakeLibraryService(), null, () => new AppSettings(), _ => { });
+        vm.Confirm = _ => Task.FromResult(true);
+        vm.Selected = vm.Queue[0];
+        await vm.UpgradeToWordTimingsCommand.ExecuteAsync(null); // a model result, Ready
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Ready, vm.Queue[0].Status);
+        vm.ReviewLines[0].Text = "First line fixed";
+        vm.NudgeLaterCommand.Execute(null);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Saved, vm.Queue[0].Status);
+        Assert.Contains("First line fixed", File.ReadAllText(Path.ChangeExtension(song.FilePath!, ".lrc")));
+
+        vm.Selected = vm.Queue[1];
+        vm.Selected = vm.Queue[0];
+
+        Assert.True(vm.HasReview);
+        Assert.Equal("First line fixed", vm.ReviewLines[0].Text);
+        Assert.Equal(TimeSpan.FromSeconds(20.1), vm.ReviewLines[0].Start);
     }
 
     private sealed class Engine : ILyricsStudioEngine
