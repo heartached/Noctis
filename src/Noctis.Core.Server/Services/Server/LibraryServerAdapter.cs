@@ -65,6 +65,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             playlists.ToList())).ConfigureAwait(false);
     }
 
+    public bool IsScanning => _library.IsScanning;
+
     public string? ArtworkPath(Guid albumId)
     {
         var path = _persistence.GetArtworkPath(albumId);

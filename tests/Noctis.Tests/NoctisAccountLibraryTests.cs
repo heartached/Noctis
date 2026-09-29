@@ -256,4 +256,40 @@ public class NoctisAccountLibraryTests : IDisposable
     {
         public Task AppendAsync(AuditEvent auditEvent, CancellationToken ct = default) => Task.CompletedTask;
     }
+
+    /// <summary>The desktop server reports this as getScanStatus "scanning": it must cover the
+    /// whole scan, not only the partial publishes (that flag is off before the first one).</summary>
+    [Fact]
+    public async Task IsScanning_CoversTheWholeScan()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reached = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var persistence = new PersistenceService(Path.Combine(_root, "data"));
+        var library = new LibraryService(new MetadataService(), persistence, new SqliteLibraryIndexService(persistence),
+            new GateAudit("scan.started", reached, release.Task));
+        await persistence.SaveSettingsAsync(new AppSettings { MusicFolders = { _music } });
+        Assert.False(library.IsScanning);
+
+        var scan = library.ScanAsync(new[] { _music }, ct);
+        await reached.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+        Assert.False(library.IsPublishingPartial);
+        Assert.True(library.IsScanning);
+
+        release.SetResult();
+        await scan;
+        Assert.False(library.IsScanning);
+        Assert.Single(library.Tracks);
+    }
+
+    /// <summary>Holds the scan at one audit event until released.</summary>
+    private sealed class GateAudit(string eventType, TaskCompletionSource reached, Task release) : IAuditTrailService
+    {
+        public async Task AppendAsync(AuditEvent auditEvent, CancellationToken ct = default)
+        {
+            if (auditEvent.EventType != eventType) return;
+            reached.TrySetResult();
+            await release;
+        }
+    }
 }

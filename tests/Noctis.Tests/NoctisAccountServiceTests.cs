@@ -193,6 +193,64 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.False(svc.IsSyncing);
     }
 
+    [Fact]
+    public async Task CatalogSync_WhileTheDesktopScans_KeepsTheSongsTheScanHasNotReachedYet()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var p2 = Phone(_t2);
+        p2.PlayCount = 7;
+
+        // Mid-scan the desktop lists only what the scan has reached so far.
+        _desk.IsScanning = true;
+        _desk.Show(_t1);
+        var during = await svc.SyncNowAsync(ct);
+
+        Assert.Equal(3, during.Songs);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+        Assert.Same(p2, Phone(_t2));
+        Assert.Equal(7, Phone(_t2).PlayCount);
+
+        // The scan ends without _t3: now it is really gone.
+        _desk.IsScanning = false;
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.Same(p2, Phone(_t2));
+    }
+
+    [Fact]
+    public async Task CatalogSync_NeverDropsMostSongs_WhileTheDesktopListKeepsChanging()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var many = Enumerable.Range(0, 80).Select(i => new Track
+        {
+            Id = Guid.NewGuid(), Title = $"Song {i}", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB,
+            FilePath = _t1.FilePath, Duration = TimeSpan.FromSeconds(60), TrackNumber = i + 2, FileSize = _audio.Length,
+        }).ToList();
+        _desk.Show(new[] { _t1, _t2, _t3 }.Concat(many).ToArray());
+        var svc = await SignedInAsync();
+        Assert.Equal(83, (await svc.SyncNowAsync(ct)).Songs);
+
+        // A desktop that does not report its scans (an older version): the list starts over
+        // and grows between requests, so no two reads agree.
+        var reached = 0;
+        _desk.Show(_t1, _t2, _t3);
+        _desk.BeforeSnapshot = () =>
+        {
+            if (reached < many.Count) _desk.Show(new[] { _t1, _t2, _t3 }.Concat(many.Take(++reached)).ToArray());
+        };
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(83, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+
+        // Settled (two reads agree, not scanning): the 80 are really gone.
+        _desk.BeforeSnapshot = null;
+        _desk.Show(_t1, _t2, _t3);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+    }
+
     // ── Downloads and playback ───────────────────────────────────────────
 
     [Fact]
@@ -689,8 +747,23 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             foreach (var a in _albums) a.Tracks = _tracks.Where(t => t.AlbumId == a.Id).ToList();
         }
 
-        public Task<LibrarySnapshot> SnapshotAsync() =>
-            Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
+        public bool IsScanning { get; set; }
+
+        /// <summary>Runs before every request reads the library (a scan moving along).</summary>
+        public Action? BeforeSnapshot { get; set; }
+
+        /// <summary>What the desktop's library lists from now on.</summary>
+        public void Show(params Track[] tracks)
+        {
+            lock (_tracks) { _tracks.Clear(); _tracks.AddRange(tracks); }
+        }
+
+        public Task<LibrarySnapshot> SnapshotAsync()
+        {
+            BeforeSnapshot?.Invoke();
+            lock (_tracks)
+                return Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
+        }
 
         public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _art : null;
 

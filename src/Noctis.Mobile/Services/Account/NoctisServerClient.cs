@@ -191,10 +191,16 @@ internal sealed partial class NoctisServerClient : IDisposable
     // ── Catalog ──────────────────────────────────────────────────────────
 
     /// <summary>Song count the server reports (getScanStatus), or -1 when it has none.</summary>
-    public async Task<int> GetSongCountAsync(CancellationToken ct)
+    public async Task<int> GetSongCountAsync(CancellationToken ct) => (await GetScanStatusAsync(ct).ConfigureAwait(false)).Count;
+
+    /// <summary>getScanStatus: the song count (-1 when none) and whether a library scan is running
+    /// (the catalog is then partial). Desktops before the flag always say false.</summary>
+    public async Task<(int Count, bool Scanning)> GetScanStatusAsync(CancellationToken ct)
     {
         var r = await GetJsonAsync("getScanStatus", Array.Empty<KeyValuePair<string, string>>(), ct).ConfigureAwait(false);
-        return r.TryGetProperty("scanStatus", out var s) && s.TryGetProperty("count", out var c) && c.TryGetInt32(out var n) ? n : -1;
+        if (!r.TryGetProperty("scanStatus", out var s) || s.ValueKind != JsonValueKind.Object) return (-1, false);
+        var count = s.TryGetProperty("count", out var c) && c.TryGetInt32(out var n) ? n : -1;
+        return (count, Bool(s, "scanning"));
     }
 
     /// <summary>Every album's artist by album id (search3 with an empty query, paged).</summary>

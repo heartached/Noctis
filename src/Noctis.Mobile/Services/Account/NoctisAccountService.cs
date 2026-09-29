@@ -380,8 +380,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         // 1. Catalog → the library.
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
         var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
-        var songs = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
-        var tracks = await ImportCatalogAsync(songs, albumArtists, ct).ConfigureAwait(false);
+        var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
+        var tracks = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count, tracks.Count);
 
         // 2. Covers.
@@ -434,23 +434,37 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return new NoctisSyncResult(tracks.Count, playlistCount, pulled, pushed, plays);
     }
 
-    /// <summary>search3 pages; retried once when the count disagrees with the server's own
-    /// (the desktop library changed between pages).</summary>
-    private async Task<List<RemoteSong>> FetchCatalogAsync(NoctisServerClient client, CancellationToken ct)
+    /// <summary>
+    /// search3 pages between two getScanStatus reads. Settled = neither read saw a scan and both
+    /// counted exactly the songs listed: only then is a song missing from the list really gone.
+    /// While the desktop scans it lists only what the scan has reached (it publishes partial
+    /// lists every 1.5 s), so an unsettled catalog must never remove anything. Re-read once when
+    /// the library merely changed between pages; not during a scan, which outlasts a re-read.
+    /// </summary>
+    private async Task<(List<RemoteSong> Songs, bool Settled)> FetchCatalogAsync(NoctisServerClient client, CancellationToken ct)
     {
         var progress = new InlineProgress(n => RaiseSyncProgress(NoctisSyncStage.Catalog, n, 0));
         List<RemoteSong> songs = new();
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            var expected = await client.GetSongCountAsync(ct).ConfigureAwait(false);
+            var before = await client.GetScanStatusAsync(ct).ConfigureAwait(false);
             songs = await client.GetAllSongsAsync(progress, ct).ConfigureAwait(false);
-            if (expected < 0 || songs.Count == expected) break;
-            DebugLog.Write("Account", $"catalog: {songs.Count} songs listed, server counts {expected}; {(attempt == 0 ? "re-reading" : "keeping")}");
+            var after = await client.GetScanStatusAsync(ct).ConfigureAwait(false);
+            var scanning = before.Scanning || after.Scanning;
+            if (!scanning && before.Count >= 0 && before.Count == after.Count && songs.Count == after.Count) return (songs, true);
+            var retry = attempt == 0 && !scanning;
+            DebugLog.Write("Account", $"catalog: {songs.Count} songs listed, the desktop counts {before.Count}, then {after.Count}" +
+                $"{(scanning ? " (scanning)" : "")}; {(retry ? "re-reading" : "adding only, nothing removed")}");
+            if (!retry) break;
         }
-        return songs;
+        return (songs, false);
     }
 
-    private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists, CancellationToken ct)
+    /// <param name="keepUnlisted">The catalog may be partial (desktop scanning or changing): desktop
+    /// songs already here that it does not list stay, instead of leaving (and dropping out of the
+    /// queue) until the next sync brings them back as new songs.</param>
+    private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
+        bool keepUnlisted, CancellationToken ct)
     {
         var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
         if (songs.Count == 0 && known.Count > 0)
@@ -490,6 +504,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 }
                 tracks.Add(track);
             }
+        }
+        if (keepUnlisted)
+        {
+            var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id)).ToList();
+            if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
+            tracks.AddRange(unlisted);
         }
         SaveSyncState();
         await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);

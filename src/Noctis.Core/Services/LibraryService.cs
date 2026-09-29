@@ -53,6 +53,11 @@ public class LibraryService : ILibraryService
     private volatile bool _publishingPartial;
     public bool IsPublishingPartial => _publishingPartial;
 
+    /// <summary>See <see cref="ILibraryService.IsScanning"/>: set while <see cref="ScanAsync"/>
+    /// holds the scan gate (the partial flag alone clears before the scan's last publish).</summary>
+    private volatile bool _scanning;
+    public bool IsScanning => _scanning || _publishingPartial;
+
     // Serializes scans. Two overlapping scans both drive _tracks, both Clear+Upsert the
     // SQLite index, and the second clobbers the first's _activeScanCts — so shutdown could
     // only cancel one of them. The startup auto-scan runs on a detached Task.Run, so
@@ -114,12 +119,14 @@ public class LibraryService : ILibraryService
         _checkpointRequested = false;
         _activeScanCts = linkedCts;
         _scanFinished = finished;
+        _scanning = true;
         try
         {
             await ScanCoreAsync(folders, linkedCts.Token);
         }
         finally
         {
+            _scanning = false;
             finished.TrySetResult();
             if (ReferenceEquals(_scanFinished, finished))
             {

@@ -19,6 +19,10 @@ public interface IServerLibrary : Sync.ISyncApplier
 {
     Task<LibrarySnapshot> SnapshotAsync();
 
+    /// <summary>A library scan is running: snapshots may list only part of the library
+    /// (getScanStatus reports it, so a phone does not drop the songs not listed yet).</summary>
+    bool IsScanning => false;
+
     /// <summary>Path of the album's cover file, or null.</summary>
     string? ArtworkPath(Guid albumId);
 
