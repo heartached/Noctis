@@ -47,20 +47,15 @@ internal sealed class NoctisServerClient : IDisposable
     private readonly HttpClient _http;
     private readonly string _baseUrl;
     private readonly string? _key;
-    private readonly bool _keyInQuery;
     private int _pinRejections;
 
     /// <param name="baseUrl">Already normalised by <see cref="NormalizeServerUrl"/>.</param>
     /// <param name="fingerprint">The pinned "AB:CD:…" fingerprint; ignored for plain-http loopback.</param>
     /// <param name="deviceKey">Null until signed in.</param>
-    /// <param name="keyInQuery">Tests only, for servers that predate the key header: sends the key
-    /// as <c>apiKey=</c> instead. Never set in the app.</param>
-    public NoctisServerClient(NoctisHandlerFactory handlerFactory, string baseUrl, string fingerprint, string? deviceKey,
-        bool keyInQuery = false)
+    public NoctisServerClient(NoctisHandlerFactory handlerFactory, string baseUrl, string fingerprint, string? deviceKey)
     {
         _baseUrl = baseUrl;
         _key = deviceKey;
-        _keyInQuery = keyInQuery;
         var pin = baseUrl.StartsWith("https://", StringComparison.Ordinal) ? ParseFingerprint(fingerprint) : null;
         var handler = handlerFactory(cert =>
         {
@@ -419,10 +414,9 @@ internal sealed class NoctisServerClient : IDisposable
             .Append("&v=").Append(ApiVersion);
         foreach (var (k, v) in query)
             sb.Append('&').Append(Uri.EscapeDataString(k)).Append('=').Append(Uri.EscapeDataString(v));
-        if (withKey && _key is not null && _keyInQuery)
-            sb.Append("&apiKey=").Append(Uri.EscapeDataString(_key));
         var request = new HttpRequestMessage(method, sb.ToString());
-        if (withKey && _key is not null && !_keyInQuery)
+        // The key goes in a header only, never in a URL (URLs end up in logs and caches).
+        if (withKey && _key is not null)
             request.Headers.TryAddWithoutValidation(KeyHeader, _key);
         return request;
     }

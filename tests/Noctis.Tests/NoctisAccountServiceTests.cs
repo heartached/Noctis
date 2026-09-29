@@ -16,8 +16,9 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// The phone's account service end to end against the REAL NoctisServer on loopback Kestrel
-/// (plain http, which the client allows for loopback only; TLS pinning has its own HTTPS test):
-/// catalog → NoctisServer tracks with the desktop's ids that survive a rescan, covers,
+/// (plain http, which the client allows for loopback only; TLS pinning has its own HTTPS test).
+/// Every test signs in the real way (probe, noctisSignIn, device key in the X-Noctis-Key
+/// header) against a ledger paged two items at a time: catalog → NoctisServer tracks with the desktop's ids that survive a rescan, covers,
 /// downloads and the playback switch, favorites both ways without echo, playlists both ways,
 /// scrobbles, sync-off, a revoked key and sign-out. The phone side is a real LibraryService on
 /// a real PersistenceService.
@@ -25,10 +26,6 @@ namespace Noctis.Tests;
 [Collection("MetadataServiceStatics")]
 public class NoctisAccountServiceTests : IAsyncLifetime
 {
-    /// <summary>Flip once package A's server reads the key from the X-Noctis-Key header; until
-    /// then the tests use the client's test-only apiKey query switch.</summary>
-    private const bool ServerReadsKeyHeader = false;
-
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "NoctisTests", "acc-e2e-" + Guid.NewGuid().ToString("N"));
     private ServerUserStore _users = null!;
     private string _apiKey = "";
@@ -40,6 +37,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     private string _url = "";
     private byte[] _audio = Array.Empty<byte>();
     private byte[] _art = Array.Empty<byte>();
+    private readonly List<int> _coverSizes = new();
 
     private PersistenceService _phonePersistence = null!;
     private LibraryService _phoneLibrary = null!;
@@ -82,9 +80,14 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             },
             new[] { new Artist { Id = Guid.NewGuid(), Name = "The Xylophones" }, new Artist { Id = Guid.NewGuid(), Name = "Yolanda" } },
             _deskPersistence.Playlists, artPath);
-        _sync = new LibrarySyncService(() => _deskSettings, _deskPersistence);
+        // Two items per pull page, so every sync walks the "more" loop.
+        _sync = new LibrarySyncService(() => _deskSettings, _deskPersistence) { ChangesPageSize = 2 };
         _desk.Sync = _sync;
-        _server = new NoctisServer(_desk, _users, "test", _sync);
+        _server = new NoctisServer(_desk, _users, "test", _sync, coverResizer: (_, path, size, _) =>
+        {
+            lock (_coverSizes) _coverSizes.Add(size);
+            return Task.FromResult<string?>(path);
+        }) { PrivateClientsOnly = true };
         await _server.StartAsync(0, certificate: null);
         _url = $"http://127.0.0.1:{_server.Port}";
 
@@ -101,22 +104,17 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         try { Directory.Delete(_dir, true); } catch { }
     }
 
-    /// <summary>A phone service; by default already signed in with the desktop user's legacy key
-    /// (noctisSignIn arrives with package A — see the skipped sign-in test).</summary>
-    private NoctisAccountService NewService(string? key = null, bool signedIn = true)
+    /// <summary>The phone app starting over the same files (first launch or a restart).</summary>
+    private NoctisAccountService Restart() =>
+        new(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+    /// <summary>A phone signed in the real way: probe, confirm the fingerprint, noctisSignIn.</summary>
+    private async Task<NoctisAccountService> SignedInAsync()
     {
-        var store = new NoctisAccountStore(AccountDir);
-        if (signedIn)
-            store.SaveAccount(new NoctisAccount
-            {
-                ServerUrl = _url, UserName = "alice", DeviceKey = key ?? _apiKey, Fingerprint = "",
-                DeviceId = store.LoadOrCreateDeviceId(), DeviceName = "Test Phone",
-            });
-        return new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
-            _recorder, marshal: a => a())
-        {
-            KeyInQueryForTests = !ServerReadsKeyHeader,
-        };
+        var svc = Restart();
+        var fingerprint = await svc.ProbeFingerprintAsync(_url, TestContext.Current.CancellationToken);
+        await svc.SignInAsync(_url, "alice", "correct horse", fingerprint, TestContext.Current.CancellationToken);
+        return svc;
     }
 
     private static async Task Until(Func<bool> condition, int timeoutMs = 10_000)
@@ -138,7 +136,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task CatalogSync_AddsTheDesktopSongs_WithTheDesktopIds_AndCovers_AndTheySurviveARescan()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         var stages = new List<NoctisSyncStage>();
         svc.SyncProgress += (_, p) => { lock (stages) stages.Add(p.Stage); };
 
@@ -152,7 +150,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal("Alpha", p1.Title);
         Assert.Equal(AlbumA, p1.AlbumId);
         Assert.Equal("The Xylophones", Phone(_t2).AlbumArtist); // from the album list, not the song's own artist
-        Assert.Equal("ALAC".Length > 0 ? "FLAC" : "", p1.Codec);
+        Assert.Equal("FLAC", p1.Codec);
         Assert.True(p1.IsLossless);
         Assert.Equal(TimeSpan.FromSeconds(200), p1.Duration);
         Assert.Equal(3, Phone(_t2).Rating);
@@ -165,6 +163,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         // Covers land where the library looks for them; an album without art is skipped.
         Assert.Equal(_art, File.ReadAllBytes(_phonePersistence.GetArtworkPath(AlbumA)));
         Assert.False(File.Exists(_phonePersistence.GetArtworkPath(AlbumB)));
+        lock (_coverSizes) Assert.Equal(new[] { 512 }, _coverSizes);
         await Until(() => _phoneLibrary.GetAlbumById(AlbumA)?.ArtworkPath is not null);
 
         // A phone rescan of its own folder keeps them.
@@ -185,7 +184,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task SyncNow_IsSingleFlight()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         var a = svc.SyncNowAsync(TestContext.Current.CancellationToken);
         var b = svc.SyncNowAsync(TestContext.Current.CancellationToken);
         Assert.Same(a, b);
@@ -199,7 +198,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task Download_WritesTheFile_AndPlaybackSwitchesToIt_ThenBackWhenRemoved()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         var p1 = Phone(_t1);
         Assert.True(svc.IsRemote(p1));
@@ -223,7 +222,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         lock (progress) Assert.Contains(progress, p => p.Completed >= 1 && p.Pending == 0);
 
         // A restart finds the file again.
-        var restarted = NewService();
+        var restarted = Restart();
         Assert.True(restarted.IsDownloaded(p1));
         Assert.Equal(Path.GetFullPath(file), restarted.ResolvePlaybackUri(p1.FilePath));
 
@@ -236,7 +235,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task DownloadAll_FetchesEveryDesktopSong_AndRemoveAllEmptiesTheFolder()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         await svc.DownloadAllAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, svc.DownloadedCount);
@@ -248,11 +247,13 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public void ResolvePlaybackUri_AcceptsOnlyTheStrictDesktopSongPath()
+    public async Task ResolvePlaybackUri_AcceptsOnlyTheStrictDesktopSongPath()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         var hex = _t1.Id.ToString("N");
-        Assert.NotNull(svc.ResolvePlaybackUri("noctis-remote://tr-" + hex));
+        var stream = svc.ResolvePlaybackUri("noctis-remote://tr-" + hex);
+        Assert.Equal($"{_url}/rest/stream?id=tr-{hex}&c=NoctisAndroid&v=1.16.1", stream);
+        Assert.DoesNotContain(svc.Account!.DeviceKey, stream);
         Assert.Null(svc.ResolvePlaybackUri("noctis-remote://tr-../../x"));
         Assert.Null(svc.ResolvePlaybackUri("noctis-remote://tr-" + hex.ToUpperInvariant()));
         Assert.Null(svc.ResolvePlaybackUri("noctis-remote://tr-" + hex + "/"));
@@ -269,7 +270,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task PhoneFavorite_IsPushed_TheDesktopAppliesIt_AndNothingEchoesBack()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         var p1 = Phone(_t1);
 
@@ -299,7 +300,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task DesktopChange_IsPulled_AndApplyingItIsNotRecordedAsAPhoneEdit()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
 
         _t2.IsDisliked = true;
@@ -326,9 +327,28 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ALedgerLongerThanOnePage_IsFollowedToTheEnd()
+    {
+        // Five items (three songs, two playlists) at two per page: three pulls in one sync.
+        _t1.Rating = 2; _t2.Rating = 4; _t3.IsDisliked = true;
+        _sync.RecordTrackStates(new[] { _t1, _t2, _t3 });
+        _deskPersistence.Playlists.Add(new Playlist { Name = "Second list", TrackIds = { _t2.Id }, ModifiedAt = DateTime.UtcNow });
+        var svc = await SignedInAsync();
+
+        var result = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, result.Playlists);
+        Assert.Equal(2, Phone(_t1).Rating);
+        Assert.Equal(4, Phone(_t2).Rating);
+        Assert.True(Phone(_t3).IsDisliked);
+        var again = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0, again.StateChangesPulled);
+    }
+
+    [Fact]
     public async Task NewerPhoneEdit_WinsOverAnOlderDesktopItem()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
 
         _t1.Rating = 1;
@@ -351,7 +371,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     public async Task Playlists_RoundTrip_DesktopToPhone_PhoneEditsBack_DesktopRenameAndDelete()
     {
         await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { new() { Name = "Phone only" } });
-        var svc = NewService();
+        var svc = await SignedInAsync();
 
         var first = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         Assert.Equal(1, first.Playlists);
@@ -399,21 +419,25 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task Plays_AreQueuedAcrossRestarts_AndSentAsScrobbles()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
 
-        svc.RecordPlay(Phone(_t1), DateTime.UtcNow.AddMinutes(-3));
+        var playedAt = DateTime.UtcNow.AddMinutes(-3);
+        svc.RecordPlay(Phone(_t1), playedAt);
         svc.RecordPlay(new Track { FilePath = Path.Combine(_dir, "local.mp3") }, DateTime.UtcNow); // not a desktop song
         Assert.Equal(1, svc.PendingPlayCount);
         var pendingFile = Path.Combine(AccountDir, "pending.json");
         await Until(() => File.Exists(pendingFile) && File.ReadAllText(pendingFile).Contains(_t1.Id.ToString("N")));
 
-        var restarted = NewService();
+        var restarted = Restart();
         Assert.Equal(1, restarted.PendingPlayCount);
         var result = await restarted.SyncNowAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(1, result.PlaysSent);
         Assert.Equal(new[] { _t1.Id }, _desk.Scrobbled);
+        // Sent with its own time (ms), not the sync's.
+        var sentAt = Assert.Single(_desk.ScrobbleTimes);
+        Assert.InRange((sentAt - playedAt).Duration(), TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
         Assert.Equal(0, restarted.PendingPlayCount);
         var again = await restarted.SyncNowAsync(TestContext.Current.CancellationToken);
         Assert.Equal(0, again.PlaysSent);
@@ -429,7 +453,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     public async Task SyncOff_StillImportsTheCatalog_ThenReportsSyncDisabled()
     {
         _deskSettings.SyncEnabled = false;
-        var svc = NewService();
+        var svc = await SignedInAsync();
 
         var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.SyncNowAsync(TestContext.Current.CancellationToken));
 
@@ -442,23 +466,29 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task RejectedKey_SignsOutLocally_KeepingTheLibraryAndDownloads()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         await svc.DownloadAsync(new[] { Phone(_t1) }, TestContext.Current.CancellationToken);
 
-        var revoked = NewService(key: "nk_revoked");
+        // The desktop removes this phone (Settings → Account & Devices → Remove).
+        Assert.True(_users.RevokeDevice("alice", svc.DeviceId));
         var changed = 0;
-        revoked.StateChanged += (_, _) => Interlocked.Increment(ref changed);
-        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => revoked.SyncNowAsync(TestContext.Current.CancellationToken));
+        svc.StateChanged += (_, _) => Interlocked.Increment(ref changed);
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.SyncNowAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(NoctisErrorKind.SignedOut, ex.Kind);
-        Assert.False(revoked.IsSignedIn);
+        Assert.False(svc.IsSignedIn);
         Assert.False(File.Exists(Path.Combine(AccountDir, "account.json")));
         Assert.True(changed > 0);
         Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
         // Downloads stay and still resolve; streaming needs an account.
-        Assert.NotNull(revoked.ResolvePlaybackUri(RemotePath(_t1)));
-        Assert.Null(revoked.ResolvePlaybackUri(RemotePath(_t2)));
+        Assert.NotNull(svc.ResolvePlaybackUri(RemotePath(_t1)));
+        Assert.Null(svc.ResolvePlaybackUri(RemotePath(_t2)));
+
+        // Signing in again works and picks up where it left off.
+        var fingerprint = await svc.ProbeFingerprintAsync(_url, TestContext.Current.CancellationToken);
+        await svc.SignInAsync(_url, "alice", "correct horse", fingerprint, TestContext.Current.CancellationToken);
+        Assert.Equal(3, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).Songs);
     }
 
     [Fact]
@@ -469,8 +499,9 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
         await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, TestContext.Current.CancellationToken);
         await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { new() { Name = "Phone only" } });
-        var svc = NewService();
+        var svc = await SignedInAsync();
         var deviceId = svc.DeviceId;
+        var key = svc.Account!.DeviceKey;
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         await svc.DownloadAsync(new[] { Phone(_t1) }, TestContext.Current.CancellationToken);
         svc.RecordPlay(Phone(_t2), DateTime.UtcNow);
@@ -478,6 +509,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
         await svc.SignOutAsync(removeDownloads: true, TestContext.Current.CancellationToken);
 
+        Assert.Null(_users.ByApiKey(key));                // revoked on the desktop too
         Assert.False(svc.IsSignedIn);
         Assert.Null(svc.Account);
         Assert.False(File.Exists(Path.Combine(AccountDir, "account.json")));
@@ -490,13 +522,13 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Null(svc.ResolvePlaybackUri(RemotePath(_t1)));
         await Assert.ThrowsAsync<NoctisServerException>(() => svc.SyncNowAsync(TestContext.Current.CancellationToken));
         // The install keeps its device id for the next sign-in.
-        Assert.Equal(deviceId, NewService(signedIn: false).DeviceId);
+        Assert.Equal(deviceId, Restart().DeviceId);
     }
 
     [Fact]
     public async Task SignOut_KeepingDownloads_LeavesTheFiles()
     {
-        var svc = NewService();
+        var svc = await SignedInAsync();
         await svc.SyncNowAsync(TestContext.Current.CancellationToken);
         await svc.DownloadAsync(new[] { Phone(_t1) }, TestContext.Current.CancellationToken);
 
@@ -511,7 +543,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     [Fact]
     public async Task SignIn_WrongPassword_IsBadCredentials()
     {
-        var svc = NewService(signedIn: false);
+        var svc = Restart();
         Assert.Equal(string.Empty, await svc.ProbeFingerprintAsync(_url, TestContext.Current.CancellationToken)); // plain-http loopback has no certificate
         var ex = await Assert.ThrowsAsync<NoctisServerException>(() =>
             svc.SignInAsync(_url, "alice", "wrong password", "", TestContext.Current.CancellationToken));
@@ -520,11 +552,10 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.False(File.Exists(Path.Combine(AccountDir, "account.json")));
     }
 
-    [Fact(Skip = "needs package A (noctisSignIn / X-Noctis-Key on the server)")]
-    public async Task SignIn_IssuesADeviceKey_ThatSyncs()
+    [Fact]
+    public async Task SignIn_IssuesADeviceKey_ThatSyncs_AndStoresNoPassword()
     {
-        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
-            _recorder, marshal: a => a());
+        var svc = Restart();
         var fingerprint = await svc.ProbeFingerprintAsync(_url, TestContext.Current.CancellationToken);
 
         await svc.SignInAsync(_url, "alice", "correct horse", fingerprint, TestContext.Current.CancellationToken);
@@ -533,6 +564,11 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.False(string.IsNullOrEmpty(svc.Account!.DeviceKey));
         Assert.NotEqual(_apiKey, svc.Account.DeviceKey);
         Assert.Equal(svc.DeviceId, svc.Account.DeviceId);
+        Assert.Equal("alice", svc.Account.UserName);
+        Assert.Equal("Test PC", svc.Account.ServerName);
+        var device = Assert.Single(_users.Devices());
+        Assert.Equal(svc.DeviceId, device.DeviceId);
+        Assert.Equal("Test Phone", device.DeviceName);
         Assert.True(File.Exists(Path.Combine(AccountDir, "account.json")));
         Assert.DoesNotContain("correct horse", File.ReadAllText(Path.Combine(AccountDir, "account.json")));
         var result = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
@@ -551,18 +587,18 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         https.ClientAuthenticated += (_, _) => Interlocked.Increment(ref authenticated);
         await https.StartAsync(0, cert, TestContext.Current.CancellationToken);
         var url = $"https://127.0.0.1:{https.Port}";
-        var svc = NewService(signedIn: false);
+        var svc = Restart();
 
         var fingerprint = await svc.ProbeFingerprintAsync(url + "/", TestContext.Current.CancellationToken);
         Assert.Equal(ServerCertificate.Fingerprint(cert), fingerprint);
         Assert.Equal(0, authenticated); // the probe carries no credentials
 
-        using (var pinned = new NoctisServerClient(NoctisHandlers.Sockets, url, fingerprint, _apiKey, keyInQuery: !ServerReadsKeyHeader))
+        using (var pinned = new NoctisServerClient(NoctisHandlers.Sockets, url, fingerprint, _apiKey))
             Assert.Equal(3, await pinned.GetSongCountAsync(TestContext.Current.CancellationToken));
         Assert.Equal(1, authenticated);
 
         var wrong = ServerCertificate.Fingerprint(other);
-        using (var mismatched = new NoctisServerClient(NoctisHandlers.Sockets, url, wrong, _apiKey, keyInQuery: !ServerReadsKeyHeader))
+        using (var mismatched = new NoctisServerClient(NoctisHandlers.Sockets, url, wrong, _apiKey))
         {
             var ex = await Assert.ThrowsAsync<NoctisServerException>(() => mismatched.GetSongCountAsync(TestContext.Current.CancellationToken));
             Assert.Equal(NoctisErrorKind.CertificateChanged, ex.Kind);
@@ -577,6 +613,11 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         var bad = await Assert.ThrowsAsync<NoctisServerException>(() =>
             svc.SignInAsync(url, "alice", "nope nope", fingerprint, TestContext.Current.CancellationToken));
         Assert.Equal(NoctisErrorKind.BadCredentials, bad.Kind);
+
+        // The right pin and password: signed in, the pin stored, and a full sync over TLS.
+        await svc.SignInAsync(url, "alice", "correct horse", fingerprint, TestContext.Current.CancellationToken);
+        Assert.Equal(fingerprint, svc.Account!.Fingerprint);
+        Assert.Equal(3, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).Songs);
     }
 
     // ── Desktop fakes ────────────────────────────────────────────────────
@@ -599,6 +640,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         private readonly string _art;
         public LibrarySyncService? Sync { get; set; }
         public List<Guid> Scrobbled { get; } = new();
+        public List<DateTime> ScrobbleTimes { get; } = new();
         public List<(Guid Id, TrackSyncState State)> AppliedTracks { get; } = new();
         public List<(Guid Id, PlaylistSyncState State)> AppliedPlaylists { get; } = new();
 
@@ -617,6 +659,12 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         {
             foreach (var t in _tracks.Where(t => trackIds.Contains(t.Id))) t.IsFavorite = starred;
             return Task.CompletedTask;
+        }
+
+        public Task ScrobbleAsync(Guid trackId, DateTime playedUtc)
+        {
+            lock (Scrobbled) ScrobbleTimes.Add(playedUtc);
+            return ScrobbleAsync(trackId);
         }
 
         public Task ScrobbleAsync(Guid trackId)

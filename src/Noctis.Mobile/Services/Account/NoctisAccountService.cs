@@ -46,6 +46,8 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
     private const int MaxQueuedPlays = 10_000;
     private const int MaxPlaylistTracks = 10_000;
     private const int MaxPlaylistName = 200;
+    private const int MaxPlaylistDescription = 2000;
+    private const long MaxPushBytes = 3L * 1024 * 1024; // the server refuses bodies over 4 MB
     private const int CoverConcurrency = 4;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
@@ -120,9 +122,6 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         stateRecorder?.Attach(this);
     }
 
-    /// <summary>Tests only: send the key as <c>apiKey=</c> for servers that predate the key header.</summary>
-    internal bool KeyInQueryForTests { get; set; }
-
     /// <summary>Tests: unpushed favorite/rating edits and queued plays.</summary>
     internal int PendingTrackCount { get { lock (_gate) return _pending.Tracks.Count; } }
     internal int PendingPlayCount { get { lock (_gate) return _pending.Plays.Count; } }
@@ -162,7 +161,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         SignInResult result;
         // The pinned handler refuses any other certificate, so this only succeeds against the
         // certificate the user confirmed.
-        using (var client = new NoctisServerClient(_handlerFactory, url, fingerprint, deviceKey: null, KeyInQueryForTests))
+        using (var client = new NoctisServerClient(_handlerFactory, url, fingerprint, deviceKey: null))
             result = await Task.Run(() => client.SignInAsync(user, password, _deviceId, DeviceName, ct), ct).ConfigureAwait(false);
 
         var account = new NoctisAccount
@@ -292,8 +291,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
     private NoctisServerClient GetClientLocked()
     {
         var account = _account ?? throw new NoctisServerException(NoctisErrorKind.SignedOut, "Not signed in.");
-        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey,
-            KeyInQueryForTests);
+        return _client ??= new NoctisServerClient(_handlerFactory, account.ServerUrl, account.Fingerprint, account.DeviceKey);
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────
@@ -415,6 +413,13 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
     private async Task<List<Track>> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists, CancellationToken ct)
     {
         var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
+        if (songs.Count == 0 && known.Count > 0)
+        {
+            // Same rule as a scan: an empty answer never wipes a populated set. A desktop that is
+            // still loading its library at startup lists nothing for a moment.
+            DebugLog.Write("Account", $"catalog: the desktop listed no songs; keeping the {known.Count} already here");
+            return _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList();
+        }
         var now = UtcNow;
         var tracks = new List<Track>(songs.Count);
         lock (_gate)
@@ -711,7 +716,7 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         if (modified > now) modified = now;
         return new PlaylistSyncState(
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "name"), MaxPlaylistName) ?? string.Empty,
-            NoctisServerClient.Cap(NoctisServerClient.Str(p, "description"), 2000) ?? string.Empty,
+            NoctisServerClient.Cap(NoctisServerClient.Str(p, "description"), MaxPlaylistDescription) ?? string.Empty,
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "color"), 32) ?? string.Empty,
             ids, modified, NoctisServerClient.Bool(p, "deleted"));
     }
@@ -723,14 +728,16 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         if (pending.Count == 0) return 0;
         var now = UtcNow;
         var sent = 0;
-        foreach (var chunk in pending.Chunk(PushChunk))
+        var all = pending.Select(kv => (Entry: kv, Item: new PushItem(SyncKinds.Track, kv.Key.ToLowerInvariant(),
+            new TrackSyncState(kv.Value.Favorite, Math.Clamp(kv.Value.Rating, 0, 5), kv.Value.Disliked,
+                // Plays travel as scrobbles: 0 and no date leave the desktop's max-merge untouched.
+                PlayCount: 0, LastPlayed: null,
+                FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null),
+            NotAfter(kv.Value.UpdatedUtc, now) ?? now)));
+        foreach (var batch in PushChunks(all, x => x.Item))
         {
-            var items = chunk.Select(kv => new PushItem(SyncKinds.Track, kv.Key.ToLowerInvariant(),
-                new TrackSyncState(kv.Value.Favorite, Math.Clamp(kv.Value.Rating, 0, 5), kv.Value.Disliked,
-                    // Plays travel as scrobbles: 0 and no date leave the desktop's max-merge untouched.
-                    PlayCount: 0, LastPlayed: null,
-                    FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null),
-                NotAfter(kv.Value.UpdatedUtc, now) ?? now)).ToList();
+            var items = batch.Select(x => x.Item).ToList();
+            var chunk = batch.Select(x => x.Entry).ToList();
             await client.PushSyncChangesAsync(_deviceId, DeviceName, items, ct).ConfigureAwait(false);
             lock (_gate)
             {
@@ -812,18 +819,19 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
             var local = phone.FirstOrDefault(p => NoctisRemoteIds.TryParseSyncId(hex, out var id) && p.Id == id);
             if (local is null || !Newer(local.ModifiedAt, state.ModifiedAt)) continue;
             var modified = NotAfter(Utc(local.ModifiedAt), now) ?? now;
-            var name = local.Name ?? string.Empty;
+            // Within the server's limits, or it drops the whole item: name ≤ 200, description
+            // ≤ 2000, ≤ 10000 songs, colour #RRGGBB[AA] or none (none keeps the desktop's).
             toPush.Add((hex, new PlaylistSyncState(
-                name.Length > MaxPlaylistName ? name[..MaxPlaylistName] : name,
-                local.Description ?? string.Empty,
-                local.Color ?? string.Empty,
+                NoctisServerClient.Cap(local.Name ?? string.Empty, MaxPlaylistName)!,
+                NoctisServerClient.Cap(local.Description ?? string.Empty, MaxPlaylistDescription)!,
+                IsSyncColor(local.Color) ? local.Color! : string.Empty,
                 local.TrackIds.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).ToList(),
                 modified, Deleted: false)));
         }
 
         if (changed) await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
 
-        foreach (var chunk in toPush.Chunk(PushChunk))
+        foreach (var chunk in PushChunks(toPush, p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)))
         {
             var items = chunk.Select(p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)).ToList();
             await client.PushSyncChangesAsync(_deviceId, DeviceName, items, ct).ConfigureAwait(false);
@@ -834,11 +842,37 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         return (agreed.Count, toPush.Count);
     }
 
+    private static bool IsSyncColor(string? color) =>
+        color is { Length: 7 or 9 } && color[0] == '#' && color.AsSpan(1).ContainsAnyExcept("0123456789abcdefABCDEF") == false;
+
+    /// <summary>
+    /// Splits a push into requests the server accepts: at most <see cref="PushChunk"/> items and
+    /// well under its 4 MB body limit (a playlist can carry 10000 ids, ~400 KB).
+    /// </summary>
+    internal static IEnumerable<List<T>> PushChunks<T>(IEnumerable<T> source, Func<T, PushItem> item)
+    {
+        var chunk = new List<T>();
+        long bytes = 0;
+        foreach (var entry in source)
+        {
+            var size = System.Text.Encoding.UTF8.GetByteCount(SyncJson.Serialize(item(entry).Payload)) + 200L;
+            if (chunk.Count > 0 && (chunk.Count >= PushChunk || bytes + size > MaxPushBytes))
+            {
+                yield return chunk;
+                chunk = new List<T>();
+                bytes = 0;
+            }
+            chunk.Add(entry);
+            bytes += size;
+        }
+        if (chunk.Count > 0) yield return chunk;
+    }
+
     private static void ApplyPlaylistState(Playlist local, PlaylistSyncState state)
     {
         if (!string.IsNullOrWhiteSpace(state.Name)) local.Name = state.Name;
         local.Description = state.Description ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(state.Color)) local.Color = state.Color;
+        if (IsSyncColor(state.Color)) local.Color = state.Color;
         local.TrackIds = state.TrackIds?.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).ToList() ?? new List<Guid>();
         local.ModifiedAt = Utc(state.ModifiedAt);
     }
