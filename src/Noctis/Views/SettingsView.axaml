@@ -4526,7 +4526,9 @@
                     <!-- Account exists -->
                     <controls:CollapsibleContent IsOpen="{Binding HasPrimaryAccount}" Lift="6">
                     <StackPanel Spacing="14">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                        <!-- Actions sit on their own wrapping row: beside the name they squeezed
+                             the "Since …" line down to a clipped stub. -->
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="10">
                             <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{DynamicResource AccentColorBrush}" Opacity="0.9">
                                 <TextBlock Text="{Binding PrimaryAccountInitial}" FontSize="22" FontWeight="Bold"
                                            Foreground="{DynamicResource AccentForegroundBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -4535,7 +4537,7 @@
                                 <TextBlock Text="{Binding PrimaryAccount.Name, FallbackValue=''}" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding PrimaryAccountSince}" FontSize="12" Opacity="0.5"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <WrapPanel Grid.Row="1" Grid.Column="1" ItemSpacing="6" LineSpacing="6">
                                 <Button Classes="accent-btn" Command="{Binding TogglePairingCommand}" Padding="14,8" CornerRadius="999" Cursor="Hand"
                                         Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
                                     <TextBlock Text="{loc:T AccountSync.PairDevice}" FontSize="12" FontWeight="SemiBold"/>
@@ -4549,7 +4551,7 @@
                                 <Button Classes="pill-action" Command="{Binding DeleteServerUserCommand}" CommandParameter="{Binding PrimaryAccount}" Padding="14,8" CornerRadius="999" Cursor="Hand">
                                     <TextBlock Text="{loc:T AccountSync.Remove}" FontSize="12" Foreground="#FF6B6B"/>
                                 </Button>
-                            </StackPanel>
+                            </WrapPanel>
                         </Grid>
 
                         <!-- Change password (inline) -->
