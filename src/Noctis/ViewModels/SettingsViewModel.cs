@@ -1111,8 +1111,15 @@ public partial class SettingsViewModel : ViewModelBase
                 var adapter = new LibraryServerAdapter(_library, _persistence, _playHistory,
                     () => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.LoadPlaylistsAsync() ?? Task.CompletedTask,
                     marshal: work => Dispatcher.UIThread.CheckAccess() ? work() : Dispatcher.UIThread.InvokeAsync(work));
-                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync);
+                // Covers shrink to what the phone asks for (cached under server/covers); the
+                // desktop's server is for the home network, so other addresses get a 403.
+                var covers = new ServerCoverResizer(Path.Combine(ServerDataDirectory, "covers"));
+                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync)
+                {
+                    PrivateClientsOnly = true,
+                };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
+                _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshSignedInDevices);
             }
             if (!_noctisServer.IsRunning)
             {
@@ -1173,6 +1180,8 @@ public partial class SettingsViewModel : ViewModelBase
             RaiseAccountDerivedProperties();
         }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
+        // Deleting an account or changing its password signs its devices out.
+        RefreshSignedInDevices();
     }
 
     /// <summary>Account errors ("Invalid user name or password.") leave on their own like
@@ -5736,12 +5745,17 @@ public partial class SettingsViewModel : ViewModelBase
         var artists = tracks
             .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
             .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g => new StatItem
+            .Select(g =>
             {
-                Label = g.Key,
-                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
-                Value = g.Sum(t => t.PlayCount),
-                ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
+                // long: an int Sum throws on overflow (play counts arrive from synced devices).
+                var plays = g.Sum(t => (long)t.PlayCount);
+                return new StatItem
+                {
+                    Label = g.Key,
+                    SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
+                    Value = (int)Math.Min(plays, int.MaxValue),
+                    ValueLabel = $"{plays} plays"
+                };
             })
             .Where(i => i.Value > 0)
             .OrderByDescending(i => i.Value)
@@ -5756,12 +5770,12 @@ public partial class SettingsViewModel : ViewModelBase
             .Select(g =>
             {
                 albumsById.TryGetValue(g.Key, out var album);
-                var plays = g.Sum(t => t.PlayCount);
+                var plays = g.Sum(t => (long)t.PlayCount);
                 return new StatItem
                 {
                     Label = album?.Name ?? g.First().Album,
                     SubLabel = album?.Artist ?? g.First().Artist,
-                    Value = plays,
+                    Value = (int)Math.Min(plays, int.MaxValue),
                     ValueLabel = $"{plays} plays"
                 };
             })

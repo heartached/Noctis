@@ -4503,21 +4503,13 @@
                 </Grid>
             </Border>
 
-            <!-- Coming soon: device accounts are parked until the server-side sync ships. The card
-                 stays visible so the feature is discoverable, but every control is disabled. -->
-            <Border Classes="setting-row" IsEnabled="False" Opacity="0.55">
+            <Border Classes="setting-row">
                 <StackPanel Spacing="14">
                     <!-- No account yet -->
                     <controls:CollapsibleContent IsOpen="{Binding !HasPrimaryAccount}" Lift="6">
                     <StackPanel Spacing="12">
                         <StackPanel Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{loc:T AccountSync.CreateTitle}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T Settings.ComingSoon}" FontSize="10" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
-                                </Border>
-                            </StackPanel>
+                            <TextBlock Text="{loc:T AccountSync.CreateTitle}" FontSize="15" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T AccountSync.CreateHelp}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
@@ -4575,7 +4567,7 @@
                         <Border Background="#18000000" CornerRadius="12" Padding="14,12">
                             <StackPanel Spacing="10">
                                 <StackPanel Spacing="10" IsVisible="{Binding NoctisServerUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                    <TextBlock Text="{loc:T AccountSync.PairHelp}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{loc:T AccountSync.PairPhoneHint}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                                     <Grid ColumnDefinitions="Auto,*">
                                         <Border Grid.Column="0" CornerRadius="8" ClipToBounds="True" VerticalAlignment="Top"
                                                 IsVisible="{Binding NoctisServerQr, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -4590,8 +4582,10 @@
                                                 </Button>
                                                 <TextBlock Text="{loc:T Settings.Copied}" FontSize="11" Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" IsVisible="{Binding NoctisServerUrlCopied}"/>
                                             </StackPanel>
-                                            <TextBlock Text="{loc:T Server.FingerprintLabel}" FontSize="10" Opacity="0.5" Margin="0,4,0,0"/>
-                                            <SelectableTextBlock Text="{Binding NoctisServerFingerprint}" FontSize="11" Opacity="0.75" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{loc:T Server.FingerprintLabel}" FontSize="10" Opacity="0.5" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <!-- What the phone shows before it trusts this computer: big enough to compare. -->
+                                            <SelectableTextBlock Text="{Binding NoctisServerFingerprint}" FontSize="13" FontWeight="SemiBold"
+                                                                 FontFamily="Consolas,Menlo,monospace" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -4606,6 +4600,32 @@
                             </StackPanel>
                         </Border>
                         </controls:CollapsibleContent>
+
+                        <!-- Signed-in devices: each phone that signed in has its own key; Remove signs it out. -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{loc:T AccountSync.SignedInDevices}" FontSize="10" Opacity="0.5"/>
+                            <TextBlock Text="{loc:T AccountSync.NoSignedInDevices}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"
+                                       IsVisible="{Binding !HasSignedInDevices}"/>
+                            <ItemsControl ItemsSource="{Binding SignedInDevices}" IsVisible="{Binding HasSignedInDevices}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="4"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SettingsViewModel+SignedInDeviceRow">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                                            <Ellipse Grid.Column="0" Width="6" Height="6" Fill="#4DC26B" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding LastUsedText}" FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="3" Classes="pill-action" Cursor="Hand"
+                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveSignedInDeviceCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{loc:T AccountSync.Remove}" FontSize="11" Foreground="#FF6B6B"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
                     </controls:CollapsibleContent>
 
@@ -4642,18 +4662,11 @@
 
             <Border Classes="setting-card group-card" Margin="0,14,0,10">
             <StackPanel>
-            <!-- Coming soon: see the account card above. -->
-            <Border Classes="setting-row" IsEnabled="False" Opacity="0.55">
+            <Border Classes="setting-row">
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{loc:T Sync.Title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T Settings.ComingSoon}" FontSize="10" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
-                                </Border>
-                            </StackPanel>
+                            <TextBlock Text="{loc:T Sync.Title}" FontSize="15" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Sync.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1" IsChecked="{Binding SyncEnabled}" VerticalAlignment="Center"/>

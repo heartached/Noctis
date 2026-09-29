@@ -45,6 +45,26 @@ public class LibraryServerAdapterHeadlessTests
     }
 
     [Fact]
+    public async Task Scrobble_WithATime_NeverMovesLastPlayedBack_AndPlayCountNeverWraps()
+    {
+        var library = new FakeLibraryService();
+        var track = MakeTrack("late");
+        var recent = new DateTime(2026, 9, 28, 10, 0, 0, DateTimeKind.Utc);
+        track.LastPlayed = recent;
+        track.PlayCount = int.MaxValue;
+        library.TrackList.Add(track);
+        using var persistence = new TestPersistenceService();
+        var adapter = new LibraryServerAdapter(library, persistence, new CountingPlayHistory());
+
+        await adapter.ScrobbleAsync(track.Id, recent.AddHours(-5)); // an offline play reported late
+        Assert.Equal(recent, track.LastPlayed);
+        Assert.Equal(int.MaxValue, track.PlayCount);
+
+        await adapter.ScrobbleAsync(track.Id, recent.AddHours(1));
+        Assert.Equal(recent.AddHours(1), track.LastPlayed);
+    }
+
+    [Fact]
     public async Task Star_ThenSnapshot_ReflectsTheChange_WithoutADispatcher()
     {
         var library = new FakeLibraryService();
