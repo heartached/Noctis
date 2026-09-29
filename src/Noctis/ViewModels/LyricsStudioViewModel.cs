@@ -108,6 +108,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public bool ShowBatchProgress => IsRunning && BatchTotal > 1;
     private int _batchDone;
     private StudioItem? _working;
+    /// <summary>Whisper's pace on the last song of this Studio, seconds per 30 s window: paces the next song's first window.</summary>
+    private double? _secondsPerWindow;
 
     /// <summary>The format picker's second chip: line timings (LRC) = word timings off.</summary>
     public bool LineTimings
@@ -787,6 +789,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
             {
                 _batchDone = done;
                 BatchProgress = Math.Max(BatchProgress, done / (double)Math.Max(1, total));
+                _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
                 if (ct.IsCancellationRequested) break;
                 if (item.Status != StudioStatus.Waiting) continue;
                 var forced = item.ForceRun;
@@ -816,7 +819,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     done++;
                     continue;
                 }
-                var meter = new SongProgressMeter(item.Track.Duration, Clock());
+                var meter = new SongProgressMeter(item.Track.Duration, Clock(), _secondsPerWindow);
                 item.BeginRun(meter, transcribe, WordTimings);
                 item.Status = StudioStatus.Working;
                 _working = item;
@@ -893,6 +896,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 }
                 done++;
             }
+            _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
             _working = null;
             var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics);
             RunStatusText = ct.IsCancellationRequested ? "Stopped."

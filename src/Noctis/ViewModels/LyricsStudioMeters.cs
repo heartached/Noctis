@@ -123,8 +123,8 @@ internal sealed class DownloadMeter
 /// late report lands, and moves it on between reports. Whisper reports once per 30 s window, so
 /// a Medium run on a three-minute song otherwise stood still for several seconds, then jumped a
 /// sixth of the way: here each window is paced by how long the earlier ones took (before the
-/// first, the bar eases toward most of one window) and held short of the next report. Written
-/// from the run's thread, read on the UI tick.
+/// first, by the previous song's pace, or on the first song an ease toward most of one window)
+/// and held short of the next report. Written from the run's thread, read on the UI tick.
 /// </summary>
 internal sealed class SongProgressMeter
 {
@@ -137,6 +137,8 @@ internal sealed class SongProgressMeter
 
     private readonly object _gate = new();
     private readonly double _windowStep;
+    private readonly double? _seedSecondsPerWindow;
+    private double? _secondsPerWindow;
     private LyricsStudioStage _stage = LyricsStudioStage.FindingLyrics;
     private double _reported;
     private TimeSpan _reportedAt;
@@ -144,11 +146,19 @@ internal sealed class SongProgressMeter
     private double _shown;
 
     /// <param name="songLength">The track's length (zero when unknown); sets how much of Listening one window is.</param>
-    public SongProgressMeter(TimeSpan songLength, TimeSpan now = default)
+    /// <param name="secondsPerWindow">How long a window took on the previous song of the run, if any: paces this song's first window.</param>
+    public SongProgressMeter(TimeSpan songLength, TimeSpan now = default, double? secondsPerWindow = null)
     {
         var seconds = Math.Min(songLength.TotalSeconds, PcmDecoder16k.MaxSeconds);
         _windowStep = seconds > 0 ? Math.Clamp(WindowSeconds / seconds, 0.02, 1) : 0.15;
         _reportedAt = _stageStartedAt = now;
+        _seedSecondsPerWindow = secondsPerWindow is > 0 ? secondsPerWindow : null;
+    }
+
+    /// <summary>Seconds Whisper took per 30 s window on this song (null until its first report); seeds the next song.</summary>
+    public double? SecondsPerWindow
+    {
+        get { lock (_gate) return _secondsPerWindow; }
     }
 
     public void Report(LyricsStudioStage stage, double stageFraction, TimeSpan now)
@@ -166,6 +176,9 @@ internal sealed class SongProgressMeter
             {
                 _reported = Math.Min(1, stageFraction);
                 _reportedAt = now;
+                var elapsed = (now - _stageStartedAt).TotalSeconds;
+                if (_stage == LyricsStudioStage.Listening && _reported > 0.001 && elapsed > 0)
+                    _secondsPerWindow = elapsed / (_reported / _windowStep);
             }
         }
     }
@@ -191,13 +204,10 @@ internal sealed class SongProgressMeter
         {
             case LyricsStudioStage.Listening:
                 var step = Math.Min(_windowStep, 1 - _reported);
-                var elapsed = (_reportedAt - _stageStartedAt).TotalSeconds;
-                if (_reported > 0.001 && elapsed > 0)
-                {
-                    // Seconds per window so far; the current window is assumed to take as long.
-                    var perWindow = elapsed / (_reported / _windowStep);
+                // Seconds per window so far (the current window is assumed to take as long), or
+                // the previous song's; with neither, ease toward most of the window.
+                if ((_secondsPerWindow ?? _seedSecondsPerWindow) is { } perWindow)
                     return step * Math.Min(CreepCap, since / perWindow);
-                }
                 return step * CreepCap * (1 - Math.Exp(-since / FirstWindowSeconds));
             case LyricsStudioStage.FindingLyrics or LyricsStudioStage.Aligning:
                 // No reports inside these (an online lookup, the aligner): ease most of the way.

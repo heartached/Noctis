@@ -86,6 +86,22 @@ public class LyricsStudioProgressTests : IDisposable
     }
 
     [Fact]
+    public void Meter_PacesTheFirstWindow_ByThePreviousSong()
+    {
+        // Song one: windows of 12 s.
+        var one = new SongProgressMeter(S(180));
+        one.Report(LyricsStudioStage.Listening, 0, S(0));
+        one.Report(LyricsStudioStage.Listening, 1 / 6.0, S(12));
+        Assert.Equal(12, one.SecondsPerWindow!.Value, 6);
+
+        // Song two starts with that pace instead of the generic ease: half a window at 6 s.
+        var two = new SongProgressMeter(S(180), S(0), one.SecondsPerWindow);
+        two.Report(LyricsStudioStage.Listening, 0, S(0));
+        Assert.Equal(LyricsStudioStages.Overall(LyricsStudioStage.Listening, 0.5 / 6), two.Read(S(6)).Overall, 6);
+        Assert.Equal(LyricsStudioStages.Overall(LyricsStudioStage.Listening, 0.9 / 6), two.Read(S(30)).Overall, 6);
+    }
+
+    [Fact]
     public void Meter_StaysBelow100_UntilDone()
     {
         var m = new SongProgressMeter(S(60));
