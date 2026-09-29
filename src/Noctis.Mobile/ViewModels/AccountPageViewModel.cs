@@ -59,7 +59,7 @@ public sealed partial class AccountPageViewModel : MobilePage
     public bool IsFormVisible => !IsSignedIn && !IsConfirmingFingerprint;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsIdle))]
+    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(CanSync), nameof(CanDownload))]
     private bool _isBusy;
 
     public bool IsIdle => !IsBusy;
@@ -92,9 +92,18 @@ public sealed partial class AccountPageViewModel : MobilePage
     /// <summary>"owner on Studio PC".</summary>
     [ObservableProperty] private string _accountText = string.Empty;
     [ObservableProperty] private string _lastSyncText = string.Empty;
-    [ObservableProperty] private bool _isSyncing;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSync))]
+    private bool _isSyncing;
     [ObservableProperty] private string _syncText = string.Empty;
-    [ObservableProperty] private bool _isDownloading;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanDownload))]
+    private bool _isDownloading;
+
+    /// <summary>Sync now / Download everything: not while one already runs, and not while
+    /// signing in or out (a download started mid-sign-out ran on until the revoked key failed it).</summary>
+    public bool CanSync => IsIdle && !IsSyncing;
+    public bool CanDownload => IsIdle && !IsDownloading;
     [ObservableProperty] private string _downloadText = string.Empty;
 
     /// <summary>"Downloaded: 12 songs · 340 MB".</summary>
@@ -288,6 +297,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         if (progress.Stage is NoctisSyncStage.Done or NoctisSyncStage.Failed or NoctisSyncStage.Idle)
         {
             if (!_syncRunning && progress.Stage == NoctisSyncStage.Done) SyncText = "Sync finished";
+            // A background sync (the one at app start) that failed left its last stage up
+            // ("Getting covers… 812 of 1332") with no error; this page's own syncs show theirs.
+            if (!_syncRunning && progress.Stage == NoctisSyncStage.Failed) SyncText = "The last sync didn't finish. Tap Sync now to try again.";
             IsSyncing = _syncRunning || _account.IsSyncing;
             return;
         }

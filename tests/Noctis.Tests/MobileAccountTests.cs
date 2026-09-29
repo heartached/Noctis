@@ -372,6 +372,38 @@ public class MobileAccountTests
     }
 
     [Fact]
+    public void SyncProgress_FromAnotherSyncThatFails_DoesNotLeaveItsLastStageUp()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var page = OpenAccount(ShellWith(rig, account));
+
+        account.IsSyncing = true;                                          // the startup sync
+        account.RaiseSyncProgress(new NoctisSyncProgress(NoctisSyncStage.Covers, 812, 1332));
+        account.IsSyncing = false;
+        account.RaiseSyncProgress(new NoctisSyncProgress(NoctisSyncStage.Failed, 812, 1332));
+
+        Assert.False(page.IsSyncing);
+        Assert.DoesNotContain("812", page.SyncText);
+        Assert.Contains("didn't finish", page.SyncText);
+    }
+
+    [Fact]
+    public void SyncAndDownloadButtons_AreOffWhileBusy()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var page = OpenAccount(ShellWith(rig, account));
+        Assert.True(page.CanSync);
+        Assert.True(page.CanDownload);
+
+        page.IsBusy = true;                                                // e.g. signing out
+
+        Assert.False(page.CanSync);
+        Assert.False(page.CanDownload);
+    }
+
+    [Fact]
     public async Task DownloadEverything_ShowsProgress_AndTheSpaceUsed()
     {
         using var rig = MobileFixtures.MakeRig();

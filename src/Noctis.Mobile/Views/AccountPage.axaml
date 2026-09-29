@@ -79,7 +79,7 @@
                     <Border Classes="settings-card" IsVisible="{Binding CanUseServer}">
                         <Grid ColumnDefinitions="Auto,*">
                             <Button Name="SyncNowButton" Classes="pill" Content="Sync now"
-                                    Command="{Binding SyncNowCommand}" IsEnabled="{Binding !IsSyncing}" />
+                                    Command="{Binding SyncNowCommand}" IsEnabled="{Binding CanSync}" />
                             <TextBlock Grid.Column="1" Name="SyncLabel" Classes="subtle" Margin="10,0,0,0" VerticalAlignment="Center"
                                        TextWrapping="Wrap" Text="{Binding SyncText}" />
                         </Grid>
@@ -90,7 +90,7 @@
                             <TextBlock Name="StorageLabel" Text="{Binding StorageText}" />
                             <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseServer}">
                                 <Button Name="DownloadAllButton" Classes="pill" Content="Download everything"
-                                        Command="{Binding DownloadAllCommand}" IsEnabled="{Binding !IsDownloading}" />
+                                        Command="{Binding DownloadAllCommand}" IsEnabled="{Binding CanDownload}" />
                                 <TextBlock Grid.Column="1" Name="DownloadLabel" Classes="subtle" Margin="10,0,0,0" VerticalAlignment="Center"
                                            TextWrapping="Wrap" Text="{Binding DownloadText}" />
                             </Grid>
