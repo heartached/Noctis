@@ -97,6 +97,26 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
     /// <summary>Free bytes on the volume holding a path; tests substitute a full phone.</summary>
     internal Func<string, long> FreeSpace { get; init; } = DefaultFreeSpace;
 
+    /// <summary>
+    /// This phone has no ALAC decoder: desktop songs that may be ALAC (an MP4-family suffix) are
+    /// streamed and downloaded with <c>format=flac</c>, and the desktop sends a lossless FLAC copy
+    /// of the ALAC ones (AAC, or a desktop without ffmpeg, still sends the original). Downloads
+    /// already on the phone are left as they are.
+    /// </summary>
+    public bool PreferFlacForAlac { get; init; }
+
+    private static bool MayBeAlac(string suffix) => suffix is "m4a" or "mp4" or "m4b" or "alac";
+
+    /// <summary>Whether to ask the desktop for FLAC instead of this song's original.</summary>
+    private bool WantsFlac(Guid id)
+    {
+        if (!PreferFlacForAlac) return false;
+        if (_suffixes.TryGetValue(id, out var suffix)) return MayBeAlac(suffix);
+        // Before this run's first catalog (suffixes are per process): the codec that catalog mapped,
+        // which is "ALAC" only for an MP4-family song at a lossless bitrate (CodecFor).
+        return _library.GetTrackById(id) is { SourceType: SourceType.NoctisServer } t && t.Codec == "ALAC";
+    }
+
     private static long DefaultFreeSpace(string path)
     {
         // statvfs on the path itself (Unix DriveInfo accepts any directory); unknown = no limit,
@@ -1140,8 +1160,9 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         var part = InsideOffline(hex + ".part");
         try
         {
-            var contentType = await client.DownloadTrackAsync(id, part, ct).ConfigureAwait(false);
-            var final = InsideOffline(hex + "." + ExtensionFor(id, contentType));
+            var flac = WantsFlac(id);
+            var contentType = await client.DownloadTrackAsync(id, part, ct, flac).ConfigureAwait(false);
+            var final = InsideOffline(hex + "." + ExtensionFor(id, contentType, flac));
             if (_downloaded.TryGetValue(id, out var old) && old.Path != final) NoctisServerClient.TryDelete(old.Path);
             File.Move(part, final, overwrite: true);
             _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
@@ -1152,12 +1173,15 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         }
     }
 
-    /// <summary>The download's extension: the catalog's suffix when allow-listed, else the
-    /// content type's, else "bin". Never anything the server names (Content-Disposition, path).</summary>
-    private string ExtensionFor(Guid id, string? contentType)
+    /// <summary>The download's extension: "flac" when FLAC was asked for and the desktop sent it
+    /// (audio/flac), else the catalog's suffix when allow-listed, else the content type's, else
+    /// "bin". Never anything the server names (Content-Disposition, path).</summary>
+    private string ExtensionFor(Guid id, string? contentType, bool askedFlac = false)
     {
+        var type = (contentType ?? string.Empty).ToLowerInvariant();
+        if (askedFlac && type is "audio/flac" or "audio/x-flac") return "flac";
         if (_suffixes.TryGetValue(id, out var s) && AllowedExtensions.Contains(s)) return s;
-        var ext = (contentType ?? string.Empty).ToLowerInvariant() switch
+        var ext = type switch
         {
             "audio/mpeg" or "audio/mp3" => "mp3",
             "audio/flac" or "audio/x-flac" => "flac",
@@ -1274,7 +1298,8 @@ public sealed class NoctisAccountService : INoctisAccountService, ITrackStateRec
         var account = _account;
         if (account is null) return null;
         // No key here: the player sends it as the X-Noctis-Key header.
-        return $"{account.ServerUrl}/rest/stream?id={NoctisRemoteIds.ToServerTrackId(id)}&c={NoctisServerClient.ClientName}&v={NoctisServerClient.ApiVersion}";
+        var url = $"{account.ServerUrl}/rest/stream?id={NoctisRemoteIds.ToServerTrackId(id)}&c={NoctisServerClient.ClientName}&v={NoctisServerClient.ApiVersion}";
+        return WantsFlac(id) ? url + "&format=" + NoctisServerClient.FlacFormat : url;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
