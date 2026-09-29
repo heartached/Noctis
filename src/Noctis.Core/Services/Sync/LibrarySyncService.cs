@@ -175,13 +175,16 @@ public sealed class LibrarySyncService : ILibrarySyncService
     /// <summary>Most items one pull returns; the device pages with <see cref="SyncChanges.More"/>. Settable for tests.</summary>
     public int ChangesPageSize { get; init; } = 5000;
 
+    /// <summary>Payload bytes after which a pull page stops early (see <see cref="SyncStore.ChangesPage"/>). Settable for tests.</summary>
+    public long ChangesPageBytes { get; init; } = SyncStore.DefaultPageBytes;
+
     public async Task<SyncChanges> GetChangesAsync(long since, string deviceId, string? deviceName, CancellationToken ct = default)
     {
         var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
         var changes = await Task.Run(() =>
         {
             RefreshPlaylists(playlists);
-            var page = Store.ChangesPage(since, ChangesPageSize);
+            var page = Store.ChangesPage(since, ChangesPageSize, ChangesPageBytes);
             // Truncated: resume after the last item handed out, not at the ledger's top (that
             // skipped everything past the page). The device's checkpoint is what it now holds.
             var seq = page.More ? page.Items[^1].Seq : page.CurrentSeq;

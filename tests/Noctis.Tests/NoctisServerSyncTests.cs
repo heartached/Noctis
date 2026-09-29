@@ -214,6 +214,33 @@ public class NoctisServerSyncTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pull_PagesByPayloadBytes_Too_AndALoopGetsEverything()
+    {
+        var now = DateTime.UtcNow;
+        var ids = Enumerable.Range(0, 4).Select(_ => Guid.NewGuid()).ToList();
+        await Push(new { device = "phone-001", items = ids.Select((id, i) => TrackItem(id, now.AddSeconds(-i), new { favorite = true, rating = 3 })).ToArray() });
+
+        // Same ledger, a one-byte budget: every page carries exactly one item.
+        var tiny = new LibrarySyncService(() => _settings, _persistence) { ChangesPageSize = 100, ChangesPageBytes = 1 };
+        var seen = new List<string>();
+        long since = 0;
+        var pages = 0;
+        while (true)
+        {
+            var page = await tiny.GetChangesAsync(since, "phone-002", null, TestContext.Current.CancellationToken);
+            pages++;
+            Assert.True(page.Items.Count <= 1);
+            seen.AddRange(page.Items.Select(i => i.Id));
+            if (page.More) Assert.Equal(page.Items[^1].Seq, page.Seq);
+            since = page.Seq;
+            if (!page.More) break;
+            Assert.True(pages < 20);
+        }
+        Assert.Equal(ids.Select(i => i.ToString("N")).OrderBy(x => x), seen.OrderBy(x => x));
+        Assert.Equal(ids.Count, pages);
+    }
+
+    [Fact]
     public async Task Push_FutureStamps_AreClamped_SoTheyCannotWinForever()
     {
         var far = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);

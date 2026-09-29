@@ -60,6 +60,41 @@ public sealed class SyncStoreTests : IDisposable
     }
 
     [Fact]
+    public void ChangesPage_StopsOnceThePayloadsPassTheByteBudget_AndALoopGetsEverything()
+    {
+        var big = "{\"pad\":\"" + new string('x', 1000) + "\"}";
+        var ids = Enumerable.Range(0, 10).Select(i => "p" + i).ToList();
+        foreach (var id in ids) _store.Upsert(SyncKinds.Playlist, id, big, T0, "desktop");
+
+        // Passes the budget on the third item, so the page ends there.
+        var first = _store.ChangesPage(0, 100, maxBytes: 2500);
+        Assert.Equal(new[] { "p0", "p1", "p2" }, first.Items.Select(i => i.Id));
+        Assert.True(first.More);
+        Assert.Equal(10, first.CurrentSeq);
+
+        // A payload bigger than the whole budget still goes, alone.
+        var single = _store.ChangesPage(0, 100, maxBytes: 10);
+        Assert.Equal("p0", Assert.Single(single.Items).Id);
+        Assert.True(single.More);
+
+        var seen = new List<string>();
+        long since = 0;
+        var pages = 0;
+        while (true)
+        {
+            var page = _store.ChangesPage(since, 100, maxBytes: 2500);
+            pages++;
+            seen.AddRange(page.Items.Select(i => i.Id));
+            since = page.More ? page.Items[^1].Seq : page.CurrentSeq;
+            if (!page.More) break;
+            Assert.True(pages < 20);
+        }
+        Assert.Equal(ids, seen);
+        Assert.Equal(4, pages);
+        Assert.Equal(10, since);
+    }
+
+    [Fact]
     public void OlderWrite_IsIgnored_NewerWins()
     {
         _store.Upsert(SyncKinds.Track, "a", "new", T0.AddMinutes(5), "phone");
