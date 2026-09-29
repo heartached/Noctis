@@ -28,6 +28,9 @@ public interface IServerLibrary : Sync.ISyncApplier
     /// <summary>Counts a play (submission=true scrobble).</summary>
     Task ScrobbleAsync(Guid trackId);
 
+    /// <summary>Counts a play that happened at <paramref name="playedUtc"/> (already clamped to the past; a phone's offline play).</summary>
+    Task ScrobbleAsync(Guid trackId, DateTime playedUtc) => ScrobbleAsync(trackId);
+
     Task<Playlist> CreatePlaylistAsync(string name, IReadOnlyList<Guid> trackIds);
 
     /// <summary>Rename and/or add/remove tracks (indexes refer to the playlist before removal). False when the playlist is unknown.</summary>

@@ -144,6 +144,40 @@ public sealed class SyncStore
         return list;
     }
 
+    /// <summary>
+    /// Up to <paramref name="limit"/> items after <paramref name="since"/> (oldest change first),
+    /// whether more remain, and the ledger's highest sequence — all read in one transaction so
+    /// they describe the same moment (a write landing between separate reads could otherwise be
+    /// skipped by a client that jumps to the newer top).
+    /// </summary>
+    public (IReadOnlyList<SyncItem> Items, bool More, long CurrentSeq) ChangesPage(long since, int limit)
+    {
+        limit = Math.Clamp(limit, 1, 50_000);
+        using var con = Open();
+        using var tx = con.BeginTransaction(deferred: true);
+        var list = new List<SyncItem>();
+        using (var cmd = con.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = "SELECT kind, id, payload, updated_utc, device, seq FROM items WHERE seq > $s ORDER BY seq LIMIT $l";
+            cmd.Parameters.AddWithValue("$s", since);
+            cmd.Parameters.AddWithValue("$l", limit + 1);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add(Read(r));
+        }
+        long current;
+        using (var max = con.CreateCommand())
+        {
+            max.Transaction = tx;
+            max.CommandText = "SELECT COALESCE(MAX(seq), 0) FROM items";
+            current = Convert.ToInt64(max.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        tx.Commit();
+        var more = list.Count > limit;
+        if (more) list.RemoveAt(limit);
+        return (list, more, current);
+    }
+
     public IReadOnlyList<SyncItem> All(string kind)
     {
         using var con = Open();

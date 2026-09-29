@@ -305,7 +305,7 @@ public partial class MetadataViewModel : ViewModelBase
             // most recent "last played" of the album.
             if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             {
-                var total = _albumTracks.Sum(t => t.PlayCount);
+                var total = _albumTracks.Sum(t => (long)t.PlayCount); // long: an int Sum throws on overflow
                 var lastPlayed = _albumTracks
                     .Where(t => t.LastPlayed.HasValue)
                     .Select(t => t.LastPlayed!.Value)

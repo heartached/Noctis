@@ -75,26 +75,52 @@ public sealed class LoginThrottle
 
     /// <summary>Records a failed login. Returns true when this failure triggered a lockout.</summary>
     public bool RecordFailure(string client)
+        => CountAttempt(client, refuseWhileLocked: false, out _) is Outcome.Locked;
+
+    /// <summary>
+    /// Check and count in one step, for a login about to be verified: false (with
+    /// <paramref name="retryAfter"/>) while the client is locked out; otherwise the attempt is
+    /// counted as a failure up front and true is returned — <see cref="RecordSuccess"/> clears it
+    /// when the password turns out right. Separate check / verify / record calls let N parallel
+    /// requests all pass the check and so try N passwords; reserving first caps a client at
+    /// <see cref="MaxFailures"/> guesses per window however many requests it sends at once.
+    /// <paramref name="lockedNow"/> is true when this attempt used the last guess.
+    /// </summary>
+    public bool TryReserve(string client, out TimeSpan retryAfter, out bool lockedNow)
     {
+        var outcome = CountAttempt(client, refuseWhileLocked: true, out retryAfter);
+        lockedNow = outcome is Outcome.Locked;
+        return outcome is not Outcome.Refused;
+    }
+
+    private enum Outcome { Counted, Locked, Refused }
+
+    private Outcome CountAttempt(string client, bool refuseWhileLocked, out TimeSpan retryAfter)
+    {
+        retryAfter = TimeSpan.Zero;
         // Keys include the account name the client sent, so junk names must not pile up
         // forever: sweep stale entries at most once per window.
         var start = _now();
         if (start >= _nextPrune) { _nextPrune = start + Window; Prune(); }
 
+        var address = AddressOf(client);
+        if (refuseWhileLocked && address != client && IsLockedKey(address, out retryAfter)) return Outcome.Refused;
+
         // Table full (a flood of distinct names): count a new name against its address, which
         // IsLocked also checks, so the flood adds no entries and still trips the lockout.
-        if (!_clients.ContainsKey(client) && _clients.Count >= MaxEntries) client = AddressOf(client);
+        if (!_clients.ContainsKey(client) && _clients.Count >= MaxEntries) client = address;
 
         var e = _clients.GetOrAdd(client, _ => new Entry());
         lock (e)
         {
             var now = _now();
+            if (refuseWhileLocked && e.LockedUntil > now) { retryAfter = e.LockedUntil - now; return Outcome.Refused; }
             e.Failures.Enqueue(now);
             while (e.Failures.Count > 0 && now - e.Failures.Peek() > Window) e.Failures.Dequeue();
-            if (e.Failures.Count < MaxFailures) return false;
+            if (e.Failures.Count < MaxFailures) return Outcome.Counted;
             e.LockedUntil = now + Lockout;
             e.Failures.Clear();
-            return true;
+            return Outcome.Locked;
         }
     }
 
