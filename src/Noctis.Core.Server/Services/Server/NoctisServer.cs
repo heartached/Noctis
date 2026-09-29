@@ -24,7 +24,7 @@ namespace Noctis.Services.Server;
 /// needs a recoverable password on the server. Only the library's own files are ever served,
 /// addressed by id — never by path.
 /// </summary>
-public sealed class NoctisServer : IAsyncDisposable
+public sealed partial class NoctisServer : IAsyncDisposable
 {
     private readonly IServerLibrary _library;
     private readonly ServerUserStore _users;
@@ -587,6 +587,12 @@ public sealed class NoctisServer : IAsyncDisposable
                 return new JsonObject();
             case "getlyrics":
                 return new JsonObject { ["lyrics"] = new JsonObject() };
+            // ── Noctis extension: a song's lyrics as the desktop has them (sidecars + stored text) ──
+            case "getnoctislyrics":
+            {
+                var track = Ids.Track(snap, p.Get("id") ?? throw Missing("id")) ?? throw NotFound();
+                return new JsonObject { ["noctisLyrics"] = LyricsObject(track, LyricsCacheDirectory) };
+            }
             case "getbookmarks":
                 return new JsonObject { ["bookmarks"] = new JsonObject() };
             case "getinternetradiostations":

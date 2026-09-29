@@ -171,7 +171,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private string? _alternateSource;
     private int _searchGeneration;
 
-    private static readonly string LyricsCacheDir = Path.Combine(
+    /// <summary>Online-fetched lyrics ({track id}.lrc / .lyricsfile). Internal: the Noctis server
+    /// serves the .lrc to a signed-in phone when a song has no stored lyrics.</summary>
+    internal static readonly string LyricsCacheDir = Path.Combine(
         Helpers.AppPaths.DataRoot, "lyrics_cache");
 
     private static readonly Color DefaultAdaptiveColor = Color.FromRgb(0x0D, 0x1B, 0x2A);
