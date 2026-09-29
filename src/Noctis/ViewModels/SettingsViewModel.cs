@@ -1122,6 +1122,8 @@ public partial class SettingsViewModel : ViewModelBase
                 _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync, flac.GetAsync)
                 {
                     PrivateClientsOnly = true,
+                    // A phone asking for a song's lyrics also gets what the lyrics page fetched online.
+                    LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
                 };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshSignedInDevices);

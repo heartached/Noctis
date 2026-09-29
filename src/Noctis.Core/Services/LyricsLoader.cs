@@ -123,7 +123,7 @@ public static class LyricsLoader
     {
         var stream = files.OpenAudio(track.FilePath);
         if (stream == null) return null;
-        var name = Path.GetFileName(Uri.UnescapeDataString(track.FilePath));
+        var name = files.AudioFileName(track.FilePath) ?? Path.GetFileName(Uri.UnescapeDataString(track.FilePath));
         return SyltLyrics.Read(stream, name);
     }
 }

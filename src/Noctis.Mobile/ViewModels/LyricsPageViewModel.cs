@@ -50,6 +50,15 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         _nowPlaying.PropertyChanged += OnNowPlayingChanged;
     }
 
+    /// <summary>
+    /// Optional: the track the loader reads in place of the playing one (a desktop song's stand-in
+    /// carrying the desktop's stored lyrics, see RemoteLyricsFileAccess.ForLoad). Runs inside the
+    /// background work, just before <see cref="LyricsLoader.Load"/>, so it may block briefly
+    /// (the app's runner is a pool thread, never the UI thread). A throw falls back to the
+    /// playing track.
+    /// </summary>
+    public Func<Track, Track>? PrepareTrack { get; init; }
+
     /// <summary>The lines the page shows: synced, or plain (pre-activated, never swept).</summary>
     public BulkObservableCollection<LyricLine> Lines { get; } = new();
 
@@ -174,10 +183,11 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
 
         IsLoading = true;
         var join = _joinSplitWords;
+        var prepare = PrepareTrack;
         LoadedLyrics result;
         try
         {
-            result = await _runBackground(() => LyricsLoader.Load(track, _files, join));
+            result = await _runBackground(() => LyricsLoader.Load(Prepared(track, prepare), _files, join));
         }
         catch (Exception ex)
         {
@@ -197,6 +207,20 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         {
             ApplyOpacities(-1);
             OnFrame(NowMs());
+        }
+    }
+
+    private static Track Prepared(Track track, Func<Track, Track>? prepare)
+    {
+        if (prepare == null) return track;
+        try
+        {
+            return prepare(track) ?? track;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Lyrics", $"Prepare failed for {track.Title}: {ex.GetType().Name}");
+            return track;
         }
     }
 

@@ -17,6 +17,11 @@ public interface ITrackFileAccess
 
     /// <summary>A readable, seekable stream over the audio file, or null. Caller disposes.</summary>
     Stream? OpenAudio(string trackPath);
+
+    /// <summary>The audio's file name as TagLib should see it (its extension picks the reader),
+    /// or null for the last segment of <paramref name="trackPath"/>. A source whose paths carry
+    /// no file name (a desktop song's noctis-remote id) names the local copy it opens here.</summary>
+    string? AudioFileName(string trackPath) => null;
 }
 
 /// <summary>The desktop's sidecar naming rule, path-free so every file source shares it.</summary>
