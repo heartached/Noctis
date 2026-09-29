@@ -38,6 +38,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     {
         Shell = shell;
         Shell.Library.Folders.CollectionChanged += OnFoldersChanged;
+        if (Shell.Account != null) Shell.Account.StateChanged += OnAccountChanged;
     }
 
     public ShellViewModel Shell { get; }
@@ -51,6 +52,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public IReadOnlyList<string> FolderLabels => Shell.Library.Folders.Select(FolderDisplay).ToList();
 
     public string VersionText => Shell.VersionText;
+
+    /// <summary>Settings → Account's row: who this phone is signed in as, or the invitation to sign in.</summary>
+    public string AccountRowText => Shell.Account?.Account is { } account && Shell.Account.IsSignedIn
+        ? $"Signed in as {account.UserName} · {AccountPageViewModel.ServerLabel(account)}"
+        : "Sign in to your Noctis desktop";
 
     [ObservableProperty] private string _appearance = "System";
     [ObservableProperty] private string _darkTheme = "Ink";
@@ -147,7 +153,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
             ExportStatus = "Export isn't available here";
             return;
         }
-        var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", DebugLog.Snapshot());
+        // Redacted: the file leaves the app, and account errors can carry key or password text.
+        var saved = await Shell.Logs.ExportAsync($"noctis-log-{DateTime.Now:yyyyMMdd-HHmm}.txt", LogRedactor.Redact(DebugLog.Snapshot()));
         ExportStatus = saved ? "Log saved" : "Export cancelled";
     }
 
@@ -165,5 +172,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     private void OnFoldersChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnPropertyChanged(nameof(FolderLabels));
 
-    public override void OnClosed() => Shell.Library.Folders.CollectionChanged -= OnFoldersChanged;
+    private void OnAccountChanged(object? sender, EventArgs e) => Shell.Marshal(() => OnPropertyChanged(nameof(AccountRowText)));
+
+    public override void OnClosed()
+    {
+        Shell.Library.Folders.CollectionChanged -= OnFoldersChanged;
+        if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
+    }
 }

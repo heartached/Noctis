@@ -36,6 +36,9 @@
         <DataTemplate DataType="vm:SettingsPageViewModel">
             <views:SettingsPage />
         </DataTemplate>
+        <DataTemplate DataType="vm:AccountPageViewModel">
+            <views:AccountPage />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating

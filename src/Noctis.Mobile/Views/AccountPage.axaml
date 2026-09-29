@@ -1,0 +1,132 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             x:Class="Noctis.Mobile.Views.AccountPage"
+             x:DataType="vm:AccountPageViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.settings-card">
+            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4">
+            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
+                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+            </Button>
+            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,4,16,32" Spacing="14">
+
+                <!-- Signed out: address, name, password. -->
+                <StackPanel Name="SignInForm" Spacing="10" IsVisible="{Binding IsFormVisible}">
+                    <TextBlock Classes="section" FontSize="16" Text="Sign in to your Noctis desktop" />
+                    <TextBlock Classes="subtle" TextWrapping="Wrap"
+                               Text="Turn on the account on your computer: Settings → Account &amp; Devices → Pair a device." />
+                    <Border Classes="settings-card">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="subtle" Text="Server address" />
+                            <TextBox Name="ServerAddressBox" Text="{Binding ServerAddress}" PlaceholderText="https://192.168.1.20:4747"
+                                     TextInputOptions.ContentType="Url" TextInputOptions.AutoCapitalization="False"
+                                     TextInputOptions.ShowSuggestions="False" />
+                            <TextBlock Classes="subtle" Text="Account name" Margin="0,6,0,0" />
+                            <TextBox Name="UserNameBox" Text="{Binding UserName}"
+                                     TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False" />
+                            <TextBlock Classes="subtle" Text="Password" Margin="0,6,0,0" />
+                            <!-- Sensitive: keyboards neither learn it nor show it in suggestions. -->
+                            <TextBox Name="PasswordBox" Text="{Binding Password}" PasswordChar="•"
+                                     TextInputOptions.ContentType="Password" TextInputOptions.IsSensitive="True" />
+                            <Button Name="SignInButton" Classes="pill-accent" Margin="0,8,0,0" Content="Sign in"
+                                    Command="{Binding SignInCommand}" IsEnabled="{Binding IsIdle}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Trust on first use: the user compares the fingerprint before anything is sent. -->
+                <Border Name="FingerprintCard" Classes="settings-card" IsVisible="{Binding IsConfirmingFingerprint}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="section" FontSize="16" Text="Check the fingerprint" />
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="Check this matches the fingerprint on your computer (Settings → Account &amp; Devices → Pair a device)." />
+                        <SelectableTextBlock Name="FingerprintText" Text="{Binding FingerprintDisplay}" TextWrapping="Wrap"
+                                             FontFamily="monospace, Consolas, Courier New" FontSize="14" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Name="TrustButton" Classes="pill-accent" Content="Trust and sign in"
+                                    Command="{Binding TrustAndSignInCommand}" IsEnabled="{Binding IsIdle}" />
+                            <Button Name="CancelFingerprintButton" Classes="pill" Content="Cancel"
+                                    Command="{Binding CancelFingerprintCommand}" IsEnabled="{Binding IsIdle}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Name="StatusLabel" Classes="subtle" Text="{Binding StatusText}" IsVisible="{Binding IsBusy}" />
+                <TextBlock Name="ErrorLabel" Foreground="#E74856" TextWrapping="Wrap" Text="{Binding ErrorText}" IsVisible="{Binding HasError}" />
+
+                <!-- Signed in. -->
+                <StackPanel Name="SignedInPanel" Spacing="14" IsVisible="{Binding IsSignedIn}">
+                    <Border Classes="settings-card">
+                        <StackPanel Spacing="4">
+                            <TextBlock Name="AccountLabel" Classes="row-title" Text="{Binding AccountText}" />
+                            <TextBlock Name="LastSyncLabel" Classes="subtle" Text="{Binding LastSyncText}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="settings-card" IsVisible="{Binding CanUseServer}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Button Name="SyncNowButton" Classes="pill" Content="Sync now"
+                                    Command="{Binding SyncNowCommand}" IsEnabled="{Binding !IsSyncing}" />
+                            <TextBlock Grid.Column="1" Name="SyncLabel" Classes="subtle" Margin="10,0,0,0" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" Text="{Binding SyncText}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Classes="settings-card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Name="StorageLabel" Text="{Binding StorageText}" />
+                            <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding CanUseServer}">
+                                <Button Name="DownloadAllButton" Classes="pill" Content="Download everything"
+                                        Command="{Binding DownloadAllCommand}" IsEnabled="{Binding !IsDownloading}" />
+                                <TextBlock Grid.Column="1" Name="DownloadLabel" Classes="subtle" Margin="10,0,0,0" VerticalAlignment="Center"
+                                           TextWrapping="Wrap" Text="{Binding DownloadText}" />
+                            </Grid>
+                            <Button Name="RemoveDownloadsButton" Classes="pill" Content="Remove all downloads"
+                                    Command="{Binding AskRemoveDownloadsCommand}" IsVisible="{Binding !IsConfirmingRemoveDownloads}" />
+                            <StackPanel Name="RemoveDownloadsConfirm" Spacing="8" IsVisible="{Binding IsConfirmingRemoveDownloads}">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Remove every downloaded song from this phone? They stay on your computer and still stream." />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Name="ConfirmRemoveDownloadsButton" Classes="pill-accent" Content="Remove"
+                                            Command="{Binding ConfirmRemoveDownloadsCommand}" />
+                                    <Button Classes="pill" Content="Cancel" Command="{Binding CancelRemoveDownloadsCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="settings-card">
+                        <StackPanel Spacing="8">
+                            <Button Name="SignOutButton" Classes="pill" Content="Sign out"
+                                    Command="{Binding AskSignOutCommand}" IsVisible="{Binding !IsConfirmingSignOut}" IsEnabled="{Binding IsIdle}" />
+                            <StackPanel Name="SignOutConfirm" Spacing="8" IsVisible="{Binding IsConfirmingSignOut}">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Sign out of your Noctis desktop? Its songs leave this phone's library." />
+                                <CheckBox Name="AlsoRemoveDownloadsBox" Content="Also delete downloaded songs from this phone"
+                                          IsChecked="{Binding AlsoRemoveDownloads}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Name="ConfirmSignOutButton" Classes="pill-accent" Content="Sign out"
+                                            Command="{Binding ConfirmSignOutCommand}" />
+                                    <Button Classes="pill" Content="Cancel" Command="{Binding CancelSignOutCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

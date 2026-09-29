@@ -62,6 +62,12 @@
                                     <Button Name="FavouriteAction" Classes="row sheet-action" Command="{Binding ToggleFavouriteCommand}">
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource HeartOutlineIcon}" /><TextBlock Grid.Column="1" Text="{Binding FavouriteLabel}" /></Grid>
                                     </Button>
+                                    <Button Name="DownloadAction" Classes="row sheet-action" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}">
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource SaveDiskIcon}" /><TextBlock Grid.Column="1" Text="{Binding DownloadLabel}" /></Grid>
+                                    </Button>
+                                    <Button Name="RemoveDownloadAction" Classes="row sheet-action" Command="{Binding RemoveDownloadCommand}" IsVisible="{Binding CanRemoveDownload}">
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource TrashIcon}" /><TextBlock Grid.Column="1" Text="{Binding RemoveDownloadLabel}" /></Grid>
+                                    </Button>
                                     <Button Name="PinAction" Classes="row sheet-action" Command="{Binding TogglePinCommand}" IsVisible="{Binding CanPin}">
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource StarIcon}" /><TextBlock Grid.Column="1" Text="{Binding PinLabel}" /></Grid>
                                     </Button>
