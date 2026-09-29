@@ -490,4 +490,51 @@ public class MobileNowPlayingViewModelTests : IDisposable
 
         Assert.Equal(new[] { t[1].Id }, history.Events.Select(e => e.TrackId));
     }
+
+    [Fact]
+    public void DropTracks_StopsWhenTheCurrentTrackGoes_AndPrunesUpNext()
+    {
+        var t = Tracks(4);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+
+        vm.DropTracks(x => x == t[0] || x == t[2]);
+
+        Assert.Null(vm.CurrentTrack);
+        Assert.False(vm.IsPlaying);
+        Assert.Equal(new[] { t[1], t[3] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void DropTracks_LeavesAKeptCurrentTrackPlaying()
+    {
+        var t = Tracks(3);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+
+        vm.DropTracks(x => x == t[1]);
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.True(vm.IsPlaying);
+        Assert.Equal(new[] { t[2] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void LibraryUpdate_DropsDesktopSongsThatLeftTheLibrary_FromTheQueue()
+    {
+        var t = Tracks(4);
+        t[0].SourceType = SourceType.NoctisServer;   // playing, then signed out
+        t[2].SourceType = SourceType.NoctisServer;   // queued, signed out
+        t[3].SourceType = SourceType.NoctisServer;   // queued, still in the library
+        var (vm, player, library, _) = Make(t);
+        vm.PlayTracks(t, 0);
+
+        library.TrackList.Remove(t[0]);
+        library.TrackList.Remove(t[2]);
+        library.RaiseLibraryUpdated();
+
+        Assert.Null(vm.CurrentTrack);
+        Assert.False(vm.IsPlaying);
+        Assert.Equal(new[] { t[1], t[3] }, vm.UpNext);
+    }
 }

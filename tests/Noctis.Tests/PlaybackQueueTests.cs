@@ -204,4 +204,36 @@ public class PlaybackQueueTests
         Assert.Same(t[0], r.Current);
         Assert.Equal(new[] { t[1], t[2] }, r.UpNext);
     }
+
+    [Fact]
+    public void RemoveWhere_drops_matches_everywhere_and_reports_a_matching_current()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(5);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);            // t0 -> history, t1 current
+        q.SetShuffle(true, new Random(1));          // remembers t2..t4 as the original order
+        var t0 = t[0]; var t1 = t[1]; var t3 = t[3];
+        bool Remote(Track x) => x == t0 || x == t1 || x == t3;
+
+        var currentGone = q.RemoveWhere(Remote);
+
+        Assert.True(currentGone);
+        Assert.Null(q.Current);
+        Assert.DoesNotContain(t3, q.UpNext);
+        Assert.DoesNotContain(t0, q.History);
+        q.SetShuffle(false);                        // restoring the order must not bring t3 back
+        Assert.Equal(new[] { t[2], t[4] }, q.UpNext);
+        Assert.DoesNotContain(q.Snapshot().RepeatCycleIds, id => id == t0.Id || id == t1.Id || id == t3.Id);
+    }
+
+    [Fact]
+    public void RemoveWhere_keeps_a_current_that_does_not_match()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+
+        Assert.False(q.RemoveWhere(x => x == t[2]));
+        Assert.Same(t[0], q.Current);
+        Assert.Equal(new[] { t[1] }, q.UpNext);
+    }
 }

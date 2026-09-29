@@ -59,6 +59,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved += OnPlayerDuration;
         _player.TrackEnded += OnPlayerTrackEnded;
         _player.PlaybackError += OnPlayerError;
+        _library.LibraryUpdated += OnLibraryUpdated;
 
         _volume = volume;
         if (_volume != null)
@@ -330,6 +331,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public void PlayNext(Track track) { _queue.AddNext(track); QueueChanged(); }
     public void AddToQueue(Track track) { _queue.Add(track); QueueChanged(); }
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }
+
+    /// <summary>
+    /// A signed-out desktop's songs leave the library, but the queue holds Track objects, so
+    /// the mini player kept offering one that could no longer play. Only desktop songs are
+    /// pruned: a local file missing from the library for a moment (mid-rescan) keeps its place.
+    /// </summary>
+    private void OnLibraryUpdated(object? sender, EventArgs e) => _marshal(() =>
+    {
+        if (_disposed) return;
+        static bool Desktop(Track t) => t.SourceType == SourceType.NoctisServer;
+        var queued = _queue.History.Concat(_queue.UpNext).Append(_queue.Current).Where(t => t != null && Desktop(t)).ToList();
+        if (queued.Count == 0) return;
+        Track[] tracks;
+        try { tracks = _library.Tracks.ToArray(); }
+        catch (InvalidOperationException) { return; }   // raced a library write; the next update retries
+        var present = new HashSet<Guid>(tracks.Where(Desktop).Select(t => t.Id));
+        if (queued.All(t => present.Contains(t!.Id))) return;
+        DropTracks(t => Desktop(t) && !present.Contains(t.Id));
+    });
+
+    /// <summary>
+    /// Drops tracks that left the library (a signed-out desktop's songs) from the whole queue;
+    /// when the current track is one of them, playback stops and nothing stays loaded.
+    /// </summary>
+    public void DropTracks(Func<Track, bool> match)
+    {
+        if (!_queue.RemoveWhere(match))
+        {
+            QueueChanged();
+            return;
+        }
+        CurrentTrack = null;
+        StopPlayback();
+    }
     public void MoveInQueue(int fromUpNextIndex, int toUpNextIndex) { _queue.Move(fromUpNextIndex, toUpNextIndex); QueueChanged(); }
 
     /// <summary>The Queue page's Clear: Up Next empties, the current track keeps playing.</summary>
@@ -555,6 +590,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved -= OnPlayerDuration;
         _player.TrackEnded -= OnPlayerTrackEnded;
         _player.PlaybackError -= OnPlayerError;
+        _library.LibraryUpdated -= OnLibraryUpdated;
         if (_volume != null) _volume.Changed -= OnVolumeChanged;
     }
 }
