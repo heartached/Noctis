@@ -971,8 +971,9 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Dropped files and folders → the playable files, folders walked recursively
-    /// and sorted by path so disc/track prefixes give the play order. Internal for tests.</summary>
+    /// <summary>Dropped files and folders → the playable files in drop order, folders walked
+    /// recursively and sorted by path in file-manager (numeric-aware) order so disc/track
+    /// prefixes give the play order. Internal for tests.</summary>
     internal static List<string> ExpandDroppedAudioFiles(IReadOnlyList<string> paths)
     {
         var files = new List<string>();
@@ -993,7 +994,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     Debug.WriteLine($"[MainWindowVM] Failed to enumerate dropped folder {raw}: {ex.Message}");
                     continue;
                 }
-                perFolder.Sort((a, b) => string.Compare(a, b, StringComparison.OrdinalIgnoreCase));
+                perFolder.Sort(NaturalStringComparer.Instance);
                 files.AddRange(perFolder);
             }
             else if (File.Exists(raw) && MetadataService.SupportedExtensions.Contains(Path.GetExtension(raw)))
