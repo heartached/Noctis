@@ -1,4 +1,5 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -32,6 +33,32 @@ public partial class NowPlayingPage : UserControl
         // capture, so the Slider's own drag logic still runs), and the shade-cancel case
         // observed on device delivers no pointer event at all. The watchdog is the backstop.
         SeekBar.PointerCaptureLost += OnSeekCaptureLost;
+    }
+
+    private bool? _landscape;
+
+    /// <summary>
+    /// Rotation does not recreate the activity, so the page re-lays itself out on resize. In a
+    /// landscape phone window (~412 dp tall) the portrait column leaves the cover's row almost
+    /// nothing once the title, seek bar, transport, volume and bottom icons have their height;
+    /// side by side, the cover gets the full height on the left and the controls fit on the right.
+    /// </summary>
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        ApplyOrientation(e.NewSize.Width > e.NewSize.Height);
+    }
+
+    private void ApplyOrientation(bool landscape)
+    {
+        if (_landscape == landscape) return;
+        _landscape = landscape;
+        Layout.ColumnDefinitions = landscape ? new ColumnDefinitions("5*,6*") : new ColumnDefinitions("*");
+        foreach (var child in Layout.Children)
+            if (child != ArtworkBox) Grid.SetColumn(child, landscape ? 1 : 0);
+        Grid.SetRow(ArtworkBox, landscape ? 0 : 1);
+        Grid.SetRowSpan(ArtworkBox, landscape ? Layout.RowDefinitions.Count : 1);
+        ArtworkBox.Margin = landscape ? new Thickness(0, 0, 24, 0) : new Thickness(0, 8);
     }
 
     // Hold the position push for the duration of the drag: the player ticks 4x a second and

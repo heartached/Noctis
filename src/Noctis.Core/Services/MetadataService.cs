@@ -147,7 +147,7 @@ public class MetadataService : IMetadataService
     }
 
     /// <summary>Read-only TagLib file abstraction over a caller-supplied seekable stream.</summary>
-    private sealed class StreamFileAbstraction : TagLib.File.IFileAbstraction, IDisposable
+    internal sealed class StreamFileAbstraction : TagLib.File.IFileAbstraction, IDisposable
     {
         private readonly Stream _stream;
         public StreamFileAbstraction(string name, Stream stream) { Name = name; _stream = stream; }

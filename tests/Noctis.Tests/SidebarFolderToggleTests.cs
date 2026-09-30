@@ -138,4 +138,24 @@ public class SidebarFolderToggleTests
         public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
         public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
+
+    [Fact]
+    public void CollapsingAFolder_RemovesOnlyItsRows_AndLeavesTheRowsBelowInPlace()
+    {
+        var vm = new SidebarViewModel(new TestPersistenceService(), new StubLibraryService());
+        vm.PlaylistItems.Add(new PlaylistNavItem { Key = "a", Label = "A", Folder = "F1" });
+        vm.PlaylistItems.Add(new PlaylistNavItem { Key = "b", Label = "B", Folder = "F1" });
+        vm.PlaylistItems.Add(new PlaylistNavItem { Key = "below", Label = "Below" });
+        vm.RebuildSidebarRows();
+        var changes = new List<NotifyCollectionChangedEventArgs>();
+        vm.SidebarRows.CollectionChanged += (_, e) => changes.Add(e);
+
+        vm.ToggleFolderExpansion("F1");
+
+        // A Move (or Remove) of "Below" makes the ListBox tear down its container and build a
+        // new one, so its cover collage reloads: the flash under a folder that just closed.
+        Assert.All(changes, e => Assert.Equal(NotifyCollectionChangedAction.Remove, e.Action));
+        var removed = changes.SelectMany(e => e.OldItems!.Cast<PlaylistNavItem>()).Select(r => r.Key).ToList();
+        Assert.Equal(new[] { "a", "b" }, removed.OrderBy(k => k));
+    }
 }

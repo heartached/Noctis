@@ -102,6 +102,22 @@ public sealed class PlaybackQueue
     public void Clear() => _upNext.Clear();
 
     /// <summary>
+    /// Drops every track matching <paramref name="match"/> from UpNext, History, the repeat
+    /// cycle and the pre-shuffle order (tracks that left the library, e.g. a signed-out
+    /// desktop's songs). Returns true when Current matched too; it is then cleared (stopped).
+    /// </summary>
+    public bool RemoveWhere(Func<Track, bool> match)
+    {
+        _upNext.RemoveAll(t => match(t));
+        _history.RemoveAll(t => match(t));
+        _repeatCycle.RemoveAll(t => match(t));
+        _originalOrder.RemoveAll(t => match(t));
+        if (Current == null || !match(Current)) return false;
+        Current = null;
+        return true;
+    }
+
+    /// <summary>
     /// Toggle shuffle. On: remember the order and Fisher-Yates UpNext. Off: restore the
     /// remembered order minus tracks that have since played or been removed.
     /// </summary>

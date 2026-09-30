@@ -1,8 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.LogicalTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
@@ -26,9 +30,32 @@ public class MobileShellViewTests
         library = new FakeLibraryService();
         library.TrackList.AddRange(tracks);
         var persistence = new PersistenceService(root);
+        var player = new FakeAudioPlayer();
+        var nowPlaying = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
         return new ShellViewModel(
             new LibraryViewModel(library, persistence, new NoPicker(), marshal: a => a()),
-            new NowPlayingViewModel(new FakeAudioPlayer(), library, persistence, marshal: a => a()));
+            nowPlaying,
+            new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), persistence, work => Task.FromResult(work())));
+    }
+
+    [Fact]
+    public void TryHandleBack_ClosesLyricsBeforeNowPlaying()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var shell = MakeShell(root, out _);
+
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        Assert.True(shell.IsLyricsOpen);
+
+        Assert.True(shell.TryHandleBack());
+        Assert.False(shell.IsLyricsOpen);
+        Assert.True(shell.IsNowPlayingOpen);
+
+        shell.ToggleLyricsCommand.Execute(null);
+        shell.CloseNowPlayingCommand.Execute(null);        // closing Now Playing closes its overlays
+        Assert.False(shell.IsLyricsOpen);
+        try { Directory.Delete(root, recursive: true); } catch { }
     }
 
     /// <summary>
@@ -74,7 +101,7 @@ public class MobileShellViewTests
 
         var miniBar = view.FindControl<Border>("MiniBar")!;
         Assert.False(miniBar.IsVisible);
-        Assert.Contains(view.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "Mounted Song");
+        Assert.Equal(1, shell.Library.SongCount);   // the Library root shows tiles; the song list is the Songs page
 
         shell.PlaySongCommand.Execute(track);
         window.UpdateLayout();
@@ -88,9 +115,8 @@ public class MobileShellViewTests
         Assert.True(nowPlaying.IsVisible);
         Assert.False(miniBar.IsVisible);
 
-        // Pins the TimeSpan format on the seek-bar labels: a mis-escaped format string
-        // throws FormatException at bind time and silently leaves the label empty.
-        Assert.Contains(nowPlaying.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "01:30");
+        // Pins the TimeSpan format on the seek-bar labels (remaining time at position 0).
+        Assert.Contains(nowPlaying.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "-01:30");
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
@@ -128,6 +154,42 @@ public class MobileShellViewTests
         Assert.Equal(columnWidth, title.Bounds.Width, 1);
         Assert.True(title.Bounds.Height >= grid.Bounds.Height - 1,
             $"title button is {title.Bounds.Height} tall in a {grid.Bounds.Height} row");
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>
+    /// Device run B12, 2026-09-23: after touching any slider (Now Playing seek or volume,
+    /// Settings text size) Android Back did nothing. Avalonia turns the Back key into an
+    /// Escape KeyDown on the focused control and raises BackRequested only if nobody handles
+    /// it; a touched Slider keeps focus and marks Escape handled, so the page never closed.
+    /// The shell takes Escape in the tunnel phase, before any focused control, and leaves it
+    /// unhandled at the root so the activity can still finish.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Escape_WithAFocusedSlider_StillGoesBack_AndFallsThroughAtTheRoot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var shell = MakeShell(root, out _);
+        var view = new ShellView { DataContext = shell };
+        var window = new Window { Width = 412, Height = 915, Content = view };
+        window.Show();
+        bool? lastHandled = null;
+        window.AddHandler(InputElement.KeyDownEvent, (_, e) => lastHandled = e.Handled, handledEventsToo: true);
+
+        shell.OpenSettingsCommand.Execute(null);
+        await Assert.IsType<SettingsPageViewModel>(shell.CurrentPage).Loaded;
+        window.UpdateLayout();
+        var slider = view.GetVisualDescendants().OfType<Slider>().Single(s => s.Name == "LyricsSizeSlider");
+        Assert.True(slider.Focus());
+
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Assert.Null(shell.CurrentPage);                    // Settings closed
+        Assert.True(lastHandled);
+
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Assert.False(lastHandled);                         // Library root: left to the system
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

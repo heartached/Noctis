@@ -1,27 +1,42 @@
+using Android.Content;
+using Android.Content.PM;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Noctis.Android.Services;
 using Noctis.Helpers;
 using Noctis.Localization;
+using Noctis.Mobile.Services;
+using Noctis.Mobile.Services.Account;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Services;
 using AApplication = Android.App.Application;
+using AResources = Android.Content.Res.Resources;
+using AUiMode = Android.Content.Res.UiMode;
 using ALog = Android.Util.Log;
+using Build = Android.OS.Build;
 
 namespace Noctis.Android;
 
-public partial class AndroidApp : Avalonia.Application
+public partial class AndroidApp : Avalonia.Application, IThemeHost
 {
     /// <summary>logcat tag for the mirrored <see cref="DebugLog"/>: `adb logcat -s Noctis`.</summary>
     private const string LogTag = "Noctis";
 
-    private ResourceInclude? _activeThemeOverlay;
+    private readonly MobileTheme _theme = new();
+    private (string Appearance, string DarkTheme, string Accent) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent);
+    private PlatformThemeVariant? _appliedSystem;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
+    private AndroidVolumeControl? _volume;
+    private readonly object _accountGate = new();
+
+    /// <summary>Completes when StartAsync has loaded the library (faulted if that failed); the
+    /// account service's syncs wait for it.</summary>
+    private readonly TaskCompletionSource _libraryLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
     /// The running app, for the activity's lifecycle hooks. Declared <c>new</c> on purpose:
@@ -53,22 +68,60 @@ public partial class AndroidApp : Avalonia.Application
         // phone. Mirror it to logcat, where `adb logcat -s Noctis` can read it. AttachSink
         // replays what is already buffered, so attaching here loses nothing logged earlier;
         // the reset callback exists for the desktop's disk mirror and has no analogue here.
-        DebugLog.AttachSink(line => ALog.Info(LogTag, line), static () => { });
+        // Redacted on the way out: logcat is readable over adb, and account errors can carry
+        // a device key or password text (LogRedactor). The crash hooks log through here too.
+        DebugLog.AttachSink(line => ALog.Info(LogTag, LogRedactor.Redact(line)), static () => { });
+        HookUnhandledExceptions();
 
         var persistence = new PersistenceService();
         var metadata = new MetadataService();
         var index = new SqliteLibraryIndexService(persistence);
         var audit = new AuditTrailService(persistence);
-        var library = new LibraryService(metadata, persistence, index, audit, fileSystem: new AndroidFileSystemSource(context));
+        // Favourite/rating changes to desktop songs go through this to the account service,
+        // which queues them for the next sync (it attaches itself once constructed).
+        var stateRecorder = new NoctisStateRecorder();
+        var library = new LibraryService(metadata, persistence, index, audit, syncRecorder: stateRecorder,
+            fileSystem: new AndroidFileSystemSource(context));
         var history = new PlayHistoryService();
         // The application context, never the activity: the player outlives the activity
         // (it keeps playing in the background service) and holding the activity leaks it.
         _player = new Media3AudioPlayer(context, library, persistence);
 
+        _volume = new AndroidVolumeControl(context);
+        var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
+        var account = CreateAccountService(context, library, persistence, stateRecorder, _libraryLoaded.Task);
+        // Desktop songs' lyrics come from the desktop (saved on the phone for offline use); every
+        // other song reads its sidecars through SAF as before.
+        var remoteLyrics = account is IRemoteLyricsSource source
+            ? new RemoteLyricsFileAccess(new SafTrackFileAccess(context), source)
+            : null;
+        var lyrics = new LyricsPageViewModel(_player, nowPlaying, (ITrackFileAccess?)remoteLyrics ?? new SafTrackFileAccess(context), persistence)
+        {
+            // Avalonia sizes by density only; the lyrics page applies the system font scale itself.
+            FontScale = context.Resources?.Configuration?.FontScale ?? 1f,
+            PrepareTrack = remoteLyrics is null ? null : remoteLyrics.ForLoad,
+        };
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker()),
-            new NowPlayingViewModel(_player, library, persistence, history));
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history),
+            nowPlaying,
+            lyrics)
+        {
+            Outputs = new AndroidOutputSwitcher(context),
+            Theme = this,
+            Logs = new AndroidLogExporter(context),
+            VersionText = DescribeVersion(context),
+            Account = account,
+        };
         _shell = shell;
+
+        if (account != null)
+        {
+            // Desktop songs play from their download or the desktop's stream; the stream needs
+            // the pinned certificate trusted and the device key sent, for as long as signed in.
+            _player.ResolveRemote = account.ResolvePlaybackUri;
+            account.StateChanged += (_, _) => ApplyAccountState(account);
+            ApplyAccountState(account);
+        }
 
         // Notification / lock screen / Bluetooth / headset transport. The session player raises
         // these instead of seeking ExoPlayer's own item list, so every transport path runs
@@ -90,6 +143,92 @@ public partial class AndroidApp : Avalonia.Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    /// <summary>
+    /// The phone's link to the owner's Noctis desktop (Settings → Account). Null only if it
+    /// cannot be built: Settings then shows no Account section, the sheet no download actions,
+    /// and the player never streams.
+    /// </summary>
+    private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
+        IPersistenceService persistence, NoctisStateRecorder stateRecorder, Task libraryReady)
+    {
+        // The service's TLS: its pin check wired into AndroidMessageHandler.
+        NoctisHandlerFactory handlerFactory = AndroidNoctisHttp.CreateHandler;
+        // Both directories under NoBackupFilesDir, so neither the device key nor the
+        // downloads are ever backed up.
+        try
+        {
+            var noBackup = context.NoBackupFilesDir!.AbsolutePath;
+            return new NoctisAccountService(library, persistence, handlerFactory,
+                accountDir: Path.Combine(noBackup, "account"),
+                offlineDir: Path.Combine(noBackup, "offline"),
+                deviceName: $"{Build.Manufacturer} {Build.Model}".Trim(),
+                stateRecorder: stateRecorder)
+            {
+                LibraryReady = libraryReady,
+                // No ALAC decoder (Pixels, the emulator): the desktop sends its ALAC songs as FLAC.
+                PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
+            };
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Account service unavailable: {ex.GetType().Name}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Signed in: ExoPlayer trusts the pinned desktop certificate and sends the device key with
+    /// that desktop's stream requests (header only, see Media3AudioPlayer.SetStreamAuth). Signed out: both undone. At start and on every account change, which
+    /// the service raises on any thread — hence the lock, so two changes cannot interleave.
+    /// </summary>
+    private void ApplyAccountState(INoctisAccountService account)
+    {
+        lock (_accountGate)
+        {
+            try
+            {
+                var linked = account.IsSignedIn ? account.Account : null;
+                if (linked != null)
+                {
+                    AndroidStreamTrust.Install(linked.Fingerprint, new Uri(linked.ServerUrl).Host);
+                    _player?.SetStreamAuth(linked.ServerUrl, linked.DeviceKey);
+                }
+                else
+                {
+                    _player?.SetStreamAuth(null, null);
+                    AndroidStreamTrust.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Account", $"Stream trust update failed: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Last-chance logging. AsyncRelayCommand rethrows on the UI thread, so an exception that
+    /// escapes any async command or event handler would otherwise end the process with nothing
+    /// in `adb logcat -s Noctis`. A UI-thread exception is logged and marked handled: the app
+    /// stays up in whatever state the failed action left, which beats vanishing mid-song.
+    /// Exceptions on other threads cannot be survived; they are only logged on the way down.
+    /// </summary>
+    private static void HookUnhandledExceptions()
+    {
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            DebugLog.Write("Crash", $"Unhandled UI-thread exception (kept running): {e.Exception}");
+            e.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            DebugLog.Write("Crash", $"Unhandled exception (terminating: {e.IsTerminating}): {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            DebugLog.Write("Crash", $"Unobserved task exception: {e.Exception}");
+            e.SetObserved();
+        };
+    }
+
     /// <summary>Settings → language/theme, then the library and the saved queue. The shell is
     /// already on screen; it fills in as these land.</summary>
     private async Task StartAsync(IPersistenceService persistence, ILibraryService library, IPlayHistoryService history)
@@ -98,14 +237,17 @@ public partial class AndroidApp : Avalonia.Application
         {
             var settings = await persistence.LoadSettingsAsync();
             Loc.Instance.SetCulture(settings.Language);
-            SetTheme(settings.Theme);
+            ApplyTheme(settings.MobileAppearance, settings.Theme, settings.AccentColorHex);
             _shell!.Player.SetGapless(settings.GaplessPlaybackEnabled);
             await history.PreloadAsync();
             await library.LoadAsync();
+            _libraryLoaded.TrySetResult();
             await _shell.InitializeAsync();
         }
         catch (Exception ex)
         {
+            // Failed before the library loaded: syncs fail rather than save a library.json without the local songs.
+            if (_libraryLoaded.TrySetException(ex)) _ = _libraryLoaded.Task.Exception; // logged below, not "unobserved"
             DebugLog.Write("Startup", $"Android startup failed: {ex}");
         }
     }
@@ -130,33 +272,61 @@ public partial class AndroidApp : Avalonia.Application
     /// instead of the activity finishing. See <see cref="ShellViewModel.TryHandleBack"/>.</summary>
     public bool TryHandleBack() => _shell?.TryHandleBack() ?? false;
 
-    /// <summary>
-    /// Merge one of the shared theme overlays (Dark, Midnight, Ink, Smoke) on top of the
-    /// base styles, replacing the previous one. The same mechanism as the desktop
-    /// App.SetThemeCore; "Gray" is the base look with no overlay.
-    /// </summary>
-    public void SetTheme(string themeName)
+    /// <summary>The system font size changed (MainActivity.OnConfigurationChanged).</summary>
+    public void ApplyFontScale(float scale)
     {
-        if (_activeThemeOverlay != null)
+        if (_shell != null) _shell.Lyrics.FontScale = scale;
+    }
+
+    /// <summary>A volume key or a resume (MainActivity): the media volume may have moved.</summary>
+    public void OnVolumeKey() => _volume?.NotifyChanged();
+
+    /// <summary>Settings (and startup, and a system dark-mode switch) re-theme through here.</summary>
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex)
+    {
+        _themeChoice = (appearance, darkTheme, accentHex);
+        var system = SystemVariant();
+        _appliedSystem = system;
+        var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
+        DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
+        _theme.Apply(this, resolved, accentHex);
+    }
+
+    /// <summary>
+    /// "System" appearance: Android's dark-mode switch arrives as a configuration change
+    /// (UiMode is in MainActivity's ConfigurationChanges, so the activity is kept and this runs
+    /// from its OnConfigurationChanged); re-theme when the device's night mode moved. Avalonia's
+    /// ColorValuesChanged is not used: its CONFIGURATION_CHANGED receiver never fired on the
+    /// API 35 emulator (09-23).
+    /// </summary>
+    public void OnConfigurationChanged()
+    {
+        if (SystemVariant() == _appliedSystem) return;   // rotation, font scale, our own night-mode echo
+        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent);
+    }
+
+    /// <summary>
+    /// The device's night mode, from the system resources. Not the activity's configuration
+    /// (nor PlatformSettings, which reads a context): Avalonia's TopLevelImpl.SetFrameThemeVariant
+    /// pushes the app's own theme into the activity with AppCompat SetLocalNightMode, so after
+    /// picking Light on a dark phone the activity reports "not night" and "System" would stay Light.
+    /// </summary>
+    private static PlatformThemeVariant SystemVariant() =>
+        AResources.System?.Configuration is { } config && (config.UiMode & AUiMode.NightMask) == AUiMode.NightNo
+            ? PlatformThemeVariant.Light
+            : PlatformThemeVariant.Dark;
+
+    private static string DescribeVersion(Context context)
+    {
+        try
         {
-            Resources.MergedDictionaries.Remove(_activeThemeOverlay);
-            _activeThemeOverlay = null;
+            var info = context.PackageManager!.GetPackageInfo(context.PackageName!, (PackageInfoFlags)0)!;
+            return $"Noctis {info.VersionName}";
         }
-
-        var file = themeName switch
+        catch (Exception ex)
         {
-            "Dark" => "Dark",
-            "Midnight" => "Midnight",
-            "Ink" => "Ink",
-            "Smoke" => "Smoke",
-            _ => null,
-        };
-        if (file == null) return;
-
-        _activeThemeOverlay = new ResourceInclude(new Uri("avares://Noctis.UI/"))
-        {
-            Source = new Uri($"avares://Noctis.UI/Assets/Themes/{file}.axaml"),
-        };
-        Resources.MergedDictionaries.Add(_activeThemeOverlay);
+            DebugLog.Write("Android", $"Version lookup failed: {ex.Message}");
+            return "Noctis";
+        }
     }
 }

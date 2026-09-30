@@ -81,3 +81,9 @@ dotnet
 
 # Superpowers brainstorm mockups (local visual companion)
 .superpowers/
+
+## Android signing (the upload key lives in %USERPROFILE%\.noctis, never in the repo;
+## these patterns are a second fence in case one is ever copied here)
+*.jks
+*.keystore
+*.p12

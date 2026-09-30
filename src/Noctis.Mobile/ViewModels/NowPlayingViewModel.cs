@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -36,9 +39,15 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private bool _seeking;
     private int _seekIdleTicks;
     private bool _disposed;
+    // The started track whose play is not in the log yet, and the position it started from.
+    // See OnPlayerPosition: a track counts as played once its audio moves past that start.
+    private Track? _unrecordedPlay;
+    private TimeSpan _unrecordedFrom;
+    private readonly IVolumeControl? _volume;
+    private bool _syncingVolume;
 
     public NowPlayingViewModel(IAudioPlayer player, ILibraryService library, IPersistenceService persistence,
-        IPlayHistoryService? history = null, Action<Action>? marshal = null)
+        IPlayHistoryService? history = null, Action<Action>? marshal = null, IVolumeControl? volume = null)
     {
         _player = player;
         _library = library;
@@ -50,6 +59,14 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved += OnPlayerDuration;
         _player.TrackEnded += OnPlayerTrackEnded;
         _player.PlaybackError += OnPlayerError;
+        _library.LibraryUpdated += OnLibraryUpdated;
+
+        _volume = volume;
+        if (_volume != null)
+        {
+            SyncVolume();
+            _volume.Changed += OnVolumeChanged;
+        }
     }
 
     [ObservableProperty]
@@ -59,19 +76,27 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isPlaying;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
     private TimeSpan _position;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
     private TimeSpan _duration;
 
-    [ObservableProperty] private RepeatMode _repeatMode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRepeatOn), nameof(IsRepeatOne))]
+    private RepeatMode _repeatMode;
+
+    public bool IsRepeatOn => RepeatMode != RepeatMode.Off;
+    public bool IsRepeatOne => RepeatMode == RepeatMode.One;
+
     [ObservableProperty] private bool _isShuffleEnabled;
     [ObservableProperty] private string _errorText = string.Empty;
 
-    /// <summary>Mirror of the queue's UpNext for the Queue page.</summary>
-    public ObservableCollection<Track> UpNext { get; } = new();
+    /// <summary>Mirror of the queue's UpNext for the Queue page; rebuilt with one Reset per change.</summary>
+    public BulkObservableCollection<Track> UpNext { get; } = new();
+
+    public bool HasUpNext => UpNext.Count > 0;
 
     public bool HasTrack => CurrentTrack != null;
 
@@ -101,6 +126,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// <summary>0..1 for the seek bar.</summary>
     public double ProgressFraction => Duration > TimeSpan.Zero ? Math.Clamp(Position / Duration, 0, 1) : 0;
 
+    public string ElapsedText => FormatTime(Position);
+
+    /// <summary>The right-hand seek label, counting down as in the mockup ("-2:04").</summary>
+    public string RemainingText => "-" + FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
+
+    /// <summary>mm:ss, or h:mm:ss past an hour (the previous labels' format, so 1:30 still reads "01:30").</summary>
+    public static string FormatTime(TimeSpan time) =>
+        time.TotalHours >= 1
+            ? time.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
+            : time.ToString(@"mm\:ss", CultureInfo.InvariantCulture);
+
+    /// <summary>The device media volume, 0..1 (see IVolumeControl); inert without one.</summary>
+    [ObservableProperty] private double _volumeLevel;
+
+    public bool HasVolumeControl => _volume != null;
+
+    partial void OnVolumeLevelChanged(double value)
+    {
+        if (_syncingVolume || _volume == null) return;
+        _volume.Level = Math.Clamp(value, 0, 1);
+    }
+
+    private void OnVolumeChanged(object? sender, EventArgs e) => _marshal(() =>
+    {
+        if (!_disposed) SyncVolume();
+    });
+
+    private void SyncVolume()
+    {
+        _syncingVolume = true;
+        VolumeLevel = _volume!.Level;
+        _syncingVolume = false;
+    }
+
     public void SetGapless(bool enabled)
     {
         _gapless = enabled;
@@ -120,6 +179,26 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         if (first == null) return;
         // A new queue is a new chance: a stale failure streak from a previous queue must
         // not immediately trip the breaker on this one's very first track.
+        _consecutiveErrors = 0;
+        StartTrack(first, fromPosition: null);
+    }
+
+    /// <summary>
+    /// Shuffle buttons on lists, albums and artists: start on a random track and shuffle the
+    /// rest. The list is rotated so the start is first before <see cref="PlaybackQueue.ReplaceAll"/>
+    /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
+    /// restores is then the list's own order from that track, wrapping round.
+    /// </summary>
+    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null)
+    {
+        if (tracks.Count == 0) return;
+        rng ??= Random.Shared;
+        var start = rng.Next(tracks.Count);
+        var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
+        var first = _queue.ReplaceAll(rotated, 0);
+        _queue.SetShuffle(true, rng);
+        IsShuffleEnabled = true;
+        if (first == null) return;
         _consecutiveErrors = 0;
         StartTrack(first, fromPosition: null);
     }
@@ -252,7 +331,69 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public void PlayNext(Track track) { _queue.AddNext(track); QueueChanged(); }
     public void AddToQueue(Track track) { _queue.Add(track); QueueChanged(); }
     public void RemoveFromQueue(int upNextIndex) { _queue.RemoveAt(upNextIndex); QueueChanged(); }
+
+    /// <summary>
+    /// A signed-out desktop's songs leave the library, but the queue holds Track objects, so
+    /// the mini player kept offering one that could no longer play. Only desktop songs are
+    /// pruned: a local file missing from the library for a moment (mid-rescan) keeps its place.
+    /// </summary>
+    private void OnLibraryUpdated(object? sender, EventArgs e) => _marshal(() =>
+    {
+        if (_disposed) return;
+        static bool Desktop(Track t) => t.SourceType == SourceType.NoctisServer;
+        var queued = _queue.History.Concat(_queue.UpNext).Append(_queue.Current).Where(t => t != null && Desktop(t)).ToList();
+        if (queued.Count == 0) return;
+        Track[] tracks;
+        try { tracks = _library.Tracks.ToArray(); }
+        catch (InvalidOperationException) { return; }   // raced a library write; the next update retries
+        var present = new HashSet<Guid>(tracks.Where(Desktop).Select(t => t.Id));
+        if (queued.All(t => present.Contains(t!.Id))) return;
+        DropTracks(t => Desktop(t) && !present.Contains(t.Id));
+    });
+
+    /// <summary>
+    /// Drops tracks that left the library (a signed-out desktop's songs) from the whole queue;
+    /// when the current track is one of them, playback stops and nothing stays loaded.
+    /// </summary>
+    public void DropTracks(Func<Track, bool> match)
+    {
+        if (!_queue.RemoveWhere(match))
+        {
+            QueueChanged();
+            return;
+        }
+        CurrentTrack = null;
+        StopPlayback();
+    }
     public void MoveInQueue(int fromUpNextIndex, int toUpNextIndex) { _queue.Move(fromUpNextIndex, toUpNextIndex); QueueChanged(); }
+
+    /// <summary>The Queue page's Clear: Up Next empties, the current track keeps playing.</summary>
+    [RelayCommand]
+    private void ClearUpNext()
+    {
+        _queue.Clear();
+        QueueChanged();
+    }
+
+    /// <summary>"Play Next" for several tracks (an album or playlist from the long-press sheet):
+    /// in their order at the front of Up Next, one save. With nothing loaded there is no "next"
+    /// to insert before, so the tracks simply play.</summary>
+    public void PlayNext(IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        for (var i = tracks.Count - 1; i >= 0; i--) _queue.AddNext(tracks[i]);
+        QueueChanged();
+    }
+
+    /// <summary>"Add to Queue" for several tracks; with nothing loaded they simply play.</summary>
+    public void AddToQueue(IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        _queue.AddRange(tracks);
+        QueueChanged();
+    }
 
     private void QueueChanged()
     {
@@ -263,6 +404,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StartTrack(Track track, TimeSpan? fromPosition)
     {
+        // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
+        // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
+        _unrecordedPlay = track;
+        _unrecordedFrom = fromPosition ?? TimeSpan.Zero;
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -270,7 +415,6 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.PendingSeekMs = fromPosition is { } p && p > TimeSpan.Zero ? (long)p.TotalMilliseconds : -1;
         _player.Play(track.FilePath);
         IsPlaying = true;
-        _history?.RecordPlay(track);
         SyncUpNext();
         PrepareUpcoming();
         SaveStateNow();
@@ -303,8 +447,8 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void SyncUpNext()
     {
-        UpNext.Clear();
-        foreach (var t in _queue.UpNext) UpNext.Add(t);
+        UpNext.ReplaceAll(_queue.UpNext);
+        OnPropertyChanged(nameof(HasUpNext));
     }
 
     private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
@@ -325,12 +469,28 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // Only a tick that arrives while actually playing proves the stream is healthy;
         // a timer-driven poll firing while paused/stopped must not clear a live streak.
         if (playing) _consecutiveErrors = 0;
+        // Past the start, not merely Playing: the Android player reports Playing from Play()
+        // on, and a file that never decodes keeps polling at its start position until the error.
+        if (playing && _unrecordedPlay != null && ReferenceEquals(_unrecordedPlay, CurrentTrack) && position > _unrecordedFrom)
+            RecordStartedPlay();
         // Position only: the queue *structure* is written by its own mutators, so rewriting it
         // here would re-serialize and fsync the whole queue every five seconds for a value
         // that did not change. See SavePositionNow.
         if ((DateTime.UtcNow - _lastSaveUtc).TotalSeconds >= SaveIntervalSeconds)
             SavePositionNow();
     });
+
+    /// <summary>Raised once a started track's play is in the log (see <see cref="StartTrack"/>);
+    /// the shell refreshes the Library Shelf and the Home rows from the log on it.</summary>
+    public event EventHandler? PlayRecorded;
+
+    private void RecordStartedPlay()
+    {
+        var track = _unrecordedPlay!;
+        _unrecordedPlay = null;
+        _history?.RecordPlay(track);
+        PlayRecorded?.Invoke(this, EventArgs.Empty);
+    }
 
     private void OnPlayerDuration(object? sender, TimeSpan duration) => _marshal(() =>
     {
@@ -430,5 +590,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.DurationResolved -= OnPlayerDuration;
         _player.TrackEnded -= OnPlayerTrackEnded;
         _player.PlaybackError -= OnPlayerError;
+        _library.LibraryUpdated -= OnLibraryUpdated;
+        if (_volume != null) _volume.Changed -= OnVolumeChanged;
     }
 }

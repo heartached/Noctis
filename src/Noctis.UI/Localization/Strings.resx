@@ -1766,6 +1766,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.OtherAccounts" xml:space="preserve"><value>OTHER ACCOUNTS</value><comment>Account &amp; Sync section title</comment></data>
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Family and guests</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in from their own devices.</value><comment>Other accounts card help</comment></data>
+  <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>On your phone: Settings → Account, enter this address, your account name and password, and check the fingerprint matches.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>SIGNED-IN DEVICES</value><comment>Account card list label</comment></data>
+  <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>No device has signed in yet.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Sync between your devices</value><comment>Sync card title</comment></data>
   <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and playlists stay the same on every signed-in device. The newest change wins.</value><comment>Sync card description</comment></data>

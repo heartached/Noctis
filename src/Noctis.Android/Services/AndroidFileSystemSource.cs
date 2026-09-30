@@ -182,7 +182,7 @@ public sealed class AndroidFileSystemSource : IFileSystemSource
 
                 var docUri = DocumentsContract.BuildDocumentUriUsingTree(treeUri, row.Id)!;
                 var path = docUri.ToString()!;
-                yield return new ScanEntry(path, row.Name, row.Size, modified, LocalPath: null, OpenRead: () => OpenSeekable(docUri));
+                yield return new ScanEntry(path, row.Name, row.Size, modified, LocalPath: null, OpenRead: () => OpenSeekable(_resolver, docUri));
             }
         }
     }
@@ -206,9 +206,9 @@ public sealed class AndroidFileSystemSource : IFileSystemSource
     /// forward-only and TagLib seeks, so the descriptor is detached into a FileStream that
     /// owns and closes it.
     /// </summary>
-    private Stream OpenSeekable(AUri uri)
+    internal static Stream OpenSeekable(ContentResolver resolver, AUri uri)
     {
-        var pfd = _resolver.OpenFileDescriptor(uri, "r") ?? throw new IOException($"Cannot open {uri}");
+        var pfd = resolver.OpenFileDescriptor(uri, "r") ?? throw new IOException($"Cannot open {uri}");
         var fd = pfd.DetachFd();
         pfd.Dispose();
         return new FileStream(new SafeFileHandle((IntPtr)fd, ownsHandle: true), FileAccess.Read, bufferSize: 1 << 16);

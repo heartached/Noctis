@@ -28,6 +28,30 @@ public class LoginThrottleTests
     }
 
     [Fact]
+    public void TryReserve_CountsBeforeVerifying_AndSuccessClears()
+    {
+        var now = new DateTime(2026, 9, 5, 12, 0, 0, DateTimeKind.Utc);
+        var t = new LoginThrottle(() => now);
+
+        // MaxFailures attempts are let through (each already counted); the last one locks.
+        for (var i = 1; i <= LoginThrottle.MaxFailures; i++)
+        {
+            Assert.True(t.TryReserve("c", out _, out var lockedNow));
+            Assert.Equal(i == LoginThrottle.MaxFailures, lockedNow);
+        }
+        Assert.False(t.TryReserve("c", out var retry, out _));
+        Assert.Equal(LoginThrottle.Lockout, retry);
+
+        // The right password on an attempt that was let through wipes the slate.
+        var u = new LoginThrottle(() => now);
+        for (var i = 0; i < LoginThrottle.MaxFailures - 1; i++) Assert.True(u.TryReserve("c", out _, out _));
+        Assert.True(u.TryReserve("c", out _, out _));
+        u.RecordSuccess("c");
+        Assert.True(u.TryReserve("c", out _, out var lockedAgain));
+        Assert.False(lockedAgain);
+    }
+
+    [Fact]
     public void OldFailures_FallOutOfTheWindow()
     {
         var now = new DateTime(2026, 9, 5, 12, 0, 0, DateTimeKind.Utc);

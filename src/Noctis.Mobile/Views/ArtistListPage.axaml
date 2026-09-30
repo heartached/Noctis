@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.ArtistListPage"
+             x:DataType="vm:ArtistListPageViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4" IsVisible="{Binding !IsEmbedded}">
+            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
+                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+            </Button>
+            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Classes="subtle" Text="No artists" HorizontalAlignment="Center"
+                   Margin="0,40,0,0" IsVisible="{Binding !HasArtists}" />
+
+        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl Name="ArtistList" ItemsSource="{Binding Artists}" Margin="12,0,12,16">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArtistListItem">
+                        <Button Classes="row"
+                                Command="{Binding $parent[views:ArtistListPage].((vm:ArtistListPageViewModel)DataContext).OpenCommand}"
+                                CommandParameter="{Binding}">
+                            <Grid ColumnDefinitions="Auto,*" Height="64" Margin="8,0">
+                                <Border Classes="art" Width="48" Height="48" CornerRadius="24">
+                                    <Panel>
+                                        <PathIcon Data="{DynamicResource ArtistsIcon}" Width="20" Height="20" Opacity="0.5" />
+                                        <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                    </Panel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Classes="row-title" Text="{Binding Name}" />
+                                    <TextBlock Classes="row-sub" Text="{Binding Subtitle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,7 +1,9 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using Android.Content.Res;
 using Android.OS;
+using Android.Views;
 using Avalonia.Android;
 using Noctis.Services;
 
@@ -10,19 +12,22 @@ namespace Noctis.Android;
 [Activity(
     Label = "Noctis",
     Theme = "@style/NoctisTheme.NoActionBar",
-    Icon = "@drawable/icon",
+    Icon = "@mipmap/ic_launcher",
+    RoundIcon = "@mipmap/ic_launcher_round",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTask,
-    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
+    ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.UiMode | ConfigChanges.FontScale)]
 public class MainActivity : AvaloniaMainActivity
 {
     private const int PickFolderRequest = 4242;
     private const int PostNotificationsRequest = 4243;
+    private const int CreateDocumentRequest = 4244;
 
     /// <summary>The live activity, for services that need to start system UI (the SAF picker).</summary>
     public static MainActivity? Current { get; private set; }
 
     private TaskCompletionSource<string?>? _pickFolder;
+    private TaskCompletionSource<string?>? _createDocument;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -82,6 +87,38 @@ public class MainActivity : AvaloniaMainActivity
         }
     }
 
+    /// <summary>
+    /// FontScale is in ConfigurationChanges so a system font-size change arrives here instead
+    /// of recreating the activity; the lyrics page resizes from it (Avalonia itself ignores
+    /// the system font scale). UiMode likewise: the dark-mode switch re-themes a "System"
+    /// appearance in place.
+    /// </summary>
+    public override void OnConfigurationChanged(Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+        AndroidApp.Current?.ApplyFontScale(newConfig.FontScale);
+        AndroidApp.Current?.OnConfigurationChanged();
+    }
+
+    /// <summary>
+    /// The hardware volume keys change STREAM_MUSIC without telling the app; after the key is
+    /// handled, have the Now Playing slider re-read it.
+    /// </summary>
+    public override bool DispatchKeyEvent(KeyEvent e)
+    {
+        var handled = base.DispatchKeyEvent(e);
+        if (e.Action == KeyEventActions.Up && e.KeyCode is Keycode.VolumeUp or Keycode.VolumeDown or Keycode.VolumeMute)
+            AndroidApp.Current?.OnVolumeKey();
+        return handled;
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        // Another app, or the notification shade, may have moved the volume while we were away.
+        AndroidApp.Current?.OnVolumeKey();
+    }
+
     protected override void OnPause()
     {
         base.OnPause();
@@ -93,7 +130,7 @@ public class MainActivity : AvaloniaMainActivity
     protected override void OnDestroy()
     {
         // A config change or low-memory kill while the system picker is foreground (our
-        // ConfigurationChanges only covers orientation/screen size/UI mode; a locale or
+        // ConfigurationChanges covers orientation, screen size and layout, UI mode and font scale; a locale or
         // density change still recreates us) recreates the activity before
         // OnActivityResult fires. That callback lands on the new instance, where
         // _pickFolder is null, so the old completion source would otherwise be abandoned
@@ -102,6 +139,10 @@ public class MainActivity : AvaloniaMainActivity
         // Resolving with null here — before Current is cleared — keeps that button usable.
         _pickFolder?.TrySetResult(null);
         _pickFolder = null;
+        // Same for a pending log export: its create-document result would land on the new
+        // instance and leave Settings' ExportLogsCommand running forever.
+        _createDocument?.TrySetResult(null);
+        _createDocument = null;
         BackRequested -= OnBackRequested;
         if (ReferenceEquals(Current, this)) Current = null;
         base.OnDestroy();
@@ -118,9 +159,29 @@ public class MainActivity : AvaloniaMainActivity
         return _pickFolder.Task;
     }
 
+    /// <summary>Shows the system "save as" picker; resolves to the new document's URI or null.</summary>
+    public Task<string?> CreateDocumentAsync(string fileName, string mimeType)
+    {
+        _createDocument?.TrySetResult(null);
+        _createDocument = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var intent = new Intent(Intent.ActionCreateDocument);
+        intent.AddCategory(Intent.CategoryOpenable);
+        intent.SetType(mimeType);
+        intent.PutExtra(Intent.ExtraTitle, fileName);
+        StartActivityForResult(intent, CreateDocumentRequest);
+        return _createDocument.Task;
+    }
+
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
+        if (requestCode == CreateDocumentRequest)
+        {
+            var pendingDocument = _createDocument;
+            _createDocument = null;
+            pendingDocument?.TrySetResult(resultCode == Result.Ok ? data?.Data?.ToString() : null);
+            return;
+        }
         if (requestCode != PickFolderRequest) return;
 
         // Take the field before doing anything else: if the activity was recreated mid-pick,

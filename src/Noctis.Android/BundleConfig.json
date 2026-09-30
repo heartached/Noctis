@@ -1,0 +1,8 @@
+{
+  "optimizations": {
+    "uncompressNativeLibraries": {
+      "enabled": true,
+      "alignment": "PAGE_ALIGNMENT_16K"
+    }
+  }
+}

@@ -19,8 +19,8 @@ internal class TestPersistenceService : IPersistenceService, IDisposable
     public string? LastCorruptFilePath => null;
     public bool SettingsLoadFailed => false;
 
-    public Task<AppSettings> LoadSettingsAsync() => Task.FromResult(new AppSettings());
-    public Task SaveSettingsAsync(AppSettings settings) => Task.CompletedTask;
+    public virtual Task<AppSettings> LoadSettingsAsync() => Task.FromResult(new AppSettings());
+    public virtual Task SaveSettingsAsync(AppSettings settings) => Task.CompletedTask;
     public Task<List<Track>?> LoadLibraryAsync() => Task.FromResult<List<Track>?>(new List<Track>());
     public Task SaveLibraryAsync(List<Track> tracks) => Task.CompletedTask;
     public virtual Task<List<Playlist>> LoadPlaylistsAsync() => Task.FromResult(new List<Playlist>());

@@ -157,11 +157,13 @@ public partial class Track : ObservableObject
 
     /// <summary>
     /// True for tracks whose FilePath is not a local file: media-server streams
-    /// (http(s) URL) and audio-CD tracks (cdda:// MRL). File-only paths — tag writes,
-    /// sidecars, file operations — must no-op for these.
+    /// (http(s) URL), audio-CD tracks (cdda:// MRL) and the phone's desktop songs
+    /// (noctis-remote://). File-only paths — tag writes, sidecars, file operations — must
+    /// no-op for these.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsRemoteStream => SourceType is SourceType.Navidrome or SourceType.Jellyfin or SourceType.Plex or SourceType.AudioCd;
+    public bool IsRemoteStream => SourceType is SourceType.Navidrome or SourceType.Jellyfin or SourceType.Plex or SourceType.AudioCd
+        or SourceType.NoctisServer;
 
     /// <summary>
     /// True when <see cref="FilePath"/> is a real filesystem path rather than a URI.

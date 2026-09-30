@@ -24,6 +24,8 @@ public static class SubsonicResponse
     public const int ErrServerTooOld = 30;
     public const int ErrWrongCredentials = 40;
     public const int ErrTokenAuthNotSupported = 41;
+    /// <summary>OpenSubsonic: the authentication mechanism given is not supported for this call.</summary>
+    public const int ErrAuthMechanismNotSupported = 42;
     public const int ErrNotAuthorized = 50;
     public const int ErrNotFound = 70;
 
