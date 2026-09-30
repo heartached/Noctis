@@ -1,8 +1,8 @@
 {
-  "total": 11607,
+  "total": 11661,
   "byRelease": {
-    "v1.5.7": 280,
-    "lullaby-v1": 0,
+    "v1.5.7": 333,
+    "lullaby-v1": 1,
     "v1.5.6": 267,
     "v1.5.5": 324,
     "v1.5.4": 356,
@@ -86,6 +86,6 @@
     "linuxTar": null,
     "checksums": null
   },
-  "updatedAt": "2026-09-30T22:12:02.381Z",
+  "updatedAt": "2026-09-30T22:31:58.003Z",
   "degraded": false
 }

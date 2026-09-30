@@ -3,7 +3,7 @@
     {
       "tag": "lullaby-v1",
       "version": "lullaby-v1",
-      "name": "Lullaby model (Lyrics Studio)",
+      "name": "Lullaby",
       "publishedAt": "2026-09-30T22:11:46Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/lullaby-v1",
       "prerelease": false,
@@ -2928,6 +2928,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-09-30T22:12:03.524Z",
+  "updatedAt": "2026-09-30T22:31:58.776Z",
   "degraded": false
 }
