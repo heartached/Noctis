@@ -1112,6 +1112,8 @@ public static class LineWindows
 /// </summary>
 public static class TranscriptLines
 {
+    private static readonly char[] TagDelimiters = { '<', '>' };
+
     public static IReadOnlyList<AlignedLine> Group(
         IReadOnlyList<RecognizedWord> words,
         int maxWordsPerLine = 8,
@@ -1136,7 +1138,12 @@ public static class TranscriptLines
             current.Clear();
         }
 
-        foreach (var w in words.Where(w => w is not null && !string.IsNullOrWhiteSpace(w.Text)).OrderBy(w => w.Start))
+        // "<" and ">" delimit ELRC word tags: a heard "<" (benchmark 09-30, one transcript) made the
+        // saved line read back with a word too many. They are no lyric text; words of nothing else are dropped.
+        var clean = words.Where(w => w is not null && w.Text is not null)
+            .Select(w => w.Text.IndexOfAny(TagDelimiters) < 0 ? w : w with { Text = new string(w.Text.Where(c => c is not '<' and not '>').ToArray()) })
+            .Where(w => !string.IsNullOrWhiteSpace(w.Text));
+        foreach (var w in clean.OrderBy(w => w.Start))
         {
             if (current.Count > 0)
             {

@@ -326,6 +326,18 @@ public class LyricsStudioElrcStructureTests
     }
 
     [Fact]
+    public void Group_HeardTagDelimiters_AreNotWrittenAsText()
+    {
+        // A transcript word that is (or holds) "<" or ">" would read back as a broken tag.
+        var heard = new[] { W("one", 1.0), W("two", 1.3), W("<", 1.6), W("x>", 1.9), W("<b", 2.2) };
+
+        var lines = TranscriptLines.Group(heard, totalDuration: S(10));
+
+        Assert.Equal(new[] { "one", "two", "x", "b" }, lines.SelectMany(l => l.Words).Select(w => w.Text).ToArray());
+        AssertStructure(lines, songEnd: S(10));
+    }
+
+    [Fact]
     public void AllPaths_RandomTranscripts_AlwaysSatisfyTheContract()
     {
         var rng = new Random(929);
