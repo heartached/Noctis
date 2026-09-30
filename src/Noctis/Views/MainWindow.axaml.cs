@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -1456,6 +1456,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private void OnWindowDragOver(object? sender, DragEventArgs e)
     {
         MoveDragChip(e);
+        _dragOverTicks++;
 
         // Don't show import overlay for internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
@@ -1464,7 +1465,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         var paths = GetDroppedLocalPaths(e.DataTransfer);
         var hasImportable = paths.Any(IsImportablePath);
         e.DragEffects = hasImportable ? DragDropEffects.Copy : DragDropEffects.None;
-        ShowDragOverlay(hasImportable);
+        ShowDragOverlay(hasImportable, paths);
+        if (hasImportable)
+            TrackDropTarget(e);
         e.Handled = true;
     }
 
@@ -1475,7 +1478,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // only a real exit hides the chip (it comes back on the next DragOver in here).
         if (!new Rect(Bounds.Size).Contains(e.GetPosition(this)))
             SetDragChipShown(false);
+        // A lit sidebar playlist row goes dark only when no DragEnter / DragOver follows (the
+        // drag left the window or was cancelled): clearing it on every crossing blinked it
+        // (see SidebarView.OnPlaylistDragLeave).
+        var ticks = _dragOverTicks;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (ticks == _dragOverTicks) SidebarPane?.EndExternalFileDrop();
+        }, DispatcherPriority.Background);
     }
+
+    /// <summary>Counts DragEnter / DragOver, so a DragLeave can tell a crossing from an exit.</summary>
+    private int _dragOverTicks;
 
     // ── Drag chip (a picture of what is being dragged) ──
 
@@ -1548,7 +1562,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             return;
 
         e.Handled = true;
+        // Where the pointer is now decides the drop (read before the overlay hides).
+        var (zone, playlist) = TrackDropTarget(e);
         ShowDragOverlay(false);
+        SidebarPane?.EndExternalFileDrop();
         if (DataContext is not MainWindowViewModel vm) return;
 
         var paths = GetDroppedLocalPaths(e.DataTransfer);
@@ -1556,12 +1573,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         try
         {
-            // GitHub #71: Settings → Library → "Import dropped files" off plays / queues
-            // the drop from where it is instead of relocating it into Noctis Imports.
-            if (vm.Settings.ImportDroppedMedia)
-                await vm.ImportDroppedMediaAsync(paths);
-            else
-                await vm.QueueExternalMediaAsync(paths);
+            // GitHub #71: "Import dropped files" off never relocates the drop into Noctis
+            // Imports; #108: it goes where the pointer lets go — a sidebar playlist, the
+            // library or a new playlist, all in place — and anywhere else plays / queues.
+            switch (DropOverlay.ActionFor(vm.Settings.ImportDroppedMedia, zone, playlist != null))
+            {
+                case DropAction.AddToPlaylist:
+                    await vm.AddDroppedFilesToPlaylistAsync(playlist!.Value, paths);
+                    break;
+                case DropAction.Import:
+                    await vm.ImportDroppedMediaAsync(paths);
+                    break;
+                case DropAction.AddToLibrary:
+                    await vm.AddDroppedFilesToLibraryAsync(paths);
+                    break;
+                case DropAction.NewPlaylist:
+                    await vm.CreatePlaylistFromDroppedFilesAsync(paths);
+                    break;
+                default:
+                    await vm.QueueExternalMediaAsync(paths);
+                    break;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -1573,46 +1605,54 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
     }
 
-    private enum DropMode { Import, Play, Queue }
-
-    /// <summary>The overlay's import arrow from the XAML, kept so the icon can switch back to it.</summary>
-    private Avalonia.Media.Geometry? _dropImportIconData;
-
-    /// <summary>"Add to queue": three list lines with a plus (GitHub #90).</summary>
-    private static readonly Avalonia.Media.Geometry DropQueueIconData = Avalonia.Media.Geometry.Parse(
-        "M3 5h13v2H3z M3 10h13v2H3z M3 15h8v2H3z M17 12h2v4h4v2h-4v4h-2v-4h-4v-2h4z");
-
-    private void ShowDragOverlay(bool show)
+    /// <summary>
+    /// GitHub #108: lights what a drop right here would hit — a sidebar playlist row, else
+    /// the drop zone under the pointer — and returns it.
+    /// </summary>
+    private (DropZone Zone, Guid? Playlist) TrackDropTarget(DragEventArgs e)
     {
-        var overlay = this.FindControl<Avalonia.Controls.Border>("DragDropOverlay");
-        if (overlay == null) return;
-        // GitHub #86 / #90: with "Import dropped files" off the drop plays / queues in place,
-        // so "Drop files to import" promised something that would not happen. The overlay says
-        // what this drop will do — play (nothing loaded) or add to the queue — with its own icon.
-        if (show && DataContext is MainWindowViewModel vm
-            && this.FindControl<TextBlock>("DragDropOverlayText") is { } text)
+        var playlist = SidebarPane?.TrackExternalFileDrop(v => e.GetPosition(v));
+        var zone = playlist == null ? DragDropOverlay?.ZoneAt(v => e.GetPosition(v)) ?? DropZone.None : DropZone.None;
+        DragDropOverlay?.Highlight(zone);
+        return (zone, playlist);
+    }
+
+    private void ShowDragOverlay(bool show, IReadOnlyList<string>? paths = null)
+    {
+        if (DragDropOverlay is not { } overlay) return;
+        // GitHub #86 / #90: with "Import dropped files" off the drop never imports, so "Drop
+        // files to import" promised something that would not happen. #108: the zones say
+        // what each drop does — play (nothing loaded) or queue, add to the library, or make
+        // a playlist named after the files' folder.
+        if (show && DataContext is MainWindowViewModel vm)
         {
-            var mode = vm.Settings.ImportDroppedMedia ? DropMode.Import
-                : vm.DropStartsPlayback ? DropMode.Play : DropMode.Queue;
-            text.Text = Localization.Loc.T(mode switch
-            {
-                DropMode.Import => "Main.DropFilesImport",
-                DropMode.Play => "Main.DropFilesPlay",
-                _ => "Main.DropFilesQueue",
-            });
-            if (this.FindControl<PathIcon>("DragDropOverlayIcon") is { } icon)
-            {
-                _dropImportIconData ??= icon.Data;
-                icon.Data = mode switch
-                {
-                    DropMode.Import => _dropImportIconData,
-                    DropMode.Play => this.FindResource("PlayIcon") as Avalonia.Media.Geometry ?? _dropImportIconData,
-                    _ => DropQueueIconData,
-                };
-            }
+            if (vm.Settings.ImportDroppedMedia)
+                overlay.ShowImport();
+            else
+                overlay.ShowZones(vm.DropStartsPlayback, DropPlaylistName(paths ?? Array.Empty<string>()),
+                    _rootPanel?.Margin.Left ?? 0);
+        }
+        else if (!show)
+        {
+            overlay.Highlight(DropZone.None);
         }
         overlay.IsVisible = show;
         overlay.Opacity = show ? 1 : 0;
+    }
+
+    // DragOver repeats for as long as the pointer moves; the name only changes with the drop.
+    private string? _dropNameKey;
+    private string _dropName = string.Empty;
+
+    private string DropPlaylistName(IReadOnlyList<string> paths)
+    {
+        var key = paths.Count == 0 ? string.Empty : $"{paths.Count}|{paths[0]}|{paths[^1]}";
+        if (key != _dropNameKey)
+        {
+            _dropNameKey = key;
+            _dropName = DroppedFilesService.PlaylistNameFor(paths, Localization.Loc.T("Main.DropPlaylistFallbackName"));
+        }
+        return _dropName;
     }
 
     private static List<string> GetDroppedLocalPaths(IDataTransfer data)
@@ -2491,6 +2531,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         if (rootPanel != null)
         {
             DragDrop.SetAllowDrop(rootPanel, true);
+            // DragEnter too: crossing into another element raises DragLeave + DragEnter, not
+            // DragOver, and the overlay / lit drop target must survive the crossing.
+            rootPanel.AddHandler(DragDrop.DragEnterEvent, OnWindowDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
             rootPanel.AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
             rootPanel.AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Bubble, handledEventsToo: true);
             rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);

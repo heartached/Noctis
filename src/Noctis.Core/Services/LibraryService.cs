@@ -3056,6 +3056,10 @@ public class LibraryService : ILibraryService
         return new Guid(hash);
     }
 
+    /// <summary>The id a scan or import gives the file at <paramref name="path"/> (normalized
+    /// the way ImportFilesAsync does), so callers can find its library track.</summary>
+    internal static Guid TrackIdForPath(string path) => ComputeFileId(TryNormalizePath(path) ?? path);
+
     /// <summary>
     /// An unchanged WAV that was read before the RIFF INFO fallback (year 0 from an ICRD
     /// like "2019-05-10", or no album from IPRD) is read again instead of taking the

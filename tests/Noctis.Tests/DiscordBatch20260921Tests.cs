@@ -131,7 +131,7 @@ public class DiscordBatch20260921Tests
             File.WriteAllText(Path.Combine(root, "loose.ogg"), "x");
             File.WriteAllText(Path.Combine(root, "notes.txt"), "x");
 
-            var files = MainWindowViewModel.ExpandDroppedAudioFiles(new[]
+            var files = DroppedFilesService.ExpandAudioFiles(new[]
             {
                 Path.Combine(root, "album"),
                 Path.Combine(root, "loose.ogg"),
@@ -171,7 +171,7 @@ public class DiscordBatch20260921Tests
             File.WriteAllText(Path.Combine(root, "Disc 10", "1 - z.mp3"), "x");
             File.WriteAllText(Path.Combine(root, "Disc 2", "1 - y.mp3"), "x");
 
-            var files = MainWindowViewModel.ExpandDroppedAudioFiles(new[] { root });
+            var files = DroppedFilesService.ExpandAudioFiles(new[] { root });
 
             Assert.Equal(new[]
             {
