@@ -86,8 +86,8 @@ public class LyricsStudioModelDownloadTests : IDisposable
         Assert.True(vm.ShowModelDownload);
         Assert.False(vm.ShowModelCancel);
         Assert.False(vm.CanStart);
-        Assert.Equal("Download (1.4 GB)", vm.ModelActionText);
-        Assert.Contains("Whisper Medium", vm.ModelBannerDetail);
+        Assert.Equal("Download (785 MB)", vm.ModelActionText);
+        Assert.Contains("Lullaby", vm.ModelBannerDetail);
     }
 
     [AvaloniaFact]

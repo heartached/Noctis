@@ -179,7 +179,7 @@ public class WhisperDtwTimingTests
     }
 
     [Theory]
-    // One model (09-29): every saved size loads ggml-medium.bin, so every size takes Medium's heads.
+    // One model (09-29/30): every saved size loads lullaby.bin, a Medium underneath, so every size takes Medium's heads.
     [InlineData(WhisperModelSize.Tiny, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Base, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Small, WhisperAlignmentHeadsPreset.Medium)]

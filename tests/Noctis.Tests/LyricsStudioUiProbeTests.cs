@@ -71,7 +71,7 @@ public class LyricsStudioUiProbeTests : IDisposable
         // 2. Downloading, 43% in, a steady 4.4 MB/s over the fake clock.
         {
             var dir = Path.Combine(_root, "dl");
-            var feed = new VirtualServer(WhisperModelManager.Medium.Bytes);
+            var feed = new VirtualServer(WhisperModelManager.Lullaby.Bytes);
             var models = new WhisperModelManager(dir, new HttpClient(feed), Fast);
             Directory.CreateDirectory(models.Directory);
             using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(612L << 20);
@@ -97,7 +97,7 @@ public class LyricsStudioUiProbeTests : IDisposable
         // 2b. The link drops at 900 MB: the card counts down to the retry.
         {
             var dir = Path.Combine(_root, "retry");
-            var feed = new VirtualServer(WhisperModelManager.Medium.Bytes) { DropAt = 900L << 20 };
+            var feed = new VirtualServer(WhisperModelManager.Lullaby.Bytes) { DropAt = 900L << 20 };
             var slowRetry = Fast with { RetryDelay = TimeSpan.FromSeconds(20), MaxRetryDelay = TimeSpan.FromSeconds(20) };
             var models = new WhisperModelManager(dir, new HttpClient(feed), slowRetry);
             Directory.CreateDirectory(models.Directory);
@@ -107,7 +107,7 @@ public class LyricsStudioUiProbeTests : IDisposable
             vm.Clock = () => now;
             vm.AutoTick = false;
             var download = vm.DownloadModelCommand.ExecuteAsync(null);
-            feed.Allow(WhisperModelManager.Medium.Bytes);
+            feed.Allow(WhisperModelManager.Lullaby.Bytes);
             await Until(() => models.CurrentDownload?.Phase == ModelDownloadPhase.Retrying);
             vm.Tick();
             now = TimeSpan.FromSeconds(8);

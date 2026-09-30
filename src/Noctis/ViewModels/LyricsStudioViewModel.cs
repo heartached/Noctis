@@ -454,7 +454,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Medium.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
         catch { /* preferences are a convenience */ }
     }
 
@@ -683,7 +683,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             // Nothing queued: "Re-sync" re-times the song on screen, after a warning.
             if (Selected is not { Status: StudioStatus.Loaded or StudioStatus.Ready } current) return;
-            if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of the speech model.\n\nNothing is written to disk until you press Save lyrics."))
+            if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of Lullaby.\n\nNothing is written to disk until you press Save lyrics."))
                 return;
             Requeue(current);
             items.Add(current);
@@ -698,7 +698,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (!ReviewCanUpgrade || Selected is not { } item) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
+            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
         WordTimings = true;
@@ -774,11 +774,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
         // Session-log breadcrumbs (Settings > Advanced > Copy Logs): a native crash inside the
         // speech model leaves no managed trace, so the run's own steps are the only record.
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunStart",
-            $"songs={total}, model={WhisperModelManager.Medium.FileName}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
+            $"songs={total}, model={WhisperModelManager.Lullaby.FileName}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
         try
         {
             if (!await EnsureModelVerifiedAsync(ct)) return;
-            // Loading ggml-medium.bin takes seconds (6-46 s measured 09-29, a cold disk the slowest).
+            // Loading the speech model takes seconds (6-46 s measured 09-29, a cold disk the slowest).
             // It ran on the UI thread and froze the whole window; now the card says it is loading.
             SetBanner(ModelBannerState.Loading, Loc("LyricsStudio.ModelLoadingTitle"), Loc("LyricsStudio.ModelLoadingBody"), indeterminate: true);
             RunStatusText = Loc("LyricsStudio.ModelLoadingTitle");
@@ -1064,7 +1064,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (Selected is not { } item || IsRunning) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
         item.TranscribeNext = true;
@@ -1127,7 +1127,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download the speech model first.";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
         Requeue(item);

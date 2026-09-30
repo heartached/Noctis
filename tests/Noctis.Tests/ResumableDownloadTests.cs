@@ -162,7 +162,7 @@ public class ResumableDownloadTests : IDisposable
     // ── Callers ──────────────────────────────────────────────────────────────
 
     /// <summary>The Medium entry with this test data's length and checksum (the real file is 1.5 GB).</summary>
-    private static WhisperModelInfo ModelOf(byte[] data) => WhisperModelManager.Medium with
+    private static WhisperModelInfo ModelOf(byte[] data) => WhisperModelManager.Lullaby with
     {
         Bytes = data.Length,
         Sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant(),
@@ -182,7 +182,7 @@ public class ResumableDownloadTests : IDisposable
         Assert.Equal(new long?[] { 200_000 }, server.RangeStarts);
         Assert.Equal(Data, await File.ReadAllBytesAsync(target));
         Assert.False(File.Exists(target + ".part"));
-        Assert.Equal(WhisperModelManager.Medium.Url, server.Urls.Single());
+        Assert.Equal(WhisperModelManager.Lullaby.Url, server.Urls.Single());
         Assert.Equal(WhisperModelState.Ready, manager.State);
     }
 
@@ -277,9 +277,9 @@ public class ResumableDownloadTests : IDisposable
     }
 
     [Fact]
-    public void WhisperModelUrl_MatchesWhisperNetDownloaderLayout()
+    public void WhisperModelUrl_IsTheFixedLullabyRelease()
     {
-        Assert.Equal("https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-medium.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Medium));
+        Assert.Equal("https://github.com/heartached/Noctis/releases/download/lullaby-v1/lullaby.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Medium));
         // Retired sizes are the one model.
         Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Base));
         Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Tiny));

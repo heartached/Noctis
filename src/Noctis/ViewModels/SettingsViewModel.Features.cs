@@ -271,7 +271,7 @@ public partial class SettingsViewModel
     public IReadOnlyList<SpeechLanguageOption> LyricsLanguageOptions => LyricsStudioViewModel.Languages;
 
     /// <summary>The one speech model (09-29); kept so the saved preference is rewritten as Medium.</summary>
-    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Medium;
+    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Lullaby;
     [ObservableProperty] private SpeechLanguageOption _lyricsStudioLanguage = LyricsStudioViewModel.Languages[0];
     [ObservableProperty] private bool _lyricsStudioWordTimings = true;
     [ObservableProperty] private bool _lyricsStudioEmbedTags;

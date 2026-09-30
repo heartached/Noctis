@@ -4,8 +4,9 @@ using Whisper.net.Ggml;
 
 namespace Noctis.Services.LyricsStudio;
 
-/// <summary>Only Medium is offered (owner, 09-29: one model, the strongest). The other names stay
-/// so an old saved preference still parses; every size resolves to <see cref="WhisperModelManager.Medium"/>.</summary>
+/// <summary>One model is offered (owner, 09-29): Lullaby, a Whisper Medium tuned on sung lyrics. The
+/// size names stay so an old saved preference still parses; every size resolves to
+/// <see cref="WhisperModelManager.Lullaby"/>.</summary>
 public enum WhisperModelSize { Tiny, Base, Small, Medium }
 
 /// <summary>
@@ -64,26 +65,34 @@ public sealed class WhisperModelIntegrityException : Exception
 
 /// <summary>
 /// The Whisper (ggml) speech model for Lyrics Studio: where it lives, whether it is installed
-/// and intact, and on-demand, resumable download from Whisper.net's Hugging Face mirror. The
-/// model is big, so nothing is fetched until the user asks. One download runs at a time per
-/// file; a second request joins it.
+/// and intact, and on-demand, resumable download from the Noctis GitHub release. The model is
+/// big, so nothing is fetched until the user asks. One download runs at a time per file; a
+/// second request joins it.
 /// </summary>
 public sealed class WhisperModelManager
 {
     /// <summary>
-    /// The one model. Length and SHA-256 are the Hugging Face LFS values for classic/ggml-medium.bin
-    /// (sandrohanea/whisper.net v4, identical to ggerganov/whisper.cpp's ggml-medium.bin; checked 09-29).
+    /// The one model: Lullaby, OpenAI Whisper Medium fine-tuned on sung lyrics (09-29/30), stored
+    /// q8_0. On 47 held-out songs from artists it never trained on, lines more than 1 s off went
+    /// 407 → 202 and WER 0.344 → 0.307 against stock Medium, at the same speed and about half the
+    /// size (D:\NoctisLyricsLab reports). Same architecture as Medium, so Medium's DTW heads.
+    /// The file is attached once to the fixed "lullaby-v1" release so every app version uses one URL.
     /// </summary>
-    public static readonly WhisperModelInfo Medium = new(
+    public static readonly WhisperModelInfo Lullaby = new(
         WhisperModelSize.Medium,
-        "Medium",
-        "ggml-medium.bin",
-        // The URL Whisper.net 1.9.1's WhisperGgmlDownloader builds for an unquantized model
-        // ("{repo}/v4/classic/{name}.bin"). Fetched directly because that downloader cannot resume.
-        "https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-medium.bin",
-        1_533_763_059L,
-        "6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208",
+        "Lullaby",
+        "lullaby.bin",
+        "https://github.com/heartached/Noctis/releases/download/lullaby-v1/lullaby.bin",
+        823_369_779L,
+        "996c39be3658908ad9cbc3b71a84804afff403ad421260d334915be7c69ca86f",
         WhisperAlignmentHeadsPreset.Medium);
+
+    /// <summary>
+    /// Stock Whisper files earlier versions downloaded into the same folder. Removed once Lullaby is
+    /// installed and checked, so an upgrade does not leave a dead 1.5 GB Medium behind. Never
+    /// before: a failed or cancelled Lullaby download deletes nothing.
+    /// </summary>
+    internal static readonly string[] RetiredFileNames = { "ggml-tiny.bin", "ggml-base.bin", "ggml-small.bin", "ggml-medium.bin" };
 
     /// <summary>Every saved size (Tiny, Base, Small, anything) is the one model.</summary>
     public static WhisperModelSize Normalize(WhisperModelSize size) => WhisperModelSize.Medium;
@@ -111,7 +120,7 @@ public sealed class WhisperModelManager
         _directory = Path.Combine(dataRoot, "models", "whisper");
         _http = http ?? SharedHttp.Value;
         _downloadOptions = downloadOptions;
-        _model = model ?? Medium;
+        _model = model ?? Lullaby;
     }
 
     public string Directory => _directory;
@@ -119,7 +128,7 @@ public sealed class WhisperModelManager
     /// <summary>The model this manager installs and loads.</summary>
     public WhisperModelInfo Model => _model;
 
-    public static WhisperModelInfo Info(WhisperModelSize size) => Medium;
+    public static WhisperModelInfo Info(WhisperModelSize size) => Lullaby;
 
     /// <summary>Any saved name, known or not, resolves to the one model.</summary>
     public static WhisperModelSize Parse(string? name) => WhisperModelSize.Medium;
@@ -184,9 +193,41 @@ public sealed class WhisperModelManager
         WriteMarker(path, hash);
         RaiseStateChanged();
         var ok = State == WhisperModelState.Ready;
-        if (ok) DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelVerified", _model.FileName);
+        if (ok)
+        {
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelVerified", _model.FileName);
+            RemoveRetiredModels();
+        }
         else DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.ModelDamaged", $"{_model.FileName}: sha256 {hash}");
         return ok;
+    }
+
+    /// <summary>
+    /// Deletes <see cref="RetiredFileNames"/> (with their ".part" and ".sha256") from the model
+    /// folder, only while this model is <see cref="WhisperModelState.Ready"/>. Exact names in the
+    /// app's own folder only; a file in use or read-only is skipped and logged.
+    /// </summary>
+    internal void RemoveRetiredModels()
+    {
+        if (State != WhisperModelState.Ready) return;
+        foreach (var name in RetiredFileNames)
+        {
+            if (string.Equals(name, _model.FileName, StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var path in new[] { name, name + ".part", name + ".sha256" }.Select(n => Path.Combine(_directory, n)))
+            {
+                try
+                {
+                    if (!File.Exists(path)) continue;
+                    var bytes = new FileInfo(path).Length;
+                    File.Delete(path);
+                    DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.RetiredModelRemoved", $"{Path.GetFileName(path)} ({bytes} bytes)");
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "Whisper.RetiredModelKept", $"{Path.GetFileName(path)}: {ex.Message}");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -319,6 +360,7 @@ public sealed class WhisperModelManager
         WriteMarker(target, hash);
         Report(new ModelDownloadProgress(ModelDownloadPhase.Done, length, length, 1));
         DebugLogger.Info(DebugLogger.Category.Lyrics, "Whisper.ModelInstalled", $"{_model.FileName} ({length} bytes, checksum ok)");
+        RemoveRetiredModels();
     }
 
     /// <summary>SHA-256 of a file as lowercase hex, read in 1 MB blocks; progress 0–1.</summary>
