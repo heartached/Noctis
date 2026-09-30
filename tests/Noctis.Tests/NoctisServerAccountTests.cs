@@ -231,6 +231,34 @@ public class NoctisServerAccountTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ParkedSignIn_RefusesSignInAndDeviceKeys_ButAccountAuthStillStreams()
+    {
+        // A phone signed in under an earlier build; this build's desktop parks the account features.
+        var deviceKey = await SignInKey();
+        var account = _users.RegenerateApiKey("alice");
+        _http.Dispose();
+        await _server.StopAsync();
+        _server = new NoctisServer(_lib, _users, "test", sync: null) { PrivateClientsOnly = true, DeviceSignInEnabled = false };
+        await _server.StartAsync(0, certificate: null);
+        _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
+
+        var (r, _) = await SignIn(deviceId: "phone-0003");
+        Assert.Equal(0, ErrorCode(r));
+        Assert.Contains("Unknown method", r.GetProperty("error").GetProperty("message").GetString());
+        Assert.Equal(0, ErrorCode(await GetWithHeader("noctisSignOut", deviceKey)));
+        Assert.Equal(40, ErrorCode(await GetWithHeader("getUser", deviceKey)));
+        Assert.Single(_users.Devices()); // nothing issued or revoked
+
+        // Password and account-key clients (v1.5.7 behaviour) are untouched.
+        Assert.Equal("ok", (await GetWithHeader("getUser", account)).GetProperty("status").GetString());
+        var viaPassword = Envelope(await _http.GetStringAsync("rest/getUser.view?f=json&u=alice&p=correct%20horse", TestContext.Current.CancellationToken));
+        Assert.Equal("ok", viaPassword.GetProperty("status").GetString());
+        using var stream = new HttpRequestMessage(HttpMethod.Get, $"rest/stream.view?id=tr-{_track.Id:N}");
+        stream.Headers.Add(NoctisServer.KeyHeader, account);
+        Assert.Equal(HttpStatusCode.OK, (await _http.SendAsync(stream, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
     public async Task DeletingTheUser_OrChangingItsPassword_RevokesItsKeys()
     {
         var key = await SignInKey();

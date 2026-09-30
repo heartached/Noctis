@@ -157,6 +157,17 @@ public sealed partial class NoctisServer : IAsyncDisposable
     /// </summary>
     public bool PrivateClientsOnly { get; set; }
 
+    /// <summary>
+    /// Phone sign-in: <c>noctisSignIn</c> / <c>noctisSignOut</c> and the per-device keys they issue.
+    /// The desktop turns it off while its account features are parked: the two methods answer
+    /// "Unknown method" and a device key left by an earlier build is refused like an unknown key.
+    /// The headless host leaves it on. Set before <see cref="StartAsync"/>.
+    /// </summary>
+    public bool DeviceSignInEnabled { get; set; } = true;
+
+    private static bool IsDeviceSignInMethod(string method)
+        => method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase) || method.Equals("noctisSignOut", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Request header that carries an API key, so stream/cover URLs never contain one. Wins over <c>apiKey=</c>.</summary>
     public const string KeyHeader = "X-Noctis-Key";
 
@@ -187,6 +198,12 @@ public sealed partial class NoctisServer : IAsyncDisposable
         if (method.Equals("noctisSignIn", StringComparison.OrdinalIgnoreCase)) ctx.Response.Headers.CacheControl = "no-store";
         var p = await ReadParamsAsync(ctx).ConfigureAwait(false);
         var format = p.Get("f");
+        // Parked sign-in: refused before auth, so no password is checked for it.
+        if (!DeviceSignInEnabled && IsDeviceSignInMethod(method))
+        {
+            await WriteAsync(ctx, SubsonicResponse.Error(SubsonicResponse.ErrGeneric, $"Unknown method '{method}'", format, _serverVersion), 200).ConfigureAwait(false);
+            return;
+        }
 
         try
         {
@@ -278,6 +295,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 return (null, null, 43, "Multiple conflicting authentication mechanisms provided");
             // Account keys and device keys alike; a revoked or unknown key is 40 (the phone then signs out).
             var byKey = _users.ByApiKey(apiKey, out var device);
+            if (device is not null && !DeviceSignInEnabled) byKey = null; // parked sign-in (see DeviceSignInEnabled)
             return byKey is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Invalid API key") : (byKey, device, 0, "");
         }
         if (u is null) return (null, null, SubsonicResponse.ErrMissingParameter, "Required parameter 'u' is missing");
