@@ -2853,7 +2853,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play",
             $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : IsAudioCdPath(filePath) ? filePath : Path.GetFileName(filePath))}");
-        _keepAlive?.NotifyActivity();
+        var warmUntil = _keepAlive?.WakeForPlayback() ?? 0;
         _currentMediaPath = filePath;
         _currentFallbackPath = fallbackPath;
         // This track supersedes one still opening: abort its header parse so the
@@ -2873,6 +2873,17 @@ public class VlcAudioPlayer : IAudioPlayer
 
             try
             {
+                // First play after the Linux keep-alive parked (GitHub #70): hold the real
+                // stream until the restarted loop has woken the device. Under the lock so
+                // a Stop/Pause queued after this Play still lands after it; a paused open
+                // renders nothing, so it doesn't wait.
+                var holdMs = startPaused ? 0 : VlcSilenceKeepAlive.RemainingWarmUpMs(warmUntil, Environment.TickCount64);
+                if (holdMs > 0)
+                {
+                    DebugLogger.Info(DebugLogger.Category.Playback, "KeepAlive.WarmUpHold", $"holdMs={holdMs}");
+                    Thread.Sleep(holdMs);
+                    if (_disposed) return;
+                }
                 PlayInternal(filePath, startPaused, fallbackPath);
             }
             finally
