@@ -443,8 +443,8 @@
                     <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,8,0,0">
                     <TextBlock FontSize="12" FontWeight="SemiBold" Opacity="0.8">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} tracks · {1} · {2}">
-                                <Binding Path="TrackCount" />
+                            <MultiBinding StringFormat="{}{0} · {1} · {2}">
+                                <Binding Path="TrackCountText" />
                                 <Binding Path="TotalDuration" />
                                 <Binding Path="TotalSize" />
                             </MultiBinding>

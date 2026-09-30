@@ -32,7 +32,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
     [ObservableProperty] private string _name;
-    [ObservableProperty] private int _trackCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrackCountText))]
+    private int _trackCount;
+
+    /// <summary>Header stats: "1 track", "12 tracks" (the header read "1 tracks").</summary>
+    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
     [ObservableProperty] private bool _isSmartPlaylist;
