@@ -136,11 +136,13 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         _isDirty = false;
 
         var settings = await _persistence.LoadSettingsAsync();
-        var roots = settings.MusicFolders;
         // Read before the snapshot: a scan ending in between errs toward "partial", and
         // the authoritative publish that follows refreshes again.
         var partial = _library.IsPublishingPartial;
         var tracks = _library.Tracks.ToList();
+        // Tracks added on their own (GitHub #108) show under their own folder.
+        var roots = FolderTreeBuilder.WithAddedFileFolders(settings.MusicFolders,
+            tracks.Where(t => t.AddedIndividually).Select(t => t.FilePath));
 
         // Capture the selected folder's path before the rebuild swaps in fresh
         // FolderNode instances. Clearing RootNodes drops the TreeView's selection, so
