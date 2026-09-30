@@ -187,6 +187,15 @@ public partial class Track : ObservableObject
     /// <summary>Timestamp of when this track was first discovered by a library scan.</summary>
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// GitHub #108: added to the library on its own from outside every music folder (a drop
+    /// with "Import dropped files" off, a download or conversion saved elsewhere). No folder
+    /// walk reaches the file, so the scan visits it by path. Written to library.json only
+    /// when true, so a library without such tracks reads and writes exactly as before.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AddedIndividually { get; set; }
+
     /// <summary>Transient flag: true when the track was just drag-and-drop imported this session.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsRecentImport { get; set; }
