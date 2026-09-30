@@ -60,8 +60,9 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
     partial void OnStudioChanged(LyricsStudioViewModel? value) => OnPropertyChanged(nameof(ShowEmpty));
     partial void OnCountsChanged(IReadOnlyList<LyricsStudioCount> value) => OnPropertyChanged(nameof(HasCounts));
 
-    /// <summary>True when the open Studio must not be replaced by a rescan.</summary>
-    public bool IsBusy => Studio is { IsRunning: true } or { HasReview: true };
+    /// <summary>True when the open Studio must not be replaced by a rescan: a run, a review on screen,
+    /// or lyrics typed or transcribed into a song's box (a rescan after a save used to drop them).</summary>
+    public bool IsBusy => Studio is { IsRunning: true } or { HasReview: true } or { HasUnsavedLyricsBox: true };
 
     /// <summary>The queue was hand-picked (Choose songs): a visit keeps it until every pick is saved, skipped or failed.</summary>
     private bool _customQueue;

@@ -46,7 +46,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
         new SpeechLanguageOption("hi", "Hindi"),
     };
 
-    public IReadOnlyList<WhisperModelInfo> ModelOptions => WhisperModelManager.Catalog;
     public IReadOnlyList<SpeechLanguageOption> LanguageOptions => Languages;
 
     public ObservableCollection<StudioItem> Queue { get; } = new();
@@ -55,7 +54,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public ObservableCollection<ReviewLine> ReviewLines { get; } = new();
 
     // ── Options ──
-    [ObservableProperty] private WhisperModelInfo _selectedModel;
     [ObservableProperty] private SpeechLanguageOption _selectedLanguage;
     [ObservableProperty] private bool _wordTimings;
     [ObservableProperty] private bool _transcribeOnly;
@@ -68,13 +66,50 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     // ── Model state ──
     [ObservableProperty] private bool _isModelInstalled;
-    [ObservableProperty] private string _modelStatusText = string.Empty;
     [ObservableProperty] private bool _isDownloadingModel;
-    [ObservableProperty] private double _modelProgress;
+
+    /// <summary>What the model banner above the queue says; Hidden once the model is ready.</summary>
+    public enum ModelBannerState { Hidden, NotInstalled, Paused, Connecting, Downloading, Retrying, Verifying, Checking, Loading, Failed, Damaged }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowModelBanner), nameof(ModelBannerIsError), nameof(ShowModelBannerBar), nameof(ShowModelDownload), nameof(ShowModelCancel))]
+    private ModelBannerState _modelBanner;
+    [ObservableProperty] private string _modelBannerTitle = string.Empty;
+    [ObservableProperty] private string _modelBannerDetail = string.Empty;
+    /// <summary>"42%" beside the title while there is a percentage to show.</summary>
+    [ObservableProperty] private string _modelBannerPercent = string.Empty;
+    [ObservableProperty] private double _modelBannerProgress;
+    [ObservableProperty] private bool _modelBannerIndeterminate;
+    /// <summary>The banner's one action: Download (size) / Resume download / Retry / Download again.</summary>
+    [ObservableProperty] private string _modelActionText = string.Empty;
+
+    public bool ShowModelBanner => ModelBanner != ModelBannerState.Hidden;
+    public bool ModelBannerIsError => ModelBanner is ModelBannerState.Failed or ModelBannerState.Damaged;
+    public bool ShowModelBannerBar => ModelBanner is ModelBannerState.Paused or ModelBannerState.Connecting or ModelBannerState.Downloading
+        or ModelBannerState.Retrying or ModelBannerState.Verifying or ModelBannerState.Checking or ModelBannerState.Loading;
+    public bool ShowModelDownload => ModelBanner is ModelBannerState.NotInstalled or ModelBannerState.Paused or ModelBannerState.Failed or ModelBannerState.Damaged;
+    public bool ShowModelCancel => ModelBanner is ModelBannerState.Connecting or ModelBannerState.Downloading or ModelBannerState.Retrying;
+
+    /// <summary>The manager the banner follows (the panel listens to its <see cref="WhisperModelManager.StateChanged"/>).</summary>
+    internal WhisperModelManager Models => _engine.Models;
 
     // ── Run state ──
-    [ObservableProperty] private bool _isRunning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBatchProgress))]
+    private bool _isRunning;
     [ObservableProperty] private string _runStatusText = string.Empty;
+    /// <summary>The whole run, 0–1: songs finished plus the share of the one being worked on.</summary>
+    [ObservableProperty] private double _batchProgress;
+    /// <summary>"Song 2 of 5" while a run is going.</summary>
+    [ObservableProperty] private string _batchText = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBatchProgress))]
+    private int _batchTotal;
+    public bool ShowBatchProgress => IsRunning && BatchTotal > 1;
+    private int _batchDone;
+    private StudioItem? _working;
+    /// <summary>Whisper's pace on the last song of this Studio, seconds per 30 s window: paces the next song's first window.</summary>
+    private double? _secondsPerWindow;
 
     /// <summary>The format picker's second chip: line timings (LRC) = word timings off.</summary>
     public bool LineTimings
@@ -109,7 +144,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
             : common!.Count() == unrun.Count ? $"· all {StudioItem.FormatTag(shared)}"
             : $"· {StudioItem.FormatTag(shared)} unless marked";
     }
-    public bool ShowModelDownload => !IsModelInstalled && !IsDownloadingModel;
 
     // ── Review ──
     public bool HasReview => Selected is { Status: StudioStatus.Ready or StudioStatus.Saved or StudioStatus.Loaded, Result: not null };
@@ -165,6 +199,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public string SummaryText => _savedCount == 0 ? string.Empty : $"{_savedCount} saved";
     /// <summary>Lyrics written this session; the page rescans the library on its next visit when > 0.</summary>
     public int SavedCount => _savedCount;
+    /// <summary>A song's lyrics box holds typed, imported or transcribed lyrics that a new Studio would lose.</summary>
+    public bool HasUnsavedLyricsBox => Queue.Any(i => i.HasUnsavedLyricsBox);
 
     public event EventHandler? Closed;
 
@@ -221,13 +257,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
         var s = settings();
         _loadingPrefs = true;
-        _selectedModel = WhisperModelManager.Info(WhisperModelManager.Parse(s.LyricsStudioModel));
         _selectedLanguage = Languages.FirstOrDefault(l => l.Code.Equals(s.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase)) ?? Languages[0];
         _wordTimings = s.LyricsStudioWordTimings;
         _skipAlreadyTimed = s.LyricsStudioSkipAlreadyTimed;
         _embedTags = s.LyricsStudioEmbedTags;
         _onlineLyrics = s.LyricsStudioOnlineLyrics;
         _loadingPrefs = false;
+        Clock = () => _clock.Elapsed;
 
         var restored = 0;
         // One listing of the drafts folder instead of a file probe per selected track (UI thread).
@@ -278,12 +314,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _drafts.Save(item.Track.Id, LyricsStudioDraft.From(item.Result, lines));
     }
 
-    partial void OnSelectedModelChanged(WhisperModelInfo value)
-    {
-        RefreshModelState();
-        PersistPrefs();
-    }
-
     partial void OnSelectedLanguageChanged(SpeechLanguageOption value) => PersistPrefs();
     partial void OnWordTimingsChanged(bool value)
     {
@@ -303,8 +333,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAlignDraft));
         OnPropertyChanged(nameof(CanTranscribeDraft));
     }
-    partial void OnIsModelInstalledChanged(bool value) { RaiseStartState(); OnPropertyChanged(nameof(ShowModelDownload)); OnPropertyChanged(nameof(CanTranscribeDraft)); }
-    partial void OnIsDownloadingModelChanged(bool value) => OnPropertyChanged(nameof(ShowModelDownload));
+    partial void OnIsModelInstalledChanged(bool value) { RaiseStartState(); OnPropertyChanged(nameof(CanTranscribeDraft)); }
 
     partial void OnSelectedChanging(StudioItem? value)
     {
@@ -396,7 +425,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 var txt = Path.ChangeExtension(item.Track.FilePath, ".txt");
                 if (File.Exists(txt)) text = LyricsStudioEngine.FirstText(File.ReadAllText(txt));
             }
-            if (text is not null) item.DraftText = string.Join('\n', text);
+            if (text is not null) item.DraftText = item.PrefilledText = string.Join('\n', text);
         }
         catch (Exception ex)
         {
@@ -425,38 +454,221 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(SelectedModel.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
         catch { /* preferences are a convenience */ }
     }
 
-    private void RefreshModelState()
+    /// <summary>
+    /// Reads the model's state into the banner. Called at open, when the panel comes on screen and
+    /// whenever the model manager reports a change (a download started or ended in another Studio).
+    /// A download already running (started in the dialog, or by a page Studio since replaced) is
+    /// followed here instead of offering a second one.
+    /// </summary>
+    public void RefreshModelState()
     {
-        IsModelInstalled = _engine.Models.IsInstalled(SelectedModel.Size);
-        ModelStatusText = IsModelInstalled
-            ? $"{SelectedModel.DisplayName} installed"
-            : $"{SelectedModel.DisplayName} not installed · {SelectedModel.SizeText}";
+        IsModelInstalled = _engine.Models.IsInstalled();
+        if (IsDownloadingModel || _checkingModel) return;
+        if (_engine.Models.IsDownloading)
+        {
+            _ = DownloadModel();
+            return;
+        }
+        var model = _engine.Models.Model;
+        var state = _engine.Models.State;
+        if (_downloadFailure is { } failure && state is WhisperModelState.Missing or WhisperModelState.Partial)
+        {
+            // Still not installed: keep saying why the last try failed (a re-attached panel used
+            // to replace it with the plain "Download" card, hiding the error).
+            SetBanner(ModelBannerState.Failed, Loc("LyricsStudio.ModelFailedTitle"), failure,
+                action: Loc(state == WhisperModelState.Partial ? "LyricsStudio.ModelResume" : "LyricsStudio.ModelRetry"));
+            return;
+        }
+        _downloadFailure = null;
+        switch (state)
+        {
+            case WhisperModelState.Ready or WhisperModelState.Unverified:
+                SetBanner(ModelBannerState.Hidden);
+                break;
+            case WhisperModelState.Damaged:
+                SetBanner(ModelBannerState.Damaged, Loc("LyricsStudio.ModelDamagedTitle"), Loc("LyricsStudio.ModelDamagedBody", model.SizeText),
+                    action: Loc("LyricsStudio.ModelDownloadAgain"));
+                break;
+            case WhisperModelState.Partial:
+                var part = _engine.Models.PartialBytes;
+                var fraction = part / (double)Math.Max(1, model.Bytes);
+                SetBanner(ModelBannerState.Paused, Loc("LyricsStudio.ModelPausedTitle"),
+                    Loc("LyricsStudio.ModelPausedBody", ByteText.Format(part, precise: true), ByteText.Format(model.Bytes, precise: true)),
+                    fraction, DownloadMeter.PercentText(fraction), action: Loc("LyricsStudio.ModelResume"));
+                break;
+            default:
+                SetBanner(ModelBannerState.NotInstalled, Loc("LyricsStudio.ModelNeededTitle"), Loc("LyricsStudio.ModelNeededBody", model.SizeText),
+                    action: Loc("LyricsStudio.ModelDownloadSize", model.SizeText));
+                break;
+        }
     }
 
+    private static string Loc(string key) => Localization.Loc.T(key);
+    private static string Loc(string key, params object[] args) => Localization.Loc.T(key, args);
+
+    private void SetBanner(ModelBannerState state, string title = "", string detail = "", double progress = 0, string percent = "",
+        bool indeterminate = false, string action = "")
+    {
+        ModelBanner = state;
+        ModelBannerTitle = title;
+        ModelBannerDetail = detail;
+        ModelBannerProgress = progress;
+        ModelBannerPercent = percent;
+        ModelBannerIndeterminate = indeterminate;
+        ModelActionText = action;
+    }
+
+    private DownloadMeter _downloadMeter = new();
+    /// <summary>Why the last download failed, shown until the next try or until the model is installed.</summary>
+    private string? _downloadFailure;
+
+    /// <summary>
+    /// Downloads the model (or resumes it, or follows the download already running). Progress is
+    /// sampled on the UI tick (~15 Hz) from the manager rather than posted per 64 KB chunk.
+    /// </summary>
     [RelayCommand]
     private async Task DownloadModel()
     {
         if (IsDownloadingModel) return;
         IsDownloadingModel = true;
-        ModelProgress = 0;
-        var model = SelectedModel;
-        ModelStatusText = $"Downloading the {model.DisplayName} model ({model.SizeText})…";
+        _downloadFailure = null;
+        _downloadMeter = new DownloadMeter();
+        SetBanner(ModelBannerState.Connecting, Loc("LyricsStudio.ModelDownloadingTitle"), Loc("LyricsStudio.ModelConnecting"), indeterminate: true);
+        EnsureTicking();
         try
         {
-            await _engine.Models.DownloadAsync(model.Size, new Progress<double>(p => Dispatcher.UIThread.Post(() => ModelProgress = p)), CancellationToken.None);
+            await _engine.Models.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+            IsDownloadingModel = false;
+            RefreshModelState();
+        }
+        catch (OperationCanceledException)
+        {
+            IsDownloadingModel = false;
+            RefreshModelState(); // Paused, with Resume
         }
         catch (Exception ex)
         {
-            ModelStatusText = $"Download failed — {ex.Message}";
             IsDownloadingModel = false;
-            return;
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ModelDownloadFailed", $"{ex.GetType().Name}: {ex.Message}");
+            var reason = ex.Message.TrimEnd('.', ' ');
+            _downloadFailure = ex is WhisperModelIntegrityException ? Loc("LyricsStudio.ModelChecksumFailedBody")
+                : _engine.Models.PartialBytes > 0 ? Loc("LyricsStudio.ModelFailedBody", reason)
+                : reason + ".";
+            RefreshModelState();
         }
-        IsDownloadingModel = false;
+    }
+
+    /// <summary>Stops the download; what arrived is kept and Resume continues from there.</summary>
+    [RelayCommand]
+    private void CancelModelDownload() => _engine.Models.CancelDownload();
+
+    /// <summary>The download on screen, from the manager's latest report.</summary>
+    private void UpdateDownloadBanner(TimeSpan now)
+    {
+        _downloadMeter.Sample(_engine.Models.CurrentDownload, now);
+        var d = _downloadMeter.Read(now);
+        var title = Loc("LyricsStudio.ModelDownloadingTitle");
+        switch (d.Phase)
+        {
+            case ModelDownloadPhase.Connecting:
+                if (d.BytesDone > 0)
+                    SetBanner(ModelBannerState.Connecting, title, Loc("LyricsStudio.ModelResuming", ByteText.Format(d.BytesDone, precise: true)),
+                        d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                else
+                    SetBanner(ModelBannerState.Connecting, title, Loc("LyricsStudio.ModelConnecting"), indeterminate: true);
+                break;
+            case ModelDownloadPhase.Downloading:
+                var parts = new List<string> { Loc("LyricsStudio.ModelBytesOf", ByteText.Format(d.BytesDone, precise: true), ByteText.Format(d.BytesTotal, precise: true)) };
+                if (d.BytesPerSecond is { } speed) parts.Add(DownloadMeter.RateText(speed));
+                if (d.Remaining is { } left) parts.Add(DownloadMeter.RemainingText(left));
+                SetBanner(ModelBannerState.Downloading, title, string.Join(" · ", parts), d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                break;
+            case ModelDownloadPhase.Retrying:
+                SetBanner(ModelBannerState.Retrying, title,
+                    d.RetryIn > TimeSpan.Zero
+                        ? Loc("LyricsStudio.ModelRetrying", (int)Math.Ceiling(d.RetryIn.TotalSeconds), d.Attempt)
+                        : Loc("LyricsStudio.ModelReconnecting", d.Attempt),
+                    d.Fraction, DownloadMeter.PercentText(d.Fraction));
+                break;
+            default: // Verifying, Done
+                SetBanner(ModelBannerState.Verifying, Loc("LyricsStudio.ModelVerifyingTitle"), Loc("LyricsStudio.ModelVerifyingBody"),
+                    1, DownloadMeter.PercentText(d.VerifyFraction));
+                break;
+        }
+    }
+
+    private bool _checkingModel;
+    private double _checkFraction;
+
+    /// <summary>
+    /// A model installed before checksums existed is checked once before its first run (~1.5 GB
+    /// read, a few seconds). False when it failed: the banner then asks for a fresh download.
+    /// </summary>
+    private async Task<bool> EnsureModelVerifiedAsync(CancellationToken ct)
+    {
+        if (_engine.Models.State != WhisperModelState.Unverified) return true;
+        _checkingModel = true;
+        _checkFraction = 0;
+        SetBanner(ModelBannerState.Checking, Loc("LyricsStudio.ModelCheckingTitle"), Loc("LyricsStudio.ModelCheckingBody"), percent: DownloadMeter.PercentText(0));
+        RunStatusText = Loc("LyricsStudio.ModelCheckingTitle");
+        EnsureTicking();
+        bool ok;
+        try { ok = await _engine.Models.VerifyAsync(new InlineProgress<double>(f => Volatile.Write(ref _checkFraction, f)), ct); }
+        catch (OperationCanceledException) { ok = false; }
+        finally { _checkingModel = false; }
         RefreshModelState();
+        if (!ok) RunStatusText = ct.IsCancellationRequested ? "Stopped." : Loc("LyricsStudio.ModelDamagedTitle");
+        return ok;
+    }
+
+    // ── UI tick: throttled progress (~15 Hz) while something is running ──
+
+    private DispatcherTimer? _tick;
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    /// <summary>Time source for the progress meters (tests replace it).</summary>
+    internal Func<TimeSpan> Clock { get; set; }
+
+    /// <summary>False in tests that call <see cref="Tick"/> themselves.</summary>
+    internal bool AutoTick { get; set; } = true;
+
+    private void EnsureTicking()
+    {
+        if (!AutoTick) return;
+        if (_tick is null)
+        {
+            _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(66) };
+            _tick.Tick += (_, _) => Tick();
+        }
+        if (!_tick.IsEnabled) _tick.Start();
+    }
+
+    /// <summary>
+    /// One progress refresh: the download banner, the model check and the songs being run. Only
+    /// here do the bound values change, so bars and labels update at most ~15 times a second
+    /// whatever rate the work reports at. Stops itself when nothing is running. Internal for tests.
+    /// </summary>
+    internal void Tick()
+    {
+        var now = Clock();
+        if (IsDownloadingModel) UpdateDownloadBanner(now);
+        if (_checkingModel)
+        {
+            var f = Volatile.Read(ref _checkFraction);
+            ModelBannerProgress = f;
+            ModelBannerPercent = DownloadMeter.PercentText(f);
+        }
+        // Late reports are harmless: only the song still marked Working is shown.
+        if (_working is { Status: StudioStatus.Working, Meter: { } meter } item)
+        {
+            var (stage, overall) = meter.Read(now);
+            item.ShowStage(stage, overall);
+            BatchProgress = Math.Max(BatchProgress, (_batchDone + overall) / Math.Max(1, BatchTotal));
+        }
+        if (!IsDownloadingModel && !_checkingModel && !IsRunning) _tick?.Stop();
     }
 
     [RelayCommand]
@@ -471,7 +683,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             // Nothing queued: "Re-sync" re-times the song on screen, after a warning.
             if (Selected is not { Status: StudioStatus.Loaded or StudioStatus.Ready } current) return;
-            if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of the speech model.\n\nNothing is written to disk until you press Save lyrics."))
+            if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of Lullaby.\n\nNothing is written to disk until you press Save lyrics."))
                 return;
             Requeue(current);
             items.Add(current);
@@ -486,7 +698,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (!ReviewCanUpgrade || Selected is not { } item) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first.";
+            RunStatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
         WordTimings = true;
@@ -506,12 +718,47 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     private void Requeue(StudioItem item)
     {
+        // The review goes away while the song re-runs; keep it (as on screen, edits included) so
+        // a Stop, a failure or a run that cannot start puts it back instead of an empty song.
+        if (item.Result is { } result)
+        {
+            var onScreen = ReferenceEquals(Selected, item) && ReviewLines.Count > 0;
+            var shown = onScreen ? result with { Lines = ReviewLines.Select(l => l.ToAlignedLine()).Where(l => l.Text.Length > 0).ToList() } : result;
+            item.BeforeRerun = new StudioItem.Kept(shown, item.Status, item.StatusText, onScreen && _reviewDirty);
+        }
         item.ForceRun = true;
         item.Status = StudioStatus.Waiting;
         item.Result = null;
         if (ReferenceEquals(Selected, item)) ReviewLines.Clear();
         RaiseReviewChanged();
     }
+
+    /// <summary>A re-run that was stopped, failed or never started: the song gets its review back.</summary>
+    private void RestoreBeforeRerun(StudioItem item, string? statusText)
+    {
+        if (item.BeforeRerun is not { } kept) return;
+        item.BeforeRerun = null;
+        item.ForceRun = false;
+        item.TranscribeNext = false;
+        item.SourceOverride = null;
+        item.Result = kept.Result;
+        item.Status = kept.Status;
+        item.StatusText = statusText ?? kept.StatusText;
+        if (ReferenceEquals(Selected, item))
+        {
+            OnSelectedChanged(item);
+            _reviewDirty = kept.Dirty;
+        }
+        RaiseStartState();
+    }
+
+    /// <summary>
+    /// The song on screen is being worked on — a result under review, or the song's own lyrics
+    /// being edited or tapped — so a song that finishes waits in the list instead of taking the
+    /// pane (it used to take it from an edited or tapped .lrc, ending tap mode mid-line).
+    /// </summary>
+    private bool KeepsSelection => Selected is { Status: StudioStatus.Ready }
+        || Selected is { Status: StudioStatus.Loaded } && (_reviewDirty || IsTapping);
 
     private async Task RunAsync(List<StudioItem> items)
     {
@@ -520,16 +767,31 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var ct = _runCts.Token;
         var done = 0;
         var total = items.Count;
+        BatchTotal = total;
+        BatchProgress = 0;
+        _batchDone = 0;
+        EnsureTicking();
         // Session-log breadcrumbs (Settings > Advanced > Copy Logs): a native crash inside the
         // speech model leaves no managed trace, so the run's own steps are the only record.
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunStart",
-            $"songs={total}, model={SelectedModel.Size}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
+            $"songs={total}, model={WhisperModelManager.Lullaby.FileName}, language={SelectedLanguage.Code}, wordTimings={WordTimings}, transcribeOnly={TranscribeOnly}, online={OnlineLyrics}, skipDone={SkipAlreadyTimed}");
         try
         {
-            using var session = _engine.OpenSession(SelectedModel.Size);
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", SelectedModel.Size.ToString());
+            if (!await EnsureModelVerifiedAsync(ct)) return;
+            // Loading the speech model takes seconds (6-46 s measured 09-29, a cold disk the slowest).
+            // It ran on the UI thread and froze the whole window; now the card says it is loading.
+            SetBanner(ModelBannerState.Loading, Loc("LyricsStudio.ModelLoadingTitle"), Loc("LyricsStudio.ModelLoadingBody"), indeterminate: true);
+            RunStatusText = Loc("LyricsStudio.ModelLoadingTitle");
+            IDisposable opened;
+            try { opened = await Task.Run(() => _engine.OpenSession(WhisperModelSize.Medium)); }
+            finally { RefreshModelState(); }
+            using var session = opened;
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.SessionOpen", _engine.Models.Model.FileName);
             foreach (var item in items)
             {
+                _batchDone = done;
+                BatchProgress = Math.Max(BatchProgress, done / (double)Math.Max(1, total));
+                _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
                 if (ct.IsCancellationRequested) break;
                 if (item.Status != StudioStatus.Waiting) continue;
                 var forced = item.ForceRun;
@@ -547,7 +809,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 // time, and the engine only looks online when the song has nothing at all. A song
                 // with no lyrics anywhere stops at "Needs lyrics" rather than being guessed by ear.
                 // Loaded line-level lyrics keep their line starts as anchors: words are placed inside each line's own window.
-                var options = new LyricsStudioOptions(SelectedModel.Size, SelectedLanguage.Code, AllowOnlineLyrics: OnlineLyrics, ForceTranscription: transcribe,
+                var options = new LyricsStudioOptions(WhisperModelSize.Medium, SelectedLanguage.Code, AllowOnlineLyrics: OnlineLyrics, ForceTranscription: transcribe,
                     SourceLines: transcribe ? null : pasted ?? item.Existing?.Lines.Select(l => l.Text).ToList(),
                     SourceLineStarts: transcribe || pasted is not null ? null : item.Existing?.Lines.Select(l => l.Start).ToList(),
                     AllowTranscription: false);
@@ -559,19 +821,19 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     done++;
                     continue;
                 }
+                var meter = new SongProgressMeter(item.Track.Duration, Clock(), _secondsPerWindow);
+                item.BeginRun(meter, transcribe, WordTimings);
                 item.Status = StudioStatus.Working;
-                item.StatusText = "Starting…";
+                _working = item;
+                BatchText = Loc("LyricsStudio.BatchProgress", done + 1, total);
                 RunStatusText = $"Working on {item.Title} ({done + 1} of {total})";
                 DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemStart",
                     $"{item.Title} ({done + 1}/{total}) | existing={item.ExistingFormat}, sourceLines={(options.SourceLines?.Count.ToString() ?? "none")}");
-                var progress = new Progress<LyricsStudioProgress>(p => Dispatcher.UIThread.Post(() =>
-                {
-                    // Reports are posted, so the last ones land after the run has already set the
-                    // outcome; they must not turn "No lyrics found" back into "Finding lyrics".
-                    if (item.Status != StudioStatus.Working) return;
-                    item.Progress = p.Fraction;
-                    item.StatusText = p.Stage;
-                }));
+                // Reports only feed the song's meter (any thread, any rate); the UI tick shows it at
+                // ~15 Hz. The old per-report post let late reports land after the outcome, and
+                // Progress<T> could deliver them out of order, walking the bar backwards.
+                var clock = Clock;
+                var progress = new InlineProgress<LyricsStudioProgress>(p => meter.Report(p.Stage, p.StageFraction, clock()));
                 try
                 {
                     var result = await Task.Run(() => _engine.ProcessAsync(item.Track, options, progress, ct), ct);
@@ -580,6 +842,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         // Experimental: the transcript goes into the lyrics box to be corrected;
                         // Align then re-times the corrected words against what was heard.
                         item.HeardWords = result.Heard;
+                        // The transcript replaces any review the song had: its draft goes now, not
+                        // when the transcription was asked for (a Stop kept the review, not its draft).
+                        _drafts?.Delete(item.Track.Id);
                         item.DraftText = string.Join('\n', result.Lines.Select(l => l.Text));
                         item.IsTranscriptDraft = true;
                         item.Result = null;
@@ -587,7 +852,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         item.StatusText = "Transcript · fix the words, then Align";
                         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemTranscribed",
                             $"{item.Title} | lines={result.Lines.Count}, heard={result.HeardWords}");
-                        if (Selected is null || Selected.Status is not StudioStatus.Ready)
+                        item.BeforeRerun = null;
+                        if (!ReferenceEquals(Selected, item) && !KeepsSelection)
                             Selected = item;
                         done++;
                         continue;
@@ -599,10 +865,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
                     item.StatusText = result.Source == LyricsStudioSource.Transcription ? "Transcribed · review" : $"{Math.Round(result.Confidence * 100)}% matched · review";
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemReady",
                         $"{item.Title} | source={result.Source}, lines={result.Lines.Count}, confidence={result.Confidence:0.00}, heard={result.HeardWords}");
-                    if (Selected is null || Selected.Status is not (StudioStatus.Ready))
-                        Selected = item;
-                    else if (ReferenceEquals(Selected, item))
+                    item.BeforeRerun = null;
+                    if (ReferenceEquals(Selected, item))
                         OnSelectedChanged(item);
+                    else if (!KeepsSelection)
+                        Selected = item;
                 }
                 catch (LyricsStudioNeedsLyricsException)
                 {
@@ -614,8 +881,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 {
                     item.Status = StudioStatus.Waiting;
                     item.StatusText = "Stopped";
+                    RestoreBeforeRerun(item, Loc("LyricsStudio.RerunStopped"));
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.ItemStopped", item.Title);
                     break;
+                }
+                catch (Exception ex) when (item.BeforeRerun is not null)
+                {
+                    RestoreBeforeRerun(item, ex.Message);
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.ItemFailed", $"{item.Title} (re-run, review kept) | {ex.GetType().Name}: {ex.Message}");
                 }
                 catch (Exception ex)
                 {
@@ -625,6 +898,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 }
                 done++;
             }
+            _secondsPerWindow = _working?.Meter?.SecondsPerWindow ?? _secondsPerWindow;
+            _working = null;
             var needLyrics = Queue.Count(i => i.Status == StudioStatus.NeedsLyrics);
             RunStatusText = ct.IsCancellationRequested ? "Stopped."
                 : $"Finished · {Queue.Count(i => i.Status == StudioStatus.Ready)} ready for review" + (needLyrics > 0 ? $" · {needLyrics} need lyrics" : string.Empty);
@@ -639,6 +914,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         finally
         {
+            _working = null;
+            // Songs the run never reached (stopped first, or it could not start) keep their review.
+            foreach (var item in items.Where(i => i.Status == StudioStatus.Waiting))
+                RestoreBeforeRerun(item, null);
             IsRunning = false;
             RaiseStartState();
             DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.RunEnd", "session disposed");
@@ -674,6 +953,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
             var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true));
+            // What was written, edits included: reopening the saved song showed the result from
+            // before the edits (drafts stop at Save, so nothing else carried them).
+            item.Result = item.Result! with { Lines = lines };
             item.Status = StudioStatus.Saved;
             _drafts?.Delete(item.Track.Id);
             item.Existing = null;
@@ -782,10 +1064,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (Selected is not { } item || IsRunning) return;
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first (Settings).";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
-        _drafts?.Delete(item.Track.Id);
         item.TranscribeNext = true;
         Requeue(item);
         item.StatusText = "Queued for transcription";
@@ -846,7 +1127,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         if (!IsModelInstalled || !HasFfmpeg)
         {
-            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : $"Download the {SelectedModel.DisplayName} model first (Settings).";
+            item.StatusText = !HasFfmpeg ? "ffmpeg is needed to decode songs — set its path under Settings → Advanced → Helper programs." : "Download Lullaby first.";
             return;
         }
         Requeue(item);
@@ -1031,6 +1312,14 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// <see cref="NeedsLyrics"/> = no lyrics found, or a transcript waiting to be corrected: the lyrics box is shown.</summary>
     public enum StudioStatus { Waiting, Working, Ready, Saved, Skipped, Failed, Loaded, NeedsLyrics }
 
+    /// <summary>One step of a song's run in the review pane's step row.</summary>
+    public sealed partial class StudioStageStep(string label) : ObservableObject
+    {
+        [ObservableProperty] private string _label = label;
+        [ObservableProperty] private bool _isActive;
+        [ObservableProperty] private bool _isDone;
+    }
+
     public sealed partial class StudioItem : ObservableObject
     {
         public StudioItem(Track track)
@@ -1086,6 +1375,16 @@ public partial class LyricsStudioViewModel : ViewModelBase
         public List<string>? SourceOverride { get; set; }
         /// <summary>The next run transcribes this song (experimental), whatever the Studio's option says.</summary>
         public bool TranscribeNext { get; set; }
+        /// <summary>What the lyrics box was filled with from the song itself (not the user's work).</summary>
+        internal string? PrefilledText { get; set; }
+
+        /// <summary>
+        /// The lyrics box holds work that lives nowhere else: text typed, pasted or imported, or a
+        /// transcript (minutes of model time). Drafts only keep finished reviews.
+        /// </summary>
+        public bool HasUnsavedLyricsBox => Status is StudioStatus.Waiting or StudioStatus.NeedsLyrics or StudioStatus.Failed
+            && (IsTranscriptDraft || HeardWords is { Count: > 0 }
+                || !string.IsNullOrWhiteSpace(DraftText) && DraftText != PrefilledText);
 
         public void RefreshExistingFormat()
         {
@@ -1097,6 +1396,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
         /// <summary>Set by Re-sync / Upgrade so the "skip songs that already have this format" rule does not apply.</summary>
         public bool ForceRun { get; set; }
+
+        /// <summary>The review a re-run replaces, as it was on screen: restored if the re-run does not finish.</summary>
+        internal Kept? BeforeRerun { get; set; }
+        internal sealed record Kept(LyricsStudioResult Result, StudioStatus Status, string StatusText, bool Dirty);
         public string Title => Track.Title;
         public string Subtitle => Track.ArtistDisplay;
 
@@ -1112,7 +1415,65 @@ public partial class LyricsStudioViewModel : ViewModelBase
         [NotifyPropertyChangedFor(nameof(HasStatusText))]
         private string _statusText = string.Empty;
         [ObservableProperty] private double _progress;
+        /// <summary>"42%" while the song is worked on.</summary>
+        [ObservableProperty] private string _progressText = string.Empty;
+        /// <summary>What the run is doing now, in words ("Listening to the vocals…"), for the review pane.</summary>
+        [ObservableProperty] private string _stageText = string.Empty;
         [ObservableProperty] private LyricsStudioResult? _result;
+
+        /// <summary>The three steps the review pane shows while the song runs: decode, listen, time.</summary>
+        public IReadOnlyList<StudioStageStep> Steps { get; } = new[]
+        {
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepDecode")),
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepListen")),
+            new StudioStageStep(Localization.Loc.T("LyricsStudio.StepTime")),
+        };
+
+        /// <summary>The run's progress for this song (set while it is worked on).</summary>
+        internal SongProgressMeter? Meter { get; private set; }
+        private bool _transcribing;
+        private bool _wordTimings;
+
+        /// <summary>A run starts on this song: fresh meter, steps and labels.</summary>
+        internal void BeginRun(SongProgressMeter meter, bool transcribing, bool wordTimings)
+        {
+            Meter = meter;
+            _transcribing = transcribing;
+            _wordTimings = wordTimings;
+            Steps[1].Label = Localization.Loc.T(transcribing ? "LyricsStudio.StepTranscribe" : "LyricsStudio.StepListen");
+            Progress = 0;
+            ShowStage(LyricsStudioStage.FindingLyrics, 0);
+        }
+
+        /// <summary>Shows a step and the song's progress (called on the Studio's UI tick).</summary>
+        internal void ShowStage(LyricsStudioStage stage, double overall)
+        {
+            Progress = overall;
+            ProgressText = DownloadMeter.PercentText(overall);
+            var (longKey, shortKey) = stage switch
+            {
+                LyricsStudioStage.FindingLyrics => ("LyricsStudio.StageFindingLyrics", "LyricsStudio.StageShortFinding"),
+                LyricsStudioStage.Decoding => ("LyricsStudio.StageDecoding", "LyricsStudio.StageShortDecoding"),
+                LyricsStudioStage.Listening => _transcribing
+                    ? ("LyricsStudio.StageTranscribing", "LyricsStudio.StageShortTranscribing")
+                    : ("LyricsStudio.StageListening", "LyricsStudio.StageShortListening"),
+                _ => (_wordTimings ? "LyricsStudio.StageTimingWords" : "LyricsStudio.StageTimingLines", "LyricsStudio.StageShortTiming"),
+            };
+            StageText = Localization.Loc.T(longKey);
+            StatusText = Localization.Loc.T("LyricsStudio.StagePercent", Localization.Loc.T(shortKey), ProgressText);
+            var current = stage switch
+            {
+                LyricsStudioStage.FindingLyrics or LyricsStudioStage.Decoding => 0,
+                LyricsStudioStage.Listening => 1,
+                LyricsStudioStage.Aligning => 2,
+                _ => 3,
+            };
+            for (var i = 0; i < Steps.Count; i++)
+            {
+                Steps[i].IsDone = i < current;
+                Steps[i].IsActive = i == current;
+            }
+        }
 
         public bool IsWorking => Status == StudioStatus.Working;
         public bool IsReady => Status == StudioStatus.Ready;

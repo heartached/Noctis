@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:helpers="using:Noctis.Helpers"
+             xmlns:controls="using:Noctis.Controls"
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:views="using:Noctis.Views"
-             xmlns:studio="using:Noctis.Services.LyricsStudio"
              x:Class="Noctis.Views.LyricsStudioPanel"
              x:DataType="vm:LyricsStudioViewModel">
 
@@ -62,6 +62,52 @@
                 <Setter Property="Margin" Value="0,8,0,0" />
             </Style>
         </ContainerQuery>
+        <Style Selector="Border.model-banner">
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Background" Value="#12FFFFFF" />
+            <Setter Property="BorderBrush" Value="#1FFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.model-banner.error">
+            <Setter Property="Background" Value="#26FF6B6B" />
+            <Setter Property="BorderBrush" Value="#40FF6B6B" />
+        </Style>
+        <!-- Step pills while a song runs: quiet when waiting, the accent rim on the current one,
+             an accent check on the ones behind it. -->
+        <Style Selector="Border.stage-step">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="#10FFFFFF" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <Style Selector="Border.stage-step TextBlock.stage-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="Border.stage-step Ellipse.stage-dot">
+            <Setter Property="Width" Value="7" />
+            <Setter Property="Height" Value="7" />
+            <Setter Property="Fill" Value="#55FFFFFF" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.stage-step.active">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Background" Value="#18FFFFFF" />
+        </Style>
+        <Style Selector="Border.stage-step.active TextBlock.stage-label">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Border.stage-step.active Ellipse.stage-dot">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.stage-step.done TextBlock.stage-label">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
         <Style Selector="Border.review-line">
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="CornerRadius" Value="8" />
@@ -310,12 +356,43 @@
         </Grid>
 
         <!-- Toolbar, above the editor it drives (was a footer under the queue, 09-23): the format
-             to write, the Settings popover (model, language, run options), then Download / Start /
-             Stop. The format is chosen here before a run, not buried in the options. -->
+             to write, the Settings popover (language, run options), then Start / Stop; the speech
+             model card sits above it until the model is ready. The format is chosen here before a
+             run, not buried in the options. -->
         <StackPanel DockPanel.Dock="Top" Margin="24,0,24,12" Spacing="10">
             <!-- ffmpeg missing -->
             <Border CornerRadius="10" Padding="12,8" Background="#26FF6B6B" IsVisible="{Binding !HasFfmpeg}">
                 <TextBlock Text="{loc:T LyricsStudio.NeedsFfmpeg}" FontSize="12" TextWrapping="Wrap" />
+            </Border>
+            <!-- Speech model (09-29): one model, so one card that says what is needed and does it —
+                 Download (size), then bytes, speed and time left on a gliding bar, retries and the
+                 checksum pass, and a clear failure with Retry. Hidden once the model is ready.
+                 The percent and bar sit in fixed boxes so a changing number never moves the row. -->
+            <Border Classes="model-banner" Classes.error="{Binding ModelBannerIsError}" IsVisible="{Binding ShowModelBanner}">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16">
+                    <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ModelBannerTitle}" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ModelBannerDetail}" FontSize="12" Opacity="0.65" TextWrapping="Wrap" FontFeatures="+tnum" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ModelBannerPercent}" Width="44" TextAlignment="Right" FontSize="15" FontWeight="SemiBold"
+                                   FontFeatures="+tnum" VerticalAlignment="Center"
+                                   IsVisible="{Binding ModelBannerPercent, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Button Command="{Binding CancelModelDownloadCommand}" IsVisible="{Binding ShowModelCancel}"
+                                Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.ModelCancelTip}">
+                            <TextBlock Text="{loc:T LyricsStudio.ModelCancel}" />
+                        </Button>
+                        <Button Command="{Binding DownloadModelCommand}" IsVisible="{Binding ShowModelDownload}"
+                                Classes="studio-btn accent-btn"
+                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                            <TextBlock Text="{Binding ModelActionText}" />
+                        </Button>
+                    </StackPanel>
+                    <controls:SmoothProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="6" Margin="0,12,0,2"
+                                                Value="{Binding ModelBannerProgress}" IsIndeterminate="{Binding ModelBannerIndeterminate}"
+                                                IsVisible="{Binding ShowModelBannerBar}"
+                                                FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1FFFFFFF" />
+                </Grid>
             </Border>
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                 <TextBlock Grid.Column="0" Text="{loc:T LyricsStudio.Format}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
@@ -325,7 +402,7 @@
                     <ToggleButton Classes="format-chip" Content="{loc:T LyricsStudioPicker.LineTimings}"
                                   IsChecked="{Binding LineTimings}" IsEnabled="{Binding !IsRunning}" />
                 </StackPanel>
-                <!-- Settings: the model, language and run options behind one popover (09-23). -->
+                <!-- Settings: the language and run options behind one popover (09-23). -->
                 <Button Grid.Column="2" Classes="studio-btn studio-options" Margin="8,0,0,0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="{loc:T LyricsStudio.Settings}" VerticalAlignment="Center" />
@@ -340,33 +417,6 @@
                                     BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}" BorderThickness="1"
                                     BoxShadow="0 10 30 0 #90000000">
                                 <StackPanel Spacing="12">
-                                    <!-- Model status ("Medium installed", download progress) sits on the label. -->
-                                    <StackPanel Spacing="4">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{loc:T LyricsStudio.Model}" FontSize="11" Opacity="0.55" />
-                                            <TextBlock Text="·" FontSize="11" Opacity="0.55" />
-                                            <TextBlock Text="{Binding ModelStatusText}" FontSize="11" Opacity="0.55"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="230" ToolTip.Tip="{Binding ModelStatusText}" />
-                                            <ProgressBar Value="{Binding ModelProgress}" Minimum="0" Maximum="1" Width="48" Height="3" CornerRadius="2"
-                                                         VerticalAlignment="Center" IsVisible="{Binding IsDownloadingModel}" />
-                                        </StackPanel>
-                                        <ComboBox Classes="pill" HorizontalAlignment="Stretch"
-                                                      ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" IsEnabled="{Binding !IsRunning}">
-                                                <ComboBox.SelectionBoxItemTemplate>
-                                                    <DataTemplate x:DataType="studio:WhisperModelInfo">
-                                                        <TextBlock Text="{Binding DisplayName}" />
-                                                    </DataTemplate>
-                                                </ComboBox.SelectionBoxItemTemplate>
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="studio:WhisperModelInfo">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <TextBlock Text="{Binding DisplayName}" />
-                                                            <TextBlock Text="{Binding SizeText}" Opacity="0.5" FontSize="11" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                    </StackPanel>
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{loc:T LyricsStudio.Language}" FontSize="11" Opacity="0.55" />
                                         <ComboBox Classes="pill" HorizontalAlignment="Stretch" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" />
@@ -384,12 +434,6 @@
                             </Border>
                         </Flyout>
                     </Button.Flyout>
-                </Button>
-                <TextBlock Grid.Column="3" Text="{Binding ModelStatusText}" FontSize="11.5" Opacity="0.5" Margin="6,0,0,0"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ModelStatusText}" />
-                <Button Grid.Column="4" Command="{Binding DownloadModelCommand}" IsVisible="{Binding ShowModelDownload}"
-                        Classes="studio-btn pill-outline">
-                    <TextBlock Text="{loc:T LyricsStudio.DownloadModel}" />
                 </Button>
                 <Panel Grid.Column="5" VerticalAlignment="Center">
                     <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !IsRunning}"
@@ -427,6 +471,10 @@
                         </Grid>
                         <TextBlock Text="{Binding RunStatusText}" FontSize="11" Opacity="0.5"
                                    TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RunStatusText}" />
+                        <!-- The whole run across songs (09-29): finished songs plus the current one's share. -->
+                        <controls:SmoothProgressBar Height="3" Margin="0,2,0,0" Value="{Binding BatchProgress}"
+                                                    IsVisible="{Binding ShowBatchProgress}"
+                                                    FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1AFFFFFF" />
                     </StackPanel>
                     <!-- Padding on the list (its ItemsPresenter margin) keeps the rows inset while the
                          scrollbar sits on the box's right edge instead of inside the padding. -->
@@ -462,7 +510,8 @@
                                                 IsVisible="{Binding ShowStatePill}">
                                             <TextBlock Text="{Binding StateText}" FontSize="10" Opacity="0.85" />
                                         </Border>
-                                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2" IsVisible="{Binding IsWorking}" />
+                                        <controls:SmoothProgressBar Value="{Binding Progress}" Height="3" Margin="0,2,0,0" IsVisible="{Binding IsWorking}"
+                                                                    FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1AFFFFFF" />
                                         <TextBlock Text="{Binding StatusText}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" IsVisible="{Binding HasStatusText}" />
                                     </StackPanel>
                                 </Border>
@@ -480,12 +529,42 @@
                         <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyBody}" FontSize="12" Opacity="0.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" />
                     </StackPanel>
 
-                    <!-- The song on screen is being run: its stage and progress; Stop is in the toolbar. -->
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="0,0,16,0" Width="320"
+                    <!-- The song on screen is being run (09-29): its three steps (decode, listen, time),
+                         a gliding bar with the percentage in a fixed box, what it is doing in words,
+                         and where the run is in the queue. Stop is in the toolbar. -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" Margin="0,0,16,0" Width="420"
                                 IsVisible="{Binding IsSelectedWorking}">
-                        <TextBlock Text="{Binding ReviewTitle}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Selected.StatusText}" FontSize="12" Opacity="0.6" TextAlignment="Center" />
-                        <ProgressBar Value="{Binding Selected.Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2" />
+                        <TextBlock Text="{Binding ReviewTitle}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ReviewSubtitle}" FontSize="12" Foreground="{DynamicResource AccentColorBrush}" TextAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <ItemsControl ItemsSource="{Binding Selected.Steps}" HorizontalAlignment="Center" Margin="0,14,0,4">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LyricsStudioViewModel+StudioStageStep">
+                                    <Border Classes="stage-step" Classes.active="{Binding IsActive}" Classes.done="{Binding IsDone}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Panel Width="12" Height="12" VerticalAlignment="Center">
+                                                <Ellipse Classes="stage-dot" IsVisible="{Binding !IsDone}" />
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="10" Height="10" IsVisible="{Binding IsDone}"
+                                                          Foreground="{DynamicResource AccentColorBrush}" />
+                                            </Panel>
+                                            <TextBlock Classes="stage-label" Text="{Binding Label}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- Equal side columns keep the bar centred under the steps with the percent beside it. -->
+                        <Grid ColumnDefinitions="44,*,44" ColumnSpacing="12">
+                            <controls:SmoothProgressBar Grid.Column="1" Height="6" VerticalAlignment="Center" Value="{Binding Selected.Progress}"
+                                                        FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1FFFFFFF" />
+                            <TextBlock Grid.Column="2" Text="{Binding Selected.ProgressText}" TextAlignment="Left"
+                                       FontSize="15" FontWeight="SemiBold" FontFeatures="+tnum" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock Text="{Binding Selected.StageText}" FontSize="12.5" Opacity="0.7" TextAlignment="Center" />
+                        <TextBlock Text="{Binding BatchText}" FontSize="11.5" Opacity="0.5" TextAlignment="Center" IsVisible="{Binding ShowBatchProgress}" />
                     </StackPanel>
 
                     <!-- Lyrics box (09-23): a song with no timed lyrics yet. Paste lyrics (the default),
