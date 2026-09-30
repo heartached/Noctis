@@ -57,7 +57,7 @@ public class LibraryService : ILibraryService
     // SQLite index, and the second clobbers the first's _activeScanCts — so shutdown could
     // only cancel one of them. The startup auto-scan runs on a detached Task.Run, so
     // overlap with a user-triggered scan was reachable even though the settings VM
-    // serializes its own calls.
+    // serializes its own calls. Imports (ImportFilesAsync) take it too.
     private readonly SemaphoreSlim _scanGate = new(1, 1);
 
     public IReadOnlyList<Track> Tracks => _tracks;
@@ -1073,6 +1073,24 @@ public class LibraryService : ILibraryService
     }
 
     public async Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)
+    {
+        // Waits for a running scan. The scan ends by publishing the list it walked, so an
+        // import that landed meanwhile (a drop, a watcher batch, a finished download) was
+        // overwritten and its track vanished until the next scan — and an import during
+        // the scan's progressive fill saved that partial list to library.json.
+        // No ConfigureAwait(false): callers on the UI thread keep getting LibraryUpdated there.
+        await _scanGate.WaitAsync(ct);
+        try
+        {
+            await ImportFilesCoreAsync(filePaths, ct, progress);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
+    private async Task ImportFilesCoreAsync(IEnumerable<string> filePaths, CancellationToken ct, IProgress<int>? progress)
     {
         var files = (filePaths ?? Array.Empty<string>())
             .Where(p => !string.IsNullOrWhiteSpace(p))
