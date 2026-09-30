@@ -256,8 +256,8 @@ public class VlcAudioPlayer : IAudioPlayer
     // The VLC log callback is subscribed only while Developer Mode is on.
     private bool _devBridgeAttached;
     private readonly object _devBridgeLock = new();
-    private string? _devBridgeLastMsg;
-    private long _devBridgeLastTicks;
+    // Per-shape rate limit for the bridged lines (see VlcLogCollapser).
+    private readonly VlcLogCollapser _devBridgeCollapser = new();
 
     // Pre-error context ring. Whatever levels VLC emits land here in memory (no I/O)
     // and the last DevBridgeRingSize are flushed to the session log when an Error
@@ -5701,6 +5701,7 @@ public class VlcAudioPlayer : IAudioPlayer
     private void OnVlcBridgeChanged()
     {
         bool justAttached = false;
+        List<string>? pending = null;
         lock (_devBridgeLock)
         {
             var want = DebugLog.VlcBridgeEnabled && !_disposed;
@@ -5717,7 +5718,13 @@ public class VlcAudioPlayer : IAudioPlayer
                 // Bridging is best-effort instrumentation — never break playback.
                 _devBridgeAttached = false;
             }
+            // Detaching: report repeats still held back, so no count is lost.
+            if (!_devBridgeAttached)
+                pending = _devBridgeCollapser.Flush(Environment.TickCount64);
         }
+        if (pending != null)
+            foreach (var line in pending)
+                DebugLog.Write("VLC", line);
         if (justAttached)
             DebugLog.Write("VLC", "audio-engine log bridge on — VLC warnings/errors will appear here");
     }
@@ -5742,6 +5749,7 @@ public class VlcAudioPlayer : IAudioPlayer
         // must stay allocation-light and I/O-free — blocking here blocks a demux or
         // aout thread, which is the very stall we are trying to catch.
         string[]? context = null;
+        List<string>? toWrite = null;
         lock (_devBridgeLock)
         {
             _devBridgeRing[_devBridgeRingNext] = $"{DateTime.Now:HH:mm:ss.fff} {msg}";
@@ -5757,17 +5765,16 @@ public class VlcAudioPlayer : IAudioPlayer
 
             if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
 
-            // Collapse identical repeats within 2s — a stutter spiral can emit the
-            // same "playback too late" line many times per second, which would
-            // flush the bounded session log. An Error that carries context is never
-            // collapsed: dropping it would strand the ring dump with no cause line.
-            if (context == null && msg == _devBridgeLastMsg &&
-                now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
-            _devBridgeLastMsg = msg;
-            _devBridgeLastTicks = now;
+            // Rate-limit repeats of the same line shape — a stutter spiral can emit
+            // "playback too late" many times per second, which would flush the bounded
+            // session log. An Error that carries context is never held back: dropping it
+            // would strand the ring dump with no cause line.
+            toWrite = _devBridgeCollapser.Accept(msg, Environment.TickCount64, force: context != null);
         }
 
-        DebugLog.Write("VLC", msg);
+        if (toWrite != null)
+            foreach (var line in toWrite)
+                DebugLog.Write("VLC", line);
 
         // Cooldown-limited, so a spiral dumps the ring once rather than per error.
         if (context != null)
