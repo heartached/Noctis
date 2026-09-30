@@ -30,9 +30,10 @@ public partial class LyricsStudioPanel : UserControl
         if (sender is not Grid cell) return;
         if (cell.Tag is not TitleCellChildren children)
         {
-            var title = cell.Children.FirstOrDefault(c => c.Name == "TitleBox");
+            // Suffix match: names are unique per scope, so a second cell outside a template is "Working…".
+            var title = cell.Children.FirstOrDefault(c => c.Name?.EndsWith("TitleBox") == true);
             if (title is null) return;
-            children = new TitleCellChildren(title, cell.Children.FirstOrDefault(c => c.Name == "ExplicitBadge"));
+            children = new TitleCellChildren(title, cell.Children.FirstOrDefault(c => c.Name?.EndsWith("ExplicitBadge") == true));
             cell.Tag = children;
         }
 
