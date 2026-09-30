@@ -32,7 +32,7 @@ namespace Noctis.Tests;
 /// </summary>
 public class LyricsStudioUiProbeTests : IDisposable
 {
-    // The download state leaves a 612 MB sparse .part while it renders: on the lab drive when there is one.
+    // The download state leaves a 338 MB sparse .part while it renders: on the lab drive when there is one.
     private readonly string _root = Path.Combine(
         HeadlessTestApp.RealRendering && Directory.Exists(@"D:\NoctisLyricsLab") ? @"D:\NoctisLyricsLab\probe-tmp" : Path.GetTempPath(),
         "studio-probe-" + Guid.NewGuid().ToString("N")[..8]);
@@ -74,7 +74,7 @@ public class LyricsStudioUiProbeTests : IDisposable
             var feed = new VirtualServer(WhisperModelManager.Lullaby.Bytes);
             var models = new WhisperModelManager(dir, new HttpClient(feed), Fast);
             Directory.CreateDirectory(models.Directory);
-            using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(612L << 20);
+            using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(338L << 20);
             var vm = Studio(new ProbeEngine(models), Songs(4));
             var now = TimeSpan.Zero;
             vm.Clock = () => now;
@@ -82,7 +82,7 @@ public class LyricsStudioUiProbeTests : IDisposable
             Capture(vm, "model-connecting", pumpMs: 400);
             for (var s = 0; s <= 4; s++)
             {
-                var target = (612L << 20) + s * (long)(4.4 * (1 << 20));
+                var target = (338L << 20) + s * (long)(4.4 * (1 << 20));
                 feed.Allow(target);
                 await Until(() => models.CurrentDownload?.BytesDone >= target);
                 now = TimeSpan.FromSeconds(s);
@@ -94,14 +94,14 @@ public class LyricsStudioUiProbeTests : IDisposable
             Capture(vm, "model-paused");
         }
 
-        // 2b. The link drops at 900 MB: the card counts down to the retry.
+        // 2b. The link drops at 380 MB: the card counts down to the retry.
         {
             var dir = Path.Combine(_root, "retry");
-            var feed = new VirtualServer(WhisperModelManager.Lullaby.Bytes) { DropAt = 900L << 20 };
+            var feed = new VirtualServer(WhisperModelManager.Lullaby.Bytes) { DropAt = 380L << 20 };
             var slowRetry = Fast with { RetryDelay = TimeSpan.FromSeconds(20), MaxRetryDelay = TimeSpan.FromSeconds(20) };
             var models = new WhisperModelManager(dir, new HttpClient(feed), slowRetry);
             Directory.CreateDirectory(models.Directory);
-            using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(880L << 20);
+            using (var part = new FileStream(models.ModelPath + ".part", FileMode.Create)) part.SetLength(360L << 20);
             var vm = Studio(new ProbeEngine(models), Songs(4));
             var now = TimeSpan.Zero;
             vm.Clock = () => now;
