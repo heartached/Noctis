@@ -1473,18 +1473,20 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private void OnWindowDragLeave(object? sender, DragEventArgs e)
     {
-        ShowDragOverlay(false);
         // DragLeave also arrives for every element-to-element crossing inside the window;
         // only a real exit hides the chip (it comes back on the next DragOver in here).
         if (!new Rect(Bounds.Size).Contains(e.GetPosition(this)))
             SetDragChipShown(false);
-        // A lit sidebar playlist row goes dark only when no DragEnter / DragOver follows (the
-        // drag left the window or was cancelled): clearing it on every crossing blinked it
-        // (see SidebarView.OnPlaylistDragLeave).
+        // The overlay and a lit sidebar playlist row go away only when no DragEnter / DragOver
+        // follows (the drag left the window or was cancelled). Hiding the overlay on every
+        // crossing flashed it on and off while the pointer moved over tiles and rows (09-30,
+        // owner report), the same blink SidebarView.OnPlaylistDragLeave had.
         var ticks = _dragOverTicks;
         Dispatcher.UIThread.Post(() =>
         {
-            if (ticks == _dragOverTicks) SidebarPane?.EndExternalFileDrop();
+            if (ticks != _dragOverTicks) return;
+            ShowDragOverlay(false);
+            SidebarPane?.EndExternalFileDrop();
         }, DispatcherPriority.Background);
     }
 
