@@ -5711,8 +5711,19 @@ public class VlcAudioPlayer : IAudioPlayer
             DebugLog.Write("VLC", "audio-engine log bridge on — VLC warnings/errors will appear here");
     }
 
+    /// <summary>
+    /// VLC lines that carry no information for us and must not trip the error-context
+    /// dump. Opening callback media (the Linux keep-alive's endless silence, see
+    /// EndlessSilenceInput) makes LibVLC probe its legacy "imem" access_demux before
+    /// the callback access that actually serves it; the probe always fails with this
+    /// Error, once per start. Internal for tests.
+    /// </summary>
+    internal static bool IsBenignVlcLogLine(string? module, string? message)
+        => module == "imem" && message == "Invalid get/release function pointers";
+
     private void OnVlcLogForBridge(object? sender, LogEventArgs e)
     {
+        if (IsBenignVlcLogLine(e.Module, e.Message)) return;
         var msg = $"{e.Level} {e.Module}: {e.Message}";
         var now = Stopwatch.GetTimestamp();
 

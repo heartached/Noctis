@@ -7,8 +7,9 @@ namespace Noctis.Services;
 /// macOS/Linux counterpart to <see cref="WasapiSilenceKeepAlive"/>, ON by
 /// default only in the Linux AppImage; elsewhere opt-in via NOCTIS_KEEPALIVE=1
 /// (see <see cref="ShouldStartKeepAlive"/> for why). Holds a
-/// private <see cref="MediaPlayer"/> looping a generated silent WAV so the
-/// native audio device endpoint stays open. The player is deliberately NOT
+/// private <see cref="MediaPlayer"/> playing an endless in-memory silent WAV
+/// (<see cref="EndlessSilenceInput"/>) so the native audio device endpoint stays
+/// open. The player is deliberately NOT
 /// muted or volume-zeroed: the source is silent anyway, and on PulseAudio /
 /// PipeWire those writes poison the app-wide stream-restore entry that real
 /// playback streams inherit (see StartSilence). The main player's first
@@ -30,6 +31,7 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     private const int WatchdogIntervalMs = 1000;
 
     private readonly MediaPlayer _player;
+    private readonly EndlessSilenceInput _source;
     private readonly Media _silence;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _wake = new(false);
@@ -68,10 +70,11 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     /// (GitHub #70). The two old Linux blockers don't apply there: the
     /// stream-restore poisoning (playback started muted) was fixed by never writing
     /// Mute/Volume on this player (see StartSilence), and the bundle ships the full
-    /// plugin set, so silence.wav always opens.
-    /// Linux system libvlc: stays opt-in — with an incomplete plugin set the looped
-    /// silence.wav can't even be opened, spamming "VLC is unable to open the MRL
-    /// '...silence.wav'" at every launch (issue #26, Arch's split VLC packaging).
+    /// plugin set (the imem access included, checked by the AppImage build), so the
+    /// silent source always opens.
+    /// Linux system libvlc: stays opt-in — with an incomplete plugin set the silent
+    /// source can't even be opened, spamming "VLC is unable to open the MRL" at
+    /// every launch (issue #26, Arch's split VLC packaging).
     /// macOS: stays opt-in — running this second looping aout stream alongside real
     /// playback corrupts audible output on CoreAudio — repeating channel-alternating
     /// distortion + dropouts (Apple Silicon, VLC.app libvlc, first real-hardware
@@ -107,11 +110,11 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
         // park, so a long pause there still releases the output after 10 min.
         _holdWhilePaused = OperatingSystem.IsLinux() ? isPaused : null;
 
-        var path = SilentWavFile.EnsureCached(AppPaths.DataRoot);
-        _silence = new Media(libVlc, path, FromType.FromPath);
-        // Loop the clip in-process so the device never closes between repeats; the
-        // worker's watchdog restarts it if VLC ever ends/stops it anyway.
-        _silence.AddOption(":input-repeat=65535");
+        // An endless source, never a looped clip (GitHub #70, see EndlessSilenceInput):
+        // each :input-repeat pass seeks and flushes the output. The worker's watchdog
+        // restarts it if VLC ever stops it anyway.
+        _source = new EndlessSilenceInput();
+        _silence = new Media(libVlc, _source);
 
         _player = new MediaPlayer(libVlc);
         Volatile.Write(ref _lastActivityTicks, Environment.TickCount64);
@@ -201,6 +204,7 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
         try { _player.Stop(); } catch { }
         try { _player.Dispose(); } catch { }
         try { _silence.Dispose(); } catch { }
+        try { _source.Dispose(); } catch { } // after the player: its input thread reads it
         try { _wake.Dispose(); } catch { }
     }
 }
