@@ -1124,6 +1124,8 @@ public partial class SettingsViewModel : ViewModelBase
                 _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync, flac.GetAsync)
                 {
                     PrivateClientsOnly = true,
+                    // Phone sign-in waits with the rest of the account features (AccountFeatures).
+                    DeviceSignInEnabled = AccountFeatures.Enabled,
                     // A phone asking for a song's lyrics also gets what the lyrics page fetched online.
                     LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
                 };
@@ -1198,9 +1200,10 @@ public partial class SettingsViewModel : ViewModelBase
     private void ShowServerUserError(string message)
         => TransientStatus.Show(nameof(ServerUserError), v => ServerUserError = v, message);
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
     private void AddServerUser()
     {
+        if (!AccountFeatures.Enabled) return; // parked; CreatePrimaryAccount calls Execute directly
         ServerUserError = string.Empty;
         try
         {

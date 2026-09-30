@@ -389,12 +389,17 @@ internal class Program
         services.AddSingleton<IDeferredTagWriter>(_ => new DeferredTagWriter());
 
         // Account & Sync ledger (state-based, last-writer-wins) served by the Noctis server.
-        services.AddSingleton<Services.Sync.ILibrarySyncService>(sp =>
-            new Services.Sync.LibrarySyncService(
-                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings(),
-                sp.GetRequiredService<IPersistenceService>()));
-        services.AddSingleton<Services.Sync.ITrackStateRecorder>(sp => sp.GetRequiredService<Services.Sync.ILibrarySyncService>());
+        // Not wired while the account features are parked: no ledger writes, and the server's
+        // sync endpoints answer "turned off" whatever SyncEnabled the settings file carries.
+        if (AccountFeatures.Enabled)
+        {
+            services.AddSingleton<Services.Sync.ILibrarySyncService>(sp =>
+                new Services.Sync.LibrarySyncService(
+                    () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                          ?? new Noctis.Models.AppSettings(),
+                    sp.GetRequiredService<IPersistenceService>()));
+            services.AddSingleton<Services.Sync.ITrackStateRecorder>(sp => sp.GetRequiredService<Services.Sync.ILibrarySyncService>());
+        }
 
         // Bulk lyrics (fetch / remove) and Lyrics Studio share one writer so every path
         // follows the lyrics page's sidecar + registry rules.

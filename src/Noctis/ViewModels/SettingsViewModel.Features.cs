@@ -52,6 +52,10 @@ public partial class SettingsViewModel
         return sync;
     }
 
+    /// <summary>False while the account features are parked (<see cref="Services.AccountFeatures"/>):
+    /// the Account &amp; Sync cards show disabled under a Coming soon badge.</summary>
+    public bool AccountFeaturesEnabled => AccountFeatures.Enabled;
+
     [ObservableProperty] private bool _syncEnabled;
     [ObservableProperty] private string _syncDeviceName = string.Empty;
     [ObservableProperty] private string _syncStatusText = string.Empty;
@@ -84,6 +88,8 @@ public partial class SettingsViewModel
 
     partial void OnSyncEnabledChanged(bool value)
     {
+        // Parked: nothing turns sync on, and the stored flag is left as it is.
+        if (!AccountFeatures.Enabled) { if (value) SyncEnabled = false; return; }
         if (!_settingsLoaded) return;
         _settings.SyncEnabled = value;
         _ = SaveAsync();
@@ -112,16 +118,19 @@ public partial class SettingsViewModel
         QueueSettingsSave();
     }
 
+    private const string SyncOffText = "Off. Turn on to share favourites, ratings, play counts and playlists with your other devices.";
+
     private void RefreshSyncStatus()
     {
         SyncDeviceIdText = Sync?.DeviceId ?? string.Empty;
         SyncDevices.Clear();
-        if (Sync is not { } sync) { SyncStatusText = string.Empty; OnPropertyChanged(nameof(HasSyncDevices)); return; }
+        // No ledger (parked, see Program's AccountFeatures gate): the card still reads as off.
+        if (Sync is not { } sync) { SyncStatusText = AccountFeatures.Enabled ? string.Empty : SyncOffText; OnPropertyChanged(nameof(HasSyncDevices)); return; }
         try
         {
             var devices = sync.Devices().Where(d => !string.Equals(d.Id, sync.DeviceId, StringComparison.OrdinalIgnoreCase)).ToList();
             foreach (var d in devices) SyncDevices.Add(new SyncDeviceRow(d));
-            if (!SyncEnabled) SyncStatusText = "Off. Turn on to share favourites, ratings, play counts and playlists with your other devices.";
+            if (!SyncEnabled) SyncStatusText = SyncOffText;
             else if (!NoctisServerEnabled) SyncStatusText = "Waiting for Noctis Server — devices sync through it. Turn it on below.";
             else if (devices.Count == 0) SyncStatusText = "On. No device has synced yet — sign in from the Noctis app on your phone.";
             else SyncStatusText = $"On · {devices.Count} device{(devices.Count == 1 ? "" : "s")} · {sync.CurrentSeq} changes in the ledger";
@@ -138,7 +147,7 @@ public partial class SettingsViewModel
     /// phone connects) and sync on (with its first-enable seeding), then the address and the
     /// certificate fingerprint to type/compare on the phone.
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
     private void TogglePairing()
     {
         IsPairingVisible = !IsPairingVisible;
@@ -221,7 +230,7 @@ public partial class SettingsViewModel
     }
 
     /// <summary>Create-your-account button on the Account &amp; Sync tab (first account is the admin).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
     private void CreatePrimaryAccount()
     {
         AddServerUserCommand.Execute(null);
@@ -478,7 +487,7 @@ public partial class SettingsViewModel
 
         if (string.IsNullOrWhiteSpace(_settings.SyncDeviceId))
             _settings.SyncDeviceId = Guid.NewGuid().ToString("N")[..12];
-        SyncEnabled = _settings.SyncEnabled;
+        SyncEnabled = AccountFeatures.Enabled && _settings.SyncEnabled;
         SyncDeviceName = string.IsNullOrWhiteSpace(_settings.SyncDeviceName) ? Environment.MachineName : _settings.SyncDeviceName;
 
         YouTubeDownloadFolder = _settings.YouTubeDownloadFolder ?? string.Empty;
@@ -496,7 +505,7 @@ public partial class SettingsViewModel
     private void SaveFeatureSettings()
     {
         _settings.UpmixMode = UpmixMode ?? "Off";
-        _settings.SyncEnabled = SyncEnabled;
+        if (AccountFeatures.Enabled) _settings.SyncEnabled = SyncEnabled;
         _settings.SyncDeviceName = SyncDeviceName ?? string.Empty;
         _settings.YouTubeDownloadFolder = YouTubeDownloadFolder ?? string.Empty;
         _settings.YtDlpPath = YtDlpPath ?? string.Empty;
