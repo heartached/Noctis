@@ -29,10 +29,26 @@
             <Setter Property="Background" Value="#12FFFFFF" />
             <Setter Property="BorderBrush" Value="#1FFFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
+            <!-- The lit zone eases up to 106 % and back down when the pointer moves on. Scale
+                 only: a brush tween from the translucent fill to the accent passes through a
+                 pale mid-tone (the white-flash trap from 09-17). Highlight() runs on every
+                 DragOver, but Classes.Set is a no-op when the state is unchanged, so the tween
+                 never restarts mid-way. The card's 10 px padding and spacing leave room for it. -->
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Border.drop-zone.active">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.06)" />
         </Style>
         <Style Selector="Border.drop-zone PathIcon">
             <Setter Property="Width" Value="26" />
