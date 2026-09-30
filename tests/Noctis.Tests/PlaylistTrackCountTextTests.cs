@@ -35,10 +35,13 @@ public class PlaylistTrackCountTextTests
     {
         var vm = CreateVm();
         var raised = new List<string?>();
-        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        // The VM's background load can raise PropertyChanged on another thread.
+        vm.PropertyChanged += (_, e) => { lock (raised) raised.Add(e.PropertyName); };
 
         vm.TrackCount = 7;
 
-        Assert.Contains(nameof(PlaylistViewModel.TrackCountText), raised);
+        string?[] snapshot;
+        lock (raised) snapshot = raised.ToArray();
+        Assert.Contains(nameof(PlaylistViewModel.TrackCountText), snapshot);
     }
 }
