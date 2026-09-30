@@ -454,7 +454,7 @@
   <data name="Settings.FoldersWhereMusicStored" xml:space="preserve"><value>Folders where your music is stored.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Add Folder</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Import dropped files</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: they play or queue from where they are and the library is left alone.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: files stay where they are; drop them to play, to add them to the library or a playlist, or to make a new playlist.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Playlist page</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Album headers</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Show the album name above each run of tracks from the same album.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -943,6 +943,7 @@
   <data name="Main.MostPlayed" xml:space="preserve"><value>Most played</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Random" xml:space="preserve"><value>Random</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Ascending" xml:space="preserve"><value>Ascending</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Newest Albums First</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>Descending</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
@@ -1009,8 +1010,24 @@
   <data name="Main.ScanReplayGain" xml:space="preserve"><value>Scan ReplayGain</value><comment>Queue row menu in MainWindow.axaml</comment></data>
   <data name="Main.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.DropFilesImport" xml:space="preserve"><value>Drop files to import</value><comment>Text in MainWindow.axaml</comment></data>
-  <data name="Main.DropFilesPlay" xml:space="preserve"><value>Drop files to play them</value><comment>Drag overlay text in MainWindow.axaml.cs: Import dropped files is off and nothing is loaded</comment></data>
-  <data name="Main.DropFilesQueue" xml:space="preserve"><value>Drop files to add them to the queue</value><comment>Drag overlay text in MainWindow.axaml.cs: Import dropped files is off and something is playing</comment></data>
+  <data name="Main.DropZonePlay" xml:space="preserve"><value>Play now</value><comment>Drop zone in DropOverlay.axaml (Import dropped files off): play the dropped files, nothing is loaded</comment></data>
+  <data name="Main.DropZoneQueue" xml:space="preserve"><value>Add to queue</value><comment>Drop zone in DropOverlay.axaml (Import dropped files off): something is playing, the files join the queue</comment></data>
+  <data name="Main.DropZonePlayHint" xml:space="preserve"><value>Not added to your library</value><comment>Small line under the Play now / Add to queue drop zone</comment></data>
+  <data name="Main.DropZoneLibrary" xml:space="preserve"><value>Add to library</value><comment>Drop zone in DropOverlay.axaml: add the dropped files to the library without moving them</comment></data>
+  <data name="Main.DropZoneLibraryHint" xml:space="preserve"><value>Files stay where they are</value><comment>Small line under the Add to library drop zone</comment></data>
+  <data name="Main.DropZonePlaylist" xml:space="preserve"><value>New playlist</value><comment>Drop zone in DropOverlay.axaml: a new playlist named after the dropped files' folder (shown below it)</comment></data>
+  <data name="Main.DropPlaylistFallbackName" xml:space="preserve"><value>New Playlist</value><comment>Name of a playlist made from dropped files when their folder gives none (a drive root)</comment></data>
+  <data name="Main.DropPreparing" xml:space="preserve"><value>Preparing…</value><comment>Drop pill while dropped files are being collected</comment></data>
+  <data name="Main.DropAddingSongs" xml:space="preserve"><value>Adding songs {0} of {1}</value><comment>Drop pill progress; {0} = songs read so far, {1} = songs dropped</comment></data>
+  <data name="Main.DropNoAudio" xml:space="preserve"><value>No audio files found in the dropped items</value><comment>Drop pill when nothing dropped could be read as audio</comment></data>
+  <data name="Main.DropAddedToLibraryOne" xml:space="preserve"><value>Added 1 song to your library</value><comment>Drop pill after the Add to library drop zone</comment></data>
+  <data name="Main.DropAddedToLibraryMany" xml:space="preserve"><value>Added {0} songs to your library</value><comment>Drop pill after the Add to library drop zone; {0} = song count</comment></data>
+  <data name="Main.DropAlreadyInLibrary" xml:space="preserve"><value>Already in your library</value><comment>Drop pill after the Add to library drop zone when every dropped song was in the library</comment></data>
+  <data name="Main.DropNewPlaylistOne" xml:space="preserve"><value>Added 1 song to the new playlist {0}</value><comment>Drop pill after the New playlist drop zone; {0} = playlist name</comment></data>
+  <data name="Main.DropNewPlaylistMany" xml:space="preserve"><value>Added {0} songs to the new playlist {1}</value><comment>Drop pill after the New playlist drop zone; {0} = song count, {1} = playlist name</comment></data>
+  <data name="Main.DropAddedToPlaylistOne" xml:space="preserve"><value>Added 1 song to {0}</value><comment>Drop pill after files were dropped onto a sidebar playlist; {0} = playlist name</comment></data>
+  <data name="Main.DropAddedToPlaylistMany" xml:space="preserve"><value>Added {0} songs to {1}</value><comment>Drop pill after files were dropped onto a sidebar playlist; {0} = song count, {1} = playlist name</comment></data>
+  <data name="Main.DropAlreadyInPlaylist" xml:space="preserve"><value>Already in {0}</value><comment>Drop pill when every song dropped onto a sidebar playlist was in it already; {0} = playlist name</comment></data>
 
   <!-- MetadataFinderDialog.axaml (auto-migrated) -->
   <data name="MetadataFinder.FindMetadata" xml:space="preserve"><value>Find Metadata</value><comment>Title in MetadataFinderDialog.axaml</comment></data>
@@ -1422,6 +1439,10 @@
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Back</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Search (Ctrl+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Search</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Words can match any field: "radiohead ok computer", "rock 1994".
+Narrow a word with a tag: artist:madonna remix
+Tags: title: artist: albumartist: album: genre: composer: year:
+Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Right-click for New Playlist</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>

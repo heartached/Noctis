@@ -110,8 +110,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly SemaphoreSlim _dropImportLock = new(1, 1);
 
     // ── Drop-import progress (spinner pill while dropped files are copied/added) ──
-    [ObservableProperty] private bool _isDropImporting;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDropImportSpinnerVisible))]
+    private bool _isDropImporting;
     [ObservableProperty] private string _dropImportStatus = string.Empty;
+
+    /// <summary>The pill shows a finished drop's outcome: a check instead of the spinner.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDropImportSpinnerVisible))]
+    private bool _dropImportDone;
+
+    public bool IsDropImportSpinnerVisible => IsDropImporting && !DropImportDone;
 
     /// <summary>"Plugin: message" from a plugin's Notify(), shown for a few seconds in the notice pill
     /// (also the lyrics offset confirmation, GitHub #102).</summary>
@@ -439,6 +448,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortAscending))
                 TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortNewestFirst))
+                TopBar.AlbumSortNewestFirst = _albumsVm.AlbumSortNewestFirst;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.ReleaseTypeFilterLabel))
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
@@ -954,7 +965,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            var files = await Task.Run(() => ExpandDroppedAudioFiles(paths));
+            var files = await Task.Run(() => DroppedFilesService.ExpandAudioFiles(paths));
             if (files.Count == 0) return;
             var tracks = await ResolveExternalTracksAsync(files);
             if (tracks.Count == 0) return;
@@ -967,37 +978,6 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine($"[MainWindowVM] QueueExternalMedia failed: {ex.Message}");
         }
-    }
-
-    /// <summary>Dropped files and folders → the playable files, folders walked recursively
-    /// and sorted by path so disc/track prefixes give the play order. Internal for tests.</summary>
-    internal static List<string> ExpandDroppedAudioFiles(IReadOnlyList<string> paths)
-    {
-        var files = new List<string>();
-        foreach (var raw in paths)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            if (Directory.Exists(raw))
-            {
-                var perFolder = new List<string>();
-                try
-                {
-                    foreach (var file in Directory.EnumerateFiles(raw, "*.*", SearchOption.AllDirectories))
-                        if (MetadataService.SupportedExtensions.Contains(Path.GetExtension(file)))
-                            perFolder.Add(file);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[MainWindowVM] Failed to enumerate dropped folder {raw}: {ex.Message}");
-                    continue;
-                }
-                perFolder.Sort((a, b) => string.Compare(a, b, StringComparison.OrdinalIgnoreCase));
-                files.AddRange(perFolder);
-            }
-            else if (File.Exists(raw) && MetadataService.SupportedExtensions.Contains(Path.GetExtension(raw)))
-                files.Add(raw);
-        }
-        return files.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>Library entries by path where known (play counts / ratings attach), else a
@@ -1110,8 +1090,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Imports files/folders dropped onto the app window.
     /// Folders are added to configured library roots and rescanned;
     /// standalone files are moved into the managed library folder, then imported.
+    /// With <paramref name="intoPlaylist"/> (files dropped onto a sidebar playlist, #108)
+    /// the imported tracks also join that playlist, in drop order.
     /// </summary>
-    public async Task ImportDroppedMediaAsync(IEnumerable<string> droppedPaths, CancellationToken ct = default)
+    public async Task ImportDroppedMediaAsync(IEnumerable<string> droppedPaths, CancellationToken ct = default,
+        Guid? intoPlaylist = null)
     {
         var input = (droppedPaths ?? Array.Empty<string>())
             .Where(p => !string.IsNullOrWhiteSpace(p))
@@ -1121,6 +1104,8 @@ public partial class MainWindowViewModel : ViewModelBase
         await _dropImportLock.WaitAsync(ct);
         try
         {
+            _dropResultVersion++; // an earlier drop's result pill must not hide this one
+            DropImportDone = false;
             IsDropImporting = true;
             DropImportStatus = "Preparing import…";
 
@@ -1298,32 +1283,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (await BackfillDroppedFolderArtAsync(originalToFinal, ct))
                 _library.NotifyMetadataChanged();
 
-            // Force refresh to guarantee newly imported content is visible immediately.
-            // Mark all VMs dirty first — the LibraryUpdated event may have already
-            // posted a Refresh() that consumed the dirty flag before we get here.
-            _songsVm.MarkDirty();
-            _albumsVm.MarkDirty();
-            _artistsVm.MarkDirty();
-            _foldersVm.MarkDirty();
-            _homeVm.MarkDirty();
-            _favoritesVm.MarkDirty();
-
-            _songsVm.Refresh();
-            _albumsVm.Refresh();
-            _artistsVm.Refresh();
-            // Folders is built from the library track list too — without this the
-            // dropped track lands in the library (Songs/Albums see it) but the folder
-            // tree keeps its stale, cached state and never shows the new file. A later
-            // Scan Library can't recover it either: the file is already imported, so
-            // the scan no-ops without firing LibraryUpdated.
-            _foldersVm.Refresh();
-
-            _homeVm.Refresh();
-            _favoritesVm.Refresh();
-            Settings.RefreshLibraryStats();
-            // Same blocking walk as the navigation path above; a drop-import already
-            // has the user waiting, so don't add the artwork stat pass to the UI thread.
-            _ = Settings.RefreshStorageInfoAsync();
+            RefreshViewsAfterDropImport();
 
             // The relocation into the managed root is otherwise invisible — the
             // dropped file just vanishes from its source folder — so say where it
@@ -1342,6 +1302,30 @@ public partial class MainWindowViewModel : ViewModelBase
                 try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
             }
 
+            if (intoPlaylist is Guid playlistId)
+            {
+                // Dropped onto a sidebar playlist: the imported tracks join it in drop order
+                // (each dropped folder in the order it was imported), and no folder offer.
+                var dropOrder = new List<string>();
+                foreach (var raw in input)
+                {
+                    if (TryNormalizePath(raw) is not { } item) continue;
+                    if (folderAudioFiles.TryGetValue(item, out var inFolder)) dropOrder.AddRange(inFolder);
+                    else if (files.Contains(item)) dropOrder.Add(item);
+                }
+                var tracks = dropOrder
+                    .Select(o => originalToFinal.TryGetValue(o, out var final)
+                        ? _library.GetTrackById(LibraryService.TrackIdForPath(final)) : null)
+                    .OfType<Track>()
+                    .DistinctBy(t => t.Id)
+                    .ToList();
+                var added = await DroppedFiles.AddTracksToPlaylistAsync(playlistId, tracks);
+                DropImportDone = true;
+                DropImportStatus = tracks.Count == 0 ? Loc.T("Main.DropNoAudio") : DescribePlaylistAdd(added);
+                try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
+                return;
+            }
+
             // Hide the progress pill before the playlist-offer dialog can appear.
             IsDropImporting = false;
 
@@ -1350,9 +1334,141 @@ public partial class MainWindowViewModel : ViewModelBase
         finally
         {
             IsDropImporting = false;
+            DropImportDone = false;
             DropImportStatus = string.Empty;
             _dropImportLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Forces the library pages to show freshly imported tracks right away. Every VM is
+    /// marked dirty first — the LibraryUpdated event may have already posted a Refresh()
+    /// that consumed the dirty flag before we get here.
+    /// </summary>
+    private void RefreshViewsAfterDropImport()
+    {
+        _songsVm.MarkDirty();
+        _albumsVm.MarkDirty();
+        _artistsVm.MarkDirty();
+        _foldersVm.MarkDirty();
+        _homeVm.MarkDirty();
+        _favoritesVm.MarkDirty();
+
+        _songsVm.Refresh();
+        _albumsVm.Refresh();
+        _artistsVm.Refresh();
+        // Folders is built from the library track list too — without this the
+        // dropped track lands in the library (Songs/Albums see it) but the folder
+        // tree keeps its stale, cached state and never shows the new file. A later
+        // Scan Library can't recover it either: the file is already imported, so
+        // the scan no-ops without firing LibraryUpdated.
+        _foldersVm.Refresh();
+
+        _homeVm.Refresh();
+        _favoritesVm.Refresh();
+        Settings.RefreshLibraryStats();
+        // Same blocking walk as the navigation path above; a drop-import already
+        // has the user waiting, so don't add the artwork stat pass to the UI thread.
+        _ = Settings.RefreshStorageInfoAsync();
+    }
+
+    // ── GitHub #108: drops added where they are ("Import dropped files" off) ──
+
+    private DroppedFilesService? _droppedFiles;
+    private DroppedFilesService DroppedFiles => _droppedFiles ??= new DroppedFilesService(_library, Sidebar);
+
+    /// <summary>Bumped by every drop; a result pill only hides itself if no newer drop took
+    /// the pill over meanwhile.</summary>
+    private int _dropResultVersion;
+
+    /// <summary>Drop zone "Add to library": the files join the library where they are.</summary>
+    public Task AddDroppedFilesToLibraryAsync(IReadOnlyList<string> paths) =>
+        RunInPlaceDropAsync(progress => DroppedFiles.AddToLibraryAsync(paths, progress), r =>
+            r.Added == 0 ? Loc.T("Main.DropAlreadyInLibrary")
+            : r.Added == 1 ? Loc.T("Main.DropAddedToLibraryOne")
+            : Loc.T("Main.DropAddedToLibraryMany", r.Added));
+
+    /// <summary>Drop zone "New playlist" (as in AIMP): a playlist named after the files'
+    /// folder, holding them in drop order, opened right away.</summary>
+    public Task CreatePlaylistFromDroppedFilesAsync(IReadOnlyList<string> paths) =>
+        RunInPlaceDropAsync(
+            progress => DroppedFiles.CreatePlaylistAsync(paths, Loc.T("Main.DropPlaylistFallbackName"), progress),
+            r =>
+            {
+                var name = r.Playlist?.Name ?? string.Empty;
+                if (r.Playlist != null
+                    && Sidebar.PlaylistItems.FirstOrDefault(i => i.PlaylistId == r.Playlist.Id) is { } row)
+                    Sidebar.SelectedNavItem = row;
+                return r.Added == 1
+                    ? Loc.T("Main.DropNewPlaylistOne", name)
+                    : Loc.T("Main.DropNewPlaylistMany", r.Added, name);
+            });
+
+    /// <summary>Files dropped onto a sidebar playlist join it — where they are, or through the
+    /// usual import when "Import dropped files" is on.</summary>
+    public Task AddDroppedFilesToPlaylistAsync(Guid playlistId, IReadOnlyList<string> paths) =>
+        Settings.ImportDroppedMedia
+            ? ImportDroppedMediaAsync(paths, default, playlistId)
+            : RunInPlaceDropAsync(progress => DroppedFiles.AddToPlaylistAsync(playlistId, paths, progress), DescribePlaylistAdd);
+
+    private static string DescribePlaylistAdd(DroppedFilesService.Result r)
+    {
+        var name = r.Playlist?.Name ?? string.Empty;
+        return r.Added == 0 ? Loc.T("Main.DropAlreadyInPlaylist", name)
+            : r.Added == 1 ? Loc.T("Main.DropAddedToPlaylistOne", name)
+            : Loc.T("Main.DropAddedToPlaylistMany", r.Added, name);
+    }
+
+    /// <summary>One in-place drop under the drop-import pill: progress while the files are
+    /// read, then what happened (<paramref name="describe"/>, or "no audio found").</summary>
+    private async Task RunInPlaceDropAsync(
+        Func<IProgress<(int Done, int Total)>, Task<DroppedFilesService.Result>> run,
+        Func<DroppedFilesService.Result, string> describe)
+    {
+        string outcome;
+        await _dropImportLock.WaitAsync();
+        try
+        {
+            _dropResultVersion++;
+            DropImportDone = false;
+            IsDropImporting = true;
+            DropImportStatus = Loc.T("Main.DropPreparing");
+            // Progress<T> posts back to the UI thread it was created on.
+            var progress = new Progress<(int Done, int Total)>(p =>
+            {
+                if (!DropImportDone) DropImportStatus = Loc.T("Main.DropAddingSongs", p.Done, p.Total);
+            });
+            var result = await run(progress);
+            RefreshViewsAfterDropImport();
+            outcome = result.Tracks.Count == 0 ? Loc.T("Main.DropNoAudio") : describe(result);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindowVM] Drop into the library failed: {ex.Message}");
+            IsDropImporting = false;
+            DropImportStatus = string.Empty;
+            return;
+        }
+        finally
+        {
+            _dropImportLock.Release();
+        }
+        await ShowDropResultAsync(outcome);
+    }
+
+    /// <summary>Shows a finished drop's outcome in the drop pill for a moment (check mark, no
+    /// spinner). Outside the drop lock, so the next drop can start right away.</summary>
+    private async Task ShowDropResultAsync(string text)
+    {
+        var version = ++_dropResultVersion;
+        DropImportStatus = text;
+        DropImportDone = true;
+        IsDropImporting = true;
+        await Task.Delay(2500);
+        if (version != _dropResultVersion) return;
+        IsDropImporting = false;
+        DropImportDone = false;
+        DropImportStatus = string.Empty;
     }
 
     /// <summary>
@@ -2580,6 +2696,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
             TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
             TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
+            TopBar.AlbumSortNewestFirst = _albumsVm.AlbumSortNewestFirst;
             TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         }

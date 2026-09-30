@@ -326,6 +326,11 @@
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding AlbumSortCommand}" CommandParameter="descending" IsEnabled="{Binding AlbumSortDirectionEnabled}">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
+                                        <Separator />
+                                        <!-- GitHub #106: each artist's releases newest first under Album Artist. -->
+                                        <MenuItem Header="{loc:T Main.NewestAlbumsFirst}" Command="{Binding AlbumSortCommand}" CommandParameter="newestfirst" IsEnabled="{Binding AlbumSortNewestFirstEnabled}">
+                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortNewestFirst}"/></MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
@@ -1258,46 +1263,9 @@
         </Grid>
     </DockPanel>
 
-    <!-- Drag-drop overlay (shown while dragging importable files over the window) -->
-    <Border x:Name="DragDropOverlay"
-            IsVisible="False"
-            IsHitTestVisible="False"
-            Background="#18FFFFFF"
-            BorderBrush="{DynamicResource AccentColorBrush}"
-            BorderThickness="2"
-            Margin="4"
-            CornerRadius="8"
-            Opacity="0">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
-            </Transitions>
-        </Border.Transitions>
-        <!-- 09-24: the icon and text sit on the island's fill (they were drawn straight over the
-             page and collided with whatever was under the pointer), in the user's accent (a
-             StaticResource froze the pre-accent red), and the import arrow is a filled glyph (the
-             old stroke-only path rendered nothing in a PathIcon). -->
-        <Border HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Padding="28,18"
-                CornerRadius="20"
-                Background="{DynamicResource IslandBackground}"
-                BorderBrush="#22FFFFFF"
-                BorderThickness="1">
-            <StackPanel Spacing="8">
-                <PathIcon x:Name="DragDropOverlayIcon"
-                          Data="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"
-                          Width="32" Height="32"
-                          HorizontalAlignment="Center"
-                          Foreground="{DynamicResource AccentColorBrush}" />
-                <TextBlock x:Name="DragDropOverlayText"
-                           Text="{loc:T Main.DropFilesImport}"
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="{DynamicResource IslandForeground}"
-                           HorizontalAlignment="Center" />
-            </StackPanel>
-        </Border>
-    </Border>
+    <!-- Drag-drop overlay (shown while dragging importable files over the window): the
+         import card, or the drop zones with "Import dropped files" off (GitHub #108). -->
+    <views:DropOverlay x:Name="DragDropOverlay" />
 
     <!-- Drop-import progress pill (spinner + "Copying files 3 of 10") -->
     <Border IsVisible="{Binding IsDropImporting}"
@@ -1337,9 +1305,14 @@
         <StackPanel Orientation="Horizontal" Spacing="10">
             <!-- Own IsVisible mirrors the pill Border's so the [IsVisible=True]
                  animation gate can see it (parent visibility alone is invisible
-                 to the selector). -->
+                 to the selector). A finished drop's outcome shows a check instead. -->
             <Ellipse Classes="loading-spinner" VerticalAlignment="Center"
-                     IsVisible="{Binding IsDropImporting}"/>
+                     IsVisible="{Binding IsDropImportSpinnerVisible}"/>
+            <PathIcon Data="{StaticResource CheckmarkIcon}"
+                      Width="14" Height="14"
+                      Foreground="{DynamicResource AccentColorBrush}"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding DropImportDone}"/>
             <TextBlock Text="{Binding DropImportStatus}"
                        FontSize="13" FontWeight="SemiBold"
                        Foreground="{DynamicResource IslandForeground}"
@@ -1454,7 +1427,8 @@
                              CornerRadius="20"
                              GlassTintOpacity="0.55">
             <Border CornerRadius="20" ClipToBounds="True">
-                <views:SidebarView HorizontalAlignment="Stretch"
+                <views:SidebarView x:Name="SidebarPane"
+                                   HorizontalAlignment="Stretch"
                                    DataContext="{Binding Sidebar}" />
             </Border>
         </controls:GlassPanel>

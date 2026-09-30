@@ -174,10 +174,9 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
         else
         {
             // Normalize the query once and match the cached keys, not every field per row.
-            var queryKey = Noctis.Helpers.SearchText.Normalize(query);
+            var parsed = Noctis.Helpers.SearchQuery.Parse(query);
             foreach (var album in _library.Albums
-                         .Where(a => Noctis.Helpers.SearchText.Matches(a.Name, a.SearchNameKey, query, queryKey)
-                                  || Noctis.Helpers.SearchText.Matches(a.Artist, a.SearchArtistKey, query, queryKey))
+                         .Where(parsed.MatchesAlbum)
                          .Take(MaxAlbumRows))
             {
                 var local = (album.Tracks ?? new List<Track>()).Where(t => t.SourceType == SourceType.Local).ToList();
@@ -194,7 +193,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
                 });
             }
             foreach (var track in _library.Tracks
-                         .Where(t => t.SourceType == SourceType.Local && PlaylistViewModel.MatchesSearch(t, query, queryKey))
+                         .Where(t => t.SourceType == SourceType.Local && parsed.Matches(t))
                          .Take(MaxTrackRows))
                 Results.Add(RowForTrack(track));
             ScanFormats();

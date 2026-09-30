@@ -144,14 +144,15 @@ public static partial class FolderMetadata
 
     private static string FolderName(string dir) => Path.GetFileName(dir) ?? string.Empty;
 
-    /// <summary>A configured music root, or a directory with no parent (volume root).</summary>
+    /// <summary>A configured music root, one of the user's own folders, or a directory with
+    /// no parent (volume root).</summary>
     private static bool IsRootLike(string dir, IReadOnlyList<string> musicRoots)
     {
         var normalized = TrimSeparators(dir);
         if (string.IsNullOrEmpty(FolderName(normalized)))
             return true; // volume root — GetFileName of "C:\" or "/" is empty
 
-        foreach (var root in musicRoots)
+        foreach (var root in musicRoots.Concat(UserFolders.Value))
         {
             if (string.IsNullOrWhiteSpace(root)) continue;
             if (string.Equals(normalized, TrimSeparators(root), StringComparison.OrdinalIgnoreCase))
@@ -159,6 +160,25 @@ public static partial class FolderMetadata
         }
         return false;
     }
+
+    /// <summary>
+    /// GitHub #108: files added where they are often sit in Downloads or on the Desktop.
+    /// The profile and its standard folders hold files; they are no artist or album
+    /// (a file in Downloads was credited as album "Downloads" by the account name).
+    /// </summary>
+    private static readonly Lazy<string[]> UserFolders = new(() =>
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var folders = new[]
+        {
+            Environment.SpecialFolder.MyMusic, Environment.SpecialFolder.MyDocuments,
+            Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolder.MyVideos,
+            Environment.SpecialFolder.MyPictures,
+        }.Select(Environment.GetFolderPath).Append(profile);
+        if (!string.IsNullOrEmpty(profile))
+            folders = folders.Append(Path.Combine(profile, "Downloads"));
+        return folders.Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
+    });
 
     private static string TrimSeparators(string path) =>
         path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

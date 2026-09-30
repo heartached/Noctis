@@ -131,7 +131,7 @@ public class DiscordBatch20260921Tests
             File.WriteAllText(Path.Combine(root, "loose.ogg"), "x");
             File.WriteAllText(Path.Combine(root, "notes.txt"), "x");
 
-            var files = MainWindowViewModel.ExpandDroppedAudioFiles(new[]
+            var files = DroppedFilesService.ExpandAudioFiles(new[]
             {
                 Path.Combine(root, "album"),
                 Path.Combine(root, "loose.ogg"),
@@ -145,6 +145,41 @@ public class DiscordBatch20260921Tests
                 Path.Combine(root, "album", "02 b.mp3"),
                 Path.Combine(root, "album", "disc 2", "01 c.flac"),
                 Path.Combine(root, "loose.ogg"),
+            }, files);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Unpadded track numbers ("1 -", "2 -", "10 -") came out 1, 10, 2 — ordinal path order —
+    /// so a dropped folder played (and, with #108, filled a new playlist) out of order.
+    /// File-manager order is numeric-aware, like the Folders view.
+    /// </summary>
+    [Fact]
+    public void ExpandDroppedAudioFiles_OrdersNumbersNaturally()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "noctis-drop-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "Disc 10"));
+            Directory.CreateDirectory(Path.Combine(root, "Disc 2"));
+            foreach (var name in new[] { "10 - c.mp3", "2 - b.mp3", "1 - a.mp3" })
+                File.WriteAllText(Path.Combine(root, name), "x");
+            File.WriteAllText(Path.Combine(root, "Disc 10", "1 - z.mp3"), "x");
+            File.WriteAllText(Path.Combine(root, "Disc 2", "1 - y.mp3"), "x");
+
+            var files = DroppedFilesService.ExpandAudioFiles(new[] { root });
+
+            Assert.Equal(new[]
+            {
+                Path.Combine(root, "1 - a.mp3"),
+                Path.Combine(root, "2 - b.mp3"),
+                Path.Combine(root, "10 - c.mp3"),
+                Path.Combine(root, "Disc 2", "1 - y.mp3"),
+                Path.Combine(root, "Disc 10", "1 - z.mp3"),
             }, files);
         }
         finally

@@ -583,10 +583,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
         if (hasQuery)
         {
-            filtered = filtered.Where(t =>
-                MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
-                MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces) ||
-                MatchesSearch(t.Album, t.SearchAlbumKey, q, qNoSpaces));
+            // GitHub #107: words may land in different fields ("artist album", "genre year")
+            // and field tags narrow them ("artist:madonna remix").
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
+            filtered = filtered.Where(parsed.Matches);
         }
 
         var ranked = filtered
@@ -659,28 +659,6 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _settings.ViewStateLoaded -= _viewStateLoadedHandler;
             _viewStateLoadedHandler = null;
         }
-    }
-
-    // sourceKey is the track's cached SearchText.Normalize key (Track.SearchTitleKey etc.).
-    // Match and rank used to re-normalize Title/Artist/Album per track per keystroke —
-    // up to six throwaway strings per matching track, hundreds of thousands of
-    // allocations per keystroke at 100k tracks. The cached key is allocation-free here.
-    private static bool MatchesSearch(string? source, string sourceKey, string query, string queryNoSpaces)
-    {
-        if (string.IsNullOrWhiteSpace(source))
-            return false;
-
-        // Single substring match (fast path)
-        if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        // queryNoSpaces is empty for a punctuation-only query ("&", "**"); every key
-        // contains "" so that matched the whole library. Only the raw check above counts then.
-        if (queryNoSpaces.Length > 0 && sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        // Word-level match: every word in the query must appear somewhere in the source
-        return MatchesAllWords(source, query);
     }
 
     private static bool MatchesAllWords(string source, string query)

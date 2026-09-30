@@ -60,6 +60,36 @@ public class FolderTreeBuilderTests
         Assert.Equal(0, forest[0].TotalTrackCount);
     }
 
+    /// <summary>
+    /// GitHub #108: files added to the library on their own (outside every music folder)
+    /// show under their real folder as an extra root, so the Folders page keeps the
+    /// organization the user asked for; a folder inside another added folder nests under it.
+    /// </summary>
+    [Fact]
+    public void AddedFiles_ShowUnderTheirOwnFolder_NestedFoldersUnderTheOuterOne()
+    {
+        var music = TestPaths.Primary("Music");
+        var pack = TestPaths.Other("Downloads", "hftfviceusgskinconcept");
+        var packInner = System.IO.Path.Combine(pack, "extras");
+        var added = new[]
+        {
+            System.IO.Path.Combine(packInner, "b.mp3"),
+            System.IO.Path.Combine(pack, "a.mp3"),
+            System.IO.Path.Combine(music, "Album", "in-music.mp3"), // already under a music folder
+        };
+
+        var roots = FolderTreeBuilder.WithAddedFileFolders(new[] { music }, added);
+        Assert.Equal(new[] { music, pack }, roots);
+
+        var tracks = added.Select(p => T(p)).ToList();
+        var forest = FolderTreeBuilder.Build(tracks, roots);
+        var packNode = forest.Single(r => r.DisplayName == "hftfviceusgskinconcept");
+        Assert.Equal(2, packNode.TotalTrackCount);
+        Assert.Equal("a", packNode.DirectTracks.Single().Title);
+        Assert.Equal("extras", packNode.Children.Single().DisplayName);
+        Assert.Equal(1, forest.Single(r => r.DisplayName == "Music").TotalTrackCount);
+    }
+
     [Fact]
     public void Build_SortsDirectTracksByDiscThenTrackNumber()
     {

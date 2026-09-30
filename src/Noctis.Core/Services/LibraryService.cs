@@ -57,7 +57,7 @@ public class LibraryService : ILibraryService
     // SQLite index, and the second clobbers the first's _activeScanCts — so shutdown could
     // only cancel one of them. The startup auto-scan runs on a detached Task.Run, so
     // overlap with a user-triggered scan was reachable even though the settings VM
-    // serializes its own calls.
+    // serializes its own calls. Imports (ImportFilesAsync) take it too.
     private readonly SemaphoreSlim _scanGate = new(1, 1);
 
     public IReadOnlyList<Track> Tracks => _tracks;
@@ -157,6 +157,10 @@ public class LibraryService : ILibraryService
             settings.ExcludedFilePaths
                 .Where(p => !string.IsNullOrWhiteSpace(p)),
             PathComparison.Comparer);
+        // What the root walks produced, without the tracks added on their own (GitHub #108):
+        // the "never publish nothing" guard below judges the walk, which those tracks alone
+        // must not mask.
+        var walkedTrackCount = 0;
 
         var newTracks = new ConcurrentBag<Track>();
         // Roots that were configured but not present on disk this pass (unplugged external
@@ -268,6 +272,99 @@ public class LibraryService : ILibraryService
                     ScanProgress?.Invoke(this, processed);
             }
 
+            // One audio file, found by a root walk or added on its own (GitHub #108): the
+            // unchanged fast path, else a tag read that keeps a known track's user state.
+            void ProcessEntry(ScanEntry entry)
+            {
+                if (ct.IsCancellationRequested) return;
+                var filePath = entry.Path;
+
+                // Declared outside the try so the failure paths below can tell a
+                // known-but-unreadable file apart from an unreadable new file.
+                Track? existing = null;
+
+                try
+                {
+                    // Skip files we already have that haven't changed
+                    if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
+                    {
+                        if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize
+                            && !IsStaleCaseSpelling(existing.FilePath, filePath)
+                            && !(NeedsWavInfoReread(existing)
+                                 && MetadataService.RiffInfoWouldFill(filePath, existing.Year, existing.Album)))
+                        {
+                            newTracks.Add(existing);
+                            Interlocked.Increment(ref unchangedCount);
+                            ReportProgress(Interlocked.Increment(ref fileCount));
+                            return;
+                        }
+                    }
+
+                    // Read metadata (and the embedded cover, already in memory) for new/changed files
+                    tagOpen.Note(filePath);
+                    var track = _metadata.ReadTrackMetadata(entry, out var embeddedArt);
+                    if (track != null)
+                    {
+                        // Use file path hash as stable ID so rescans don't create duplicates
+                        track.Id = ComputeFileId(filePath);
+
+                        // Preserve user data (favorites, play count, etc.) from the
+                        // old track when a file's metadata/size has changed on disk.
+                        if (existing != null)
+                            CopyMutableTrackState(existing, track);
+                        else
+                            track.SourceType = SourceType.Local;
+                        track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
+                        freshlyRead.TryAdd(track.Id, 0);
+                        newTracks.Add(track);
+                        Interlocked.Increment(ref changedCount);
+
+                        // Cache this album's cover live the first time we see it (zero extra
+                        // I/O — the picture was already read above), so covers fill in with
+                        // tracks during the scan. Folder-art fallback runs after the scan.
+                        if (embeddedArt != null && albumArtClaimed.TryAdd(track.AlbumId, true))
+                        {
+                            if (existing != null)
+                            {
+                                // A file we already knew was re-tagged: its embedded cover is
+                                // the freshest truth for the album. Every writer used to
+                                // short-circuit on File.Exists, so a changed cover never
+                                // reached the cache until the user wiped it.
+                                RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
+                            }
+                            else if (!File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
+                            {
+                                _persistence.SaveArtwork(track.AlbumId, embeddedArt);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // The file is on disk (it was just enumerated) but couldn't be
+                        // parsed — locked, corrupt, or a cloud placeholder whose
+                        // provider isn't running (ReadTrackMetadata swallows I/O errors
+                        // and returns null). Dropping a KNOWN track here removed it
+                        // from the library, and the save below made that permanent —
+                        // keep the existing entry and let a later scan that can read
+                        // the file refresh it.
+                        if (existing != null)
+                            newTracks.Add(existing);
+                        Interlocked.Increment(ref skippedCount);
+                    }
+
+                    ReportProgress(Interlocked.Increment(ref fileCount));
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Skip files that can't be read (locked, permissions, I/O error) —
+                    // but keep the existing entry for a known file (see above).
+                    if (existing != null)
+                        newTracks.Add(existing);
+                    Interlocked.Increment(ref skippedCount);
+                    ReportProgress(Interlocked.Increment(ref fileCount));
+                }
+            }
+
             foreach (var folder in includeRoots)
             {
                 if (!_fileSystem.RootExists(folder))
@@ -286,97 +383,36 @@ public class LibraryService : ILibraryService
                     .Where(e => !excludedFiles.Contains(e.Path));
                 var partitioner = Partitioner.Create(files, EnumerablePartitionerOptions.NoBuffering);
 
-                Parallel.ForEach(partitioner, options, entry =>
-                {
-                    if (ct.IsCancellationRequested) return;
-                    var filePath = entry.Path;
-
-                    // Declared outside the try so the failure paths below can tell a
-                    // known-but-unreadable file apart from an unreadable new file.
-                    Track? existing = null;
-
-                    try
-                    {
-                        // Skip files we already have that haven't changed
-                        if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
-                        {
-                            if (entry.LastWriteTimeUtc == existing.LastModified && entry.Length == existing.FileSize
-                                && !IsStaleCaseSpelling(existing.FilePath, filePath)
-                                && !(NeedsWavInfoReread(existing)
-                                     && MetadataService.RiffInfoWouldFill(filePath, existing.Year, existing.Album)))
-                            {
-                                newTracks.Add(existing);
-                                Interlocked.Increment(ref unchangedCount);
-                                ReportProgress(Interlocked.Increment(ref fileCount));
-                                return;
-                            }
-                        }
-
-                        // Read metadata (and the embedded cover, already in memory) for new/changed files
-                        tagOpen.Note(filePath);
-                        var track = _metadata.ReadTrackMetadata(entry, out var embeddedArt);
-                        if (track != null)
-                        {
-                            // Use file path hash as stable ID so rescans don't create duplicates
-                            track.Id = ComputeFileId(filePath);
-
-                            // Preserve user data (favorites, play count, etc.) from the
-                            // old track when a file's metadata/size has changed on disk.
-                            if (existing != null)
-                                CopyMutableTrackState(existing, track);
-                            else
-                                track.SourceType = SourceType.Local;
-                            track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
-                            freshlyRead.TryAdd(track.Id, 0);
-                            newTracks.Add(track);
-                            Interlocked.Increment(ref changedCount);
-
-                            // Cache this album's cover live the first time we see it (zero extra
-                            // I/O — the picture was already read above), so covers fill in with
-                            // tracks during the scan. Folder-art fallback runs after the scan.
-                            if (embeddedArt != null && albumArtClaimed.TryAdd(track.AlbumId, true))
-                            {
-                                if (existing != null)
-                                {
-                                    // A file we already knew was re-tagged: its embedded cover is
-                                    // the freshest truth for the album. Every writer used to
-                                    // short-circuit on File.Exists, so a changed cover never
-                                    // reached the cache until the user wiped it.
-                                    RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
-                                }
-                                else if (!File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
-                                {
-                                    _persistence.SaveArtwork(track.AlbumId, embeddedArt);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // The file is on disk (it was just enumerated) but couldn't be
-                            // parsed — locked, corrupt, or a cloud placeholder whose
-                            // provider isn't running (ReadTrackMetadata swallows I/O errors
-                            // and returns null). Dropping a KNOWN track here removed it
-                            // from the library, and the save below made that permanent —
-                            // keep the existing entry and let a later scan that can read
-                            // the file refresh it.
-                            if (existing != null)
-                                newTracks.Add(existing);
-                            Interlocked.Increment(ref skippedCount);
-                        }
-
-                        ReportProgress(Interlocked.Increment(ref fileCount));
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        // Skip files that can't be read (locked, permissions, I/O error) —
-                        // but keep the existing entry for a known file (see above).
-                        if (existing != null)
-                            newTracks.Add(existing);
-                        Interlocked.Increment(ref skippedCount);
-                        ReportProgress(Interlocked.Increment(ref fileCount));
-                    }
-                });
+                Parallel.ForEach(partitioner, options, ProcessEntry);
             }
+
+            walkedTrackCount = newTracks.Count;
+
+            // GitHub #108: the tracks added on their own from outside every music folder. No
+            // root walk reaches their files, so each is visited by path — unless a walk just
+            // covered it (its folder became a music folder) or it was excluded since.
+            var covered = new HashSet<Guid>(newTracks.Select(t => t.Id));
+            var addedTracks = originalTracks
+                .Where(t => t.AddedIndividually && !excludedFiles.Contains(t.FilePath) && covered.Add(t.Id))
+                .ToList();
+
+            Parallel.ForEach(addedTracks, options, known =>
+            {
+                if (ct.IsCancellationRequested) return;
+                switch (ProbeAddedFile(known.FilePath, out var entry))
+                {
+                    case AddedFileState.Present:
+                        ProcessEntry(entry!);
+                        break;
+                    case AddedFileState.Unreachable:
+                        // Its folder or drive isn't reachable: "unavailable", not "deleted" —
+                        // keep the track as it is, the same rule as a missing root.
+                        newTracks.Add(known);
+                        Interlocked.Increment(ref unchangedCount);
+                        break;
+                    // Gone: its folder lists fine without it — it drops out like a deleted file.
+                }
+            });
         }, ct);
         }
         catch (OperationCanceledException)
@@ -465,6 +501,7 @@ public class LibraryService : ILibraryService
             {
                 foreach (var t in carried)
                     newTracks.Add(t);
+                walkedTrackCount += carried.Count;
 
                 var dirList = string.Join(", ", failedDirs.Distinct(StringComparer.OrdinalIgnoreCase));
                 DebugLog.Write("Library",
@@ -495,7 +532,10 @@ public class LibraryService : ILibraryService
         // settings haven't loaded yet can never wipe the library.
         var noFoldersConfigured = includeRoots.Count == 0
                                   && settings.MusicFolders.All(string.IsNullOrWhiteSpace);
-        if (newTracks.IsEmpty && originalTrackCount > 0 && !noFoldersConfigured)
+        // Judged on the walk alone (GitHub #108): the tracks added on their own survive any
+        // scan, so they must not turn "the walk found nothing" into "publish just those".
+        var originalWalkedCount = originalTracks.Count(t => !t.AddedIndividually);
+        if (walkedTrackCount == 0 && originalWalkedCount > 0 && !noFoldersConfigured)
         {
             RestoreOriginalLibrary();
             DebugLog.Write("Library",
@@ -1074,6 +1114,24 @@ public class LibraryService : ILibraryService
 
     public async Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)
     {
+        // Waits for a running scan. The scan ends by publishing the list it walked, so an
+        // import that landed meanwhile (a drop, a watcher batch, a finished download) was
+        // overwritten and its track vanished until the next scan — and an import during
+        // the scan's progressive fill saved that partial list to library.json.
+        // No ConfigureAwait(false): callers on the UI thread keep getting LibraryUpdated there.
+        await _scanGate.WaitAsync(ct);
+        try
+        {
+            await ImportFilesCoreAsync(filePaths, ct, progress);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
+    private async Task ImportFilesCoreAsync(IEnumerable<string> filePaths, CancellationToken ct, IProgress<int>? progress)
+    {
         var files = (filePaths ?? Array.Empty<string>())
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(TryNormalizePath)
@@ -1242,6 +1300,12 @@ public class LibraryService : ILibraryService
             ct.ThrowIfCancellationRequested();
         }
 
+        // GitHub #108: a file no folder walk reaches is in the library only because it was
+        // added on its own. Mark its track, or the next full scan drops it (and it leaves
+        // every playlist) — drops with "Import dropped files" off, downloads and
+        // conversions saved outside the music folders all land here.
+        var newlyMarked = MarkAddedIndividually(imported.Concat(unchangedKnown), settings);
+
         // Folder-cover refresh for albums whose audio was untouched (a replaced
         // cover.jpg reaches here through a sibling audio file the watcher records).
         if (!unchangedKnown.IsEmpty)
@@ -1254,7 +1318,12 @@ public class LibraryService : ILibraryService
             }
         }
 
-        if (!changed) return;
+        if (!changed)
+        {
+            // Nothing re-read, but a known track may have just been marked (#108).
+            if (newlyMarked > 0) await SaveAsync();
+            return;
+        }
 
         _tracks = trackById.Values
             .OrderBy(t => t.Artist).ThenBy(t => t.Album)
@@ -1501,6 +1570,32 @@ public class LibraryService : ILibraryService
         // every scan, drop-import, removal and metadata write.
         if (removedFolders > 0)
             MusicFoldersChanged?.Invoke(this, settings.MusicFolders.ToList());
+    }
+
+    /// <summary>
+    /// GitHub #108: marks <see cref="Track.AddedIndividually"/> on the imported tracks whose
+    /// file no folder walk reaches (outside every music folder and include rule, or under an
+    /// exclude rule). The mark lives with the track in library.json — it follows the track
+    /// through renames and leaves with it on removal. Returns how many were newly marked.
+    /// </summary>
+    private static int MarkAddedIndividually(IEnumerable<Track> importedTracks, AppSettings settings)
+    {
+        var roots = BuildIncludeRoots(settings.MusicFolders, settings).ToList();
+        var excludedRoots = settings.FolderRules
+            .Where(r => r.Enabled && !r.Include && !string.IsNullOrWhiteSpace(r.Path))
+            .Select(r => r.Path)
+            .ToList();
+        var marked = 0;
+        foreach (var track in importedTracks)
+        {
+            if (track.AddedIndividually) continue;
+            var path = track.FilePath;
+            if (roots.Any(r => PathIsUnder(path, r)) && !excludedRoots.Any(x => PathIsUnder(path, x)))
+                continue;
+            track.AddedIndividually = true;
+            marked++;
+        }
+        return marked;
     }
 
     /// <summary>
@@ -2061,6 +2156,7 @@ public class LibraryService : ILibraryService
         target.LyricsOffsetMs = source.LyricsOffsetMs;
         target.SavedPositionMs = source.SavedPositionMs;
         target.DateAdded = source.DateAdded;
+        target.AddedIndividually = source.AddedIndividually;
 
         // Analysis results are expensive to produce (a full ffmpeg decode per track) and
         // are not always round-trippable through file tags, so carry them across a
@@ -2686,6 +2782,47 @@ public class LibraryService : ILibraryService
             .ToList();
     }
 
+    /// <summary>Where a file added on its own (GitHub #108) stands during a scan.</summary>
+    private enum AddedFileState
+    {
+        /// <summary>On disk: scanned like any walked file.</summary>
+        Present,
+        /// <summary>Its folder lists fine without it: deleted or moved, drops out.</summary>
+        Gone,
+        /// <summary>Its folder is missing or unreadable (unplugged drive, offline share): kept.</summary>
+        Unreachable,
+    }
+
+    /// <summary>
+    /// Only a folder that lists fine without the file proves it gone — the same bar the
+    /// walk sets for a deleted subfolder. A missing or unlistable folder is "unavailable",
+    /// never "deleted", and a file still listed but not stat-able (locked, no access) is
+    /// kept too.
+    /// </summary>
+    private static AddedFileState ProbeAddedFile(string path, out ScanEntry? entry)
+    {
+        if (LocalFileSystemSource.TryCreateEntry(path, out entry))
+            return AddedFileState.Present;
+
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                return AddedFileState.Unreachable;
+            var name = Path.GetFileName(path);
+            foreach (var file in Directory.EnumerateFiles(dir))
+            {
+                if (string.Equals(Path.GetFileName(file), name, PathComparison.Comparison))
+                    return AddedFileState.Unreachable;
+            }
+            return AddedFileState.Gone;
+        }
+        catch
+        {
+            return AddedFileState.Unreachable;
+        }
+    }
+
     /// <summary>
     /// True when a root is not a filesystem path (a SAF tree URI on Android). Such roots
     /// are compared as opaque strings: Path.GetFullPath would rewrite them into nonsense.
@@ -2918,6 +3055,10 @@ public class LibraryService : ILibraryService
             System.Text.Encoding.UTF8.GetBytes(normalized));
         return new Guid(hash);
     }
+
+    /// <summary>The id a scan or import gives the file at <paramref name="path"/> (normalized
+    /// the way ImportFilesAsync does), so callers can find its library track.</summary>
+    internal static Guid TrackIdForPath(string path) => ComputeFileId(TryNormalizePath(path) ?? path);
 
     /// <summary>
     /// An unchanged WAV that was read before the RIFF INFO fallback (year 0 from an ICRD

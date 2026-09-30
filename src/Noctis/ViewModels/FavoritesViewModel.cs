@@ -234,12 +234,16 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim();
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
             // Album cards also match on their track titles — a fully-favorited
             // album collapses into one card, but its tracks are still favorites.
+            // Tracks (and album tracks) also take the library search syntax (GitHub #107).
             filteredItems = filteredItems.Where(item =>
-                MatchesSearch(item.Title, q) ||
-                MatchesSearch(item.Subtitle, q) ||
-                (item.IsAlbum && item.Album!.Tracks.Any(t => MatchesSearch(t.Title, q))));
+                (!parsed.HasFieldTerms &&
+                 (MatchesSearch(item.Title, q) ||
+                  MatchesSearch(item.Subtitle, q) ||
+                  (item.IsAlbum && item.Album!.Tracks.Any(t => MatchesSearch(t.Title, q))))) ||
+                (item.IsAlbum ? item.Album!.Tracks.Any(parsed.Matches) : parsed.Matches(item.Track!)));
         }
 
         var visibleItems = filteredItems.ToList();

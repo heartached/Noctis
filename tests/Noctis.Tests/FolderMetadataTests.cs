@@ -75,6 +75,31 @@ public class FolderMetadataTests
         Assert.Equal(((string?)null, "LooseAlbum"), FolderMetadata.InferArtistAlbum(shallow, Roots));
     }
 
+    /// <summary>
+    /// GitHub #108: files added where they are often sit in Downloads or on the Desktop.
+    /// Those folders are nobody's artist or album — every untagged file dropped from a
+    /// Downloads subfolder was credited to the artist "Downloads", and one sitting directly
+    /// in Downloads became the album "Downloads" by an artist named after the account.
+    /// </summary>
+    [Fact]
+    public void WellKnownUserFolders_AreNeverCredited()
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrEmpty(profile)) Assert.Skip("no user profile folder on this machine");
+        var none = Array.Empty<string>();
+        var downloads = System.IO.Path.Combine(profile, "Downloads");
+
+        Assert.Equal(((string?)null, (string?)null),
+            FolderMetadata.InferArtistAlbum(System.IO.Path.Combine(downloads, "loose.mp3"), none));
+        Assert.Equal(((string?)null, "hftfviceusgskinconcept"),
+            FolderMetadata.InferArtistAlbum(System.IO.Path.Combine(downloads, "hftfviceusgskinconcept", "a.mp3"), none));
+
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (!string.IsNullOrEmpty(desktop))
+            Assert.Equal(((string?)null, "Mix"),
+                FolderMetadata.InferArtistAlbum(System.IO.Path.Combine(desktop, "Mix", "a.mp3"), none));
+    }
+
     // ── ParseTrackFilename ──
 
     [Theory]

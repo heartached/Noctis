@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Noctis.Services;
 
 /// <summary>The desktop scan source: a recursive directory walk (moved out of LibraryService unchanged).</summary>
@@ -56,32 +58,37 @@ public sealed class LocalFileSystemSource : IFileSystemSource
                 var ext = Path.GetExtension(file);
                 if (!MetadataService.SupportedExtensions.Contains(ext)) continue;
 
-                // FileInfo's constructor does no I/O (it only normalizes the path); the
-                // actual stat happens the first time Length/LastWriteTimeUtc/Name are read,
-                // which throws if the file was deleted or renamed between the directory
-                // listing above and now (NoBuffering pulls files lazily, so that window can
-                // be seconds to minutes on a large tree). Reading the values inside this try
-                // — instead of in the yield return argument list, where a throw would escape
-                // the iterator and abort the whole scan — keeps a vanished file a per-file
-                // skip, same as every other file failure here.
-                long length;
-                DateTime lastWrite;
-                string name;
-                try
-                {
-                    var fi = new FileInfo(file);
-                    length = fi.Length;
-                    lastWrite = fi.LastWriteTimeUtc;
-                    name = fi.Name;
-                }
-                catch
-                {
-                    continue;
-                }
-
-                var captured = file;
-                yield return new ScanEntry(file, name, length, lastWrite, file, () => File.OpenRead(captured));
+                // A file deleted or renamed between the listing above and now (NoBuffering
+                // pulls files lazily, so that window can be seconds to minutes on a large
+                // tree) is a per-file skip, same as every other file failure here.
+                if (TryCreateEntry(file, out var entry))
+                    yield return entry;
             }
+        }
+    }
+
+    /// <summary>
+    /// The scan entry for one file, or false when it can't be stat'ed (gone, renamed, no
+    /// access). Also used for files added to the library on their own (GitHub #108).
+    /// </summary>
+    internal static bool TryCreateEntry(string file, [NotNullWhen(true)] out ScanEntry? entry)
+    {
+        // FileInfo's constructor does no I/O (it only normalizes the path); the actual stat
+        // happens the first time Length/LastWriteTimeUtc/Name are read, which throws for a
+        // missing file. Reading them here — instead of in an iterator's yield return argument
+        // list, where a throw would escape and abort the whole scan — keeps it a skip.
+        try
+        {
+            var fi = new FileInfo(file);
+            var length = fi.Length;
+            var lastWrite = fi.LastWriteTimeUtc;
+            entry = new ScanEntry(file, fi.Name, length, lastWrite, file, () => File.OpenRead(file));
+            return true;
+        }
+        catch
+        {
+            entry = null;
+            return false;
         }
     }
 

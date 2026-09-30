@@ -131,9 +131,8 @@ public partial class SidebarView : UserControl
 
     private ListBoxItem? _dropHighlighted;
 
-    private (ListBoxItem? Container, PlaylistNavItem? Item) HitPlaylistRow(DragEventArgs e)
+    private (ListBoxItem? Container, PlaylistNavItem? Item) HitPlaylistRow(Point pos)
     {
-        var pos = e.GetPosition(PlaylistList);
         foreach (var container in PlaylistList.GetRealizedContainers())
         {
             if (container is not ListBoxItem row) continue;
@@ -164,7 +163,7 @@ public partial class SidebarView : UserControl
         var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer);
         if (tracks is not { Count: > 0 }) return; // external file drag — the window handles it
 
-        var (container, item) = HitPlaylistRow(e);
+        var (container, item) = HitPlaylistRow(e.GetPosition(PlaylistList));
         var ok = CanAcceptTracks(item);
         SetDropHighlight(ok ? container : null);
         e.DragEffects = ok ? DragDropEffects.Copy : DragDropEffects.None;
@@ -191,7 +190,7 @@ public partial class SidebarView : UserControl
             var tracks = Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer);
             if (tracks is not { Count: > 0 }) return;
 
-            var (_, item) = HitPlaylistRow(e);
+            var (_, item) = HitPlaylistRow(e.GetPosition(PlaylistList));
             if (!CanAcceptTracks(item) || _vm == null || item?.PlaylistId is not { } targetId) return;
             e.Handled = true;
             await _vm.AddTracksToPlaylist(targetId, tracks);
@@ -201,6 +200,32 @@ public partial class SidebarView : UserControl
             System.Diagnostics.Debug.WriteLine($"[SidebarView] Drop failed: {ex.Message}");
         }
     }
+
+    // ── Files dragged in from outside the app (GitHub #108) ──
+    // The window routes those drops (the drop-import state lives there), so it asks here
+    // which playlist row is under the pointer; the row lights like a track drop target.
+
+    /// <summary>The manual playlist whose row is under the pointer, lit; null (and nothing
+    /// lit) elsewhere. <paramref name="positionIn"/> maps the pointer into a visual's
+    /// coordinates (DragEventArgs.GetPosition).</summary>
+    internal Guid? TrackExternalFileDrop(Func<Visual, Point> positionIn)
+    {
+        var pos = positionIn(PlaylistList);
+        // Rows scrolled out of the list keep realized containers above / below it, so a
+        // pointer over the nav items must not reach them: only the list's own area counts.
+        if (!PlaylistList.IsEffectivelyVisible || !new Rect(PlaylistList.Bounds.Size).Contains(pos))
+        {
+            SetDropHighlight(null);
+            return null;
+        }
+        var (container, item) = HitPlaylistRow(pos);
+        var ok = CanAcceptTracks(item);
+        SetDropHighlight(ok ? container : null);
+        return ok ? item!.PlaylistId : null;
+    }
+
+    /// <summary>Clears the row lit by <see cref="TrackExternalFileDrop"/>.</summary>
+    internal void EndExternalFileDrop() => SetDropHighlight(null);
 
     // ── Playlist reorder (pointer-tracked, same liquid motion as the queue) ──
     //

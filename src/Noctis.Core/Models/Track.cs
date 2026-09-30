@@ -33,7 +33,12 @@ public partial class Track : ObservableObject
     private string _artist = "Unknown Artist";
 
     /// <summary>Album artist (TPE2), used to group "Various Artists" compilations.</summary>
-    public string AlbumArtist { get; set; } = "Unknown Artist";
+    public string AlbumArtist
+    {
+        get => _albumArtist;
+        set { _albumArtist = value; _searchAlbumArtistKey = null; }
+    }
+    private string _albumArtist = "Unknown Artist";
 
     /// <summary>Album name (TALB tag).</summary>
     public string Album
@@ -46,6 +51,8 @@ public partial class Track : ObservableObject
     private string? _searchTitleKey;
     private string? _searchArtistKey;
     private string? _searchAlbumKey;
+    private string? _searchAlbumArtistKey;
+    private string? _searchGenreKey;
 
     /// <summary>
     /// Lazily cached <see cref="Noctis.Helpers.SearchText.Normalize"/> key for Title.
@@ -61,8 +68,19 @@ public partial class Track : ObservableObject
     /// <summary>Lazily cached normalized search key for Album. See <see cref="SearchTitleKey"/>.</summary>
     [JsonIgnore] public string SearchAlbumKey => _searchAlbumKey ??= Helpers.SearchText.Normalize(_album);
 
+    /// <summary>Lazily cached normalized search key for AlbumArtist (GitHub #107 combined search).</summary>
+    [JsonIgnore] public string SearchAlbumArtistKey => _searchAlbumArtistKey ??= Helpers.SearchText.Normalize(_albumArtist);
+
+    /// <summary>Lazily cached normalized search key for Genre (GitHub #107 combined search).</summary>
+    [JsonIgnore] public string SearchGenreKey => _searchGenreKey ??= Helpers.SearchText.Normalize(_genre);
+
     /// <summary>Genre tag value.</summary>
-    public string Genre { get; set; } = string.Empty;
+    public string Genre
+    {
+        get => _genre;
+        set { _genre = value; _searchGenreKey = null; }
+    }
+    private string _genre = string.Empty;
 
     /// <summary>Track number within the disc (TRCK tag).</summary>
     public int TrackNumber { get; set; }
@@ -168,6 +186,15 @@ public partial class Track : ObservableObject
 
     /// <summary>Timestamp of when this track was first discovered by a library scan.</summary>
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// GitHub #108: added to the library on its own from outside every music folder (a drop
+    /// with "Import dropped files" off, a download or conversion saved elsewhere). No folder
+    /// walk reaches the file, so the scan visits it by path. Written to library.json only
+    /// when true, so a library without such tracks reads and writes exactly as before.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AddedIndividually { get; set; }
 
     /// <summary>Transient flag: true when the track was just drag-and-drop imported this session.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
