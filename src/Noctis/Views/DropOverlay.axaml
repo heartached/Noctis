@@ -22,7 +22,7 @@
              the app's accent pills. Content hangs from the top so icons and titles line up
              across the tiles even when one hint wraps to a second line. -->
         <Style Selector="Border.drop-zone">
-            <Setter Property="Width" Value="164" />
+            <Setter Property="Width" Value="184" />
             <Setter Property="Height" Value="124" />
             <Setter Property="CornerRadius" Value="18" />
             <Setter Property="Padding" Value="12,22,12,10" />
@@ -68,7 +68,9 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Background="#18FFFFFF"
+    <!-- The page dims under the drop: with Glass on, the island fill is see-through and
+         artist names behind the cards bled into the zone text (09-30, real-app capture). -->
+    <Border Background="#8C000000"
             BorderBrush="{DynamicResource AccentColorBrush}"
             BorderThickness="2"
             Margin="4"
@@ -99,12 +101,16 @@
                 </StackPanel>
             </Border>
 
-            <!-- "Import dropped files" off (#108): where the drop goes. Files stay where they are. -->
+            <!-- "Import dropped files" off (#108): where the drop goes. Files stay where they are.
+                 A solid backing under the island fill keeps the zone text readable when Glass
+                 makes the island translucent; the theme's tint still shows on top. -->
             <Border x:Name="ZonesCard"
                     IsVisible="False"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Padding="10"
+                    CornerRadius="28"
+                    Background="#F0101010">
+            <Border Padding="10"
                     CornerRadius="28"
                     Background="{DynamicResource IslandBackground}"
                     BorderBrush="#22FFFFFF"
@@ -136,6 +142,7 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+            </Border>
             </Border>
         </Panel>
     </Border>
