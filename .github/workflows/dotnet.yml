@@ -423,6 +423,8 @@ jobs:
           test -e "$APPDIR/usr/lib/vlc/plugins/access/libfilesystem_plugin.so"
           test -e "$APPDIR/usr/lib/vlc/plugins/demux/libavformat_plugin.so"
           test -e "$APPDIR/usr/lib/vlc/plugins/audio_output/libpulse_plugin.so"
+          # The keep-alive's endless silence is callback media (GitHub #70).
+          test -e "$APPDIR/usr/lib/vlc/plugins/access/libaccess_imem_plugin.so"
           ls "$APPDIR"/usr/lib/libavformat.so.* > /dev/null
           # Use the canonical Windows .ico (extracted to PNG) so the Linux
           # icon matches the Windows app icon. Ubuntu ships ImageMagick 6, so

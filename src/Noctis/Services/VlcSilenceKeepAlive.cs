@@ -7,8 +7,9 @@ namespace Noctis.Services;
 /// macOS/Linux counterpart to <see cref="WasapiSilenceKeepAlive"/>, ON by
 /// default only in the Linux AppImage; elsewhere opt-in via NOCTIS_KEEPALIVE=1
 /// (see <see cref="ShouldStartKeepAlive"/> for why). Holds a
-/// private <see cref="MediaPlayer"/> looping a generated silent WAV so the
-/// native audio device endpoint stays open. The player is deliberately NOT
+/// private <see cref="MediaPlayer"/> playing an endless in-memory silent WAV
+/// (<see cref="EndlessSilenceInput"/>) so the native audio device endpoint stays
+/// open. The player is deliberately NOT
 /// muted or volume-zeroed: the source is silent anyway, and on PulseAudio /
 /// PipeWire those writes poison the app-wide stream-restore entry that real
 /// playback streams inherit (see StartSilence). The main player's first
@@ -21,21 +22,29 @@ namespace Noctis.Services;
 /// Mirrors the Windows behavior: streams from construction (covers first play),
 /// idle-parks via Stop() after NOCTIS_KEEPALIVE_IDLE_MS (default 10 min) so the
 /// OS audio power request is released, and resumes on NotifyActivity(). On Linux
-/// a paused track holds it instead of letting it park (see <see cref="ShouldRun"/>).
+/// a paused track holds it instead of letting it park (see <see cref="ShouldRun"/>),
+/// and the first play after a park waits for it to wake the device (see
+/// <see cref="WakeForPlayback"/>).
 /// All play/stop happens on the worker thread, never inside a VLC event handler.
 /// </summary>
 internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
 {
     private const int DefaultIdleStopMs = 10 * 60 * 1000;
     private const int WatchdogIntervalMs = 1000;
+    private const int DefaultWarmUpMs = 1000;
+    // Below VlcAudioPlayer.Dispose's 3 s wait for the playback lock the hold sits under.
+    internal const int MaxWarmUpMs = 2000;
 
     private readonly MediaPlayer _player;
+    private readonly EndlessSilenceInput _source;
     private readonly Media _silence;
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _wake = new(false);
     private readonly int _idleStopMs;
+    private readonly int _warmUpMs;
     private readonly Func<bool>? _holdWhilePaused;
     private long _lastActivityTicks;
+    private long _warmUntilTicks;
     private volatile bool _disposed;
     private volatile bool _suspended;
     private volatile bool _running;
@@ -68,10 +77,11 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     /// (GitHub #70). The two old Linux blockers don't apply there: the
     /// stream-restore poisoning (playback started muted) was fixed by never writing
     /// Mute/Volume on this player (see StartSilence), and the bundle ships the full
-    /// plugin set, so silence.wav always opens.
-    /// Linux system libvlc: stays opt-in — with an incomplete plugin set the looped
-    /// silence.wav can't even be opened, spamming "VLC is unable to open the MRL
-    /// '...silence.wav'" at every launch (issue #26, Arch's split VLC packaging).
+    /// plugin set (the imem access included, checked by the AppImage build), so the
+    /// silent source always opens.
+    /// Linux system libvlc: stays opt-in — with an incomplete plugin set the silent
+    /// source can't even be opened, spamming "VLC is unable to open the MRL" at
+    /// every launch (issue #26, Arch's split VLC packaging).
     /// macOS: stays opt-in — running this second looping aout stream alongside real
     /// playback corrupts audible output on CoreAudio — repeating channel-alternating
     /// distortion + dropouts (Apple Silicon, VLC.app libvlc, first real-hardware
@@ -99,19 +109,49 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
     internal static bool ShouldRun(bool suspended, bool heldByPause, int idleStopMs, long idleForMs)
         => !suspended && (heldByPause || idleStopMs <= 0 || idleForMs <= idleStopMs);
 
+    /// <summary>
+    /// The warm-up deadline (TickCount64 ms) after a play request. GitHub #70: after a
+    /// single finished and the app sat idle past the idle limit, the loop parked,
+    /// WirePlumber suspended the sink ~5 s later, and the next play cut out like a cold
+    /// first play. Play's NotifyActivity() only signals this worker; the restart is an
+    /// asynchronous LibVLC Play() while the real stream opens at once, so both started
+    /// against the suspended sink. A play that finds the loop parked arms a deadline
+    /// <paramref name="warmUpMs"/> ahead, and the real stream holds until it, giving the
+    /// restarted loop the head start. A deadline still pending is kept, not extended
+    /// (a burst of plays waits once); a running loop, exclusive output
+    /// (<paramref name="suspended"/>, the loop can't run) or warmUpMs 0 arm nothing.
+    /// Pure; internal for tests.
+    /// </summary>
+    internal static long NextWarmUntil(bool parked, bool suspended, int warmUpMs, long nowMs, long warmUntilMs)
+        => parked && !suspended && warmUpMs > 0 && warmUntilMs <= nowMs ? nowMs + warmUpMs : warmUntilMs;
+
+    /// <summary>How long a new stream still holds for <paramref name="warmUntilMs"/>
+    /// (0 = none), capped at <see cref="MaxWarmUpMs"/>. Pure; internal for tests.</summary>
+    internal static int RemainingWarmUpMs(long warmUntilMs, long nowMs)
+        => warmUntilMs <= 0 ? 0 : (int)Math.Clamp(warmUntilMs - nowMs, 0, MaxWarmUpMs);
+
+    /// <summary>NOCTIS_KEEPALIVE_WARM_MS: the hold in ms (0 = off), default 1000, capped
+    /// at <see cref="MaxWarmUpMs"/>. Pure; internal for tests.</summary>
+    internal static int ParseWarmUpMs(string? env)
+        => int.TryParse(env, out var ms) && ms >= 0 ? Math.Min(ms, MaxWarmUpMs) : DefaultWarmUpMs;
+
     private VlcSilenceKeepAlive(LibVLC libVlc, Func<bool>? isPaused)
     {
         _idleStopMs = int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE_IDLE_MS"), out var ms) && ms >= 0
             ? ms : DefaultIdleStopMs;
-        // Linux only (GitHub #70, see ShouldRun): macOS (opt-in) keeps the plain idle
-        // park, so a long pause there still releases the output after 10 min.
+        // Linux only (GitHub #70, see ShouldRun/NextWarmUntil): macOS (opt-in) keeps the
+        // plain idle park, so a long pause there still releases the output after 10 min
+        // and a play after a park starts at once.
         _holdWhilePaused = OperatingSystem.IsLinux() ? isPaused : null;
+        _warmUpMs = OperatingSystem.IsLinux()
+            ? ParseWarmUpMs(Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE_WARM_MS"))
+            : 0;
 
-        var path = SilentWavFile.EnsureCached(AppPaths.DataRoot);
-        _silence = new Media(libVlc, path, FromType.FromPath);
-        // Loop the clip in-process so the device never closes between repeats; the
-        // worker's watchdog restarts it if VLC ever ends/stops it anyway.
-        _silence.AddOption(":input-repeat=65535");
+        // An endless source, never a looped clip (GitHub #70, see EndlessSilenceInput):
+        // each :input-repeat pass seeks and flushes the output. The worker's watchdog
+        // restarts it if VLC ever stops it anyway.
+        _source = new EndlessSilenceInput();
+        _silence = new Media(libVlc, _source);
 
         _player = new MediaPlayer(libVlc);
         Volatile.Write(ref _lastActivityTicks, Environment.TickCount64);
@@ -124,7 +164,8 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
             Priority = ThreadPriority.BelowNormal, // renders only silence; never timing-critical
         };
         _thread.Start();
-        DebugLogger.Info(DebugLogger.Category.Playback, "VlcKeepAlive.Started", $"idleStopMs={_idleStopMs}");
+        DebugLogger.Info(DebugLogger.Category.Playback, "VlcKeepAlive.Started",
+            $"idleStopMs={_idleStopMs}, warmUpMs={_warmUpMs}");
     }
 
     public void NotifyActivity()
@@ -132,6 +173,17 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
         if (_disposed) return;
         Volatile.Write(ref _lastActivityTicks, Environment.TickCount64);
         if (!_wake.IsSet) _wake.Set();
+    }
+
+    public long WakeForPlayback()
+    {
+        if (_disposed) return 0;
+        var now = Environment.TickCount64;
+        // Read _running before NotifyActivity wakes the worker, which sets it on restart.
+        var warmUntil = NextWarmUntil(!_running, _suspended, _warmUpMs, now, Volatile.Read(ref _warmUntilTicks));
+        Volatile.Write(ref _warmUntilTicks, warmUntil);
+        NotifyActivity();
+        return warmUntil > now ? warmUntil : 0;
     }
 
     public void SetSuspended(bool suspended)
@@ -201,6 +253,7 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
         try { _player.Stop(); } catch { }
         try { _player.Dispose(); } catch { }
         try { _silence.Dispose(); } catch { }
+        try { _source.Dispose(); } catch { } // after the player: its input thread reads it
         try { _wake.Dispose(); } catch { }
     }
 }
