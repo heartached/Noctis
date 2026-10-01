@@ -5,10 +5,10 @@ Last updated 1 October 2026. Published at https://noctisapp.cc/privacy/android
 
 Noctis for Android does not collect, sell or share any personal data or usage data. The
 developer receives nothing from the app: there is no advertising, no analytics, no crash
-reporting and no developer server. The app makes two kinds of network connection, both
+reporting and no developer server. The app makes three kinds of network connection, all
 described under Network: it asks Last.fm for album descriptions, sending only the album's
-artist and title, and, only if you sign in, it connects to your own computer running the
-Noctis desktop app.
+artist and title; it asks Deezer for artist photos, sending only the artist's name; and, only
+if you sign in, it connects to your own computer running the Noctis desktop app.
 
 ## What stays on your device
 
@@ -22,6 +22,9 @@ Noctis desktop app.
   record of library changes and your settings are stored in the app's private storage.
 - **Album descriptions.** Descriptions fetched from Last.fm (see Network) are kept in the
   app's private storage so each album is looked up only once.
+- **Artist photos.** Photos fetched from Deezer (see Network) are kept in the app's private
+  storage so each artist is looked up only once, with a note of the artists Deezer had no
+  photo for, so those are not asked about again for a few days.
 - **Diagnostics.** Noctis writes diagnostic messages to Android's system log on your
   device, with account keys and passwords masked. They are never sent anywhere. If you use
   Settings → Export logs, the log is saved only to the file you choose; Noctis never sends
@@ -33,7 +36,7 @@ Noctis desktop app.
 
 ## Network
 
-Noctis contains no third-party SDKs, and the developer runs no server. It connects to two
+Noctis contains no third-party SDKs, and the developer runs no server. It connects to three
 places.
 
 **Last.fm, for album descriptions.** When you open an album page, Noctis asks Last.fm's public
@@ -44,6 +47,18 @@ artist named) and Noctis's own application key. It contains no account, no devic
 nothing else about you, although, as with any website, Last.fm can see your device's IP
 address. The answers are stored on your phone so each album is looked up only once. Last.fm's
 privacy policy covers its service: https://www.last.fm/legal/privacy.
+
+**Deezer, for artist photos.** When you open an artist page, or artists come into view in the
+Artists list, in search results or among your pinned items, Noctis asks Deezer's public web
+service (api.deezer.com, run by Deezer SA) for a photo of each artist it does not have yet,
+over an encrypted (HTTPS) connection, and downloads the photo from Deezer's image server
+(cdn-images.dzcdn.net). The request contains only the artist's name (if Deezer has nothing for
+the full artist credit, Noctis asks once more with the first artist named): no account, no
+device id and nothing else about you, although, as with any website, Deezer can see your
+device's IP address. When several Deezer artists share that name, Noctis also asks Deezer for
+those artists' top songs and compares them with your library on your phone to pick the right
+one; your library is never sent. The photos are stored on your phone so each artist is looked
+up only once. Deezer's privacy policy covers its service: https://www.deezer.com/legal/personal-datas.
 
 **Your own computer, only if you choose to.** When you sign in under Settings → Account,
 Noctis connects to your own computer, running the Noctis desktop app.
@@ -60,8 +75,8 @@ Noctis connects to your own computer, running the Noctis desktop app.
   ratings and play counts from your computer, and the music itself, streamed or downloaded.
 
 All of the account traffic travels only between your phone and your computer, encrypted.
-None of it goes to the developer, to Last.fm or to any other third party. Nothing is sent
-without an address you entered and a certificate you confirmed, and signing out stops it.
+None of it goes to the developer, to Last.fm, to Deezer or to any other third party. Nothing
+is sent without an address you entered and a certificate you confirmed, and signing out stops it.
 
 ## Permissions
 
@@ -69,8 +84,9 @@ without an address you entered and a certificate you confirmed, and signing out 
   screen.
 - **Foreground service (media playback) and wake lock**, so music keeps playing with the
   screen off.
-- **Internet and network state**, used only for the Last.fm album-description lookups and the
-  optional connection to your own computer, both described under Network.
+- **Internet and network state**, used only for the Last.fm album-description lookups, the
+  Deezer artist-photo lookups and the optional connection to your own computer, all described
+  under Network.
 
 Noctis does not request location, contacts, camera, microphone, phone, storage or media
 permissions.
@@ -79,17 +95,17 @@ permissions.
 
 If you have Android backup turned on, Android may include the app's local data (your
 library index and artwork, including the song list and covers from your computer if you
-signed in, album descriptions, favourites, playlists, play history, play queue and settings)
-in your device backup to your Google account. Google handles that backup under your account;
-the developer cannot see it. Your account link and downloaded songs are never included. Turn off backup in
-Android's settings to exclude the rest.
+signed in, album descriptions, artist photos, favourites, playlists, play history, play queue
+and settings) in your device backup to your Google account. Google handles that backup under
+your account; the developer cannot see it. Your account link and downloaded songs are never
+included. Turn off backup in Android's settings to exclude the rest.
 
 ## Deleting your data
 
 Everything Noctis stores is on your device. Uninstalling the app, or clearing its storage
-in Android's settings, deletes all of it. Noctis keeps nothing on Last.fm; how Last.fm handles
-its own server logs is covered by its privacy policy. Your music files are never changed or
-deleted by uninstalling.
+in Android's settings, deletes all of it. Noctis keeps nothing on Last.fm or Deezer; how they
+handle their own server logs is covered by their privacy policies. Your music files are never
+changed or deleted by uninstalling.
 
 Signing out (Settings → Account) removes your computer's songs from the phone's library and
 asks your computer to revoke this device's key, and can also delete the downloaded songs. On your computer,

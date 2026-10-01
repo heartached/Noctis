@@ -4,9 +4,9 @@ Copy these into Play Console → your app. Section names are the Console's as of
 September 2026; if a label moved, the question text is what to match. Facts behind each
 answer were verified against the Android build (see docs/superpowers/plans/phase4-parts/
 part-a-release.md, Task A5); the Noctis-account answers against the account design
-(docs/superpowers/specs/2026-09-28-android-account-sync-design.md). The app now makes one
-online lookup, album descriptions from Last.fm (October 2026): see "Data safety" below.
-Re-check that section if another one is added.
+(docs/superpowers/specs/2026-09-28-android-account-sync-design.md). The app now makes two
+online lookups, album descriptions from Last.fm and artist photos from Deezer (October 2026):
+see "Data safety" below. Re-check that section if another one is added.
 
 ## Create app
 
@@ -50,7 +50,8 @@ their computer; there is no account on any developer server to give the reviewer
 form offers an instructions box, paste: "Noctis plays audio files already on the device. Tap
 Add folder and pick any folder that contains music files. Settings → Account optionally
 connects to the Noctis desktop app the user runs on their own computer (local network); the
-rest of the app works without it. Album pages show a description fetched from Last.fm."
+rest of the app works without it. Album pages show a description fetched from Last.fm, and
+artist pages a photo fetched from Deezer."
 
 **Content rating** (IARC questionnaire). Email: your contact email. Category: the one for
 utility / productivity / communication / other apps (Noctis is not a game, not social,
@@ -116,9 +117,33 @@ children: No. (Selecting any under-13 group puts the app under the Families poli
     is stored by the developer; Last.fm's policy covers its logs).
   - If you want "No" to stay clearly true, a Settings switch to turn the lookup off (or make
     it opt-in) would make it optional; not built yet.
+- **Deezer artist photos (since October 2026).** Opening an artist page, or artists coming
+  into view in the Artists list, Search results or the pinned items, sends an HTTPS GET to
+  Deezer's public API (api.deezer.com/search/artist) with only the artist's name (then its
+  first-named artist when the full credit finds nothing), and downloads the chosen photo from
+  Deezer's image server (cdn-images.dzcdn.net); when several Deezer artists share the name it
+  also asks api.deezer.com/artist/<Deezer id>/top for up to three of them and compares their
+  song titles with the library on the phone (the titles are never sent). No account, API key,
+  device id or install id. The photo is cached in app-private storage (artist_images), and a
+  name Deezer did not know is not asked again for three days. Deezer, a third party, sees the
+  requests and the device's IP address. (Verified in code: Noctis.Core DeezerArtistPhotos,
+  FindAsync and DownloadImageAsync; the phone's DeezerArtistPhotoSource, created in
+  AndroidApp.axaml.cs; the lookups start only from the artist page, the Artists grid's
+  realised rows, Search's artist results and the pinned artists.)
+  - Owner's call — UNVERIFIED against the Console's current wording, the same reasoning as
+    Last.fm: an artist's name is a public catalogue fact, not information about the user, so
+    "No" may still hold; but it reveals which artists the user looks at, and data sent to a
+    third party from the app counts as shared. The safer declaration, if in doubt: App
+    activity → App interactions — collected: Yes, shared: Yes (with Deezer, to show artist
+    photos), processed ephemerally: No (Deezer's own policy governs its logs), required: Yes
+    (no switch to turn the lookup off today), purpose: App functionality, encrypted in
+    transit: Yes, deletion: not applicable (nothing is stored by the developer; Deezer's
+    policy, https://www.deezer.com/legal/personal-datas, covers its logs).
+  - A Settings switch for online artwork and descriptions (or making them opt-in) would make
+    "No" clearly true; not built yet.
 - With "No", the Console skips the data-type questions. If it asks about encryption in
   transit or deletion requests, those apply only to collected data: none (or, if you
-  declare the Last.fm lookup, as listed above).
+  declare the Last.fm or Deezer lookups, as listed above).
 
 **Government apps:** No. **Financial features:** My app doesn't provide any financial
 features. **Health:** My app does not have any health features.
