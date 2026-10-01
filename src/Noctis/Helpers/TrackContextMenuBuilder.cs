@@ -39,6 +39,10 @@ public sealed class TrackContextMenuBuilder
     public MenuItem AddToQueue { get; private set; } = null!;
     public MenuItem StartRadio { get; private set; } = null!;
     public MenuItem SnoozeForMonth { get; private set; } = null!;
+    /// <summary>"View Album" / "View Artist" (GitHub #112). Hidden unless the view passes the
+    /// commands; with several credited artists View Artist is a submenu, one entry per name.</summary>
+    public MenuItem ViewAlbum { get; private set; } = null!;
+    public MenuItem ViewArtist { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
@@ -69,6 +73,9 @@ public sealed class TrackContextMenuBuilder
     /// <summary>Commands plugins registered ("menu.commands"); set once by MainWindowViewModel.
     /// Read on every Bind so enabling/disabling a plugin shows up on the next menu open.</summary>
     public static Func<IReadOnlyList<Services.Plugins.PluginTrackCommand>>? PluginCommandSource { get; set; }
+
+    /// <summary>Separator above View Album / View Artist; hidden with them.</summary>
+    private Separator _viewSeparator = null!;
 
     /// <summary>Separator above the plugin entries; hidden when no plugin adds one.</summary>
     private Separator _pluginSeparator = null!;
@@ -113,6 +120,18 @@ public sealed class TrackContextMenuBuilder
         // placeholder icon: no dedicated snooze glyph in resources
         SnoozeForMonth.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Shuffle%20ICON.png");
         items.Add(SnoozeForMonth);
+
+        // Hidden unless the view supplies viewAlbumCommand / viewArtistCommand in Bind().
+        _viewSeparator = new Separator { IsVisible = false };
+        items.Add(_viewSeparator);
+
+        ViewAlbum = new MenuItem { Header = "View Album", IsVisible = false };
+        ViewAlbum.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Albums%20ICON.png");
+        items.Add(ViewAlbum);
+
+        ViewArtist = new MenuItem { Header = "View Artist", IsVisible = false };
+        ViewArtist.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Artists%20ICON.png");
+        items.Add(ViewArtist);
 
         items.Add(new Separator());
 
@@ -266,9 +285,16 @@ public sealed class TrackContextMenuBuilder
         ICommand? removeLyricsCommand = null,
         ICommand? sendToFolderCommand = null,
         ICommand? badgeCommand = null,
-        IReadOnlyList<string>? badgeNames = null)
+        IReadOnlyList<string>? badgeNames = null,
+        ICommand? viewAlbumCommand = null,
+        ICommand? viewArtistCommand = null)
     {
         Menu.DataContext = track;
+
+        // View Album / View Artist (optional).
+        BindViewAlbum(track, viewAlbumCommand);
+        BindViewArtist(track, viewArtistCommand);
+        _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible;
 
         // Badge ▸ (optional). Rebuilt per bind: the names come from what the library holds now.
         Badge.IsVisible = badgeCommand != null;
@@ -471,6 +497,45 @@ public sealed class TrackContextMenuBuilder
         item.Command = command;
         item.CommandParameter = track;
     }
+
+    /// <summary>
+    /// Shown only for a real album the view's command can open: the "Unknown Album"
+    /// placeholder is the library-wide bucket of untagged files, not an album to visit.
+    /// The command is detached while hidden so a later open re-asks CanExecute (the
+    /// same row's parameter would not change, leaving a stale disabled state).
+    /// </summary>
+    private void BindViewAlbum(Track track, ICommand? command)
+    {
+        var canOpen = command != null && Track.IsRealAlbumName(track.Album) && command.CanExecute(track);
+        ViewAlbum.IsVisible = canOpen;
+        ViewAlbum.Command = canOpen ? command : null;
+        ViewAlbum.CommandParameter = track;
+    }
+
+    /// <summary>
+    /// One credited artist opens directly; several become a submenu with one entry per
+    /// name, like the album and lyrics pages' per-artist links.
+    /// </summary>
+    private void BindViewArtist(Track track, ICommand? command)
+    {
+        ViewArtist.Items.Clear();
+        var names = command != null ? CreditedArtists(track) : Array.Empty<string>();
+        ViewArtist.IsVisible = names.Count > 0;
+        var single = names.Count == 1;
+        ViewArtist.Command = single ? command : null;
+        ViewArtist.CommandParameter = single ? names[0] : null;
+        if (names.Count < 2) return;
+        foreach (var name in names)
+            ViewArtist.Items.Add(new MenuItem { Header = name, Command = command, CommandParameter = name });
+    }
+
+    /// <summary>The track's credited artists, split with the separators set in Settings →
+    /// Library. The "Unknown Artist" placeholder of an untagged file is left out (Home's Top
+    /// Artists drops it too), so such a track gets no View Artist.</summary>
+    internal static IReadOnlyList<string> CreditedArtists(Track track) =>
+        Track.ParseArtistTokens(track.Artist)
+            .Where(name => !name.Equals("Unknown Artist", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
 
     /// <summary>
     /// Resets cached state so a fresh menu is built on next access.
