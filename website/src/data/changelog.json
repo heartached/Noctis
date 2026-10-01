@@ -1,6 +1,69 @@
 {
   "releases": [
     {
+      "tag": "v1.5.8",
+      "version": "1.5.8",
+      "name": "v1.5.8",
+      "publishedAt": "2026-10-01T00:19:56Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.8",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added smarter search with multi-field matching",
+            "Added search tags for artist, album, title, genre, composer and year",
+            "Added year ranges in search",
+            "Added quoted phrases in search",
+            "Added search syntax tooltip",
+            "Added Newest Albums First toggle for Album Artist sort",
+            "Added drop zones for playing, queueing, adding to library and new playlists",
+            "Added dropping files onto sidebar playlists",
+            "Added Lullaby lyrics model",
+            "Added Lyrics Studio download card with speed, time left and pause",
+            "Added per-song and batch progress in Lyrics Studio",
+            "Added model download checksums"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Lyrics Studio line timing accuracy",
+            "Improved timing of words Whisper misses",
+            "Improved Lyrics Studio model size",
+            "Improved drop zone visibility and animation",
+            "Improved Remove from Library dialog text",
+            "Improved playlist header wording",
+            "Improved genre label readability"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Linux keep-alive flooding logs and wasting CPU",
+            "Fixed first song cutting out after long idle on Linux",
+            "Fixed repeated VLC warnings flooding logs",
+            "Fixed rescans losing songs added from outside music folders",
+            "Fixed files added during a library scan getting lost",
+            "Fixed untagged files in Downloads showing username as artist",
+            "Fixed dropped folders playing in the wrong order",
+            "Fixed drag overlay flickering and refusing drops",
+            "Fixed Lyrics Studio freezing the window when starting a run",
+            "Fixed Lyrics Studio Stop throwing away your review",
+            "Fixed Lyrics Studio finished songs stealing focus while editing",
+            "Fixed saved songs reopening with the wrong lyrics",
+            "Fixed Lyrics Studio model downloads fighting each other",
+            "Fixed Lyrics Studio progress jumping backwards",
+            "Fixed typed lyrics being lost when leaving the page",
+            "Fixed ELRC words spilling past their line",
+            "Fixed Lyrics Studio detecting the wrong song language",
+            "Fixed artist name cutting off letters that dip below the line",
+            "Fixed genre label being cropped"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "lullaby-v1",
       "version": "lullaby-v1",
       "name": "Lullaby",
@@ -2928,6 +2991,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-09-30T22:31:58.776Z",
+  "updatedAt": "2026-10-01T00:20:27.336Z",
   "degraded": false
 }
