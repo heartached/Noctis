@@ -94,10 +94,6 @@ public class MobileQueueSourceTests
         shell.Search.PlaySongCommand.Execute(shell.Search.Songs[0]);
         Assert.Equal("Search", Source());
 
-        shell.Home.Refresh();
-        shell.Home.PlayLastPlayedCommand.Execute(shell.Home.LastPlayed[0]);
-        Assert.Equal("Last Played", Source());
-
         shell.OpenRailItemCommand.Execute(shell.Library.OnRepeatRail[0]);
         Assert.Equal("On Repeat", Source());
     }

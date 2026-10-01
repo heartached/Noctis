@@ -26,14 +26,12 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
         Search = new SearchPageViewModel(this);
-        Home = new HomePageViewModel(this);
     }
 
     public LibraryViewModel Library { get; }
     public NowPlayingViewModel Player { get; }
     public LyricsPageViewModel Lyrics { get; }
     public SearchPageViewModel Search { get; }
-    public HomePageViewModel Home { get; }
 
     /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
     public Func<PageTint> TintFactory { get; init; } = () => new PageTint();
@@ -102,12 +100,12 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool _isLyricsOpen;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsPlaylistsSelected),
-        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
+    [NotifyPropertyChangedFor(nameof(IsFavoritesSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsPlaylistsSelected),
+        nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
     private MobileTab _selectedTab = MobileTab.Library;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible),
+    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible),
         nameof(IsPlaylistsRootVisible))]
     private MobilePage? _currentPage;
 
@@ -147,23 +145,28 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsArtistsChip => LibraryChip == LibraryChip.Artists;
     public bool IsSongsChip => LibraryChip == LibraryChip.Songs;
 
-    public bool IsHomeSelected => SelectedTab == MobileTab.Home;
+    public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
     public bool IsPlaylistsSelected => SelectedTab == MobileTab.Playlists;
 
     public bool HasPage => CurrentPage != null;
-    public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
+    public bool IsFavoritesRootVisible => IsFavoritesSelected && !HasPage;
     public bool IsLibraryRootVisible => IsLibrarySelected && !HasPage;
     public bool IsSearchRootVisible => IsSearchSelected && !HasPage;
     public bool IsPlaylistsRootVisible => IsPlaylistsSelected && !HasPage;
 
     private PlaylistListPageViewModel? _playlistsRoot;
+    private SongListPageViewModel? _favoritesRoot;
 
-    /// <summary>The Playlists tab's root: the playlist list with Favourite Songs as its first row,
-    /// embedded under the tab's own title. Made on first use; it re-reads on every library refresh.</summary>
+    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
+    /// Made on first use; it re-reads on every library refresh.</summary>
     public PlaylistListPageViewModel PlaylistsRoot =>
         _playlistsRoot ??= new PlaylistListPageViewModel(this) { IsEmbedded = true };
+
+    /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
+    public SongListPageViewModel FavoritesRoot =>
+        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -237,13 +240,12 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
-    /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it,
+    /// <summary>A started track's play reached the log: the Library's play-log rails re-read it,
     /// and a desktop song's play is queued for the desktop (sent as a scrobble on the next sync).</summary>
     private void OnPlayRecorded(object? sender, EventArgs e)
     {
         RecordRemotePlay();
         Library.RefreshRecents();
-        Home.Refresh();
     }
 
     private void RecordRemotePlay()
@@ -262,7 +264,6 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSelectedTabChanged(MobileTab value)
     {
-        if (value == MobileTab.Home) Home.Refresh();
         UnfoldTabBar();
     }
 
@@ -523,7 +524,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Outputs?.Show() == false) DebugLog.Write("Android", "No output switcher could be shown");
     }
 
-    /// <summary>The profile button (Library and Home, top right).</summary>
+    /// <summary>The profile button (top right of the tab pages).</summary>
     [RelayCommand]
     private void OpenSettings()
     {

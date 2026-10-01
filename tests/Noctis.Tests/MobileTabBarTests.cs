@@ -60,23 +60,26 @@ public class MobileTabBarTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void PlaylistsTab_IsItsOwnRoot_WithFavouriteSongsFirst()
+    public void FavoritesTab_ShowsTheFavouriteSongs_AndPlaylistsTabTheEmbeddedList()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Loved", favourite: true), MobileFixtures.Song("Plain") });
         var shell = rig.Shell;
         var window = MobileFixtures.Mount(shell, out var view);
 
+        Assert.True(shell.IsLibrarySelected);                     // Library is the start tab
+        shell.SelectTabCommand.Execute(MobileTab.Favorites);
+        window.UpdateLayout();
+        Assert.True(shell.IsFavoritesRootVisible);
+        Assert.False(shell.IsLibraryRootVisible);
+        Assert.True(shell.FavoritesRoot.IsEmbedded);
+        Assert.Equal(new[] { "Loved" }, shell.FavoritesRoot.Songs.Select(t => t.Title));
+        Assert.True(view.FindControl<Grid>("FavoritesRoot")!.IsVisible);
+
         shell.SelectTabCommand.Execute(MobileTab.Playlists);
         window.UpdateLayout();
-
-        Assert.True(shell.IsPlaylistsSelected);
         Assert.True(shell.IsPlaylistsRootVisible);
-        Assert.False(shell.IsLibraryRootVisible);
         Assert.True(shell.PlaylistsRoot.IsEmbedded);
-        var favourites = view.GetVisualDescendants().OfType<Button>().First(b => b.Name == "FavouriteSongsRow" && b.IsEffectivelyVisible);
-        favourites.Command!.Execute(null);
-        var page = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
-        Assert.Equal(new[] { "Loved" }, page.Songs.Select(t => t.Title));
+        Assert.DoesNotContain(view.GetVisualDescendants().OfType<Button>(), b => b.Name == "FavouriteSongsRow");
         window.Close();
     }
 
@@ -119,7 +122,7 @@ public class MobileTabBarTests : IDisposable
         var offset = 0.0;
         ScrollBy(shell, ref offset, 400);
         Assert.True(shell.IsTabBarCollapsed);
-        shell.SelectTabCommand.Execute(MobileTab.Home);
+        shell.SelectTabCommand.Execute(MobileTab.Favorites);
         Assert.False(shell.IsTabBarCollapsed);
 
         _now += 5_000;
@@ -184,7 +187,7 @@ public class MobileTabBarTests : IDisposable
         var shell = MakeShell();
         var window = MobileFixtures.Mount(shell, out var view);
 
-        var names = new[] { "HomeTab", "PlaylistsTab", "LibraryTab", "SearchTab" };
+        var names = new[] { "LibraryTab", "FavoritesTab", "PlaylistsTab", "SearchTab" };
         var xs = names.Select(n => view.FindControl<Button>(n)!).Select(b => b.TranslatePoint(default, view)!.Value.X).ToArray();
         Assert.Equal(xs.OrderBy(x => x), xs);
         window.Close();

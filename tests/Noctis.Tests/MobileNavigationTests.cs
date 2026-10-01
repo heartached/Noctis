@@ -150,10 +150,10 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(1, b.Closed);
 
         shell.Navigate(new NavTestPage("C"));
-        shell.SelectTabCommand.Execute(MobileTab.Home);
+        shell.SelectTabCommand.Execute(MobileTab.Favorites);
         Assert.Empty(shell.Pages);
-        Assert.True(shell.IsHomeSelected);
-        Assert.True(shell.IsHomeRootVisible);
+        Assert.True(shell.IsFavoritesSelected);
+        Assert.True(shell.IsFavoritesRootVisible);
         Assert.False(shell.IsLibraryRootVisible);
     }
 
