@@ -729,6 +729,20 @@ public class AppSettings
     /// <summary>Kawarp styles: 1–16 box-blur passes on the cover before warping; more = dreamier.</summary>
     public int LyricsKawarpBlur { get; set; } = 6;
 
+    /// <summary>Fresh-install value of the three Drift knobs below (GitHub #111): 100% is the
+    /// look Drift had before they existed. Double-tapping a slider in Settings snaps back to it.</summary>
+    public const int LyricsDriftKnobDefault = 100;
+
+    /// <summary>Drift styles: how fast the cover copies drift and turn, in percent of the stock
+    /// speed (0–300). 0 holds them still; the beat pulse is the style's own choice.</summary>
+    public int LyricsDriftMovement { get; set; } = LyricsDriftKnobDefault;
+
+    /// <summary>Drift styles: colour saturation of the blurred cover, in percent (0–200; 0 = grey).</summary>
+    public int LyricsDriftSaturation { get; set; } = LyricsDriftKnobDefault;
+
+    /// <summary>Drift styles: blur strength of the cover, in percent of the stock blur (0–200).</summary>
+    public int LyricsDriftBlur { get; set; } = LyricsDriftKnobDefault;
+
     /// <summary>Live audio visualizer (spectrum) drawn behind the lyrics on the lyrics page.
     /// Reads the samples the app renders, so it needs an output chain with a sample tap
     /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
