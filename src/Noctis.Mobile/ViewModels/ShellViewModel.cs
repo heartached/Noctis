@@ -55,6 +55,10 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }
 
+    /// <summary>The album page's description paragraph (Last.fm on Android); null in tests unless
+    /// injected, and the paragraph then stays hidden.</summary>
+    public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
+
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
 

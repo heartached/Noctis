@@ -260,6 +260,13 @@ public class Album : ObservableObject
     /// <summary>Whether copyright info is available for display.</summary>
     public bool HasCopyright => !string.IsNullOrWhiteSpace(Copyright);
 
+    /// <summary>Record label from the first track whose tags name one (<see cref="Track.Label"/>);
+    /// empty when none does. Unlike <see cref="LabelName"/>, never guessed from the copyright
+    /// notice, whose holder is often the artist rather than the label.</summary>
+    public string RecordLabel =>
+        Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.Label))?.Label.Trim()
+        ?? string.Empty;
+
     /// <summary>
     /// Record label extracted from the copyright notice: strips ℗/©/(P)/(C) marks,
     /// years, and joiners from the front, then cuts at the first clause break — so

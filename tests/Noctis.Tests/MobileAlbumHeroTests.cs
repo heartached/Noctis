@@ -272,16 +272,16 @@ public class MobileAlbumHeroTests : IDisposable
         window.UpdateLayout();
 
         var list = MobileFixtures.Named<ItemsControl>(MobileFixtures.Find<AlbumPage>(view), "TrackList");
-        Panel Bars(int i) => list.ContainerFromIndex(i)!.GetVisualDescendants().OfType<Panel>().First(p => p.Name == "EqBars");
+        PlayingBars Bars(int i) => list.ContainerFromIndex(i)!.GetVisualDescendants().OfType<PlayingBars>().First(p => p.Name == "EqBars");
         TextBlock Number(int i) => list.ContainerFromIndex(i)!.GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "RowNumber");
         Assert.True(Bars(1).IsEffectivelyVisible);
-        Assert.True(Bars(1).Classes.Contains("playing"));
+        Assert.True(Bars(1).IsPlaying);
         Assert.False(Number(1).IsEffectivelyVisible);
         Assert.False(Bars(0).IsEffectivelyVisible);
         Assert.True(Number(0).IsEffectivelyVisible);
 
         rig.Shell.Player.TogglePlayPauseCommand.Execute(null);
-        Assert.False(Bars(1).Classes.Contains("playing"));
+        Assert.False(Bars(1).IsPlaying);
         Assert.True(Bars(1).IsEffectivelyVisible);
         window.Close();
     }
@@ -302,10 +302,10 @@ public class MobileAlbumHeroTests : IDisposable
         window.Close();
     }
 
-    /// <summary>The page colour fades in behind the status bar only once the cover has scrolled
-    /// away; over the cover the clock sits on the art.</summary>
+    /// <summary>The page colour fades in behind the status bar only once the title has scrolled up
+    /// to the buttons; until then the theme fade softens the cover under the clock.</summary>
     [AvaloniaFact]
-    public void TopScrim_FadesInOnceTheCoverHasScrolledAway()
+    public void TopScrim_FadesInOnceTheTitleReachesTheButtons_TakingOverFromTheThemeFade()
     {
         var tracks = Enumerable.Range(1, 40).Select(i => { var t = MobileFixtures.Song($"T{i}"); t.TrackNumber = i; return t; }).ToArray();
         var album = MobileFixtures.MakeAlbum("Long", "Band", tracks);
@@ -318,13 +318,17 @@ public class MobileAlbumHeroTests : IDisposable
 
         var page = MobileFixtures.Find<AlbumPage>(view);
         var scrim = MobileFixtures.Named<Border>(page, "TopScrim");
+        var fade = MobileFixtures.Named<Border>(page, "TopFade");
         Assert.Equal(0, scrim.Opacity);
+        Assert.Equal(1, fade.Opacity);
         Assert.NotNull(scrim.Background);
+        Assert.NotNull(fade.Background);
         Assert.NotNull(MobileFixtures.Named<Border>(page, "HeroFade").Background);
 
         MobileFixtures.Named<ScrollViewer>(page, "AlbumScroll").Offset = new Vector(0, 600);
         window.UpdateLayout();
         Assert.Equal(1, scrim.Opacity);
+        Assert.Equal(0, fade.Opacity);
         window.Close();
     }
 
@@ -388,36 +392,59 @@ public class MobileAlbumHeroTests : IDisposable
         public void SetStatusBarIcons(bool? dark) => Icons.Add(dark);
     }
 
-    /// <summary>Under the bar at rest: the cover's top rows. Scrolled into the fade, the page
-    /// colour takes over; with the scrim fully in, it is the page colour alone.</summary>
+    /// <summary>The scroll chrome follows the big title: no scrim while it is well below the
+    /// buttons, the scrim fully in as its top reaches the row's bottom, the big title gone and
+    /// the small one in once it has passed under the row.</summary>
     [Fact]
-    public void StatusBarBackdrop_FollowsTheCoverRows_ThenThePageColour()
+    public void ScrollChrome_FollowsTheBigTitle()
     {
-        var rows = Enumerable.Repeat(0.9, 32).Concat(Enumerable.Repeat(0.02, 32)).ToArray();   // white top, black bottom
-        var tint = Color.FromRgb(0x10, 0x10, 0x10);
-        var page = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(tint);
-
-        Assert.Equal(0.9, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 0), 3);
-        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 600, 40, tint, 0), 3);   // past the cover
-        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 1), 3);     // scrim in
-        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(null, 400, 0.45, 0, 40, tint, 0), 3);     // rows unknown
-        Assert.True(PageTint.PrefersDarkText(AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 0)));
+        const double bar = 100, height = 32;
+        Assert.Equal((0.0, 1.0, 0.0), AlbumPage.ScrollChrome(titleTop: 400, height, bar));
+        Assert.Equal(0.5, AlbumPage.ScrollChrome(bar + AlbumPage.ScrimRun / 2, height, bar).Scrim, 3);
+        var touching = AlbumPage.ScrollChrome(bar, height, bar);
+        Assert.Equal((1.0, 1.0, 0.0), touching);
+        var half = AlbumPage.ScrollChrome(bar - height / 2, height, bar);
+        Assert.Equal(0.5, half.BigTitle, 3);
+        Assert.Equal(0, half.SmallTitle, 3);
+        var under = AlbumPage.ScrollChrome(bar - height, height, bar);
+        Assert.Equal((1.0, 0.0, 1.0), under);
+        Assert.Equal((1.0, 0.0, 1.0), AlbumPage.ScrollChrome(-500, height, bar));
     }
 
-    /// <summary>The page asks for icons readable on its tint (light on a dark page); Now Playing's
-    /// dark backdrop takes light icons over it; the page hands the bar back to the theme when it leaves.</summary>
+    /// <summary>The theme fade over the cover top is the theme's background, strongest under
+    /// the clock and clear below the buttons.</summary>
+    [Fact]
+    public void TopFade_IsTheThemeColour_FadingToClear()
+    {
+        var brush = AlbumPage.TopFadeBrush(Colors.White, 0.88);
+        Assert.All(brush.GradientStops, s => Assert.Equal(Colors.White, Color.FromRgb(s.Color.R, s.Color.G, s.Color.B)));
+        Assert.Equal(224, brush.GradientStops[0].Color.A);   // 0.88
+        Assert.Equal(0, brush.GradientStops[^1].Color.A);
+        Assert.True(brush.GradientStops.Zip(brush.GradientStops.Skip(1)).All(p => p.First.Color.A >= p.Second.Color.A));
+    }
+
+    /// <summary>At rest the theme fade lies under the bar, so the theme's own icons stay (null);
+    /// scrolled, the page colour does, and the page asks for icons readable on it (light on a dark
+    /// page); Now Playing's dark backdrop takes light icons over it; leaving hands the bar back.</summary>
     [AvaloniaFact]
-    public void StatusBarIcons_FollowThePage_AndReturnToTheTheme()
+    public void StatusBarIcons_FollowTheThemeAtRest_ThePageScrolled_AndReturnToTheTheme()
     {
         var theme = new RecordingTheme();
-        var (album, tracks) = Sample(FakeCover());
+        var tracks = Enumerable.Range(1, 40).Select(i => { var t = MobileFixtures.Song($"T{i}"); t.TrackNumber = i; return t; }).ToArray();
+        var album = MobileFixtures.MakeAlbum("Long", "Band", tracks);
+        album.ArtworkPath = FakeCover();
         using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(Color.FromRgb(0x14, 0x18, 0x30)), theme: theme);
         rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
-        var window = MobileFixtures.Mount(rig.Shell, out _);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
         rig.Shell.OpenAlbumsCommand.Execute(null);
         rig.Shell.OpenAlbumCommand.Execute(album);
         window.UpdateLayout();
-        Assert.Equal(false, theme.Icons[^1]);    // light icons on the dark page
+        Assert.Null(rig.Shell.PageStatusBarIcons);   // the theme's icons over the theme fade
+        Assert.Empty(theme.Icons);
+
+        MobileFixtures.Named<ScrollViewer>(MobileFixtures.Find<AlbumPage>(view), "AlbumScroll").Offset = new Vector(0, 600);
+        window.UpdateLayout();
+        Assert.Equal(false, theme.Icons[^1]);    // light icons on the dark page colour
 
         rig.Shell.IsNowPlayingOpen = true;
         Assert.Equal(false, theme.Icons[^1]);
@@ -446,34 +473,29 @@ public class MobileAlbumHeroTests : IDisposable
         return path;
     }
 
-    /// <summary>A busy black-and-white top (the graffiti cover) gets a soft shade behind the
-    /// status bar and light icons on it; a plain light top keeps dark icons and no shade.</summary>
+    /// <summary>The theme fade replaces the busy-cover shade and the per-cover icon choice: on a
+    /// busy black-and-white top and on a plain light one alike the page leaves the icons to the
+    /// theme at rest.</summary>
     [AvaloniaFact]
-    public void BusyCoverTop_IsShadedUnderTheStatusBar_WithLightIcons()
+    public void StatusBarIcons_StayTheThemes_OnBusyAndPlainCoverTops()
     {
-        var theme = new RecordingTheme();
-        var busy = RealCover((x, y) => (x / 6 + y / 6) % 2 == 0 ? new SkiaSharp.SKColor(0xF2, 0xF2, 0xF2) : new SkiaSharp.SKColor(0x10, 0x10, 0x10));
-        var (album, tracks) = Sample(busy);
-        using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(Color.FromRgb(0x50, 0x50, 0x55)), theme: theme);
-        rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
-        var window = MobileFixtures.Mount(rig.Shell, out var view);
-        rig.Shell.OpenAlbumCommand.Execute(album);
-        window.UpdateLayout();
-        var page = MobileFixtures.Find<AlbumPage>(view);
-        Assert.Equal(1, MobileFixtures.Named<Border>(page, "StatusShade").Opacity);
-        Assert.Equal(false, theme.Icons[^1]);
-        rig.Shell.NavigateBackCommand.Execute(null);
-
-        var plain = RealCover((_, _) => new SkiaSharp.SKColor(0xF4, 0xF4, 0xF4));
-        var (album2, tracks2) = Sample(plain);
-        using var rig2 = MobileFixtures.MakeRig(tracks2, new[] { album2 }, tint: Tint(Color.FromRgb(0xF4, 0xF4, 0xF4)), theme: theme);
-        rig2.Shell.SafeArea = new Thickness(0, 40, 0, 0);
-        var window2 = MobileFixtures.Mount(rig2.Shell, out var view2);
-        rig2.Shell.OpenAlbumCommand.Execute(album2);
-        window2.UpdateLayout();
-        Assert.Equal(0, MobileFixtures.Named<Border>(MobileFixtures.Find<AlbumPage>(view2), "StatusShade").Opacity);
-        Assert.Equal(true, theme.Icons[^1]);
-        window.Close();
-        window2.Close();
+        foreach (var cover in new[]
+                 {
+                     RealCover((x, y) => (x / 6 + y / 6) % 2 == 0 ? new SkiaSharp.SKColor(0xF2, 0xF2, 0xF2) : new SkiaSharp.SKColor(0x10, 0x10, 0x10)),
+                     RealCover((_, _) => new SkiaSharp.SKColor(0xF4, 0xF4, 0xF4)),
+                 })
+        {
+            var theme = new RecordingTheme();
+            var (album, tracks) = Sample(cover);
+            using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(Color.FromRgb(0x50, 0x50, 0x55)), theme: theme);
+            rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
+            var window = MobileFixtures.Mount(rig.Shell, out var view);
+            rig.Shell.OpenAlbumCommand.Execute(album);
+            window.UpdateLayout();
+            Assert.Null(rig.Shell.PageStatusBarIcons);
+            Assert.Empty(theme.Icons);
+            Assert.Equal(1, MobileFixtures.Named<Border>(MobileFixtures.Find<AlbumPage>(view), "TopFade").Opacity);
+            window.Close();
+        }
     }
 }

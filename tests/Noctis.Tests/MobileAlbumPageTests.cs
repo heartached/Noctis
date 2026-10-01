@@ -60,9 +60,9 @@ public class MobileAlbumPageTests : IDisposable
         Assert.Equal(2, rows.GetRealizedContainers().Count());
         var second = rows.ContainerFromIndex(1)!;
         Assert.Contains(second.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "2");
-        Assert.True(second.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit")).IsEffectivelyVisible);
-        Assert.False(rows.ContainerFromIndex(0)!.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit")).IsEffectivelyVisible);
-        Assert.Equal("2 tracks, 3m 00s", MobileFixtures.Named<TextBlock>(page, "Footer").Text);
+        Assert.True(second.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit-badge")).IsEffectivelyVisible);
+        Assert.False(rows.ContainerFromIndex(0)!.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit-badge")).IsEffectivelyVisible);
+        Assert.Equal("2 songs, 3 minutes", MobileFixtures.Named<TextBlock>(page, "FooterSongs").Text);
         window.Close();
     }
 

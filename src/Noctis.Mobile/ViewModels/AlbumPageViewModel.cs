@@ -2,7 +2,9 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Mobile.Services;
 using Noctis.Models;
+using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -53,6 +55,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
         Apply(album);
+        DescriptionLoad = LoadDescriptionAsync(album.Artist, album.Name, _descriptionCts.Token);
     }
 
     public ShellViewModel Shell { get; }
@@ -74,7 +77,47 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     [NotifyPropertyChangedFor(nameof(HasMetaLine))]
     private string _metaLine = string.Empty;
 
-    [ObservableProperty] private string _footerText = string.Empty;
+    /// <summary>The footer, Apple's block under the last row: "≋ Lossless · 24-bit/96 kHz FLAC",
+    /// the release date, "10 songs, 36 minutes", the ℗ line and the record label; each line is
+    /// hidden when the album's tags do not give it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasQualityLine))]
+    private string _qualityLine = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReleaseDate))]
+    private string _releaseDateText = string.Empty;
+
+    [ObservableProperty] private string _songsLine = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCopyright))]
+    private string _copyrightText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRecordLabel))]
+    private string _recordLabel = string.Empty;
+
+    public bool HasQualityLine => QualityLine.Length > 0;
+    public bool HasReleaseDate => ReleaseDateText.Length > 0;
+    public bool HasCopyright => CopyrightText.Length > 0;
+    public bool HasRecordLabel => RecordLabel.Length > 0;
+
+    /// <summary>The album's description (<see cref="ShellViewModel.AlbumDescriptions"/>, Last.fm on
+    /// the phone); null hides the paragraph. Asked once as the page opens.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDescription))]
+    private string? _description;
+
+    public bool HasDescription => !string.IsNullOrEmpty(Description);
+
+    /// <summary>The paragraph shows in full (LESS) rather than its first lines (MORE).</summary>
+    [ObservableProperty] private bool _isDescriptionExpanded;
+
+    /// <summary>The description lookup started with the page; tests await it.</summary>
+    internal Task DescriptionLoad { get; }
+
+    private readonly CancellationTokenSource _descriptionCts = new();
 
     /// <summary>A cover for the artist's avatar beside the artist link (the Artists list's rule).</summary>
     [ObservableProperty]
@@ -114,11 +157,68 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Tracks = album.Tracks.Select((t, i) => new AlbumTrackRow(t, t.TrackNumber > 0 ? t.TrackNumber : i + 1)).ToList();
         Rows = BuildRows(Tracks);
         MetaLine = BuildMetaLine(album);
-        FooterText = $"{album.TrackCountText}, {album.HeaderDurationFormatted}";
+        QualityLine = BuildQualityLine(album);
+        ReleaseDateText = album.ReleaseDateFormatted;
+        SongsLine = BuildSongsLine(album);
+        CopyrightText = album.Copyright.Trim();
+        RecordLabel = album.RecordLabel;
         ArtistArtworkPath = MobileLibrary.ArtistArtworkFor(Shell.Library.Service, album.Artist);
         IsFavourite = album.IsAllTracksFavorite;
         SyncNowPlaying();
         Tint.Load(album.ArtworkPath);
+    }
+
+    /// <summary>"Lossless · 24-bit/96 kHz FLAC": Core's badge and its detail line (the desktop's
+    /// tooltip), the badge alone when there is no detail, empty without a badge. A lossy album's
+    /// badge is its codec, which the detail also ends with: said once ("MP3 · 128 kbps 44.1 kHz",
+    /// not "… 44.1 kHz MP3", seen on the device).</summary>
+    public static string BuildQualityLine(Album album)
+    {
+        var badge = album.AudioQualityBadge;
+        if (badge.Length == 0) return string.Empty;
+        var detail = album.AudioQualityDetailedInfo;
+        if (detail.EndsWith(" " + badge, StringComparison.Ordinal)) detail = detail[..^(badge.Length + 1)];
+        else if (detail == badge) detail = string.Empty;
+        return detail.Length > 0 ? $"{badge} · {detail}" : badge;
+    }
+
+    /// <summary>Apple's "15 songs, 56 minutes" ("1 hour, 2 minutes" past the hour), whole minutes.</summary>
+    public static string BuildSongsLine(Album album)
+    {
+        static string Count(int n, string unit) => n == 1 ? $"1 {unit}" : $"{n} {unit}s";
+        var songs = Count(album.TrackCount, "song");
+        var total = album.TotalDuration;
+        var hours = (int)total.TotalHours;
+        var length = hours > 0
+            ? total.Minutes > 0 ? $"{Count(hours, "hour")}, {Count(total.Minutes, "minute")}" : Count(hours, "hour")
+            : Count((int)total.TotalMinutes, "minute");
+        return $"{songs}, {length}";
+    }
+
+    private async Task LoadDescriptionAsync(string artist, string album, CancellationToken ct)
+    {
+        if (Shell.AlbumDescriptions is not { } source) return;
+        try
+        {
+            var text = await source.GetDescriptionAsync(artist, album, ct);
+            if (!ct.IsCancellationRequested) Description = string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page closed first.
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Album", $"Description failed: {ex.Message}");
+        }
+    }
+
+    partial void OnDescriptionChanged(string? value) => IsDescriptionExpanded = false;
+
+    [RelayCommand]
+    private void ToggleDescription()
+    {
+        if (HasDescription) IsDescriptionExpanded = !IsDescriptionExpanded;
     }
 
     private static IReadOnlyList<object> BuildRows(IReadOnlyList<AlbumTrackRow> tracks)
@@ -210,6 +310,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     public override void OnClosed()
     {
+        _descriptionCts.Cancel();
         Shell.Library.Refreshed -= OnRefreshed;
         Shell.Player.PropertyChanged -= OnPlayerChanged;
         Shell.PropertyChanged -= OnShellChanged;

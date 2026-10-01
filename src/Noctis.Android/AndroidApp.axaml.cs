@@ -113,6 +113,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Logs = new AndroidLogExporter(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            // The desktop's album descriptions: Last.fm, asked by artist and album name only
+            // when an album page opens (Settings → About says so).
+            AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
         };
         _shell = shell;
 
