@@ -9,112 +9,333 @@
              Classes.tinted="{Binding Tint.HasTint}"
              Classes.light="{Binding Tint.IsLight}">
 
-    <!-- Text follows the theme until a cover tints the page, then white, or near-black on a
-         light cover (the desktop album page's rule). Set by style, not locally, so the
-         tinted classes can override it; rows are Buttons, whose presenter takes the Button's
-         Foreground, hence the Button.row setters. -->
+    <!-- Apple Music's album page: the cover full-bleed under the status bar, fading into its
+         own bottom colour (PageTint.HeroFade), with the title block on the fade. Text follows
+         the theme until the cover's colour lands, then the tint's own text colours, which
+         the code-behind keeps as page resources (AlbumText, AlbumSubtleText, AlbumWash,
+         AlbumPillText, AlbumRule): black or white by WCAG contrast, secondary text as dim as
+         4.5:1 allows. Set by style, not locally, so the tinted class can override the theme;
+         rows are Buttons, whose presenter takes the Button's Foreground, hence the Button setters.
+         Status bar: a theme-coloured fade softens the cover top under the clock and the buttons
+         (white in Light, dark in Dark), so the theme's own icons read on every cover; scrolled,
+         the page colour comes in behind the bar and the title moves into it (AlbumPage.axaml.cs). -->
+    <UserControl.Resources>
+        <!-- The desktop album page's audio-quality waveform (AlbumDetailView.axaml). -->
+        <StreamGeometry x:Key="AlbumQualityIcon">M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z</StreamGeometry>
+    </UserControl.Resources>
+
     <UserControl.Styles>
         <Style Selector="views|AlbumPage">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
         <Style Selector="views|AlbumPage.tinted">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource AlbumText}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted.light">
-            <Setter Property="Foreground" Value="#111111" />
-        </Style>
-        <Style Selector="views|AlbumPage Button.row, views|AlbumPage Button.icon">
+        <Style Selector="views|AlbumPage Button.row, views|AlbumPage Button.icon, views|AlbumPage Button.round">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted Button.row, views|AlbumPage.tinted Button.icon">
-            <Setter Property="Foreground" Value="White" />
+        <Style Selector="views|AlbumPage.tinted Button.row, views|AlbumPage.tinted Button.icon, views|AlbumPage.tinted Button.round">
+            <Setter Property="Foreground" Value="{DynamicResource AlbumText}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted.light Button.row, views|AlbumPage.tinted.light Button.icon">
-            <Setter Property="Foreground" Value="#111111" />
+        <Style Selector="views|AlbumPage.tinted Button.round">
+            <Setter Property="Background" Value="{DynamicResource AlbumWash}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted TextBlock.subtle, views|AlbumPage.tinted TextBlock.row-sub">
-            <Setter Property="Foreground" Value="#B0FFFFFF" />
+        <Style Selector="views|AlbumPage TextBlock.album-subtle">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         </Style>
-        <Style Selector="views|AlbumPage.tinted.light TextBlock.subtle, views|AlbumPage.tinted.light TextBlock.row-sub">
-            <Setter Property="Foreground" Value="#80000000" />
+        <Style Selector="views|AlbumPage.tinted TextBlock.album-subtle">
+            <Setter Property="Foreground" Value="{DynamicResource AlbumSubtleText}" />
+        </Style>
+        <Style Selector="views|AlbumPage Path.album-subtle">
+            <Setter Property="Fill" Value="{DynamicResource SecondaryTextBrush}" />
+        </Style>
+        <Style Selector="views|AlbumPage.tinted Path.album-subtle">
+            <Setter Property="Fill" Value="{DynamicResource AlbumSubtleText}" />
+        </Style>
+
+        <!-- Play: a dark pill on light tints and a light one on dark tints (Apple's black pill
+             on a pale cover); without a tint, the theme's text colour on its background. -->
+        <Style Selector="views|AlbumPage Button.album-play">
+            <Setter Property="Background" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppWindowBackgroundBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="148" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="CornerRadius" Value="23" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="views|AlbumPage.tinted Button.album-play">
+            <Setter Property="Background" Value="{DynamicResource AlbumText}" />
+            <Setter Property="Foreground" Value="{DynamicResource AlbumPillText}" />
+        </Style>
+        <!-- Fluent repaints the presenter on :pointerover/:pressed (see MobileStyles.axaml);
+             these two classes keep their look. The Play pill answers a press like the phone's
+             buttons (MobileStyles' eased dim and settle); glass-round already does there. -->
+        <Style Selector="views|AlbumPage Button.album-play:pointerover /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.album-play:pressed /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.glass-round:pointerover /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.glass-round:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="views|AlbumPage Button.album-play">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12">
+                        <DoubleTransition.Easing><CubicEaseOut /></DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
+                        <TransformOperationsTransition.Easing><CubicEaseOut /></TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="views|AlbumPage Button.album-play:pressed">
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="RenderTransform" Value="scale(0.96)" />
+        </Style>
+
+        <Style Selector="views|AlbumPage Border.rule">
+            <Setter Property="Background" Value="#22808080" />
+        </Style>
+        <Style Selector="views|AlbumPage.tinted Border.rule">
+            <Setter Property="Background" Value="{DynamicResource AlbumRule}" />
+        </Style>
+
+        <!-- The playing row's equalizer (PlayingBars, the desktop's row indicator) in the text colour. -->
+        <Style Selector="views|AlbumPage views|PlayingBars">
+            <Setter Property="Fill" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="views|AlbumPage.tinted views|PlayingBars">
+            <Setter Property="Fill" Value="{DynamicResource AlbumText}" />
+        </Style>
+
+        <!-- Shuffle and the heart beside the Play pill: Apple's ~44 pt circles, one height with it. -->
+        <Style Selector="views|AlbumPage Button.album-round">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="CornerRadius" Value="23" />
+        </Style>
+
+        <!-- The description's MORE / LESS, Apple's small bold caps. -->
+        <Style Selector="views|AlbumPage TextBlock.album-more">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LineHeight" Value="20" />
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer Name="AlbumScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,0,0,24">
-            <Button Classes="icon" Margin="8,4,0,0" HorizontalAlignment="Left" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
-            </Button>
+    <!-- The page reaches up under the status bar (the code-behind sets a negative top margin
+         of the shell's SafeArea.Top; ShellView pads the tab content below it), so the cover
+         is full-bleed; the floating buttons and the scrim are laid over the scroller. -->
+    <Panel>
+        <ScrollViewer Classes="page-scroll" Name="AlbumScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,0,24">
+                <!-- Square (the code-behind sizes it from the width); the bottom of the cover
+                     fades into the page colour, so the cover never ends in a hard line. -->
+                <Panel Name="Hero" Height="412" ClipToBounds="True" Background="{DynamicResource HomeCardBackground}">
+                    <PathIcon Name="ArtPlaceholder" Data="{DynamicResource AlbumsIcon}" Width="96" Height="96" Opacity="0.4"
+                              IsVisible="{Binding !HasArtwork}" />
+                    <controls:CachedImage Name="AlbumArt" SourcePath="{Binding Album.ArtworkPath}" DecodeWidth="1024"
+                                          ClearOnSourceChange="False" Stretch="UniformToFill" />
+                    <Border Name="HeroFade" VerticalAlignment="Bottom" IsHitTestVisible="False" />
+                </Panel>
 
-            <Viewbox Margin="48,4,48,0" MaxWidth="340" Stretch="Uniform">
-                <Border Classes="art" Width="300" Height="300" CornerRadius="12">
-                    <Panel>
-                        <PathIcon Name="ArtPlaceholder" Data="{DynamicResource AlbumsIcon}" Width="72" Height="72" Opacity="0.4"
-                                  IsVisible="{Binding !HasArtwork}" />
-                        <controls:CachedImage Name="AlbumArt" SourcePath="{Binding Album.ArtworkPath}" DecodeWidth="768"
-                                              ClearOnSourceChange="False" Stretch="UniformToFill" />
-                    </Panel>
-                </Border>
-            </Viewbox>
-
-            <TextBlock Name="AlbumTitle" Text="{Binding Album.Name}" FontSize="22" FontWeight="Bold"
-                       TextAlignment="Center" TextWrapping="Wrap" Margin="24,16,24,0" />
-            <Button Name="ArtistLink" Classes="row" HorizontalAlignment="Center" Command="{Binding OpenArtistCommand}">
-                <TextBlock Text="{Binding Album.Artist}" FontSize="17" TextAlignment="Center" Margin="0,2" />
-            </Button>
-            <TextBlock Name="MetaLine" Classes="subtle" Text="{Binding MetaLine}" HorizontalAlignment="Center"
-                       IsVisible="{Binding HasMetaLine}" />
-
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,16,0,8">
-                <Button Grid.Column="1" Name="ShuffleButton" Classes="round" Command="{Binding ShuffleCommand}">
-                    <PathIcon Data="{DynamicResource ShuffleIcon}" />
-                </Button>
-                <Button Grid.Column="2" Name="PlayButton" Classes="pill-accent" Margin="16,0" MinWidth="140"
-                        HorizontalContentAlignment="Center" Command="{Binding PlayCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{DynamicResource PlayIcon}" Width="14" Height="14" />
-                        <TextBlock Text="Play" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="3" Name="MoreButton" Classes="round" Command="{Binding MoreCommand}">
-                    <PathIcon Data="{DynamicResource MoreDotsIcon}" />
-                </Button>
-            </Grid>
-
-            <!-- Virtualised like the other lists: a box set would otherwise realise every row at
-                 page open. The panel still virtualises under the header, inside AlbumScroll,
-                 because VirtualizingStackPanel works from the effective viewport. -->
-            <ItemsControl Name="TrackList" ItemsSource="{Binding Tracks}" Margin="12,8,12,0">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <VirtualizingStackPanel />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AlbumTrackRow">
-                        <Button Classes="row"
-                                Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).PlayTrackCommand}"
-                                CommandParameter="{Binding}"
-                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
-                                views:LongPress.CommandParameter="{Binding Track}">
-                            <Grid ColumnDefinitions="36,*,Auto,Auto" Height="52" Margin="8,0">
-                                <TextBlock Classes="subtle" Text="{Binding Number}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Classes="row-title" Text="{Binding Track.Title}" VerticalAlignment="Center" />
-                                <Border Grid.Column="2" Classes="explicit" IsVisible="{Binding Track.IsExplicit}">
-                                    <TextBlock Text="E" />
-                                </Border>
-                                <Button Grid.Column="3" Classes="icon" Width="36" Height="36"
-                                        Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
-                                        CommandParameter="{Binding Track}">
-                                    <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="16" Height="16" />
-                                </Button>
-                            </Grid>
+                <!-- Pulled up onto the fade, where the cover is ~90% page colour. -->
+                <StackPanel Name="TitleBlock" Margin="24,-56,24,0">
+                    <TextBlock Name="AlbumTitle" Text="{Binding Album.Name}" FontSize="26" FontWeight="Bold"
+                               TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                    <Button Name="ArtistLink" Classes="row" HorizontalAlignment="Center" Margin="0,4,0,0" Command="{Binding OpenArtistCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,2">
+                            <Border Name="ArtistAvatar" Classes="art artist" Width="24" Height="24" VerticalAlignment="Center"
+                                    IsVisible="{Binding HasArtistArtwork}">
+                                <controls:CachedImage SourcePath="{Binding ArtistArtworkPath}" DecodeWidth="96" Stretch="UniformToFill" />
+                            </Border>
+                            <TextBlock Name="ArtistName" Text="{Binding Album.Artist}" FontSize="19" MaxWidth="280"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
+                                      VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- "Genre · Year · ≋ Lossless": the desktop's quality badge, which explains
+                         itself on a tap (the desktop's tooltip). -->
+                    <StackPanel Name="MetaRow" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                        <TextBlock Name="MetaLine" Classes="album-subtle" FontSize="13" Text="{Binding MetaLine}"
+                                   VerticalAlignment="Center" IsVisible="{Binding HasMetaLine}" />
+                        <TextBlock Classes="album-subtle" FontSize="13" Text=" · " VerticalAlignment="Center">
+                            <TextBlock.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="HasMetaLine" />
+                                    <Binding Path="HasQualityBadge" />
+                                </MultiBinding>
+                            </TextBlock.IsVisible>
+                        </TextBlock>
+                        <Button Name="QualityBadge" Classes="row" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding HasQualityBadge}">
+                            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4">
+                                <Viewbox Width="16" Height="11" Margin="0,1,0,0" VerticalAlignment="Center">
+                                    <Path Classes="album-subtle" Data="{StaticResource AlbumQualityIcon}" />
+                                </Viewbox>
+                                <TextBlock Name="QualityBadgeText" Classes="album-subtle" FontSize="13" FontWeight="SemiBold"
+                                           Text="{Binding QualityBadge}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <StackPanel Width="240" Spacing="4">
+                                        <TextBlock Text="{Binding QualityBadge}" FontSize="14" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding QualityDetail}" FontSize="13" Opacity="0.85" />
+                                        <TextBlock Text="{Binding QualityDescription}" FontSize="12" TextWrapping="Wrap" Opacity="0.8"
+                                                   Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
                         </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
 
-            <TextBlock Name="Footer" Classes="subtle" Text="{Binding FooterText}" Margin="20,16,20,0" />
-        </StackPanel>
-    </ScrollViewer>
+                <!-- Apple's row: shuffle, the Play pill and the album heart as one tight centred group. -->
+                <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14" Margin="0,18,0,0">
+                    <Button Name="ShuffleButton" Classes="round album-round" Command="{Binding ShuffleCommand}">
+                        <PathIcon Data="{DynamicResource PhShuffle}" />
+                    </Button>
+                    <Button Name="PlayButton" Classes="album-play" Command="{Binding PlayCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
+                            <TextBlock Text="Play" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Name="FavouriteButton" Classes="round album-round" Command="{Binding ToggleFavouriteCommand}">
+                        <Panel>
+                            <PathIcon Name="HeartOutline" Data="{DynamicResource PhHeart}" IsVisible="{Binding !IsFavourite}" />
+                            <PathIcon Name="HeartFilled" Data="{DynamicResource PhHeartFill}" IsVisible="{Binding IsFavourite}" />
+                        </Panel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Apple's description under the buttons: its first lines with MORE over the end of
+                     the last one, the whole text on a tap (LESS, or another tap, folds it back). The
+                     clip's height eases between the two in the code-behind. -->
+                <Button Name="DescriptionBlock" Classes="row" Margin="24,16,24,0" IsVisible="{Binding HasDescription}"
+                        Command="{Binding ToggleDescriptionCommand}">
+                    <Panel>
+                        <Border Name="DescriptionClip" ClipToBounds="True" VerticalAlignment="Top">
+                            <StackPanel Name="DescriptionContent" VerticalAlignment="Top">
+                                <TextBlock Name="DescriptionText" Text="{Binding Description}" FontSize="15" LineHeight="20"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Name="DescriptionLess" Classes="album-more" Text="LESS" HorizontalAlignment="Right"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Name="DescriptionMore" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="36,0,0,0"
+                                IsHitTestVisible="False">
+                            <TextBlock Classes="album-more" Text="MORE" />
+                        </Border>
+                    </Panel>
+                </Button>
+
+                <!-- Virtualised like the other lists: a box set would otherwise realise every row at
+                     page open. The panel still virtualises under the header, inside AlbumScroll,
+                     because VirtualizingStackPanel works from the effective viewport. -->
+                <ItemsControl Name="TrackList" ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="vm:AlbumDiscHeader">
+                            <TextBlock Classes="album-subtle" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
+                                       Margin="24,16,24,4" />
+                        </DataTemplate>
+                        <DataTemplate DataType="vm:AlbumTrackRow">
+                            <!-- Apple's row: a narrow number column with the title right after it, and the
+                                 explicit badge straight after the title (the desktop's compact badge). -->
+                            <Button Classes="row"
+                                    Command="{Binding $parent[views:AlbumPage].((vm:AlbumPageViewModel)DataContext).PlayTrackCommand}"
+                                    CommandParameter="{Binding}"
+                                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                    views:LongPress.CommandParameter="{Binding Track}">
+                                <Grid ColumnDefinitions="30,*,Auto" Height="50" Margin="14,0,8,0">
+                                    <TextBlock Name="RowNumber" Classes="album-subtle" FontSize="15" Text="{Binding Number}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowsNumber}" />
+                                    <views:PlayingBars Name="EqBars" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       IsPlaying="{Binding IsAnimating}" IsVisible="{Binding IsCurrent}" />
+                                    <!-- Left-aligned, so the star column is the title's own width up to the
+                                         room left, and the badge follows the title, not the row's end. -->
+                                    <Grid Grid.Column="1" Name="RowTitleCell" ColumnDefinitions="*,Auto" HorizontalAlignment="Left"
+                                          VerticalAlignment="Center" Margin="4,0,8,0">
+                                        <TextBlock Name="RowTitle" FontSize="16" Text="{Binding Track.Title}" MaxLines="1"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <Border Grid.Column="1" Name="RowExplicit" Classes="explicit-badge compact" Margin="6,0,0,0"
+                                                IsVisible="{Binding Track.IsExplicit}">
+                                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                        </Border>
+                                    </Grid>
+                                    <Button Grid.Column="2" Classes="icon" Width="40" Height="40"
+                                            Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                            CommandParameter="{Binding Track}">
+                                        <PathIcon Data="{DynamicResource PhMore}" />
+                                    </Button>
+                                    <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="rule" Height="0.5" Margin="4,0,0,0"
+                                            VerticalAlignment="Bottom" IsHitTestVisible="False" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+
+                <!-- Apple's footer: the quality with the desktop's waveform, the release date, the song
+                     count and length, the copyright line, then the record label; a line the tags cannot
+                     give is left out. -->
+                <StackPanel Name="Footer" Margin="18,22,18,0">
+                    <StackPanel Name="FooterQuality" Orientation="Horizontal" Spacing="6" Margin="0,0,0,12"
+                                IsVisible="{Binding HasQualityLine}">
+                        <Viewbox Width="18" Height="12" VerticalAlignment="Center">
+                            <Path Classes="album-subtle" Data="{StaticResource AlbumQualityIcon}" />
+                        </Viewbox>
+                        <TextBlock Name="FooterQualityText" Classes="album-subtle" FontSize="14" Text="{Binding QualityLine}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Name="FooterDate" Classes="album-subtle" FontSize="14" LineHeight="19" Text="{Binding ReleaseDateText}"
+                               IsVisible="{Binding HasReleaseDate}" />
+                    <TextBlock Name="FooterSongs" Classes="album-subtle" FontSize="14" LineHeight="19" Text="{Binding SongsLine}" />
+                    <TextBlock Name="FooterCopyright" Classes="album-subtle" FontSize="14" LineHeight="19" TextWrapping="Wrap"
+                               Text="{Binding CopyrightText}" IsVisible="{Binding HasCopyright}" />
+                    <StackPanel Name="FooterLabel" Margin="0,16,0,0" Spacing="1" IsVisible="{Binding HasRecordLabel}">
+                        <TextBlock Classes="album-subtle" Text="RECORD LABEL" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Name="FooterLabelName" FontSize="15" TextWrapping="Wrap" Text="{Binding RecordLabel}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Apple's soft top: the theme's own background fading down over the cover's top, under
+             the status bar and the buttons (white in Light, dark in Dark), so the theme's status
+             bar icons read on any cover. Fixed to the screen; it hands over to the scrim below as
+             the page scrolls into the bar. -->
+        <Border Name="TopFade" VerticalAlignment="Top" IsHitTestVisible="False" />
+
+        <!-- The page colour behind the status bar and the buttons once the title scrolls up to them
+             (iOS's scroll-edge fade): solid behind the buttons, eased out just below them. -->
+        <Border Name="TopScrim" VerticalAlignment="Top" Opacity="0" IsHitTestVisible="False" />
+
+        <!-- Round Liquid Glass buttons floating over the cover: back and the album's sheet, with the
+             album's name between them once its big title has gone under them. -->
+        <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0">
+            <controls:GlassPanel Classes="header-glass">
+                <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
+                    <PathIcon Data="{DynamicResource PhBack}" />
+                </Button>
+            </controls:GlassPanel>
+            <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Album.Name}" FontSize="17" FontWeight="SemiBold"
+                       TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,0"
+                       MaxLines="1" TextTrimming="CharacterEllipsis" Opacity="0" IsHitTestVisible="False" />
+            <controls:GlassPanel Grid.Column="2" Classes="header-glass">
+                <Button Name="MoreButton" Classes="glass-round" Command="{Binding MoreCommand}">
+                    <PathIcon Data="{DynamicResource PhMore}" />
+                </Button>
+            </controls:GlassPanel>
+        </Grid>
+    </Panel>
 </UserControl>

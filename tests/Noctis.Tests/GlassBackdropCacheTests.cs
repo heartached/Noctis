@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Noctis.Controls;
 using SkiaSharp;
 using Xunit;
@@ -86,13 +87,17 @@ public class GlassBackdropCacheTests
 
     /// <summary>A full frame of <paramref name="changed"/> content: the reference any
     /// partial frame must match.</summary>
-    private static SKBitmap FullFrame(bool changed)
+    private static SKBitmap FullFrame(bool changed, GlassLensFrame? lens = null)
     {
         using var s = NewSurface();
         using var path = PanelPath();
-        Frame(s, Whole, changed, c => GlassBlur.Draw(c, s, Panel, path, Sigma));
+        Frame(s, Whole, changed, c => GlassBlur.Draw(c, s, Panel, path, Sigma, 1, lens));
         return Pixels(s);
     }
+
+    /// <summary>The phone's Liquid Glass lens on the same panel: a refracting rim, a colour split,
+    /// a slight zoom and vibrancy, so any stale or double-frosted pixel it reads shows.</summary>
+    private static readonly GlassLensFrame Lens = new(Panel, new GlassCornerRadii(18, 18, 18, 18), 16, 16, 0.6f, 1.05f, 1.3f);
 
     [Fact]
     public void ChildOnlyRepaint_FrostsExactlyLikeAFullFrame_AndAsksForNothingMore()
@@ -113,6 +118,51 @@ public class GlassBackdropCacheTests
         using var after = Pixels(s);
         Assert.True(MaxDiff(after, reference, Whole) <= 1, $"partial frame drifted by {MaxDiff(after, reference, Whole)}");
         Assert.Equal(0, repaints);
+    }
+
+    [Fact]
+    public void WithTheLens_AChildOnlyRepaint_StillFrostsExactlyLikeAFullFrame()
+    {
+        var repaints = 0;
+        var cache = new GlassBackdropCache(() => repaints++);
+        using var s = NewSurface();
+        using var path = PanelPath();
+        Frame(s, Whole, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+        using var reference = FullFrame(changed: false, Lens);
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
+        // The lens really drew: it differs from the plain frost.
+        using var plain = FullFrame(changed: false);
+        Assert.True(MaxDiff(reference, plain, Whole) > 12);
+
+        var dirty = new SKRectI(100, 50, 130, 80);
+        Frame(s, dirty, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        using var after = Pixels(s);
+        Assert.True(MaxDiff(after, reference, Whole) <= 1, $"partial frame drifted by {MaxDiff(after, reference, Whole)}");
+        Assert.Equal(0, repaints);
+        // And on the rim, where the lens reads from furthest away.
+        var rim = new SKRectI(42, 60, 60, 80);
+        Frame(s, rim, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
+        Assert.Equal(0, repaints);
+    }
+
+    [Fact]
+    public void WithTheLens_AChangeBeneath_IsExactInsideTheDirtyRect_AndAsksForOneFullRepaint()
+    {
+        var repaints = 0;
+        var cache = new GlassBackdropCache(() => repaints++);
+        using var s = NewSurface();
+        using var path = PanelPath();
+        Frame(s, Whole, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+
+        var dirty = new SKRectI(92, 52, 120, 80);
+        Frame(s, dirty, true, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        using var reference = FullFrame(changed: true, Lens);
+        Assert.True(MaxDiff(Pixels(s), reference, dirty) <= 1);
+        Assert.Equal(1, repaints);
+
+        Frame(s, Whole, true, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
     }
 
     [Fact]
@@ -206,6 +256,129 @@ public class GlassBackdropCacheTests
         Assert.Equal(0, repaints);
         // A raster copy is freed on release; nothing waits for the render thread.
         Assert.False(GlassBackdropCache.HasRetired);
+    }
+
+    // ---- Two panels within each other's blur reach (the phone's mini player 10 dp above
+    // the tab capsule) ---------------------------------------------------------------------
+
+    private static readonly SKRectI Upper = new(40, 30, 200, 60), Lower = new(40, 72, 200, 102);
+
+    /// <summary>
+    /// Replays the compositor for the two stacked panels. A panel's repaint dirties its whole
+    /// footprint (its shadow reaches 14 px past it, over the 12 px gap onto its neighbour);
+    /// each frame repaints the union of what was invalidated; every panel the dirty rect meets
+    /// draws (a requested repaint is new render data, so whole) and may ask for a follow-up,
+    /// and every reach ring it meets asks its panel for a full repaint when
+    /// <see cref="GlassReachOp.ShouldRepaint"/> says so. Frame 1 is a change right above the
+    /// upper panel only (a row scrolling past its edge). <paramref name="noteFootprints"/>:
+    /// the panels publish what their own repaint dirties, as GlassBackdropOp does. Returns the
+    /// full repaints asked for in frames 2..<paramref name="frames"/>: above 0 is a loop.
+    /// </summary>
+    private static int RepaintsAfterOneChange(bool noteFootprints, int frames)
+    {
+        using var s = NewSurface();
+        var rects = new[] { Upper, Lower };
+        const int shadow = 14;
+        var footprints = rects.Select(r => new SKRectI(r.Left - shadow, r.Top - shadow, r.Right + shadow, r.Bottom + shadow)).ToArray();
+        var pending = new bool[2];
+        var caches = new GlassBackdropCache[2];
+        for (var i = 0; i < 2; i++)
+        {
+            var k = i;
+            caches[k] = new GlassBackdropCache(() => pending[k] = true);
+        }
+        var reach = (int)Math.Ceiling(3 * Sigma);
+        var asked = 0;
+        try
+        {
+            void RunFrame(SKRectI dirty, bool[] whole)
+            {
+                var c = s.Canvas;
+                c.Save();
+                c.ClipRect(SKRect.Create(dirty.Left, dirty.Top, dirty.Width, dirty.Height));
+                Beneath(c);
+                for (var i = 0; i < 2; i++)
+                {
+                    if (SKRectI.Intersect(rects[i], dirty).IsEmpty) continue;
+                    using var path = new SKPath();
+                    path.AddRoundRect(new SKRoundRect(SKRect.Create(rects[i].Left, rects[i].Top, rects[i].Width, rects[i].Height), 12));
+                    if (noteFootprints) caches[i].NoteOwnRect(footprints[i], s.Handle);
+                    caches[i].Draw(c, s, path, Sigma, 1, wholePanelRepainted: whole[i]);
+                }
+                c.Restore();
+                for (var i = 0; i < 2; i++)
+                {
+                    var ring = new SKRectI(rects[i].Left - reach, rects[i].Top - reach, rects[i].Right + reach, rects[i].Bottom + reach);
+                    if (SKRectI.Intersect(ring, dirty).IsEmpty) continue;
+                    if (GlassReachOp.ShouldRepaint(dirty, rects[i], s.Handle, caches[i])) pending[i] = true;
+                }
+            }
+
+            RunFrame(Whole, new[] { true, true });
+            Array.Clear(pending);
+            RunFrame(new SKRectI(60, 4, 120, 14), new[] { false, false });
+            for (var f = 2; f <= frames; f++)
+            {
+                if (!pending[0] && !pending[1]) break;
+                var whole = (bool[])pending.Clone();
+                var dirty = SKRectI.Empty;
+                for (var i = 0; i < 2; i++)
+                    if (whole[i]) dirty = dirty.IsEmpty ? footprints[i] : SKRectI.Union(dirty, footprints[i]);
+                Array.Clear(pending);
+                RunFrame(dirty, whole);
+                asked += (pending[0] ? 1 : 0) + (pending[1] ? 1 : 0);
+            }
+            return asked;
+        }
+        finally
+        {
+            foreach (var cache in caches) cache.Release();
+        }
+    }
+
+    [Fact]
+    public void AdjacentPanels_SettleAfterAChangeBesideOne_InsteadOfReFrostingEachOtherForever()
+    {
+        Assert.Equal(0, RepaintsAfterOneChange(noteFootprints: true, frames: 30));
+    }
+
+    [Fact]
+    public void WithoutTheirFootprints_AdjacentPanelsPingPong()
+    {
+        // Guard for the test above, and the bug it fixes: unaware of each other, each panel's
+        // repaint (shadow and reach ring included) lands on the other as a partial frame and a
+        // repaint beside it, so the two ask for a full repaint in turn, every frame — the
+        // phone's bar rendered at the display rate while idle.
+        Assert.True(RepaintsAfterOneChange(noteFootprints: false, frames: 30) >= 28);
+    }
+
+    [Fact]
+    public void AChangeBesideAPanel_StillReachesIt_EvenNextToAnotherPanel()
+    {
+        using var s = NewSurface();
+        var upper = new GlassBackdropCache();
+        var lower = new GlassBackdropCache();
+        try
+        {
+            upper.NoteOwnRect(Upper, s.Handle);
+            lower.NoteOwnRect(Lower, s.Handle);
+            // The upper panel repainting itself: not news for the lower one.
+            Assert.False(GlassReachOp.ShouldRepaint(Upper, Lower, s.Handle, lower));
+            // A row scrolling in the gap and under the upper panel: content beside the lower one.
+            Assert.True(GlassReachOp.ShouldRepaint(new SKRectI(30, 40, 210, 70), Lower, s.Handle, lower));
+            // Content beside it with no panel around.
+            Assert.True(GlassReachOp.ShouldRepaint(new SKRectI(205, 80, 230, 95), Lower, s.Handle, lower));
+            // A panel on another surface says nothing about this one.
+            Assert.True(GlassReachOp.ShouldRepaint(Upper, Lower, IntPtr.Zero + 1, lower));
+            // Once the upper panel's copy is released it no longer counts.
+            upper.Release();
+            Assert.True(GlassReachOp.ShouldRepaint(Upper, Lower, s.Handle, lower));
+        }
+        finally
+        {
+            upper.Release();
+            lower.Release();
+        }
     }
 
     [Fact]

@@ -8,7 +8,7 @@
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4" IsVisible="{Binding !IsEmbedded}">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+                <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
@@ -16,7 +16,7 @@
         <TextBlock Grid.Row="1" Classes="subtle" Text="No albums" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasAlbums}" />
 
-        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

@@ -119,6 +119,14 @@ public class MainActivity : AvaloniaMainActivity
         AndroidApp.Current?.OnVolumeKey();
     }
 
+    public override void OnWindowFocusChanged(bool hasFocus)
+    {
+        base.OnWindowFocusChanged(hasFocus);
+        // Avalonia puts its theme's status bar icons back when its view becomes visible again;
+        // a page that asked for its own (the album cover) gets them back on top.
+        if (hasFocus) AndroidApp.Current?.ReassertStatusBarIcons();
+    }
+
     protected override void OnPause()
     {
         base.OnPause();

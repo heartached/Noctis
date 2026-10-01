@@ -215,9 +215,9 @@ public class MobileSettingsTests
         window.Close();
     }
 
-    /// <summary>Now Playing, Lyrics and Queue are always dark (ruling 8): under the Light theme
-    /// they must still resolve dark resources, or Fluent's slider tracks and theme-brushed icons
-    /// turn light-on-dark-scrim.</summary>
+    /// <summary>Now Playing and Lyrics are always dark (ruling 8): under the Light theme they
+    /// must still resolve dark resources, or Fluent's slider tracks and theme-brushed icons turn
+    /// light-on-dark-scrim. The Queue follows the app theme (MobileQueueSheetTests).</summary>
     [AvaloniaFact]
     public void AlwaysDarkOverlays_ResolveDarkResources_UnderTheLightTheme()
     {
@@ -237,7 +237,6 @@ public class MobileSettingsTests
             Assert.Equal(ThemeVariant.Dark, nowPlaying.ActualThemeVariant);
             Assert.Equal(ThemeVariant.Dark, MobileFixtures.Named<Slider>(nowPlaying, "SeekBar").ActualThemeVariant);
             Assert.Equal(ThemeVariant.Dark, MobileFixtures.Find<LyricsPage>(view).ActualThemeVariant);
-            Assert.Equal(ThemeVariant.Dark, MobileFixtures.Find<QueuePage>(view).ActualThemeVariant);
             window.Close();
         }
         finally

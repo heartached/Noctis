@@ -5,7 +5,8 @@ namespace Noctis.Services;
 /// <summary>Why the queue is advancing; mirrors the desktop's QueueAdvanceReason.</summary>
 public enum QueueAdvance { Natural, UserSkip, Previous }
 
-/// <summary>Persisted shape of a <see cref="PlaybackQueue"/> (track ids only).</summary>
+/// <summary>Persisted shape of a <see cref="PlaybackQueue"/> (track ids only).
+/// <see cref="PlayedInQueue"/> is null in a state saved before it existed.</summary>
 public sealed record PlaybackQueueState(
     Guid? CurrentId,
     IReadOnlyList<Guid> UpNextIds,
@@ -13,7 +14,8 @@ public sealed record PlaybackQueueState(
     IReadOnlyList<Guid> RepeatCycleIds,
     RepeatMode RepeatMode,
     bool IsShuffleEnabled,
-    IReadOnlyList<Guid> OriginalOrderIds);
+    IReadOnlyList<Guid> OriginalOrderIds,
+    int? PlayedInQueue = null);
 
 /// <summary>
 /// Ordered playback state: what is playing, what is next, what played. Pure and
@@ -46,6 +48,16 @@ public sealed class PlaybackQueue
     /// <summary>Played tracks, most recent first, capped.</summary>
     public IReadOnlyList<Track> History => _history;
 
+    /// <summary>
+    /// How many tracks of the current queue played before <see cref="Current"/>: the newest
+    /// entries of <see cref="History"/> pushed since the last <see cref="ReplaceAll"/> or
+    /// Repeat All wrap. History alone cannot say this — it also holds earlier queues and stops
+    /// at its cap — and this count does neither, so the phone's "Track N of M" stays exact.
+    /// Null when unknown: <see cref="Back"/> stepped into an earlier queue's history, or the
+    /// queue was restored from a state saved before the count existed.
+    /// </summary>
+    public int? PlayedInQueue { get; private set; } = 0;
+
     public RepeatMode RepeatMode { get; set; }
 
     public bool IsShuffleEnabled { get; private set; }
@@ -61,6 +73,7 @@ public sealed class PlaybackQueue
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
 
         PushHistory(Current);
+        PlayedInQueue = 0;
 
         _originalOrder.Clear();
         IsShuffleEnabled = false;
@@ -108,6 +121,9 @@ public sealed class PlaybackQueue
     /// </summary>
     public bool RemoveWhere(Func<Track, bool> match)
     {
+        // This queue's played tracks are the newest History entries: those removed stop counting.
+        if (PlayedInQueue is { } played)
+            PlayedInQueue = played - _history.Take(played).Count(match);
         _upNext.RemoveAll(t => match(t));
         _history.RemoveAll(t => match(t));
         _repeatCycle.RemoveAll(t => match(t));
@@ -158,6 +174,7 @@ public sealed class PlaybackQueue
         if (RepeatMode == RepeatMode.One && Current != null && reason == QueueAdvance.Natural)
             return Current;
 
+        if (Current != null && PlayedInQueue is { } played) PlayedInQueue = played + 1;
         PushHistory(Current);
 
         if (_upNext.Count > 0)
@@ -174,6 +191,7 @@ public sealed class PlaybackQueue
                 : Enumerable.Reverse(_history).ToList();
             _history.Clear();
             _originalOrder.Clear();
+            PlayedInQueue = 0;
             if (all.Count == 0) { Current = null; return null; }
             _upNext.Clear();
             _upNext.AddRange(all.Skip(1));
@@ -190,6 +208,8 @@ public sealed class PlaybackQueue
     public Track? Back()
     {
         if (_history.Count == 0) return Current;
+        // At the queue's first track History[0] belongs to the queue before it.
+        PlayedInQueue = PlayedInQueue > 0 ? PlayedInQueue - 1 : null;
         if (Current != null) _upNext.Insert(0, Current);
         Current = _history[0];
         _history.RemoveAt(0);
@@ -211,12 +231,16 @@ public sealed class PlaybackQueue
         _repeatCycle.Select(t => t.Id).ToList(),
         RepeatMode,
         IsShuffleEnabled,
-        _originalOrder.Select(t => t.Id).ToList());
+        _originalOrder.Select(t => t.Id).ToList(),
+        PlayedInQueue);
 
     /// <summary>Rebuild from a snapshot; ids that no longer resolve are dropped.</summary>
     public static PlaybackQueue Restore(PlaybackQueueState s, Func<Guid, Track?> resolve, int historyCap = DefaultHistoryCap)
     {
-        var q = new PlaybackQueue(historyCap) { RepeatMode = s.RepeatMode, IsShuffleEnabled = s.IsShuffleEnabled };
+        var q = new PlaybackQueue(historyCap)
+        {
+            RepeatMode = s.RepeatMode, IsShuffleEnabled = s.IsShuffleEnabled, PlayedInQueue = s.PlayedInQueue,
+        };
         q.Current = s.CurrentId is { } id ? resolve(id) : null;
         q._upNext.AddRange(s.UpNextIds.Select(resolve).OfType<Track>());
         q._history.AddRange(s.HistoryIds.Select(resolve).OfType<Track>());

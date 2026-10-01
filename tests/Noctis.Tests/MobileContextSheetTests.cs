@@ -199,7 +199,51 @@ public class MobileContextSheetTests
         Assert.Contains(album.Id, (await rig.Persistence.LoadSettingsAsync()).PinnedAlbumIds);
 
         rig.Shell.OpenTrackSheetCommand.Execute(a);
-        Assert.False(rig.Shell.Sheet!.CanPin);                       // songs do not pin
+        Assert.True(rig.Shell.Sheet!.CanPin);                        // songs pin too, after albums
+        await rig.Shell.Sheet.TogglePinCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { "Alpha", "A" }, rig.Shell.Library.PinnedRail.Select(r => r.Title));
+        Assert.Contains(a.Id, (await rig.Persistence.LoadSettingsAsync()).PinnedTrackIds);
+    }
+
+    [Fact]
+    public async Task APinnedSong_PlaysThePinnedSongs_FromThePinnedLabel()
+    {
+        var a = MobileFixtures.Song("A");
+        var b = MobileFixtures.Song("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        await rig.Shell.Library.SetTrackPinnedAsync(a.Id, true);
+        await rig.Shell.Library.SetTrackPinnedAsync(b.Id, true);
+
+        rig.Shell.OpenRailItemCommand.Execute(rig.Shell.Library.PinnedRail.Last());
+
+        Assert.Same(b, rig.Shell.Player.CurrentTrack);
+        Assert.Equal("Pinned", rig.Shell.Player.SourceLabel);
+    }
+
+    [Fact]
+    public async Task PinArtist_ShowsARoundTileOnThePinnedRail_AndOpensTheArtist()
+    {
+        var a = MobileFixtures.Song("A", artist: "Band");
+        using var rig = MobileFixtures.MakeRig(new[] { a }, new[] { MobileFixtures.MakeAlbum("Alpha", "Band", a) });
+        var artist = new Artist { Name = "Band" };
+        rig.Library.ArtistList.Add(artist);
+
+        rig.Shell.OpenArtistSheetCommand.Execute(new ArtistListItem(artist, null));
+        var sheet = rig.Shell.Sheet!;
+        Assert.True(sheet.CanPin);
+        Assert.False(sheet.CanFavourite);                            // an artist sheet hearts nothing
+        await sheet.TogglePinCommand.ExecuteAsync(null);
+
+        var tile = Assert.Single(rig.Shell.Library.PinnedRail);
+        Assert.True(tile.IsArtist);
+        Assert.Contains("Band", (await rig.Persistence.LoadSettingsAsync()).PinnedArtistNames);
+        rig.Shell.OpenRailItemCommand.Execute(tile);
+        Assert.Equal("Band", rig.Shell.CurrentPage!.Title);
+
+        rig.Shell.OpenRailItemSheetCommand.Execute(tile);
+        Assert.Equal("Unpin", rig.Shell.Sheet!.PinLabel);
+        await rig.Shell.Sheet.TogglePinCommand.ExecuteAsync(null);
+        Assert.Empty(rig.Shell.Library.PinnedRail);
     }
 
     [Fact]
@@ -261,7 +305,7 @@ public class MobileContextSheetTests
         Assert.Same(a, rig.Shell.Sheet!.Track);
         Assert.True(view.FindControl<ContextSheet>("Sheet")!.IsVisible);
         Assert.True(MobileFixtures.Named<Button>(view, "PlayNextAction").IsEffectivelyVisible);
-        Assert.False(MobileFixtures.Named<Button>(view, "PinAction").IsEffectivelyVisible);
+        Assert.True(MobileFixtures.Named<Button>(view, "PinAction").IsEffectivelyVisible);
 
         window.MouseDown(new Point(200, 40), MouseButton.Left, RawInputModifiers.None);   // above the card: the scrim
         Assert.False(rig.Shell.IsSheetOpen);

@@ -12,6 +12,20 @@ public class AppSettings
     /// Playlists pin through Playlist.IsPinned instead.</summary>
     public List<Guid> PinnedAlbumIds { get; set; } = new();
 
+    /// <summary>Phone: artists pinned to Library → Pinned, by name (artists have no stable id
+    /// across rescans).</summary>
+    public List<string> PinnedArtistNames { get; set; } = new();
+
+    /// <summary>Phone: songs pinned to Library → Pinned.</summary>
+    public List<Guid> PinnedTrackIds { get; set; } = new();
+
+    /// <summary>Phone: the Library tab's list rows (Playlists, Artists, Albums, Songs, Favorites,
+    /// Downloaded) in the order the user arranged them under Edit. Each entry is a row key; a
+    /// leading "-" marks a row switched off ("-Favorites"). Empty = the default set. Keys this
+    /// build does not know are skipped, and rows missing from the list (added by a later build)
+    /// follow the listed ones in their default order and state.</summary>
+    public List<string> PhoneLibraryRows { get; set; } = new();
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>

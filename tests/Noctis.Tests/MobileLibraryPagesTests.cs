@@ -26,10 +26,6 @@ public class MobileLibraryPagesTests
         if (playlists.Length > 0) await p.SavePlaylistsAsync(playlists.ToList());
     };
 
-    private static string? TileCount(Visual view, string tile) =>
-        MobileFixtures.Named<Button>(view, tile).GetVisualDescendants().OfType<TextBlock>()
-            .First(t => t.Classes.Contains("tile-count")).Text;
-
     /// <summary>Review Focus #1: first launch — no folder, no tracks, nothing to show but the way in.</summary>
     [AvaloniaFact]
     public void EmptyLibrary_ShowsTheConnectCard_AndHidesTheTiles()
@@ -39,7 +35,8 @@ public class MobileLibraryPagesTests
 
         Assert.True(MobileFixtures.Named<Border>(view, "ConnectCard").IsVisible);
         Assert.False(MobileFixtures.Named<Border>(view, "ReconnectCard").IsVisible);
-        Assert.False(MobileFixtures.Named<Grid>(view, "Tiles").IsVisible);
+        Assert.False(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
+        Assert.False(MobileFixtures.Named<StackPanel>(view, "PinnedSection").IsVisible);
         Assert.False(rig.Shell.IsMiniBarVisible);
         window.Close();
     }
@@ -55,13 +52,17 @@ public class MobileLibraryPagesTests
         using var rig = MobileFixtures.MakeRig(new[] { a, b, c }, new[] { album }, WithFolder(mix));
         var window = MobileFixtures.Mount(rig.Shell, out var view);
 
-        Assert.True(MobileFixtures.Named<Grid>(view, "Tiles").IsVisible);
+        Assert.True(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
         Assert.False(MobileFixtures.Named<Border>(view, "ConnectCard").IsVisible);
-        Assert.Equal("3", TileCount(view, "SongsTile"));
-        Assert.Equal("1", TileCount(view, "AlbumsTile"));
-        Assert.Equal("1", TileCount(view, "FavouritesTile"));
-        Assert.Equal("2", TileCount(view, "RecentlyAddedTile"));    // the 30-day window drops Beta
-        Assert.Equal("1", TileCount(view, "PlaylistsTile"));
+        Assert.True(MobileFixtures.Named<Border>(view, "PinnedHint").IsVisible);     // nothing pinned yet
+        Assert.Equal(3, rig.Shell.Library.SongCount);
+        Assert.Equal(1, rig.Shell.Library.FavoriteCount);
+        Assert.Equal(2, rig.Shell.Library.RecentlyAddedCount);                      // the 30-day window drops Beta
+
+        MobileFixtures.Named<Button>(view, "RecentlyAddedHeader").Command!.Execute(null);
+        var recent = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Equal(new[] { "Alpha", "Gamma" }, recent.Songs.Select(t => t.Title).OrderBy(t => t));
+        rig.Shell.NavigateBackCommand.Execute(null);
 
         rig.Shell.OpenFavouritesCommand.Execute(null);
         var favourites = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);

@@ -23,6 +23,51 @@ internal static class MobileFixtures
         public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
     }
 
+    /// <summary>
+    /// Artist photos without a network: <see cref="Cached"/> answers at once (a photo already on
+    /// the phone); <see cref="Online"/> is what a lookup finds, handed out when the test calls
+    /// <see cref="Complete"/> (or at once with <see cref="AnswerAtOnce"/>). Records every ask and
+    /// every cancelled one.
+    /// </summary>
+    internal sealed class FakeArtistPhotos : IArtistPhotoSource
+    {
+        public Dictionary<string, string> Cached { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> Online { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<string> Asked { get; } = new();
+        public List<string> Cancelled { get; } = new();
+        public bool AnswerAtOnce { get; set; }
+        private readonly List<(string Name, TaskCompletionSource<string?> Answer)> _waiting = new();
+
+        public string? CachedPhoto(string artistName) => Cached.GetValueOrDefault(artistName);
+
+        public Task<string?> GetPhotoAsync(string artistName, System.Threading.CancellationToken ct)
+        {
+            Asked.Add(artistName);
+            if (Cached.TryGetValue(artistName, out var cached)) return Task.FromResult<string?>(cached);
+            if (AnswerAtOnce) return Task.FromResult(Online.GetValueOrDefault(artistName));
+            var answer = new TaskCompletionSource<string?>();
+            ct.Register(() =>
+            {
+                Cancelled.Add(artistName);
+                answer.TrySetCanceled(ct);
+            });
+            _waiting.Add((artistName, answer));
+            return answer.Task;
+        }
+
+        /// <summary>Answers every lookup still waiting with what <see cref="Online"/> has (cached from then on).</summary>
+        public void Complete()
+        {
+            foreach (var (name, answer) in _waiting.ToList())
+            {
+                var path = Online.GetValueOrDefault(name);
+                if (path != null) Cached[name] = path;
+                answer.TrySetResult(path);
+            }
+            _waiting.Clear();
+        }
+    }
+
     internal sealed class Rig : IDisposable
     {
         public required ShellViewModel Shell { get; init; }
@@ -36,7 +81,7 @@ internal static class MobileFixtures
 
     /// <summary>A shell over the fakes, with the library already initialised. <paramref name="seed"/>
     /// runs against the persistence root first (settings, playlists).</summary>
-    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null)
+    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -55,6 +100,8 @@ internal static class MobileFixtures
         {
             // Tests never decode covers: no tint, extracted synchronously.
             TintFactory = tint ?? (() => new PageTint(_ => null, work => Task.FromResult(work()))),
+            Theme = theme,
+            ArtistPhotos = photos,
         };
         RunBlocking(shell.Library.InitializeAsync);
         return new Rig { Shell = shell, Library = library, Player = player, Persistence = persistence, History = history, Root = root };

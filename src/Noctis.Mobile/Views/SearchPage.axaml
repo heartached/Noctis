@@ -16,7 +16,7 @@
         <TextBlock Grid.Row="2" Name="NoResults" Classes="subtle" Text="No results" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasQuery}">
+        <ScrollViewer Classes="page-scroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasQuery}">
             <StackPanel Margin="12,0,12,24" Spacing="12">
                 <StackPanel Spacing="4" IsVisible="{Binding HasArtists}">
                     <TextBlock Classes="section" Text="Artists" Margin="8,0" />

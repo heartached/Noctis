@@ -28,6 +28,12 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album) =>
         new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album };
 
+    /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
+    /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
+    public static ContextSheetViewModel ForArtist(ShellViewModel shell, Artist artist, string? artworkPath) =>
+        new(shell, artist.Name, "Artist", shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
+            MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
+
     public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist) =>
         new(shell, playlist.Name, playlist.TrackIds.Count == 1 ? "1 song" : $"{playlist.TrackIds.Count} songs",
             shell.Library.PlaylistArtwork(playlist), shell.ResolvePlaylist(playlist).ToList()) { Playlist = playlist };
@@ -42,12 +48,24 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public Track? Track { get; private init; }
     public Album? Album { get; private init; }
     public Playlist? Playlist { get; private init; }
+    public Artist? Artist { get; private init; }
+
+    /// <summary>An artist sheet is about the artist (play, queue, pin), not a heart on every song.</summary>
+    public bool CanFavourite => Artist == null;
+
+    /// <summary>Artists show a round cover in the sheet header.</summary>
+    public bool IsArtist => Artist != null;
 
     public bool IsFavourite => Tracks.Count > 0 && Tracks.All(t => t.IsFavorite);
     public string FavouriteLabel => IsFavourite ? "Remove from Favourites" : "Favourite";
 
-    public bool CanPin => Album != null || Playlist != null;
-    public bool IsPinned => Album != null ? _shell.Library.IsAlbumPinned(Album.Id) : Playlist?.IsPinned == true;
+    /// <summary>Anything can be pinned to Library → Pinned: albums, artists, playlists and songs.</summary>
+    public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;
+    public bool IsPinned =>
+        Album != null ? _shell.Library.IsAlbumPinned(Album.Id)
+        : Artist != null ? _shell.Library.IsArtistPinned(Artist.Name)
+        : Playlist != null ? Playlist.IsPinned
+        : Track != null && _shell.Library.IsTrackPinned(Track.Id);
     public string PinLabel => IsPinned ? "Unpin" : "Pin to Library";
 
     public bool CanGoToAlbum => Track != null;
@@ -82,14 +100,14 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void PlayNext()
     {
-        _shell.Player.PlayNext(Tracks);
+        _shell.Player.PlayNext(Tracks, Album?.Name ?? Playlist?.Name);
         _shell.CloseSheet();
     }
 
     [RelayCommand]
     private void AddToQueue()
     {
-        _shell.Player.AddToQueue(Tracks);
+        _shell.Player.AddToQueue(Tracks, Album?.Name ?? Playlist?.Name);
         _shell.CloseSheet();
     }
 
@@ -126,7 +144,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         var pin = !IsPinned;
         _shell.CloseSheet();
         if (Album != null) await _shell.Library.SetAlbumPinnedAsync(Album.Id, pin);
+        else if (Artist != null) await _shell.Library.SetArtistPinnedAsync(Artist.Name, pin);
         else if (Playlist != null) await _shell.Library.SetPlaylistPinnedAsync(Playlist, pin);
+        else if (Track != null) await _shell.Library.SetTrackPinnedAsync(Track.Id, pin);
     }
 
     [RelayCommand]

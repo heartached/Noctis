@@ -70,6 +70,41 @@ internal static class ExtendedTagIO
             xiph.IsCompilation = value;
     }
 
+    // ── Record label (read-only) ──
+
+    private const string LabelKey = "LABEL";
+    private const string PublisherKey = "PUBLISHER";
+    private static readonly ByteVector ApplePublisherAtom = new byte[] { 0xa9, (byte)'p', (byte)'u', (byte)'b' };
+
+    /// <summary>
+    /// The record label, from where each tagger family writes it: a LABEL field first
+    /// (Vorbis LABEL, ID3v2 TXXX:LABEL, APE Label — MusicBrainz Picard, foobar2000 — and
+    /// MP4 ----:com.apple.iTunes:LABEL), then TagLib#'s own publisher field (ID3v2 TPUB,
+    /// Vorbis ORGANIZATION, MP4 ----:com.apple.iTunes:publisher), the MP4 ©pub atom, and a
+    /// PUBLISHER field last. Empty when none is set; a malformed tag never fails the scan.
+    /// </summary>
+    public static string ReadLabel(TagFile file)
+    {
+        try
+        {
+            var label = ReadCustomString(file, LabelKey);
+            if (string.IsNullOrWhiteSpace(label) && file.GetTag(TagTypes.Apple, false) is AppleTag apple)
+            {
+                label = apple.GetDashBox(AppleItunesMean, LabelKey);
+                if (string.IsNullOrWhiteSpace(label)) label = file.Tag.Publisher;
+                if (string.IsNullOrWhiteSpace(label) && apple.GetText(ApplePublisherAtom) is { Length: > 0 } pub)
+                    label = pub[0];
+            }
+            if (string.IsNullOrWhiteSpace(label)) label = file.Tag.Publisher;
+            if (string.IsNullOrWhiteSpace(label)) label = ReadCustomString(file, PublisherKey);
+            return label?.Trim() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     // ── Work name ──
 
     public static string ReadWorkName(TagFile file)
