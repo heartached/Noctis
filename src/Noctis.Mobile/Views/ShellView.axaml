@@ -45,6 +45,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Noctis.Mobile/Views/TabIcons.axaml" />
+                <ResourceInclude Source="avares://Noctis.Mobile/Views/LibraryIcons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <!-- Liquid Glass bar surfaces: the tint over the frost (its opacity is the tint
