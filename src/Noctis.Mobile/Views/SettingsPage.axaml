@@ -38,7 +38,7 @@
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+                <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
@@ -50,10 +50,10 @@
                 <Border Classes="settings-card" Padding="4" IsVisible="{Binding Shell.HasAccount}">
                     <Button Name="AccountRow" Classes="row" Command="{Binding Shell.OpenAccountCommand}" Padding="12,10">
                         <Grid ColumnDefinitions="Auto,*,Auto">
-                            <PathIcon Data="{DynamicResource PersonIcon}" Width="18" Height="18" />
+                            <PathIcon Data="{DynamicResource PhPerson}" Width="22" Height="22" />
                             <TextBlock Grid.Column="1" Name="AccountRowLabel" Margin="12,0,8,0" VerticalAlignment="Center"
                                        TextWrapping="Wrap" Text="{Binding AccountRowText}" />
-                            <PathIcon Grid.Column="2" Data="{DynamicResource ChevronRightIcon}" Width="14" Height="14" Opacity="0.6" />
+                            <PathIcon Grid.Column="2" Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Opacity="0.6" />
                         </Grid>
                     </Button>
                 </Border>
