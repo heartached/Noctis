@@ -99,8 +99,12 @@ public partial class ArtistPage : UserControl
         if (e.PropertyName == nameof(ArtistPageViewModel.Cards)) LayoutPage();
     }
 
-    /// <summary>The square hero (the album cover's rule), its fade, and the carousel's and the
-    /// grid's page widths for the current width.</summary>
+    /// <summary>
+    /// The square hero (the album cover's rule), its fade, and the carousel's and the grid's
+    /// page widths for the current width. Each list ends in room for one more peek, so its last
+    /// page snaps to the left inset like the others instead of stopping short against the right
+    /// edge with the page before it showing at the left.
+    /// </summary>
     private void LayoutPage()
     {
         var width = ArtistScroll.Bounds.Width;
@@ -110,7 +114,9 @@ public partial class ArtistPage : UserControl
         HeroFade.Height = Math.Round(height * HeroFadeShare);
         var cards = _vm?.Cards.Count ?? 0;
         CardWidth = cards > 1 ? width - PageInset - CardGap - CardPeek : width - 2 * PageInset;
+        CardList.Margin = new Thickness(PageInset, 0, cards > 1 ? CardGap + CardPeek : PageInset, 0);
         TopSongPageWidth = width - PageInset - ColumnGap - ColumnPeek;
+        TopSongPages.Margin = new Thickness(PageInset, 0, ColumnGap + ColumnPeek, 0);
         LayoutTitle();
     }
 

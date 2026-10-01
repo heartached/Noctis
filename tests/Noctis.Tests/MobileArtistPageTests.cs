@@ -142,6 +142,8 @@ public class MobileArtistPageTests : IDisposable
         var card = (Control)cards.GetRealizedContainers().First();
         Assert.Equal(412 - ArtistPage.PageInset - ArtistPage.CardGap - ArtistPage.CardPeek, card.Bounds.Width, 1);
         Assert.True(scroll.Extent.Width > scroll.Viewport.Width);
+        // The last card can snap to the left inset like the first (room for one more peek after it).
+        Assert.Equal(card.Bounds.Width + ArtistPage.CardGap, scroll.Extent.Width - scroll.Viewport.Width, 1);
         Assert.Equal(Avalonia.Controls.Primitives.SnapPointsType.MandatorySingle, scroll.HorizontalSnapPointsType);
 
         var vm = (ArtistPageViewModel)rig.Shell.CurrentPage!;
@@ -180,6 +182,7 @@ public class MobileArtistPageTests : IDisposable
         Assert.Equal(412 - ArtistPage.PageInset - ArtistPage.ColumnGap - ArtistPage.ColumnPeek, first.Bounds.Width, 1);
         var grid = MobileFixtures.Named<ScrollViewer>(page, "TopSongScroll");
         Assert.True(grid.Extent.Width > grid.Viewport.Width);   // the next column peeks in
+        Assert.Equal(first.Bounds.Width + ArtistPage.ColumnGap, grid.Extent.Width - grid.Viewport.Width, 1);
 
         vm.PlayTopSongCommand.Execute(vm.TopSongs[2]);
         Assert.Equal("Song 3", rig.Shell.Player.CurrentTrack!.Title);
