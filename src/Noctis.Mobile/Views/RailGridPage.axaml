@@ -7,7 +7,7 @@
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+                <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
