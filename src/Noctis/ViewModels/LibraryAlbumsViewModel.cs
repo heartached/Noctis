@@ -263,7 +263,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     internal static bool IsDescendingByDefault(string sortMode) =>
         sortMode is "dateadded" or "datemodified" or "mostplayed" or "year";
 
-    /// <summary>Applies the grid sort persisted from the previous session.</summary>
+    /// <summary>Applies the grid sort and release-type filter persisted from the previous session.</summary>
     private void AdoptPersistedSort()
     {
         _adoptingPersistedState = true;
@@ -273,6 +273,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
+            ReleaseTypeFilter = ParseReleaseTypeKey(_settings.AlbumReleaseTypeFilter);
         }
         finally
         {
@@ -285,13 +286,26 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
     [RelayCommand]
-    private void SetReleaseTypeFilter(string key) => ReleaseTypeFilter = key switch
+    private void SetReleaseTypeFilter(string key) => ReleaseTypeFilter = ParseReleaseTypeKey(key);
+
+    /// <summary>Dropdown/persisted key to filter; anything unrecognised (incl. "all") is All.</summary>
+    private static ReleaseType? ParseReleaseTypeKey(string? key) => key switch
     {
         "album" => ReleaseType.Album,
         "single" => ReleaseType.Single,
         "ep" => ReleaseType.EP,
         "other" => ReleaseType.Compilation,
         _ => null,
+    };
+
+    /// <summary>Inverse of <see cref="ParseReleaseTypeKey"/>; "" for All.</summary>
+    private static string ReleaseTypeKey(ReleaseType? filter) => filter switch
+    {
+        ReleaseType.Album => "album",
+        ReleaseType.Single => "single",
+        ReleaseType.EP => "ep",
+        ReleaseType.Compilation => "other",
+        _ => "",
     };
 
     /// <summary>Sets the quality filter from a dropdown key ("all" clears it).</summary>
@@ -434,7 +448,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             chip.IsActive = chip.Filter == value;
         OnPropertyChanged(nameof(HasActiveFilter));
         OnPropertyChanged(nameof(ReleaseTypeFilterLabel));
-        RebuildFilteredRows();
+        if (!_adoptingPersistedState) _settings.AlbumReleaseTypeFilter = ReleaseTypeKey(value);
+        if (!_suspendSortRebuild) RebuildFilteredRows();
     }
 
     [RelayCommand]
