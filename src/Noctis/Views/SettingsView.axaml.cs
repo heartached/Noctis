@@ -559,6 +559,34 @@ public partial class SettingsView : UserControl
         }
     }
 
+    // Double-tapping a Drift knob (GitHub #111) restores the stock Drift look for that knob.
+    private void OnDriftMovementSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsDriftMovement = Models.AppSettings.LyricsDriftKnobDefault;
+            e.Handled = true;
+        }
+    }
+
+    private void OnDriftSaturationSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsDriftSaturation = Models.AppSettings.LyricsDriftKnobDefault;
+            e.Handled = true;
+        }
+    }
+
+    private void OnDriftBlurSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.LyricsDriftBlur = Models.AppSettings.LyricsDriftKnobDefault;
+            e.Handled = true;
+        }
+    }
+
     private void OnPreampSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property == Slider.ValueProperty ||
