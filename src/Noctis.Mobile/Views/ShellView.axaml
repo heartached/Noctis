@@ -56,7 +56,7 @@
                      strength), the selected tab's pill, the light rim along the edge, the sheen
                      on the upper half, and the scrim content fades into behind the bar. -->
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="GlassBarTint" Color="#1C1C1F" Opacity="0.46" />
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#1C1C1F" Opacity="0.55" />
                     <SolidColorBrush x:Key="GlassBarPill" Color="#FFFFFF" Opacity="0.12" />
                     <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#70FFFFFF" />
