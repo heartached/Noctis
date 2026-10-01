@@ -117,21 +117,16 @@ public class MobileNavigationTests : IDisposable
     }
 
     [Fact]
-    public void TryHandleBack_OnTheLibraryTab_ResetsANonAllMusicChip_BeforeLeavingTheApp()
+    public void TryHandleBack_InLibraryEditMode_FinishesEditing_BeforeLeavingTheApp()
     {
         var shell = MakeShell();
-        shell.SelectLibraryChipCommand.Execute(LibraryChip.Songs);
-        shell.Navigate(new NavTestPage("Pushed"));
+        shell.LibraryRows.EditCommand.Execute(null);
+        Assert.True(shell.LibraryRows.IsEditing);
 
-        Assert.True(shell.TryHandleBack());                // the pushed page first
-        Assert.Null(shell.CurrentPage);
-        Assert.Equal(LibraryChip.Songs, shell.LibraryChip);
+        Assert.True(shell.TryHandleBack());                // Back is Done
+        Assert.False(shell.LibraryRows.IsEditing);
 
-        Assert.True(shell.TryHandleBack());                // then the chip returns to All Music
-        Assert.Equal(LibraryChip.AllMusic, shell.LibraryChip);
-        Assert.Null(shell.LibraryChipPage);
-
-        Assert.False(shell.TryHandleBack());               // All Music root: the system finishes the activity
+        Assert.False(shell.TryHandleBack());               // Library root: the system finishes the activity
     }
 
     [Fact]

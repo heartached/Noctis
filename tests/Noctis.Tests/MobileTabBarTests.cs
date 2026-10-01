@@ -183,7 +183,10 @@ public class MobileTabBarTests : IDisposable
     {
         using var rig = MobileFixtures.MakeRig(Enumerable.Range(0, 200).Select(i => MobileFixtures.Song("Song " + i)).ToArray());
         var shell = rig.Shell;
-        shell.SelectLibraryChipCommand.Execute(LibraryChip.Songs);
+        shell.OpenSongsCommand.Execute(null);
+        // Past the pushed page's settle window, in which scrolls are the page settling, not the user.
+        var later = Environment.TickCount64 + ShellViewModel.TabBarSettleMs + 1;
+        shell.TickSource = () => later;
         var window = MobileFixtures.Mount(shell, out var view);
 
         var scroll = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "SongScroll" && s.IsEffectivelyVisible);
@@ -216,7 +219,7 @@ public class MobileTabBarTests : IDisposable
     public void PageLists_EndBelowTheBar_SoTheLastRowCanScrollClearOfIt()
     {
         using var rig = MobileFixtures.MakeRig(Enumerable.Range(0, 200).Select(i => MobileFixtures.Song("Song " + i)).ToArray());
-        rig.Shell.SelectLibraryChipCommand.Execute(LibraryChip.Songs);
+        rig.Shell.OpenSongsCommand.Execute(null);
         var window = MobileFixtures.Mount(rig.Shell, out var view);
 
         var scroll = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "SongScroll" && s.IsEffectivelyVisible);

@@ -99,6 +99,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>The Shelf as a horizontal rail of covers (true) or a vertical list (false).</summary>
     [ObservableProperty] private bool _isShelfGrid = true;
 
+    /// <summary>The Library tab's list rows as the user arranged them (AppSettings.PhoneLibraryRows,
+    /// read at start; see LibraryRowsViewModel for the format). Empty = the default set.</summary>
+    [ObservableProperty] private IReadOnlyList<string> _libraryRowKeys = Array.Empty<string>();
+
     /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
     /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
     public bool ShowConnectCard => IsLoaded && !HasFolders;
@@ -180,6 +184,15 @@ public sealed partial class LibraryViewModel : ObservableObject
         await SaveSettingsAsync(settings, "Pin");
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         AfterUserEdit();
+    }
+
+    /// <summary>Saves the Library tab's row order and on/off state (Edit → Done).</summary>
+    public async Task SaveLibraryRowKeysAsync(IReadOnlyList<string> keys)
+    {
+        LibraryRowKeys = keys.ToList();
+        var settings = await _persistence.LoadSettingsAsync();
+        settings.PhoneLibraryRows = keys.ToList();
+        await SaveSettingsAsync(settings, "Library rows");
     }
 
     public Task SetPlaylistPinnedAsync(Playlist playlist, bool pinned)
@@ -288,6 +301,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
             _pinnedArtistNames = settings.PinnedArtistNames.ToList();
             _pinnedTrackIds = settings.PinnedTrackIds.ToList();
+            LibraryRowKeys = settings.PhoneLibraryRows.ToList();
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }
