@@ -12,11 +12,17 @@ namespace Noctis.Mobile.Views;
 /// which the phone cannot reference) redrawn here with its numbers: five bars
 /// <see cref="BarWidth"/> wide and <see cref="BarSpacing"/> apart in a <see cref="RowHeight"/>
 /// row, rounded by half their width, each a sine between <see cref="BarMin"/> and
-/// <see cref="BarMax"/> at its own <see cref="Frequencies"/> and <see cref="Phases"/>, sampled
-/// every <see cref="FrameInterval"/>; on pause they ease flat (<see cref="FlatHeight"/>) over
+/// <see cref="BarMax"/> at its own <see cref="Frequencies"/> and <see cref="Phases"/>; on pause they ease flat (<see cref="FlatHeight"/>) over
 /// <see cref="FlattenDuration"/>, cubic ease-out. The desktop's beat and spectrum layer needs its
 /// audio sample tap, which the phone has not got, so this is the desktop's no-tap motion.
 /// One control draws all five bars: a tick repaints, never re-runs layout.
+/// Stepped on the frame clock (TopLevel.RequestAnimationFrame, like the lyrics page), not the
+/// desktop's 33 ms Render-priority DispatcherTimer: on the Android emulator that timer pinned
+/// the UI thread at 100% CPU as soon as a track played, and the app stopped drawing and taking
+/// taps (device run, 2026-10-01). Every frame resamples the same time-based curves: a frame
+/// that drew nothing new let the frame chain lapse (headless harness), so none is skipped.
+/// Paused (once flat), detached or hidden, no frame is asked for; while an ancestor hides the
+/// bars a <see cref="HiddenPollInterval"/> one-shot checks back.
 /// </summary>
 public sealed class PlayingBars : Control
 {
@@ -34,16 +40,16 @@ public sealed class PlayingBars : Control
     public const double Radius = 0.875;
     public static readonly IReadOnlyList<double> Phases = new[] { 0.0, 1.2, 2.4, 0.8, 1.8 };
     public static readonly IReadOnlyList<double> Frequencies = new[] { 1.6, 2.0, 1.4, 1.8, 1.7 };
-    public static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(33);
     public static readonly TimeSpan HiddenPollInterval = TimeSpan.FromMilliseconds(250);
     public static readonly TimeSpan FlattenDuration = TimeSpan.FromMilliseconds(420);
     private static readonly Easing FlattenEasing = new CubicEaseOut();
 
     private readonly double[] _heights = { FlatHeight, FlatHeight, FlatHeight, FlatHeight, FlatHeight };
     private readonly double[] _flattenFrom = new double[BarCount];
-    private DispatcherTimer? _timer;
     private DateTime _start, _flattenStart;
-    private bool _flattening;
+    private bool _flattening, _running, _frameQueued;
+    /// <summary>Bumped by every start and stop, so a queued frame or poll from an older run drops out.</summary>
+    private int _generation;
 
     static PlayingBars()
     {
@@ -68,6 +74,9 @@ public sealed class PlayingBars : Control
     /// <summary>The current bar heights, left to right (tests read them).</summary>
     internal IReadOnlyList<double> BarHeights => _heights;
 
+    /// <summary>A frame is asked for: playing, or easing flat (tests check it idles).</summary>
+    internal bool IsRunning => _running;
+
     /// <summary>A bar's height <paramref name="t"/> seconds into the motion: the desktop's
     /// sine mapped to <see cref="BarMin"/> … <see cref="BarMax"/>.</summary>
     public static double OscillationHeight(double t, int bar)
@@ -90,7 +99,7 @@ public sealed class PlayingBars : Control
     {
         base.OnDetachedFromVisualTree(e);
         _flattening = false;
-        _timer?.Stop();
+        Stop();
     }
 
     private void OnPlayingChanged()
@@ -105,7 +114,7 @@ public sealed class PlayingBars : Control
             Array.Copy(_heights, _flattenFrom, BarCount);
             _flattenStart = DateTime.UtcNow;
             _flattening = true;
-            RunTimer(FrameInterval);
+            Run();
         }
         else Park();
     }
@@ -124,54 +133,71 @@ public sealed class PlayingBars : Control
     {
         if (VisualRoot == null) return;
         _start = DateTime.UtcNow;
-        RunTimer(FrameInterval);
+        Run();
     }
 
     /// <summary>Flat and still: nothing to ease out where it cannot be seen.</summary>
     private void Park()
     {
         _flattening = false;
-        _timer?.Stop();
+        Stop();
         SetAll(FlatHeight);
     }
 
-    private void RunTimer(TimeSpan interval)
+    private void Stop()
     {
-        if (_timer == null)
-        {
-            _timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = interval };
-            _timer.Tick += OnTick;
-        }
-        _timer.Interval = interval;
-        _timer.Start();
+        _running = false;
+        _generation++;
     }
 
-    private void OnTick(object? sender, EventArgs e)
+    /// <summary>A fresh run of frames (the old one, if any, drops out at its next frame).</summary>
+    private void Run()
     {
-        if (VisualRoot == null) { _flattening = false; _timer?.Stop(); return; }
+        var generation = ++_generation;
+        _running = true;
+        QueueFrame(generation);
+    }
+
+    private void QueueFrame(int generation)
+    {
+        if (_frameQueued || TopLevel.GetTopLevel(this) is not { } top) return;
+        _frameQueued = true;
+        top.RequestAnimationFrame(_ =>
+        {
+            _frameQueued = false;
+            if (generation == _generation) OnFrame(generation);
+            else if (_running) QueueFrame(_generation);   // a newer run asked while this frame was queued
+        });
+    }
+
+    private void OnFrame(int generation)
+    {
+        if (VisualRoot == null) { _flattening = false; Stop(); return; }
         if (!IsEffectivelyVisible)
         {
-            // An ancestor hides the row (the page behind an overlay): land flat when there is
-            // nothing to show, else poll slowly until it shows again.
+            // An ancestor hides the row: land flat when there is nothing to show, else stop
+            // drawing and look again in a while.
             if (_flattening || !IsPlaying) { Park(); return; }
-            if (_timer!.Interval != HiddenPollInterval) _timer.Interval = HiddenPollInterval;
+            DispatcherTimer.RunOnce(() => { if (generation == _generation) QueueFrame(generation); }, HiddenPollInterval);
             return;
         }
-        if (_timer!.Interval != FrameInterval) _timer.Interval = FrameInterval;
 
+        var now = DateTime.UtcNow;
         if (_flattening)
         {
-            var progress = (DateTime.UtcNow - _flattenStart).TotalMilliseconds / FlattenDuration.TotalMilliseconds;
+            var progress = (now - _flattenStart).TotalMilliseconds / FlattenDuration.TotalMilliseconds;
             if (progress >= 1) { Park(); return; }
             var eased = FlattenEasing.Ease(progress);
             for (var i = 0; i < BarCount; i++) _heights[i] = _flattenFrom[i] + (FlatHeight - _flattenFrom[i]) * eased;
             InvalidateVisual();
+            QueueFrame(generation);
             return;
         }
 
-        var t = (DateTime.UtcNow - _start).TotalSeconds;
+        var t = (now - _start).TotalSeconds;
         for (var i = 0; i < BarCount; i++) _heights[i] = OscillationHeight(t, i);
         InvalidateVisual();
+        QueueFrame(generation);
     }
 
     private void SetAll(double height)

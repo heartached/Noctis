@@ -159,7 +159,7 @@ public class MobileAlbumPageRefineTests
 
     /// <summary>The playing row's bars are the desktop indicator's: five 1.75-wide bars 1.75
     /// apart in a 12-high row, rounded by half their width, the same sine heights, frequencies,
-    /// phases, frame rate and pause flatten (read off EqVisualizer and EqBar themselves).</summary>
+    /// phases and pause flatten (read off EqVisualizer and EqBar themselves).</summary>
     [Fact]
     public void PlayingBars_MatchTheDesktopRowIndicator()
     {
@@ -171,7 +171,6 @@ public class MobileAlbumPageRefineTests
         Assert.Equal(Const<double[]>("Phases"), PlayingBars.Phases);
         Assert.Equal(Const<double[]>("Frequencies"), PlayingBars.Frequencies);
         Assert.Equal(Const<TimeSpan>("FlattenDuration"), PlayingBars.FlattenDuration);
-        Assert.Equal(Noctis.Controls.EqVisualizer.FrameInterval, PlayingBars.FrameInterval);
         Assert.Equal(Noctis.Controls.EqVisualizer.HiddenPollInterval, PlayingBars.HiddenPollInterval);
         Assert.Equal(Noctis.Controls.EqBar.Radius, PlayingBars.Radius);
         Assert.Equal(5, PlayingBars.BarCount);
@@ -186,6 +185,47 @@ public class MobileAlbumPageRefineTests
         var r = PlayingBars.BarRect(2, 6, scale: 0);
         Assert.Equal(new Rect(7, 3, 1.75, 6), r);
         Assert.Equal(new Rect(0, 0, 1.75, 12), PlayingBars.BarRect(0, 30, scale: 0));   // capped at the row
+    }
+
+    /// <summary>The bars move on the frame clock while the row plays, ease flat on pause and
+    /// then ask for no more frames, and stop when the page goes (a Render-priority
+    /// DispatcherTimer pinned the Android UI thread, 2026-10-01).</summary>
+    [AvaloniaFact]
+    public void PlayingBars_MoveOnTheFrameClock_AndFlattenOnPause()
+    {
+        var (album, tracks) = Sample();
+        using var rig = Rig(tracks, album);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        var vm = Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+        vm.PlayTrackCommand.Execute(vm.Tracks[1]);
+        window.UpdateLayout();
+
+        var bars = MobileFixtures.Named<ItemsControl>(MobileFixtures.Find<AlbumPage>(view), "TrackList")
+            .ContainerFromIndex(1)!.GetVisualDescendants().OfType<PlayingBars>().First();
+        Pump(12);
+        var moving = bars.BarHeights.ToArray();
+        Assert.Contains(moving, h => h > PlayingBars.FlatHeight);
+        Pump(6);
+        Assert.NotEqual(moving, bars.BarHeights.ToArray());
+
+        Assert.True(bars.IsRunning);
+
+        rig.Shell.Player.TogglePlayPauseCommand.Execute(null);
+        Pump(40);   // 420 ms flatten
+        Assert.All(bars.BarHeights, h => Assert.Equal(PlayingBars.FlatHeight, h, 3));
+        Assert.False(bars.IsRunning);   // paused: no frame asked for, nothing keeps running
+
+        // Playing again, then the page goes: the bars stop with it.
+        rig.Shell.Player.TogglePlayPauseCommand.Execute(null);
+        Pump(4);
+        Assert.True(bars.IsRunning);
+        rig.Shell.NavigateBackCommand.Execute(null);
+        window.UpdateLayout();
+        Pump(4);
+        Assert.False(bars.IsRunning);
+        window.Close();
     }
 
     // ---- 3. Footer --------------------------------------------------------------------------
