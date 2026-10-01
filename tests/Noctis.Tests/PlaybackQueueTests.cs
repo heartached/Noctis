@@ -236,4 +236,94 @@ public class PlaybackQueueTests
         Assert.Same(t[0], q.Current);
         Assert.Equal(new[] { t[1] }, q.UpNext);
     }
+    [Fact]
+    public void PlayedInQueue_counts_only_this_queue_and_is_not_capped_like_history()
+    {
+        var q = new PlaybackQueue(historyCap: 3); var a = Tracks(2); var b = Tracks(6);
+        q.ReplaceAll(a, 0);
+        q.Advance(QueueAdvance.Natural);
+        Assert.Equal(1, q.PlayedInQueue);
+
+        q.ReplaceAll(b, 0);                         // a0 and a1 are in History, not in this queue
+        Assert.Equal(0, q.PlayedInQueue);
+        Assert.Equal(2, q.History.Count);
+
+        for (var i = 0; i < 5; i++) q.Advance(QueueAdvance.UserSkip);
+        Assert.Same(b[5], q.Current);
+        Assert.Equal(5, q.PlayedInQueue);           // History stopped at its cap of 3
+        Assert.Equal(3, q.History.Count);
+    }
+
+    [Fact]
+    public void PlayedInQueue_steps_back_with_Back_and_is_unknown_once_Back_leaves_the_queue()
+    {
+        var q = new PlaybackQueue(); var a = Tracks(2); var b = Tracks(3);
+        q.ReplaceAll(a, 0);
+        q.ReplaceAll(b, 0);
+        q.Advance(QueueAdvance.Natural);
+        Assert.Equal(1, q.PlayedInQueue);
+
+        q.Back();
+        Assert.Same(b[0], q.Current);
+        Assert.Equal(0, q.PlayedInQueue);
+
+        q.Back();                                   // into the previous queue's history
+        Assert.Same(a[0], q.Current);
+        Assert.Null(q.PlayedInQueue);
+
+        q.ReplaceAll(b, 1);
+        Assert.Equal(0, q.PlayedInQueue);
+    }
+
+    [Fact]
+    public void PlayedInQueue_restarts_on_a_RepeatAll_wrap_and_holds_on_a_RepeatOne_replay()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(2);
+        q.ReplaceAll(t, 0);
+        q.RepeatMode = RepeatMode.One;
+        q.Advance(QueueAdvance.Natural);
+        Assert.Equal(0, q.PlayedInQueue);
+
+        q.RepeatMode = RepeatMode.All;
+        q.Advance(QueueAdvance.Natural);
+        Assert.Equal(1, q.PlayedInQueue);
+        q.Advance(QueueAdvance.Natural);            // wraps to t0
+        Assert.Same(t[0], q.Current);
+        Assert.Equal(0, q.PlayedInQueue);
+    }
+
+    [Fact]
+    public void PlayedInQueue_drops_the_played_tracks_RemoveWhere_takes_out_of_history()
+    {
+        var q = new PlaybackQueue(); var a = Tracks(1); var t = Tracks(4);
+        q.ReplaceAll(a, 0);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);            // t0, t1 played; t2 current; a0 from the queue before
+        var a0 = a[0]; var t0 = t[0];
+
+        q.RemoveWhere(x => x == t0 || x == a0);
+
+        Assert.Equal(1, q.PlayedInQueue);
+        Assert.Same(t[1], q.Back());
+        Assert.Equal(0, q.PlayedInQueue);
+    }
+
+    [Fact]
+    public void PlayedInQueue_round_trips_and_is_unknown_in_a_snapshot_without_it()
+    {
+        var q = new PlaybackQueue(); var t = Tracks(4);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);
+        q.Advance(QueueAdvance.Natural);
+        var byId = t.ToDictionary(x => x.Id);
+
+        var snapshot = q.Snapshot();
+        Assert.Equal(2, snapshot.PlayedInQueue);
+        Assert.Equal(2, PlaybackQueue.Restore(snapshot, id => byId.GetValueOrDefault(id)).PlayedInQueue);
+
+        var legacy = new PlaybackQueueState(t[2].Id, new[] { t[3].Id }, new[] { t[1].Id, t[0].Id },
+            Array.Empty<Guid>(), RepeatMode.Off, false, Array.Empty<Guid>());
+        Assert.Null(PlaybackQueue.Restore(legacy, id => byId.GetValueOrDefault(id)).PlayedInQueue);
+    }
 }
