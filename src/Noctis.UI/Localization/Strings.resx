@@ -1628,12 +1628,14 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.LyricsProvider" xml:space="preserve"><value>Lyrics provider</value></data>
   <data name="Plugins.PermShort.MenuCommands" xml:space="preserve"><value>Track menu</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Search your library (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
   <data name="Plugins.Perm.LyricsProvider" xml:space="preserve"><value>Supply lyrics to the lyrics search</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Add entries to the track menu</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Show short notices</value></data>
+  <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Set the BPM and musical key of library tracks (in Noctis only, never in your files)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Enable {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} asks to:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} by {2} asks to:</value></data>

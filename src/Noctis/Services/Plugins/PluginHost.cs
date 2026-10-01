@@ -41,6 +41,7 @@ public static class PluginPermissionText
         PluginPermissions.LyricsProvider => "LyricsProvider",
         PluginPermissions.MenuCommands => "MenuCommands",
         PluginPermissions.Notifications => "Notifications",
+        PluginPermissions.LibraryWriteAnalysis => "LibraryWriteAnalysis",
         _ => "",
     };
 
@@ -1010,7 +1011,11 @@ public sealed class PluginHost
     /// <summary>A plain copy of a library track for plugins.</summary>
     public static TrackInfo ToTrackInfo(Track t) => new(
         t.Id.ToString("D"), t.Title ?? "", t.Artist ?? "", t.Album ?? "", t.AlbumArtist ?? "",
-        t.Duration, t.Year, t.Genre ?? "", t.TrackNumber, t.FilePath ?? "", t.IsFavorite, t.PlayCount, t.Rating);
+        t.Duration, t.Year, t.Genre ?? "", t.TrackNumber, t.FilePath ?? "", t.IsFavorite, t.PlayCount, t.Rating)
+    {
+        Bpm = t.Bpm,
+        MusicalKey = t.MusicalKey ?? "",
+    };
 
     // ── Settings declared in plugin.json ──
 
@@ -1269,6 +1274,16 @@ public sealed class PluginHost
         public ILibraryReader Library { get { Require(PluginPermissions.LibraryRead); return this; } }
         public IPluginSettings Settings => this;
 
+        private PluginTrackAnalysisWriter? _trackAnalysis;
+        public ITrackAnalysisWriter TrackAnalysis
+        {
+            get
+            {
+                Require(PluginPermissions.LibraryWriteAnalysis);
+                return _trackAnalysis ??= new PluginTrackAnalysisWriter(_library, () => !_disposed && _plugin.Instance is not null, _plugin.Id);
+            }
+        }
+
         public void Log(string message)
             => DebugLogger.Info(DebugLogger.Category.State, "Plugin:" + _plugin.Name, message ?? "");
 
@@ -1425,6 +1440,15 @@ public sealed class PluginHost
                 if (results.Count >= limit) break;
             }
             return results;
+        }
+
+        public IReadOnlyList<TrackInfo> GetAll()
+        {
+            if (_disposed || _library is null) return Array.Empty<TrackInfo>();
+            Track[] snapshot;
+            try { snapshot = _library.Tracks.ToArray(); }
+            catch (InvalidOperationException) { snapshot = _library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
+            return snapshot.Select(ToTrackInfo).ToArray();
         }
 
         // IPluginSettings

@@ -1,0 +1,20 @@
+{
+  "id": "dev.noctis.plugins.mixxx",
+  "name": "Mixxx",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Imports the BPM and musical key Mixxx analysed for your tracks. Reads Mixxx's library without changing it, and sets BPM and key in Noctis only, never in your files. Track menu → Import BPM and key from Mixxx.",
+  "type": "dotnet",
+  "entry": "Noctis.Plugins.Mixxx.dll",
+  "apiVersion": "1.2",
+  "minAppVersion": "1.5.9",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": ["library.read", "library.write.analysis", "menu.commands", "notifications"],
+  "settings": [
+    { "key": "databasePath", "label": "Mixxx library file (mixxxdb.sqlite)", "type": "string", "default": "",
+      "description": "Leave empty to use Mixxx's usual location on this computer. A folder works too." },
+    { "key": "overwrite", "label": "Replace BPM and key Noctis already has", "type": "bool", "default": false,
+      "description": "Off: only tracks without a BPM or key get Mixxx's." }
+  ],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
+}
