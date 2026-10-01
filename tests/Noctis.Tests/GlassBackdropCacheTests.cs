@@ -86,13 +86,17 @@ public class GlassBackdropCacheTests
 
     /// <summary>A full frame of <paramref name="changed"/> content: the reference any
     /// partial frame must match.</summary>
-    private static SKBitmap FullFrame(bool changed)
+    private static SKBitmap FullFrame(bool changed, GlassLensFrame? lens = null)
     {
         using var s = NewSurface();
         using var path = PanelPath();
-        Frame(s, Whole, changed, c => GlassBlur.Draw(c, s, Panel, path, Sigma));
+        Frame(s, Whole, changed, c => GlassBlur.Draw(c, s, Panel, path, Sigma, 1, lens));
         return Pixels(s);
     }
+
+    /// <summary>The phone's Liquid Glass lens on the same panel: a refracting rim, a colour split,
+    /// a slight zoom and vibrancy, so any stale or double-frosted pixel it reads shows.</summary>
+    private static readonly GlassLensFrame Lens = new(Panel, new SKPoint4(18, 18, 18, 18), 16, 16, 0.6f, 1.05f, 1.3f);
 
     [Fact]
     public void ChildOnlyRepaint_FrostsExactlyLikeAFullFrame_AndAsksForNothingMore()
@@ -113,6 +117,51 @@ public class GlassBackdropCacheTests
         using var after = Pixels(s);
         Assert.True(MaxDiff(after, reference, Whole) <= 1, $"partial frame drifted by {MaxDiff(after, reference, Whole)}");
         Assert.Equal(0, repaints);
+    }
+
+    [Fact]
+    public void WithTheLens_AChildOnlyRepaint_StillFrostsExactlyLikeAFullFrame()
+    {
+        var repaints = 0;
+        var cache = new GlassBackdropCache(() => repaints++);
+        using var s = NewSurface();
+        using var path = PanelPath();
+        Frame(s, Whole, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+        using var reference = FullFrame(changed: false, Lens);
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
+        // The lens really drew: it differs from the plain frost.
+        using var plain = FullFrame(changed: false);
+        Assert.True(MaxDiff(reference, plain, Whole) > 12);
+
+        var dirty = new SKRectI(100, 50, 130, 80);
+        Frame(s, dirty, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        using var after = Pixels(s);
+        Assert.True(MaxDiff(after, reference, Whole) <= 1, $"partial frame drifted by {MaxDiff(after, reference, Whole)}");
+        Assert.Equal(0, repaints);
+        // And on the rim, where the lens reads from furthest away.
+        var rim = new SKRectI(42, 60, 60, 80);
+        Frame(s, rim, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
+        Assert.Equal(0, repaints);
+    }
+
+    [Fact]
+    public void WithTheLens_AChangeBeneath_IsExactInsideTheDirtyRect_AndAsksForOneFullRepaint()
+    {
+        var repaints = 0;
+        var cache = new GlassBackdropCache(() => repaints++);
+        using var s = NewSurface();
+        using var path = PanelPath();
+        Frame(s, Whole, false, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+
+        var dirty = new SKRectI(92, 52, 120, 80);
+        Frame(s, dirty, true, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, Lens));
+        using var reference = FullFrame(changed: true, Lens);
+        Assert.True(MaxDiff(Pixels(s), reference, dirty) <= 1);
+        Assert.Equal(1, repaints);
+
+        Frame(s, Whole, true, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, Lens));
+        Assert.True(MaxDiff(Pixels(s), reference, Whole) <= 1);
     }
 
     [Fact]
