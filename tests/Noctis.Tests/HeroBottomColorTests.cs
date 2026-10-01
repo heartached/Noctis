@@ -130,10 +130,10 @@ public class HeroBottomColorTests
         canvas.DrawRect(new SKRect(l, t, r, b), paint);
     }
 
-    /// <summary>From a file: the bottom and the top band (the status bar's backdrop) both come
-    /// back, from one decode.</summary>
+    /// <summary>From a file: the bottom colour and the per-row luminance (what the status bar
+    /// sits on as the page scrolls) both come back, from one decode, and stay cached.</summary>
     [Fact]
-    public void FromFile_ReadsTheBottomAndTheTop()
+    public void FromFile_ReadsTheBottomAndTheRowLuminance()
     {
         var path = WritePng(400, 400, c =>
         {
@@ -142,11 +142,17 @@ public class HeroBottomColorTests
         });
         try
         {
+            Assert.Null(DominantColorExtractor.GetCachedHeroColors(path));
             var hero = DominantColorExtractor.ExtractHeroColorsFromFile(path);
             Assert.NotNull(hero);
-            Assert.True(Distance(hero!.Value.Bottom, (0x5A, 0x3C, 0x28)) < 1, $"bottom {hero.Value.Bottom}");
-            Assert.True(Distance(hero.Value.Top, (0x90, 0xC0, 0xF0)) < 1, $"top {hero.Value.Top}");
-            Assert.Equal(hero.Value.Bottom, DominantColorExtractor.ExtractHeroBottomColorFromFile(path));
+            Assert.True(Distance(hero!.Bottom, (0x5A, 0x3C, 0x28)) < 1, $"bottom {hero.Bottom}");
+            Assert.Equal(N, hero.RowLuminance.Count);
+            var sky = DominantColorExtractor.GetRelativeLuminance(Color.FromRgb(0x90, 0xC0, 0xF0));
+            var earth = DominantColorExtractor.GetRelativeLuminance(Color.FromRgb(0x5A, 0x3C, 0x28));
+            Assert.Equal(sky, hero.RowLuminance[0], 2);
+            Assert.Equal(earth, hero.RowLuminance[N - 1], 2);
+            Assert.Equal(hero.Bottom, DominantColorExtractor.ExtractHeroBottomColorFromFile(path));
+            Assert.Same(hero, DominantColorExtractor.GetCachedHeroColors(path));
         }
         finally { File.Delete(path); }
     }

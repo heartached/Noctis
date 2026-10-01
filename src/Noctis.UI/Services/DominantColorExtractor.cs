@@ -754,10 +754,6 @@ public static class DominantColorExtractor
     /// <summary>Weight of the band's top row; the cover's last row weighs 1.</summary>
     private const double HeroBandTopWeight = 0.25;
 
-    /// <summary>Top band averaged for the status bar's backdrop (the bar covers ~6-12% of a
-    /// full-width square cover on a phone).</summary>
-    private const double HeroTopDepth = 0.08;
-
     /// <summary>Wider than the edge picker's merge: a seed only has to land in the right
     /// colour, the mode search then settles it.</summary>
     private const double HeroClusterMergeDistance = 0.08;
@@ -857,17 +853,20 @@ public static class DominantColorExtractor
         return ((mL, mA, mB), Accumulate(out _, out _, out _));
     }
 
-    /// <summary>Linear-light mean of the top <see cref="HeroTopDepth"/> rows.</summary>
-    private static Color AverageTopBand(byte[] rgb, int width, int height)
+    /// <summary>Relative luminance (WCAG, 0 … 1) of each row's linear-light mean, top first.</summary>
+    internal static double[] RowLuminance(byte[] rgb, int width, int height)
     {
-        var rows = Math.Min(height, Math.Max(1, (int)Math.Round(height * HeroTopDepth)));
-        double r = 0, g = 0, b = 0;
-        for (int i = 0; i < rows * width * 3; i += 3)
+        var rows = new double[height];
+        for (int y = 0; y < height; y++)
         {
-            r += SrgbToLinear(rgb[i]); g += SrgbToLinear(rgb[i + 1]); b += SrgbToLinear(rgb[i + 2]);
+            double r = 0, g = 0, b = 0;
+            for (int i = y * width * 3; i < (y + 1) * width * 3; i += 3)
+            {
+                r += SrgbToLinear(rgb[i]); g += SrgbToLinear(rgb[i + 1]); b += SrgbToLinear(rgb[i + 2]);
+            }
+            rows[y] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / width;
         }
-        var n = (double)rows * width;
-        return Color.FromRgb(LinearToSrgb(r / n), LinearToSrgb(g / n), LinearToSrgb(b / n));
+        return rows;
     }
 
     private static double SrgbToLinear(byte c)
@@ -1002,9 +1001,14 @@ public static class DominantColorExtractor
     }
 
     /// <summary>The phone album hero's colours: <see cref="Bottom"/>, the page colour the
-    /// full-bleed cover fades into (<see cref="PickHeroBottomColor"/>), and <see cref="Top"/>,
-    /// the mean of the strip the status bar sits on.</summary>
-    public readonly record struct HeroColors(Color Bottom, Color Top);
+    /// full-bleed cover fades into (<see cref="PickHeroBottomColor"/>), and
+    /// <see cref="RowLuminance"/>, the luminance of each of the visible square's 64 rows, top
+    /// first: what lies under the status bar at any scroll position.</summary>
+    public sealed record HeroColors(Color Bottom, IReadOnlyList<double> RowLuminance);
+
+    /// <summary>The hero colours already extracted for a path, without decoding; null if not cached.</summary>
+    public static HeroColors? GetCachedHeroColors(string? artworkPath) =>
+        !string.IsNullOrEmpty(artworkPath) && HeroFileCache.TryGetValue(artworkPath, out var cached) ? cached : null;
 
     private static readonly ConcurrentDictionary<string, HeroColors> HeroFileCache =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1043,7 +1047,7 @@ public static class DominantColorExtractor
 
             var rgb = BoxDownscaleCentreSquare(raw, n);
             if (PickHeroBottomColor(rgb, n, n) is not { } bottom) return null;
-            var colors = new HeroColors(bottom, AverageTopBand(rgb, n, n));
+            var colors = new HeroColors(bottom, RowLuminance(rgb, n, n));
 
             if (HeroFileCache.Count >= MaxCacheSize) HeroFileCache.Clear();
             HeroFileCache.TryAdd(artworkPath, colors);
