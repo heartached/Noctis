@@ -41,92 +41,218 @@
         </DataTemplate>
     </UserControl.DataTemplates>
 
-    <!-- Row 0: the active tab's root, or the top pushed page (PageHost). Row 1: the floating
-         mini bar above the tab bar. The overlays span both rows and are declared last, in
-         z-order: Now Playing, then Lyrics and Queue above it, then the long-press sheet
-         above everything. The mini bar belongs to the tab
-         layer, so it is declared before the overlays — after them it would paint over the
-         Queue page the moment anything other than Now Playing opens the queue. -->
-    <Grid RowDefinitions="*,Auto">
-        <Panel Grid.Row="0" Name="TabContent" Margin="{Binding TopSafePadding}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Noctis.Mobile/Views/TabIcons.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Liquid Glass bar surfaces: the tint over the frost (its opacity is the tint
+                     strength), the selected tab's pill, the light rim along the edge, the sheen
+                     on the upper half, and the scrim content fades into behind the bar. -->
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#1C1C1F" Opacity="0.46" />
+                    <SolidColorBrush x:Key="GlassBarPill" Color="#FFFFFF" Opacity="0.12" />
+                    <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#70FFFFFF" />
+                        <GradientStop Offset="0.45" Color="#1AFFFFFF" />
+                        <GradientStop Offset="1" Color="#30FFFFFF" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="GlassBarSheen" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#1FFFFFFF" />
+                        <GradientStop Offset="0.5" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="GlassBarScrim" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00000000" />
+                        <GradientStop Offset="1" Color="#B0000000" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#F7F7FA" Opacity="0.66" />
+                    <SolidColorBrush x:Key="GlassBarPill" Color="#000000" Opacity="0.07" />
+                    <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="0.5" Color="#1A000000" />
+                        <GradientStop Offset="1" Color="#38000000" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="GlassBarSheen" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#66FFFFFF" />
+                        <GradientStop Offset="0.5" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="GlassBarScrim" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00FFFFFF" />
+                        <GradientStop Offset="1" Color="#99FFFFFF" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <!-- Kept current by ShellView: how far a page's last row must scroll to clear the bar. -->
+            <Thickness x:Key="ShellBottomInset">0,0,0,160</Thickness>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <!-- The tab content fills the screen and scrolls UNDER the floating glass bar (pages pad
+         their lists by ShellBottomInset). The bottom chrome is laid over it; the code-behind
+         lays out its parts for the expanded and folded states and animates between them.
+         The overlays are declared last, in z-order: Now Playing, then Lyrics and Queue above
+         it, then the long-press sheet above everything. The chrome belongs to the tab layer,
+         so it is declared before the overlays — after them it would paint over the Queue
+         page the moment anything other than Now Playing opens the queue. -->
+    <Grid>
+        <Panel Name="TabContent" Margin="{Binding TopSafePadding}">
             <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
             <views:HomePage DataContext="{Binding Home}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsHomeRootVisible}" />
             <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchRootVisible}" />
+            <Grid Name="FavoritesRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsFavoritesRootVisible}">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="20,12,12,8">
+                    <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" />
+                    <Button Grid.Column="1" Classes="icon" VerticalAlignment="Top" Command="{Binding OpenSettingsCommand}">
+                        <PathIcon Data="{DynamicResource PersonIcon}" />
+                    </Button>
+                </Grid>
+                <ContentControl Grid.Row="1" Name="FavoritesHost" Content="{Binding Favorites}"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+            </Grid>
             <ContentControl Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding HasPage}"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
         </Panel>
 
-        <StackPanel Grid.Row="1" Name="BottomChrome" Margin="{Binding BottomSafePadding}">
-            <Grid ColumnDefinitions="*,Auto" Margin="12,0,12,6">
-                <Border Name="MiniBar" Padding="6,6,8,6" CornerRadius="28" Background="{DynamicResource HomeCardBackground}"
-                        IsVisible="{Binding IsMiniBarVisible}">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
-                             to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
-                        <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
-                                Command="{Binding OpenNowPlayingCommand}">
-                            <Grid ColumnDefinitions="Auto,*">
-                                <Border Classes="art" Width="40" Height="40" CornerRadius="20">
-                                    <Panel>
-                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
-                                        <controls:CachedImage Name="MiniArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
-                                                              DecodeWidth="128" ClearOnSourceChange="False" Stretch="UniformToFill" />
-                                    </Panel>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Player.CurrentTrack.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Player.CurrentTrack.Artist}" Classes="subtle" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
+        <!-- Content fades into the bar rather than ending in a hard line behind it. -->
+        <Border Name="BottomScrim" VerticalAlignment="Bottom" Height="150" IsHitTestVisible="False"
+                Background="{DynamicResource GlassBarScrim}" />
+
+        <Panel Name="BottomChrome" VerticalAlignment="Bottom" Margin="{Binding BottomSafePadding}">
+            <Panel Name="ChromeHost" Margin="14,0,14,8" VerticalAlignment="Bottom">
+
+                <!-- The tab capsule. Expanded it spans the row and holds the four tabs; folded it
+                     shrinks to a round button showing the current tab. -->
+                <controls:GlassPanel Name="TabCapsule" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
+                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
+                                     EdgeThickness="1" CornerRadius="32" ClipToBounds="True"
+                                     HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                    <Panel>
+                        <Border Name="TabSheen" Background="{DynamicResource GlassBarSheen}" CornerRadius="32" IsHitTestVisible="False" />
+                        <Panel Name="TabRow" HorizontalAlignment="Left">
+                            <Border Name="SelectionPill" Background="{DynamicResource GlassBarPill}" CornerRadius="27"
+                                    HorizontalAlignment="Left" Margin="0,5" IsHitTestVisible="False" />
+                            <Grid Name="TabBar" ColumnDefinitions="*,*,*,*">
+                                <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}"
+                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
+                                    <StackPanel Spacing="3">
+                                        <Panel>
+                                            <PathIcon Classes="off" Data="{DynamicResource TabHomeIcon}" />
+                                            <PathIcon Classes="on" Data="{DynamicResource TabHomeFilledIcon}" />
+                                        </Panel>
+                                        <TextBlock Text="{loc:T Nav.Home}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Name="FavoritesTab" Classes="tab" Classes.selected="{Binding IsFavoritesSelected}"
+                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Favorites}">
+                                    <StackPanel Spacing="3">
+                                        <Panel>
+                                            <PathIcon Classes="off" Data="{DynamicResource TabFavoritesIcon}" />
+                                            <PathIcon Classes="on" Data="{DynamicResource TabFavoritesFilledIcon}" />
+                                        </Panel>
+                                        <TextBlock Text="{loc:T Nav.Favorites}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
+                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Library}">
+                                    <StackPanel Spacing="3">
+                                        <Panel>
+                                            <PathIcon Classes="off" Data="{DynamicResource TabLibraryIcon}" />
+                                            <PathIcon Classes="on" Data="{DynamicResource TabLibraryFilledIcon}" />
+                                        </Panel>
+                                        <TextBlock Text="{loc:T Tab.Library}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="3" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}"
+                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
+                                    <StackPanel Spacing="3">
+                                        <Panel>
+                                            <PathIcon Classes="off" Data="{DynamicResource TabSearchIcon}" />
+                                            <PathIcon Classes="on" Data="{DynamicResource TabSearchFilledIcon}" />
+                                        </Panel>
+                                        <TextBlock Text="Search" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
-                        </Button>
-                        <Button Grid.Column="1" Classes="icon" Command="{Binding Player.TogglePlayPauseCommand}">
+                        </Panel>
+
+                        <!-- Folded: the current tab's icon; a tap unfolds the bar. -->
+                        <Button Name="CollapsedTabButton" Classes="tab selected" HorizontalAlignment="Left"
+                                Command="{Binding ExpandTabBarCommand}">
                             <Panel>
-                                <PathIcon Data="{DynamicResource PlayIcon}" IsVisible="{Binding !Player.IsPlaying}" />
-                                <PathIcon Data="{DynamicResource PauseIcon}" IsVisible="{Binding Player.IsPlaying}" />
+                                <PathIcon Data="{DynamicResource TabHomeFilledIcon}" IsVisible="{Binding IsHomeSelected}" />
+                                <PathIcon Data="{DynamicResource TabFavoritesFilledIcon}" IsVisible="{Binding IsFavoritesSelected}" />
+                                <PathIcon Data="{DynamicResource TabLibraryFilledIcon}" IsVisible="{Binding IsLibrarySelected}" />
+                                <PathIcon Data="{DynamicResource TabSearchFilledIcon}" IsVisible="{Binding IsSearchSelected}" />
                             </Panel>
                         </Button>
-                        <Button Grid.Column="2" Classes="icon" Command="{Binding Player.NextCommand}">
-                            <PathIcon Data="{DynamicResource NextIcon}" />
-                        </Button>
-                    </Grid>
-                </Border>
-                <!-- The round search button beside the pill (spec §5 item 7), shown with the pill. -->
-                <Button Grid.Column="1" Name="MiniSearchButton" Classes="round" Margin="8,0,0,0"
-                        Background="{DynamicResource HomeCardBackground}" IsVisible="{Binding IsMiniBarVisible}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
-                    <PathIcon Data="{DynamicResource SearchIcon}" />
-                </Button>
-            </Grid>
+                    </Panel>
+                </controls:GlassPanel>
 
-            <Grid Name="TabBar" ColumnDefinitions="*,*,*" Height="56">
-                <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
-                    <StackPanel Spacing="2">
-                        <PathIcon Data="{DynamicResource HomeIcon}" />
-                        <TextBlock Text="{loc:T Nav.Home}" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="1" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Library}">
-                    <StackPanel Spacing="2">
-                        <PathIcon Data="{DynamicResource AlbumsIcon}" />
-                        <TextBlock Text="{loc:T Tab.Library}" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2" Name="SearchTab" Classes="tab" Classes.selected="{Binding IsSearchSelected}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
-                    <StackPanel Spacing="2">
-                        <PathIcon Data="{DynamicResource SearchIcon}" />
-                        <TextBlock Text="Search" />
-                    </StackPanel>
-                </Button>
-            </Grid>
-        </StackPanel>
+                <!-- Folded only: the round Search button at the right end of the row. -->
+                <controls:GlassPanel Name="SearchBubble" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
+                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
+                                     EdgeThickness="1" CornerRadius="30"
+                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Fade="0">
+                    <!-- Fade covers only the glass itself; the sheen and button fade with this panel. -->
+                    <Panel Name="SearchBubbleContent" Opacity="0">
+                        <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="30" IsHitTestVisible="False" />
+                        <Button Name="MiniSearchButton" Classes="tab selected"
+                                Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
+                            <PathIcon Data="{DynamicResource TabSearchFilledIcon}" />
+                        </Button>
+                    </Panel>
+                </controls:GlassPanel>
+
+                <!-- The mini player: its own capsule above the tabs, or inline between the two
+                     round buttons when the bar is folded. -->
+                <controls:GlassPanel Name="MiniBar" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
+                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
+                                     EdgeThickness="1" CornerRadius="30" VerticalAlignment="Bottom"
+                                     IsVisible="{Binding IsMiniBarVisible}">
+                    <Panel>
+                        <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="30" IsHitTestVisible="False" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="8,0,8,0">
+                            <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
+                                 to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
+                            <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
+                                    Command="{Binding OpenNowPlayingCommand}">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <Border Classes="art" Name="MiniArt" Width="42" Height="42" CornerRadius="10">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
+                                            <controls:CachedImage Name="MiniArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                                  DecodeWidth="128" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,4,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Player.CurrentTrack.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Player.CurrentTrack.Artist}" Classes="subtle" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                            <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon" Command="{Binding Player.TogglePlayPauseCommand}">
+                                <Panel>
+                                    <PathIcon Data="{DynamicResource PlayIcon}" IsVisible="{Binding !Player.IsPlaying}" />
+                                    <PathIcon Data="{DynamicResource PauseIcon}" IsVisible="{Binding Player.IsPlaying}" />
+                                </Panel>
+                            </Button>
+                            <!-- Expanded only, like Apple's: the folded row has room for Play alone. -->
+                            <Button Grid.Column="2" Name="MiniNextButton" Classes="icon" Command="{Binding Player.NextCommand}">
+                                <PathIcon Data="{DynamicResource NextIcon}" />
+                            </Button>
+                        </Grid>
+                    </Panel>
+                </controls:GlassPanel>
+            </Panel>
+        </Panel>
 
         <!-- Always dark (ruling 8), whatever the app theme: the scope makes Fluent's slider
              tracks and theme-brushed icons resolve their dark resources over the dark scrim.
              It has no background, so it hit-tests only through a visible page. -->
-        <ThemeVariantScope Grid.Row="0" Grid.RowSpan="2" RequestedThemeVariant="Dark">
+        <ThemeVariantScope RequestedThemeVariant="Dark">
             <Panel>
                 <views:NowPlayingPage Name="NowPlaying"
                                       DataContext="{Binding}"
@@ -140,7 +266,7 @@
             </Panel>
         </ThemeVariantScope>
 
-        <views:ContextSheet Grid.Row="0" Grid.RowSpan="2" Name="Sheet" DataContext="{Binding}"
+        <views:ContextSheet Name="Sheet" DataContext="{Binding}"
                             IsVisible="{Binding IsSheetOpen}" />
     </Grid>
 </UserControl>

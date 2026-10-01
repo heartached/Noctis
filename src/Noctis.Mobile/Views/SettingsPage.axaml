@@ -43,7 +43,7 @@
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
 
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="16,4,16,32" Spacing="14">
                 <!-- Only where the head wires an account service (Shell.Account). -->
                 <TextBlock Classes="section" FontSize="16" Text="Account" IsVisible="{Binding Shell.HasAccount}" />

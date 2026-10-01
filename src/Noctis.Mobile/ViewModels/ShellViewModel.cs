@@ -95,20 +95,30 @@ public sealed partial class ShellViewModel : ObservableObject
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible))]
+    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible), nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible))]
     private bool _isNowPlayingOpen;
 
     [ObservableProperty] private bool _isQueueOpen;
     [ObservableProperty] private bool _isLyricsOpen;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected),
-        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible))]
+    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsFavoritesSelected),
+        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsFavoritesRootVisible))]
     private MobileTab _selectedTab = MobileTab.Library;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible))]
+    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible),
+        nameof(IsFavoritesRootVisible))]
     private MobilePage? _currentPage;
+
+    /// <summary>
+    /// The tab bar folded into the compact row (the current tab's button, the mini player,
+    /// Search), as Apple Music's bar does on scroll down. Set by <see cref="ReportContentScroll"/>;
+    /// any tab or page change unfolds it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible))]
+    private bool _isTabBarCollapsed;
 
     /// <summary>
     /// System-bar insets (status bar on top, navigation/gesture bar at the bottom) from the
@@ -140,11 +150,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
+    public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
 
     public bool HasPage => CurrentPage != null;
     public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
     public bool IsLibraryRootVisible => IsLibrarySelected && !HasPage;
     public bool IsSearchRootVisible => IsSearchSelected && !HasPage;
+    public bool IsFavoritesRootVisible => IsFavoritesSelected && !HasPage;
+
+    private SongListPageViewModel? _favorites;
+
+    /// <summary>The Favorites tab's root: the favourite songs, the list the Library tile pushes,
+    /// embedded under the tab's own title. Made on first use; it re-reads on every library refresh.</summary>
+    public SongListPageViewModel Favorites =>
+        _favorites ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -154,10 +173,68 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it.</summary>
     public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen;
 
+    /// <summary>The mini player as its own capsule above the full tab bar.</summary>
+    public bool IsMiniBarExpandedVisible => IsMiniBarVisible && !IsTabBarCollapsed;
+
+    /// <summary>The mini player inside the folded bar, between the tab and Search buttons.</summary>
+    public bool IsMiniBarInlineVisible => IsMiniBarVisible && IsTabBarCollapsed;
+
+    /// <summary>Scroll distance in one direction that folds or unfolds the bar, so a finger's
+    /// wobble does neither.</summary>
+    internal const double TabBarScrollThreshold = 24;
+
+    /// <summary>After a tab or page change, scrolls are the new view settling or ScrollMemory
+    /// putting a page back, not the user: they are ignored for this long.</summary>
+    internal const long TabBarSettleMs = 400;
+
+    /// <summary>Milliseconds clock; tests drive it.</summary>
+    internal Func<long> TickSource { get; set; } = () => Environment.TickCount64;
+
+    private double _scrollRun;
+    private long _ignoreScrollUntil;
+
+    /// <summary>
+    /// A vertical scroll of the visible tab content: <paramref name="offsetY"/> is the new offset,
+    /// <paramref name="deltaY"/> how far it moved (positive = down). Folds the bar after
+    /// <see cref="TabBarScrollThreshold"/> of travel down, unfolds it after as much travel up or
+    /// on reaching the top.
+    /// </summary>
+    public void ReportContentScroll(double offsetY, double deltaY)
+    {
+        if (deltaY == 0) return;
+        if (offsetY <= 1)
+        {
+            _scrollRun = 0;
+            IsTabBarCollapsed = false;
+            return;
+        }
+        if (TickSource() < _ignoreScrollUntil) return;
+        // A run counts travel in one direction; turning around starts a new one.
+        if (Math.Sign(deltaY) != Math.Sign(_scrollRun)) _scrollRun = 0;
+        _scrollRun += deltaY;
+        if (_scrollRun >= TabBarScrollThreshold) IsTabBarCollapsed = true;
+        else if (_scrollRun <= -TabBarScrollThreshold) IsTabBarCollapsed = false;
+    }
+
+    private void UnfoldTabBar()
+    {
+        _scrollRun = 0;
+        _ignoreScrollUntil = TickSource() + TabBarSettleMs;
+        IsTabBarCollapsed = false;
+    }
+
+    [RelayCommand] private void ExpandTabBar() => UnfoldTabBar();
+
+    partial void OnCurrentPageChanged(MobilePage? value) => UnfoldTabBar();
+
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
+        {
             OnPropertyChanged(nameof(IsMiniBarVisible));
+            OnPropertyChanged(nameof(IsMiniBarExpandedVisible));
+            OnPropertyChanged(nameof(IsMiniBarInlineVisible));
+        }
     }
 
     /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it,
@@ -186,6 +263,7 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnSelectedTabChanged(MobileTab value)
     {
         if (value == MobileTab.Home) Home.Refresh();
+        UnfoldTabBar();
     }
 
     /// <summary>Push <paramref name="page"/> over the current tab. A page opened from Now

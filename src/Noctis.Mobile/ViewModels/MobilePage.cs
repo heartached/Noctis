@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>The three tabs of the phone UI. Library is the start tab (Back from the others returns to it).</summary>
-public enum MobileTab { Home, Library, Search }
+public enum MobileTab { Home, Library, Search, Favorites }
 
 /// <summary>
 /// A page pushed over a tab's root (Songs, an album, an artist, Settings…). ShellView shows

@@ -16,7 +16,7 @@
         <TextBlock Grid.Row="1" Classes="subtle" Text="No albums" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasAlbums}" />
 
-        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

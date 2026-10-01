@@ -200,6 +200,25 @@
     <Style Selector="Button.tab.selected TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
     </Style>
+    <!-- Glass tab bar: an outline icon, swapped for its filled twin on the selected tab. -->
+    <Style Selector="Button.tab PathIcon.on">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.tab.selected PathIcon.on">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Button.tab.selected PathIcon.off">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.tab TextBlock">
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+
+    <!-- A tab page's main list: content scrolls under the floating glass bar, so the list
+         ends ShellBottomInset (kept current by ShellView) below its last row. -->
+    <Style Selector="ScrollViewer.page-scroll">
+        <Setter Property="Padding" Value="{DynamicResource ShellBottomInset}" />
+    </Style>
 
     <Style Selector="Button.row:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.row:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.icon:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.round:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.round:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.pill-accent:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-accent:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.chip:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.tile:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.tab:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.tab:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{Binding $parent[Button].Background}" />

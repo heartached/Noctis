@@ -47,7 +47,7 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer Name="ArtistScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer Classes="page-scroll" Name="ArtistScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,0,0,24" Spacing="16">
             <Grid Name="Hero" Height="340" ClipToBounds="True">
                 <Border Background="{DynamicResource HomeCardBackground}">

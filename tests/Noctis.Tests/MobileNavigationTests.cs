@@ -206,7 +206,7 @@ public class MobileNavigationTests : IDisposable
 
         Assert.Equal(24, shell.TopSafePadding.Top);
         Assert.Equal(24, view.FindControl<Panel>("TabContent")!.Margin.Top);
-        Assert.Equal(48, view.FindControl<StackPanel>("BottomChrome")!.Margin.Bottom);
+        Assert.Equal(48, view.FindControl<Panel>("BottomChrome")!.Margin.Bottom);
         window.Close();
     }
 
@@ -225,7 +225,7 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(new Thickness(30, 0, 48, 16), shell.BottomSafePadding);
         var content = view.FindControl<Panel>("TabContent")!.Margin;
         Assert.Equal((30.0, 48.0), (content.Left, content.Right));
-        var chrome = view.FindControl<StackPanel>("BottomChrome")!.Margin;
+        var chrome = view.FindControl<Panel>("BottomChrome")!.Margin;
         Assert.Equal((30.0, 48.0), (chrome.Left, chrome.Right));
         window.Close();
     }

@@ -16,7 +16,7 @@
         <TextBlock Grid.Row="1" Classes="subtle" Text="No artists" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasArtists}" />
 
-        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl Name="ArtistList" ItemsSource="{Binding Artists}" Margin="12,0,12,16">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

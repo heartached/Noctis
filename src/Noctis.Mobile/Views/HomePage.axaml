@@ -31,7 +31,7 @@
             </Button>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="20,0,20,24" Spacing="18">
                 <Border Name="HomeEmpty" Classes="card" Padding="16" IsVisible="{Binding IsEmpty}">
                     <StackPanel Spacing="10">

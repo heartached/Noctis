@@ -55,7 +55,7 @@
         </ScrollViewer>
 
         <Panel Grid.Row="3">
-            <ScrollViewer Name="LibraryScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsAllMusicChip}">
+            <ScrollViewer Classes="page-scroll" Name="LibraryScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsAllMusicChip}">
                 <StackPanel Name="LibraryContent" Margin="20,0,20,24" Spacing="14">
                     <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
                         <StackPanel Spacing="10">

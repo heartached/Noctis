@@ -8,6 +8,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using Avalonia.LogicalTree;
+using Noctis.Controls;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
@@ -99,7 +100,7 @@ public class MobileShellViewTests
         window.Show();
         window.UpdateLayout();
 
-        var miniBar = view.FindControl<Border>("MiniBar")!;
+        var miniBar = view.FindControl<GlassPanel>("MiniBar")!;
         Assert.False(miniBar.IsVisible);
         Assert.Equal(1, shell.Library.SongCount);   // the Library root shows tiles; the song list is the Songs page
 
@@ -143,8 +144,8 @@ public class MobileShellViewTests
         shell.PlaySongCommand.Execute(track);
         window.UpdateLayout();
 
-        var miniBar = view.FindControl<Border>("MiniBar")!;
-        var grid = (Grid)miniBar.Child!;
+        var miniBar = view.FindControl<GlassPanel>("MiniBar")!;
+        var grid = miniBar.GetLogicalDescendants().OfType<Grid>().First();
         var title = grid.Children.OfType<Button>().First(b => Grid.GetColumn(b) == 0);
 
         // The star column's own width, from the first fixed-width sibling's left edge.
