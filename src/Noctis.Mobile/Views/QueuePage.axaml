@@ -89,8 +89,8 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="Button.round.close PathIcon">
-            <Setter Property="Width" Value="12" />
-            <Setter Property="Height" Value="12" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
         </Style>
         <!-- Clear: accent text on the UP NEXT line; its padding hangs past the margin so the
              word itself lines up with the sheet's right edge. -->
@@ -126,8 +126,8 @@
             <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
         </Style>
         <Style Selector="Button.round.soft PathIcon">
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
@@ -198,7 +198,7 @@
                         <Grid Name="TopBar" Height="44">
                             <Button Name="QueueGrabber" Classes="icon" Width="64" Height="28" VerticalAlignment="Top"
                                     HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
-                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="30" Height="10"
+                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="40" Height="40" Margin="-5,-15"
                                           Foreground="{DynamicResource QueueGrabber}" />
                             </Button>
                             <Button Name="QueueCloseButton" Classes="round close" HorizontalAlignment="Right"
@@ -282,7 +282,7 @@
                                                 <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
                                                         PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
                                                         PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
-                                                    <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="20" Height="20"
+                                                    <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
                                                               Foreground="{DynamicResource AccentTextBrush}" />
                                                 </Border>
                                                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="sep" VerticalAlignment="Bottom" Margin="12,0,14,0" />
@@ -313,8 +313,8 @@
                                         <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="18" Height="18" IsVisible="{Binding !Player.IsRepeatOne}" />
-                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="18" Height="18"
+                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="20" Height="20"
                                                           IsVisible="{Binding Player.IsRepeatOne}" />
                                             </Panel>
                                         </Button>
@@ -335,7 +335,7 @@
                                         </Button>
                                         <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
-                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="18" Height="18" />
+                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="20" Height="20" />
                                         </Button>
                                         <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
                                                 Command="{Binding OpenCurrentTrackSheetCommand}">

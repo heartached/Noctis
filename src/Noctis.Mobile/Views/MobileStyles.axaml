@@ -151,9 +151,12 @@
         <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
+    <!-- Icon boxes are the 24-grid (the glyphs carry its corners, see PhoneIcons.axaml); a
+         negative margin keeps the layout footprint of the old, tightly cropped box. -->
     <Style Selector="Button.chip PathIcon">
-        <Setter Property="Width" Value="17" />
-        <Setter Property="Height" Value="17" />
+        <Setter Property="Width" Value="21" />
+        <Setter Property="Height" Value="21" />
+        <Setter Property="Margin" Value="-2" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.chip TextBlock.chip-label">
@@ -187,16 +190,17 @@
         <Setter Property="Padding" Value="0,2" />
     </Style>
     <Style Selector="Button.section-header PathIcon">
-        <Setter Property="Width" Value="17" />
-        <Setter Property="Height" Value="17" />
-        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="Width" Value="21" />
+        <Setter Property="Height" Value="21" />
+        <Setter Property="Margin" Value="-2,-2,6,-2" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
     </Style>
+    <!-- The chevron's 11u-tall glyph at the old 12 dp: a 26 box in the old 12x12 footprint. -->
     <Style Selector="Button.section-header PathIcon.chevron">
-        <Setter Property="Width" Value="12" />
-        <Setter Property="Height" Value="12" />
-        <Setter Property="Margin" Value="6,2,0,0" />
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Margin" Value="-1,-5,-7,-7" />
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
     </Style>
     <Style Selector="Button.section-header TextBlock.section">
@@ -227,8 +231,8 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.glass-round PathIcon">
-        <Setter Property="Width" Value="18" />
-        <Setter Property="Height" Value="18" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
     </Style>
 
     <!-- A rail or grid cover (RailTile): rounded square; artists override to a circle below. -->
@@ -284,8 +288,9 @@
     <!-- Tab colours sit on the icon and label themselves, so Fluent's presenter Foreground
          swap on :pointerover cannot reach them. -->
     <Style Selector="Button.tab PathIcon">
-        <Setter Property="Width" Value="22" />
-        <Setter Property="Height" Value="22" />
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Margin" Value="-2" />
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
     </Style>
     <Style Selector="Button.tab TextBlock">
