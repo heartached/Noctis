@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -54,5 +55,33 @@ public class MobileIconSetTests
             "PhAddToQueue", "PhAddToPlaylist", "PhDownload", "PhTrash", "PhPin",
         };
         Assert.Empty(keys.Where(k => !phone.ContainsKey(k)));
+    }
+
+    /// <summary>A mistyped DynamicResource key leaves an empty button, not an error: every icon on
+    /// the mini player, Now Playing, the Queue sheet and the long-press sheet resolves a glyph.</summary>
+    [AvaloniaFact]
+    public void EveryIcon_OnThePlayerSurfacesAndTheSheet_ResolvesItsGlyph()
+    {
+        var songs = Enumerable.Range(0, 3).Select(i => MobileFixtures.Song($"S{i}")).ToArray();
+        using var rig = MobileFixtures.MakeRig(songs);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        // The device app merges Noctis.UI's icons too (the cover placeholders still use them).
+        window.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/"))
+        {
+            Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml")
+        });
+        rig.Shell.Player.PlayTracks(songs, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+        rig.Shell.OpenTrackSheetCommand.Execute(songs[1]);
+        window.UpdateLayout();
+
+        var missing = view.GetVisualDescendants().OfType<PathIcon>()
+            .Where(icon => icon.Data == null)
+            .Select(icon => icon.GetVisualAncestors().OfType<Control>().FirstOrDefault(c => !string.IsNullOrEmpty(c.Name))?.Name ?? "?")
+            .ToList();
+        Assert.Empty(missing);
+        Assert.True(view.GetVisualDescendants().OfType<PathIcon>().Count() > 30);
+        window.Close();
     }
 }

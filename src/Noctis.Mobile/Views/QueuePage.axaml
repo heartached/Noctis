@@ -307,41 +307,41 @@
                                                 Command="{Binding ToggleQueueCommand}">
                                             <Panel>
                                                 <Border Classes="wash" />
-                                                <PathIcon Data="{DynamicResource QueueListIcon}" />
+                                                <PathIcon Data="{DynamicResource PhList}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
-                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="20" Height="20"
+                                                <PathIcon Data="{DynamicResource PhRepeat}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" Width="20" Height="20"
                                                           IsVisible="{Binding Player.IsRepeatOne}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.PreviousCommand}">
-                                            <PathIcon Data="{DynamicResource RewindIcon}" Width="30" Height="30" />
+                                            <PathIcon Data="{DynamicResource PhRewindFill}" Width="36" Height="36" />
                                         </Button>
                                         <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.TogglePlayPauseCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource PlayIcon}" Width="30" Height="30" IsVisible="{Binding !Player.IsPlaying}" />
-                                                <PathIcon Data="{DynamicResource PauseIcon}" Width="30" Height="30" IsVisible="{Binding Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PhPlayFill}" Width="36" Height="36" IsVisible="{Binding !Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PhPauseFill}" Width="36" Height="36" IsVisible="{Binding Player.IsPlaying}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="4" Name="QueueNextButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.NextCommand}">
-                                            <PathIcon Data="{DynamicResource FastForwardIcon}" Width="30" Height="30" />
+                                            <PathIcon Data="{DynamicResource PhForwardFill}" Width="36" Height="36" />
                                         </Button>
                                         <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
-                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="20" Height="20" />
+                                            <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
                                         </Button>
                                         <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
                                                 Command="{Binding OpenCurrentTrackSheetCommand}">
                                             <Panel>
                                                 <Border Classes="wash" />
-                                                <PathIcon Data="{DynamicResource QueueMoreIcon}" />
+                                                <PathIcon Data="{DynamicResource PhMore}" />
                                             </Panel>
                                         </Button>
                                     </Grid>
