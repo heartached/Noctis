@@ -23,7 +23,7 @@ public class GlassLensTests
     private static readonly SKRect Capsule = new(40, 40, 200, 120);
 
     private static GlassLensFrame Frame(float band = 24, float bend = 24, float dispersion = 0, float zoom = 1, float saturation = 1) =>
-        new(Capsule, new SKPoint4(40, 40, 40, 40), band, bend, dispersion, zoom, saturation);
+        new(Capsule, new GlassCornerRadii(40, 40, 40, 40), band, bend, dispersion, zoom, saturation);
 
     /// <summary>Each pixel stores its own position: red = x, green = y (both under 256).</summary>
     private static SKSurface Coordinates()
@@ -192,7 +192,7 @@ public class GlassLensTests
     {
         using var surface = SKSurface.Create(new SKImageInfo(W, H, SKColorType.Rgba8888, SKAlphaType.Premul));
         surface.Canvas.Clear(SKColors.Black);
-        GlassLens.DrawRim(surface.Canvas, Capsule, new SKPoint4(40, 40, 40, 40), strength: 1, lineWidth: 2, glowWidth: 6, glow: 0.2f, iridescence: 0);
+        GlassLens.DrawRim(surface.Canvas, Capsule, new GlassCornerRadii(40, 40, 40, 40), strength: 1, lineWidth: 2, glowWidth: 6, glow: 0.2f, iridescence: 0);
 
         var top = Pixel(surface, 120, 40);
         var bottom = Pixel(surface, 120, 119);
@@ -208,7 +208,7 @@ public class GlassLensTests
     {
         using var surface = SKSurface.Create(new SKImageInfo(W, H, SKColorType.Rgba8888, SKAlphaType.Premul));
         surface.Canvas.Clear(SKColors.Black);
-        GlassLens.DrawRim(surface.Canvas, Capsule, new SKPoint4(40, 40, 40, 40), strength: 1, lineWidth: 2, glowWidth: 6, glow: 0, iridescence: 1);
+        GlassLens.DrawRim(surface.Canvas, Capsule, new GlassCornerRadii(40, 40, 40, 40), strength: 1, lineWidth: 2, glowWidth: 6, glow: 0, iridescence: 1);
         var spread = 0;
         for (var x = 50; x < 190; x += 10)
         {
@@ -222,7 +222,7 @@ public class GlassLensTests
     [Fact]
     public void TryMapToDevice_ScalesAxisAlignedPanels_AndRefusesRotatedOnes()
     {
-        var radii = new SKPoint4(10, 10, 10, 10);
+        var radii = new GlassCornerRadii(10, 10, 10, 10);
         var m = SKMatrix.CreateScale(2.625f, 2.625f).PostConcat(SKMatrix.CreateTranslation(30, 40));
         Assert.True(GlassLens.TryMapToDevice(m, new SKRect(0, 0, 100, 40), radii, out var device, out var r, out var scale));
         Assert.Equal(new SKRect(30, 40, 30 + 262.5f, 40 + 105), device);

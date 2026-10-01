@@ -96,7 +96,7 @@ public class GlassBackdropCacheTests
 
     /// <summary>The phone's Liquid Glass lens on the same panel: a refracting rim, a colour split,
     /// a slight zoom and vibrancy, so any stale or double-frosted pixel it reads shows.</summary>
-    private static readonly GlassLensFrame Lens = new(Panel, new SKPoint4(18, 18, 18, 18), 16, 16, 0.6f, 1.05f, 1.3f);
+    private static readonly GlassLensFrame Lens = new(Panel, new GlassCornerRadii(18, 18, 18, 18), 16, 16, 0.6f, 1.05f, 1.3f);
 
     [Fact]
     public void ChildOnlyRepaint_FrostsExactlyLikeAFullFrame_AndAsksForNothingMore()

@@ -744,7 +744,7 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     {
         if (_lens is not { } l) return null;
         var local = new SKRect((float)Bounds.X, (float)Bounds.Y, (float)Bounds.Right, (float)Bounds.Bottom);
-        var radii = new SKPoint4((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
+        var radii = new GlassCornerRadii((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
         if (!GlassLens.TryMapToDevice(m, local, radii, out var device, out var deviceRadii, out var scale)) return null;
         return new GlassLensFrame(device, deviceRadii, (float)(l.Band * scale), (float)(l.Bend * scale),
             (float)l.Dispersion, (float)l.Zoom, (float)l.Saturation);
@@ -807,7 +807,7 @@ internal sealed class GlassRimOp : ICustomDrawOperation
         using var api = lease.Lease();
         var canvas = api.SkCanvas;
         var local = new SKRect((float)_rect.X, (float)_rect.Y, (float)_rect.Right, (float)_rect.Bottom);
-        var radii = new SKPoint4((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
+        var radii = new GlassCornerRadii((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
         if (!GlassLens.TryMapToDevice(canvas.TotalMatrix, local, radii, out var device, out var deviceRadii, out var scale)) return;
         GlassLens.DrawRim(canvas, device, deviceRadii, (float)_strength, (float)(LineWidth * scale),
             (float)(GlowWidth * scale), (float)Glow, (float)_iridescence);

@@ -17,17 +17,14 @@ namespace Noctis.Controls;
 /// <param name="Zoom">1 = none; above 1 magnifies the whole backdrop about the panel centre.</param>
 /// <param name="Saturation">1 = none; above 1 makes the backdrop more vivid (vibrancy).</param>
 public readonly record struct GlassLensFrame(
-    SKRect Bounds, SKPoint4 Radii, float Band, float Bend, float Dispersion, float Zoom, float Saturation);
+    SKRect Bounds, GlassCornerRadii Radii, float Band, float Bend, float Dispersion, float Zoom, float Saturation);
 
 /// <summary>A <see cref="GlassPanel"/>'s lens settings in logical px, captured by value for the
 /// render thread; <see cref="GlassBackdropOp"/> scales them to device px.</summary>
 internal readonly record struct GlassLensSettings(double Band, double Bend, double Dispersion, double Zoom, double Saturation);
 
-/// <summary>Four floats, so the corner radii travel as one value (SkSL float4).</summary>
-public readonly record struct SKPoint4(float TopLeft, float TopRight, float BottomRight, float BottomLeft)
-{
-    public float Max => Math.Max(Math.Max(TopLeft, TopRight), Math.Max(BottomRight, BottomLeft));
-}
+/// <summary>A rounded rect's four corner radii in device px, passed to the shaders as one float4.</summary>
+public readonly record struct GlassCornerRadii(float TopLeft, float TopRight, float BottomRight, float BottomLeft);
 
 /// <summary>
 /// The Liquid Glass lens: Apple's iOS 26 glass does not only frost what lies beneath, its
@@ -327,7 +324,7 @@ public static class GlassLens
 
     /// <summary>Draws the rim light for a panel whose device geometry is <paramref name="bounds"/>
     /// / <paramref name="radii"/>. Sizes in device px; <paramref name="strength"/> 0..1.</summary>
-    internal static void DrawRim(SKCanvas canvas, SKRect bounds, SKPoint4 radii, float strength, float lineWidth,
+    internal static void DrawRim(SKCanvas canvas, SKRect bounds, GlassCornerRadii radii, float strength, float lineWidth,
         float glowWidth, float glow, float iridescence)
     {
         var effect = Rim(out _);
@@ -354,7 +351,7 @@ public static class GlassLens
     /// The device rect and radii of a local rounded rect under <paramref name="m"/>, or false
     /// when the matrix rotates, skews or adds perspective (the lens is axis-aligned).
     /// </summary>
-    internal static bool TryMapToDevice(SKMatrix m, SKRect local, SKPoint4 localRadii, out SKRect device, out SKPoint4 radii, out float scale)
+    internal static bool TryMapToDevice(SKMatrix m, SKRect local, GlassCornerRadii localRadii, out SKRect device, out GlassCornerRadii radii, out float scale)
     {
         device = default;
         radii = default;
@@ -364,7 +361,7 @@ public static class GlassLens
         var s = Math.Min(Math.Abs(m.ScaleX), Math.Abs(m.ScaleY));
         if (s < 0.001f) return false;
         scale = Math.Max(Math.Abs(m.ScaleX), Math.Abs(m.ScaleY));
-        radii = new SKPoint4(localRadii.TopLeft * s, localRadii.TopRight * s, localRadii.BottomRight * s, localRadii.BottomLeft * s);
+        radii = new GlassCornerRadii(localRadii.TopLeft * s, localRadii.TopRight * s, localRadii.BottomRight * s, localRadii.BottomLeft * s);
         return true;
     }
 }
