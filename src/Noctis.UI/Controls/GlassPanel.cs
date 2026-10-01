@@ -189,7 +189,6 @@ public class GlassPanel : Decorator
             if (!EffectiveGlassActive) ReleaseBackdrop();
             InvalidateVisual();
             _reach?.InvalidateVisual();
-            _shadow?.InvalidateVisual();
         };
         AppGlass.Changed += _glassChanged;
         // A released GPU copy can only be freed on the render thread: repaint so this
@@ -218,9 +217,6 @@ public class GlassPanel : Decorator
             if (!EffectiveGlassActive || !NeedsBackdrop) ReleaseBackdrop();
             _reach?.InvalidateVisual();
         }
-        if (change.Property == BoxShadowProperty || change.Property == CornerRadiusProperty || change.Property == FadeProperty
-            || change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty)
-            _shadow?.InvalidateVisual();
     }
 
     private void ReleaseBackdrop()
@@ -237,20 +233,14 @@ public class GlassPanel : Decorator
     /// </summary>
     private readonly GlassReach _reach;
 
-    /// <summary>The <see cref="BoxShadow"/> while glass is on, drawn by its own visual: see <see cref="GlassShadow"/>.</summary>
-    private readonly GlassShadow _shadow;
-
     /// <summary>Set by Render: this panel's current drawing frosts. Read on the render thread.</summary>
     private volatile bool _frosting;
     private int _repaintPosted;
-    private Size _arranged;
 
     public GlassPanel()
     {
         _reach = new GlassReach(this);
         VisualChildren.Add(_reach);
-        _shadow = new GlassShadow(this);
-        VisualChildren.Add(_shadow);
     }
 
     /// <summary>The backdrop copy this panel frosts with, if any; read by its reach op on the render thread.</summary>
@@ -262,7 +252,6 @@ public class GlassPanel : Decorator
     protected override Size MeasureOverride(Size availableSize)
     {
         _reach.Measure(Size.Infinity);
-        _shadow.Measure(Size.Infinity);
         return base.MeasureOverride(availableSize);
     }
 
@@ -271,12 +260,6 @@ public class GlassPanel : Decorator
         var size = base.ArrangeOverride(finalSize);
         var r = Reach;
         _reach.Arrange(new Rect(-r, -r, size.Width + 2 * r, size.Height + 2 * r));
-        _shadow.Arrange(new Rect(size));
-        if (size != _arranged)
-        {
-            _arranged = size;
-            _shadow.InvalidateVisual();
-        }
         return size;
     }
 
@@ -309,8 +292,8 @@ public class GlassPanel : Decorator
 
     /// <summary>
     /// What a repaint of this panel alone dirties, in layout units: the compositor repaints a
-    /// visual's whole subtree, so besides the glass that is the rim's edge, the reach ring
-    /// (<see cref="GlassReach"/>) and the shadow (<see cref="GlassShadow"/>).
+    /// visual's whole subtree (measured on the emulator), so besides the glass that is the
+    /// rim's edge, the reach ring (<see cref="GlassReach"/>) and the <see cref="BoxShadow"/>.
     /// </summary>
     internal Rect RepaintFootprint(Rect rect)
     {
@@ -348,8 +331,13 @@ public class GlassPanel : Decorator
             return;
         }
 
-        // The shadow is GlassShadow's: drawn here it made this panel's whole-panel repaints
-        // reach its neighbours.
+        // Cast before the backdrop is read, so every frame (partial or whole) frosts the same
+        // pixels around the panel. Avalonia clips an outer shadow out of the shape itself, so
+        // nothing darkens the glass from beneath. It widens what a repaint of the panel dirties:
+        // see RepaintFootprint.
+        if (shadows.Count > 0)
+            using (fade < 1 ? context.PushOpacity(fade) : default)
+                context.DrawRectangle(null, null, rrect, shadows);
 
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
         if (NeedsBackdrop)
@@ -919,38 +907,6 @@ internal sealed class GlassRimOp : ICustomDrawOperation
         if (!GlassLens.TryMapToDevice(canvas.TotalMatrix, local, radii, out var device, out var deviceRadii, out var scale)) return;
         GlassLens.DrawRim(canvas, device, deviceRadii, (float)_strength, (float)(LineWidth * scale),
             (float)(GlowWidth * scale), (float)Glow, (float)_iridescence);
-    }
-}
-
-/// <summary>
-/// The outer <see cref="GlassPanel.BoxShadow"/> of a frosting panel, drawn by this child
-/// rather than by the panel. Whatever the panel draws, its whole-panel repaint dirties; with
-/// the shadow among it, the repaint of one panel reached a neighbour inside its shadow (the
-/// mini player 10 dp above the tab capsule), whose repaint reached back, and the two
-/// re-frosted each other every frame. Here the shadow repaints only when it changes. It
-/// draws after the panel's glass (a child), so the panel's backdrop never holds its own
-/// shadow beneath it; Avalonia clips an outer shadow out of the shape, so the glass stays
-/// clear. Off, the panel draws background and shadow itself, as a Border does.
-/// </summary>
-internal sealed class GlassShadow : Control
-{
-    private readonly GlassPanel _owner;
-
-    public GlassShadow(GlassPanel owner)
-    {
-        _owner = owner;
-        IsHitTestVisible = false;
-        Focusable = false;
-    }
-
-    public override void Render(DrawingContext context)
-    {
-        var shadows = _owner.BoxShadow;
-        var fade = Math.Clamp(_owner.Fade, 0, 1);
-        if (shadows.Count == 0 || fade <= 0 || !_owner.EffectiveGlassActive || Bounds.Width <= 0 || Bounds.Height <= 0) return;
-        var rrect = new RoundedRect(new Rect(Bounds.Size), _owner.CornerRadius);
-        using (fade < 1 ? context.PushOpacity(fade) : default)
-            context.DrawRectangle(null, null, rrect, shadows);
     }
 }
 
