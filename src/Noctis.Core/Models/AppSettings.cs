@@ -813,6 +813,18 @@ public class AppSettings
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
 
+    /// <summary>Whether Musixmatch (anonymous app token, word-synced richsync) is searched
+    /// automatically. Off on fresh installs: its token endpoint answers a captcha after a burst
+    /// of requests (issue #113 testing). Always available in the Search Lyrics source picker.</summary>
+    public bool MusixmatchEnabled { get; set; }
+
+    /// <summary>Whether Kugou (word-synced KRC lyrics) is searched automatically.</summary>
+    public bool KugouEnabled { get; set; } = true;
+
+    /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
+    /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
+    public bool YouTubeMusicLyricsEnabled { get; set; }
+
     // ── Metadata providers ──
 
     /// <summary>Whether Deezer is used as the primary tag source (keyless).</summary>

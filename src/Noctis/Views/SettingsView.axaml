@@ -2825,6 +2825,35 @@
                                               IsChecked="{Binding NetEaseEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.Musixmatch}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.MusixmatchHint}" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MusixmatchEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.Kugou}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.KugouHint}" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding KugouEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.YouTubeMusicLyrics}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.YouTubeMusicLyricsHint}" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding YouTubeMusicLyricsEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{loc:T Settings.LyricsSourcesPickerHint}"
+                               FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
             </StackPanel>

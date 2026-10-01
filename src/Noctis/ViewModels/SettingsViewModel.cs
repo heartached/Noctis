@@ -1735,6 +1735,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
+    [ObservableProperty] private bool _musixmatchEnabled;
+    [ObservableProperty] private bool _kugouEnabled = true;
+    [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
     [ObservableProperty] private bool _deezerEnabled = true;
@@ -2534,6 +2537,9 @@ public partial class SettingsViewModel : ViewModelBase
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
+            MusixmatchEnabled = _settings.MusixmatchEnabled;
+            KugouEnabled = _settings.KugouEnabled;
+            YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
 
             // Equalizer
@@ -2979,6 +2985,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
+        _settings.MusixmatchEnabled = MusixmatchEnabled;
+        _settings.KugouEnabled = KugouEnabled;
+        _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
@@ -4641,6 +4650,24 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnNetEaseEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnMusixmatchEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnKugouEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnYouTubeMusicLyricsEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -6623,6 +6650,9 @@ public partial class SettingsViewModel : ViewModelBase
             // Lyrics providers
             LrcLibEnabled = true;
             NetEaseEnabled = true;
+            MusixmatchEnabled = defaultSettings.MusixmatchEnabled;
+            KugouEnabled = defaultSettings.KugouEnabled;
+            YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers
             DeezerEnabled = true;

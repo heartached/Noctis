@@ -128,6 +128,10 @@ public static class MetadataHelper
         await ShowDialogOwned(new BulkLyricsDialog(vm));
     }
 
+    /// <summary>Search Lyrics with a source picker (issue #113), for the lyrics page's track.</summary>
+    public static Task OpenLyricsSearchDialog(LyricsSearchViewModel vm) =>
+        ShowDialogOwned(new LyricsSearchDialog(vm));
+
     /// <summary>Lyrics Studio: time existing lyrics or transcribe, review, then save.</summary>
     public static async Task OpenLyricsStudio(IReadOnlyList<Track> tracks)
     {

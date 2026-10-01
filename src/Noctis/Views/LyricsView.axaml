@@ -1000,6 +1000,20 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Search Lyrics with a source picker (issue #113) -->
+                    <Button Classes="pill-btn"
+                            Padding="10,5"
+                            Height="30" MinHeight="30"
+                            IsVisible="{Binding !IsSearching}"
+                            Command="{Binding OpenLyricsSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Data="{StaticResource SearchIcon}"
+                                     Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:T Lyrics.ChooseSource}" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Lyrics Studio preview: the lines shown are unsaved -->
                     <Border Background="{DynamicResource LyricsBtnBgRes}"
                             CornerRadius="18"
@@ -1053,6 +1067,18 @@
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="White"
+                               VerticalAlignment="Center"/>
+                </Button>
+                <!-- Pick the source yourself (issue #113): opens the Search Lyrics dialog. -->
+                <Button Classes="pill-btn"
+                        Padding="14,6"
+                        CornerRadius="22"
+                        Command="{Binding OpenLyricsSearchCommand}"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="{loc:T Lyrics.ChooseSource}"
+                               FontSize="12"
+                               Foreground="White"
+                               Opacity="0.8"
                                VerticalAlignment="Center"/>
                 </Button>
             </StackPanel>
