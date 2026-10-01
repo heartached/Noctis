@@ -16,12 +16,19 @@ namespace Noctis.Controls;
 /// <param name="Dispersion">0..1: the rim splits red and blue apart (chromatic aberration).</param>
 /// <param name="Zoom">1 = none; above 1 magnifies the whole backdrop about the panel centre.</param>
 /// <param name="Saturation">1 = none; above 1 makes the backdrop more vivid (vibrancy).</param>
+/// <param name="ToneMin">The backdrop's luminance range is squeezed into
+/// [<paramref name="ToneMin"/>, <paramref name="ToneMax"/>] (0..1, default the full range), so
+/// text on the glass keeps its contrast over any content: dark glass caps how bright a white
+/// cover can show through, light glass lifts how dark a black one can.</param>
+/// <param name="ToneMax">See <paramref name="ToneMin"/>.</param>
 public readonly record struct GlassLensFrame(
-    SKRect Bounds, GlassCornerRadii Radii, float Band, float Bend, float Dispersion, float Zoom, float Saturation);
+    SKRect Bounds, GlassCornerRadii Radii, float Band, float Bend, float Dispersion, float Zoom, float Saturation,
+    float ToneMin = 0, float ToneMax = 1);
 
 /// <summary>A <see cref="GlassPanel"/>'s lens settings in logical px, captured by value for the
 /// render thread; <see cref="GlassBackdropOp"/> scales them to device px.</summary>
-internal readonly record struct GlassLensSettings(double Band, double Bend, double Dispersion, double Zoom, double Saturation);
+internal readonly record struct GlassLensSettings(double Band, double Bend, double Dispersion, double Zoom, double Saturation,
+    double ToneMin = 0, double ToneMax = 1);
 
 /// <summary>A rounded rect's four corner radii in device px, passed to the shaders as one float4.</summary>
 public readonly record struct GlassCornerRadii(float TopLeft, float TopRight, float BottomRight, float BottomLeft);
@@ -80,6 +87,7 @@ public static class GlassLens
         uniform float dispersion;
         uniform float zoom;
         uniform float saturation;
+        uniform float2 tone;
 
         """ + RoundRectSdf + """
 
@@ -107,6 +115,13 @@ public static class GlassLens
             if (saturation != 1.0) {
                 half l = dot(color.rgb, half3(0.2126, 0.7152, 0.0722));
                 color.rgb = clamp(mix(half3(l), color.rgb, half(saturation)), 0.0, color.a);
+            }
+            if (tone.x > 0.0 || tone.y < 1.0) {
+                // Remap luminance 0..1 onto tone.x..tone.y, keeping each colour's hue.
+                float l = dot(float3(color.rgb), float3(0.2126, 0.7152, 0.0722));
+                float target = mix(tone.x, tone.y, l);
+                float3 rgb = l > 0.0005 ? float3(color.rgb) * (target / l) : float3(target);
+                color.rgb = half3(clamp(rgb, 0.0, float(color.a)));
             }
             return color;
         }
@@ -228,6 +243,17 @@ public static class GlassLens
         return (1 - MathF.Sqrt(Math.Max(1 - t * t, 0))) * bend;
     }
 
+    /// <summary>The shader's tone remap of one colour (0..1 channels): luminance 0..1 onto
+    /// <paramref name="min"/>..<paramref name="max"/>, hue kept.</summary>
+    public static (float R, float G, float B) Tone(float r, float g, float b, float min, float max)
+    {
+        var l = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+        var target = min + (max - min) * l;
+        if (l <= 0.0005f) return (target, target, target);
+        var k = target / l;
+        return (Math.Clamp(r * k, 0, 1), Math.Clamp(g * k, 0, 1), Math.Clamp(b * k, 0, 1));
+    }
+
     /// <summary>Where the lens samples the backdrop for device pixel <paramref name="coord"/>
     /// (green channel; red and blue spread by the dispersion).</summary>
     public static SKPoint SamplePoint(SKPoint coord, in GlassLensFrame f)
@@ -289,6 +315,7 @@ public static class GlassLens
                 ["dispersion"] = frame.Dispersion,
                 ["zoom"] = Math.Max(frame.Zoom, 0.01f),
                 ["saturation"] = frame.Saturation,
+                ["tone"] = new[] { Math.Clamp(frame.ToneMin, 0f, 1f), Math.Clamp(frame.ToneMax, 0f, 1f) },
             };
             var children = new SKRuntimeEffectChildren(effect) { ["content"] = content };
             using var shader = effect.ToShader(uniforms, children);

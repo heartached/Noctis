@@ -245,6 +245,8 @@
         <Setter Property="RefractionAmount" Value="26" />
         <Setter Property="Saturation" Value="1.3" />
         <Setter Property="Specular" Value="0.8" />
+        <Setter Property="BackdropMinLuminance" Value="{DynamicResource GlassBarMinLuminance}" />
+        <Setter Property="BackdropMaxLuminance" Value="{DynamicResource GlassBarMaxLuminance}" />
         <Setter Property="BoxShadow" Value="0 4 18 0 #29000000" />
         <Setter Property="Background" Value="{DynamicResource GlassBarTint}" />
         <Setter Property="EdgeBrush" Value="{DynamicResource GlassBarEdge}" />
@@ -265,6 +267,8 @@
         <Setter Property="RefractionAmount" Value="14" />
         <Setter Property="Saturation" Value="1.3" />
         <Setter Property="Specular" Value="0.8" />
+        <Setter Property="BackdropMinLuminance" Value="{DynamicResource GlassBarMinLuminance}" />
+        <Setter Property="BackdropMaxLuminance" Value="{DynamicResource GlassBarMaxLuminance}" />
         <Setter Property="BoxShadow" Value="0 2 10 0 #22000000" />
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="40" />

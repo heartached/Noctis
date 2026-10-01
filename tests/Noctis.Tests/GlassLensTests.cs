@@ -22,8 +22,9 @@ public class GlassLensTests
     /// <summary>A capsule 160×80 px: its ends are half circles, so the rim curves everywhere.</summary>
     private static readonly SKRect Capsule = new(40, 40, 200, 120);
 
-    private static GlassLensFrame Frame(float band = 24, float bend = 24, float dispersion = 0, float zoom = 1, float saturation = 1) =>
-        new(Capsule, new GlassCornerRadii(40, 40, 40, 40), band, bend, dispersion, zoom, saturation);
+    private static GlassLensFrame Frame(float band = 24, float bend = 24, float dispersion = 0, float zoom = 1, float saturation = 1,
+        float toneMin = 0, float toneMax = 1) =>
+        new(Capsule, new GlassCornerRadii(40, 40, 40, 40), band, bend, dispersion, zoom, saturation, toneMin, toneMax);
 
     /// <summary>Each pixel stores its own position: red = x, green = y (both under 256).</summary>
     private static SKSurface Coordinates()
@@ -188,6 +189,30 @@ public class GlassLensTests
     }
 
     [Fact]
+    public void Tone_SqueezesTheBackdropsLuminance_SoTextOnTheGlassKeepsItsContrast()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(W, H, SKColorType.Rgba8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.White);
+        using (var black = new SKPaint { Color = SKColors.Black })
+            surface.Canvas.DrawRect(new SKRect(0, 0, 120, H), black);
+        using (var red = new SKPaint { Color = new SKColor(200, 40, 40) })
+            surface.Canvas.DrawRect(new SKRect(140, 70, 170, 90), red);
+        Lens(surface, Frame(band: 0, bend: 0, toneMin: 0.25f, toneMax: 0.6f));
+
+        // White can show through no brighter than 0.6, black no darker than 0.25.
+        Assert.Equal(153, Pixel(surface, 150, 60).Red, 2.0);
+        Assert.Equal(64, Pixel(surface, 90, 80).Red, 2.0);
+        // A colour keeps its hue: still red, and where the C# twin puts it.
+        var c = Pixel(surface, 155, 80);
+        var (r, g, b) = GlassLens.Tone(200 / 255f, 40 / 255f, 40 / 255f, 0.25f, 0.6f);
+        Assert.Equal(r * 255, c.Red, 2.5);
+        Assert.Equal(g * 255, c.Green, 2.5);
+        Assert.True(c.Red > c.Green + 40 && c.Green == c.Blue, $"{c}");
+        // Outside the panel nothing changes.
+        Assert.Equal(SKColors.White, Pixel(surface, 230, 10));
+    }
+
+    [Fact]
     public void Rim_LightsTheOutline_TopBrighterThanBottom_AndNothingOutside()
     {
         using var surface = SKSurface.Create(new SKImageInfo(W, H, SKColorType.Rgba8888, SKAlphaType.Premul));
@@ -242,6 +267,8 @@ public class GlassLensTests
         Assert.Equal(1, panel.Saturation);
         Assert.Equal(0, panel.Specular);
         Assert.Equal(0, panel.BoxShadow.Count);
+        Assert.Equal(0, panel.BackdropMinLuminance);
+        Assert.Equal(1, panel.BackdropMaxLuminance);
         Assert.False(panel.HasLens);
         Assert.Null(panel.LensSettings());
         Assert.True(panel.NeedsBackdrop);                // BlurRadius 18

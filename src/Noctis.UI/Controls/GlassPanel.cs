@@ -107,6 +107,16 @@ public class GlassPanel : Decorator
     public static readonly StyledProperty<double> SaturationProperty =
         AvaloniaProperty.Register<GlassPanel, double>(nameof(Saturation), 1.0);
 
+    /// <summary>The darkest the backdrop may show through (0..1 luminance, default 0): light glass
+    /// lifts black content so dark text on it keeps its contrast. See <see cref="GlassLensFrame"/>.</summary>
+    public static readonly StyledProperty<double> BackdropMinLuminanceProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropMinLuminance));
+
+    /// <summary>The brightest the backdrop may show through (0..1 luminance, default 1): dark glass
+    /// caps a white cover so light text on it stays readable.</summary>
+    public static readonly StyledProperty<double> BackdropMaxLuminanceProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropMaxLuminance), 1.0);
+
     /// <summary>0..1 strength of the rim light drawn over the tint: a crisp line brightest on
     /// the top-left rim and again on the bottom-right, with a soft inner glow.</summary>
     public static readonly StyledProperty<double> SpecularProperty =
@@ -122,7 +132,7 @@ public class GlassPanel : Decorator
             IsGlassActiveProperty, GlassTintProperty, GlassTintOpacityProperty, BlurRadiusProperty,
             EdgeBrushProperty, EdgeThicknessProperty, FadeProperty,
             RefractionProperty, RefractionAmountProperty, DispersionProperty, MagnificationProperty,
-            SaturationProperty, SpecularProperty, BoxShadowProperty);
+            SaturationProperty, SpecularProperty, BoxShadowProperty, BackdropMinLuminanceProperty, BackdropMaxLuminanceProperty);
         AffectsArrange<GlassPanel>(BlurRadiusProperty);
     }
 
@@ -132,11 +142,14 @@ public class GlassPanel : Decorator
     public double Magnification { get => GetValue(MagnificationProperty); set => SetValue(MagnificationProperty, value); }
     public double Saturation { get => GetValue(SaturationProperty); set => SetValue(SaturationProperty, value); }
     public double Specular { get => GetValue(SpecularProperty); set => SetValue(SpecularProperty, value); }
+    public double BackdropMinLuminance { get => GetValue(BackdropMinLuminanceProperty); set => SetValue(BackdropMinLuminanceProperty, value); }
+    public double BackdropMaxLuminance { get => GetValue(BackdropMaxLuminanceProperty); set => SetValue(BackdropMaxLuminanceProperty, value); }
     public BoxShadows BoxShadow { get => GetValue(BoxShadowProperty); set => SetValue(BoxShadowProperty, value); }
 
     /// <summary>Any lens setting is on: the backdrop is drawn through <see cref="GlassLens"/>.</summary>
     internal bool HasLens =>
-        (Refraction > 0 && RefractionAmount != 0) || Math.Abs(Magnification - 1) > 1e-6 || Math.Abs(Saturation - 1) > 1e-6;
+        (Refraction > 0 && RefractionAmount != 0) || Math.Abs(Magnification - 1) > 1e-6 || Math.Abs(Saturation - 1) > 1e-6
+        || BackdropMinLuminance > 0 || BackdropMaxLuminance < 1;
 
     /// <summary>The panel reads what lies beneath it: a blur, a lens, or both.</summary>
     internal bool NeedsBackdrop => BlurRadius > 0 || HasLens;
@@ -198,7 +211,8 @@ public class GlassPanel : Decorator
         base.OnPropertyChanged(change);
         if (change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty || change.Property == BlurRadiusProperty
             || change.Property == RefractionProperty || change.Property == RefractionAmountProperty
-            || change.Property == MagnificationProperty || change.Property == SaturationProperty)
+            || change.Property == MagnificationProperty || change.Property == SaturationProperty
+            || change.Property == BackdropMinLuminanceProperty || change.Property == BackdropMaxLuminanceProperty)
         {
             if (!EffectiveGlassActive || !NeedsBackdrop) ReleaseBackdrop();
             _reach?.InvalidateVisual();
@@ -276,7 +290,8 @@ public class GlassPanel : Decorator
     /// <summary>The lens this frame draws with (logical units), or null for the plain frost.</summary>
     internal GlassLensSettings? LensSettings() => HasLens
         ? new GlassLensSettings(Math.Max(Refraction, 0), RefractionAmount, Math.Clamp(Dispersion, 0, 1),
-            Math.Max(Magnification, 0.01), Math.Max(Saturation, 0))
+            Math.Max(Magnification, 0.01), Math.Max(Saturation, 0),
+            Math.Clamp(BackdropMinLuminance, 0, 1), Math.Clamp(BackdropMaxLuminance, 0, 1))
         : null;
 
     public override void Render(DrawingContext context)
@@ -747,7 +762,7 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         var radii = new GlassCornerRadii((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
         if (!GlassLens.TryMapToDevice(m, local, radii, out var device, out var deviceRadii, out var scale)) return null;
         return new GlassLensFrame(device, deviceRadii, (float)(l.Band * scale), (float)(l.Bend * scale),
-            (float)l.Dispersion, (float)l.Zoom, (float)l.Saturation);
+            (float)l.Dispersion, (float)l.Zoom, (float)l.Saturation, (float)l.ToneMin, (float)l.ToneMax);
     }
 }
 

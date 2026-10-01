@@ -123,4 +123,40 @@ public class MobileGlassDropletTests
         }
         window.Close();
     }
+
+    /// <summary>Labels on the glass stay readable over any cover: dark glass caps how bright a
+    /// white cover shows through, light glass lifts how dark a black one does.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TheGlass_LimitsHowBrightOrDarkTheBackdropShows_PerTheme(bool light)
+    {
+        var app = Application.Current!;
+        var before = app.RequestedThemeVariant;
+        try
+        {
+            app.RequestedThemeVariant = light ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+            var songs = Enumerable.Range(0, 3).Select(i => MobileFixtures.Song("Song " + i)).ToArray();
+            using var rig = MobileFixtures.MakeRig(songs);
+            var window = MobileFixtures.Mount(rig.Shell, out var view);
+            rig.Shell.Player.PlayTracks(songs, 0);
+            window.UpdateLayout();
+            foreach (var name in new[] { "TabCapsule", "MiniBar", "SearchBubble" })
+            {
+                var panel = view.FindControl<GlassPanel>(name)!;
+                if (light)
+                {
+                    Assert.True(panel.BackdropMinLuminance >= 0.2, $"{name}: black shows through at {panel.BackdropMinLuminance}");
+                    Assert.Equal(1, panel.BackdropMaxLuminance);
+                }
+                else
+                {
+                    Assert.True(panel.BackdropMaxLuminance <= 0.5, $"{name}: white shows through at {panel.BackdropMaxLuminance}");
+                    Assert.Equal(0, panel.BackdropMinLuminance);
+                }
+            }
+            window.Close();
+        }
+        finally { app.RequestedThemeVariant = before; }
+    }
 }
