@@ -257,6 +257,115 @@ public class MobileQueueSheetTests
         window.Close();
     }
 
+    /// <summary>The owner's mockup keeps the tab bar under the queue: it stays on top of the
+    /// sheet, expanded, takes taps, and the pill and the end of the list sit above it.</summary>
+    [AvaloniaFact]
+    public void TheTabBar_StaysUpUnderTheSheet_AndThePillAndListEndAboveIt()
+    {
+        var (rig, window, view, page, _) = OpenQueue();
+        using var _rig = rig;
+        view.ApplySafeArea(new Thickness(0, 24, 0, 20));
+        window.UpdateLayout();
+        var chrome = view.FindControl<Panel>("ChromeHost")!;
+        var tab = view.FindControl<Button>("PlaylistsTab")!;
+        var pill = MobileFixtures.Named<GlassPanel>(page, "ControlPill");
+        var scroll = MobileFixtures.Named<ScrollViewer>(page, "QueueScroll");
+        double Top(Visual v) => v.TranslatePoint(default, window)!.Value.Y;
+        double Bottom(Visual v) => v.TranslatePoint(new Point(0, v.Bounds.Height), window)!.Value.Y;
+
+        Assert.True(tab.IsEffectivelyVisible);
+        Assert.True(view.FindControl<Panel>("TabRow")!.IsHitTestVisible);
+        var centre = tab.TranslatePoint(new Point(tab.Bounds.Width / 2, tab.Bounds.Height / 2), window)!.Value;
+        // Hit-testing reads the compositor's committed scene: let a few frames out first.
+        for (var i = 0; i < 5; i++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        }
+        Assert.Same(tab, (window.InputHitTest(centre) as Visual)?.FindAncestorOfType<Button>(includeSelf: true));
+        Assert.Equal(0, view.FindControl<Panel>("BottomChrome")!.RenderTransform?.Value.M32 ?? 0);
+
+        Assert.True(Bottom(pill) <= Top(chrome) - 8, $"the pill ends at {Bottom(pill)}, the tab bar starts at {Top(chrome)}");
+        Assert.True(scroll.Padding.Bottom >= Bottom(scroll) - Top(pill), "the last row cannot scroll clear of the pill");
+        Assert.True(Top(chrome) - Bottom(pill) <= 20, "the pill floats far above the tab bar");
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void TappingATab_UnderTheQueue_ClosesTheQueueAndNowPlaying_AndSwitchesTabs()
+    {
+        var (rig, window, view, page, _) = OpenQueue();
+        using var _rig = rig;
+        var tab = view.FindControl<Button>("PlaylistsTab")!;
+        var centre = tab.TranslatePoint(new Point(tab.Bounds.Width / 2, tab.Bounds.Height / 2), window)!.Value;
+
+        window.MouseDown(centre, MouseButton.Left, RawInputModifiers.None);
+        window.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
+
+        Assert.False(rig.Shell.IsQueueOpen);
+        Assert.False(rig.Shell.IsNowPlayingOpen);
+        Assert.True(rig.Shell.IsPlaylistsRootVisible);
+        // The sheet slides away under the bar, which stays put over the new tab.
+        var chrome = view.FindControl<Panel>("BottomChrome")!;
+        var furthest = 0.0;
+        PumpUntil(() =>
+        {
+            furthest = Math.Max(furthest, chrome.RenderTransform?.Value.M32 ?? 0);
+            return !page.IsVisible;
+        });
+        Assert.False(page.IsVisible);
+        Assert.Equal(0, furthest);
+        Assert.True(chrome.IsEffectivelyVisible);
+        window.Close();
+    }
+
+    /// <summary>Closed back to Now Playing, the tab bar goes down with the sheet (the two read
+    /// as one sheet), stays over it until the slide ends, then drops back under the player.</summary>
+    [AvaloniaFact]
+    public void TheTabBar_RidesTheSheetDown_WhenTheQueueClosesToNowPlaying()
+    {
+        var (rig, window, view, page, _) = OpenQueue();
+        using var _rig = rig;
+        var chrome = view.FindControl<Panel>("BottomChrome")!;
+        var sheet = MobileFixtures.Named<Border>(page, "Sheet");
+        Assert.True(chrome.ZIndex > page.ZIndex);
+
+        Assert.True(rig.Shell.TryHandleBack());
+        var gaps = new System.Collections.Generic.List<double>();
+        PumpUntil(() =>
+        {
+            if (page.IsVisible) gaps.Add(Math.Abs((chrome.RenderTransform?.Value.M32 ?? 0) - (sheet.RenderTransform?.Value.M32 ?? 0)));
+            return !page.IsVisible;
+        });
+
+        Assert.True(rig.Shell.IsNowPlayingOpen);
+        Assert.Contains(gaps, g => g == 0);
+        Assert.All(gaps, g => Assert.True(g < 1, $"the bar and the sheet {g} apart"));
+        Assert.True(chrome.ZIndex <= page.ZIndex, "the bar still sits over Now Playing");
+        Assert.Equal(0, chrome.RenderTransform?.Value.M32 ?? 0);   // back in place for when the player closes
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void AFoldedTabBar_OpensExpandedUnderTheQueue()
+    {
+        var songs = Songs(3);
+        using var rig = MobileFixtures.MakeRig(songs);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(songs, 0);
+        var capsule = view.FindControl<GlassPanel>("TabCapsule")!;
+        rig.Shell.IsTabBarCollapsed = true;
+        PumpUntil(() => capsule.Width < 60);                      // folded to the round button
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        rig.Shell.ToggleQueueCommand.Execute(null);
+
+        Assert.True(view.FindControl<Panel>("TabRow")!.IsHitTestVisible);
+        Assert.False(view.FindControl<Button>("CollapsedTabButton")!.IsHitTestVisible);
+        // Expanded at once: it rises with the sheet already laid out, not morphing on the way up.
+        Assert.Equal(view.FindControl<Panel>("ChromeHost")!.Bounds.Width, capsule.Width);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Landscape_PutsUpNextBesideTheCurrentTrack_AndThePillUnderIt()
     {
@@ -275,7 +384,11 @@ public class MobileQueueSheetTests
         Assert.True(Left(scroll) >= Right(cover));
         Assert.True(Top(scroll) < Top(pill), "the list starts under the right column's header, not under the cover");
         Assert.True(scroll.Bounds.Height > 412 / 2.0, $"Up Next is only {scroll.Bounds.Height} tall");
-        Assert.Equal(16, scroll.Padding.Bottom);                     // no pill under the list to clear
+        // No pill under the list to clear, only the tab bar.
+        var chromeTop = view.FindControl<Panel>("ChromeHost")!.TranslatePoint(default, page)!.Value.Y;
+        var scrollBottom = scroll.TranslatePoint(new Point(0, scroll.Bounds.Height), page)!.Value.Y;
+        Assert.Equal(scrollBottom - chromeTop + 16, scroll.Padding.Bottom, 3);
+        Assert.True(Top(pill) + pill.Bounds.Height <= chromeTop, "the pill sits on the tab bar");
         Assert.True(Left(MobileFixtures.Named<Button>(page, "QueueCloseButton")) > Left(scroll), "✕ stays at the sheet's right edge");
         window.Close();
     }

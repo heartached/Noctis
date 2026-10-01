@@ -100,7 +100,9 @@
          The overlays are declared last, in z-order: Now Playing, then Lyrics and Queue above
          it, then the long-press sheet above everything. The chrome belongs to the tab layer,
          so it is declared before the overlays — after them it would paint over the Queue
-         page the moment anything other than Now Playing opens the queue. -->
+         page the moment anything other than Now Playing opens the queue. The one exception
+         is the Queue sheet, which keeps the tab bar under it (the owner's mockup): the
+         code-behind raises the chrome over the overlays while the Queue page is on screen. -->
     <Grid>
         <Panel Name="TabContent" Margin="{Binding TopSafePadding}">
             <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
@@ -282,7 +284,8 @@
                          DataContext="{Binding}"
                          IsVisible="{Binding IsQueueOpen}" />
 
-        <views:ContextSheet Name="Sheet" DataContext="{Binding}"
+        <!-- Above everything, the tab bar too: ShellView raises the bar over the Queue (ZIndex 1). -->
+        <views:ContextSheet Name="Sheet" DataContext="{Binding}" ZIndex="2"
                             IsVisible="{Binding IsSheetOpen}" />
     </Grid>
 </UserControl>

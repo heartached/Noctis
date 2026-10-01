@@ -27,7 +27,18 @@ public partial class ShellView : UserControl
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         TabContent.AddHandler(ScrollViewer.ScrollChangedEvent, OnContentScrollChanged);
         ChromeHost.SizeChanged += (_, _) => ApplyChromeLayout();
+        // The tab bar stays up under the Queue sheet (the owner's mockup): the sheet slides it
+        // with itself, and the bar sits over the overlays while the page is on screen.
+        QueueSheet.TabBar = BottomChrome;
+        QueueSheet.PropertyChanged += OnQueueSheetPropertyChanged;
         DataContextChanged += OnDataContextChanged;
+    }
+
+    /// <summary>Raised while the Queue page shows, its slide down included; the long-press sheet
+    /// stays above it (ZIndex 2 in the XAML).</summary>
+    private void OnQueueSheetPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == IsVisibleProperty) BottomChrome.ZIndex = QueueSheet.IsVisible ? 1 : 0;
     }
 
     /// <summary>
@@ -112,6 +123,9 @@ public partial class ShellView : UserControl
 
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Unfolded as the Queue opens: the bar rises with the sheet already laid out rather
+        // than morphing on the way up (ApplyChromeLayout re-attaches the transitions).
+        if (e.PropertyName == nameof(ShellViewModel.IsTabBarCollapsed) && _vm?.IsQueueOpen == true) DetachTransitions();
         if (e.PropertyName is nameof(ShellViewModel.IsTabBarCollapsed) or nameof(ShellViewModel.IsMiniBarVisible)
             or nameof(ShellViewModel.SelectedTab) or nameof(ShellViewModel.SafeArea))
             ApplyChromeLayout();
@@ -156,6 +170,18 @@ public partial class ShellView : UserControl
         };
     }
 
+    private void DetachTransitions()
+    {
+        _transitionsOn = false;
+        TabCapsule.Transitions = null;
+        TabRow.Transitions = null;
+        CollapsedTabButton.Transitions = null;
+        SearchBubble.Transitions = null;
+        SearchBubbleContent.Transitions = null;
+        MiniBar.Transitions = null;
+        SelectionPill.Transitions = null;
+    }
+
     /// <summary>How tall the expanded chrome stands (mini player + tabs, or tabs alone).</summary>
     internal static double ExpandedChromeHeight(bool miniVisible) => miniVisible ? TabHeight + Gap + MiniHeight : TabHeight;
 
@@ -173,6 +199,9 @@ public partial class ShellView : UserControl
         // expanded height, so the end of a list never hides when the bar unfolds over it.
         Resources["ShellBottomInset"] = new Thickness(0, 0, 0, expandedHeight + ChromeBottomMargin + vm.SafeArea.Bottom + 16);
         BottomScrim.Height = expandedHeight + ChromeBottomMargin + vm.SafeArea.Bottom + 36;
+        // Under the Queue only the tab capsule stands: the Queue opens from Now Playing, which
+        // hides the mini player.
+        QueueSheet.TabBarInset = TabHeight + ChromeBottomMargin + vm.SafeArea.Bottom;
 
         if (width <= 0) return;
 
