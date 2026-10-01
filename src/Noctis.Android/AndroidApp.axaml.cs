@@ -116,6 +116,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
+            // The desktop's artist photos: Deezer, asked by artist name only when an artist page
+            // opens or artist circles come into view (Settings → About says so).
+            ArtistPhotos = DeezerArtistPhotoSource.Create(persistence.DataDirectory, new HttpClient(), library),
         };
         _shell = shell;
 
