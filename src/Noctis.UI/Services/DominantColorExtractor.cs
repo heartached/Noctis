@@ -691,32 +691,14 @@ public static class DominantColorExtractor
             var weight = 1.0 - 0.5 * dist / depth;
             var i = (y * width + x) * 3;
             var (l, a, b) = ToOkLab(rgb[i], rgb[i + 1], rgb[i + 2]);
-            var key = ((int)(l * 32) << 16) | ((int)((a + 0.5) * 40) << 8) | (int)((b + 0.5) * 40);
+            var key = OkLabBinKey(l, a, b);
             if (!bins.TryGetValue(key, out var bin)) bins[key] = bin = new EdgeCluster();
             bin.W += weight; bin.L += l * weight; bin.A += a * weight; bin.B += b * weight;
             total += weight;
         }
         if (bins.Count == 0 || total <= 0) return null;
 
-        // Greedy merge, heaviest bins first: each bin joins the first cluster whose mean is
-        // within the merge distance, else seeds a new one.
-        var clusters = new List<EdgeCluster>();
-        foreach (var bin in bins.Values.OrderByDescending(v => v.W))
-        {
-            EdgeCluster? home = null;
-            foreach (var c in clusters)
-            {
-                double dl = c.MeanL - bin.MeanL, da = c.MeanA - bin.MeanA, db = c.MeanB - bin.MeanB;
-                if (dl * dl + da * da + db * db < EdgeClusterMergeDistance * EdgeClusterMergeDistance)
-                {
-                    home = c;
-                    break;
-                }
-            }
-            if (home == null) clusters.Add(home = new EdgeCluster());
-            home.W += bin.W; home.L += bin.L; home.A += bin.A; home.B += bin.B;
-        }
-        clusters.Sort((p, q) => q.W.CompareTo(p.W));
+        var clusters = MergeClusters(bins.Values, EdgeClusterMergeDistance);
 
         var chosen = clusters[0];
         if (chosen.IsNeutralExtreme && chosen.W / total < 0.45)
@@ -734,6 +716,158 @@ public static class DominantColorExtractor
             okB *= k;
         }
         return FromOkLab(okL, okA, okB);
+    }
+
+    /// <summary>OKLab bin key (L in 32 steps, a and b in 40): what the colour pickers group by.</summary>
+    private static int OkLabBinKey(double l, double a, double b) =>
+        ((int)(l * 32) << 16) | ((int)((a + 0.5) * 40) << 8) | (int)((b + 0.5) * 40);
+
+    /// <summary>
+    /// Greedy merge, heaviest bins first: each bin joins the first cluster whose mean is
+    /// within <paramref name="distance"/>, else seeds a new one. Heaviest cluster first.
+    /// </summary>
+    private static List<EdgeCluster> MergeClusters(IEnumerable<EdgeCluster> bins, double distance)
+    {
+        var clusters = new List<EdgeCluster>();
+        foreach (var bin in bins.OrderByDescending(v => v.W))
+        {
+            EdgeCluster? home = null;
+            foreach (var c in clusters)
+            {
+                double dl = c.MeanL - bin.MeanL, da = c.MeanA - bin.MeanA, db = c.MeanB - bin.MeanB;
+                if (dl * dl + da * da + db * db < distance * distance)
+                {
+                    home = c;
+                    break;
+                }
+            }
+            if (home == null) clusters.Add(home = new EdgeCluster());
+            home.W += bin.W; home.L += bin.L; home.A += bin.A; home.B += bin.B;
+        }
+        clusters.Sort((p, q) => q.W.CompareTo(p.W));
+        return clusters;
+    }
+
+    /// <summary>Bottom band the hero colour is read from: the lowest 12% of the cover.</summary>
+    private const double HeroBandDepth = 0.12;
+
+    /// <summary>Weight of the band's top row; the cover's last row weighs 1.</summary>
+    private const double HeroBandTopWeight = 0.25;
+
+    /// <summary>Top band averaged for the status bar's backdrop (the bar covers ~6-12% of a
+    /// full-width square cover on a phone).</summary>
+    private const double HeroTopDepth = 0.08;
+
+    /// <summary>Wider than the edge picker's merge: a seed only has to land in the right
+    /// colour, the mode search then settles it.</summary>
+    private const double HeroClusterMergeDistance = 0.08;
+
+    /// <summary>OKLab radius of the mode search's kernel (Tukey biweight): pixels further than
+    /// this from the current estimate (text, labels, a second colour) stop counting.</summary>
+    private const double HeroModeRadius = 0.10;
+
+    /// <summary>Mode searches started, one from each of the heaviest merged bins.</summary>
+    private const int HeroModeSeeds = 4;
+
+    /// <summary>
+    /// The colour a full-bleed cover fades into on the phone album page (row-major RGB, 3
+    /// bytes per pixel, the visible square of the cover). Tuned on 160 library covers
+    /// (2026-10-01) against the bottom rows the fade covers:
+    /// <list type="bullet">
+    /// <item>only the bottom band is read, weighted toward the last row, because that is
+    /// what the fade runs into — the four-edge colour was a median ΔE2000 of 10.7 off the
+    /// bottom rows' mean (sky over sand, a pink top over a yellow floor);</item>
+    /// <item>the result is the band's main colour (its densest mode), not its average: the
+    /// average of a navy-and-white or green-and-beige bottom is a muddy grey found nowhere
+    /// on the cover, which reads as a fog over the whole fade. Mean-shift with a Tukey
+    /// kernel from each of the heaviest merged OKLab bins, keeping the mode with the most
+    /// weight under its kernel: grain, small type and a Parental Advisory label stop
+    /// counting, and two near-equal colours no longer swap on a one-pixel difference in
+    /// the downscale (one seed did, on a busy bottom);</item>
+    /// <item>no chroma cap (the edge picker caps at <see cref="EdgeMaxChroma"/>): a toned-down
+    /// page under a neon cover is a visible band where the fade ends.</item>
+    /// </list>
+    /// Null when there are no pixels.
+    /// </summary>
+    internal static Color? PickHeroBottomColor(byte[] rgb, int width, int height)
+    {
+        if (width <= 0 || height <= 0 || rgb.Length < width * height * 3) return null;
+
+        var depth = Math.Min(height, Math.Max(2, (int)Math.Round(height * HeroBandDepth)));
+        var count = depth * width;
+        var ok = new (double L, double A, double B)[count];
+        var weights = new double[count];
+        var bins = new Dictionary<int, EdgeCluster>();
+        for (int row = 0, k = 0; row < depth; row++)
+        {
+            var y = height - depth + row;
+            var weight = depth == 1 ? 1.0 : HeroBandTopWeight + (1 - HeroBandTopWeight) * row / (depth - 1);
+            for (int x = 0; x < width; x++, k++)
+            {
+                var i = (y * width + x) * 3;
+                var (l, a, b) = ToOkLab(rgb[i], rgb[i + 1], rgb[i + 2]);
+                ok[k] = (l, a, b);
+                weights[k] = weight;
+                var key = OkLabBinKey(l, a, b);
+                if (!bins.TryGetValue(key, out var bin)) bins[key] = bin = new EdgeCluster();
+                bin.W += weight; bin.L += l * weight; bin.A += a * weight; bin.B += b * weight;
+            }
+        }
+
+        (double L, double A, double B) best = default;
+        var bestDensity = -1.0;
+        foreach (var seed in MergeClusters(bins.Values, HeroClusterMergeDistance).Take(HeroModeSeeds))
+        {
+            var (mode, density) = ShiftToMode(ok, weights, (seed.MeanL, seed.MeanA, seed.MeanB));
+            if (density > bestDensity) { best = mode; bestDensity = density; }
+        }
+        return FromOkLab(best.L, best.A, best.B);
+    }
+
+    /// <summary>Mean-shift (Tukey biweight, <see cref="HeroModeRadius"/>) from <paramref name="start"/>;
+    /// returns the mode and the kernel weight on it.</summary>
+    private static ((double L, double A, double B) Mode, double Density) ShiftToMode(
+        (double L, double A, double B)[] ok, double[] weights, (double L, double A, double B) start)
+    {
+        const double r2 = HeroModeRadius * HeroModeRadius;
+        var (mL, mA, mB) = start;
+        double Accumulate(out double sL, out double sA, out double sB)
+        {
+            double sw = 0;
+            sL = sA = sB = 0;
+            for (int j = 0; j < ok.Length; j++)
+            {
+                double dl = ok[j].L - mL, da = ok[j].A - mA, db = ok[j].B - mB;
+                var u = (dl * dl + da * da + db * db) / r2;
+                if (u >= 1) continue;
+                var kw = (1 - u) * (1 - u) * weights[j];
+                sw += kw; sL += kw * ok[j].L; sA += kw * ok[j].A; sB += kw * ok[j].B;
+            }
+            return sw;
+        }
+        for (int iteration = 0; iteration < 10; iteration++)
+        {
+            var sw = Accumulate(out var sL, out var sA, out var sB);
+            if (sw <= 0) break;
+            double nL = sL / sw, nA = sA / sw, nB = sB / sw;
+            var moved = (nL - mL) * (nL - mL) + (nA - mA) * (nA - mA) + (nB - mB) * (nB - mB);
+            mL = nL; mA = nA; mB = nB;
+            if (moved < 1e-10) break;
+        }
+        return ((mL, mA, mB), Accumulate(out _, out _, out _));
+    }
+
+    /// <summary>Linear-light mean of the top <see cref="HeroTopDepth"/> rows.</summary>
+    private static Color AverageTopBand(byte[] rgb, int width, int height)
+    {
+        var rows = Math.Min(height, Math.Max(1, (int)Math.Round(height * HeroTopDepth)));
+        double r = 0, g = 0, b = 0;
+        for (int i = 0; i < rows * width * 3; i += 3)
+        {
+            r += SrgbToLinear(rgb[i]); g += SrgbToLinear(rgb[i + 1]); b += SrgbToLinear(rgb[i + 2]);
+        }
+        var n = (double)rows * width;
+        return Color.FromRgb(LinearToSrgb(r / n), LinearToSrgb(g / n), LinearToSrgb(b / n));
     }
 
     private static double SrgbToLinear(byte c)
@@ -859,10 +993,97 @@ public static class DominantColorExtractor
         }
     }
 
-    /// <summary>Drops the cached edge colour for a path (artwork replaced in place).</summary>
+    /// <summary>Drops the cached edge (and hero) colours for a path (artwork replaced in place).</summary>
     public static void InvalidateEdgeColor(string? artworkPath)
     {
-        if (!string.IsNullOrEmpty(artworkPath)) EdgeFileCache.TryRemove(artworkPath, out _);
+        if (string.IsNullOrEmpty(artworkPath)) return;
+        EdgeFileCache.TryRemove(artworkPath, out _);
+        HeroFileCache.TryRemove(artworkPath, out _);
+    }
+
+    /// <summary>The phone album hero's colours: <see cref="Bottom"/>, the page colour the
+    /// full-bleed cover fades into (<see cref="PickHeroBottomColor"/>), and <see cref="Top"/>,
+    /// the mean of the strip the status bar sits on.</summary>
+    public readonly record struct HeroColors(Color Bottom, Color Top);
+
+    private static readonly ConcurrentDictionary<string, HeroColors> HeroFileCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The page colour for a full-bleed cover; see <see cref="ExtractHeroColorsFromFile"/>.</summary>
+    public static Color? ExtractHeroBottomColorFromFile(string? artworkPath) =>
+        ExtractHeroColorsFromFile(artworkPath)?.Bottom;
+
+    /// <summary>
+    /// Worker-thread-safe Skia decode, like <see cref="ExtractEdgeBackgroundColorFromFile"/>,
+    /// of the square the hero shows (the cover UniformToFill in a square: a tall or wide
+    /// cover's centre), box-averaged to 64×64 so every source pixel counts once (a cubic
+    /// resize without mipmaps samples a few). Cached per path; null when unreadable.
+    /// </summary>
+    public static HeroColors? ExtractHeroColorsFromFile(string? artworkPath)
+    {
+        if (string.IsNullOrEmpty(artworkPath)) return null;
+        if (HeroFileCache.TryGetValue(artworkPath, out var cached)) return cached;
+
+        const int n = EdgeSampleSize;
+        try
+        {
+            using var codec = SkiaSharp.SKCodec.Create(artworkPath);
+            if (codec == null) return null;
+            var info = codec.Info;
+            // The edge path's subsampled decode (see there for why the size must be the codec's own).
+            var longest = Math.Max(info.Width, info.Height);
+            var sample = 1;
+            while (longest / sample > 512) sample *= 2;
+            var scaled = sample > 1 ? codec.GetScaledDimensions(1f / sample) : info.Size;
+            if (Math.Max(scaled.Width, scaled.Height) > MaxEdgeDecodeDimension) return null;
+            using var raw = SkiaSharp.SKBitmap.Decode(codec, new SkiaSharp.SKImageInfo(
+                Math.Max(1, scaled.Width), Math.Max(1, scaled.Height),
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
+            if (raw == null) return null;
+
+            var rgb = BoxDownscaleCentreSquare(raw, n);
+            if (PickHeroBottomColor(rgb, n, n) is not { } bottom) return null;
+            var colors = new HeroColors(bottom, AverageTopBand(rgb, n, n));
+
+            if (HeroFileCache.Count >= MaxCacheSize) HeroFileCache.Clear();
+            HeroFileCache.TryAdd(artworkPath, colors);
+            return colors;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The bitmap's centred square, averaged down to <paramref name="n"/>×<paramref name="n"/>
+    /// RGB (each output pixel the mean of the source pixels it covers, at least one).</summary>
+    private static byte[] BoxDownscaleCentreSquare(SkiaSharp.SKBitmap bitmap, int n)
+    {
+        int w = bitmap.Width, h = bitmap.Height, side = Math.Min(w, h);
+        int x0 = (w - side) / 2, y0 = (h - side) / 2, rowBytes = bitmap.RowBytes;
+        var src = bitmap.GetPixelSpan();
+        var rgb = new byte[n * n * 3];
+        for (int oy = 0; oy < n; oy++)
+        {
+            int sy0 = y0 + oy * side / n, sy1 = Math.Max(sy0 + 1, y0 + (oy + 1) * side / n);
+            for (int ox = 0; ox < n; ox++)
+            {
+                int sx0 = x0 + ox * side / n, sx1 = Math.Max(sx0 + 1, x0 + (ox + 1) * side / n);
+                long r = 0, g = 0, b = 0;
+                for (int y = sy0; y < sy1; y++)
+                for (int x = sx0; x < sx1; x++)
+                {
+                    var p = y * rowBytes + x * 4;   // Bgra8888
+                    b += src[p]; g += src[p + 1]; r += src[p + 2];
+                }
+                var count = (sy1 - sy0) * (sx1 - sx0);
+                var o = (oy * n + ox) * 3;
+                rgb[o] = (byte)((r + count / 2) / count);
+                rgb[o + 1] = (byte)((g + count / 2) / count);
+                rgb[o + 2] = (byte)((b + count / 2) / count);
+            }
+        }
+        return rgb;
     }
 
     /// <summary>
