@@ -787,7 +787,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Fires when the user wants to view a track's album.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
 
-    [RelayCommand]
+    /// <summary>The track menu's View Album shows only when the album is in the library
+    /// (the playback bar's View Album asks the same).</summary>
+    private bool CanViewAlbumFromTrack(Track? track) => track != null && _library.GetAlbumById(track.AlbumId) != null;
+
+    [RelayCommand(CanExecute = nameof(CanViewAlbumFromTrack))]
     private void ViewAlbumFromTrack(Track track)
     {
         ViewAlbumRequested?.Invoke(this, track);
