@@ -98,13 +98,13 @@ public sealed partial class ArtistPageViewModel : MobilePage
     [RelayCommand]
     private void Play()
     {
-        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs, 0);
+        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs, 0, Name);
     }
 
     [RelayCommand]
     private void Shuffle()
     {
-        if (Songs.Count > 0) Shell.Player.PlayShuffled(Songs);
+        if (Songs.Count > 0) Shell.Player.PlayShuffled(Songs, source: Name);
     }
 
     [RelayCommand]
@@ -121,7 +121,7 @@ public sealed partial class ArtistPageViewModel : MobilePage
         if (row == null) return;
         var list = TopSongs.Select(s => s.Track).ToList();
         var index = list.IndexOf(row.Track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index);
+        if (index >= 0) Shell.Player.PlayTracks(list, index, Name);
     }
 
     [RelayCommand]

@@ -78,6 +78,6 @@ public sealed partial class HomePageViewModel : ObservableObject
         if (row == null) return;
         var list = LastPlayed.Select(r => r.Track).ToList();
         var index = list.IndexOf(row.Track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index);
+        if (index >= 0) Shell.Player.PlayTracks(list, index, "Last Played");
     }
 }

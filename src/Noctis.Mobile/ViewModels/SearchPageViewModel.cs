@@ -57,7 +57,7 @@ public sealed partial class SearchPageViewModel : ObservableObject
         if (track == null) return;
         var list = Songs.ToList();
         var index = list.IndexOf(track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index);
+        if (index >= 0) Shell.Player.PlayTracks(list, index, "Search");
     }
 
     [RelayCommand]

@@ -53,19 +53,19 @@ public sealed partial class SongListPageViewModel : MobilePage
         if (track == null) return;
         var list = Songs.ToList();
         var index = list.IndexOf(track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index);
+        if (index >= 0) Shell.Player.PlayTracks(list, index, Title);
     }
 
     [RelayCommand]
     private void PlayAll()
     {
-        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs.ToList(), 0);
+        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs.ToList(), 0, Title);
     }
 
     [RelayCommand]
     private void ShuffleAll()
     {
-        if (Songs.Count > 0) Shell.Player.PlayShuffled(Songs.ToList());
+        if (Songs.Count > 0) Shell.Player.PlayShuffled(Songs.ToList(), source: Title);
     }
 
     public override void OnClosed() => Shell.Library.Refreshed -= OnRefreshed;

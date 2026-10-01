@@ -82,14 +82,14 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [RelayCommand]
     private void PlayNext()
     {
-        _shell.Player.PlayNext(Tracks);
+        _shell.Player.PlayNext(Tracks, Album?.Name ?? Playlist?.Name);
         _shell.CloseSheet();
     }
 
     [RelayCommand]
     private void AddToQueue()
     {
-        _shell.Player.AddToQueue(Tracks);
+        _shell.Player.AddToQueue(Tracks, Album?.Name ?? Playlist?.Name);
         _shell.CloseSheet();
     }
 
