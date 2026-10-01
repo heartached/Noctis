@@ -26,6 +26,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArtistListItem">
                         <Button Classes="row"
+                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenArtistSheetCommand}"
                                 Command="{Binding $parent[views:ArtistListPage].((vm:ArtistListPageViewModel)DataContext).OpenCommand}"
                                 CommandParameter="{Binding}">
                             <Grid ColumnDefinitions="Auto,*" Height="64" Margin="8,0">

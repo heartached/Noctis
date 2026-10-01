@@ -151,8 +151,8 @@ public class MobileSearchTests
         var window = MobileFixtures.Mount(rig.Shell, out var view);
         Assert.True(view.FindControl<Button>("SearchTab")!.IsVisible);
 
-        var field = MobileFixtures.Named<Button>(view, "LibrarySearchField");
-        field.Command!.Execute(field.CommandParameter);
+        var tab = view.FindControl<Button>("SearchTab")!;
+        tab.Command!.Execute(tab.CommandParameter);
         window.UpdateLayout();
         Assert.True(rig.Shell.IsSearchRootVisible);
         var page = MobileFixtures.Find<SearchPage>(view);

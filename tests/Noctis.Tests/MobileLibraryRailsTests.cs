@@ -163,20 +163,21 @@ public class MobileLibraryRailsTests
     }
 
     [AvaloniaFact]
-    public void ShelfToggle_SwitchesBetweenTheRailAndTheList()
+    public void RecentlyPlayed_ShowsThePlayedAlbums_AndItsHeaderOpensTheGrid()
     {
         var a1 = MobileFixtures.Song("A1");
         using var rig = MobileFixtures.MakeRig(new[] { a1 }, new[] { MobileFixtures.MakeAlbum("Alpha", "X", a1) }, WithFolder(),
             log: h => h.Seed(a1, Now.AddHours(-1)));
         var window = MobileFixtures.Mount(rig.Shell, out var view);
-        Assert.True(MobileFixtures.Named<ScrollViewer>(view, "ShelfGrid").IsVisible);
-        Assert.False(MobileFixtures.Named<ItemsControl>(view, "ShelfList").IsVisible);
+        Assert.True(MobileFixtures.Named<StackPanel>(view, "RecentlyPlayedSection").IsVisible);
+        Assert.Equal(new[] { "Alpha" }, rig.Shell.Library.RecentlyPlayedRail.Select(r => r.Title));
 
-        rig.Shell.Library.ToggleShelfLayoutCommand.Execute(null);
+        MobileFixtures.Named<Button>(view, "RecentlyPlayedHeader").Command!.Execute(null);
         window.UpdateLayout();
 
-        Assert.False(MobileFixtures.Named<ScrollViewer>(view, "ShelfGrid").IsVisible);
-        Assert.True(MobileFixtures.Named<ItemsControl>(view, "ShelfList").IsVisible);
+        var page = Assert.IsType<RailGridPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Equal("Recently Played", page.Title);
+        Assert.Contains(MobileFixtures.Find<RailGridPage>(view).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Alpha");
         window.Close();
     }
 

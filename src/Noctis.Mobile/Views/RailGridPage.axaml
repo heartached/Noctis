@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.RailGridPage"
+             x:DataType="vm:RailGridPageViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4">
+            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
+                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+            </Button>
+            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Name="EmptyText" Classes="subtle" Text="Nothing here yet" HorizontalAlignment="Center"
+                   Margin="0,40,0,0" IsVisible="{Binding !HasItems}" />
+
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl Name="RailGrid" ItemsSource="{Binding Items}" Margin="14,4,14,16">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="3" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RailItem">
+                        <Button Classes="row" Margin="6,0,6,14" VerticalAlignment="Top"
+                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenRailItemSheetCommand}"
+                                Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenRailItemCommand}"
+                                CommandParameter="{Binding}">
+                            <views:RailTile />
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

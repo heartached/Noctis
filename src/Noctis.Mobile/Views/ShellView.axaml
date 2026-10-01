@@ -36,6 +36,9 @@
         <DataTemplate DataType="vm:SettingsPageViewModel">
             <views:SettingsPage />
         </DataTemplate>
+        <DataTemplate DataType="vm:RailGridPageViewModel">
+            <views:RailGridPage />
+        </DataTemplate>
         <DataTemplate DataType="vm:AccountPageViewModel">
             <views:AccountPage />
         </DataTemplate>
@@ -86,6 +89,9 @@
                     </LinearGradientBrush>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <!-- TEMP-PLAYLIST-ICON: stand-ins until TabIcons.axaml gains the Playlists pair. -->
+            <StreamGeometry x:Key="TabPlaylistsIcon">M3.25 17.5a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493l-.102.007H6.75a.75.75 0 0 1-.102-1.493zm-3.5-7a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493L21.25 13H6.75a.75.75 0 0 1-.102-1.493zm-3.5-7a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493l-.102.007H6.75a.75.75 0 0 1-.102-1.493z</StreamGeometry>
+            <StreamGeometry x:Key="TabPlaylistsFilledIcon">M3.25 17.5a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493l-.102.007H6.75a.75.75 0 0 1-.102-1.493zm-3.5-7a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493L21.25 13H6.75a.75.75 0 0 1-.102-1.493zm-3.5-7a1.25 1.25 0 1 1 0 2.499a1.25 1.25 0 0 1 0-2.499m3.5.5h14.5a.75.75 0 0 1 .102 1.493l-.102.007H6.75a.75.75 0 0 1-.102-1.493z</StreamGeometry>
             <!-- Kept current by ShellView: how far a page's last row must scroll to clear the bar. -->
             <Thickness x:Key="ShellBottomInset">0,0,0,160</Thickness>
         </ResourceDictionary>
@@ -103,14 +109,14 @@
             <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibraryRootVisible}" />
             <views:HomePage DataContext="{Binding Home}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsHomeRootVisible}" />
             <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchRootVisible}" />
-            <Grid Name="FavoritesRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsFavoritesRootVisible}">
+            <Grid Name="PlaylistsRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsPlaylistsRootVisible}">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="20,12,12,8">
-                    <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" />
+                    <TextBlock Name="PlaylistsTitle" Classes="title" Text="{loc:T Nav.Playlists}" />
                     <Button Grid.Column="1" Classes="icon" VerticalAlignment="Top" Command="{Binding OpenSettingsCommand}">
                         <PathIcon Data="{DynamicResource PersonIcon}" />
                     </Button>
                 </Grid>
-                <ContentControl Grid.Row="1" Name="FavoritesHost" Content="{Binding Favorites}"
+                <ContentControl Grid.Row="1" Name="PlaylistsHost" Content="{Binding PlaylistsRoot}"
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
             </Grid>
             <ContentControl Name="PageHost" Content="{Binding CurrentPage}" IsVisible="{Binding HasPage}"
@@ -146,14 +152,14 @@
                                         <TextBlock Text="{loc:T Nav.Home}" />
                                     </StackPanel>
                                 </Button>
-                                <Button Grid.Column="1" Name="FavoritesTab" Classes="tab" Classes.selected="{Binding IsFavoritesSelected}"
-                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Favorites}">
+                                <Button Grid.Column="1" Name="PlaylistsTab" Classes="tab" Classes.selected="{Binding IsPlaylistsSelected}"
+                                        Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Playlists}">
                                     <StackPanel Spacing="3">
                                         <Panel>
-                                            <PathIcon Classes="off" Data="{DynamicResource TabFavoritesIcon}" />
-                                            <PathIcon Classes="on" Data="{DynamicResource TabFavoritesFilledIcon}" />
+                                            <PathIcon Classes="off" Data="{DynamicResource TabPlaylistsIcon}" />
+                                            <PathIcon Classes="on" Data="{DynamicResource TabPlaylistsFilledIcon}" />
                                         </Panel>
-                                        <TextBlock Text="{loc:T Nav.Favorites}" />
+                                        <TextBlock Text="{loc:T Nav.Playlists}" />
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="2" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
@@ -184,7 +190,7 @@
                                 Command="{Binding ExpandTabBarCommand}">
                             <Panel>
                                 <PathIcon Data="{DynamicResource TabHomeFilledIcon}" IsVisible="{Binding IsHomeSelected}" />
-                                <PathIcon Data="{DynamicResource TabFavoritesFilledIcon}" IsVisible="{Binding IsFavoritesSelected}" />
+                                <PathIcon Data="{DynamicResource TabPlaylistsFilledIcon}" IsVisible="{Binding IsPlaylistsSelected}" />
                                 <PathIcon Data="{DynamicResource TabLibraryFilledIcon}" IsVisible="{Binding IsLibrarySelected}" />
                                 <PathIcon Data="{DynamicResource TabSearchFilledIcon}" IsVisible="{Binding IsSearchSelected}" />
                             </Panel>
@@ -215,13 +221,13 @@
                                      IsVisible="{Binding IsMiniBarVisible}">
                     <Panel>
                         <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="30" IsHitTestVisible="False" />
-                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="8,0,8,0">
+                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="13,0,6,0">
                             <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
                                  to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
                             <Button Grid.Column="0" Classes="row" VerticalAlignment="Stretch"
                                     Command="{Binding OpenNowPlayingCommand}">
                                 <Grid ColumnDefinitions="Auto,*">
-                                    <Border Classes="art" Name="MiniArt" Width="42" Height="42" CornerRadius="10">
+                                    <Border Classes="art" Name="MiniArt" Width="38" Height="38" CornerRadius="8">
                                         <Panel>
                                             <PathIcon Data="{DynamicResource SongsIcon}" Width="16" Height="16" Opacity="0.5" />
                                             <controls:CachedImage Name="MiniArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
@@ -236,13 +242,13 @@
                             </Button>
                             <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon" Command="{Binding Player.TogglePlayPauseCommand}">
                                 <Panel>
-                                    <PathIcon Data="{DynamicResource PlayIcon}" IsVisible="{Binding !Player.IsPlaying}" />
-                                    <PathIcon Data="{DynamicResource PauseIcon}" IsVisible="{Binding Player.IsPlaying}" />
+                                    <PathIcon Data="{DynamicResource PlayIcon}" Width="19" Height="19" IsVisible="{Binding !Player.IsPlaying}" />
+                                    <PathIcon Data="{DynamicResource PauseIcon}" Width="19" Height="19" IsVisible="{Binding Player.IsPlaying}" />
                                 </Panel>
                             </Button>
                             <!-- Expanded only, like Apple's: the folded row has room for Play alone. -->
                             <Button Grid.Column="2" Name="MiniNextButton" Classes="icon" Command="{Binding Player.NextCommand}">
-                                <PathIcon Data="{DynamicResource NextIcon}" />
+                                <PathIcon Data="{DynamicResource FastForwardIcon}" Width="23" Height="23" />
                             </Button>
                         </Grid>
                     </Panel>

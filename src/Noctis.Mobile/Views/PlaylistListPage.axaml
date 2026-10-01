@@ -13,12 +13,30 @@
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
 
-        <TextBlock Grid.Row="1" Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
-                   Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
-                   Margin="32,40,32,0" IsVisible="{Binding !HasPlaylists}" />
-
         <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Playlists}" Margin="12,0,12,16">
+          <StackPanel Margin="12,0,12,16">
+            <!-- Favourite Songs heads the list, so favourites stay one tap from the Playlists tab. -->
+            <Button Name="FavouriteSongsRow" Classes="row" Command="{Binding Shell.OpenFavouritesCommand}">
+                <Grid ColumnDefinitions="Auto,*" Height="64" Margin="8,0">
+                    <Border Width="48" Height="48" CornerRadius="8">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Offset="0" Color="#FF5E6C" />
+                                <GradientStop Offset="1" Color="#C2185B" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <PathIcon Data="{DynamicResource HeartFillIcon}" Width="22" Height="22" Foreground="White" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Classes="row-title" Text="Favourite Songs" />
+                        <TextBlock Classes="row-sub" Text="{Binding Shell.Library.FavoriteCount, StringFormat='{}{0} songs'}" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <TextBlock Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
+                       Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
+                       Margin="20,24,20,0" IsVisible="{Binding !HasPlaylists}" />
+            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Playlists}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:Playlist">
                         <Button Classes="row"
@@ -38,6 +56,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>

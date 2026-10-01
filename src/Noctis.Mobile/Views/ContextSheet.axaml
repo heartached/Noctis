@@ -37,7 +37,7 @@
                         <DataTemplate x:DataType="vm:ContextSheetViewModel">
                             <StackPanel Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,8">
-                                    <Border Classes="art" Width="52" Height="52">
+                                    <Border Classes="art" Classes.artist="{Binding IsArtist}" Width="52" Height="52">
                                         <Panel>
                                             <PathIcon Data="{DynamicResource SongsIcon}" Width="20" Height="20" Opacity="0.5" />
                                             <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
@@ -59,7 +59,7 @@
                                     <Button Name="AddToPlaylistAction" Classes="row sheet-action" Command="{Binding ShowPlaylistsCommand}">
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource AddIcon}" /><TextBlock Grid.Column="1" Text="Add to Playlist…" /></Grid>
                                     </Button>
-                                    <Button Name="FavouriteAction" Classes="row sheet-action" Command="{Binding ToggleFavouriteCommand}">
+                                    <Button Name="FavouriteAction" Classes="row sheet-action" Command="{Binding ToggleFavouriteCommand}" IsVisible="{Binding CanFavourite}">
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource HeartOutlineIcon}" /><TextBlock Grid.Column="1" Text="{Binding FavouriteLabel}" /></Grid>
                                     </Button>
                                     <Button Name="DownloadAction" Classes="row sheet-action" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}">
@@ -69,7 +69,7 @@
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource TrashIcon}" /><TextBlock Grid.Column="1" Text="{Binding RemoveDownloadLabel}" /></Grid>
                                     </Button>
                                     <Button Name="PinAction" Classes="row sheet-action" Command="{Binding TogglePinCommand}" IsVisible="{Binding CanPin}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource StarIcon}" /><TextBlock Grid.Column="1" Text="{Binding PinLabel}" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource LibPinIcon}" /><TextBlock Grid.Column="1" Text="{Binding PinLabel}" /></Grid>
                                     </Button>
                                     <Button Name="GoToAlbumAction" Classes="row sheet-action" Command="{Binding GoToAlbumCommand}" IsVisible="{Binding CanGoToAlbum}">
                                         <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource AlbumsIcon}" /><TextBlock Grid.Column="1" Text="Go to Album" /></Grid>

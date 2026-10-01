@@ -102,13 +102,13 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool _isLyricsOpen;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsFavoritesSelected),
-        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsFavoritesRootVisible))]
+    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsPlaylistsSelected),
+        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
     private MobileTab _selectedTab = MobileTab.Library;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible),
-        nameof(IsFavoritesRootVisible))]
+        nameof(IsPlaylistsRootVisible))]
     private MobilePage? _currentPage;
 
     /// <summary>
@@ -150,20 +150,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
-    public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
+    public bool IsPlaylistsSelected => SelectedTab == MobileTab.Playlists;
 
     public bool HasPage => CurrentPage != null;
     public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
     public bool IsLibraryRootVisible => IsLibrarySelected && !HasPage;
     public bool IsSearchRootVisible => IsSearchSelected && !HasPage;
-    public bool IsFavoritesRootVisible => IsFavoritesSelected && !HasPage;
+    public bool IsPlaylistsRootVisible => IsPlaylistsSelected && !HasPage;
 
-    private SongListPageViewModel? _favorites;
+    private PlaylistListPageViewModel? _playlistsRoot;
 
-    /// <summary>The Favorites tab's root: the favourite songs, the list the Library tile pushes,
+    /// <summary>The Playlists tab's root: the playlist list with Favourite Songs as its first row,
     /// embedded under the tab's own title. Made on first use; it re-reads on every library refresh.</summary>
-    public SongListPageViewModel Favorites =>
-        _favorites ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
+    public PlaylistListPageViewModel PlaylistsRoot =>
+        _playlistsRoot ??= new PlaylistListPageViewModel(this) { IsEmbedded = true };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -361,6 +361,13 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
 
+    // Library sections' › headers.
+    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Pinned", () => Library.PinnedRail));
+
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "On Repeat", Library.OnRepeatTracks));
+
+    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Recently Played", () => Library.RecentlyPlayedRail));
+
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
     private void OpenAlbum(Album? album)
@@ -416,6 +423,9 @@ public sealed partial class ShellViewModel : ObservableObject
             case Playlist playlist:
                 OpenPlaylist(playlist);
                 break;
+            case Artist artist:
+                OpenArtist(artist.Name);
+                break;
             case Track track:
                 var rail = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
                 var index = rail.IndexOf(track);
@@ -451,7 +461,15 @@ public sealed partial class ShellViewModel : ObservableObject
             case Album album: OpenAlbumSheet(album); break;
             case Playlist playlist: OpenPlaylistSheet(playlist); break;
             case Track track: OpenTrackSheet(track); break;
+            case Artist artist: Sheet = ContextSheetViewModel.ForArtist(this, artist, item.ArtworkPath); break;
         }
+    }
+
+    /// <summary>A long-pressed artist row: play, queue or pin the artist.</summary>
+    [RelayCommand]
+    private void OpenArtistSheet(ArtistListItem? item)
+    {
+        if (item != null) Sheet = ContextSheetViewModel.ForArtist(this, item.Artist, item.ArtworkPath);
     }
 
     [RelayCommand]

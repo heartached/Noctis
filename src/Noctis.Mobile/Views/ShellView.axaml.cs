@@ -201,7 +201,7 @@ public partial class ShellView : UserControl
         var index = vm.SelectedTab switch
         {
             MobileTab.Home => 0,
-            MobileTab.Favorites => 1,
+            MobileTab.Playlists => 1,
             MobileTab.Library => 2,
             _ => 3,
         };

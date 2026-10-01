@@ -9,215 +9,174 @@
              x:DataType="vm:ShellViewModel">
 
     <UserControl.Resources>
-        <!-- One rail: a section title over a horizontal strip of RailTiles. -->
+        <!-- One rail tile: three covers across with the fourth peeking, like Apple's Library. -->
         <DataTemplate x:Key="RailTileTemplate" x:DataType="vm:RailItem">
-            <Button Classes="row" Width="140"
+            <Button Classes="row" Width="112" VerticalAlignment="Top"
                     views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenRailItemSheetCommand}"
                     Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenRailItemCommand}"
                     CommandParameter="{Binding}">
                 <views:RailTile />
             </Button>
         </DataTemplate>
+        <ItemsPanelTemplate x:Key="RailPanel">
+            <StackPanel Orientation="Horizontal" Spacing="12" />
+        </ItemsPanelTemplate>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <Grid Grid.Row="0" Name="LibraryHeader" ColumnDefinitions="*,Auto" Margin="20,12,12,8">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Grid Grid.Row="0" Name="LibraryHeader" ColumnDefinitions="*,Auto,Auto" Margin="20,10,16,8">
             <TextBlock Classes="title" Text="{loc:T Tab.Library}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Name="LibraryProfileButton" Classes="icon" Command="{Binding OpenSettingsCommand}">
-                <PathIcon Data="{DynamicResource PersonIcon}" />
-            </Button>
+            <!-- Round glass buttons, as on Apple's Library: the … menu and the profile (Settings). -->
+            <controls:GlassPanel Grid.Column="1" Classes="header-glass" Margin="0,0,10,0">
+                <Button Name="LibraryMoreButton" Classes="glass-round">
+                    <PathIcon Data="{DynamicResource LibMoreIcon}" />
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Header="Add Folder…" Command="{Binding Library.AddFolderCommand}" />
+                            <MenuItem Header="Rescan Library" Command="{Binding Library.RescanCommand}" />
+                            <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </controls:GlassPanel>
+            <controls:GlassPanel Grid.Column="2" Classes="header-glass">
+                <Button Name="LibraryProfileButton" Classes="glass-round" Command="{Binding OpenSettingsCommand}">
+                    <PathIcon Data="{DynamicResource PersonIcon}" />
+                </Button>
+            </controls:GlassPanel>
         </Grid>
 
-        <!-- Looks like a field, is a button: the Search tab owns the query (mockup 1's field under the title). -->
-        <Button Grid.Row="1" Name="LibrarySearchField" Classes="pill" Margin="16,0,16,10" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" CornerRadius="12"
-                Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Search}">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <PathIcon Data="{DynamicResource SearchIcon}" Width="16" Height="16" Opacity="0.6" />
-                <TextBlock Classes="subtle" FontSize="15" Text="Artists, songs, albums" />
-            </StackPanel>
-        </Button>
-
-        <ScrollViewer Grid.Row="2" Name="ChipScroll" Margin="0,0,0,8" IsVisible="{Binding Library.HasFolders}"
+        <!-- Chips: All Music, then icon-only views; the selected chip grows to show its name. -->
+        <ScrollViewer Grid.Row="1" Name="ChipScroll" Margin="0,0,0,10" IsVisible="{Binding Library.HasFolders}"
                       HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0">
-                <Button Name="AllMusicChip" Classes="chip" Classes.selected="{Binding IsAllMusicChip}" Content="All Music"
-                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.AllMusic}" />
-                <Button Name="PlaylistsChip" Classes="chip" Classes.selected="{Binding IsPlaylistsChip}" Content="{loc:T Nav.Playlists}"
-                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Playlists}" />
-                <Button Name="AlbumsChip" Classes="chip" Classes.selected="{Binding IsAlbumsChip}" Content="{loc:T Nav.Albums}"
-                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Albums}" />
-                <Button Name="ArtistsChip" Classes="chip" Classes.selected="{Binding IsArtistsChip}" Content="{loc:T Nav.Artists}"
-                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Artists}" />
-                <Button Name="SongsChip" Classes="chip" Classes.selected="{Binding IsSongsChip}" Content="{loc:T Nav.Songs}"
-                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Songs}" />
+                <Button Name="AllMusicChip" Classes="chip" Classes.selected="{Binding IsAllMusicChip}"
+                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.AllMusic}">
+                    <StackPanel Orientation="Horizontal">
+                        <PathIcon Data="{DynamicResource ChipAllMusicIcon}" />
+                        <TextBlock Classes="chip-label" Text="All Music" />
+                    </StackPanel>
+                </Button>
+                <Button Name="PlaylistsChip" Classes="chip" Classes.selected="{Binding IsPlaylistsChip}"
+                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Playlists}">
+                    <StackPanel Orientation="Horizontal">
+                        <PathIcon Data="{DynamicResource ChipPlaylistsIcon}" />
+                        <TextBlock Classes="chip-label" Text="{loc:T Nav.Playlists}" />
+                    </StackPanel>
+                </Button>
+                <Button Name="ArtistsChip" Classes="chip" Classes.selected="{Binding IsArtistsChip}"
+                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Artists}">
+                    <StackPanel Orientation="Horizontal">
+                        <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                        <TextBlock Classes="chip-label" Text="{loc:T Nav.Artists}" />
+                    </StackPanel>
+                </Button>
+                <Button Name="AlbumsChip" Classes="chip" Classes.selected="{Binding IsAlbumsChip}"
+                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Albums}">
+                    <StackPanel Orientation="Horizontal">
+                        <PathIcon Data="{DynamicResource ChipAlbumsIcon}" />
+                        <TextBlock Classes="chip-label" Text="{loc:T Nav.Albums}" />
+                    </StackPanel>
+                </Button>
+                <Button Name="SongsChip" Classes="chip" Classes.selected="{Binding IsSongsChip}"
+                        Command="{Binding SelectLibraryChipCommand}" CommandParameter="{x:Static vm:LibraryChip.Songs}">
+                    <StackPanel Orientation="Horizontal">
+                        <PathIcon Data="{DynamicResource ChipSongsIcon}" />
+                        <TextBlock Classes="chip-label" Text="{loc:T Nav.Songs}" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </ScrollViewer>
 
-        <Panel Grid.Row="3">
+        <Panel Grid.Row="2">
             <ScrollViewer Classes="page-scroll" Name="LibraryScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsAllMusicChip}">
-                <StackPanel Name="LibraryContent" Margin="20,0,20,24" Spacing="14">
-                    <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Classes="section" Text="Add your music" />
+                <!-- No side margin here: rails scroll edge to edge; headers and cards inset themselves. -->
+                <StackPanel Name="LibraryContent" Margin="0,4,0,24" Spacing="22">
+                    <StackPanel Name="NoticeCards" Margin="20,0" Spacing="14" IsVisible="{Binding Library.HasNotice}">
+                        <Border Name="ConnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.ShowConnectCard}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Classes="section" Text="Add your music" />
+                                <TextBlock Classes="subtle" TextWrapping="Wrap"
+                                           Text="Pick the folder your music lives in. Noctis reads it in place and never uploads anything." />
+                                <Button Classes="pill-accent" Content="Choose folder" Command="{Binding Library.AddFolderCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Name="ReconnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.NeedsReconnect}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="{Binding Library.StatusText}" TextWrapping="Wrap" />
+                                <Button Classes="pill" Content="Reconnect folder" Command="{Binding Library.AddFolderCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
+                            <ProgressBar IsIndeterminate="True" />
+                            <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, StringFormat='Scanning… {0} files'}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Pinned: always shown once there is music, so the pin system is discoverable. -->
+                    <StackPanel Name="PinnedSection" Spacing="10" IsVisible="{Binding Library.HasFolders}">
+                        <Button Name="PinnedHeader" Classes="row section-header" Command="{Binding OpenPinnedCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <PathIcon Data="{DynamicResource LibPinIcon}" />
+                                <TextBlock Classes="section" Text="Pinned" />
+                                <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                            </StackPanel>
+                        </Button>
+                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding Library.HasPinned}">
+                            <ItemsControl Name="PinnedRail" Margin="20,0" ItemsSource="{Binding Library.PinnedRail}"
+                                          ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                        </ScrollViewer>
+                        <Border Name="PinnedHint" Classes="card" Margin="20,0" Padding="16,14" IsVisible="{Binding !Library.HasPinned}">
                             <TextBlock Classes="subtle" TextWrapping="Wrap"
-                                       Text="Pick the folder your music lives in. Noctis reads it in place and never uploads anything." />
-                            <Button Classes="pill-accent" Content="Choose folder" Command="{Binding Library.AddFolderCommand}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Name="ReconnectCard" Classes="card" Padding="16" IsVisible="{Binding Library.NeedsReconnect}">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="{Binding Library.StatusText}" TextWrapping="Wrap" />
-                            <Button Classes="pill" Content="Reconnect folder" Command="{Binding Library.AddFolderCommand}" />
-                        </StackPanel>
-                    </Border>
-
-                    <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
-                        <ProgressBar IsIndeterminate="True" />
-                        <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, StringFormat='Scanning… {0} files'}" />
+                                       Text="Long-press an album, artist, playlist or song and choose Pin to keep it here." />
+                        </Border>
                     </StackPanel>
 
-                    <Grid Name="Tiles" ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto" IsVisible="{Binding Library.HasFolders}">
-                        <Button Grid.Row="0" Grid.Column="0" Name="SongsTile" Classes="tile" Command="{Binding OpenSongsCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource SongsIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.SongCount}" />
-                                <TextBlock Classes="tile-label" Text="{loc:T Nav.Songs}" />
-                            </Grid>
+                    <StackPanel Name="RecentlyAddedSection" Spacing="10" IsVisible="{Binding Library.HasRecentlyAdded}">
+                        <Button Name="RecentlyAddedHeader" Classes="row section-header" Command="{Binding OpenRecentlyAddedCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <PathIcon Data="{DynamicResource LibRecentlyAddedIcon}" />
+                                <TextBlock Classes="section" Text="Recently Added" />
+                                <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                            </StackPanel>
                         </Button>
-                        <Button Grid.Row="0" Grid.Column="2" Name="AlbumsTile" Classes="tile" Command="{Binding OpenAlbumsCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource AlbumsIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.AlbumCount}" />
-                                <TextBlock Classes="tile-label" Text="{loc:T Nav.Albums}" />
-                            </Grid>
-                        </Button>
-                        <Button Grid.Row="2" Grid.Column="0" Name="ArtistsTile" Classes="tile" Command="{Binding OpenArtistsCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource ArtistsIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.ArtistCount}" />
-                                <TextBlock Classes="tile-label" Text="{loc:T Nav.Artists}" />
-                            </Grid>
-                        </Button>
-                        <Button Grid.Row="2" Grid.Column="2" Name="PlaylistsTile" Classes="tile" Command="{Binding OpenPlaylistsCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource PlaylistsIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.PlaylistCount}" />
-                                <TextBlock Classes="tile-label" Text="{loc:T Nav.Playlists}" />
-                            </Grid>
-                        </Button>
-                        <Button Grid.Row="4" Grid.Column="0" Name="RecentlyAddedTile" Classes="tile" Command="{Binding OpenRecentlyAddedCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource AddIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.RecentlyAddedCount}" />
-                                <TextBlock Classes="tile-label" Text="Recently Added" />
-                            </Grid>
-                        </Button>
-                        <Button Grid.Row="4" Grid.Column="2" Name="FavouritesTile" Classes="tile" Command="{Binding OpenFavouritesCommand}">
-                            <Grid>
-                                <Border Classes="tile-icon"><PathIcon Data="{DynamicResource HeartFillIcon}" /></Border>
-                                <TextBlock Classes="tile-count" Text="{Binding Library.FavoriteCount}" />
-                                <TextBlock Classes="tile-label" Text="{loc:T Nav.Favorites}" />
-                            </Grid>
-                        </Button>
-                    </Grid>
-
-                    <StackPanel Name="ShelfSection" Spacing="8" IsVisible="{Binding Library.HasShelf}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Classes="section" Text="Shelf" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Name="ShelfLayoutToggle" Classes="icon" Command="{Binding Library.ToggleShelfLayoutCommand}">
-                                <Panel>
-                                    <PathIcon Data="{DynamicResource PlaylistsIcon}" IsVisible="{Binding Library.IsShelfGrid}" />
-                                    <PathIcon Data="{DynamicResource GridViewIcon}" IsVisible="{Binding !Library.IsShelfGrid}" />
-                                </Panel>
-                            </Button>
-                        </Grid>
-                        <ScrollViewer Name="ShelfGrid" IsVisible="{Binding Library.IsShelfGrid}"
-                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding Library.Shelf}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="12" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Album">
-                                        <Button Classes="row" Width="160"
-                                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
-                                                Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenAlbumCommand}"
-                                                CommandParameter="{Binding}">
-                                            <views:AlbumTile />
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <ItemsControl Name="ShelfList" ItemsSource="{Binding Library.Shelf}" IsVisible="{Binding !Library.IsShelfGrid}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:Album">
-                                    <Button Classes="row"
-                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
-                                            Command="{Binding $parent[views:LibraryPage].((vm:ShellViewModel)DataContext).OpenAlbumCommand}"
-                                            CommandParameter="{Binding}">
-                                        <Grid ColumnDefinitions="Auto,*" Height="64">
-                                            <Border Classes="art" Width="52" Height="52">
-                                                <Panel>
-                                                    <PathIcon Data="{DynamicResource AlbumsIcon}" Width="20" Height="20" Opacity="0.4" />
-                                                    <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
-                                                </Panel>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                                <TextBlock Classes="row-title" Text="{Binding Name}" />
-                                                <TextBlock Classes="row-sub" Text="{Binding Artist}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <StackPanel Spacing="8" IsVisible="{Binding Library.HasPinned}">
-                        <TextBlock Classes="section" Text="Pinned" />
                         <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl Name="PinnedRail" ItemsSource="{Binding Library.PinnedRail}" ItemTemplate="{StaticResource RailTileTemplate}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="12" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
+                            <ItemsControl Name="RecentlyAddedRail" Margin="20,0" ItemsSource="{Binding Library.RecentlyAddedRail}"
+                                          ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                         </ScrollViewer>
                     </StackPanel>
 
-                    <StackPanel Spacing="8" IsVisible="{Binding Library.HasRecentlyAdded}">
-                        <TextBlock Classes="section" Text="Recently Added" />
+                    <StackPanel Name="OnRepeatSection" Spacing="10" IsVisible="{Binding Library.HasOnRepeat}">
+                        <Button Name="OnRepeatHeader" Classes="row section-header" Command="{Binding OpenOnRepeatCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <PathIcon Data="{DynamicResource LibOnRepeatIcon}" />
+                                <TextBlock Classes="section" Text="On Repeat" />
+                                <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                            </StackPanel>
+                        </Button>
                         <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl Name="RecentlyAddedRail" ItemsSource="{Binding Library.RecentlyAddedRail}" ItemTemplate="{StaticResource RailTileTemplate}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="12" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
+                            <ItemsControl Name="OnRepeatRail" Margin="20,0" ItemsSource="{Binding Library.OnRepeatRail}"
+                                          ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                         </ScrollViewer>
                     </StackPanel>
 
-                    <StackPanel Spacing="8" IsVisible="{Binding Library.HasOnRepeat}">
-                        <TextBlock Classes="section" Text="On Repeat" />
+                    <StackPanel Name="RecentlyPlayedSection" Spacing="10" IsVisible="{Binding Library.HasShelf}">
+                        <Button Name="RecentlyPlayedHeader" Classes="row section-header" Command="{Binding OpenRecentlyPlayedCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <PathIcon Data="{DynamicResource LibRecentlyPlayedIcon}" />
+                                <TextBlock Classes="section" Text="Recently Played" />
+                                <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                            </StackPanel>
+                        </Button>
                         <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl Name="OnRepeatRail" ItemsSource="{Binding Library.OnRepeatRail}" ItemTemplate="{StaticResource RailTileTemplate}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="12" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
+                            <ItemsControl Name="RecentlyPlayedRail" Margin="20,0" ItemsSource="{Binding Library.RecentlyPlayedRail}"
+                                          ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                         </ScrollViewer>
                     </StackPanel>
 
-                    <TextBlock Name="StatusLine" Classes="subtle" TextWrapping="Wrap" Text="{Binding Library.StatusText}"
+                    <TextBlock Name="StatusLine" Classes="subtle" Margin="20,0" TextWrapping="Wrap" Text="{Binding Library.StatusText}"
                                IsVisible="{Binding Library.ShowStatusLine}" />
                 </StackPanel>
             </ScrollViewer>

@@ -28,6 +28,8 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly Action<Action> _marshal;
     private List<Playlist> _playlists = new();
     private List<Guid> _pinnedAlbumIds = new();
+    private List<string> _pinnedArtistNames = new();
+    private List<Guid> _pinnedTrackIds = new();
 
     public LibraryViewModel(ILibraryService library, IPersistenceService persistence, IFolderPicker picker,
         IPlayHistoryService? history = null, Action<Action>? marshal = null)
@@ -65,17 +67,19 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private int _favoriteCount;
     [ObservableProperty] private int _recentlyAddedCount;
     [ObservableProperty] private int _playlistCount;
-    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNotice))]
+    private bool _isScanning;
     [ObservableProperty] private int _scanProgress;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowConnectCard))]
+    [NotifyPropertyChangedFor(nameof(ShowConnectCard), nameof(HasNotice))]
     private bool _hasFolders;
 
     /// <summary>The last scan aborted on an unreadable root (a revoked SAF grant, spec §7):
     /// the page offers to re-pick the folder, which is how a dead grant is recovered.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowStatusLine))]
+    [NotifyPropertyChangedFor(nameof(ShowStatusLine), nameof(HasNotice))]
     private bool _needsReconnect;
 
     [ObservableProperty]
@@ -84,7 +88,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>InitializeAsync has read the settings: until then HasFolders is unknown, not false.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowConnectCard))]
+    [NotifyPropertyChangedFor(nameof(ShowConnectCard), nameof(HasNotice))]
     private bool _isLoaded;
 
     [ObservableProperty] private bool _hasShelf;
@@ -98,6 +102,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>First launch: no folder yet, so the only thing to show is the way in. Held
     /// back until the settings have loaded, or a user with folders sees it flash on launch.</summary>
     public bool ShowConnectCard => IsLoaded && !HasFolders;
+
+    /// <summary>Any card above the Library sections (connect, reconnect, scan progress), so an
+    /// empty card area takes no room.</summary>
+    public bool HasNotice => ShowConnectCard || NeedsReconnect || IsScanning;
 
     /// <summary>The plain status line; the reconnect card carries the text while it is up.</summary>
     public bool ShowStatusLine => !NeedsReconnect && !string.IsNullOrEmpty(StatusText);
@@ -117,6 +125,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     public BulkObservableCollection<RailItem> RecentlyAddedRail { get; } = new();
     public BulkObservableCollection<RailItem> OnRepeatRail { get; } = new();
 
+    /// <summary>The Shelf's albums as rail tiles: Library → Recently Played.</summary>
+    public BulkObservableCollection<RailItem> RecentlyPlayedRail { get; } = new();
+
     public IEnumerable<Track> Favourites() => Songs.Where(t => t.IsFavorite);
 
     public IEnumerable<Track> RecentlyAdded()
@@ -126,6 +137,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     public bool IsAlbumPinned(Guid albumId) => _pinnedAlbumIds.Contains(albumId);
+
+    public bool IsArtistPinned(string name) => _pinnedArtistNames.Contains(name, StringComparer.OrdinalIgnoreCase);
+
+    public bool IsTrackPinned(Guid trackId) => _pinnedTrackIds.Contains(trackId);
+
+    /// <summary>The On Repeat rail's songs, in rail order (its › list).</summary>
+    public IEnumerable<Track> OnRepeatTracks() => OnRepeatRail.Select(r => r.Payload).OfType<Track>();
 
     /// <summary>A playlist's cover: the first of its tracks that has one.</summary>
     public string? PlaylistArtwork(Playlist playlist) =>
@@ -139,6 +157,28 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (pinned) settings.PinnedAlbumIds.Add(albumId);
         await SaveSettingsAsync(settings, "Pin");
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
+        AfterUserEdit();
+    }
+
+    /// <summary>Pin or unpin an artist on the Pinned rail (AppSettings.PinnedArtistNames).</summary>
+    public async Task SetArtistPinnedAsync(string name, bool pinned)
+    {
+        var settings = await _persistence.LoadSettingsAsync();
+        settings.PinnedArtistNames.RemoveAll(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+        if (pinned) settings.PinnedArtistNames.Add(name);
+        await SaveSettingsAsync(settings, "Pin");
+        _pinnedArtistNames = settings.PinnedArtistNames.ToList();
+        AfterUserEdit();
+    }
+
+    /// <summary>Pin or unpin a song on the Pinned rail (AppSettings.PinnedTrackIds).</summary>
+    public async Task SetTrackPinnedAsync(Guid trackId, bool pinned)
+    {
+        var settings = await _persistence.LoadSettingsAsync();
+        settings.PinnedTrackIds.RemoveAll(id => id == trackId);
+        if (pinned) settings.PinnedTrackIds.Add(trackId);
+        await SaveSettingsAsync(settings, "Pin");
+        _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         AfterUserEdit();
     }
 
@@ -246,6 +286,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             var settings = await _persistence.LoadSettingsAsync();
             SetFolders(settings.MusicFolders);
             _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
+            _pinnedArtistNames = settings.PinnedArtistNames.ToList();
+            _pinnedTrackIds = settings.PinnedTrackIds.ToList();
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }
@@ -354,8 +396,16 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Pinned and Recently Added: library structure and pins only.</summary>
     private void RefreshRails()
     {
+        // Albums, artists, playlists, then songs; pins whose item left the library are skipped.
+        var artistArt = _pinnedArtistNames.Count > 0 ? MobileLibrary.ArtistArtwork(_library) : null;
+        var pinnedArtists = _pinnedArtistNames
+            .Select(n => _library.Artists.FirstOrDefault(a => string.Equals(a.Name, n, StringComparison.OrdinalIgnoreCase)))
+            .OfType<Artist>()
+            .Select(a => RailItem.ForArtist(a, artistArt?.GetValueOrDefault(a.Name)));
         var pinned = _pinnedAlbumIds.Select(_library.GetAlbumById).OfType<Album>().Select(RailItem.ForAlbum)
+            .Concat(pinnedArtists)
             .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p))))
+            .Concat(_pinnedTrackIds.Select(_library.GetTrackById).OfType<Track>().Select(RailItem.ForTrack))
             .ToList();
         MobileLibrary.ReplaceIfChanged(PinnedRail, pinned);
         HasPinned = PinnedRail.Count > 0;
@@ -377,6 +427,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         var shelf = MobileLibrary.RecentAlbums(_library, recent, ShelfSize);
         MobileLibrary.ReplaceIfChanged(Shelf, shelf);
         HasShelf = Shelf.Count > 0;
+        MobileLibrary.ReplaceIfChanged(RecentlyPlayedRail, shelf.Select(RailItem.ForAlbum).ToList());
 
         var onRepeat = HomeRowsBuilder.BuildHeavyRotation(events, DateTime.Now, top: RailSize)
             .Select(_library.GetTrackById).OfType<Track>()

@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Noctis.Tests;
 
-/// <summary>The glass tab bar: the Favorites tab, and the bar folding into the compact
+/// <summary>The glass tab bar: the Playlists tab, and the bar folding into the compact
 /// row (current tab · mini player · Search) on scroll down and back out on scroll up.</summary>
 public class MobileTabBarTests : IDisposable
 {
@@ -60,18 +60,24 @@ public class MobileTabBarTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void FavoritesTab_ShowsOnlyFavouriteSongs_AsItsRoot()
+    public void PlaylistsTab_IsItsOwnRoot_WithFavouriteSongsFirst()
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Loved", favourite: true), MobileFixtures.Song("Plain") });
         var shell = rig.Shell;
+        var window = MobileFixtures.Mount(shell, out var view);
 
-        shell.SelectTabCommand.Execute(MobileTab.Favorites);
+        shell.SelectTabCommand.Execute(MobileTab.Playlists);
+        window.UpdateLayout();
 
-        Assert.True(shell.IsFavoritesSelected);
-        Assert.True(shell.IsFavoritesRootVisible);
+        Assert.True(shell.IsPlaylistsSelected);
+        Assert.True(shell.IsPlaylistsRootVisible);
         Assert.False(shell.IsLibraryRootVisible);
-        Assert.Equal(new[] { "Loved" }, shell.Favorites.Songs.Select(t => t.Title));
-        Assert.True(shell.Favorites.IsEmbedded);
+        Assert.True(shell.PlaylistsRoot.IsEmbedded);
+        var favourites = view.GetVisualDescendants().OfType<Button>().First(b => b.Name == "FavouriteSongsRow" && b.IsEffectivelyVisible);
+        favourites.Command!.Execute(null);
+        var page = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
+        Assert.Equal(new[] { "Loved" }, page.Songs.Select(t => t.Title));
+        window.Close();
     }
 
     [Fact]
@@ -178,7 +184,7 @@ public class MobileTabBarTests : IDisposable
         var shell = MakeShell();
         var window = MobileFixtures.Mount(shell, out var view);
 
-        var names = new[] { "HomeTab", "FavoritesTab", "LibraryTab", "SearchTab" };
+        var names = new[] { "HomeTab", "PlaylistsTab", "LibraryTab", "SearchTab" };
         var xs = names.Select(n => view.FindControl<Button>(n)!).Select(b => b.TranslatePoint(default, view)!.Value.X).ToArray();
         Assert.Equal(xs.OrderBy(x => x), xs);
         window.Close();
