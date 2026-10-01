@@ -307,6 +307,18 @@ public class GlassPanel : Decorator
         return (Color.FromRgb(color.R, color.G, color.B), Math.Clamp(opacity, 0, 1));
     }
 
+    /// <summary>
+    /// What a repaint of this panel alone dirties, in layout units: the compositor repaints a
+    /// visual's whole subtree, so besides the glass that is the rim's edge, the reach ring
+    /// (<see cref="GlassReach"/>) and the shadow (<see cref="GlassShadow"/>).
+    /// </summary>
+    internal Rect RepaintFootprint(Rect rect)
+    {
+        var footprint = rect.Inflate(Math.Max(Reach, 1));
+        var shadows = BoxShadow;
+        return shadows.Count > 0 ? footprint.Union(shadows.TransformBounds(rect)) : footprint;
+    }
+
     /// <summary>The lens this frame draws with (logical units), or null for the plain frost.</summary>
     internal GlassLensSettings? LensSettings() => HasLens
         ? new GlassLensSettings(Math.Max(Refraction, 0), RefractionAmount, Math.Clamp(Dispersion, 0, 1),
@@ -342,7 +354,7 @@ public class GlassPanel : Decorator
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
         if (NeedsBackdrop)
             context.Custom(new GlassBackdropOp(rect, CornerRadius, BlurRadius, fade,
-                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings()));
+                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect)));
 
         var (tint, opacity) = ResolveTint();
         opacity *= fade;
@@ -515,9 +527,8 @@ internal sealed class GlassBackdropCache
     private IntPtr _ownSurface;
 
     /// <summary>
-    /// Render thread: <paramref name="deviceRect"/> on <paramref name="surface"/> is everything
-    /// this panel draws for itself (glass, tint, rim, edge; its shadow and children are other
-    /// visuals), so a repaint of the panel alone dirties no more than that.
+    /// Render thread: <paramref name="deviceRect"/> on <paramref name="surface"/> is what a
+    /// repaint of this panel alone dirties (<see cref="GlassPanel.RepaintFootprint"/>).
     /// </summary>
     public void NoteOwnRect(SKRectI deviceRect, IntPtr surface)
     {
@@ -529,13 +540,13 @@ internal sealed class GlassBackdropCache
     }
 
     /// <summary>
-    /// Render thread: the frame's dirty <paramref name="clip"/> lies wholly inside what another
-    /// live glass panel on <paramref name="surface"/> draws for itself — that panel repainting
-    /// (its follow-up after a partial frame), not content changing. Glass stacked within each
-    /// other's blur reach (the mini player 10 dp above the tab capsule) otherwise re-frosted
-    /// each other in turn, every frame, forever: A's repaint lay in B's reach, B's in A's.
-    /// Content scrolling beside a panel dirties more than a neighbour's own rect and still
-    /// reaches it.
+    /// Render thread: the frame's dirty <paramref name="clip"/> lies wholly inside what a
+    /// repaint of another live glass panel on <paramref name="surface"/> dirties — that panel
+    /// repainting itself (its follow-up after a partial frame, a lifting droplet), not content
+    /// changing. Glass stacked close together (the mini player 10 dp above the tab capsule)
+    /// otherwise re-frosted each other in turn, every frame, forever: A's repaint, shadow and
+    /// all, overlapped B, whose follow-up overlapped A. Content scrolling beside or under a
+    /// panel dirties more than a neighbour's footprint and still reaches it.
     /// </summary>
     public static bool IsAnotherPanelsOwnRepaint(SKRectI clip, IntPtr surface, GlassBackdropCache? self)
     {
@@ -577,6 +588,8 @@ internal sealed class GlassBackdropCache
         sigma = GlassBlur.ClampSigma(sigma);
         alpha = Math.Clamp(alpha, 0f, 1f);
         var panelBounds = clip.Bounds;
+        // Before taking this copy's lock: the check takes each other copy's.
+        var neighbourRepaint = !wholePanelRepainted && IsAnotherPanelsOwnRepaint(canvas.DeviceClipBounds, surface.Handle, this);
         using var source = GlassBlur.Snapshot(surface, GlassBlur.SourceRect(panelBounds, sigma), out var at);
         if (source is null) return false;
         var panel = SKRectI.Intersect(GlassBlur.RoundOut(panelBounds), at);
@@ -595,8 +608,9 @@ internal sealed class GlassBackdropCache
                 // the panel, or in the pixels around it the blur reads, also moves the frost up to
                 // 3σ past that rect, where this frame repaints nothing: repaint the whole panel
                 // next frame. Children draw above the frost and never feed it, so a frame that only
-                // repainted them (the island's title, a hovered button) needs no second pass.
-                var followUp = !whole && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
+                // repainted them (the island's title, a hovered button) needs no second pass; nor
+                // does another glass panel repainting itself over or beside this one.
+                var followUp = !whole && !neighbourRepaint && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
                 Capture(source, at, panel, fresh, surface.Context, whole);
                 if ((followUp || _suspect) && !_repaintQueued && _requestFullRepaint != null)
                     askRepaint = _repaintQueued = true;
@@ -756,10 +770,11 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     private readonly double _blurRadius, _fade;
     private readonly GlassBackdropCache? _cache;
     private readonly GlassLensSettings? _lens;
+    private readonly Rect _footprint;
     private bool _drawn;
 
     public GlassBackdropOp(Rect bounds, CornerRadius corners, double blurRadius, double fade = 1, GlassBackdropCache? cache = null,
-        GlassLensSettings? lens = null)
+        GlassLensSettings? lens = null, Rect? footprint = null)
     {
         Bounds = bounds;
         _corners = corners;
@@ -767,13 +782,14 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         _fade = fade;
         _cache = cache;
         _lens = lens;
+        _footprint = footprint ?? bounds.Inflate(1);
     }
 
     public Rect Bounds { get; }
     public bool HitTest(Point p) => false;
     public bool Equals(ICustomDrawOperation? other) =>
         other is GlassBackdropOp o && o.Bounds == Bounds && o._corners == _corners && o._blurRadius == _blurRadius && o._fade == _fade
-        && ReferenceEquals(o._cache, _cache) && o._lens == _lens;
+        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint;
     public void Dispose() { }
 
     public void Render(ImmediateDrawingContext context)
@@ -816,10 +832,12 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
             GlassBlur.Draw(canvas, surface, dev, path, sigma, (float)_fade, lens);
             return;
         }
-        // What the panel draws for itself: its rect, plus the rim light's anti-aliased edge
-        // (1 layout px) and a pixel either way for rounding.
-        var own = GlassBlur.RoundOut(m.MapRect(new SKRect((float)Bounds.X - 1, (float)Bounds.Y - 1, (float)Bounds.Right + 1, (float)Bounds.Bottom + 1)));
-        own.Inflate(2, 2);
+        // What a repaint of the panel alone dirties on screen. The compositor's dirty rect for it
+        // runs a few device pixels past the shadow's nominal bounds (measured: 1-3 px at 2.625x),
+        // so allow a layout pixel either way plus rounding.
+        var own = GlassBlur.RoundOut(m.MapRect(new SKRect((float)_footprint.X, (float)_footprint.Y, (float)_footprint.Right, (float)_footprint.Bottom)));
+        var slack = 2 + (int)Math.Ceiling(2 * scale);
+        own.Inflate(slack, slack);
         _cache.NoteOwnRect(own, surface.Handle);
         // New render data repaints the panel's whole bounds in the frame that brings it, so
         // this op's first draw leaves no stale frost of the panel anywhere.

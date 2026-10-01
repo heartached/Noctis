@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Noctis.Controls;
 using SkiaSharp;
 using Xunit;
@@ -263,17 +264,22 @@ public class GlassBackdropCacheTests
     private static readonly SKRectI Upper = new(40, 30, 200, 60), Lower = new(40, 72, 200, 102);
 
     /// <summary>
-    /// Replays the compositor for the two stacked panels: each frame repaints the union of
-    /// what was invalidated; every panel the dirty rect meets draws (a requested repaint is new
-    /// render data, so whole), and every reach ring it meets asks its panel for a full repaint
-    /// when <paramref name="reachRule"/> says so. Frame 1 is a change right above the upper
-    /// panel only (a row scrolling past its edge). Returns the full repaints asked for in
-    /// frames 2..<paramref name="frames"/>: anything above 0 is a repaint loop.
+    /// Replays the compositor for the two stacked panels. A panel's repaint dirties its whole
+    /// footprint (its shadow reaches 14 px past it, over the 12 px gap onto its neighbour);
+    /// each frame repaints the union of what was invalidated; every panel the dirty rect meets
+    /// draws (a requested repaint is new render data, so whole) and may ask for a follow-up,
+    /// and every reach ring it meets asks its panel for a full repaint when
+    /// <see cref="GlassReachOp.ShouldRepaint"/> says so. Frame 1 is a change right above the
+    /// upper panel only (a row scrolling past its edge). <paramref name="noteFootprints"/>:
+    /// the panels publish what their own repaint dirties, as GlassBackdropOp does. Returns the
+    /// full repaints asked for in frames 2..<paramref name="frames"/>: above 0 is a loop.
     /// </summary>
-    private static int RepaintsAfterOneChange(Func<SKRectI, SKRectI, IntPtr, GlassBackdropCache, bool> reachRule, int frames)
+    private static int RepaintsAfterOneChange(bool noteFootprints, int frames)
     {
         using var s = NewSurface();
         var rects = new[] { Upper, Lower };
+        const int shadow = 14;
+        var footprints = rects.Select(r => new SKRectI(r.Left - shadow, r.Top - shadow, r.Right + shadow, r.Bottom + shadow)).ToArray();
         var pending = new bool[2];
         var caches = new GlassBackdropCache[2];
         for (var i = 0; i < 2; i++)
@@ -296,7 +302,7 @@ public class GlassBackdropCacheTests
                     if (SKRectI.Intersect(rects[i], dirty).IsEmpty) continue;
                     using var path = new SKPath();
                     path.AddRoundRect(new SKRoundRect(SKRect.Create(rects[i].Left, rects[i].Top, rects[i].Width, rects[i].Height), 12));
-                    caches[i].NoteOwnRect(rects[i], s.Handle);
+                    if (noteFootprints) caches[i].NoteOwnRect(footprints[i], s.Handle);
                     caches[i].Draw(c, s, path, Sigma, 1, wholePanelRepainted: whole[i]);
                 }
                 c.Restore();
@@ -304,20 +310,20 @@ public class GlassBackdropCacheTests
                 {
                     var ring = new SKRectI(rects[i].Left - reach, rects[i].Top - reach, rects[i].Right + reach, rects[i].Bottom + reach);
                     if (SKRectI.Intersect(ring, dirty).IsEmpty) continue;
-                    if (reachRule(dirty, rects[i], s.Handle, caches[i])) pending[i] = true;
+                    if (GlassReachOp.ShouldRepaint(dirty, rects[i], s.Handle, caches[i])) pending[i] = true;
                 }
             }
 
             RunFrame(Whole, new[] { true, true });
             Array.Clear(pending);
-            RunFrame(new SKRectI(60, 4, 120, 18), new[] { false, false });
+            RunFrame(new SKRectI(60, 4, 120, 14), new[] { false, false });
             for (var f = 2; f <= frames; f++)
             {
                 if (!pending[0] && !pending[1]) break;
                 var whole = (bool[])pending.Clone();
                 var dirty = SKRectI.Empty;
                 for (var i = 0; i < 2; i++)
-                    if (whole[i]) dirty = dirty.IsEmpty ? rects[i] : SKRectI.Union(dirty, rects[i]);
+                    if (whole[i]) dirty = dirty.IsEmpty ? footprints[i] : SKRectI.Union(dirty, footprints[i]);
                 Array.Clear(pending);
                 RunFrame(dirty, whole);
                 asked += (pending[0] ? 1 : 0) + (pending[1] ? 1 : 0);
@@ -333,18 +339,17 @@ public class GlassBackdropCacheTests
     [Fact]
     public void AdjacentPanels_SettleAfterAChangeBesideOne_InsteadOfReFrostingEachOtherForever()
     {
-        Assert.Equal(0, RepaintsAfterOneChange(GlassReachOp.ShouldRepaint, frames: 30));
+        Assert.Equal(0, RepaintsAfterOneChange(noteFootprints: true, frames: 30));
     }
 
     [Fact]
-    public void TheOldReachRule_PingPongsBetweenAdjacentPanels()
+    public void WithoutTheirFootprints_AdjacentPanelsPingPong()
     {
-        // Guard for the test above: the rule before the fix (any repaint in the ring that
-        // neither lies inside the panel nor covers it) keeps the two panels repainting each
-        // other, one per frame — the phone's bar rendered at the display rate while idle.
-        static bool OldRule(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache self) =>
-            !(clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel));
-        Assert.Equal(29, RepaintsAfterOneChange(OldRule, frames: 30));
+        // Guard for the test above, and the bug it fixes: unaware of each other, each panel's
+        // repaint (shadow and reach ring included) lands on the other as a partial frame and a
+        // repaint beside it, so the two ask for a full repaint in turn, every frame — the
+        // phone's bar rendered at the display rate while idle.
+        Assert.True(RepaintsAfterOneChange(noteFootprints: false, frames: 30) >= 28);
     }
 
     [Fact]
