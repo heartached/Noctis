@@ -51,6 +51,16 @@ internal static class MobileLibrary
         return map;
     }
 
+    /// <summary><see cref="ArtistArtwork"/>'s cover for one name, without building the whole map.</summary>
+    internal static string? ArtistArtworkFor(ILibraryService library, string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        return library.Albums.FirstOrDefault(a => !string.IsNullOrEmpty(a.ArtworkPath)
+                   && string.Equals(a.Artist, name, StringComparison.OrdinalIgnoreCase))?.ArtworkPath
+               ?? library.Tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.AlbumArtworkPath)
+                   && string.Equals(t.GroupingArtist, name, StringComparison.OrdinalIgnoreCase))?.AlbumArtworkPath;
+    }
+
     /// <summary>
     /// Replace <paramref name="target"/> only when membership or order changed: a Reset tears
     /// every tile down and re-realises it, felt as a flicker on each refresh (the desktop
