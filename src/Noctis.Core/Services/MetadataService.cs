@@ -238,6 +238,7 @@ public class MetadataService : IMetadataService
             Lyrics = tag.Lyrics ?? string.Empty,
             Comment = tag.Comment ?? string.Empty,
             Copyright = ReadCopyright(file),
+            Label = ExtendedTagIO.ReadLabel(file),
             ReleaseDate = FirstNonEmpty(ReadReleaseDate(file, tag), riff.ReleaseDate),
             IsCompilation = isCompilation,
             Grouping = tag.Grouping ?? string.Empty,
