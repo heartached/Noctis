@@ -100,6 +100,7 @@
             <Setter Property="CornerRadius" Value="11" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="Height" Value="22" />
+            <Setter Property="MinHeight" Value="0" />
             <Setter Property="Margin" Value="0,0,-8,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontSize" Value="13" />
