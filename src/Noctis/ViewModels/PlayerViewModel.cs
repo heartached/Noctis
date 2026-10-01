@@ -523,7 +523,9 @@ public partial class PlayerViewModel : ViewModelBase
     private System.Threading.Timer? _naturalEndFallbackTimer; // backup for missed VLC TrackEnded
     private volatile bool _positionUpdateQueued; // coalesces rapid VLC position dispatches
     private TimeSpan _latestVlcPosition; // latest position from VLC timer (written from timer thread)
-    private List<Track> _originalQueue = new(); // stored when shuffle is enabled
+    // The order Shuffle off returns to, stored when shuffle is enabled: the queue unshuffled,
+    // the track playing at the time included so Shuffle off can continue after it (#110).
+    private List<Track> _originalQueue = new();
 
     // The full set of tracks in the current playback cycle, in order, uncapped.
     //
@@ -918,8 +920,12 @@ public partial class PlayerViewModel : ViewModelBase
         {
             if (IsShuffleEnabled)
             {
-                // Save original queue order
+                // Save original queue order, from the playing track so Shuffle off can
+                // continue after it. A playing track the shuffle itself holds out is left
+                // out: Shuffle off brings held-out tracks back, and it has already played.
                 _originalQueue = UpNext.ToList();
+                if (CurrentTrack is { SkipWhenShuffling: false, IsSnoozed: false } playing)
+                    _originalQueue.Insert(0, playing);
                 // Shuffle the queue, respecting SkipWhenShuffling and
                 // down-weighting "not liked" + recently-played tracks.
                 // Explicit tracks are NOT filtered here: with the filter off they are parked
@@ -932,36 +938,7 @@ public partial class PlayerViewModel : ViewModelBase
             }
             else if (_originalQueue.Count > 0)
             {
-                // Restore original queue order — but only tracks still pending.
-                // Tracks that played (or were removed) while shuffled are gone
-                // from UpNext; re-injecting the full snapshot would replay them.
-                var pending = new Dictionary<Guid, int>();
-                foreach (var t in UpNext)
-                    pending[t.Id] = pending.TryGetValue(t.Id, out var n) ? n + 1 : 1;
-                var restored = new List<Track>(UpNext.Count);
-                foreach (var t in _originalQueue)
-                {
-                    // Tracks the shuffle FILTERED OUT (rather than consumed) must always
-                    // come back: they were never played, they're just absent from UpNext.
-                    // SkipWhenShuffling was handled; snoozed tracks were not — WeightedShuffle
-                    // drops those too, so they satisfied neither branch and a shuffle
-                    // on/off round trip silently deleted them from the queue. Blocked
-                    // explicit tracks are NOT restored here: they sit in _parkedExplicit
-                    // and only the Explicit Content switch brings them back.
-                    if (IsBlockedExplicit(t))
-                        continue;
-                    if (t.SkipWhenShuffling || t.IsSnoozed)
-                    {
-                        restored.Add(t);
-                        continue;
-                    }
-                    if (pending.TryGetValue(t.Id, out var n) && n > 0)
-                    {
-                        pending[t.Id] = n - 1;
-                        restored.Add(t);
-                    }
-                }
-                UpNext.ReplaceAll(restored);
+                UpNext.ReplaceAll(BuildUnshuffledQueue());
                 _originalQueue.Clear();
             }
         }
@@ -970,6 +947,64 @@ public partial class PlayerViewModel : ViewModelBase
             _suppressHasContentNotify = false;
             OnPropertyChanged(nameof(HasContent));
         }
+    }
+
+    /// <summary>
+    /// The queue Shuffle off leaves, in <see cref="_originalQueue"/>'s order. GitHub #110: it
+    /// continues after the playing track (Shuffle off on Song 31 plays 32, 33 …); it started
+    /// over at the first song not yet played (Song 12). Pending songs from before the playing
+    /// one follow at the end, as if the list wrapped round, so none is lost. When the order
+    /// does not hold the playing track (the queue changed since) it starts from the top.
+    /// </summary>
+    private List<Track> BuildUnshuffledQueue()
+    {
+        // Only tracks still pending come back, one per queued copy. Tracks that played (or
+        // were removed) while shuffled are gone from UpNext; re-injecting the full snapshot
+        // would replay them.
+        var pending = new Dictionary<Guid, int>();
+        foreach (var t in UpNext)
+            pending[t.Id] = pending.GetValueOrDefault(t.Id) + 1;
+
+        // The playing track's place: only a copy that is not still queued can be it (playing
+        // the first of a song queued twice, the later copy is the pending one).
+        var order = _originalQueue;
+        var anchor = -1;
+        if (CurrentTrack is { } current)
+        {
+            var at = order.FindIndex(t => t.Id == current.Id);
+            if (at >= 0 && order.Count(t => t.Id == current.Id) > pending.GetValueOrDefault(current.Id))
+                anchor = at;
+        }
+
+        var restored = new List<Track>(UpNext.Count);
+        var count = anchor < 0 ? order.Count : order.Count - 1;
+        for (var k = 0; k < count; k++)
+        {
+            var t = order[(anchor + 1 + k) % order.Count];
+            var queued = pending.TryGetValue(t.Id, out var n) && n > 0;
+            if (queued) pending[t.Id] = n - 1;
+            // Tracks the shuffle FILTERED OUT (rather than consumed) must always
+            // come back: they were never played, they're just absent from UpNext.
+            // SkipWhenShuffling was handled; snoozed tracks were not — WeightedShuffle
+            // drops those too, so they satisfied neither branch and a shuffle
+            // on/off round trip silently deleted them from the queue. Blocked
+            // explicit tracks are NOT restored here: they sit in _parkedExplicit
+            // and only the Explicit Content switch brings them back.
+            if (queued || (!IsBlockedExplicit(t) && (t.SkipWhenShuffling || t.IsSnoozed)))
+                restored.Add(t);
+        }
+
+        // Anything queued that the order does not hold (added while shuffled, or a track
+        // Previous stepped back over) stays queued, after the rest; it used to be dropped.
+        foreach (var t in UpNext)
+        {
+            if (pending.TryGetValue(t.Id, out var n) && n > 0)
+            {
+                pending[t.Id] = n - 1;
+                restored.Add(t);
+            }
+        }
+        return restored;
     }
 
     [RelayCommand]
@@ -1649,6 +1684,7 @@ public partial class PlayerViewModel : ViewModelBase
             IsShuffleEnabled = IsShuffleEnabled,
             IsMuted = IsMuted,
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
+            OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
             ExternalTrackPaths = BuildExternalTrackPaths()
         };
         await _persistence.SaveQueueStateAsync(state);
@@ -1707,6 +1743,7 @@ public partial class PlayerViewModel : ViewModelBase
                 IsShuffleEnabled = IsShuffleEnabled,
                 IsMuted = IsMuted,
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
+                OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
                 ExternalTrackPaths = BuildExternalTrackPaths()
             };
         }
@@ -1774,6 +1811,12 @@ public partial class PlayerViewModel : ViewModelBase
             if (track != null) restoredCycle.Add(track);
         }
         _repeatCycleTracks = restoredCycle;
+
+        // The Shuffle-off order (GitHub #110): without it, Shuffle off after a restart left
+        // the queue scrambled.
+        _originalQueue = state.IsShuffleEnabled
+            ? state.OriginalOrderIds.Select(Resolve).OfType<Track>().ToList()
+            : new List<Track>();
 
         // Restore current track (paused, not auto-playing)
         var usedUpNextFallback = false;
@@ -2661,8 +2704,8 @@ public partial class PlayerViewModel : ViewModelBase
                     allTracks.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
                 if (shuffled.Count > 0)
                 {
+                    // shuffled[0] stays in: Shuffle off continues after it (GitHub #110).
                     _originalQueue = new List<Track>(allTracks);
-                    _originalQueue.Remove(shuffled[0]); // about to play, not pending
                     allTracks = shuffled;
                 }
             }

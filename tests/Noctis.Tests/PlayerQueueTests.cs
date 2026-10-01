@@ -120,9 +120,11 @@ public class PlayerQueueTests
         // The wrap replayed the album order with Shuffle lit (1 in 20! by chance).
         Assert.NotEqual(tracks.Select(t => t.Id), pass);
 
-        vm.ToggleShuffleCommand.Execute(null); // off: the rest of the pass in queue order
-        var current = vm.CurrentTrack!.Id;
-        Assert.Equal(tracks.Select(t => t.Id).Where(id => id != current), vm.UpNext.Select(t => t.Id));
+        // Off: the rest of the pass in queue order, continuing after the playing track
+        // (GitHub #110), the tracks before it wrapping round to the end.
+        vm.ToggleShuffleCommand.Execute(null);
+        var at = tracks.FindIndex(t => t.Id == vm.CurrentTrack!.Id);
+        Assert.Equal(tracks.Skip(at + 1).Concat(tracks.Take(at)).Select(t => t.Id), vm.UpNext.Select(t => t.Id));
     }
 
     [Fact]
