@@ -774,8 +774,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         var tracks = row.ToList();
         if (tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -938,8 +937,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(album.Tracks);
     }
 
     [RelayCommand]

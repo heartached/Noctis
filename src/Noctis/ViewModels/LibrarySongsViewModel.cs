@@ -322,10 +322,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var tracks = FilteredTracks.ToList();
         if (tracks.Count == 0) return;
 
-        // Shuffle the list using thread-safe Random.Shared
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
-
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(tracks);
     }
 
     [RelayCommand]

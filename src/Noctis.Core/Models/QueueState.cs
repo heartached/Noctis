@@ -38,7 +38,7 @@ public class QueueState
     /// <summary>
     /// Pre-shuffle order, so turning shuffle off after a cold start restores the album
     /// order instead of leaving the queue scrambled. PlaybackQueue.Snapshot carries it;
-    /// the desktop player writes its own QueueState and simply leaves this empty.
+    /// the desktop player writes its own (GitHub #110), the playing track included.
     /// </summary>
     public List<Guid> OriginalOrderIds { get; set; } = new();
 

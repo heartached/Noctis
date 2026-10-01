@@ -784,8 +784,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(tracks);
     }
 
     /// <summary>Opens the add-to-playlist picker for the current multi-selection
