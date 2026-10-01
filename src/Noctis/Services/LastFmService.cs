@@ -1,10 +1,8 @@
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -12,30 +10,17 @@ namespace Noctis.Services;
 public class LastFmService : ILastFmService
 {
     // Last.fm API credentials — register at https://www.last.fm/api/account/create
-    private const string ApiKey = "7b625c5a18197cf284aabf8b66505156";
+    private const string ApiKey = LastFmApi.ApiKey;
     private const string ApiSecret = "ebf114b9e7d31e24c493bc55dac2184e";
-    private const string ApiBase = "https://ws.audioscrobbler.com/2.0/";
+    private const string ApiBase = LastFmApi.ApiBase;
     private const string AuthBase = "https://www.last.fm/api/auth/";
 
     private readonly HttpClient _http;
     private string? _sessionKey;
     private string? _token;
-    private readonly string _albumDescriptionCachePath;
-    private readonly SemaphoreSlim _albumDescriptionLock = new(1, 1);
-    private readonly Dictionary<string, AlbumDescriptionCacheEntry> _albumDescriptionCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, DateTime> _albumDescriptionCooldownUntil = new(StringComparer.OrdinalIgnoreCase);
-    private bool _albumDescriptionCacheLoaded;
-
-    private static readonly TimeSpan AlbumDescriptionCooldown = TimeSpan.FromSeconds(20);
-    private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
-    private static readonly Regex HtmlLineBreakRegex = new("<\\s*(br|/p|/div|/li|/h[1-6])\\s*/?>", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-    private static readonly Regex MultiWhitespaceRegex = new("\\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex LastFmReadMoreRegex = new("Read\\s+more\\s+on\\s+Last\\.fm\\s*\\.?", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex LastFmLicenseRegex = new("User-?contributed\\s+text\\s+is\\s+available\\s+under\\s+the\\s+Creative\\s+Commons\\s+By-?SA\\s+License;?\\s*additional\\s+terms\\s+may\\s+apply\\s*\\.?", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex BlankLineRegex = new("\\n{3,}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    // "…Apple Music. ." — Last.fm puts the sentence period OUTSIDE the "Read more" anchor, so
-    // once the anchor text is removed a lone period trails the real one. Collapse it.
-    private static readonly Regex OrphanPeriodRegex = new("(?<=[.!?…])\\s+\\.(?=\\s|$)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    /// <summary>Album descriptions (album.getinfo + the JSON cache), shared with the phone;
+    /// the description methods below forward to it unchanged.</summary>
+    private readonly LastFmAlbumDescriptions _albumDescriptions;
 
 
     public bool IsAuthenticated => !string.IsNullOrEmpty(_sessionKey);
@@ -44,7 +29,7 @@ public class LastFmService : ILastFmService
     public LastFmService(HttpClient http)
     {
         _http = http;
-        _albumDescriptionCachePath = Path.Combine(Helpers.AppPaths.DataRoot, "cache", "lastfm_album_descriptions.json");
+        _albumDescriptions = new LastFmAlbumDescriptions(http, Path.Combine(Helpers.AppPaths.DataRoot, "cache", "lastfm_album_descriptions.json"));
     }
 
     public void Configure(string? sessionKey)
@@ -248,41 +233,17 @@ public class LastFmService : ILastFmService
 
     public Task<string?> GetAlbumDescriptionAsync(string artistName, string albumName, CancellationToken ct = default)
     {
-        return GetAlbumDescriptionInternalAsync(artistName, albumName, preferFullText: false, ct);
+        return _albumDescriptions.GetAsync(artistName, albumName, preferFullText: false, ct);
     }
 
     public Task<string?> GetAlbumDescriptionFullAsync(string artistName, string albumName, CancellationToken ct = default)
     {
-        return GetAlbumDescriptionInternalAsync(artistName, albumName, preferFullText: true, ct);
+        return _albumDescriptions.GetAsync(artistName, albumName, preferFullText: true, ct);
     }
 
-    public async Task SetAlbumDescriptionOverrideAsync(string artistName, string albumName, string? description, CancellationToken ct = default)
+    public Task SetAlbumDescriptionOverrideAsync(string artistName, string albumName, string? description, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(artistName) || string.IsNullOrWhiteSpace(albumName))
-            return;
-
-        var cacheKey = BuildAlbumDescriptionCacheKey(artistName, albumName);
-        await EnsureAlbumDescriptionCacheLoadedAsync(ct);
-
-        await _albumDescriptionLock.WaitAsync(ct);
-        try
-        {
-            if (!_albumDescriptionCache.TryGetValue(cacheKey, out var entry))
-            {
-                entry = new AlbumDescriptionCacheEntry();
-                _albumDescriptionCache[cacheKey] = entry;
-            }
-
-            entry.UserOverride = description == null
-                ? null
-                : CleanAlbumContent(description) ?? string.Empty;
-            entry.UpdatedUtc = DateTime.UtcNow;
-            await SaveAlbumDescriptionCacheUnsafeAsync(ct);
-        }
-        finally
-        {
-            _albumDescriptionLock.Release();
-        }
+        return _albumDescriptions.SetOverrideAsync(artistName, albumName, description, ct);
     }
 
     public Task ClearAlbumDescriptionOverrideAsync(string artistName, string albumName, CancellationToken ct = default)
@@ -290,371 +251,12 @@ public class LastFmService : ILastFmService
         return SetAlbumDescriptionOverrideAsync(artistName, albumName, null, ct);
     }
 
-    private async Task<string?> GetAlbumDescriptionInternalAsync(string artistName, string albumName, bool preferFullText, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(artistName) || string.IsNullOrWhiteSpace(albumName))
-            return null;
+    internal static string? CleanAlbumSummary(string? rawSummary) => LastFmAlbumDescriptions.CleanAlbumSummary(rawSummary);
 
-        var cacheKey = BuildAlbumDescriptionCacheKey(artistName, albumName);
-        await EnsureAlbumDescriptionCacheLoadedAsync(ct);
-
-        await _albumDescriptionLock.WaitAsync(ct);
-        try
-        {
-            if (_albumDescriptionCache.TryGetValue(cacheKey, out var cached))
-            {
-                if (cached.UserOverride != null)
-                    return cached.UserOverride;
-
-                // Re-clean cached text in case earlier versions stored trailing "Read more..." fragments.
-                cached.Summary = CleanAlbumSummary(cached.Summary) ?? string.Empty;
-                cached.FullContent = CleanAlbumContent(cached.FullContent) ?? string.Empty;
-
-                var cachedValue = SelectDescription(cached, preferFullText);
-                var shouldUpgradeToFull = preferFullText &&
-                                          string.IsNullOrWhiteSpace(cached.FullContent) &&
-                                          !string.IsNullOrWhiteSpace(cached.Summary);
-
-                if (!shouldUpgradeToFull)
-                    return cachedValue;
-            }
-
-            var now = DateTime.UtcNow;
-            if (_albumDescriptionCooldownUntil.TryGetValue(cacheKey, out var cooldownUntil) && now < cooldownUntil)
-                return null;
-
-            _albumDescriptionCooldownUntil[cacheKey] = now.Add(AlbumDescriptionCooldown);
-        }
-        finally
-        {
-            _albumDescriptionLock.Release();
-        }
-
-        var fetched = await FetchAlbumDescriptionFromApiAsync(artistName, albumName, ct);
-
-        await _albumDescriptionLock.WaitAsync(ct);
-        try
-        {
-            var userOverride = _albumDescriptionCache.TryGetValue(cacheKey, out var existingEntry)
-                ? existingEntry.UserOverride
-                : null;
-
-            _albumDescriptionCache[cacheKey] = new AlbumDescriptionCacheEntry
-            {
-                Summary = fetched?.Summary ?? string.Empty,
-                FullContent = fetched?.FullContent ?? string.Empty,
-                UserOverride = userOverride,
-                UpdatedUtc = DateTime.UtcNow
-            };
-            await SaveAlbumDescriptionCacheUnsafeAsync(ct);
-            if (userOverride != null)
-                return userOverride;
-
-            return fetched == null
-                ? null
-                : (preferFullText ? fetched.FullContent : fetched.Summary);
-        }
-        finally
-        {
-            _albumDescriptionLock.Release();
-        }
-    }
-
-    private async Task EnsureAlbumDescriptionCacheLoadedAsync(CancellationToken ct)
-    {
-        if (_albumDescriptionCacheLoaded)
-            return;
-
-        await _albumDescriptionLock.WaitAsync(ct);
-        try
-        {
-            if (_albumDescriptionCacheLoaded)
-                return;
-
-            if (!File.Exists(_albumDescriptionCachePath))
-            {
-                _albumDescriptionCacheLoaded = true;
-                return;
-            }
-
-            try
-            {
-                var json = await File.ReadAllTextAsync(_albumDescriptionCachePath, ct);
-                var entries = JsonSerializer.Deserialize<Dictionary<string, AlbumDescriptionCacheEntry>>(json);
-                if (entries != null)
-                {
-                    foreach (var kvp in entries)
-                    {
-                        if (string.IsNullOrWhiteSpace(kvp.Key) || kvp.Value == null) continue;
-                        // Entries written by builds that stranded ". ." are repaired in place.
-                        kvp.Value.Summary = ScrubOrphanPeriods(kvp.Value.Summary);
-                        kvp.Value.FullContent = ScrubOrphanPeriods(kvp.Value.FullContent);
-                        _albumDescriptionCache[kvp.Key] = kvp.Value;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[LastFm] Failed to read album description cache: {ex.Message}");
-            }
-
-            _albumDescriptionCacheLoaded = true;
-        }
-        finally
-        {
-            _albumDescriptionLock.Release();
-        }
-    }
-
-    private async Task SaveAlbumDescriptionCacheUnsafeAsync(CancellationToken ct)
-    {
-        try
-        {
-            var directory = Path.GetDirectoryName(_albumDescriptionCachePath);
-            if (!string.IsNullOrWhiteSpace(directory))
-                Directory.CreateDirectory(directory);
-
-            var json = JsonSerializer.Serialize(_albumDescriptionCache);
-            await File.WriteAllTextAsync(_albumDescriptionCachePath, json, ct);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[LastFm] Failed to write album description cache: {ex.Message}");
-        }
-    }
-
-    private async Task<AlbumDescriptionPayload?> FetchAlbumDescriptionFromApiAsync(string artistName, string albumName, CancellationToken ct)
-    {
-        // Try the exact name, then progressively stripped variants
-        // (Deluxe / Video Deluxe / Anniversary Edition / etc.) so release-variant
-        // albums inherit the base release's description instead of being blank.
-        foreach (var candidate in BuildAlbumNameCandidates(albumName))
-        {
-            var payload = await FetchAlbumDescriptionForExactNameAsync(artistName, candidate, ct);
-            if (payload != null) return payload;
-            if (ct.IsCancellationRequested) return null;
-        }
-        return null;
-    }
-
-    private async Task<AlbumDescriptionPayload?> FetchAlbumDescriptionForExactNameAsync(string artistName, string albumName, CancellationToken ct)
-    {
-        try
-        {
-            var url = $"{ApiBase}?method=album.getinfo&api_key={ApiKey}&artist={Uri.EscapeDataString(artistName)}&album={Uri.EscapeDataString(albumName)}&format=json";
-            using var response = await _http.GetAsync(url, ct);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var payload = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
-            using var doc = JsonDocument.Parse(payload);
-
-            if (doc.RootElement.TryGetProperty("error", out _))
-                return null;
-
-            if (!doc.RootElement.TryGetProperty("album", out var album))
-                return null;
-
-            if (!album.TryGetProperty("wiki", out var wiki))
-                return null;
-
-            var summary = wiki.TryGetProperty("summary", out var summaryNode)
-                ? CleanAlbumSummary(summaryNode.GetString())
-                : null;
-            var fullContent = wiki.TryGetProperty("content", out var contentNode)
-                ? CleanAlbumContent(contentNode.GetString())
-                : null;
-
-            // Keep graceful fallback if only one field is populated.
-            if (string.IsNullOrWhiteSpace(summary) && string.IsNullOrWhiteSpace(fullContent))
-                return null;
-
-            summary ??= fullContent ?? string.Empty;
-            fullContent ??= summary;
-
-            return new AlbumDescriptionPayload
-            {
-                Summary = summary,
-                FullContent = fullContent
-            };
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[LastFm] Album description fetch failed for '{artistName} - {albumName}': {ex.Message}");
-            return null;
-        }
-    }
-
-    private static string BuildAlbumDescriptionCacheKey(string artistName, string albumName)
-    {
-        return $"{artistName.Trim().ToLowerInvariant()}::{albumName.Trim().ToLowerInvariant()}";
-    }
-
-    // Last.fm only catalogs base releases; "(Deluxe)" / "[Video Deluxe]" / etc. variants
-    // miss otherwise. Generate progressively stripped candidates so a deluxe edition
-    // can inherit its base release's description.
-    private static IEnumerable<string> BuildAlbumNameCandidates(string albumName)
-    {
-        if (string.IsNullOrWhiteSpace(albumName)) yield break;
-
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var current = albumName.Trim();
-
-        if (seen.Add(current)) yield return current;
-
-        for (int i = 0; i < 4; i++)
-        {
-            var stripped = StripTrailingAlbumVariantSuffix(current);
-            if (string.IsNullOrWhiteSpace(stripped) || stripped.Equals(current, StringComparison.OrdinalIgnoreCase))
-                yield break;
-            current = stripped;
-            if (seen.Add(current)) yield return current;
-        }
-    }
-
-    private static string StripTrailingAlbumVariantSuffix(string name)
-    {
-        var trimmed = name.TrimEnd();
-
-        // Trailing parenthesized or bracketed group: "Album (Deluxe)" / "Album [Video Deluxe]"
-        if (trimmed.Length > 0 && (trimmed[^1] == ')' || trimmed[^1] == ']'))
-        {
-            char open = trimmed[^1] == ')' ? '(' : '[';
-            int depth = 0;
-            for (int i = trimmed.Length - 1; i >= 0; i--)
-            {
-                if (trimmed[i] == trimmed[^1]) depth++;
-                else if (trimmed[i] == open)
-                {
-                    depth--;
-                    if (depth == 0) return trimmed[..i].TrimEnd();
-                }
-            }
-        }
-
-        // Dash-suffixed edition tag: "Album - Deluxe Edition"
-        int dash = trimmed.LastIndexOf(" - ", StringComparison.Ordinal);
-        if (dash > 0 && IsKnownEditionTag(trimmed[(dash + 3)..]))
-            return trimmed[..dash].TrimEnd();
-
-        return trimmed;
-    }
-
-    private static bool IsKnownEditionTag(string tail)
-    {
-        var t = tail.Trim();
-        return t.Equals("Deluxe", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Deluxe Edition", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Video Deluxe", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Anniversary Edition", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Special Edition", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Expanded Edition", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Limited Edition", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Bonus Track Version", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Remastered", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Extended", StringComparison.OrdinalIgnoreCase);
-    }
-
-    internal static string? CleanAlbumSummary(string? rawSummary)
-    {
-        return CleanAlbumText(rawSummary, preserveParagraphs: false);
-    }
-
-    internal static string? CleanAlbumContent(string? rawContent)
-    {
-        return CleanAlbumText(rawContent, preserveParagraphs: true);
-    }
+    internal static string? CleanAlbumContent(string? rawContent) => LastFmAlbumDescriptions.CleanAlbumContent(rawContent);
 
     /// <summary>Repairs text cleaned by an older build (the orphan ". ." was cached on disk).</summary>
-    internal static string? ScrubOrphanPeriods(string? text)
-        => string.IsNullOrEmpty(text) ? text : OrphanPeriodRegex.Replace(text, string.Empty);
-
-    private static string? CleanAlbumText(string? rawText, bool preserveParagraphs)
-    {
-        if (string.IsNullOrWhiteSpace(rawText))
-            return null;
-
-        // Tags come off first: the "Read more" phrase sits inside an <a>, and stripping the
-        // phrase while the anchor is still there strands the sentence period after it.
-        var decoded = WebUtility.HtmlDecode(rawText);
-        string cleaned;
-
-        if (!preserveParagraphs)
-        {
-            var withoutTags = HtmlTagRegex.Replace(decoded, " ");
-            cleaned = MultiWhitespaceRegex.Replace(withoutTags, " ").Trim();
-        }
-        else
-        {
-            var lineBreakNormalized = decoded.Replace("\r\n", "\n").Replace('\r', '\n');
-            lineBreakNormalized = HtmlLineBreakRegex.Replace(lineBreakNormalized, "\n");
-            lineBreakNormalized = HtmlTagRegex.Replace(lineBreakNormalized, string.Empty);
-
-            var inputLines = lineBreakNormalized.Split('\n');
-            var outputLines = new List<string>(inputLines.Length);
-            foreach (var line in inputLines)
-            {
-                var normalized = MultiWhitespaceRegex.Replace(line, " ").Trim();
-                if (normalized.Length == 0)
-                {
-                    if (outputLines.Count > 0 && outputLines[^1].Length > 0)
-                        outputLines.Add(string.Empty);
-                    continue;
-                }
-
-                outputLines.Add(normalized);
-            }
-
-            while (outputLines.Count > 0 && outputLines[^1].Length == 0)
-                outputLines.RemoveAt(outputLines.Count - 1);
-
-            cleaned = string.Join("\n", outputLines);
-            cleaned = BlankLineRegex.Replace(cleaned, "\n\n");
-        }
-
-        cleaned = LastFmReadMoreRegex.Replace(cleaned, string.Empty);
-        cleaned = LastFmLicenseRegex.Replace(cleaned, string.Empty);
-        cleaned = OrphanPeriodRegex.Replace(cleaned, string.Empty);
-
-        if (!preserveParagraphs)
-        {
-            cleaned = MultiWhitespaceRegex.Replace(cleaned, " ").Trim();
-        }
-        else
-        {
-            var lines = cleaned
-                .Replace("\r\n", "\n")
-                .Replace('\r', '\n')
-                .Split('\n')
-                .Select(l => l.TrimEnd())
-                .ToList();
-
-            while (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[^1]))
-                lines.RemoveAt(lines.Count - 1);
-
-            cleaned = string.Join("\n", lines);
-            cleaned = BlankLineRegex.Replace(cleaned, "\n\n");
-            cleaned = cleaned.Trim();
-        }
-
-        return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned;
-    }
-
-    private static string? SelectDescription(AlbumDescriptionCacheEntry entry, bool preferFullText)
-    {
-        var first = preferFullText ? entry.FullContent : entry.Summary;
-        var second = preferFullText ? entry.Summary : entry.FullContent;
-
-        if (!string.IsNullOrWhiteSpace(first))
-            return first;
-        if (!string.IsNullOrWhiteSpace(second))
-            return second;
-        return null;
-    }
+    internal static string? ScrubOrphanPeriods(string? text) => LastFmAlbumDescriptions.ScrubOrphanPeriods(text);
 
     private async Task<string?> GetTokenAsync()
     {
@@ -728,19 +330,5 @@ public class LastFmService : ILastFmService
         foreach (var kvp in parameters)
             sb.Append(Uri.EscapeDataString(kvp.Key)).Append('=').Append(Uri.EscapeDataString(kvp.Value)).Append('&');
         return sb.ToString().TrimEnd('&');
-    }
-
-    private sealed class AlbumDescriptionCacheEntry
-    {
-        public string Summary { get; set; } = string.Empty;
-        public string FullContent { get; set; } = string.Empty;
-        public string? UserOverride { get; set; }
-        public DateTime UpdatedUtc { get; set; }
-    }
-
-    private sealed class AlbumDescriptionPayload
-    {
-        public string Summary { get; set; } = string.Empty;
-        public string FullContent { get; set; } = string.Empty;
     }
 }
