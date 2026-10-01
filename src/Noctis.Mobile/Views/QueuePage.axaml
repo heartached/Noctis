@@ -6,23 +6,50 @@
              xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Mobile.Views.QueuePage"
              x:DataType="vm:ShellViewModel"
-             Foreground="White">
+             Foreground="{DynamicResource QueueText}">
 
+    <!-- The sheet follows the app theme (it sits outside ShellView's always-dark scope): light
+         frosted glass with dark text under Light, the dark frost under Dark. -->
     <UserControl.Resources>
-        <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
+        <ResourceDictionary>
+            <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="QueueSheetBase" Color="#FF121214" />
+                    <SolidColorBrush x:Key="QueueSheetScrim" Color="#A6000000" />
+                    <SolidColorBrush x:Key="QueueText" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="QueueSubtleText" Color="#B3FFFFFF" />
+                    <SolidColorBrush x:Key="QueueFaintText" Color="#80FFFFFF" />
+                    <SolidColorBrush x:Key="QueueRule" Color="#1AFFFFFF" />
+                    <SolidColorBrush x:Key="QueueCloseFill" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="QueueClearFill" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="QueueGrabber" Color="#99FFFFFF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="QueueSheetBase" Color="#FFF2F2F5" />
+                    <SolidColorBrush x:Key="QueueSheetScrim" Color="#BFF7F7F9" />
+                    <SolidColorBrush x:Key="QueueText" Color="#FF1C1C1E" />
+                    <SolidColorBrush x:Key="QueueSubtleText" Color="#8A000000" />
+                    <SolidColorBrush x:Key="QueueFaintText" Color="#73000000" />
+                    <SolidColorBrush x:Key="QueueRule" Color="#1F000000" />
+                    <SolidColorBrush x:Key="QueueCloseFill" Color="#14000000" />
+                    <SolidColorBrush x:Key="QueueClearFill" Color="#12000000" />
+                    <SolidColorBrush x:Key="QueueGrabber" Color="#4D000000" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <!-- Always dark (ruling 8): white text and controls over the blurred cover and its scrim. -->
     <UserControl.Styles>
         <Style Selector="Button.icon, Button.round, Button.pill">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueText}" />
         </Style>
         <Style Selector="TextBlock.row-sub, TextBlock.subtle">
-            <Setter Property="Foreground" Value="#B3FFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
         </Style>
         <Style Selector="TextBlock.row-album">
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="#80FFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueFaintText}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
         <Style Selector="TextBlock.kicker">
@@ -33,7 +60,7 @@
         </Style>
         <Style Selector="Border.sep">
             <Setter Property="Height" Value="1" />
-            <Setter Property="Background" Value="#1AFFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource QueueRule}" />
             <Setter Property="IsHitTestVisible" Value="False" />
         </Style>
 
@@ -42,7 +69,7 @@
             <Setter Property="Width" Value="32" />
             <Setter Property="Height" Value="32" />
             <Setter Property="CornerRadius" Value="16" />
-            <Setter Property="Background" Value="#2EFFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource QueueCloseFill}" />
             <Setter Property="BorderBrush" Value="{DynamicResource GlassBarEdge}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
@@ -51,7 +78,7 @@
             <Setter Property="Height" Value="12" />
         </Style>
         <Style Selector="Button.pill.clear">
-            <Setter Property="Background" Value="#26FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource QueueClearFill}" />
             <Setter Property="CornerRadius" Value="13" />
             <Setter Property="Padding" Value="12,4" />
             <Setter Property="FontSize" Value="13" />
@@ -127,19 +154,21 @@
 
         <!-- A page sheet: a sliver of the page underneath stays visible above it. -->
         <Panel Margin="{Binding TopSafePadding}">
-            <Border Name="Sheet" Margin="0,10,0,0" CornerRadius="14,14,0,0" ClipToBounds="True" Background="#FF121214">
+            <Border Name="Sheet" Margin="0,10,0,0" CornerRadius="14,14,0,0" ClipToBounds="True"
+                    Background="{DynamicResource QueueSheetBase}">
                 <Panel>
                     <!-- Blurred once per cover (PreBlurredArtworkConverter) from the header cover's own bitmap. -->
                     <Image Name="Backdrop" Source="{Binding #NowArtwork.Source, Converter={StaticResource PreBlur}}"
                            Stretch="UniformToFill" IsHitTestVisible="False" />
-                    <Border Background="#A6000000" IsHitTestVisible="False" />
+                    <Border Name="Scrim" Background="{DynamicResource QueueSheetScrim}" IsHitTestVisible="False" />
 
                     <Grid Name="Layout" RowDefinitions="Auto,Auto,Auto,*">
                         <!-- Both the grabber and ✕ close the sheet. -->
                         <Grid Name="TopBar" Height="44">
                             <Button Name="QueueGrabber" Classes="icon" Width="64" Height="28" VerticalAlignment="Top"
                                     HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
-                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="30" Height="10" Opacity="0.6" />
+                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="30" Height="10"
+                                          Foreground="{DynamicResource QueueGrabber}" />
                             </Button>
                             <Button Name="QueueCloseButton" Classes="round close" HorizontalAlignment="Right"
                                     VerticalAlignment="Bottom" Margin="0,0,16,0" Command="{Binding ToggleQueueCommand}">

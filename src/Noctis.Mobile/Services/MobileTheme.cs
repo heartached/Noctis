@@ -56,8 +56,8 @@ public sealed class MobileTheme
         {
             // The base Light dictionary is the desktop's legacy Light look, which kept its
             // dark-tuned white secondary text; on the phone's white pages it vanished. Keyed to
-            // the Light variant only, so the always-dark overlays (Now Playing, Lyrics, Queue,
-            // in a Dark ThemeVariantScope) keep their white text.
+            // the Light variant only, so the always-dark overlays (Now Playing, Lyrics, in a
+            // Dark ThemeVariantScope) keep their white text.
             _lightText = new ResourceDictionary();
             _lightText.ThemeDictionaries[ThemeVariant.Light] = new ResourceDictionary
             {

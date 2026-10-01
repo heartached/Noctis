@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Mobile.Views;
@@ -269,6 +271,53 @@ public class MobileQueueSheetTests
         Assert.False(page.IsVisible);
         Assert.True(lastSeen > window.Height / 2, $"hid with the sheet at {lastSeen}, mid-slide");
         window.Close();
+    }
+
+    private static double Luminance(IBrush? brush)
+    {
+        var c = Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color;
+        return (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255;
+    }
+
+    /// <summary>The sheet follows the app theme (light frosted glass under Light, dark under
+    /// Dark) while Now Playing and Lyrics underneath stay dark (ruling 8).</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TheSheet_FollowsTheAppTheme_WhileNowPlayingStaysDark(bool light)
+    {
+        var app = Application.Current!;
+        var before = app.RequestedThemeVariant;
+        try
+        {
+            app.RequestedThemeVariant = light ? ThemeVariant.Light : ThemeVariant.Dark;
+            var (rig, window, view, page, _) = OpenQueue();
+            using var _rig = rig;
+
+            Assert.Equal(light ? ThemeVariant.Light : ThemeVariant.Dark, page.ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, MobileFixtures.Find<NowPlayingPage>(view).ActualThemeVariant);
+            Assert.Equal(ThemeVariant.Dark, MobileFixtures.Find<LyricsPage>(view).ActualThemeVariant);
+
+            var scrim = Luminance(MobileFixtures.Named<Border>(page, "Scrim").Background);
+            var title = Luminance(MobileFixtures.Named<TextBlock>(page, "NowTitle").Foreground);
+            var pill = Luminance(MobileFixtures.Named<GlassPanel>(page, "ControlPill").Background);
+            var play = Luminance(MobileFixtures.Named<Button>(page, "QueuePlayPauseButton").Foreground);
+            if (light)
+            {
+                Assert.True(scrim > 0.8 && pill > 0.8, $"scrim {scrim:F2}, pill {pill:F2}: not light glass");
+                Assert.True(title < 0.2 && play < 0.2, $"title {title:F2}, play {play:F2}: not dark text");
+            }
+            else
+            {
+                Assert.True(scrim < 0.2 && pill < 0.2, $"scrim {scrim:F2}, pill {pill:F2}: not dark glass");
+                Assert.True(title > 0.8 && play > 0.8, $"title {title:F2}, play {play:F2}: not light text");
+            }
+            window.Close();
+        }
+        finally
+        {
+            app.RequestedThemeVariant = before;
+        }
     }
 
     [AvaloniaFact]

@@ -273,11 +273,14 @@
 
                 <views:LyricsPage DataContext="{Binding}"
                                   IsVisible="{Binding IsLyricsOpen}" />
-
-                <views:QueuePage DataContext="{Binding}"
-                                 IsVisible="{Binding IsQueueOpen}" />
             </Panel>
         </ThemeVariantScope>
+
+        <!-- Outside the dark scope: the Queue sheet follows the app theme (light frosted glass
+             under Light). -->
+        <views:QueuePage Name="QueueSheet"
+                         DataContext="{Binding}"
+                         IsVisible="{Binding IsQueueOpen}" />
 
         <views:ContextSheet Name="Sheet" DataContext="{Binding}"
                             IsVisible="{Binding IsSheetOpen}" />
