@@ -206,6 +206,21 @@ public class MobileContextSheetTests
     }
 
     [Fact]
+    public async Task APinnedSong_PlaysThePinnedSongs_FromThePinnedLabel()
+    {
+        var a = MobileFixtures.Song("A");
+        var b = MobileFixtures.Song("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        await rig.Shell.Library.SetTrackPinnedAsync(a.Id, true);
+        await rig.Shell.Library.SetTrackPinnedAsync(b.Id, true);
+
+        rig.Shell.OpenRailItemCommand.Execute(rig.Shell.Library.PinnedRail.Last());
+
+        Assert.Same(b, rig.Shell.Player.CurrentTrack);
+        Assert.Equal("Pinned", rig.Shell.Player.SourceLabel);
+    }
+
+    [Fact]
     public async Task PinArtist_ShowsARoundTileOnThePinnedRail_AndOpensTheArtist()
     {
         var a = MobileFixtures.Song("A", artist: "Band");

@@ -427,10 +427,12 @@ public sealed partial class ShellViewModel : ObservableObject
                 OpenArtist(artist.Name);
                 break;
             case Track track:
-                var rail = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
-                var index = rail.IndexOf(track);
-                if (index >= 0) Player.PlayTracks(rail, index, "On Repeat");
-                else Player.PlayTracks(new[] { track }, 0, "On Repeat");
+                // A song plays the rail it sits on: On Repeat, else the pinned songs.
+                var onRepeat = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
+                var pinned = Library.PinnedRail.Select(r => r.Payload).OfType<Track>().ToList();
+                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, "On Repeat");
+                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, "Pinned");
+                else Player.PlayTracks(new[] { track }, 0, null);
                 break;
         }
     }
