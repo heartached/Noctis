@@ -226,6 +226,35 @@ public class MobileArtistPageTests : IDisposable
         window.Close();
     }
 
+    /// <summary>The desktop's credit rule: an album credited to several artists is a release of
+    /// each one named (Bruno Mars's page features An Evening with Silk Sonic), while a combined
+    /// name is that exact collaboration only.</summary>
+    [Fact]
+    public void ACollaborationsAlbum_IsAReleaseOfEachArtistItNames()
+    {
+        var duo = Release("An Evening", "Bruno Mars, Anderson .Paak & Silk Sonic", 9, 2021, "2021-11-12");
+        var solo = Release("Solo Record", "Bruno Mars", 8, 2016);
+        var (tracks, albums) = Discography(duo, solo);
+        using var rig = MobileFixtures.MakeRig(tracks, albums);
+
+        rig.Shell.OpenArtistCommand.Execute("Bruno Mars");
+        var bruno = (ArtistPageViewModel)rig.Shell.CurrentPage!;
+        Assert.Equal(new[] { "An Evening", "Solo Record" }, bruno.Releases.Select(a => a.Name));
+        Assert.Same(duo.Album, bruno.Cards[0].Album);
+        Assert.Empty(bruno.AppearsOn);
+        Assert.Equal(17, bruno.Songs.Count);
+
+        // "&" is not a default separator (duos carry it in their name): the second name is
+        // "Anderson .Paak & Silk Sonic", whose page has the album too.
+        rig.Shell.OpenArtistCommand.Execute("Anderson .Paak & Silk Sonic");
+        Assert.Equal(new[] { "An Evening" }, ((ArtistPageViewModel)rig.Shell.CurrentPage!).Releases.Select(a => a.Name));
+
+        Assert.False(MobileLibrary.CreditsArtist("Bruno Mars", "Bruno Mars, Anderson .Paak"));
+        Assert.True(MobileLibrary.CreditsArtist("Anderson .Paak, Bruno Mars", "Bruno Mars, Anderson .Paak"));
+        Assert.True(MobileLibrary.CreditsArtist("Host feat. Band", "Band"));
+        Assert.False(MobileLibrary.CreditsArtist("Bruno Marsden", "Bruno Mars"));
+    }
+
     // ---- Hero ----------------------------------------------------------------------------------
 
     [AvaloniaFact]

@@ -79,8 +79,11 @@ public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
 /// under the status bar, fading into its own bottom colour, with the name and three round
 /// buttons over it; a card carousel (the latest release, the most played release, the latest
 /// single); Top Songs as a sideways-paged grid; then Albums, Singles &amp; EPs and Appears On.
-/// The photo is Deezer's (<see cref="ShellViewModel.ArtistPhotos"/>, asked as the page opens);
-/// until it arrives, or without one, the newest release's cover stands in.
+/// Releases and Appears On follow the desktop artist page's credit rule
+/// (<see cref="MobileLibrary.CreditsArtist"/>), so an album credited "Bruno Mars, Anderson
+/// .Paak &amp; Silk Sonic" is one of Bruno Mars's releases. The photo is Deezer's
+/// (<see cref="ShellViewModel.ArtistPhotos"/>, asked as the page opens); until it arrives, or
+/// without one, the newest release's cover stands in.
 /// </summary>
 public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 {
@@ -165,14 +168,15 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     private void Rebuild()
     {
         var library = Shell.Library.Service;
+        var nameTokens = ArtistCredit.Split(Name);
         Releases = library.Albums
-            .Where(a => string.Equals(a.Artist, Name, StringComparison.OrdinalIgnoreCase))
+            .Where(a => MobileLibrary.CreditsArtist(a.Artist, Name, nameTokens))
             .OrderByDescending(MobileLibrary.ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
         Albums = Releases.Where(a => !IsSingleOrEp(a)).Select(ArtistRelease.Own).ToList();
         Singles = Releases.Where(IsSingleOrEp).Select(ArtistRelease.Own).ToList();
-        AppearsOn = BuildAppearsOn(library, Name, Releases).Select(ArtistRelease.Feature).ToList();
+        AppearsOn = BuildAppearsOn(library, Name, Releases, nameTokens).Select(ArtistRelease.Feature).ToList();
 
         var all = MobileLibrary.SongsBy(library, Name);
         var albumOrder = Releases.SelectMany(a => a.Tracks).ToList();
@@ -229,20 +233,18 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         return cards;
     }
 
-    /// <summary>Albums credited to someone else with a song whose artist credit names this
-    /// artist (Core's credit separators: "A feat. B", "A &amp; B"), newest first.</summary>
-    public static IReadOnlyList<Album> BuildAppearsOn(ILibraryService library, string name, IReadOnlyList<Album> releases)
+    /// <summary>Albums that are not the artist's releases with a song whose artist credit names
+    /// the artist (<see cref="MobileLibrary.CreditsArtist"/>: "A feat. B" credits B), newest
+    /// first: the desktop artist page's Appears On.</summary>
+    public static IReadOnlyList<Album> BuildAppearsOn(ILibraryService library, string name, IReadOnlyList<Album> releases, string[]? nameTokens = null)
     {
+        nameTokens ??= ArtistCredit.Split(name);
         var own = new HashSet<Guid>(releases.Select(a => a.Id));
         return library.Albums
-            .Where(a => !own.Contains(a.Id) && a.Tracks.Any(t => Credits(t, name)))
+            .Where(a => !own.Contains(a.Id) && a.Tracks.Any(t => MobileLibrary.CreditsArtist(t.Artist, name, nameTokens)))
             .OrderByDescending(MobileLibrary.ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-
-        static bool Credits(Track track, string name) =>
-            string.Equals(track.GroupingArtist, name, StringComparison.OrdinalIgnoreCase)
-            || ArtistCredit.Split(track.Artist).Any(token => string.Equals(token, name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>The hero shows the photo when there is one, else the cover; the page takes its
@@ -337,7 +339,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     /// <summary>Top Songs' ›: every song by the artist, most played first, under the artist's name.</summary>
     [RelayCommand]
     private void OpenAllSongs() =>
-        Shell.Navigate(new SongListPageViewModel(Shell, Name, () => RankTopSongs(MobileLibrary.SongsBy(Shell.Library.Service, Name))));
+        Shell.Navigate(new SongListPageViewModel(Shell, Name, () => RankTopSongs(Songs)));
 
     [RelayCommand] private void OpenCard(ArtistCard? card) => Shell.OpenAlbumCommand.Execute(card?.Album);
 
