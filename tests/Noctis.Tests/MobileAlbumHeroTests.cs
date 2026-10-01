@@ -9,6 +9,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
 using Noctis.Models;
@@ -324,6 +325,57 @@ public class MobileAlbumHeroTests : IDisposable
         MobileFixtures.Named<ScrollViewer>(page, "AlbumScroll").Offset = new Vector(0, 600);
         window.UpdateLayout();
         Assert.Equal(1, scrim.Opacity);
+        window.Close();
+    }
+
+    // ---- Status bar -----------------------------------------------------------------------
+
+    private sealed class RecordingTheme : IThemeHost
+    {
+        public List<bool?> Icons { get; } = new();
+        public void ApplyTheme(string appearance, string darkTheme, string accentHex) { }
+        public void SetStatusBarIcons(bool? dark) => Icons.Add(dark);
+    }
+
+    /// <summary>Under the bar at rest: the cover's top rows. Scrolled into the fade, the page
+    /// colour takes over; with the scrim fully in, it is the page colour alone.</summary>
+    [Fact]
+    public void StatusBarBackdrop_FollowsTheCoverRows_ThenThePageColour()
+    {
+        var rows = Enumerable.Repeat(0.9, 32).Concat(Enumerable.Repeat(0.02, 32)).ToArray();   // white top, black bottom
+        var tint = Color.FromRgb(0x10, 0x10, 0x10);
+        var page = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(tint);
+
+        Assert.Equal(0.9, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 0), 3);
+        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 600, 40, tint, 0), 3);   // past the cover
+        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 1), 3);     // scrim in
+        Assert.Equal(page, AlbumPage.StatusBarBackdropLuminance(null, 400, 0.45, 0, 40, tint, 0), 3);     // rows unknown
+        Assert.True(PageTint.PrefersDarkText(AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 0)));
+    }
+
+    /// <summary>The page asks for icons readable on its tint (light on a dark page), and hands
+    /// the bar back to the theme under Now Playing and when it leaves.</summary>
+    [AvaloniaFact]
+    public void StatusBarIcons_FollowThePage_AndReturnToTheTheme()
+    {
+        var theme = new RecordingTheme();
+        var (album, tracks) = Sample(FakeCover());
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(Color.FromRgb(0x14, 0x18, 0x30)), theme: theme);
+        rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
+        var window = MobileFixtures.Mount(rig.Shell, out _);
+        rig.Shell.OpenAlbumsCommand.Execute(null);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        Assert.Equal(false, theme.Icons[^1]);    // light icons on the dark page
+
+        rig.Shell.IsNowPlayingOpen = true;
+        Assert.Null(theme.Icons[^1]);
+        rig.Shell.IsNowPlayingOpen = false;
+        Assert.Equal(false, theme.Icons[^1]);
+
+        rig.Shell.NavigateBackCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.Null(theme.Icons[^1]);
         window.Close();
     }
 }

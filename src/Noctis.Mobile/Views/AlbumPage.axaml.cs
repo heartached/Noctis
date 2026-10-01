@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Noctis.Mobile.ViewModels;
+using Noctis.Services;
 
 namespace Noctis.Mobile.Views;
 
@@ -26,6 +27,12 @@ public partial class AlbumPage : UserControl
     /// <summary>The shell's page host while this page is in it, and its own clip setting.</summary>
     private ContentControl? _host;
     private bool _hostClipWasSet, _hostClip;
+
+    /// <summary>The cover's per-row luminance, once its colours are extracted (for the status bar).</summary>
+    private IReadOnlyList<double>? _coverRows;
+
+    /// <summary>The status bar icons last asked of the theme host; null = the theme's own.</summary>
+    private bool? _statusIcons;
 
     public AlbumPage()
     {
@@ -65,6 +72,7 @@ public partial class AlbumPage : UserControl
 
     private void Detach()
     {
+        SetStatusIcons(null);
         RestoreHostClip();
         if (_shell != null) _shell.PropertyChanged -= OnShellChanged;
         if (_tint != null) _tint.PropertyChanged -= OnTintChanged;
@@ -76,6 +84,8 @@ public partial class AlbumPage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplySafeArea();
+        else if (e.PropertyName is nameof(ShellViewModel.IsNowPlayingOpen) or nameof(ShellViewModel.IsLyricsOpen)
+                 or nameof(ShellViewModel.IsQueueOpen)) UpdateStatusBar();
     }
 
     private void OnTintChanged(object? sender, PropertyChangedEventArgs e)
@@ -143,6 +153,62 @@ public partial class AlbumPage : UserControl
         var coverEnd = Hero.Height - AlbumScroll.Offset.Y;
         var progress = Math.Clamp((top + TopBarHeight + ScrimRun - coverEnd) / ScrimRun, 0, 1);
         TopScrim.Opacity = progress;
+        UpdateStatusBar();
+    }
+
+    /// <summary>
+    /// Status bar icons readable on what is drawn under them: the cover's rows at the current
+    /// offset (blended by the hero fade and the scrim toward the page colour), dark or light by
+    /// the same contrast rule as the page text. Back to the theme's own while Now Playing,
+    /// Lyrics or the Queue covers the page, and when the page leaves. Only a change reaches
+    /// the platform.
+    /// </summary>
+    private void UpdateStatusBar()
+    {
+        bool? dark = null;
+        if (_shell is { IsNowPlayingOpen: false, IsLyricsOpen: false, IsQueueOpen: false } && _tint?.TintColor is { } tint)
+        {
+            dark = PageTint.PrefersDarkText(StatusBarBackdropLuminance(_coverRows, Hero.Height, HeroFadeShare,
+                AlbumScroll.Offset.Y, _shell.SafeArea.Top, tint, TopScrim.Opacity));
+        }
+        SetStatusIcons(dark);
+    }
+
+    private void SetStatusIcons(bool? dark)
+    {
+        if (dark == _statusIcons) return;
+        _statusIcons = dark;
+        _shell?.Theme?.SetStatusBarIcons(dark);
+    }
+
+    /// <summary>
+    /// Relative luminance under the status bar (screen y 0 … <paramref name="barHeight"/>) with
+    /// the page scrolled by <paramref name="offset"/>: the mean of the cover rows there, each
+    /// blended toward the page colour by the hero fade's smoothstep, then by the scrim. Without
+    /// the cover's rows, the page colour.
+    /// </summary>
+    internal static double StatusBarBackdropLuminance(IReadOnlyList<double>? coverRows, double heroHeight, double fadeShare,
+        double offset, double barHeight, Color tint, double scrim)
+    {
+        var page = DominantColorExtractor.GetRelativeLuminance(tint);
+        var cover = page;
+        if (coverRows is { Count: > 0 } rows && heroHeight > 0 && barHeight > 0)
+        {
+            const int samples = 8;
+            double sum = 0;
+            for (var i = 0; i < samples; i++)
+            {
+                var y = offset + barHeight * (i + 0.5) / samples;
+                if (y < 0 || y >= heroHeight) { sum += page; continue; }
+                var rel = y / heroHeight;
+                var t = Math.Clamp((rel - (1 - fadeShare)) / fadeShare, 0, 1);
+                var fade = t * t * (3 - 2 * t);
+                var row = rows[Math.Min(rows.Count - 1, (int)(rel * rows.Count))];
+                sum += row + (page - row) * fade;
+            }
+            cover = sum / samples;
+        }
+        return cover + (page - cover) * Math.Clamp(scrim, 0, 1);
     }
 
     /// <summary>
@@ -152,6 +218,8 @@ public partial class AlbumPage : UserControl
     /// </summary>
     private void ApplyTint()
     {
+        _coverRows = _tint?.TintColor != null ? DominantColorExtractor.GetCachedHeroColors(_vm?.Album.ArtworkPath)?.RowLuminance : null;
+        UpdateStatusBar();
         if (_tint?.TintColor is { } tint)
         {
             var dark = PageTint.PrefersDarkText(tint);

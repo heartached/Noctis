@@ -103,7 +103,10 @@ public sealed partial class PageTint : ObservableObject
     /// The crossover sits at luminance ~0.18, where both give ~4.6:1, so text in the better of
     /// the two always clears WCAG AA (4.5:1).</summary>
     public static bool PrefersDarkText(Color background) =>
-        ContrastRatio(Colors.Black, background) >= ContrastRatio(Colors.White, background);
+        PrefersDarkText(DominantColorExtractor.GetRelativeLuminance(background));
+
+    /// <summary><see cref="PrefersDarkText(Color)"/> for a backdrop's relative luminance.</summary>
+    public static bool PrefersDarkText(double luminance) => (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05);
 
     /// <summary>Opacity floor of secondary text: as dim as Apple's grey labels when the tint allows.</summary>
     public const double SubtleTextMinOpacity = 0.6;
