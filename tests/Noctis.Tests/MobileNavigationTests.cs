@@ -157,6 +157,23 @@ public class MobileNavigationTests : IDisposable
         Assert.False(shell.IsLibraryRootVisible);
     }
 
+    /// <summary>The tab bar stays up under the Queue: a tab tapped there lands on that tab's
+    /// page, not back on the player.</summary>
+    [Fact]
+    public void SelectTab_FromUnderTheQueue_ClosesTheQueueAndNowPlaying()
+    {
+        var shell = MakeShell();
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleQueueCommand.Execute(null);
+
+        shell.SelectTabCommand.Execute(MobileTab.Playlists);
+
+        Assert.False(shell.IsQueueOpen);
+        Assert.False(shell.IsNowPlayingOpen);
+        Assert.False(shell.IsLyricsOpen);
+        Assert.True(shell.IsPlaylistsRootVisible);
+    }
+
     [Fact]
     public void Navigate_FromNowPlaying_ClosesThePlayerAndItsOverlays()
     {

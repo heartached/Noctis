@@ -159,6 +159,25 @@ public class MobileTabBarTests : IDisposable
         Assert.False(shell.IsTabBarCollapsed);
     }
 
+    /// <summary>The bar stands under the Queue sheet, expanded: opening the Queue unfolds it and
+    /// no scroll folds it while the Queue is up.</summary>
+    [Fact]
+    public void OpeningTheQueue_UnfoldsTheBar_AndScrollsDoNotFoldItUnderTheQueue()
+    {
+        var shell = MakeShell();
+        var offset = 0.0;
+        ScrollBy(shell, ref offset, 100);
+        Assert.True(shell.IsTabBarCollapsed);
+
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleQueueCommand.Execute(null);
+        Assert.False(shell.IsTabBarCollapsed);
+
+        _now += ShellViewModel.TabBarSettleMs + 1;
+        ScrollBy(shell, ref offset, 100);
+        Assert.False(shell.IsTabBarCollapsed);
+    }
+
     [AvaloniaFact]
     public void ScrollingAPage_CollapsesTheBar_ThroughTheShell()
     {

@@ -204,7 +204,9 @@ public sealed partial class ShellViewModel : ObservableObject
     /// </summary>
     public void ReportContentScroll(double offsetY, double deltaY)
     {
-        if (deltaY == 0) return;
+        // Under the Queue the bar stands expanded (OnIsQueueOpenChanged): a list moving in the
+        // hidden tab content must not fold it there.
+        if (deltaY == 0 || IsQueueOpen) return;
         if (offsetY <= 1)
         {
             _scrollRun = 0;
@@ -229,6 +231,13 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void ExpandTabBar() => UnfoldTabBar();
 
     partial void OnCurrentPageChanged(MobilePage? value) => UnfoldTabBar();
+
+    /// <summary>The tab bar stays up under the Queue sheet (ShellView), and the folded row has
+    /// no place there: opening the Queue unfolds it.</summary>
+    partial void OnIsQueueOpenChanged(bool value)
+    {
+        if (value) UnfoldTabBar();
+    }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -295,10 +304,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void NavigateBack() => GoBack();
 
-    /// <summary>A tab tap always lands on that tab's root, so re-tapping the current tab pops to it.</summary>
+    /// <summary>A tab tap always lands on that tab's root, so re-tapping the current tab pops to it.
+    /// The bar stays up under the Queue, and a tap there closes the Queue and Now Playing too.</summary>
     [RelayCommand]
     private void SelectTab(MobileTab tab)
     {
+        CloseNowPlaying();
         PopToRoot();
         SelectedTab = tab;
     }

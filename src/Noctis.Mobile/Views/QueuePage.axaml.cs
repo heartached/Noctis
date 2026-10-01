@@ -17,8 +17,9 @@ namespace Noctis.Mobile.Views;
 
 /// <summary>
 /// The Queue sheet: it slides up over the page underneath, shows the current track and Up Next
-/// over its blurred cover, and floats the transport in a glass pill. Up Next rows: drag one by
-/// its handle to reorder, swipe it left to remove (spec §5 item 6).
+/// over its blurred cover, and floats the transport in a glass pill above the tab bar, which
+/// stays up under the sheet (<see cref="TabBar"/>). Up Next rows: drag one by its handle to
+/// reorder, swipe it left to remove (spec §5 item 6).
 /// Rows are resolved by container index, never by Track: "Add to Queue" of a queued song puts
 /// the same Track in the list twice, and IndexOf would act on the first copy. The row's Track
 /// is captured too: Up Next can be rebuilt mid-gesture (the track ends, a lock-screen Next), and
@@ -36,7 +37,7 @@ public partial class QueuePage : UserControl
 
     /// <summary>The sheet's slide up and down.</summary>
     private static readonly TimeSpan Slide = TimeSpan.FromMilliseconds(350);
-    private const double PillHeight = 62, PillGap = 10, ListEndGap = 16;
+    private const double PillHeight = 56, PillGap = 12, ListEndGap = 16;
 
     private ShellViewModel? _vm;
     private bool _shown;        // the sheet is up, or on its way up
@@ -44,6 +45,7 @@ public partial class QueuePage : UserControl
     private bool _transitionsOn;
     private bool _slidePending; // shown before the sheet joined the visual tree
     private IDisposable? _closeTimer;
+    private double _tabBarInset;
 
     static QueuePage()
     {
@@ -73,6 +75,27 @@ public partial class QueuePage : UserControl
 
     /// <summary>Sliding down after a close: still visible, taking no touches. Internal for tests.</summary>
     internal bool IsClosing => _closing;
+
+    /// <summary>
+    /// ShellView's tab bar, which the owner's mockup keeps under the queue: ShellView raises it
+    /// over the overlays while this page is on screen. It slides with the sheet, so the two read
+    /// as one sheet with the tab bar at its foot; a close that lands on a tab page (a tab
+    /// tapped, a page opened) leaves it where it is.
+    /// </summary>
+    internal Control? TabBar { get; set; }
+
+    /// <summary>How far the tab bar reaches up from the bottom edge, the navigation bar under it
+    /// included: the pill and the end of the list stay above it. Kept current by ShellView.</summary>
+    internal double TabBarInset
+    {
+        get => _tabBarInset;
+        set
+        {
+            if (_tabBarInset == value) return;
+            _tabBarInset = value;
+            ApplySafeArea();
+        }
+    }
 
     private bool CoerceVisible(bool visible)
     {
@@ -113,6 +136,7 @@ public partial class QueuePage : UserControl
             // Start below the screen without animating there.
             DetachTransitions();
             Sheet.RenderTransform = Offscreen();
+            if (TabBar != null) TabBar.RenderTransform = Offscreen();
             Dim.Opacity = 0;
         }
         UpdateBars();
@@ -125,6 +149,7 @@ public partial class QueuePage : UserControl
         _slidePending = false;
         AttachTransitions();
         Sheet.RenderTransform = TransformOperations.Parse("translateY(0px)");
+        if (TabBar != null) TabBar.RenderTransform = TransformOperations.Parse("translateY(0px)");
         Dim.Opacity = 1;
     }
 
@@ -140,6 +165,7 @@ public partial class QueuePage : UserControl
         DetachTransitions();
         _slidePending = false;
         Sheet.RenderTransform = TransformOperations.Parse("translateY(0px)");
+        if (TabBar != null) TabBar.RenderTransform = TransformOperations.Parse("translateY(0px)");
         Dim.Opacity = 1;
     }
 
@@ -151,6 +177,9 @@ public partial class QueuePage : UserControl
         ResetGesture();
         AttachTransitions();
         Sheet.RenderTransform = Offscreen();
+        // Back to Now Playing, the tab bar goes down with the sheet (OnShellChanged keeps it in
+        // place when the player closes as well).
+        if (TabBar != null && _vm?.IsNowPlayingOpen == true) TabBar.RenderTransform = Offscreen();
         Dim.Opacity = 0;
         UpdateBars();
         _closeTimer = DispatcherTimer.RunOnce(FinishClose, Slide);
@@ -161,7 +190,17 @@ public partial class QueuePage : UserControl
     {
         CancelClose();
         _shown = false;
+        ParkTabBar();
         CoerceValue(IsVisibleProperty);
+    }
+
+    /// <summary>The tab bar back in its place, unanimated: once the sheet is gone it drops back
+    /// under Now Playing, and must be in place when the player closes.</summary>
+    private void ParkTabBar()
+    {
+        if (TabBar == null) return;
+        TabBar.Transitions = null;
+        TabBar.RenderTransform = null;
     }
 
     private void CancelClose()
@@ -189,6 +228,13 @@ public partial class QueuePage : UserControl
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = Slide, Easing = ease },
         };
         Dim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = Slide, Easing = ease } };
+        if (TabBar != null)
+        {
+            TabBar.Transitions = new Transitions
+            {
+                new TransformOperationsTransition { Property = RenderTransformProperty, Duration = Slide, Easing = ease },
+            };
+        }
     }
 
     private void DetachTransitions()
@@ -196,6 +242,7 @@ public partial class QueuePage : UserControl
         _transitionsOn = false;
         Sheet.Transitions = null;
         Dim.Transitions = null;
+        if (TabBar != null) TabBar.Transitions = null;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -218,6 +265,10 @@ public partial class QueuePage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplySafeArea();
+        // Closed onto a tab page (CloseNowPlaying drops the Queue first, so BeginClose saw the
+        // player still open): the tab bar stays where it is over that page.
+        else if (e.PropertyName == nameof(ShellViewModel.IsNowPlayingOpen) && _closing && _vm?.IsNowPlayingOpen == false)
+            ParkTabBar();
     }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
@@ -225,14 +276,20 @@ public partial class QueuePage : UserControl
         if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) UpdateBars();
     }
 
-    /// <summary>The pill sits above the navigation bar; the list ends far enough below its last
-    /// row for that row to scroll clear of the pill (in landscape the pill has a column of its own).</summary>
+    /// <summary>The pill sits above the tab bar (and the navigation bar under it). Rows scroll
+    /// under the pill but stop halfway down it, so below it there is only the sheet and the tab
+    /// bar, as in the owner's mockup: halfway, where the pill's round ends are widest, the cut
+    /// never shows past them (cut at its foot, a sliver of the next cover peeked out under the
+    /// rounded corner). The list ends far enough below its last row for that row to scroll
+    /// clear of the pill. In landscape the pill has a column of its own and the list ends at the
+    /// tab bar.</summary>
     private void ApplySafeArea()
     {
-        var bottom = _vm?.SafeArea.Bottom ?? 0;
+        var bottom = Math.Max(_tabBarInset, _vm?.SafeArea.Bottom ?? 0);
         PillHost.Margin = new Thickness(0, 0, 0, bottom);
-        var underPill = _landscape == true ? 0 : PillHeight + PillGap;
-        QueueScroll.Padding = new Thickness(0, 0, 0, underPill + bottom + ListEndGap);
+        var landscape = _landscape == true;
+        QueueScroll.Margin = new Thickness(0, 0, 0, bottom + (landscape ? 0 : PillGap + PillHeight / 2));
+        QueueScroll.Padding = new Thickness(0, 0, 0, (landscape ? 0 : PillHeight / 2) + ListEndGap);
     }
 
     private bool? _landscape;
@@ -257,14 +314,14 @@ public partial class QueuePage : UserControl
         // Spanning into the star row, the header no longer sizes the rows the list starts under.
         Grid.SetRowSpan(NowRow, landscape ? 3 : 1);
         NowRow.VerticalAlignment = landscape ? VerticalAlignment.Top : VerticalAlignment.Stretch;
-        Grid.SetColumn(InfoBlock, landscape ? 1 : 0);
-        Grid.SetRow(InfoBlock, landscape ? 1 : 2);
-        InfoBlock.Margin = new Thickness(20, landscape ? 4 : 16, 20, 0);
+        // Side by side the column split divides the header from the list; the rule would only
+        // sit over the cover's column.
+        HeaderRule.IsVisible = !landscape;
         foreach (var list in new Control[] { EmptyQueue, QueueScroll })
         {
             Grid.SetColumn(list, landscape ? 1 : 0);
-            Grid.SetRow(list, landscape ? 2 : 3);
-            Grid.SetRowSpan(list, landscape ? 2 : 1);
+            Grid.SetRow(list, landscape ? 1 : 3);
+            Grid.SetRowSpan(list, landscape ? 3 : 1);
         }
         ApplySafeArea();
     }
