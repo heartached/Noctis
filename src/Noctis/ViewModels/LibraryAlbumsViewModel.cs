@@ -1007,8 +1007,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(album.Tracks);
     }
 
     /// <summary>Plays all tracks from the current filtered artist view in order.</summary>
@@ -1026,8 +1025,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(allTracks);
     }
 
     /// <summary>
@@ -1082,8 +1080,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var songs = GetArtistSongsInOrder();
         if (songs.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(songs);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(songs);
     }
 
     [RelayCommand]

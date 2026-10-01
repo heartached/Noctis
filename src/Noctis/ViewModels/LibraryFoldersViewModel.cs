@@ -313,8 +313,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     private void ShuffleFolder()
     {
         if (SelectedFolderTracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(SelectedFolderTracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(SelectedFolderTracks.ToList());
     }
 
     [RelayCommand]
@@ -356,8 +355,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(tracks);
     }
 
     [RelayCommand]

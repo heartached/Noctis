@@ -87,8 +87,7 @@ public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(tracks);
     }
 
     private List<Track> GetAllTracks()

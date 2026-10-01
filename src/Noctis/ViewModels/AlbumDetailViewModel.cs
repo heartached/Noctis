@@ -682,8 +682,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void ShufflePlay()
     {
         if (Tracks.Count == 0) return;
-        var shuffled = InAlbumOrder(Tracks).OrderBy(_ => Random.Shared.Next()).ToList();
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -1055,8 +1054,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void ShuffleRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        var shuffled = InAlbumOrder(album.Tracks).OrderBy(_ => Random.Shared.Next()).ToList();
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]
