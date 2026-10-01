@@ -4,9 +4,6 @@ namespace Noctis.Mobile.ViewModels;
 
 public enum RailItemKind { Album, Playlist, Track, Artist }
 
-/// <summary>The Library root's lower-half views (ruling 4: chips switch it rather than filter the rails).</summary>
-public enum LibraryChip { AllMusic, Playlists, Albums, Artists, Songs }
-
 /// <summary>
 /// One tile on a Library rail. Rails mix albums, playlists and songs, so the tile carries its
 /// own caption and cover; <see cref="Payload"/> is what a tap opens or plays. A record, so an

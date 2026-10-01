@@ -12,8 +12,8 @@
         <StyleInclude Source="avares://Noctis.Mobile/Views/MobileStyles.axaml" />
     </UserControl.Styles>
 
-    <!-- One template per page view model: PageHost (and B3's Library chip host) resolve the
-         top page's view here. -->
+    <!-- One template per page view model: PageHost (and the Playlists/Favorites tab roots)
+         resolve the page's view here. -->
     <UserControl.DataTemplates>
         <DataTemplate DataType="vm:SongListPageViewModel">
             <views:SongListPage />

@@ -134,35 +134,6 @@ public class MobileLibraryRailsTests
     }
 
     [AvaloniaFact]
-    public void Chips_SwapTheLowerHalfForAnEmbeddedList_AndBack()
-    {
-        var a1 = MobileFixtures.Song("A1");
-        using var rig = MobileFixtures.MakeRig(new[] { a1 }, new[] { MobileFixtures.MakeAlbum("Alpha", "X", a1) }, WithFolder());
-        var window = MobileFixtures.Mount(rig.Shell, out var view);
-        Assert.True(MobileFixtures.Named<ScrollViewer>(view, "LibraryScroll").IsVisible);
-        Assert.True(MobileFixtures.Named<Button>(view, "AllMusicChip").Classes.Contains("selected"));
-
-        rig.Shell.SelectLibraryChipCommand.Execute(LibraryChip.Albums);
-        window.UpdateLayout();
-
-        var embedded = Assert.IsType<AlbumGridPageViewModel>(rig.Shell.LibraryChipPage);
-        Assert.True(embedded.IsEmbedded);
-        Assert.Null(rig.Shell.CurrentPage);                                // embedded, not pushed
-        Assert.False(MobileFixtures.Named<ScrollViewer>(view, "LibraryScroll").IsVisible);
-        Assert.True(MobileFixtures.Named<ContentControl>(view, "ChipHost").IsVisible);
-        var grid = MobileFixtures.Find<AlbumGridPage>(view);
-        Assert.DoesNotContain(grid.GetVisualDescendants().OfType<Button>(),
-            b => b.Classes.Contains("icon") && b.IsEffectivelyVisible);     // no back chevron when embedded
-        Assert.Contains(grid.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Alpha");
-
-        rig.Shell.SelectLibraryChipCommand.Execute(LibraryChip.AllMusic);
-        window.UpdateLayout();
-        Assert.Null(rig.Shell.LibraryChipPage);
-        Assert.True(MobileFixtures.Named<ScrollViewer>(view, "LibraryScroll").IsVisible);
-        window.Close();
-    }
-
-    [AvaloniaFact]
     public void RecentlyPlayed_ShowsThePlayedAlbums_AndItsHeaderOpensTheGrid()
     {
         var a1 = MobileFixtures.Song("A1");
