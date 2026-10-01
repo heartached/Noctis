@@ -450,6 +450,7 @@
   <data name="Settings.KugouHint" xml:space="preserve"><value>Word-synced lyrics catalog</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synced lyrics · slower lookups</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Choose Source on the lyrics page searches any of these, even when switched off here.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
   <data name="Settings.METADATA" xml:space="preserve"><value>METADATA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TagSourcesSearchMetadata" xml:space="preserve"><value>Tag sources for Search metadata, in order.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Deezer" xml:space="preserve"><value>Deezer</value><comment>Text in SettingsView.axaml</comment></data>
@@ -920,6 +921,28 @@
   <data name="Lyrics.Gradient" xml:space="preserve"><value>Gradient</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Search Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Searching for Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.ChooseSource" xml:space="preserve"><value>Choose Source</value><comment>Button in LyricsView.axaml — opens the Search Lyrics dialog with a source picker</comment></data>
+  <data name="LyricsSearch.Title" xml:space="preserve"><value>Search Lyrics</value><comment>LyricsSearchDialog.axaml title</comment></data>
+  <data name="LyricsSearch.Hint" xml:space="preserve"><value>Auto searches the sources switched on in Settings and picks word-synced over synced over plain.</value><comment>LyricsSearchDialog.axaml subtitle</comment></data>
+  <data name="LyricsSearch.Source" xml:space="preserve"><value>Lyrics source</value><comment>Tooltip on the source picker in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Auto" xml:space="preserve"><value>Auto (best match)</value><comment>First source-picker entry (LyricsSearchViewModel)</comment></data>
+  <data name="LyricsSearch.ArtistWatermark" xml:space="preserve"><value>Artist</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Title</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Search" xml:space="preserve"><value>Search</value><comment>Button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Use" xml:space="preserve"><value>Use Lyrics</value><comment>Primary button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Best" xml:space="preserve"><value>Best</value><comment>Badge on the Auto pick in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.SelectToPreview" xml:space="preserve"><value>Pick a result to preview its lyrics.</value><comment>Empty preview in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Searching" xml:space="preserve"><value>Searching…</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.BestMatch" xml:space="preserve"><value>Best match: {0}</value><comment>Status in LyricsSearchViewModel; {0} = source name</comment></data>
+  <data name="LyricsSearch.NotFound" xml:space="preserve"><value>No lyrics found for this song.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.Failed" xml:space="preserve"><value>Search failed — check your internet connection.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.NoSources" xml:space="preserve"><value>Every lyrics source is switched off in Settings — pick one above.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.WordSynced" xml:space="preserve"><value>Word-synced</value><comment>Result format in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.LineSynced" xml:space="preserve"><value>Synced</value><comment>Result format in LyricsSearchViewModel (line-level timing)</comment></data>
+  <data name="LyricsSearch.Plain" xml:space="preserve"><value>Plain</value><comment>Result format in LyricsSearchViewModel (no timing)</comment></data>
+  <data name="LyricsSearch.NoMatch" xml:space="preserve"><value>No match</value><comment>Result in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.CouldNotConnect" xml:space="preserve"><value>Couldn't connect</value><comment>Result in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.Instrumental" xml:space="preserve"><value>Instrumental</value><comment>Result in LyricsSearchViewModel</comment></data>
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Written By: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Follow</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.PreviewUnsaved" xml:space="preserve"><value>Preview · unsaved lyrics</value><comment>Text in LyricsView.axaml — Lyrics Studio preview indicator</comment></data>

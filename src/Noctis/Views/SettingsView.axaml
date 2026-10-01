@@ -2820,6 +2820,8 @@
                                               IsChecked="{Binding YouTubeMusicLyricsEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <TextBlock Text="{loc:T Settings.LyricsSourcesPickerHint}"
+                               FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
             </StackPanel>

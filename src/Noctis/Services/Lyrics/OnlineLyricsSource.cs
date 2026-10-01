@@ -26,3 +26,5 @@ public sealed record OnlineLyricsSource(
     ];
 }
 
+/// <summary>One source's answer in a lyrics search: what it found (null = nothing), or that it could not answer.</summary>
+public sealed record LyricsSourceHit(string Source, LrcLibResult? Result, bool Errored);

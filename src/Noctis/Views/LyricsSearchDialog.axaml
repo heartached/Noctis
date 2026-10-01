@@ -1,0 +1,167 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.LyricsSearchDialog"
+        x:DataType="vm:LyricsSearchViewModel"
+        Title="{loc:T LyricsSearch.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <!-- Round header X (same look as the Settings header close). -->
+        <Style Selector="Button.dialog-close">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        </Style>
+        <Style Selector="Button.dialog-close:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="ComboBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+        </Style>
+        <Style Selector="ComboBox.pill ComboBoxItem">
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBox.pill ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="TextBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+        </Style>
+        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ListBox.results">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.results ListBoxItem">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="ListBox.results ListBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="820"
+                MaxHeight="720"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <!-- Header: title + the song, round X at the top-right. -->
+                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
+                    <StackPanel Spacing="2" Margin="34,2,34,0">
+                        <TextBlock Text="{loc:T LyricsSearch.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding TrackLabel}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{loc:T LyricsSearch.Hint}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"
+                                   TextWrapping="Wrap" TextAlignment="Center" />
+                    </StackPanel>
+                    <Button Classes="dialog-close" Command="{Binding CloseCommand}"
+                            ToolTip.Tip="{loc:T Common.Close}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+                    </Button>
+                </Panel>
+
+                <!-- Query row: source picker, artist, title, Search. -->
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="190,8,*,8,*,8,Auto" Margin="24,8,24,12">
+                    <ComboBox Grid.Column="0" Classes="pill"
+                              ItemsSource="{Binding Sources}"
+                              SelectedItem="{Binding SelectedSource}"
+                              ToolTip.Tip="{loc:T LyricsSearch.Source}"
+                              HorizontalAlignment="Stretch" />
+                    <TextBox Grid.Column="2" Classes="pill" Text="{Binding Artist}"
+                             PlaceholderText="{loc:T LyricsSearch.ArtistWatermark}" />
+                    <TextBox Grid.Column="4" Classes="pill" Text="{Binding Title}"
+                             PlaceholderText="{loc:T LyricsSearch.TitleWatermark}" />
+                    <Button Grid.Column="6" Content="{loc:T LyricsSearch.Search}" Command="{Binding SearchCommand}"
+                            IsDefault="True" Padding="20,8" CornerRadius="999" Cursor="Hand"
+                            VerticalAlignment="Stretch" VerticalContentAlignment="Center" />
+                </Grid>
+
+                <!-- Sticky bar: status on the left, Use Lyrics on the right. -->
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
+                        Background="#09FFFFFF"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressBar IsIndeterminate="True" Width="60" Height="4" CornerRadius="2"
+                                         IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding StatusText}" FontSize="13" Opacity="0.8"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="{loc:T LyricsSearch.Use}" Command="{Binding ApplyCommand}"
+                                Padding="22,10"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentButtonBackground}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- Results (one per source) on the left, the selected one's lyrics on the right. -->
+                <Grid ColumnDefinitions="300,16,*" Margin="24,0,24,12" MinHeight="320">
+                    <ListBox Grid.Column="0" Classes="results"
+                             ItemsSource="{Binding Results}"
+                             SelectedItem="{Binding SelectedResult}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LyricsSearchResultRow">
+                                <StackPanel Spacing="2">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Source}" FontSize="13" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <Border Grid.Column="1" CornerRadius="999" Padding="8,1"
+                                                Background="{DynamicResource AccentColorBrush}"
+                                                IsVisible="{Binding IsBest}" VerticalAlignment="Center">
+                                            <TextBlock Text="{loc:T LyricsSearch.Best}" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}" />
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding FormatLabel}" FontSize="11" Opacity="0.75" />
+                                    <TextBlock Text="{Binding Detail}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding HasLyrics}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Column="2" Background="#10FFFFFF" CornerRadius="12">
+                        <Panel>
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                                          Padding="16,12" IsVisible="{Binding HasPreview}">
+                                <SelectableTextBlock Text="{Binding PreviewText}" FontSize="13" TextWrapping="Wrap" LineHeight="20" />
+                            </ScrollViewer>
+                            <TextBlock Text="{loc:T LyricsSearch.SelectToPreview}" FontSize="12" Opacity="0.5"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasPreview}" />
+                        </Panel>
+                    </Border>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

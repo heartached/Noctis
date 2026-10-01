@@ -586,6 +586,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     internal TimeSpan ExtraSourceGrace { get; set; } = TimeSpan.FromSeconds(2.5);
 
+    /// <summary>Opens the Search Lyrics (source picker) dialog; set by MainWindowViewModel.</summary>
+    internal Func<LyricsSearchViewModel, Task>? ShowLyricsSearchDialog { get; set; }
 
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
@@ -1497,6 +1499,123 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         AlternateLyricsLabel = $"Try {prevSource}";
     }
 
+    // ── Search Lyrics with a source picker (issue #113) ──
+
+    /// <summary>Opens the Search Lyrics dialog for the track on the page.</summary>
+    [RelayCommand]
+    private async Task OpenLyricsSearch()
+    {
+        if (_currentTrack == null || ShowLyricsSearchDialog == null) return;
+        var search = CreateLyricsSearchViewModel(_currentTrack);
+        // Auto runs straight away, so the dialog opens on results rather than an empty list.
+        _ = search.SearchAsync();
+        await ShowLyricsSearchDialog(search);
+    }
+
+    /// <summary>The source picker for <paramref name="track"/>, searching through this page's providers.</summary>
+    internal LyricsSearchViewModel CreateLyricsSearchViewModel(Track track) => new(
+        track,
+        AllSourceNames(),
+        async () => AutoSourceNames(await _persistence.LoadSettingsAsync()),
+        (sources, artist, title, ct) => SearchSourcesAsync(sources, artist, title, track.Duration.TotalSeconds, track.Album ?? "", ct),
+        (result, source) => ApplySearchedLyrics(track, result, source));
+
+    private IReadOnlyList<Services.Plugins.PluginLyricsSource> CurrentPluginSources()
+    {
+        try { return PluginLyricsSources?.Invoke() ?? Array.Empty<Services.Plugins.PluginLyricsSource>(); }
+        catch { return Array.Empty<Services.Plugins.PluginLyricsSource>(); }
+    }
+
+    /// <summary>Every online source in Auto's priority order: LRCLIB, NetEase, the extra sources, then plugin providers.</summary>
+    internal IReadOnlyList<string> AllSourceNames()
+    {
+        var names = new List<string> { "LRCLIB", "NetEase" };
+        names.AddRange(ExtraLyricsSources.Select(s => s.Name));
+        names.AddRange(CurrentPluginSources().Select(p => p.Name));
+        return names;
+    }
+
+    /// <summary>What "Auto" searches: the same sources as the automatic lookup — those switched on in Settings, plus plugin providers.</summary>
+    internal IReadOnlyList<string> AutoSourceNames(AppSettings settings)
+    {
+        var names = new List<string>();
+        if (settings.LrcLibEnabled) names.Add("LRCLIB");
+        if (settings.NetEaseEnabled) names.Add("NetEase");
+        names.AddRange(ExtraLyricsSources.Where(s => s.IsEnabled(settings)).Select(s => s.Name));
+        names.AddRange(CurrentPluginSources().Select(p => p.Name));
+        return names;
+    }
+
+    /// <summary>
+    /// Searches the named sources in parallel for the source picker — each named one, whatever
+    /// its Settings switch says — and returns one hit per source in the order given. A source
+    /// that fails or times out comes back as errored; only the caller's cancel propagates.
+    /// </summary>
+    internal async Task<IReadOnlyList<Services.Lyrics.LyricsSourceHit>> SearchSourcesAsync(
+        IReadOnlyList<string> sources, string artist, string title, double duration, string album, CancellationToken ct)
+    {
+        var plugins = CurrentPluginSources();
+        return await Task.WhenAll(sources.Select(SearchOneAsync));
+
+        async Task<Services.Lyrics.LyricsSourceHit> SearchOneAsync(string name)
+        {
+            try
+            {
+                LrcLibResult? result;
+                if (name == "LRCLIB")
+                    result = await FetchFromLrcLibAsync(_lrcLib, artist, title, duration, ct);
+                else if (name == "NetEase")
+                    result = await _netEase.SearchLyricsAsync(artist, title, duration, ct);
+                else if (ExtraLyricsSources.FirstOrDefault(s => s.Name == name) is { } extra)
+                    result = await SearchExtraSourceAsync(extra, artist, title, duration, ct);
+                else if (plugins.FirstOrDefault(p => p.Name == name) is { } plugin)
+                    result = await plugin.FindAsync(artist, title, album, TimeSpan.FromSeconds(duration), ct);
+                else
+                    result = null;
+                return new Services.Lyrics.LyricsSourceHit(name, result, Errored: false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Lyrics, "SourceSearch:Error", $"{name}: {ex.Message}");
+                return new Services.Lyrics.LyricsSourceHit(name, null, Errored: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shows and keeps lyrics picked in the source picker. Like "Try alternate" it may replace
+    /// a sidecar this app wrote, never the user's own. A pick for a track that has left the
+    /// page meanwhile is saved without being shown.
+    /// </summary>
+    internal void ApplySearchedLyrics(Track track, LrcLibResult result, string source)
+    {
+        if (!result.HasLyrics) return;
+
+        if (_currentTrack == null || _currentTrack.Id != track.Id)
+        {
+            PersistOnlineLyricsToSidecar(result, allowReplaceAppSidecar: true, target: track);
+            var text = result.SyncedLyrics ?? result.PlainLyrics;
+            if (!string.IsNullOrWhiteSpace(text))
+                _ = SaveLyricsToCacheAsync(track.Id, text);
+            return;
+        }
+
+        // Supersede an automatic search still in flight, so it can't land over the pick.
+        ++_searchGeneration;
+        IsSearching = false;
+        SearchFailedMessage = string.Empty;
+        DisplayOnlineLyrics(result, userSwitchedSource: true);
+        LyricsSourceName = source;
+        _alternateOnlineResult = null;
+        _alternateSource = null;
+        HasAlternateLyrics = false;
+        AlternateLyricsLabel = string.Empty;
+    }
+
     [RelayCommand]
     private async Task SaveLyricsToFile()
     {
@@ -1569,9 +1688,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// word timings go to an .elrc and the .lrc keeps a line-level projection, so players that
     /// only know LRC still read it.
     /// </summary>
-    private void PersistOnlineLyricsToSidecar(LrcLibResult result, bool allowReplaceAppSidecar = false)
+    private void PersistOnlineLyricsToSidecar(LrcLibResult result, bool allowReplaceAppSidecar = false, Track? target = null)
     {
-        var track = _currentTrack;
+        var track = target ?? _currentTrack;
         if (track == null) return;
 
         var synced = result.SyncedLyrics;
