@@ -701,6 +701,13 @@ public partial class MetadataViewModel : ViewModelBase
            loaded != ComputeTagState(track);
 
     /// <summary>
+    /// True when the user emptied a year the track had when the dialog opened. Only then is
+    /// the file's date removed: WriteTrackMetadata reads year 0 as unknown and keeps it.
+    /// </summary>
+    private bool YearWasCleared(Track track)
+        => track.Year == 0 && _loadedTagSignatures.TryGetValue(track, out var loaded) && loaded.Year > 0;
+
+    /// <summary>
     /// Every field <see cref="IMetadataService.WriteTrackMetadata"/> puts in the file, and only
     /// those. Journal-only state (play count, skip-when-shuffling, start/stop, volume, EQ) is
     /// deliberately absent: changing it must not trigger a file rewrite. Rating and disliked
@@ -2409,10 +2416,12 @@ public partial class MetadataViewModel : ViewModelBase
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
             var tagWriteTargets = _albumTracks.Where(NeedsTagWrite).ToList();
+            var yearClearTargets = tagWriteTargets.Where(YearWasCleared).ToList();
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
-                    if (!_metadata.WriteTrackMetadata(t))
+                    if (!_metadata.WriteTrackMetadata(t)
+                        || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath)))
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
 
@@ -2443,7 +2452,9 @@ public partial class MetadataViewModel : ViewModelBase
         }
         else if (NeedsTagWrite(_track))
         {
-            var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track));
+            var clearYear = YearWasCleared(_track);
+            var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track)
+                                          && (!clearYear || _metadata.ClearYear(_track.FilePath)));
             if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
         }
 

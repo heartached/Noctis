@@ -2162,7 +2162,7 @@ public class LibraryService : ILibraryService
                         Id = first.AlbumId,
                         Name = first.Album,
                         Artist = !string.IsNullOrWhiteSpace(first.AlbumArtist) ? first.AlbumArtist : first.Artist,
-                        Year = first.Year,
+                        Year = Album.ResolveYear(albumTracks),
                         Genre = first.Genre,
                         TrackCount = albumTracks.Count,
                         TotalDuration = TimeSpan.FromTicks(albumTracks.Sum(t => t.Duration.Ticks)),
@@ -3072,7 +3072,9 @@ public class LibraryService : ILibraryService
                         Id = entry.Id,
                         Name = entry.Name,
                         Artist = entry.Artist,
-                        Year = entry.Year,
+                        // From the tracks, not the cached value, so a cache written while
+                        // the year came from the first track alone heals on the next launch.
+                        Year = Album.ResolveYear(albumTracks),
                         Genre = entry.Genre,
                         TrackCount = entry.TrackCount,
                         TotalDuration = TimeSpan.FromTicks(entry.TotalDurationTicks),

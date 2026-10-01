@@ -510,12 +510,19 @@ public class MetadataService : IMetadataService
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);
             tag.DiscCount = (uint)Math.Max(0, track.DiscCount);
             tag.BeatsPerMinute = (uint)Math.Max(0, track.Bpm);
-            tag.Year = (uint)Math.Max(0, track.Year);
-            // TagLib's Year setter stamps a bare "2004" into the very frame the full
-            // release date lives in (TDRC / DATE / ©day), so an unrelated save used to
-            // shrink "2004-02-10" to the year. Put the full date back when it agrees
-            // with the year being written.
-            WriteFullReleaseDate(file, track.ReleaseDate, track.Year);
+            // Year 0 means "unknown", not "erase": a track read before Noctis found the
+            // file's date (a WAV's full ICRD date read as 0 up to 1.5.6) had every lyrics,
+            // rating or tag save empty the date frames in the file (Discord Tangent, "album
+            // dates going missing"). Clearing a year on purpose goes through ClearYear.
+            if (track.Year > 0)
+            {
+                tag.Year = (uint)track.Year;
+                // TagLib's Year setter stamps a bare "2004" into the very frame the full
+                // release date lives in (TDRC / DATE / ©day), so an unrelated save used to
+                // shrink "2004-02-10" to the year. Put the full date back when it agrees
+                // with the year being written.
+                WriteFullReleaseDate(file, track.ReleaseDate, track.Year);
+            }
             tag.Composers = string.IsNullOrWhiteSpace(track.Composer) ? Array.Empty<string>() : new[] { track.Composer };
             tag.Lyrics = string.IsNullOrWhiteSpace(track.Lyrics) ? null : track.Lyrics;
             tag.Comment = string.IsNullOrWhiteSpace(track.Comment) ? null : track.Comment;
@@ -642,6 +649,11 @@ public class MetadataService : IMetadataService
     public bool WriteAdvisory(string filePath, int advisory)
     {
         return SaveTagsAtomically(filePath, file => AdvancedTagIO.WriteAdvisory(file, advisory));
+    }
+
+    public bool ClearYear(string filePath)
+    {
+        return SaveTagsAtomically(filePath, file => file.Tag.Year = 0);
     }
 
     public bool WriteRating(string filePath, int rating, bool isDisliked)

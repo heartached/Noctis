@@ -96,6 +96,32 @@ public class WavInfoDateTests : IDisposable
     }
 
     [Fact]
+    public void SavingATrackStoredWithYearZero_KeepsTheFilesDate()
+    {
+        // A track read as year 0 (an older build misread the file, or the year sits where
+        // Noctis doesn't look) must not wipe the file's date when lyrics, a rating or another
+        // field are saved: "album dates going missing" (Discord Tangent).
+        var path = WriteWav("g.wav", ("INAM", "Song"), ("IPRD", "The Album"), ("ICRD", "1982"));
+        var stale = Read(path);
+        stale.Year = 0;
+        stale.Lyrics = "la la";
+        Assert.True(new MetadataService().WriteTrackMetadata(stale));
+
+        Assert.Equal(1982, Read(path).Year);
+    }
+
+    [Fact]
+    public void ClearYear_RemovesTheFilesDate()
+    {
+        var path = WriteWav("h.wav", ("INAM", "Song"), ("IPRD", "The Album"), ("ICRD", "1982-11-19"));
+        Assert.True(new MetadataService().ClearYear(path));
+
+        var reread = Read(path);
+        Assert.Equal(0, reread.Year);
+        Assert.Equal(string.Empty, reread.ReleaseDate);
+    }
+
+    [Fact]
     public void RiffInfoWouldFill_OnlyWhenTheFileHasWhatTheTrackLacks()
     {
         var dated = WriteWav("e.wav", ("IPRD", "The Album"), ("ICRD", "2019-05-10"));
