@@ -15,7 +15,7 @@ public sealed record ArtistTopSong(Track Track, int Rank)
 /// to the name, then every track filed under it); the hero is the newest album's cover
 /// (ruling 3: no artist portraits offline); the page tints from it like an album page.
 /// </summary>
-public sealed partial class ArtistPageViewModel : MobilePage
+public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 {
     private const int TopSongCount = 5;
 

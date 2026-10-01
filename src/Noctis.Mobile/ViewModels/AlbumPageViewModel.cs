@@ -41,7 +41,7 @@ public sealed record AlbumDiscHeader(int Disc)
 /// colour, Apple Music style. Keyed by album id: a rescan rebuilds Album instances, so on
 /// each library refresh the page re-resolves its album by id.
 /// </summary>
-public sealed partial class AlbumPageViewModel : MobilePage
+public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 {
     public AlbumPageViewModel(ShellViewModel shell, Album album)
     {

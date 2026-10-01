@@ -93,11 +93,40 @@ public sealed partial class ShellViewModel : ObservableObject
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible), nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible))]
+    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible), nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible),
+        nameof(StatusBarIconsDark))]
     private bool _isNowPlayingOpen;
 
-    [ObservableProperty] private bool _isQueueOpen;
-    [ObservableProperty] private bool _isLyricsOpen;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool _isQueueOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool _isLyricsOpen;
+
+    /// <summary>The status bar icons the page under the bar asks for (the album cover: dark on a
+    /// light cover); null leaves them to the theme.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool? _pageStatusBarIcons;
+
+    /// <summary>
+    /// What the status bar shows: light icons over Now Playing, Lyrics and the Queue (all on a
+    /// dark backdrop under the bar, whatever the theme), else the page's choice, else the
+    /// theme's (null). Applied to <see cref="Theme"/> on every change.
+    /// </summary>
+    public bool? StatusBarIconsDark => IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen ? false : PageStatusBarIcons;
+
+    private bool? _appliedStatusBarIcons;
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName != nameof(StatusBarIconsDark) || StatusBarIconsDark == _appliedStatusBarIcons) return;
+        _appliedStatusBarIcons = StatusBarIconsDark;
+        Theme?.SetStatusBarIcons(_appliedStatusBarIcons);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFavoritesSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsPlaylistsSelected),

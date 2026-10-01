@@ -178,7 +178,8 @@ public partial class AlbumPage : UserControl
     {
         if (dark == _statusIcons) return;
         _statusIcons = dark;
-        _shell?.Theme?.SetStatusBarIcons(dark);
+        // The shell decides what reaches the platform (its overlays win over the page).
+        if (_shell != null) _shell.PageStatusBarIcons = dark;
     }
 
     /// <summary>

@@ -328,7 +328,58 @@ public class MobileAlbumHeroTests : IDisposable
         window.Close();
     }
 
+    // ---- Bottom fade --------------------------------------------------------------------------
+
+    /// <summary>On a tinted page the fade under the glass bar is the page colour, not the theme's
+    /// (a white haze over a dark cover in Light, a dark one over a white cover in Dark); the
+    /// theme's fade comes back off the page.</summary>
+    [AvaloniaFact]
+    public void BottomFade_TakesThePageColour_OnATintedPage()
+    {
+        var tint = Color.FromRgb(0x14, 0x18, 0x30);
+        var (album, tracks) = Sample(FakeCover());
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(tint));
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var themeFade = view.FindControl<Border>("BottomScrim")!;
+        var pageFade = view.FindControl<Border>("PageScrim")!;
+        Assert.True(themeFade.IsVisible);
+        Assert.False(pageFade.IsVisible);
+
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        Assert.False(themeFade.IsVisible);
+        Assert.True(pageFade.IsVisible);
+        var stops = Assert.IsAssignableFrom<IGradientBrush>(pageFade.Background).GradientStops;
+        Assert.Equal(0, stops[0].Color.A);                                       // clear at the top
+        Assert.Equal(Color.FromRgb(tint.R, tint.G, tint.B), Color.FromRgb(stops[^1].Color.R, stops[^1].Color.G, stops[^1].Color.B));
+
+        rig.Shell.NavigateBackCommand.Execute(null);
+        window.UpdateLayout();
+        Assert.True(themeFade.IsVisible);
+        Assert.False(pageFade.IsVisible);
+        window.Close();
+    }
+
     // ---- Status bar -----------------------------------------------------------------------
+
+    /// <summary>Now Playing, Lyrics and the Queue all sit on a dark backdrop under the status bar
+    /// (the Queue sheet starts below it, over Now Playing), so in Light the theme's dark icons
+    /// vanished there: they take light icons, and the theme's come back when they close.</summary>
+    [Fact]
+    public void StatusBarIcons_GoLightOverNowPlayingLyricsAndQueue_ThenBackToTheTheme()
+    {
+        var theme = new RecordingTheme();
+        using var rig = MobileFixtures.MakeRig(theme: theme);
+
+        rig.Shell.IsNowPlayingOpen = true;
+        Assert.Equal(false, theme.Icons[^1]);
+        rig.Shell.IsQueueOpen = true;
+        rig.Shell.IsLyricsOpen = true;
+        Assert.Equal(false, theme.Icons[^1]);
+        rig.Shell.CloseNowPlayingCommand.Execute(null);
+        Assert.Null(theme.Icons[^1]);
+        Assert.Equal(new bool?[] { false, null }, theme.Icons);    // only changes reach the platform
+    }
 
     private sealed class RecordingTheme : IThemeHost
     {
@@ -353,8 +404,8 @@ public class MobileAlbumHeroTests : IDisposable
         Assert.True(PageTint.PrefersDarkText(AlbumPage.StatusBarBackdropLuminance(rows, 400, 0.45, 0, 40, tint, 0)));
     }
 
-    /// <summary>The page asks for icons readable on its tint (light on a dark page), and hands
-    /// the bar back to the theme under Now Playing and when it leaves.</summary>
+    /// <summary>The page asks for icons readable on its tint (light on a dark page); Now Playing's
+    /// dark backdrop takes light icons over it; the page hands the bar back to the theme when it leaves.</summary>
     [AvaloniaFact]
     public void StatusBarIcons_FollowThePage_AndReturnToTheTheme()
     {
@@ -369,7 +420,7 @@ public class MobileAlbumHeroTests : IDisposable
         Assert.Equal(false, theme.Icons[^1]);    // light icons on the dark page
 
         rig.Shell.IsNowPlayingOpen = true;
-        Assert.Null(theme.Icons[^1]);
+        Assert.Equal(false, theme.Icons[^1]);
         rig.Shell.IsNowPlayingOpen = false;
         Assert.Equal(false, theme.Icons[^1]);
 

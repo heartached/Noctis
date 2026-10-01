@@ -134,6 +134,8 @@
         <!-- Content fades into the bar rather than ending in a hard line behind it. -->
         <Border Name="BottomScrim" VerticalAlignment="Bottom" Height="150" IsHitTestVisible="False"
                 Background="{DynamicResource GlassBarScrim}" />
+        <!-- On a cover-tinted page (album, artist) the same fade, into the page colour. -->
+        <Border Name="PageScrim" VerticalAlignment="Bottom" Height="150" IsHitTestVisible="False" IsVisible="False" />
 
         <Panel Name="BottomChrome" VerticalAlignment="Bottom" Margin="{Binding BottomSafePadding}">
             <Panel Name="ChromeHost" Margin="14,0,14,8" VerticalAlignment="Bottom">

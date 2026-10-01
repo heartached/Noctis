@@ -126,6 +126,7 @@ public partial class ShellView : UserControl
         // Unfolded as the Queue opens: the bar rises with the sheet already laid out rather
         // than morphing on the way up (ApplyChromeLayout re-attaches the transitions).
         if (e.PropertyName == nameof(ShellViewModel.IsTabBarCollapsed) && _vm?.IsQueueOpen == true) DetachTransitions();
+        if (e.PropertyName == nameof(ShellViewModel.CurrentPage)) TrackPageTint();
         if (e.PropertyName is nameof(ShellViewModel.IsTabBarCollapsed) or nameof(ShellViewModel.IsMiniBarVisible)
             or nameof(ShellViewModel.SelectedTab) or nameof(ShellViewModel.SafeArea))
             ApplyChromeLayout();
@@ -199,6 +200,7 @@ public partial class ShellView : UserControl
         // expanded height, so the end of a list never hides when the bar unfolds over it.
         Resources["ShellBottomInset"] = new Thickness(0, 0, 0, expandedHeight + ChromeBottomMargin + vm.SafeArea.Bottom + 16);
         BottomScrim.Height = expandedHeight + ChromeBottomMargin + vm.SafeArea.Bottom + 36;
+        PageScrim.Height = BottomScrim.Height;
         // Under the Queue only the tab capsule stands: the Queue opens from Now Playing, which
         // hides the mini player.
         QueueSheet.TabBarInset = TabHeight + ChromeBottomMargin + vm.SafeArea.Bottom;
@@ -241,5 +243,54 @@ public partial class ShellView : UserControl
         // Once the bar has been laid out at its real width, so it appears in place rather
         // than animating in from zero.
         if (!_transitionsOn && IsLoaded) AttachTransitions();
+    }
+
+    // ---- Page-coloured bottom fade -------------------------------------------------------
+
+    private PageTint? _scrimTint;
+
+    /// <summary>Follows the top page's cover tint (an <see cref="ITintedPage"/>), which can land
+    /// after the page opens: the extraction runs off the UI thread.</summary>
+    private void TrackPageTint()
+    {
+        var tint = (_vm?.CurrentPage as ITintedPage)?.Tint;
+        if (!ReferenceEquals(tint, _scrimTint))
+        {
+            if (_scrimTint != null) _scrimTint.PropertyChanged -= OnPageTintChanged;
+            _scrimTint = tint;
+            if (tint != null) tint.PropertyChanged += OnPageTintChanged;
+        }
+        ApplyPageScrim();
+    }
+
+    private void OnPageTintChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PageTint.TintColor)) ApplyPageScrim();
+    }
+
+    /// <summary>The theme's fade under the bar is a white haze in Light and a dark one in Dark;
+    /// over a page in its cover's colour it showed as a band, so that page fades into its own colour.</summary>
+    private void ApplyPageScrim()
+    {
+        if (_scrimTint?.TintColor is { } c)
+        {
+            PageScrim.Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 0),
+                    new GradientStop(Color.FromArgb(0xD0, c.R, c.G, c.B), 1),
+                },
+            };
+            PageScrim.IsVisible = true;
+            BottomScrim.IsVisible = false;
+        }
+        else
+        {
+            PageScrim.IsVisible = false;
+            BottomScrim.IsVisible = true;
+        }
     }
 }
