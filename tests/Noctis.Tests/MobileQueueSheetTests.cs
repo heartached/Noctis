@@ -100,6 +100,38 @@ public class MobileQueueSheetTests
         window.Close();
     }
 
+    /// <summary>The owner's mockup: the cover on the left and, stacked beside it, the kicker
+    /// with its bars, title, artist, the source, "Track N of M" and UP NEXT (Clear on its
+    /// line, at the right edge), with a rule under the whole header.</summary>
+    [AvaloniaFact]
+    public void Header_StacksTheTrackBesideTheCover()
+    {
+        var (rig, window, _, page, _) = OpenQueue();
+        using var _rig = rig;
+        Rect At(Control c) => new(c.TranslatePoint(default, page)!.Value, c.Bounds.Size);
+        var cover = At(MobileFixtures.Named<Border>(page, "NowCover"));
+        var stack = new[] { "NowKicker", "NowTitle", "NowArtist", "SourceLine", "PositionLine", "UpNextLabel" }
+            .Select(n => At(MobileFixtures.Named<TextBlock>(page, n))).ToArray();
+
+        Assert.InRange(cover.Width, 110, 130);
+        Assert.Equal(cover.Width, cover.Height);
+        for (var i = 0; i < stack.Length; i++)
+        {
+            Assert.True(stack[i].Left >= cover.Right + 8, $"line {i} at x {stack[i].Left}, over the cover ending at {cover.Right}");
+            if (i > 0) Assert.True(stack[i].Top >= stack[i - 1].Bottom - 0.5, $"line {i} not below line {i - 1}");
+        }
+        Assert.True(stack[0].Top >= cover.Top - 6 && stack[^1].Bottom <= cover.Bottom + 6,
+            $"the stack runs {stack[0].Top}..{stack[^1].Bottom}, the cover {cover.Top}..{cover.Bottom}");
+
+        var bars = At(MobileFixtures.Named<Panel>(page, "EqBars"));
+        Assert.True(bars.Left >= stack[0].Right, "the bars follow CURRENTLY PLAYING");
+        var clear = At(MobileFixtures.Named<Button>(page, "ClearButton"));
+        Assert.InRange(clear.Center.Y, stack[^1].Top, stack[^1].Bottom);
+        Assert.True(clear.Right >= page.Bounds.Width - 24, $"Clear ends at {clear.Right}, not at the right edge");
+        Assert.True(At(MobileFixtures.Named<Border>(page, "HeaderRule")).Top >= cover.Bottom);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Header_HidesTheSourceLine_WhenTheSourceIsUnknown()
     {

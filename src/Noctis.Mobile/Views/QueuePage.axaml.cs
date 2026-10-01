@@ -257,14 +257,14 @@ public partial class QueuePage : UserControl
         // Spanning into the star row, the header no longer sizes the rows the list starts under.
         Grid.SetRowSpan(NowRow, landscape ? 3 : 1);
         NowRow.VerticalAlignment = landscape ? VerticalAlignment.Top : VerticalAlignment.Stretch;
-        Grid.SetColumn(InfoBlock, landscape ? 1 : 0);
-        Grid.SetRow(InfoBlock, landscape ? 1 : 2);
-        InfoBlock.Margin = new Thickness(20, landscape ? 4 : 16, 20, 0);
+        // Side by side the column split divides the header from the list; the rule would only
+        // sit over the cover's column.
+        HeaderRule.IsVisible = !landscape;
         foreach (var list in new Control[] { EmptyQueue, QueueScroll })
         {
             Grid.SetColumn(list, landscape ? 1 : 0);
-            Grid.SetRow(list, landscape ? 2 : 3);
-            Grid.SetRowSpan(list, landscape ? 2 : 1);
+            Grid.SetRow(list, landscape ? 1 : 3);
+            Grid.SetRowSpan(list, landscape ? 3 : 1);
         }
         ApplySafeArea();
     }

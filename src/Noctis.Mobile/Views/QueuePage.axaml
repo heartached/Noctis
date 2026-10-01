@@ -19,21 +19,17 @@
                     <SolidColorBrush x:Key="QueueSheetScrim" Color="#A6000000" />
                     <SolidColorBrush x:Key="QueueText" Color="#FFFFFFFF" />
                     <SolidColorBrush x:Key="QueueSubtleText" Color="#B3FFFFFF" />
-                    <SolidColorBrush x:Key="QueueFaintText" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="QueueRule" Color="#1AFFFFFF" />
                     <SolidColorBrush x:Key="QueueCloseFill" Color="#2EFFFFFF" />
-                    <SolidColorBrush x:Key="QueueClearFill" Color="#26FFFFFF" />
                     <SolidColorBrush x:Key="QueueGrabber" Color="#99FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="QueueSheetBase" Color="#FFF2F2F5" />
                     <SolidColorBrush x:Key="QueueSheetScrim" Color="#BFF7F7F9" />
                     <SolidColorBrush x:Key="QueueText" Color="#FF1C1C1E" />
-                    <SolidColorBrush x:Key="QueueSubtleText" Color="#8A000000" />
-                    <SolidColorBrush x:Key="QueueFaintText" Color="#73000000" />
+                    <SolidColorBrush x:Key="QueueSubtleText" Color="#7A000000" />
                     <SolidColorBrush x:Key="QueueRule" Color="#1F000000" />
                     <SolidColorBrush x:Key="QueueCloseFill" Color="#14000000" />
-                    <SolidColorBrush x:Key="QueueClearFill" Color="#12000000" />
                     <SolidColorBrush x:Key="QueueGrabber" Color="#4D000000" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
@@ -47,16 +43,33 @@
         <Style Selector="TextBlock.row-sub, TextBlock.subtle">
             <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
         </Style>
+        <!-- Rows as the mockup sets them: a regular-weight title over the artist and album in
+             one grey. -->
+        <Style Selector="TextBlock.row-title">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
         <Style Selector="TextBlock.row-album">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{DynamicResource QueueFaintText}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
         <Style Selector="TextBlock.kicker">
             <Setter Property="FontSize" Value="12" />
+            <Setter Property="LineHeight" Value="16" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="LetterSpacing" Value="0.6" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <!-- The header's lines, as the mockup sets them: regular weight, the primary text colour. -->
+        <Style Selector="TextBlock.head">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="LineHeight" Value="21" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.position">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="LineHeight" Value="17" />
         </Style>
         <Style Selector="Border.sep">
             <Setter Property="Height" Value="1" />
@@ -64,7 +77,7 @@
             <Setter Property="IsHitTestVisible" Value="False" />
         </Style>
 
-        <!-- The round glass close button and the small Clear pill. -->
+        <!-- The round glass close button. -->
         <Style Selector="Button.round.close">
             <Setter Property="Width" Value="32" />
             <Setter Property="Height" Value="32" />
@@ -77,10 +90,16 @@
             <Setter Property="Width" Value="12" />
             <Setter Property="Height" Value="12" />
         </Style>
+        <!-- Clear: accent text on the UP NEXT line; its padding hangs past the margin so the
+             word itself lines up with the sheet's right edge. -->
         <Style Selector="Button.pill.clear">
-            <Setter Property="Background" Value="{DynamicResource QueueClearFill}" />
-            <Setter Property="CornerRadius" Value="13" />
-            <Setter Property="Padding" Value="12,4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="0,0,-8,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
@@ -176,45 +195,46 @@
                             </Button>
                         </Grid>
 
-                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="20,4,20,0" IsVisible="{Binding Player.HasTrack}">
-                            <Border Name="NowCover" Classes="art" Width="100" Height="100" CornerRadius="10">
-                                <Panel>
-                                    <PathIcon Data="{DynamicResource SongsIcon}" Width="32" Height="32" Opacity="0.4" />
-                                    <controls:CachedImage Name="NowArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
-                                                          DecodeWidth="384" ClearOnSourceChange="False" Stretch="UniformToFill" />
-                                </Panel>
+                        <!-- The owner's mockup: the cover, and stacked beside it the kicker, the track,
+                             where the queue plays from and the track's place in it, then UP NEXT
+                             (with Clear) over the list. Unknown lines hide. -->
+                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="20,2,20,0" IsVisible="{Binding Player.HasTrack}">
+                            <!-- The shadow on an outer border: the cover itself clips to its corners. -->
+                            <Border Width="120" Height="120" CornerRadius="10" VerticalAlignment="Center"
+                                    BoxShadow="0 4 16 0 #38000000">
+                                <Border Name="NowCover" Classes="art" CornerRadius="10">
+                                    <Panel>
+                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="36" Height="36" Opacity="0.4" />
+                                        <controls:CachedImage Name="NowArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                              DecodeWidth="384" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                    </Panel>
+                                </Border>
                             </Border>
-                            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="3">
-                                <StackPanel Orientation="Horizontal" Spacing="7">
+                            <StackPanel Grid.Column="1" Name="NowText" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Name="NowKicker" Classes="kicker" Text="CURRENTLY PLAYING" VerticalAlignment="Center" />
                                     <Panel Name="EqBars" Width="14" Height="12" VerticalAlignment="Center">
                                         <Border Classes="b1" Height="6" />
                                         <Border Classes="b2" Height="10" Margin="3.8,0,0,0" />
                                         <Border Classes="b3" Height="7" Margin="7.6,0,0,0" />
                                         <Border Classes="b4" Height="9" Margin="11.4,0,0,0" />
                                     </Panel>
-                                    <TextBlock Classes="kicker" Text="CURRENTLY PLAYING" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBlock Name="NowTitle" Text="{Binding Player.CurrentTrack.Title}" FontSize="20" FontWeight="Bold"
-                                           TextTrimming="CharacterEllipsis" />
-                                <TextBlock Name="NowArtist" Classes="subtle" FontSize="15" Text="{Binding Player.CurrentTrack.Artist}"
-                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Name="NowTitle" Classes="head" Text="{Binding Player.CurrentTrack.Title}" />
+                                <TextBlock Name="NowArtist" Classes="head" Text="{Binding Player.CurrentTrack.Artist}" />
+                                <TextBlock Name="SourceLine" Classes="head" Margin="0,6,0,0" Text="{Binding Player.PlayingFromText}"
+                                           IsVisible="{Binding Player.HasSourceLabel}" />
+                                <TextBlock Name="PositionLine" Classes="position" Text="{Binding Player.QueuePositionText}"
+                                           IsVisible="{Binding Player.HasQueuePosition}" />
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                    <TextBlock Name="UpNextLabel" Classes="kicker" Text="UP NEXT" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
+                                            Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
+                                </Grid>
                             </StackPanel>
                         </Grid>
 
-                        <StackPanel Grid.Row="2" Name="InfoBlock" Margin="20,16,20,0">
-                            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Player.HasTrack}">
-                                <TextBlock Name="SourceLine" Classes="subtle" Text="{Binding Player.PlayingFromText}"
-                                           TextTrimming="CharacterEllipsis" IsVisible="{Binding Player.HasSourceLabel}" />
-                                <TextBlock Grid.Column="1" Name="PositionLine" Classes="subtle" Margin="12,0,0,0"
-                                           Text="{Binding Player.QueuePositionText}" IsVisible="{Binding Player.HasQueuePosition}" />
-                            </Grid>
-                            <Border Classes="sep" Margin="0,14,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Height="44">
-                                <TextBlock Classes="kicker" Text="UP NEXT" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
-                                        Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
-                            </Grid>
-                        </StackPanel>
+                        <Border Grid.Row="2" Name="HeaderRule" Classes="sep" Margin="20,14,20,4" />
 
                         <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
                                    Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
