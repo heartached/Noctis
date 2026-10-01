@@ -288,13 +288,18 @@ public class LyricsSourcePickerTests
                 Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml")
             });
 
+        var searches = 0;
         var vm = new LyricsSearchViewModel(new Track { Title = "Test Song", Artist = "Test Artist" }, new[] { "LRCLIB", "Kugou" },
             () => Task.FromResult<IReadOnlyList<string>>(new[] { "LRCLIB", "Kugou" }),
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<LyricsSourceHit>>(new[]
+            (_, _, _, _) =>
             {
-                new LyricsSourceHit("LRCLIB", null, true),
-                new LyricsSourceHit("Kugou", Result(synced: Elrc), false),
-            }),
+                searches++;
+                return Task.FromResult<IReadOnlyList<LyricsSourceHit>>(new[]
+                {
+                    new LyricsSourceHit("LRCLIB", null, true),
+                    new LyricsSourceHit("Kugou", Result(synced: Elrc), false),
+                });
+            },
             (_, _) => { });
         await vm.SearchAsync();
 
@@ -310,6 +315,8 @@ public class LyricsSourcePickerTests
             Assert.Equal(2, list.ItemCount);
             Assert.Same(vm.SelectedResult, list.SelectedItem);
             Assert.Contains(window.GetVisualDescendants().OfType<SelectableTextBlock>(), t => t.Text?.Contains("word timed") == true);
+            Assert.Equal(vm.AutoLabel, picker.SelectedItem);
+            Assert.Equal(1, searches); // binding the picker must not start a second search
         }
         finally { window.Close(); }
     }

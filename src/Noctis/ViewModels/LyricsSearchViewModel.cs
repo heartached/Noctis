@@ -74,7 +74,15 @@ public partial class LyricsSearchViewModel : ViewModelBase
 
     private bool IsAuto => string.IsNullOrEmpty(SelectedSource) || SelectedSource == AutoLabel;
 
-    partial void OnSelectedSourceChanged(string value) => _ = SearchAsync();
+    /// <summary>The source the last search ran for, so a picker re-reporting it doesn't search again.</summary>
+    private string? _searchedSource;
+
+    partial void OnSelectedSourceChanged(string value)
+    {
+        // The picker can pass through null while its items bind; only a real pick searches.
+        if (string.IsNullOrEmpty(value) || value == _searchedSource) return;
+        _ = SearchAsync();
+    }
 
     [RelayCommand]
     private Task Search() => SearchAsync();
@@ -86,6 +94,7 @@ public partial class LyricsSearchViewModel : ViewModelBase
         var cts = _searchCts = new CancellationTokenSource();
         var generation = ++_generation;
         var auto = IsAuto;
+        _searchedSource = auto ? AutoLabel : SelectedSource;
         IsSearching = true;
         StatusText = Loc.T("LyricsSearch.Searching");
         Results.Clear();
