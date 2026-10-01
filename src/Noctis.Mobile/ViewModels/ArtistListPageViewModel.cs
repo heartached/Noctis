@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -7,10 +8,40 @@ using Noctis.Models;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>One artist row: the Core artist and the cover the phone shows for it.</summary>
-public sealed record ArtistListItem(Artist Artist, string? ArtworkPath)
+/// <summary>
+/// One artist row: the Core artist, the album cover that stands in for it, and its photo once
+/// the phone has one (<see cref="ShellViewModel.ArtistPhotos"/>; set when the row comes on
+/// screen, so it notifies). Equal by artist and cover, not photo: a refresh that changes
+/// nothing else leaves the grid alone.
+/// </summary>
+public sealed record ArtistListItem(Artist Artist, string? CoverPath) : INotifyPropertyChanged
 {
+    private string? _photoPath;
+
     public string Name => Artist.Name;
+
+    /// <summary>The artist's photo on the phone; null until (and unless) there is one.</summary>
+    public string? PhotoPath
+    {
+        get => _photoPath;
+        set
+        {
+            if (_photoPath == value) return;
+            _photoPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PhotoPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ArtworkPath)));
+        }
+    }
+
+    /// <summary>What the circle shows: the photo, else the cover.</summary>
+    public string? ArtworkPath => PhotoPath ?? CoverPath;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool Equals(ArtistListItem? other) =>
+        other is not null && ReferenceEquals(Artist, other.Artist) && CoverPath == other.CoverPath;
+
+    public override int GetHashCode() => HashCode.Combine(Artist, CoverPath);
 
     public string Subtitle =>
         $"{Artist.AlbumCount} album{(Artist.AlbumCount == 1 ? "" : "s")} · {Artist.TrackCount} song{(Artist.TrackCount == 1 ? "" : "s")}";
@@ -52,9 +83,13 @@ public sealed partial class ArtistListPageViewModel : MobilePage
     public ArtistListPageViewModel(ShellViewModel shell)
     {
         Shell = shell;
+        Photos = new ArtistPhotoRequests(() => shell.ArtistPhotos);
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
     }
+
+    /// <summary>The photo asks of the circles on screen (the view reports rows coming and going).</summary>
+    internal ArtistPhotoRequests Photos { get; }
 
     public ShellViewModel Shell { get; }
 
@@ -94,7 +129,7 @@ public sealed partial class ArtistListPageViewModel : MobilePage
         var library = Shell.Library.Service;
         var artwork = MobileLibrary.ArtistArtwork(library);
         _all = library.Artists
-            .Select(a => (Item: new ArtistListItem(a, artwork.GetValueOrDefault(a.Name)), Letter: ArtistIndex.LetterOf(a.Name),
+            .Select(a => (Item: Photos.Fill(new ArtistListItem(a, artwork.GetValueOrDefault(a.Name))), Letter: ArtistIndex.LetterOf(a.Name),
                 Key: SearchText.Normalize(a.Name)))
             .OrderBy(x => ArtistIndex.OrderOf(x.Letter))
             .ThenBy(x => ArtistIndex.SortName(x.Item.Name), StringComparer.CurrentCultureIgnoreCase)
@@ -155,5 +190,9 @@ public sealed partial class ArtistListPageViewModel : MobilePage
 
     private void OnRefreshed(object? sender, EventArgs e) => Refresh();
 
-    public override void OnClosed() => Shell.Library.Refreshed -= OnRefreshed;
+    public override void OnClosed()
+    {
+        Photos.CancelAll();
+        Shell.Library.Refreshed -= OnRefreshed;
+    }
 }

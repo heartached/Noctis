@@ -1,32 +1,118 @@
+using System.ComponentModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
+using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>A Top Songs row: "album · year" under the title, as in mockup 3.</summary>
-public sealed record ArtistTopSong(Track Track, int Rank)
+/// <summary>A Top Songs row: "Album · Year" under the title (Apple's), and whether it is the
+/// player's track, which shows the playing bars over its cover.</summary>
+public sealed partial class ArtistTopSong : ObservableObject
 {
+    public ArtistTopSong(Track track, int rank, bool showsRule)
+    {
+        Track = track;
+        Rank = rank;
+        ShowsRule = showsRule;
+    }
+
+    public Track Track { get; }
+    public int Rank { get; }
+
+    /// <summary>A hairline under the row: every row of a column but its last.</summary>
+    public bool ShowsRule { get; }
+
     public string Subtitle => Track.DisplayYear > 0 ? $"{Track.Album} · {Track.DisplayYear}" : Track.Album;
+
+    [ObservableProperty] private bool _isCurrent;
+
+    /// <summary>The bars move: this is the player's track, it is playing, and nothing covers the page.</summary>
+    [ObservableProperty] private bool _isAnimating;
+}
+
+/// <summary>One column of the Top Songs grid (<see cref="ArtistPageViewModel.TopSongRowsPerPage"/> rows).</summary>
+public sealed record ArtistTopSongPage(IReadOnlyList<ArtistTopSong> Rows);
+
+/// <summary>A tile on the artist page's rails: the release and the line under its name (the year
+/// on the artist's own rails, the album's artist on Appears On).</summary>
+public sealed record ArtistRelease(Album Album, string Subtitle)
+{
+    public static ArtistRelease Own(Album album) =>
+        new(album, album.Year > 0 ? album.Year.ToString(CultureInfo.InvariantCulture) : string.Empty);
+
+    public static ArtistRelease Feature(Album album) => new(album, album.Artist);
+}
+
+/// <summary>What a carousel card features.</summary>
+public enum ArtistCardKind { Featured, MostPlayed, LatestSingle }
+
+/// <summary>
+/// A card of the carousel under the hero (Apple's "FEATURED ALBUM" card): the release's cover,
+/// a small-caps kicker with its kind and date, its name (with the explicit badge) and its song
+/// count, and a round play button.
+/// </summary>
+public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
+{
+    /// <summary>"FEATURED ALBUM" (or SINGLE / EP, as the release is), "MOST PLAYED", "LATEST
+    /// SINGLE" / "LATEST EP".</summary>
+    public string Label => Kind switch
+    {
+        ArtistCardKind.Featured => Album.ReleaseType switch
+        {
+            ReleaseType.Single => "FEATURED SINGLE",
+            ReleaseType.EP => "FEATURED EP",
+            _ => "FEATURED ALBUM",
+        },
+        ArtistCardKind.MostPlayed => "MOST PLAYED",
+        _ => Album.ReleaseType == ReleaseType.EP ? "LATEST EP" : "LATEST SINGLE",
+    };
+
+    /// <summary>"SEP 12, 2025" from the release-date tag, else the year, else empty.</summary>
+    public string DateText => Album.ReleaseDateShortFormatted.ToUpperInvariant();
+
+    /// <summary>The kicker: the label, then the date when there is one.</summary>
+    public string Kicker => DateText.Length > 0 ? $"{Label} · {DateText}" : Label;
+
+    public string SongsText => Album.TrackCount == 1 ? "1 song" : $"{Album.TrackCount.ToString(CultureInfo.InvariantCulture)} songs";
+
+    public bool IsExplicit => Album.IsExplicit;
 }
 
 /// <summary>
-/// The phone artist page (spec §5 item 2). Songs are MobileLibrary.SongsBy (albums credited
-/// to the name, then every track filed under it); the hero is the newest album's cover
-/// (ruling 3: no artist portraits offline); the page tints from it like an album page.
+/// The phone artist page, Apple Music style (spec §5 item 2): the artist's photo full-bleed
+/// under the status bar, fading into its own bottom colour, with the name and three round
+/// buttons over it; a card carousel (the latest release, the most played release, the latest
+/// single); Top Songs as a sideways-paged grid; then Albums, Singles &amp; EPs and Appears On.
+/// Releases and Appears On follow the desktop artist page's credit rule
+/// (<see cref="MobileLibrary.CreditsArtist"/>), so an album credited "Bruno Mars, Anderson
+/// .Paak &amp; Silk Sonic" is one of Bruno Mars's releases. The photo is Deezer's
+/// (<see cref="ShellViewModel.ArtistPhotos"/>, asked as the page opens); until it arrives, or
+/// without one, the newest release's cover stands in.
 /// </summary>
 public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 {
-    private const int TopSongCount = 5;
+    /// <summary>How many songs Top Songs ranks, and how many rows a column of its grid holds.</summary>
+    public const int TopSongCount = 20, TopSongRowsPerPage = 4;
+
+    private readonly CancellationTokenSource _photoCts = new();
+    private string? _photo;
+    private string? _coverPath;
 
     public ArtistPageViewModel(ShellViewModel shell, string name)
     {
         Shell = shell;
         Name = name;
         Tint = shell.TintFactory();
+        Tint.HeroFade = true;
         _isFavourite = shell.FavoriteArtists.IsFavorite(name);
+        _photo = shell.ArtistPhotos?.CachedPhoto(name);
         Shell.Library.Refreshed += OnRefreshed;
+        Shell.Player.PropertyChanged += OnPlayerChanged;
+        Shell.PropertyChanged += OnShellChanged;
         Rebuild();
+        PhotoLoad = _photo == null ? LoadPhotoAsync(_photoCts.Token) : Task.CompletedTask;
     }
 
     public ShellViewModel Shell { get; }
@@ -34,66 +120,219 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     public PageTint Tint { get; }
     public override string Title => Name;
 
-    /// <summary>Newest release first, then track order: what Play plays.</summary>
+    /// <summary>The photo lookup started with the page; tests await it.</summary>
+    internal Task PhotoLoad { get; }
+
+    /// <summary>Newest release first, then track order, then the artist's other songs: what Play plays.</summary>
     public IReadOnlyList<Track> Songs { get; private set; } = Array.Empty<Track>();
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAlbums))]
-    private IReadOnlyList<Album> _albums = Array.Empty<Album>();
+    /// <summary>Every release credited to the artist, newest first.</summary>
+    public IReadOnlyList<Album> Releases { get; private set; } = Array.Empty<Album>();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasFeatured))]
-    private Album? _featuredAlbum;
-
-    [ObservableProperty] private string _featuredSubtitle = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasCards))]
+    private IReadOnlyList<ArtistCard> _cards = Array.Empty<ArtistCard>();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasTopSongs))]
     private IReadOnlyList<ArtistTopSong> _topSongs = Array.Empty<ArtistTopSong>();
 
+    /// <summary><see cref="TopSongs"/> in columns of <see cref="TopSongRowsPerPage"/>.</summary>
+    [ObservableProperty] private IReadOnlyList<ArtistTopSongPage> _topSongPages = Array.Empty<ArtistTopSongPage>();
+
+    /// <summary>Releases that are not singles or EPs (the desktop artist page's Albums tab rule).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAlbums))]
+    private IReadOnlyList<ArtistRelease> _albums = Array.Empty<ArtistRelease>();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSingles))]
+    private IReadOnlyList<ArtistRelease> _singles = Array.Empty<ArtistRelease>();
+
+    /// <summary>Other artists' albums with a song crediting this one (a feature).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAppearsOn))]
+    private IReadOnlyList<ArtistRelease> _appearsOn = Array.Empty<ArtistRelease>();
+
+    /// <summary>The hero: the artist's photo, else the newest release's cover.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasHero))]
     private string? _heroArtworkPath;
 
+    /// <summary>The hero is the artist's own photo, not a cover standing in.</summary>
+    [ObservableProperty] private bool _hasPhoto;
+
     [ObservableProperty] private bool _isFavourite;
 
-    public bool HasAlbums => Albums.Count > 0;
-    public bool HasFeatured => FeaturedAlbum != null;
+    public bool HasCards => Cards.Count > 0;
     public bool HasTopSongs => TopSongs.Count > 0;
+    public bool HasAlbums => Albums.Count > 0;
+    public bool HasSingles => Singles.Count > 0;
+    public bool HasAppearsOn => AppearsOn.Count > 0;
     public bool HasHero => !string.IsNullOrEmpty(HeroArtworkPath);
 
     private void Rebuild()
     {
         var library = Shell.Library.Service;
-        Albums = library.Albums
-            .Where(a => string.Equals(a.Artist, Name, StringComparison.OrdinalIgnoreCase))
+        var nameTokens = ArtistCredit.Split(Name);
+        Releases = library.Albums
+            .Where(a => MobileLibrary.CreditsArtist(a.Artist, Name, nameTokens))
             .OrderByDescending(MobileLibrary.ReleaseSortDate)
             .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+        Albums = Releases.Where(a => !IsSingleOrEp(a)).Select(ArtistRelease.Own).ToList();
+        Singles = Releases.Where(IsSingleOrEp).Select(ArtistRelease.Own).ToList();
+        AppearsOn = BuildAppearsOn(library, Name, Releases, nameTokens).Select(ArtistRelease.Feature).ToList();
 
         var all = MobileLibrary.SongsBy(library, Name);
-        var albumOrder = Albums.SelectMany(a => a.Tracks).ToList();
+        var albumOrder = Releases.SelectMany(a => a.Tracks).ToList();
         var inAlbums = new HashSet<Guid>(albumOrder.Select(t => t.Id));
         Songs = albumOrder.Concat(all.Where(t => !inAlbums.Contains(t.Id))).ToList();
 
-        FeaturedAlbum = Albums.FirstOrDefault();
-        FeaturedSubtitle = FeaturedAlbum == null
-            ? string.Empty
-            : string.Join(" · ", new[] { FeaturedAlbum.ReleaseDateFormatted, FeaturedAlbum.TrackCountText }.Where(s => s.Length > 0));
+        _plays = PlayCounter(Shell.Library.History?.Events);
+        Cards = BuildCards(Releases, _plays);
 
-        TopSongs = Songs
-            .OrderByDescending(t => t.PlayCount)
-            .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
-            .Take(TopSongCount)
-            .Select((t, i) => new ArtistTopSong(t, i + 1))
+        var ranked = RankTopSongs(Songs, _plays).Take(TopSongCount).ToList();
+        TopSongs = ranked
+            .Select((t, i) => new ArtistTopSong(t, i + 1, showsRule: i % TopSongRowsPerPage != TopSongRowsPerPage - 1 && i != ranked.Count - 1))
             .ToList();
+        TopSongPages = TopSongs.Chunk(TopSongRowsPerPage).Select(rows => new ArtistTopSongPage(rows)).ToList();
+        SyncNowPlaying();
 
-        HeroArtworkPath = Albums.Select(a => a.ArtworkPath).FirstOrDefault(p => !string.IsNullOrEmpty(p))
-                          ?? Songs.Select(t => t.AlbumArtworkPath).FirstOrDefault(p => !string.IsNullOrEmpty(p));
-        Tint.Load(HeroArtworkPath);
+        _coverPath = Releases.Select(a => a.ArtworkPath).FirstOrDefault(p => !string.IsNullOrEmpty(p))
+                     ?? Songs.Select(t => t.AlbumArtworkPath).FirstOrDefault(p => !string.IsNullOrEmpty(p));
+        ApplyHero();
+    }
+
+    /// <summary>The desktop artist page's split (ArtistDetailViewModel.FilterReleases): singles
+    /// and EPs on their own rail, everything else under Albums.</summary>
+    public static bool IsSingleOrEp(Album album) => album.ReleaseType is ReleaseType.Single or ReleaseType.EP;
+
+    /// <summary>A song's plays as the page counts them (<see cref="PlayCounter"/>).</summary>
+    private Func<Track, long> _plays = t => t.PlayCount;
+
+    /// <summary>
+    /// A song's plays: its play count (from the tags or the desktop's sync) or the phone's own
+    /// play log (plays not skipped before half the song), whichever is more. The phone counts
+    /// its plays in the log, not in the track, and a synced count may already include them, so
+    /// the two are not added.
+    /// </summary>
+    public static Func<Track, long> PlayCounter(IEnumerable<PlayHistoryEvent>? log)
+    {
+        if (log == null) return t => t.PlayCount;
+        var logged = log.Where(e => !e.Skipped).GroupBy(e => e.TrackId).ToDictionary(g => g.Key, g => (long)g.Count());
+        return t => Math.Max(t.PlayCount, logged.GetValueOrDefault(t.Id));
+    }
+
+    /// <summary>Most plays first (<paramref name="plays"/>, else the songs' play counts), then
+    /// title: Apple's Top Songs from the library's own listening.</summary>
+    public static IEnumerable<Track> RankTopSongs(IEnumerable<Track> songs, Func<Track, long>? plays = null)
+    {
+        plays ??= t => t.PlayCount;
+        return songs.OrderByDescending(plays).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
+    }
+
+    /// <summary>
+    /// The carousel: the newest release (Featured), then the release played most (its songs'
+    /// plays summed, ties to the newer) and the newest single or EP, each only when it is
+    /// a release not already on a card.
+    /// </summary>
+    public static IReadOnlyList<ArtistCard> BuildCards(IReadOnlyList<Album> releasesNewestFirst, Func<Track, long>? plays = null)
+    {
+        plays ??= t => t.PlayCount;
+        var cards = new List<ArtistCard>();
+        if (releasesNewestFirst.Count == 0) return cards;
+        cards.Add(new ArtistCard(ArtistCardKind.Featured, releasesNewestFirst[0]));
+
+        var mostPlayed = releasesNewestFirst
+            .Select((a, i) => (Album: a, Order: i, Plays: a.Tracks.Sum(plays)))
+            .Where(x => x.Plays > 0)
+            .OrderByDescending(x => x.Plays)
+            .ThenBy(x => x.Order)
+            .Select(x => x.Album)
+            .FirstOrDefault();
+        if (mostPlayed != null && cards.All(c => !ReferenceEquals(c.Album, mostPlayed)))
+            cards.Add(new ArtistCard(ArtistCardKind.MostPlayed, mostPlayed));
+
+        var latestSingle = releasesNewestFirst.FirstOrDefault(IsSingleOrEp);
+        if (latestSingle != null && cards.All(c => !ReferenceEquals(c.Album, latestSingle)))
+            cards.Add(new ArtistCard(ArtistCardKind.LatestSingle, latestSingle));
+        return cards;
+    }
+
+    /// <summary>Albums that are not the artist's releases with a song whose artist credit names
+    /// the artist (<see cref="MobileLibrary.CreditsArtist"/>: "A feat. B" credits B), newest
+    /// first: the desktop artist page's Appears On.</summary>
+    public static IReadOnlyList<Album> BuildAppearsOn(ILibraryService library, string name, IReadOnlyList<Album> releases, string[]? nameTokens = null)
+    {
+        nameTokens ??= ArtistCredit.Split(name);
+        var own = new HashSet<Guid>(releases.Select(a => a.Id));
+        return library.Albums
+            .Where(a => !own.Contains(a.Id) && a.Tracks.Any(t => MobileLibrary.CreditsArtist(t.Artist, name, nameTokens)))
+            .OrderByDescending(MobileLibrary.ReleaseSortDate)
+            .ThenBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>The hero shows the photo when there is one, else the cover; the page takes its
+    /// colour from whichever it shows.</summary>
+    private void ApplyHero()
+    {
+        var path = _photo ?? _coverPath;
+        HasPhoto = _photo != null;
+        if (path == HeroArtworkPath && Tint.HasTint) return;
+        HeroArtworkPath = path;
+        Tint.Load(path);
+    }
+
+    private async Task LoadPhotoAsync(CancellationToken ct)
+    {
+        if (Shell.ArtistPhotos is not { } photos) return;
+        try
+        {
+            var path = await photos.GetPhotoAsync(Name, ct);
+            if (path == null || ct.IsCancellationRequested) return;
+            _photo = path;
+            ApplyHero();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page closed first.
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artist", $"Artist photo failed: {ex.Message}");
+        }
     }
 
     private void OnRefreshed(object? sender, EventArgs e) => Rebuild();
+
+    private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(NowPlayingViewModel.CurrentTrack) or nameof(NowPlayingViewModel.IsPlaying))
+            SyncNowPlaying();
+    }
+
+    private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ShellViewModel.IsNowPlayingOpen) or nameof(ShellViewModel.IsLyricsOpen)
+            or nameof(ShellViewModel.IsQueueOpen))
+            SyncNowPlaying();
+    }
+
+    /// <summary>The album page's rule: the player's song shows the bars, moving only while it
+    /// plays and nothing covers the page.</summary>
+    private void SyncNowPlaying()
+    {
+        var current = Shell.Player.CurrentTrack;
+        var animate = Shell.Player.IsPlaying && !Shell.IsNowPlayingOpen && !Shell.IsLyricsOpen && !Shell.IsQueueOpen;
+        foreach (var row in TopSongs)
+        {
+            var isCurrent = current != null && row.Track.Id == current.Id;
+            row.IsCurrent = isCurrent;
+            row.IsAnimating = isCurrent && animate;
+        }
+    }
 
     [RelayCommand]
     private void Play()
@@ -124,11 +363,43 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         if (index >= 0) Shell.Player.PlayTracks(list, index, Name);
     }
 
+    /// <summary>Top Songs' ›: every song by the artist, most played first, under the artist's name.</summary>
     [RelayCommand]
-    private void OpenFeatured()
+    private void OpenAllSongs() =>
+        Shell.Navigate(new SongListPageViewModel(Shell, Name, () => RankTopSongs(Songs, _plays)));
+
+    [RelayCommand] private void OpenCard(ArtistCard? card) => Shell.OpenAlbumCommand.Execute(card?.Album);
+
+    /// <summary>A card's round ▶ (where Apple has its download arrow): plays that release.</summary>
+    [RelayCommand]
+    private void PlayCard(ArtistCard? card)
     {
-        if (FeaturedAlbum != null) Shell.OpenAlbumCommand.Execute(FeaturedAlbum);
+        if (card is { Album.Tracks.Count: > 0 }) Shell.Player.PlayTracks(card.Album.Tracks, 0, card.Album.Name);
     }
 
-    public override void OnClosed() => Shell.Library.Refreshed -= OnRefreshed;
+    [RelayCommand] private void OpenAlbums() => OpenRail("Albums", () => Albums);
+
+    [RelayCommand] private void OpenSingles() => OpenRail("Singles & EPs", () => Singles);
+
+    [RelayCommand] private void OpenAppearsOn() => OpenRail("Appears On", () => AppearsOn);
+
+    private void OpenRail(string title, Func<IReadOnlyList<ArtistRelease>> releases) =>
+        Shell.Navigate(new RailGridPageViewModel(Shell, title, () => releases().Select(r => RailItem.ForAlbum(r.Album))));
+
+    /// <summary>The … button: the artist's sheet (play, queue, pin), headed by what the hero shows.</summary>
+    [RelayCommand]
+    private void More()
+    {
+        var artist = Shell.Library.Service.Artists.FirstOrDefault(a => string.Equals(a.Name, Name, StringComparison.OrdinalIgnoreCase))
+                     ?? new Artist { Name = Name };
+        Shell.OpenArtistSheetCommand.Execute(new ArtistListItem(artist, HeroArtworkPath));
+    }
+
+    public override void OnClosed()
+    {
+        _photoCts.Cancel();
+        Shell.Library.Refreshed -= OnRefreshed;
+        Shell.Player.PropertyChanged -= OnPlayerChanged;
+        Shell.PropertyChanged -= OnShellChanged;
+    }
 }

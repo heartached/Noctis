@@ -10,7 +10,9 @@ namespace Noctis.Mobile.Views;
 /// The Artists grid. The code here is the A–Z strip: a press on a letter, or a finger sliding
 /// along the strip, scrolls the grid so that letter's first row sits at the top. Rows have a
 /// fixed height (ArtistListPageViewModel.RowHeight), so the target offset is row × height and
-/// the virtualising panel realises just the rows around it.
+/// the virtualising panel realises just the rows around it. The grid also tells the page which
+/// rows are realised (on screen, plus the panel's small margin), so only those circles ask for
+/// their artist's photo, and a row scrolled away drops its asks.
 /// </summary>
 public partial class ArtistListPage : UserControl
 {
@@ -21,12 +23,32 @@ public partial class ArtistListPage : UserControl
     public ArtistListPage()
     {
         InitializeComponent();
+        ArtistGrid.ContainerPrepared += (_, e) => ShowRow(e.Container);
+        ArtistGrid.ContainerClearing += (_, e) => HideRow(e.Container);
         DataContextChanged += (_, _) =>
         {
             if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
             _vm = DataContext as ArtistListPageViewModel;
             if (_vm != null) _vm.PropertyChanged += OnVmChanged;
         };
+    }
+
+    /// <summary>The row each realised container shows: a recycled container may have lost its
+    /// DataContext by the time it is cleared, and a re-prepared one first leaves its old row.</summary>
+    private readonly Dictionary<Control, ArtistGridRow> _shownRows = new();
+
+    private void ShowRow(Control container)
+    {
+        HideRow(container);
+        if (container.DataContext is not ArtistGridRow row || _vm == null) return;
+        _shownRows[container] = row;
+        foreach (var item in row.Artists) _vm.Photos.Request(item);
+    }
+
+    private void HideRow(Control container)
+    {
+        if (!_shownRows.Remove(container, out var row) || _vm == null) return;
+        foreach (var item in row.Artists) _vm.Photos.Cancel(item);
     }
 
     /// <summary>A new search starts the grid at its top, not wherever the full list was.</summary>

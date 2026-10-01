@@ -37,6 +37,29 @@ internal static class MobileLibrary
     }
 
     /// <summary>
+    /// Whether an artist credit (<paramref name="field"/>: a track's or album's artist) names
+    /// <paramref name="name"/>: the desktop artist page's rule (LibraryAlbumsViewModel
+    /// .ContainsArtistToken), so both apps file the same releases under an artist. A single name
+    /// matches any credit listing it among others ("Bruno Mars, Anderson .Paak &amp; Silk Sonic"
+    /// credits Bruno Mars); a combined name ("A &amp; B") only that exact collaboration.
+    /// </summary>
+    internal static bool CreditsArtist(string? field, string name, string[]? nameTokens = null)
+    {
+        if (string.IsNullOrWhiteSpace(field) || string.IsNullOrWhiteSpace(name)) return false;
+        if (field.Equals(name, StringComparison.OrdinalIgnoreCase)) return true;
+
+        nameTokens ??= ArtistCredit.Split(name);
+        // Every token is a substring of a credit that lists it: most credits fail here cheaply.
+        foreach (var token in nameTokens)
+            if (!field.Contains(token, StringComparison.OrdinalIgnoreCase)) return false;
+
+        var fieldTokens = ArtistCredit.Split(field);
+        if (nameTokens.Length > 1)
+            return new HashSet<string>(fieldTokens, StringComparer.OrdinalIgnoreCase).SetEquals(nameTokens);
+        return nameTokens.Any(token => fieldTokens.Any(f => f.Equals(token, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
     /// Artist name → a cover to show for it: the first album credited to the name that has
     /// one, else the first of its tracks that has one. The phone has no artist portraits
     /// (Core never fills Artist.ImagePath; only the desktop's online ArtistImageService does).

@@ -53,6 +53,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>The shared Core library, for the pages built on this view model.</summary>
     public ILibraryService Service => _library;
 
+    /// <summary>Artist photos for the pinned artists' circles (the shell hands its source over);
+    /// null leaves their covers.</summary>
+    public IArtistPhotoSource? ArtistPhotos { get; set; }
+
+    /// <summary>Pinned artists whose photo was asked for this session: a lookup that found nothing
+    /// (or failed) is not repeated on every refresh.</summary>
+    private readonly HashSet<string> _pinnedPhotoAsked = new(StringComparer.OrdinalIgnoreCase);
+
     public IPersistenceService Persistence => _persistence;
 
     /// <summary>The persisted play log (null in hosts without one).</summary>
@@ -412,10 +420,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         // Albums, artists, playlists, then songs; pins whose item left the library are skipped.
         var artistArt = _pinnedArtistNames.Count > 0 ? MobileLibrary.ArtistArtwork(_library) : null;
-        var pinnedArtists = _pinnedArtistNames
+        var pinnedArtistList = _pinnedArtistNames
             .Select(n => _library.Artists.FirstOrDefault(a => string.Equals(a.Name, n, StringComparison.OrdinalIgnoreCase)))
             .OfType<Artist>()
-            .Select(a => RailItem.ForArtist(a, artistArt?.GetValueOrDefault(a.Name)));
+            .ToList();
+        // The artist's photo when the phone has one, else the cover; a missing photo is asked for.
+        var pinnedArtists = pinnedArtistList
+            .Select(a => RailItem.ForArtist(a, ArtistPhotos?.CachedPhoto(a.Name) ?? artistArt?.GetValueOrDefault(a.Name)));
+        foreach (var artist in pinnedArtistList) AskPinnedArtistPhoto(artist.Name);
         var pinned = _pinnedAlbumIds.Select(_library.GetAlbumById).OfType<Album>().Select(RailItem.ForAlbum)
             .Concat(pinnedArtists)
             .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p))))
@@ -427,6 +439,26 @@ public sealed partial class LibraryViewModel : ObservableObject
         var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize).Select(RailItem.ForAlbum).ToList();
         MobileLibrary.ReplaceIfChanged(RecentlyAddedRail, recent);
         HasRecentlyAdded = RecentlyAddedRail.Count > 0;
+    }
+
+    /// <summary>A pinned artist's circle shows on the Library tab: ask once a session for a photo
+    /// the phone does not have yet, and rebuild the rails when one arrives.</summary>
+    private void AskPinnedArtistPhoto(string name)
+    {
+        if (ArtistPhotos is not { } photos || photos.CachedPhoto(name) != null || !_pinnedPhotoAsked.Add(name)) return;
+        _ = LoadPinnedArtistPhotoAsync(photos, name);
+    }
+
+    private async Task LoadPinnedArtistPhotoAsync(IArtistPhotoSource photos, string name)
+    {
+        try
+        {
+            if (await photos.GetPhotoAsync(name, CancellationToken.None) != null) _marshal(RefreshRails);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artist", $"Pinned artist photo failed: {ex.Message}");
+        }
     }
 
     /// <summary>

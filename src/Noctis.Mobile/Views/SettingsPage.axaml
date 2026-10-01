@@ -133,7 +133,7 @@
                 <Border Classes="settings-card">
                     <StackPanel Spacing="8">
                         <TextBlock Name="VersionLabel" Text="{Binding VersionText}" />
-                        <TextBlock Classes="subtle" TextWrapping="Wrap" Text="Noctis collects nothing. The app talks to your own computer only when you sign in to your Noctis account, and looks up album descriptions on Last.fm, sending only the artist and album name." />
+                        <TextBlock Name="PrivacyNote" Classes="subtle" TextWrapping="Wrap" Text="Noctis collects nothing. The app talks to your own computer only when you sign in to your Noctis account, looks up album descriptions on Last.fm, sending only the artist and album name, and looks up artist photos on Deezer, sending only the artist's name." />
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button Name="ExportLogsButton" Classes="pill" Content="Export logs" Command="{Binding ExportLogsCommand}" />
                             <TextBlock Name="ExportStatusLabel" Classes="subtle" VerticalAlignment="Center" Text="{Binding ExportStatus}" />
