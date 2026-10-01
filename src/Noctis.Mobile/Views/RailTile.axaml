@@ -2,11 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.RailTile"
              x:DataType="vm:RailItem">
     <!-- Takes the width its host gives it (a rail's fixed tile width, or a grid column) and
          keeps the cover square. Artists show as circles, everything else as rounded squares. -->
-    <StackPanel Spacing="2">
+    <StackPanel Spacing="2" views:Appear.IsEnabled="True">
         <Border Name="TileArt" Classes="art rail" Classes.artist="{Binding IsArtist}"
                 Height="{Binding $self.Bounds.Width}" Margin="0,0,0,4">
             <Panel>
