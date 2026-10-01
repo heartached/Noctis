@@ -24,7 +24,7 @@
         <Button Grid.Column="3" Name="MoreButton" Classes="icon" Width="36" Height="36"
                 Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                 CommandParameter="{Binding}">
-            <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="16" Height="16" />
+            <PathIcon Data="{DynamicResource PhMore}" Width="22" Height="22" />
         </Button>
     </Grid>
 </UserControl>

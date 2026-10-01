@@ -39,7 +39,7 @@
                  left across every row, the controls on the right. -->
             <Grid Name="Layout" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="24,4,24,12">
                 <Button Grid.Row="0" Classes="icon" HorizontalAlignment="Left" Command="{Binding CloseNowPlayingCommand}">
-                    <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
+                    <PathIcon Data="{DynamicResource PhChevronDown}" Width="26" Height="26" />
                 </Button>
 
                 <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
@@ -62,10 +62,11 @@
                         </Button>
                     </StackPanel>
                     <Button Grid.Column="1" Name="FavouriteButton" Classes="icon" Command="{Binding ToggleCurrentFavouriteCommand}">
-                        <controls:HeartIcon IsFavorite="{Binding Player.CurrentTrack.IsFavorite}" Size="22" />
+                        <controls:HeartIcon IsFavorite="{Binding Player.CurrentTrack.IsFavorite}" Size="26"
+                                           Glyph="{DynamicResource PhHeartFill}" OffGlyph="{DynamicResource PhHeart}" />
                     </Button>
                     <Button Grid.Column="2" Name="NowPlayingMore" Classes="icon" Command="{Binding OpenCurrentTrackSheetCommand}">
-                        <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="18" Height="18" />
+                        <PathIcon Data="{DynamicResource PhMore}" Width="24" Height="24" />
                     </Button>
                 </Grid>
 
@@ -84,37 +85,37 @@
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,*" Margin="0,4">
                     <Button Grid.Column="1" Name="ShuffleButton" Classes="icon" Classes.dim="{Binding !Player.IsShuffleEnabled}"
                             Command="{Binding Player.ToggleShuffleCommand}">
-                        <PathIcon Data="{DynamicResource ShuffleIcon}" Width="18" Height="18" />
+                        <PathIcon Data="{DynamicResource PhShuffle}" Width="24" Height="24" />
                     </Button>
                     <Button Grid.Column="2" Name="PreviousButton" Classes="icon" Width="60" Height="60" Margin="12,0"
                             Command="{Binding Player.PreviousCommand}">
-                        <PathIcon Data="{DynamicResource PreviousIcon}" Width="28" Height="28" />
+                        <PathIcon Data="{DynamicResource PhRewindFill}" Width="44" Height="44" />
                     </Button>
                     <Button Grid.Column="3" Name="PlayPauseButton" Classes="icon" Width="72" Height="72" CornerRadius="36"
                             Command="{Binding Player.TogglePlayPauseCommand}">
                         <Panel>
-                            <PathIcon Data="{DynamicResource PlayIcon}" Width="34" Height="34" IsVisible="{Binding !Player.IsPlaying}" />
-                            <PathIcon Data="{DynamicResource PauseIcon}" Width="34" Height="34" IsVisible="{Binding Player.IsPlaying}" />
+                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="54" Height="54" IsVisible="{Binding !Player.IsPlaying}" />
+                            <PathIcon Data="{DynamicResource PhPauseFill}" Width="54" Height="54" IsVisible="{Binding Player.IsPlaying}" />
                         </Panel>
                     </Button>
                     <Button Grid.Column="4" Name="NextButton" Classes="icon" Width="60" Height="60" Margin="12,0"
                             Command="{Binding Player.NextCommand}">
-                        <PathIcon Data="{DynamicResource NextIcon}" Width="28" Height="28" />
+                        <PathIcon Data="{DynamicResource PhForwardFill}" Width="44" Height="44" />
                     </Button>
                     <Button Grid.Column="5" Name="RepeatButton" Classes="icon" Classes.dim="{Binding !Player.IsRepeatOn}"
                             Command="{Binding Player.CycleRepeatCommand}">
                         <Panel>
-                            <PathIcon Data="{DynamicResource RepeatAllIcon}" Width="18" Height="18" IsVisible="{Binding !Player.IsRepeatOne}" />
-                            <PathIcon Data="{DynamicResource RepeatOneIcon}" Width="18" Height="18" IsVisible="{Binding Player.IsRepeatOne}" />
+                            <PathIcon Data="{DynamicResource PhRepeat}" Width="24" Height="24" IsVisible="{Binding !Player.IsRepeatOne}" />
+                            <PathIcon Data="{DynamicResource PhRepeatOne}" Width="24" Height="24" IsVisible="{Binding Player.IsRepeatOne}" />
                         </Panel>
                     </Button>
                 </Grid>
 
                 <Grid Grid.Row="5" Name="VolumeRow" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Player.HasVolumeControl}">
-                    <PathIcon Data="{DynamicResource SpeakerLowIcon}" Width="16" Height="16" Opacity="0.7" />
+                    <PathIcon Data="{DynamicResource PhVolumeLow}" Width="22" Height="22" Opacity="0.7" />
                     <Slider Grid.Column="1" Name="VolumeSlider" Minimum="0" Maximum="1" Margin="10,0"
                             Value="{Binding Player.VolumeLevel}" />
-                    <PathIcon Grid.Column="2" Data="{DynamicResource SpeakerHighIcon}" Width="16" Height="16" Opacity="0.7" />
+                    <PathIcon Grid.Column="2" Data="{DynamicResource PhVolumeHigh}" Width="22" Height="22" Opacity="0.7" />
                 </Grid>
 
                 <StackPanel Grid.Row="6">
@@ -122,13 +123,13 @@
                                IsVisible="{Binding Player.ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
                         <Button Grid.Column="0" Name="LyricsButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ToggleLyricsCommand}">
-                            <PathIcon Data="{DynamicResource LyricsIcon}" />
+                            <PathIcon Data="{DynamicResource PhLyrics}" />
                         </Button>
                         <Button Grid.Column="1" Name="OutputButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ShowOutputCommand}">
-                            <PathIcon Data="{DynamicResource SpeakerHighIcon}" />
+                            <PathIcon Data="{DynamicResource PhVolumeHigh}" />
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon" HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
-                            <PathIcon Data="{DynamicResource PlaylistsIcon}" />
+                            <PathIcon Data="{DynamicResource PhList}" />
                         </Button>
                     </Grid>
                 </StackPanel>
