@@ -16,13 +16,13 @@ public abstract partial class MobilePage : ObservableObject
 {
     public abstract string Title { get; }
 
-    /// <summary>Shown inside the Library page under a filter chip rather than pushed:
-    /// the view hides its own back/title header.</summary>
+    /// <summary>Shown as a tab's root under the tab's own title (Playlists, Favorites) rather
+    /// than pushed: the view hides its own back/title header.</summary>
     public bool IsEmbedded { get; init; }
 
     [ObservableProperty] private Vector _scrollOffset;
 
-    /// <summary>The page left the stack for good (Back, a tab switch, a chip change): drop
+    /// <summary>The page left the stack for good (Back, a tab switch): drop
     /// event subscriptions so a closed page stops rebuilding on every library refresh.</summary>
     public virtual void OnClosed() { }
 

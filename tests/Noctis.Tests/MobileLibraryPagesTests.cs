@@ -35,7 +35,7 @@ public class MobileLibraryPagesTests
 
         Assert.True(MobileFixtures.Named<Border>(view, "ConnectCard").IsVisible);
         Assert.False(MobileFixtures.Named<Border>(view, "ReconnectCard").IsVisible);
-        Assert.False(MobileFixtures.Named<ScrollViewer>(view, "ChipScroll").IsVisible);
+        Assert.False(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
         Assert.False(MobileFixtures.Named<StackPanel>(view, "PinnedSection").IsVisible);
         Assert.False(rig.Shell.IsMiniBarVisible);
         window.Close();
@@ -52,7 +52,7 @@ public class MobileLibraryPagesTests
         using var rig = MobileFixtures.MakeRig(new[] { a, b, c }, new[] { album }, WithFolder(mix));
         var window = MobileFixtures.Mount(rig.Shell, out var view);
 
-        Assert.True(MobileFixtures.Named<ScrollViewer>(view, "ChipScroll").IsVisible);
+        Assert.True(MobileFixtures.Named<ItemsControl>(view, "LibraryRowList").IsVisible);
         Assert.False(MobileFixtures.Named<Border>(view, "ConnectCard").IsVisible);
         Assert.True(MobileFixtures.Named<Border>(view, "PinnedHint").IsVisible);     // nothing pinned yet
         Assert.Equal(3, rig.Shell.Library.SongCount);

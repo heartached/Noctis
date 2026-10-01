@@ -156,23 +156,16 @@ public sealed partial class ShellViewModel : ObservableObject
     private Thickness _safeArea;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAllMusicChip), nameof(IsPlaylistsChip), nameof(IsAlbumsChip), nameof(IsArtistsChip), nameof(IsSongsChip))]
-    private LibraryChip _libraryChip = LibraryChip.AllMusic;
-
-    /// <summary>The list shown under a non-"All Music" chip: the same page a tile pushes, embedded.</summary>
-    [ObservableProperty] private MobilePage? _libraryChipPage;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSheetOpen))]
     private ContextSheetViewModel? _sheet;
 
     public bool IsSheetOpen => Sheet != null;
 
-    public bool IsAllMusicChip => LibraryChip == LibraryChip.AllMusic;
-    public bool IsPlaylistsChip => LibraryChip == LibraryChip.Playlists;
-    public bool IsAlbumsChip => LibraryChip == LibraryChip.Albums;
-    public bool IsArtistsChip => LibraryChip == LibraryChip.Artists;
-    public bool IsSongsChip => LibraryChip == LibraryChip.Songs;
+    private LibraryRowsViewModel? _libraryRows;
+
+    /// <summary>The Library tab's list rows (Playlists, Artists…) and their Edit mode. Made on
+    /// first use, after the host has set <see cref="Account"/> (it decides the Downloaded row).</summary>
+    public LibraryRowsViewModel LibraryRows => _libraryRows ??= new LibraryRowsViewModel(this);
 
     public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
@@ -361,9 +354,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>
     /// Android Back: the topmost thing closes first — the long-press sheet, Queue, Lyrics, Now
-    /// Playing, then pushed pages, then a non-start tab returns to Library. A Library chip
-    /// other than All Music then returns to All Music. Returns whether the press was consumed;
-    /// only at the All Music root does the activity fall through to the system default (finish).
+    /// Playing, then pushed pages, then a non-start tab returns to Library. The Library rows'
+    /// Edit mode then finishes (as Done would). Returns whether the press was consumed; only at
+    /// the Library root does the activity fall through to the system default (finish).
     /// </summary>
     public bool TryHandleBack()
     {
@@ -373,9 +366,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
         if (GoBack()) return true;
         if (SelectedTab != MobileTab.Library) { SelectedTab = MobileTab.Library; return true; }
-        // A chip list (Songs, Albums…) reads as a page of its own: Back returns to All Music
-        // rather than leaving the app from it.
-        if (LibraryChip != LibraryChip.AllMusic) { SelectLibraryChip(LibraryChip.AllMusic); return true; }
+        if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
         return false;
     }
 
@@ -435,22 +426,6 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>A playlist's tracks in saved order; ids no longer in the library are skipped.</summary>
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
         playlist.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>();
-
-    [RelayCommand]
-    private void SelectLibraryChip(LibraryChip chip)
-    {
-        if (chip == LibraryChip) return;
-        LibraryChipPage?.OnClosed();
-        LibraryChip = chip;
-        LibraryChipPage = chip switch
-        {
-            LibraryChip.Playlists => new PlaylistListPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Albums => new AlbumGridPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Artists => new ArtistListPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Songs => new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs) { IsEmbedded = true },
-            _ => null,
-        };
-    }
 
     /// <summary>A rail tile: albums and playlists open, an On Repeat song plays that rail from it.</summary>
     [RelayCommand]
