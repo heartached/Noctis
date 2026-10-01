@@ -71,13 +71,29 @@
             <Setter Property="Foreground" Value="{DynamicResource AlbumPillText}" />
         </Style>
         <!-- Fluent repaints the presenter on :pointerover/:pressed (see MobileStyles.axaml);
-             these two classes keep their look and dim instead, like the phone-wide ones. -->
+             these two classes keep their look. The Play pill answers a press like the phone's
+             buttons (MobileStyles' eased dim and settle); glass-round already does there. -->
         <Style Selector="views|AlbumPage Button.album-play:pointerover /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.album-play:pressed /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.glass-round:pointerover /template/ ContentPresenter#PART_ContentPresenter, views|AlbumPage Button.glass-round:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
             <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
         </Style>
-        <Style Selector="views|AlbumPage Button.album-play:pressed, views|AlbumPage Button.glass-round:pressed">
-            <Setter Property="Opacity" Value="0.7" />
+        <Style Selector="views|AlbumPage Button.album-play">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12">
+                        <DoubleTransition.Easing><CubicEaseOut /></DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
+                        <TransformOperationsTransition.Easing><CubicEaseOut /></TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="views|AlbumPage Button.album-play:pressed">
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="RenderTransform" Value="scale(0.96)" />
         </Style>
 
         <Style Selector="views|AlbumPage Border.rule">
@@ -100,10 +116,6 @@
             <Setter Property="Width" Value="46" />
             <Setter Property="Height" Value="46" />
             <Setter Property="CornerRadius" Value="23" />
-        </Style>
-        <Style Selector="views|AlbumPage Button.album-round PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
         </Style>
 
         <!-- The description's MORE / LESS, Apple's small bold caps. -->
@@ -142,7 +154,7 @@
                             </Border>
                             <TextBlock Name="ArtistName" Text="{Binding Album.Artist}" FontSize="19" MaxWidth="280"
                                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Margin="-4,1,0,0"
+                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
                                       VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -188,8 +200,8 @@
                         <PathIcon Data="{DynamicResource PhShuffle}" />
                     </Button>
                     <Button Name="PlayButton" Classes="album-play" Command="{Binding PlayCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="7">
-                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="14" Height="14" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
                             <TextBlock Text="Play" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -263,7 +275,7 @@
                                     <Button Grid.Column="2" Classes="icon" Width="40" Height="40"
                                             Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
                                             CommandParameter="{Binding Track}">
-                                        <PathIcon Data="{DynamicResource PhMore}" Width="18" Height="18" />
+                                        <PathIcon Data="{DynamicResource PhMore}" />
                                     </Button>
                                     <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="rule" Height="0.5" Margin="4,0,0,0"
                                             VerticalAlignment="Bottom" IsHitTestVisible="False" />
@@ -305,7 +317,7 @@
         <Border Name="TopFade" VerticalAlignment="Top" IsHitTestVisible="False" />
 
         <!-- The page colour behind the status bar and the buttons once the title scrolls up to them
-             (iOS's scroll-edge fade): solid to the buttons' middle, eased out just below them. -->
+             (iOS's scroll-edge fade): solid behind the buttons, eased out just below them. -->
         <Border Name="TopScrim" VerticalAlignment="Top" Opacity="0" IsHitTestVisible="False" />
 
         <!-- Round Liquid Glass buttons floating over the cover: back and the album's sheet, with the
@@ -313,7 +325,7 @@
         <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
-                    <PathIcon Data="{DynamicResource PhBack}" Width="22" Height="22" />
+                    <PathIcon Data="{DynamicResource PhBack}" />
                 </Button>
             </controls:GlassPanel>
             <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Album.Name}" FontSize="17" FontWeight="SemiBold"

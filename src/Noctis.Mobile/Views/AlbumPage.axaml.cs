@@ -27,8 +27,10 @@ public partial class AlbumPage : UserControl
     /// Light and a white one in Dark (~0.6 still under the bar's bottom edge).</summary>
     private const double TopFadeExtra = 40, TopFadeAlpha = 0.88;
 
-    /// <summary>The scrim eases out over this much below the button row.</summary>
-    private const double ScrimTail = 16;
+    /// <summary>The scrim is solid to this far above the button row's bottom, then eases out
+    /// over <see cref="ScrimTail"/> below it: without a blur, anything showing through behind
+    /// the small title (a half-faded Play pill on the device, 2026-10-01) reads as a smudge.</summary>
+    private const double ScrimSolidInset = 8, ScrimTail = 24;
 
     /// <summary>The description's folded height in lines (Apple shows two or three), and the
     /// unfold's length and curve (the phone's sheet curve).</summary>
@@ -263,8 +265,8 @@ public partial class AlbumPage : UserControl
     private void SetFades(Color? into)
     {
         HeroFade.Background = into is { } c ? Fade(c, from: 0, to: 1, rising: true) : null;
-        // Solid behind the status bar and down to the buttons' middle, eased out just below them.
-        var solid = TopScrim.Height > 0 ? (SafeTop + TopBarHeight / 2) / TopScrim.Height : 0;
+        // Solid behind the status bar and the buttons, eased out just below them.
+        var solid = TopScrim.Height > 0 ? (SafeTop + TopBarHeight - ScrimSolidInset) / TopScrim.Height : 0;
         TopScrim.Background = into is { } s ? Fade(s, from: solid, to: 1, rising: false) : null;
         // MORE sits on the page colour, fading in over the text it covers.
         DescriptionMore.Background = into is { } m
