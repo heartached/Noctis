@@ -119,7 +119,8 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     private readonly CancellationTokenSource _descriptionCts = new();
 
-    /// <summary>A cover for the artist's avatar beside the artist link (the Artists list's rule).</summary>
+    /// <summary>The artist's avatar beside the artist link: the photo when the phone has one, else
+    /// a cover (the Artists list's rule).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasArtistArtwork))]
     private string? _artistArtworkPath;
@@ -162,7 +163,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         SongsLine = BuildSongsLine(album);
         CopyrightText = album.Copyright.Trim();
         RecordLabel = album.RecordLabel;
-        ArtistArtworkPath = MobileLibrary.ArtistArtworkFor(Shell.Library.Service, album.Artist);
+        ArtistArtworkPath = Shell.ArtistPhotos?.CachedPhoto(album.Artist) ?? MobileLibrary.ArtistArtworkFor(Shell.Library.Service, album.Artist);
         IsFavourite = album.IsAllTracksFavorite;
         SyncNowPlaying();
         Tint.Load(album.ArtworkPath);
