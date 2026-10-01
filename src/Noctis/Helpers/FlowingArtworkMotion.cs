@@ -70,6 +70,19 @@ public static class FlowingArtworkMotion
         return new FlowFrame(layer1, layer2, 1.0 + PulseScale * pulse, PulseGlow * pulse);
     }
 
+    /// <summary>
+    /// Motion time (ms) fed to <see cref="Evaluate"/> for clock time <paramref name="nowMs"/> at
+    /// the Movement knob's <paramref name="speed"/> (1 = stock, 0 = still; GitHub #111). At
+    /// speed 1 and offset 0 it is <paramref name="nowMs"/> exactly, so the stock look is unchanged.
+    /// </summary>
+    public static double MotionTimeMs(double nowMs, double speed, double offsetMs) => nowMs * speed + offsetMs;
+
+    /// <summary>The offset that makes <see cref="MotionTimeMs"/> at <paramref name="newSpeed"/> start
+    /// where <paramref name="oldSpeed"/> had it at <paramref name="nowMs"/>, so changing the speed
+    /// changes the pace without jumping the layers to another pose.</summary>
+    public static double RebaseOffsetMs(double nowMs, double oldSpeed, double oldOffsetMs, double newSpeed)
+        => MotionTimeMs(nowMs, oldSpeed, oldOffsetMs) - nowMs * newSpeed;
+
     /// <summary>Asymmetric follower: fast toward a higher target, slow toward a lower one.</summary>
     public static double Smooth(double current, double target, double dtMs)
     {

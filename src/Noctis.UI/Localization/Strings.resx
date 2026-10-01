@@ -1682,6 +1682,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.FlowingDriftCalm" xml:space="preserve"><value>Drift (no beat)</value><comment>Flowing-background picker row</comment></data>
   <data name="Settings.KawarpWarp" xml:space="preserve"><value>Warp strength</value><comment>Kawarp slider label</comment></data>
   <data name="Settings.KawarpBlur" xml:space="preserve"><value>Blur</value><comment>Kawarp slider label</comment></data>
+  <data name="Settings.DriftMovement" xml:space="preserve"><value>Movement</value><comment>Drift slider label: how fast the cover drifts (0% holds it still)</comment></data>
+  <data name="Settings.DriftSaturation" xml:space="preserve"><value>Saturation</value><comment>Drift slider label: colour strength of the cover</comment></data>
+  <data name="Settings.DriftBlur" xml:space="preserve"><value>Blur</value><comment>Drift slider label</comment></data>
 
   <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
   <data name="PlaybackBar.Pitch" xml:space="preserve"><value>Pitch</value><comment>Speed menu → pitch submenu header (island)</comment></data>

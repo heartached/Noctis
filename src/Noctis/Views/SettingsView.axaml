@@ -2584,7 +2584,9 @@
             <Border Classes="setting-card group-card">
             <StackPanel>
             <Border Classes="setting-row">
-                <StackPanel Spacing="12">
+                <!-- Spacing-free: each knob block carries its own 12px gap inside the fold, so a
+                     closing block doesn't snap the row by the panel's Spacing on its last frame. -->
+                <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.FlowingLyricsBackground}" FontSize="15" FontWeight="SemiBold"/>
@@ -2595,9 +2597,39 @@
                                   ItemsSource="{Binding FlowingOptions}"
                                   SelectedItem="{Binding SelectedFlowingOption, Mode=TwoWay}"/>
                     </Grid>
+                    <!-- Drift knobs (GitHub #111): only while a Drift style is chosen. 100% everywhere
+                         is the stock look; double-tap a slider to snap back to it. -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsDriftStyle}" Lift="6">
+                    <StackPanel Spacing="8" Margin="0,12,0,0">
+                        <Grid ColumnDefinitions="110,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftMovement}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="300" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding LyricsDriftMovement, Mode=TwoWay}" VerticalAlignment="Center"
+                                    DoubleTapped="OnDriftMovementSliderDoubleTapped"/>
+                            <TextBlock Grid.Column="2" Text="{Binding LyricsDriftMovement, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftSaturation}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding LyricsDriftSaturation, Mode=TwoWay}" VerticalAlignment="Center"
+                                    DoubleTapped="OnDriftSaturationSliderDoubleTapped"/>
+                            <TextBlock Grid.Column="2" Text="{Binding LyricsDriftSaturation, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="110,*,Auto">
+                            <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftBlur}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding LyricsDriftBlur, Mode=TwoWay}" VerticalAlignment="Center"
+                                    DoubleTapped="OnDriftBlurSliderDoubleTapped"/>
+                            <TextBlock Grid.Column="2" Text="{Binding LyricsDriftBlur, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="36" TextAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
                     <!-- Kawarp knobs (GitHub #58): only while a Kawarp style is chosen. -->
                     <controls:CollapsibleContent IsOpen="{Binding IsKawarpStyle}" Lift="6">
-                    <StackPanel Spacing="8">
+                    <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.KawarpWarp}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True"

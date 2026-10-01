@@ -2429,6 +2429,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFlowingStyle = FlowingStyles.Normalize(_settings.LyricsFlowingStyle);
             LyricsKawarpWarp = Math.Clamp(_settings.LyricsKawarpWarp, 0, 3);
             LyricsKawarpBlur = Math.Clamp(_settings.LyricsKawarpBlur, 1, 16);
+            LyricsDriftMovement = Math.Clamp(_settings.LyricsDriftMovement, 0, 300);
+            LyricsDriftSaturation = Math.Clamp(_settings.LyricsDriftSaturation, 0, 200);
+            LyricsDriftBlur = Math.Clamp(_settings.LyricsDriftBlur, 0, 200);
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
@@ -2888,6 +2891,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsFlowingStyle = LyricsFlowingStyle;
         _settings.LyricsKawarpWarp = LyricsKawarpWarp;
         _settings.LyricsKawarpBlur = LyricsKawarpBlur;
+        _settings.LyricsDriftMovement = LyricsDriftMovement;
+        _settings.LyricsDriftSaturation = LyricsDriftSaturation;
+        _settings.LyricsDriftBlur = LyricsDriftBlur;
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -3182,6 +3188,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsFlowingStyle = LyricsFlowingStyle;
         _player.LyricsKawarpWarp = LyricsKawarpWarp;
         _player.LyricsKawarpBlur = LyricsKawarpBlur;
+        _player.LyricsDriftMovement = LyricsDriftMovement;
+        _player.LyricsDriftSaturation = LyricsDriftSaturation;
+        _player.LyricsDriftBlur = LyricsDriftBlur;
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -4412,6 +4421,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(SelectedFlowingOption));
         OnPropertyChanged(nameof(IsKawarpStyle));
+        OnPropertyChanged(nameof(IsDriftStyle));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -4463,6 +4473,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (value is null) { LyricsFlowingStyle = FlowingStyles.Drift; return; }
         OnPropertyChanged(nameof(SelectedFlowingOption));
         OnPropertyChanged(nameof(IsKawarpStyle));
+        OnPropertyChanged(nameof(IsDriftStyle));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -4479,6 +4490,30 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsKawarpBlurChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>Drift knobs (GitHub #111), percent of the stock look — shown while a Drift style is active.</summary>
+    [ObservableProperty] private int _lyricsDriftMovement = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftSaturation = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftBlur = AppSettings.LyricsDriftKnobDefault;
+    public bool IsDriftStyle => LyricsFlowingLightEnabled && FlowingStyles.IsDrift(LyricsFlowingStyle);
+
+    partial void OnLyricsDriftMovementChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsDriftSaturationChanged(int value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsDriftBlurChanged(int value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -6498,6 +6533,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFlowingStyle = defaultSettings.LyricsFlowingStyle;
             LyricsKawarpWarp = defaultSettings.LyricsKawarpWarp;
             LyricsKawarpBlur = defaultSettings.LyricsKawarpBlur;
+            LyricsDriftMovement = defaultSettings.LyricsDriftMovement;
+            LyricsDriftSaturation = defaultSettings.LyricsDriftSaturation;
+            LyricsDriftBlur = defaultSettings.LyricsDriftBlur;
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;

@@ -384,6 +384,11 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsFlowingStyle = FlowingStyles.Drift;
     [ObservableProperty] private double _lyricsKawarpWarp = 1.0;
     [ObservableProperty] private int _lyricsKawarpBlur = 6;
+    /// <summary>Drift knobs in percent (GitHub #111); see <see cref="AppSettings.LyricsDriftMovement"/>.
+    /// Every surface that draws the Drift layers reads them live.</summary>
+    [ObservableProperty] private int _lyricsDriftMovement = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftSaturation = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftBlur = AppSettings.LyricsDriftKnobDefault;
     /// <summary>Live spectrum visualizer behind the lyrics page. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerEnabled;
     /// <summary>Visualizer look (a VisualizerStyle name). Driven by Settings.</summary>

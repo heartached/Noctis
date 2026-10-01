@@ -252,10 +252,19 @@
                      below, so the background keeps the artwork's own colours — the old
                      palette-tinted blobs recoloured the whole page when the toggle went on. -->
                 <Panel x:Name="PanelFlowBackdrop">
-                    <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                    <Image x:Name="PanelFlowBaseArt"
                     Stretch="UniformToFill"
                     RenderOptions.BitmapInterpolationMode="HighQuality"
                     IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <!-- Drift's Blur / Saturation knobs (GitHub #111), baked in like the page. -->
+                    <Image.Source>
+                    <MultiBinding Converter="{StaticResource PreBlurArt}">
+                        <Binding Path="Player.AlbumArt"/>
+                        <Binding Path="Player.LyricsFlowingLightEnabled"/>
+                        <Binding Path="Player.LyricsDriftBlur"/>
+                        <Binding Path="Player.LyricsDriftSaturation"/>
+                    </MultiBinding>
+                    </Image.Source>
                     <!-- Gentle outward scale so blur edges never reveal the fill behind. -->
                     <Image.RenderTransform>
                     <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
@@ -268,12 +277,12 @@
                     <Panel x:Name="PanelFlowLayerHost" IsHitTestVisible="False"
                            IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
                         <Image x:Name="PanelFlowLayer1"
-                               Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                               Source="{Binding #PanelFlowBaseArt.Source}"
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                Opacity="0.5"/>
                         <Image x:Name="PanelFlowLayer2"
-                               Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                               Source="{Binding #PanelFlowBaseArt.Source}"
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                Opacity="0.36"/>

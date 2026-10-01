@@ -701,6 +701,7 @@ public partial class LyricsView : UserControl
         FlowLayerHost.IsVisible = builtIn;
         BeatGlow.IsVisible = builtIn;
         _flow.BeatReactive = FlowingStyles.IsBeatReactive(style);
+        _flow.Speed = vm.Player.LyricsDriftMovement / 100.0;
         _flow.Enabled = builtIn && vm.IsColorModeArtwork;
         KawarpLayer.BeatReactive = style == FlowingStyles.Kawarp;
         KawarpLayer.IsVisible = kawarp;
@@ -719,6 +720,7 @@ public partial class LyricsView : UserControl
     {
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
                 or nameof(PlayerViewModel.LyricsFlowingStyle)
+                or nameof(PlayerViewModel.LyricsDriftMovement)
                 or nameof(PlayerViewModel.LyricsBackgroundMediaPath) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);

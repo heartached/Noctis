@@ -481,7 +481,8 @@ public partial class MiniPlayerWindow : Window
             UpdatePillSpin();
         // The layers' visibility is bound in XAML; this only parks/resumes the loop.
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
-                or nameof(PlayerViewModel.LyricsFlowingStyle))
+                or nameof(PlayerViewModel.LyricsFlowingStyle)
+                or nameof(PlayerViewModel.LyricsDriftMovement))
             UpdateFlowAnimationState();
     }
 
@@ -494,6 +495,7 @@ public partial class MiniPlayerWindow : Window
         if (_flow == null) return;
         _flow.BeatReactive = Noctis.Models.FlowingStyles.IsBeatReactive(
             Noctis.Models.FlowingStyles.Normalize(Vm?.Player.LyricsFlowingStyle));
+        _flow.Speed = (Vm?.Player.LyricsDriftMovement ?? Noctis.Models.AppSettings.LyricsDriftKnobDefault) / 100.0;
         _flow.Enabled = Vm is { IsLyricsForm: true } vm && vm.Lyrics.IsColorModeArtwork &&
                         vm.Player.LyricsFlowingLightEnabled;
     }

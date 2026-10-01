@@ -37,6 +37,8 @@ public sealed class FlowingArtworkAnimator : IDisposable
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private double _lastFrameMs;
+    private double _speed = 1.0;
+    private double _motionOffsetMs; // see FlowingArtworkMotion.MotionTimeMs
     private double _pulse; // smoothed on-screen pulse
     private bool _enabled;
     private bool _running;
@@ -95,6 +97,22 @@ public sealed class FlowingArtworkAnimator : IDisposable
     /// <summary>False for the "Drift (no beat)" style: the layers keep drifting but the
     /// beat target is pinned at 0, so the backdrop scale and glow never swell.</summary>
     public bool BeatReactive { get; set; } = true;
+
+    /// <summary>The Drift Movement knob as a multiplier (1 = stock pace, 0 = layers held still;
+    /// GitHub #111). The beat pulse is untouched. A change keeps the current pose and only
+    /// alters the pace from here on.</summary>
+    public double Speed
+    {
+        get => _speed;
+        set
+        {
+            if (!double.IsFinite(value)) value = 1.0;
+            value = Math.Max(0, value);
+            if (value == _speed) return;
+            _motionOffsetMs = FlowingArtworkMotion.RebaseOffsetMs(_clock.Elapsed.TotalMilliseconds, _speed, _motionOffsetMs, value);
+            _speed = value;
+        }
+    }
 
     /// <summary>True while a frame callback is pending.</summary>
     public bool IsRunning => _running;
@@ -158,7 +176,9 @@ public sealed class FlowingArtworkAnimator : IDisposable
 
         var size = _backdrop.Bounds.Size;
         if (size.Width > 0 && size.Height > 0)
-            Apply(FlowingArtworkMotion.Evaluate(nowMs / 1000.0, size.Width, size.Height, _pulse));
+            Apply(FlowingArtworkMotion.Evaluate(
+                FlowingArtworkMotion.MotionTimeMs(nowMs, _speed, _motionOffsetMs) / 1000.0,
+                size.Width, size.Height, _pulse));
 
         topLevel.RequestAnimationFrame(OnFrame);
     }

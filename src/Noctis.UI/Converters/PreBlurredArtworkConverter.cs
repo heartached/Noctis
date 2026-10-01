@@ -25,8 +25,14 @@ namespace Noctis.Converters;
 /// separable gaussian whose sigma is chosen so the upscaled result matches the
 /// old radius-72 fullscreen look. Results are cached per source bitmap, so a
 /// track change costs one sub-millisecond 128px convolution.
+///
+/// As a multi-binding — (art, Drift on, blur %, saturation %) — it bakes the Drift
+/// Blur / Saturation knobs (GitHub #111) into the same small bitmap, so they cost
+/// nothing per frame either. Knobs at 100% (or Drift off) return the plain cached
+/// result above, untouched; otherwise one tuned copy per source is kept and rebuilt
+/// only when a knob moves, from cached 128px pixels (no re-read of the cover).
 /// </summary>
-public class PreBlurredArtworkConverter : IValueConverter
+public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
 {
     private const int WorkingSize = 128;
 
@@ -36,6 +42,48 @@ public class PreBlurredArtworkConverter : IValueConverter
     private const double Sigma = 2.4;
 
     private static readonly ConditionalWeakTable<Bitmap, Bitmap> Cache = new();
+
+    /// <summary>Per source: its downscaled pixels and the last tuned bitmap made from them.</summary>
+    private sealed class TunedArt
+    {
+        public required byte[] Small;
+        public required int Width;
+        public required int Height;
+        public int Blur = -1;
+        public int Saturation = -1;
+        public Bitmap? Result;
+    }
+
+    private static readonly ConditionalWeakTable<Bitmap, TunedArt> TunedCache = new();
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var art = values.Count > 0 ? values[0] : null;
+        if (values.Count < 4 || values[1] is not true || values[2] is not int blur || values[3] is not int saturation
+            || (blur == 100 && saturation == 100))
+            return Convert(art, targetType, parameter, culture);
+        if (art is not Bitmap src) return null;
+        try
+        {
+            var tuned = TunedCache.GetValue(src, static s =>
+            {
+                var small = ReadDownscaled(s, out var w, out var h);
+                return new TunedArt { Small = small, Width = w, Height = h };
+            });
+            if (tuned.Result is null || tuned.Blur != blur || tuned.Saturation != saturation)
+            {
+                tuned.Result = ToBitmap(Tune(tuned.Small, tuned.Width, tuned.Height, blur, saturation), tuned.Width, tuned.Height);
+                tuned.Blur = blur;
+                tuned.Saturation = saturation;
+            }
+            return tuned.Result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PreBlurredArtwork] {ex.Message}");
+            return null;
+        }
+    }
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -48,7 +96,7 @@ public class PreBlurredArtworkConverter : IValueConverter
         {
             // A throwing IValueConverter surfaces as a binding failure rather than a
             // graceful fallback, and CopyPixels rejects some bitmap implementations
-            // outright (see the note in CreateBlurred). No backdrop beats a broken bind.
+            // outright (see the note in ReadDownscaled). No backdrop beats a broken bind.
             System.Diagnostics.Debug.WriteLine($"[PreBlurredArtwork] {ex.Message}");
             return null;
         }
@@ -58,6 +106,68 @@ public class PreBlurredArtworkConverter : IValueConverter
         => throw new NotSupportedException();
 
     private static Bitmap CreateBlurred(Bitmap source)
+    {
+        var pixels = ReadDownscaled(source, out var w, out var h);
+
+        // Separable gaussian, clamp-to-edge. Channel-order agnostic: every byte
+        // channel is blurred independently, so BGRA vs RGBA needs no branching.
+        Blur(pixels, w, h, Sigma);
+        return ToBitmap(pixels, w, h);
+    }
+
+    /// <summary>
+    /// The Drift knobs applied to downscaled pixels (a new array; <paramref name="small"/> is
+    /// kept): blur at <paramref name="blurPercent"/> of the stock sigma (0 = none), then
+    /// saturation at <paramref name="saturationPercent"/> (0 = grey, 100 = unchanged). 100/100
+    /// gives exactly what <see cref="CreateBlurred"/> draws.
+    /// </summary>
+    internal static byte[] Tune(byte[] small, int w, int h, int blurPercent, int saturationPercent)
+    {
+        var pixels = (byte[])small.Clone();
+        if (blurPercent > 0) Blur(pixels, w, h, Sigma * (blurPercent / 100.0));
+        if (saturationPercent != 100) Saturate(pixels, saturationPercent / 100.0);
+        return pixels;
+    }
+
+    private static void Blur(byte[] pixels, int w, int h, double sigma)
+    {
+        var kernel = BuildKernel(sigma);
+        var tmp = new byte[pixels.Length];
+        ConvolveHorizontal(pixels, tmp, w, h, kernel);
+        ConvolveVertical(tmp, pixels, w, h, kernel);
+    }
+
+    // Each pixel moves toward (s < 1) or away from (s > 1) its own luma — the same mix and
+    // weights as Kawarp's shader (KawarpShader). Premultiplied BGRA: a channel is clamped
+    // to its alpha so the result stays a valid premultiplied colour.
+    private static void Saturate(byte[] pixels, double s)
+    {
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            double b = pixels[i], g = pixels[i + 1], r = pixels[i + 2];
+            var a = pixels[i + 3];
+            var luma = 0.299 * r + 0.587 * g + 0.114 * b;
+            pixels[i] = (byte)Math.Clamp(luma + (b - luma) * s + 0.5, 0, a);
+            pixels[i + 1] = (byte)Math.Clamp(luma + (g - luma) * s + 0.5, 0, a);
+            pixels[i + 2] = (byte)Math.Clamp(luma + (r - luma) * s + 0.5, 0, a);
+        }
+    }
+
+    private static Bitmap ToBitmap(byte[] pixels, int w, int h)
+    {
+        var stride = w * 4;
+        var result = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96),
+            PixelFormat.Bgra8888, AlphaFormat.Premul);
+        using (var fb = result.Lock())
+        {
+            for (var y = 0; y < h; y++)
+                Marshal.Copy(pixels, y * stride, fb.Address + y * fb.RowBytes, stride);
+        }
+        return result;
+    }
+
+    /// <summary>The source's pixels, area-averaged down to <see cref="WorkingSize"/> on the long side.</summary>
+    private static byte[] ReadDownscaled(Bitmap source, out int w, out int h)
     {
         // Read the source pixels at native size: CreateScaledBitmap only accepts
         // some bitmap implementations ("Invalid source bitmap type" for e.g.
@@ -77,26 +187,9 @@ public class PreBlurredArtworkConverter : IValueConverter
         }
 
         var scale = Math.Min(1.0, WorkingSize / (double)Math.Max(sw, sh));
-        var w = Math.Max(1, (int)Math.Round(sw * scale));
-        var h = Math.Max(1, (int)Math.Round(sh * scale));
-        var stride = w * 4;
-        var pixels = Downscale(srcPixels, sw, sh, w, h);
-
-        // Separable gaussian, clamp-to-edge. Channel-order agnostic: every byte
-        // channel is blurred independently, so BGRA vs RGBA needs no branching.
-        var kernel = BuildKernel(Sigma);
-        var tmp = new byte[pixels.Length];
-        ConvolveHorizontal(pixels, tmp, w, h, kernel);
-        ConvolveVertical(tmp, pixels, w, h, kernel);
-
-        var result = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96),
-            PixelFormat.Bgra8888, AlphaFormat.Premul);
-        using (var fb = result.Lock())
-        {
-            for (var y = 0; y < h; y++)
-                Marshal.Copy(pixels, y * stride, fb.Address + y * fb.RowBytes, stride);
-        }
-        return result;
+        w = Math.Max(1, (int)Math.Round(sw * scale));
+        h = Math.Max(1, (int)Math.Round(sh * scale));
+        return Downscale(srcPixels, sw, sh, w, h);
     }
 
     // Area-average downscale: each destination pixel averages its whole source
