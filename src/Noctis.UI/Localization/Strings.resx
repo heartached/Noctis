@@ -603,6 +603,9 @@
   <data name="AlbumDetail.OpenArtistPageTip" xml:space="preserve"><value>Open the artist page</value><comment>ToolTip.Tip in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.SeeDiscography" xml:space="preserve"><value>See discography</value><comment>Text in AlbumDetailView.axaml</comment></data>
 
+  <!-- ArtworkViewerDialog.axaml -->
+  <data name="ArtworkViewer.Title" xml:space="preserve"><value>Album Artwork</value><comment>Title of ArtworkViewerDialog.axaml (the full-size album cover)</comment></data>
+
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve"><value>Play</value><comment>Header in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Shuffle" xml:space="preserve"><value>Shuffle</value><comment>Header in ArtistDetailView.axaml</comment></data>

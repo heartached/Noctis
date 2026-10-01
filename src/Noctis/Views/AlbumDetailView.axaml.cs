@@ -97,6 +97,14 @@ public partial class AlbumDetailView : UserControl
             Focus();
     }
 
+    /// <summary>GitHub #114: a click on the header cover opens it full size; no cover, no viewer.</summary>
+    private void OnHeaderCoverTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is not AlbumDetailViewModel vm || !vm.ViewArtworkCommand.CanExecute(null)) return;
+        e.Handled = true;
+        vm.ViewArtworkCommand.Execute(null);
+    }
+
     /// <summary>Ctrl+A selects all album tracks (toggles to deselect when all are selected).</summary>
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {

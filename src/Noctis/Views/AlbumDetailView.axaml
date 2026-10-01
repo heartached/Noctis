@@ -233,6 +233,9 @@
         <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
             <Setter Property="Background" Value="#3FFFFFFF" />
         </Style>
+        <Style Selector="Border.cover-viewable">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
         <!-- MUST stay last: equal-origin Avalonia styles resolve by declaration order, so
              this is what makes the box win on striped, hovered and ctrl-selected rows alike. -->
         <!-- No tween onto/off the fill: Avalonia lerps colours in linear light, so hover
@@ -289,13 +292,16 @@
               ColumnDefinitions="Auto,*,Auto"
               Margin="16,12,28,20">
 
-            <!-- Large album art -->
+            <!-- Large album art. A click opens it full size (GitHub #114, OnHeaderCoverTapped);
+                 the hand cursor shows only when there is a cover to open. -->
             <Border Grid.Column="0"
                     Width="340" Height="340"
                     CornerRadius="8"
                     ClipToBounds="True"
                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                    Margin="0,0,32,0">
+                    Margin="0,0,32,0"
+                    Classes.cover-viewable="{Binding CanViewArtwork}"
+                    Tapped="OnHeaderCoverTapped">
                 <Panel>
                     <TextBlock Text="{loc:T AlbumDetail.Album}"
                                FontSize="24"

@@ -43,7 +43,17 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// the first frame from the shared LRU cache — no flash. (The Bitmap-based
     /// <see cref="AlbumArt"/> property is retained for back-compat with any consumer
     /// not yet migrated.)</summary>
-    [ObservableProperty] private string? _headerArtPath;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanViewArtwork))]
+    [NotifyCanExecuteChangedFor(nameof(ViewArtworkCommand))]
+    private string? _headerArtPath;
+
+    /// <summary>GitHub #114: the header cover opens full size when there is a still cover to
+    /// show. An animated cover plays over the still one; the viewer shows the still.</summary>
+    public bool CanViewArtwork => !string.IsNullOrEmpty(HeaderArtPath);
+
+    /// <summary>Shows a cover file full size until the viewer closes; tests swap it out.</summary>
+    internal Func<string, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
 
     /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
     public bool IsCurrentAlbumPlaying =>
@@ -757,6 +767,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Dialog closed — clean up state
         IsAlbumDescriptionEditing = false;
     }
+
+    /// <summary>Opens the header cover full size. The async command stays disabled while the
+    /// viewer is up, so a double-click on the cover opens one viewer, not two.</summary>
+    [RelayCommand(CanExecute = nameof(CanViewArtwork))]
+    private Task ViewArtwork()
+        => HeaderArtPath is { Length: > 0 } path ? ShowArtworkViewer(path) : Task.CompletedTask;
 
     [RelayCommand]
     private async Task EditAlbumDescription()
