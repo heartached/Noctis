@@ -28,8 +28,11 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album) =>
         new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album };
 
+    /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
+    /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
     public static ContextSheetViewModel ForArtist(ShellViewModel shell, Artist artist, string? artworkPath) =>
-        new(shell, artist.Name, "Artist", artworkPath, MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
+        new(shell, artist.Name, "Artist", shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
+            MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
 
     public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist) =>
         new(shell, playlist.Name, playlist.TrackIds.Count == 1 ? "1 song" : $"{playlist.TrackIds.Count} songs",

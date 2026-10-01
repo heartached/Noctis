@@ -59,6 +59,11 @@ public sealed partial class ShellViewModel : ObservableObject
     /// injected, and the paragraph then stays hidden.</summary>
     public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
 
+    /// <summary>Artist photos (Deezer on Android) for the artist page, the Artists grid, pinned
+    /// artists, the artist sheet and search; null in tests unless injected, and the artist's
+    /// album cover then stands in everywhere.</summary>
+    public IArtistPhotoSource? ArtistPhotos { get; init; }
+
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
 
