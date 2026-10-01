@@ -1,0 +1,102 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.ArtworkViewerDialog"
+        Title="{loc:T ArtworkViewer.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <Window.Styles>
+        <!-- Same round X as the Settings header and the other overlay dialogs. -->
+        <Style Selector="Button.dialog-close">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        </Style>
+        <Style Selector="Button.dialog-close:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+    </Window.Styles>
+
+    <!-- GitHub #114: the album cover, full size. A click anywhere (the cover too) closes it.
+         Darker than the other dialogs' #98 dim so the page behind doesn't compete with the art.
+         Starts transparent; code-behind fades it in on open and back out before closing
+         (the AlbumDescriptionDialog motion). -->
+    <Border x:Name="DialogOverlay"
+            Background="#D0000000"
+            Opacity="0"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <Panel>
+            <StackPanel x:Name="ArtworkCard"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="10"
+                        RenderTransformOrigin="50%,50%"
+                        RenderTransform="scale(0.96)">
+                <StackPanel.Transitions>
+                    <Transitions>
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                            <TransformOperationsTransition.Easing>
+                                <CubicEaseOut/>
+                            </TransformOperationsTransition.Easing>
+                        </TransformOperationsTransition>
+                    </Transitions>
+                </StackPanel.Transitions>
+
+                <!-- Width/Height are set from code-behind (FitArtwork). The shadow sits on an
+                     unclipped outer border; the inner one rounds the corners. -->
+                <Border x:Name="ArtworkFrame"
+                        CornerRadius="8"
+                        BoxShadow="0 16 48 0 #80000000">
+                    <Border CornerRadius="8" ClipToBounds="True">
+                        <Panel>
+                            <!-- The header's cached decode paints on the first frame; the sharp
+                                 decode below replaces it once it lands. -->
+                            <controls:CachedImage x:Name="PreviewImage"
+                                                  DecodeWidth="512"
+                                                  Stretch="Uniform"
+                                                  RenderOptions.BitmapInterpolationMode="HighQuality" />
+                            <Image x:Name="FullImage"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
+                        </Panel>
+                    </Border>
+                </Border>
+
+                <TextBlock x:Name="SizeText"
+                           HorizontalAlignment="Center"
+                           FontSize="12"
+                           Foreground="White"
+                           Opacity="0.55" />
+            </StackPanel>
+
+            <Button Classes="dialog-close"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="16"
+                    ToolTip.Tip="{loc:T Common.Close}"
+                    Click="OnCloseClick">
+                <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+            </Button>
+        </Panel>
+    </Border>
+</Window>
