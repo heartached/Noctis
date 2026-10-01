@@ -26,6 +26,10 @@ namespace Noctis.Controls;
 /// colour, and a 1px light inner edge. Popups and separate windows cannot be frosted
 /// this way — the snapshot only sees the surface this control renders into.
 ///
+/// Opt-in, for the phone's iOS 26 look: a refracting rim (<see cref="Refraction"/>, drawn
+/// through <see cref="GlassLens"/>), a rim light (<see cref="Specular"/>) and an outer
+/// <see cref="BoxShadow"/>. All default off, leaving the layers above unchanged.
+///
 /// Follows <see cref="AppGlass"/> by default; set <see cref="UseAppGlass"/> false to
 /// drive <see cref="IsGlassActive"/> directly (tests, previews).
 /// </summary>
@@ -77,13 +81,78 @@ public class GlassPanel : Decorator
     public static readonly StyledProperty<double> FadeProperty =
         AvaloniaProperty.Register<GlassPanel, double>(nameof(Fade), 1.0);
 
+    // ---- Opt-in Liquid Glass lens (iOS 26). Every default leaves the panel exactly as it
+    // drew before these existed; the desktop never sets them. See GlassLens.
+
+    /// <summary>How far in from the edge, in logical px, the rim refracts what lies beneath
+    /// (the lens band). 0: no rim lens. Needs <see cref="RefractionAmount"/> too.</summary>
+    public static readonly StyledProperty<double> RefractionProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Refraction));
+
+    /// <summary>How far inward, in logical px, the outermost rim pixel looks: content near the
+    /// edge is magnified and, at the very edge, folds into a thin mirrored band.</summary>
+    public static readonly StyledProperty<double> RefractionAmountProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(RefractionAmount));
+
+    /// <summary>0..1: the rim lens splits red and blue apart, and the rim light runs through
+    /// the spectrum (a moving droplet's rainbow edge).</summary>
+    public static readonly StyledProperty<double> DispersionProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Dispersion));
+
+    /// <summary>Zoom of the whole backdrop about the panel centre; 1 = none.</summary>
+    public static readonly StyledProperty<double> MagnificationProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Magnification), 1.0);
+
+    /// <summary>Saturation of the frosted backdrop (Apple's vibrancy); 1 = unchanged.</summary>
+    public static readonly StyledProperty<double> SaturationProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Saturation), 1.0);
+
+    /// <summary>The darkest the backdrop may show through (0..1 luminance, default 0): light glass
+    /// lifts black content so dark text on it keeps its contrast. See <see cref="GlassLensFrame"/>.</summary>
+    public static readonly StyledProperty<double> BackdropMinLuminanceProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropMinLuminance));
+
+    /// <summary>The brightest the backdrop may show through (0..1 luminance, default 1): dark glass
+    /// caps a white cover so light text on it stays readable.</summary>
+    public static readonly StyledProperty<double> BackdropMaxLuminanceProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropMaxLuminance), 1.0);
+
+    /// <summary>0..1 strength of the rim light drawn over the tint: a crisp line brightest on
+    /// the top-left rim and again on the bottom-right, with a soft inner glow.</summary>
+    public static readonly StyledProperty<double> SpecularProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Specular));
+
+    /// <summary>Shadows cast outside the panel, as on a <see cref="Border"/>; none by default.</summary>
+    public static readonly StyledProperty<BoxShadows> BoxShadowProperty =
+        Border.BoxShadowProperty.AddOwner<GlassPanel>();
+
     static GlassPanel()
     {
         AffectsRender<GlassPanel>(BackgroundProperty, CornerRadiusProperty, UseAppGlassProperty,
             IsGlassActiveProperty, GlassTintProperty, GlassTintOpacityProperty, BlurRadiusProperty,
-            EdgeBrushProperty, EdgeThicknessProperty, FadeProperty);
+            EdgeBrushProperty, EdgeThicknessProperty, FadeProperty,
+            RefractionProperty, RefractionAmountProperty, DispersionProperty, MagnificationProperty,
+            SaturationProperty, SpecularProperty, BoxShadowProperty, BackdropMinLuminanceProperty, BackdropMaxLuminanceProperty);
         AffectsArrange<GlassPanel>(BlurRadiusProperty);
     }
+
+    public double Refraction { get => GetValue(RefractionProperty); set => SetValue(RefractionProperty, value); }
+    public double RefractionAmount { get => GetValue(RefractionAmountProperty); set => SetValue(RefractionAmountProperty, value); }
+    public double Dispersion { get => GetValue(DispersionProperty); set => SetValue(DispersionProperty, value); }
+    public double Magnification { get => GetValue(MagnificationProperty); set => SetValue(MagnificationProperty, value); }
+    public double Saturation { get => GetValue(SaturationProperty); set => SetValue(SaturationProperty, value); }
+    public double Specular { get => GetValue(SpecularProperty); set => SetValue(SpecularProperty, value); }
+    public double BackdropMinLuminance { get => GetValue(BackdropMinLuminanceProperty); set => SetValue(BackdropMinLuminanceProperty, value); }
+    public double BackdropMaxLuminance { get => GetValue(BackdropMaxLuminanceProperty); set => SetValue(BackdropMaxLuminanceProperty, value); }
+    public BoxShadows BoxShadow { get => GetValue(BoxShadowProperty); set => SetValue(BoxShadowProperty, value); }
+
+    /// <summary>Any lens setting is on: the backdrop is drawn through <see cref="GlassLens"/>.</summary>
+    internal bool HasLens =>
+        (Refraction > 0 && RefractionAmount != 0) || Math.Abs(Magnification - 1) > 1e-6 || Math.Abs(Saturation - 1) > 1e-6
+        || BackdropMinLuminance > 0 || BackdropMaxLuminance < 1;
+
+    /// <summary>The panel reads what lies beneath it: a blur, a lens, or both.</summary>
+    internal bool NeedsBackdrop => BlurRadius > 0 || HasLens;
 
     public double Fade { get => GetValue(FadeProperty); set => SetValue(FadeProperty, value); }
 
@@ -140,9 +209,12 @@ public class GlassPanel : Decorator
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty || change.Property == BlurRadiusProperty)
+        if (change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty || change.Property == BlurRadiusProperty
+            || change.Property == RefractionProperty || change.Property == RefractionAmountProperty
+            || change.Property == MagnificationProperty || change.Property == SaturationProperty
+            || change.Property == BackdropMinLuminanceProperty || change.Property == BackdropMaxLuminanceProperty)
         {
-            if (!EffectiveGlassActive || BlurRadius <= 0) ReleaseBackdrop();
+            if (!EffectiveGlassActive || !NeedsBackdrop) ReleaseBackdrop();
             _reach?.InvalidateVisual();
         }
     }
@@ -170,6 +242,9 @@ public class GlassPanel : Decorator
         _reach = new GlassReach(this);
         VisualChildren.Add(_reach);
     }
+
+    /// <summary>The backdrop copy this panel frosts with, if any; read by its reach op on the render thread.</summary>
+    internal GlassBackdropCache? Backdrop => _backdrop;
 
     /// <summary>How far past each edge the blur reads, in layout units (3σ, rounded up).</summary>
     internal double Reach => BlurRadius > 0 ? Math.Ceiling(3 * BlurRadius) + 1 : 0;
@@ -215,11 +290,30 @@ public class GlassPanel : Decorator
         return (Color.FromRgb(color.R, color.G, color.B), Math.Clamp(opacity, 0, 1));
     }
 
+    /// <summary>
+    /// What a repaint of this panel alone dirties, in layout units: the compositor repaints a
+    /// visual's whole subtree (measured on the emulator), so besides the glass that is the
+    /// rim's edge, the reach ring (<see cref="GlassReach"/>) and the <see cref="BoxShadow"/>.
+    /// </summary>
+    internal Rect RepaintFootprint(Rect rect)
+    {
+        var footprint = rect.Inflate(Math.Max(Reach, 1));
+        var shadows = BoxShadow;
+        return shadows.Count > 0 ? footprint.Union(shadows.TransformBounds(rect)) : footprint;
+    }
+
+    /// <summary>The lens this frame draws with (logical units), or null for the plain frost.</summary>
+    internal GlassLensSettings? LensSettings() => HasLens
+        ? new GlassLensSettings(Math.Max(Refraction, 0), RefractionAmount, Math.Clamp(Dispersion, 0, 1),
+            Math.Max(Magnification, 0.01), Math.Max(Saturation, 0),
+            Math.Clamp(BackdropMinLuminance, 0, 1), Math.Clamp(BackdropMaxLuminance, 0, 1))
+        : null;
+
     public override void Render(DrawingContext context)
     {
         var rect = new Rect(Bounds.Size);
         var fade = Math.Clamp(Fade, 0, 1);
-        _frosting = EffectiveGlassActive && BlurRadius > 0 && fade > 0 && rect.Width > 0 && rect.Height > 0;
+        _frosting = EffectiveGlassActive && NeedsBackdrop && fade > 0 && rect.Width > 0 && rect.Height > 0;
         if (rect.Width <= 0 || rect.Height <= 0) return;
         var rrect = new RoundedRect(rect, CornerRadius);
 
@@ -228,23 +322,36 @@ public class GlassPanel : Decorator
 
         if (fade <= 0) return;
 
+        var shadows = BoxShadow;
         if (!EffectiveGlassActive)
         {
-            if (Background == null) return;
+            if (Background == null && shadows.Count == 0) return;
             using (fade < 1 ? context.PushOpacity(fade) : default)
-                context.DrawRectangle(Background, null, rrect);
+                context.DrawRectangle(Background, null, rrect, shadows);
             return;
         }
 
+        // Cast before the backdrop is read, so every frame (partial or whole) frosts the same
+        // pixels around the panel. Avalonia clips an outer shadow out of the shape itself, so
+        // nothing darkens the glass from beneath. It widens what a repaint of the panel dirties:
+        // see RepaintFootprint.
+        if (shadows.Count > 0)
+            using (fade < 1 ? context.PushOpacity(fade) : default)
+                context.DrawRectangle(null, null, rrect, shadows);
+
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
-        if (BlurRadius > 0)
+        if (NeedsBackdrop)
             context.Custom(new GlassBackdropOp(rect, CornerRadius, BlurRadius, fade,
-                _backdrop ??= new GlassBackdropCache(RequestFullRepaint)));
+                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect)));
 
         var (tint, opacity) = ResolveTint();
         opacity *= fade;
         if (opacity > 0)
             context.DrawRectangle(new ImmutableSolidColorBrush(tint, opacity), null, rrect);
+
+        var specular = Math.Clamp(Specular, 0, 1) * fade;
+        if (specular > 0)
+            context.Custom(new GlassRimOp(rect, CornerRadius, specular, Math.Clamp(Dispersion, 0, 1)));
 
         if (EdgeBrush != null && EdgeThickness > 0)
         {
@@ -284,15 +391,25 @@ public static class GlassBlur
     /// matrix, so a panel under a rotate/perspective transform (a tilted Cover Flow card)
     /// frosts exactly its own tilted outline instead of an axis-aligned box around it.
     /// </summary>
-    public static bool Draw(SKCanvas canvas, SKSurface surface, SKRect deviceRect, SKPath clip, float sigma, float alpha = 1f)
+    public static bool Draw(SKCanvas canvas, SKSurface surface, SKRect deviceRect, SKPath clip, float sigma, float alpha = 1f,
+        GlassLensFrame? lens = null)
     {
         sigma = ClampSigma(sigma);
         alpha = Math.Clamp(alpha, 0f, 1f);
         if (alpha <= 0f) return true;
         using var source = Snapshot(surface, SourceRect(deviceRect, sigma), out var at);
         if (source is null) return false;
-        DrawBlurred(canvas, source, at, clip, sigma, alpha);
+        DrawFrosted(canvas, source, at, clip, sigma, alpha, lens, surface.Context);
         return true;
+    }
+
+    /// <summary>The plain blur, or the lens over it when <paramref name="lens"/> is set and the
+    /// shader runs here (the blur alone otherwise).</summary>
+    internal static void DrawFrosted(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha,
+        GlassLensFrame? lens, GRRecordingContext? context)
+    {
+        if (lens is { } frame && GlassLens.Draw(canvas, source, at, clip, sigma, alpha, frame, context)) return;
+        DrawBlurred(canvas, source, at, clip, sigma, alpha);
     }
 
     internal static float ClampSigma(float sigma) => Math.Clamp(sigma, 0.5f, MaxSigma);
@@ -368,6 +485,10 @@ internal sealed class GlassBackdropCache
     private static readonly ConcurrentQueue<SKSurface> s_retired = new();
     private static int s_retiredCount;
 
+    /// <summary>Every unreleased copy, so a reach op can tell a neighbour's own repaint apart
+    /// from content changing beside its panel (<see cref="IsAnotherPanelsOwnRepaint"/>).</summary>
+    private static readonly ConcurrentDictionary<GlassBackdropCache, byte> s_live = new();
+
     /// <summary>Raised on the UI thread when a released GPU copy waits for the render thread.</summary>
     public static event EventHandler? Retired;
 
@@ -384,7 +505,55 @@ internal sealed class GlassBackdropCache
     /// <param name="requestFullRepaint">Asks for the whole panel to be repainted next frame;
     /// called from the render thread. Needed only when a frame could not be frosted exactly
     /// (the copy was lost while the panel sat in an opacity layer, or it was remade mid-way).</param>
-    public GlassBackdropCache(Action? requestFullRepaint = null) => _requestFullRepaint = requestFullRepaint;
+    public GlassBackdropCache(Action? requestFullRepaint = null)
+    {
+        _requestFullRepaint = requestFullRepaint;
+        s_live[this] = 0;
+    }
+
+    private SKRectI _ownRect;
+    private IntPtr _ownSurface;
+
+    /// <summary>
+    /// Render thread: <paramref name="deviceRect"/> on <paramref name="surface"/> is what a
+    /// repaint of this panel alone dirties (<see cref="GlassPanel.RepaintFootprint"/>).
+    /// </summary>
+    public void NoteOwnRect(SKRectI deviceRect, IntPtr surface)
+    {
+        lock (_gate)
+        {
+            _ownRect = deviceRect;
+            _ownSurface = surface;
+        }
+    }
+
+    /// <summary>
+    /// Render thread: the frame's dirty <paramref name="clip"/> lies wholly inside what a
+    /// repaint of another live glass panel on <paramref name="surface"/> dirties — that panel
+    /// repainting itself (its follow-up after a partial frame, a lifting droplet), not content
+    /// changing. Glass stacked close together (the mini player 10 dp above the tab capsule)
+    /// otherwise re-frosted each other in turn, every frame, forever: A's repaint, shadow and
+    /// all, overlapped B, whose follow-up overlapped A. Content scrolling beside or under a
+    /// panel dirties more than a neighbour's footprint and still reaches it.
+    /// </summary>
+    public static bool IsAnotherPanelsOwnRepaint(SKRectI clip, IntPtr surface, GlassBackdropCache? self)
+    {
+        if (clip.IsEmpty) return false;
+        foreach (var entry in s_live)
+        {
+            var other = entry.Key;
+            if (ReferenceEquals(other, self)) continue;
+            SKRectI rect;
+            IntPtr on;
+            lock (other._gate)
+            {
+                rect = other._ownRect;
+                on = other._ownSurface;
+            }
+            if (on == surface && !rect.IsEmpty && rect.Contains(clip)) return true;
+        }
+        return false;
+    }
 
     /// <summary>True while pixels under the panel may still hold frost the copy does not cover.</summary>
     internal bool IsSuspect { get { lock (_gate) return _suspect; } }
@@ -395,13 +564,20 @@ internal sealed class GlassBackdropCache
     /// part of the frame being repainted. <paramref name="wholePanelRepainted"/>: this frame
     /// repaints the panel's entire bounds (the first frame of new panel render data does),
     /// so no stale frost of it is left anywhere. Returns false when the surface cannot be read.
+    /// <paramref name="lens"/>: draw the frost through the Liquid Glass lens. It samples only
+    /// the panel's own pixels (inward), all of which the composed copy holds clean, so a
+    /// partial frame stays exact; a change beneath moves its output further than the blur's,
+    /// which the full repaint this already asks for covers.
     /// </summary>
-    public bool Draw(SKCanvas canvas, SKSurface surface, SKPath clip, float sigma, float alpha, bool wholePanelRepainted)
+    public bool Draw(SKCanvas canvas, SKSurface surface, SKPath clip, float sigma, float alpha, bool wholePanelRepainted,
+        GlassLensFrame? lens = null)
     {
         DrainRetired();
         sigma = GlassBlur.ClampSigma(sigma);
         alpha = Math.Clamp(alpha, 0f, 1f);
         var panelBounds = clip.Bounds;
+        // Before taking this copy's lock: the check takes each other copy's.
+        var neighbourRepaint = !wholePanelRepainted && IsAnotherPanelsOwnRepaint(canvas.DeviceClipBounds, surface.Handle, this);
         using var source = GlassBlur.Snapshot(surface, GlassBlur.SourceRect(panelBounds, sigma), out var at);
         if (source is null) return false;
         var panel = SKRectI.Intersect(GlassBlur.RoundOut(panelBounds), at);
@@ -420,8 +596,9 @@ internal sealed class GlassBackdropCache
                 // the panel, or in the pixels around it the blur reads, also moves the frost up to
                 // 3σ past that rect, where this frame repaints nothing: repaint the whole panel
                 // next frame. Children draw above the frost and never feed it, so a frame that only
-                // repainted them (the island's title, a hovered button) needs no second pass.
-                var followUp = !whole && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
+                // repainted them (the island's title, a hovered button) needs no second pass; nor
+                // does another glass panel repainting itself over or beside this one.
+                var followUp = !whole && !neighbourRepaint && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
                 Capture(source, at, panel, fresh, surface.Context, whole);
                 if ((followUp || _suspect) && !_repaintQueued && _requestFullRepaint != null)
                     askRepaint = _repaintQueued = true;
@@ -433,7 +610,7 @@ internal sealed class GlassBackdropCache
         try
         {
             if (!fresh.IsEmpty && alpha > 0f)
-                GlassBlur.DrawBlurred(canvas, composed ?? source, at, clip, sigma, alpha);
+                GlassBlur.DrawFrosted(canvas, composed ?? source, at, clip, sigma, alpha, lens, surface.Context);
         }
         finally { composed?.Dispose(); }
         return true;
@@ -540,6 +717,7 @@ internal sealed class GlassBackdropCache
         {
             if (_released) return;
             _released = true;
+            s_live.TryRemove(this, out _);
             parked = FreeClean(onRenderThread: false);
             _captured.Dispose();
         }
@@ -579,22 +757,27 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     private readonly CornerRadius _corners;
     private readonly double _blurRadius, _fade;
     private readonly GlassBackdropCache? _cache;
+    private readonly GlassLensSettings? _lens;
+    private readonly Rect _footprint;
     private bool _drawn;
 
-    public GlassBackdropOp(Rect bounds, CornerRadius corners, double blurRadius, double fade = 1, GlassBackdropCache? cache = null)
+    public GlassBackdropOp(Rect bounds, CornerRadius corners, double blurRadius, double fade = 1, GlassBackdropCache? cache = null,
+        GlassLensSettings? lens = null, Rect? footprint = null)
     {
         Bounds = bounds;
         _corners = corners;
         _blurRadius = blurRadius;
         _fade = fade;
         _cache = cache;
+        _lens = lens;
+        _footprint = footprint ?? bounds.Inflate(1);
     }
 
     public Rect Bounds { get; }
     public bool HitTest(Point p) => false;
     public bool Equals(ICustomDrawOperation? other) =>
         other is GlassBackdropOp o && o.Bounds == Bounds && o._corners == _corners && o._blurRadius == _blurRadius && o._fade == _fade
-        && ReferenceEquals(o._cache, _cache);
+        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint;
     public void Dispose() { }
 
     public void Render(ImmediateDrawingContext context)
@@ -630,17 +813,37 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         var scale = Math.Max(Math.Abs(m.ScaleX), Math.Abs(m.ScaleY));
         if (scale < 0.01f) scale = 1f;
         var sigma = (float)(_blurRadius * scale);
+        var lens = LensFrame(m);
 
         if (_cache is null)
         {
-            GlassBlur.Draw(canvas, surface, dev, path, sigma, (float)_fade);
+            GlassBlur.Draw(canvas, surface, dev, path, sigma, (float)_fade, lens);
             return;
         }
+        // What a repaint of the panel alone dirties on screen. The compositor's dirty rect for it
+        // runs a few device pixels past the shadow's nominal bounds (measured: 1-3 px at 2.625x),
+        // so allow a layout pixel either way plus rounding.
+        var own = GlassBlur.RoundOut(m.MapRect(new SKRect((float)_footprint.X, (float)_footprint.Y, (float)_footprint.Right, (float)_footprint.Bottom)));
+        var slack = 2 + (int)Math.Ceiling(2 * scale);
+        own.Inflate(slack, slack);
+        _cache.NoteOwnRect(own, surface.Handle);
         // New render data repaints the panel's whole bounds in the frame that brings it, so
         // this op's first draw leaves no stale frost of the panel anywhere.
         var first = !_drawn;
         _drawn = true;
-        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first);
+        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first, lens);
+    }
+
+    /// <summary>The lens in device px under <paramref name="m"/>; null without one, or when the
+    /// panel is rotated, skewed or in perspective (the lens is axis-aligned: plain frost then).</summary>
+    private GlassLensFrame? LensFrame(SKMatrix m)
+    {
+        if (_lens is not { } l) return null;
+        var local = new SKRect((float)Bounds.X, (float)Bounds.Y, (float)Bounds.Right, (float)Bounds.Bottom);
+        var radii = new GlassCornerRadii((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
+        if (!GlassLens.TryMapToDevice(m, local, radii, out var device, out var deviceRadii, out var scale)) return null;
+        return new GlassLensFrame(device, deviceRadii, (float)(l.Band * scale), (float)(l.Bend * scale),
+            (float)l.Dispersion, (float)l.Zoom, (float)l.Saturation, (float)l.ToneMin, (float)l.ToneMax);
     }
 }
 
@@ -661,6 +864,49 @@ internal sealed class GlassRetiredDrainOp : ICustomDrawOperation
         if (lease is null) return;
         using var api = lease.Lease();
         GlassBackdropCache.DrainRetired();
+    }
+}
+
+/// <summary>
+/// Render-thread op for a <see cref="GlassPanel"/>'s rim light (<see cref="GlassPanel.Specular"/>),
+/// drawn over its tint. Sizes are logical px scaled to device px here.
+/// </summary>
+internal sealed class GlassRimOp : ICustomDrawOperation
+{
+    /// <summary>The crisp rim line, the soft inner glow's reach and its strength (logical px / 0..1).</summary>
+    internal const double LineWidth = 0.9, GlowWidth = 7, Glow = 0.22;
+
+    private readonly Rect _rect;
+    private readonly CornerRadius _corners;
+    private readonly double _strength, _iridescence;
+
+    public GlassRimOp(Rect rect, CornerRadius corners, double strength, double iridescence)
+    {
+        _rect = rect;
+        // The anti-aliased outline reaches half a device pixel past the rect.
+        Bounds = rect.Inflate(1);
+        _corners = corners;
+        _strength = strength;
+        _iridescence = iridescence;
+    }
+
+    public Rect Bounds { get; }
+    public bool HitTest(Point p) => false;
+    public bool Equals(ICustomDrawOperation? other) =>
+        other is GlassRimOp o && o._rect == _rect && o._corners == _corners && o._strength == _strength && o._iridescence == _iridescence;
+    public void Dispose() { }
+
+    public void Render(ImmediateDrawingContext context)
+    {
+        var lease = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+        if (lease is null) return;
+        using var api = lease.Lease();
+        var canvas = api.SkCanvas;
+        var local = new SKRect((float)_rect.X, (float)_rect.Y, (float)_rect.Right, (float)_rect.Bottom);
+        var radii = new GlassCornerRadii((float)_corners.TopLeft, (float)_corners.TopRight, (float)_corners.BottomRight, (float)_corners.BottomLeft);
+        if (!GlassLens.TryMapToDevice(canvas.TotalMatrix, local, radii, out var device, out var deviceRadii, out var scale)) return;
+        GlassLens.DrawRim(canvas, device, deviceRadii, (float)_strength, (float)(LineWidth * scale),
+            (float)(GlowWidth * scale), (float)Glow, (float)_iridescence);
     }
 }
 
@@ -720,9 +966,19 @@ internal sealed class GlassReachOp : ICustomDrawOperation
         var r = (float)_reach;
         var panel = GlassBlur.RoundOut(api.SkCanvas.TotalMatrix.MapRect(
             new SKRect(r, r, (float)Bounds.Width - r, (float)Bounds.Height - r)));
+        if (ShouldRepaint(clip, panel, api.SkSurface?.Handle ?? IntPtr.Zero, _owner.Backdrop))
+            _owner.OnReachRepainted();
+    }
+
+    /// <summary>
+    /// Whether a frame whose dirty rect is <paramref name="clip"/> (meeting the reach ring of
+    /// the panel at device rect <paramref name="panel"/>) changed pixels the panel's blur reads.
+    /// </summary>
+    internal static bool ShouldRepaint(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache? self)
+    {
         // Inside the panel the backdrop op handles the repaint itself; a repaint covering the
         // whole panel frosted it from what is there now.
-        if (panel.Contains(clip) || clip.Contains(panel)) return;
-        _owner.OnReachRepainted();
+        if (clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel)) return false;
+        return !GlassBackdropCache.IsAnotherPanelsOwnRepaint(clip, surface, self);
     }
 }

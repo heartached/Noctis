@@ -232,11 +232,44 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- Liquid Glass (iOS 26) on the phone's floating chrome: the tab capsule, the mini
+         player, the folded Search bubble, the Queue's control pill. A light frost, so what
+         passes beneath stays recognisable; a rim that refracts it like the curved edge of a
+         lens (GlassPanel.Refraction); a rim light and a soft shadow. The tints, edge and sheen
+         are ShellView's theme resources. -->
+    <Style Selector="controls|GlassPanel.liquid">
+        <Setter Property="UseAppGlass" Value="False" />
+        <Setter Property="IsGlassActive" Value="True" />
+        <Setter Property="BlurRadius" Value="1.5" />
+        <Setter Property="Refraction" Value="20" />
+        <Setter Property="RefractionAmount" Value="26" />
+        <Setter Property="Saturation" Value="1.3" />
+        <Setter Property="Specular" Value="0.8" />
+        <Setter Property="BackdropMinLuminance" Value="{DynamicResource GlassBarMinLuminance}" />
+        <Setter Property="BackdropMaxLuminance" Value="{DynamicResource GlassBarMaxLuminance}" />
+        <Setter Property="BoxShadow" Value="0 4 18 0 #29000000" />
+        <Setter Property="Background" Value="{DynamicResource GlassBarTint}" />
+        <Setter Property="EdgeBrush" Value="{DynamicResource GlassBarEdge}" />
+        <Setter Property="EdgeThickness" Value="1" />
+    </Style>
+    <!-- A round bubble bends light over a shorter rim. -->
+    <Style Selector="controls|GlassPanel.liquid.bubble">
+        <Setter Property="Refraction" Value="16" />
+        <Setter Property="RefractionAmount" Value="21" />
+    </Style>
+
     <!-- Round Liquid Glass buttons in a page header (Library … and profile). -->
     <Style Selector="controls|GlassPanel.header-glass">
         <Setter Property="UseAppGlass" Value="False" />
         <Setter Property="IsGlassActive" Value="True" />
-        <Setter Property="BlurRadius" Value="11" />
+        <Setter Property="BlurRadius" Value="1.5" />
+        <Setter Property="Refraction" Value="11" />
+        <Setter Property="RefractionAmount" Value="14" />
+        <Setter Property="Saturation" Value="1.3" />
+        <Setter Property="Specular" Value="0.8" />
+        <Setter Property="BackdropMinLuminance" Value="{DynamicResource GlassBarMinLuminance}" />
+        <Setter Property="BackdropMaxLuminance" Value="{DynamicResource GlassBarMaxLuminance}" />
+        <Setter Property="BoxShadow" Value="0 2 10 0 #22000000" />
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="40" />
         <Setter Property="CornerRadius" Value="20" />

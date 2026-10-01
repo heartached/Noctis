@@ -298,9 +298,7 @@
                              the list, or under the current track once landscape splits the layout in two
                              columns (the code-behind keeps its margin on the safe area). -->
                         <Panel Grid.Row="3" Name="PillHost" VerticalAlignment="Bottom">
-                            <controls:GlassPanel Name="ControlPill" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
-                                                 Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
-                                                 EdgeThickness="1" CornerRadius="28" Height="56" Margin="20,0,20,12">
+                            <controls:GlassPanel Name="ControlPill" Classes="liquid" CornerRadius="28" Height="56" Margin="20,0,20,12">
                                 <Panel>
                                     <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="28" IsHitTestVisible="False" />
                                     <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="8,0">

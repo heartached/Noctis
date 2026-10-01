@@ -54,9 +54,13 @@
             <ResourceDictionary.ThemeDictionaries>
                 <!-- Liquid Glass bar surfaces: the tint over the frost (its opacity is the tint
                      strength), the selected tab's pill, the light rim along the edge, the sheen
-                     on the upper half, and the scrim content fades into behind the bar. -->
+                     on the upper half, and the scrim content fades into behind the bar. The
+                     luminance range is how bright (Dark) or dark (Light) what lies beneath may
+                     show through the glass, so the labels on it stay readable over any cover. -->
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="GlassBarTint" Color="#1C1C1F" Opacity="0.46" />
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#1C1C1F" Opacity="0.5" />
+                    <x:Double x:Key="GlassBarMinLuminance">0</x:Double>
+                    <x:Double x:Key="GlassBarMaxLuminance">0.45</x:Double>
                     <SolidColorBrush x:Key="GlassBarPill" Color="#FFFFFF" Opacity="0.12" />
                     <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#70FFFFFF" />
@@ -69,11 +73,13 @@
                     </LinearGradientBrush>
                     <LinearGradientBrush x:Key="GlassBarScrim" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#00000000" />
-                        <GradientStop Offset="1" Color="#B0000000" />
+                        <GradientStop Offset="1" Color="#70000000" />
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="GlassBarTint" Color="#F7F7FA" Opacity="0.66" />
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#F7F7FA" Opacity="0.5" />
+                    <x:Double x:Key="GlassBarMinLuminance">0.25</x:Double>
+                    <x:Double x:Key="GlassBarMaxLuminance">1</x:Double>
                     <SolidColorBrush x:Key="GlassBarPill" Color="#000000" Opacity="0.07" />
                     <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#FFFFFFFF" />
@@ -86,7 +92,7 @@
                     </LinearGradientBrush>
                     <LinearGradientBrush x:Key="GlassBarScrim" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#00FFFFFF" />
-                        <GradientStop Offset="1" Color="#99FFFFFF" />
+                        <GradientStop Offset="1" Color="#4DFFFFFF" />
                     </LinearGradientBrush>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
@@ -142,16 +148,20 @@
             <Panel Name="ChromeHost" Margin="14,0,14,8" VerticalAlignment="Bottom">
 
                 <!-- The tab capsule. Expanded it spans the row and holds the four tabs; folded it
-                     shrinks to a round button showing the current tab. -->
-                <controls:GlassPanel Name="TabCapsule" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
-                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
-                                     EdgeThickness="1" CornerRadius="32" ClipToBounds="True"
+                     shrinks to a round button showing the current tab. Its content clips to it
+                     (the full-width tab row while folded), the glass itself does not: its shadow
+                     falls outside. -->
+                <controls:GlassPanel Name="TabCapsule" Classes="liquid" CornerRadius="32"
                                      HorizontalAlignment="Left" VerticalAlignment="Bottom">
-                    <Panel>
+                    <Panel ClipToBounds="True">
                         <Border Name="TabSheen" Background="{DynamicResource GlassBarSheen}" CornerRadius="32" IsHitTestVisible="False" />
                         <Panel Name="TabRow" HorizontalAlignment="Left">
-                            <Border Name="SelectionPill" Background="{DynamicResource GlassBarPill}" CornerRadius="27"
-                                    HorizontalAlignment="Left" Margin="0,5" IsHitTestVisible="False" />
+                            <!-- The selected tab's glass droplet: the host slides between tabs, the
+                                 droplet lifts while it travels (ShellView.LiftSelectionPill). -->
+                            <Panel Name="SelectionPillHost" HorizontalAlignment="Left" Margin="0,5" IsHitTestVisible="False">
+                                <views:GlassDroplet Name="SelectionPill" Background="{DynamicResource GlassBarPill}" CornerRadius="27"
+                                                    UseAppGlass="False" IsGlassActive="True" BlurRadius="0" EdgeThickness="0" />
+                            </Panel>
                             <Grid Name="TabBar" ColumnDefinitions="*,*,*,*">
                                 <Button Grid.Column="0" Name="LibraryTab" Classes="tab" Classes.selected="{Binding IsLibrarySelected}"
                                         Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Library}">
@@ -210,9 +220,7 @@
                 </controls:GlassPanel>
 
                 <!-- Folded only: the round Search button at the right end of the row. -->
-                <controls:GlassPanel Name="SearchBubble" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
-                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
-                                     EdgeThickness="1" CornerRadius="30"
+                <controls:GlassPanel Name="SearchBubble" Classes="liquid bubble" CornerRadius="30"
                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Fade="0">
                     <!-- Fade covers only the glass itself; the sheen and button fade with this panel. -->
                     <Panel Name="SearchBubbleContent" Opacity="0">
@@ -226,9 +234,7 @@
 
                 <!-- The mini player: its own capsule above the tabs, or inline between the two
                      round buttons when the bar is folded. -->
-                <controls:GlassPanel Name="MiniBar" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
-                                     Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
-                                     EdgeThickness="1" CornerRadius="30" VerticalAlignment="Bottom"
+                <controls:GlassPanel Name="MiniBar" Classes="liquid" CornerRadius="30" VerticalAlignment="Bottom"
                                      IsVisible="{Binding IsMiniBarVisible}">
                     <Panel>
                         <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="30" IsHitTestVisible="False" />
