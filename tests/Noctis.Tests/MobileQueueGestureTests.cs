@@ -25,6 +25,8 @@ public class MobileQueueGestureTests
         rig.Shell.OpenNowPlayingCommand.Execute(null);
         rig.Shell.ToggleQueueCommand.Execute(null);
         window.UpdateLayout();
+        MobileFixtures.Find<QueuePage>(view).CompleteSlide();   // the sheet slides up on a clock tests do not tick
+        window.UpdateLayout();
         return (rig, window, view, songs);
     }
 

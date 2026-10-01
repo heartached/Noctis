@@ -346,7 +346,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var songs = Library.Songs.ToList();
         var index = songs.IndexOf(track);
         if (index < 0) return;
-        Player.PlayTracks(songs, index);
+        Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
     [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
@@ -429,8 +429,8 @@ public sealed partial class ShellViewModel : ObservableObject
             case Track track:
                 var rail = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
                 var index = rail.IndexOf(track);
-                if (index >= 0) Player.PlayTracks(rail, index);
-                else Player.PlayTracks(new[] { track }, 0);
+                if (index >= 0) Player.PlayTracks(rail, index, "On Repeat");
+                else Player.PlayTracks(new[] { track }, 0, "On Repeat");
                 break;
         }
     }

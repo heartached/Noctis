@@ -100,6 +100,26 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     public bool HasTrack => CurrentTrack != null;
 
+    /// <summary>What the queue was started from (an album, playlist or artist name, "Songs",
+    /// "Search"...), as passed to <see cref="PlayTracks"/>; null when the caller gave none.
+    /// Saved with the queue.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSourceLabel), nameof(PlayingFromText))]
+    private string? _sourceLabel;
+
+    public bool HasSourceLabel => !string.IsNullOrEmpty(SourceLabel);
+
+    public string PlayingFromText => HasSourceLabel ? $"Playing from {SourceLabel}" : string.Empty;
+
+    /// <summary>"Track 3 of 12": the current track's place in this queue, counting the tracks
+    /// added to it since. Empty when stopped or when the place is unknown (see
+    /// <see cref="PlaybackQueue.PlayedInQueue"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasQueuePosition))]
+    private string _queuePositionText = string.Empty;
+
+    public bool HasQueuePosition => QueuePositionText.Length > 0;
+
     /// <summary>
     /// Whether <see cref="NextCommand"/> would land on a track, for the media notification's
     /// Next button (Android reads this off a Java binder thread, so it must stay a couple of
@@ -167,14 +187,16 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         PrepareUpcoming();
     }
 
-    /// <summary>Replace the queue with <paramref name="tracks"/> and start at <paramref name="startIndex"/>.</summary>
-    public void PlayTracks(IReadOnlyList<Track> tracks, int startIndex)
+    /// <summary>Replace the queue with <paramref name="tracks"/> and start at <paramref name="startIndex"/>.
+    /// <paramref name="source"/> is what the Queue sheet says it plays from (<see cref="SourceLabel"/>).</summary>
+    public void PlayTracks(IReadOnlyList<Track> tracks, int startIndex, string? source = null)
     {
         // ReplaceAll returns the still-playing Current (not null) for an empty list, so
         // without this guard tapping Play on an empty/filtered-to-nothing list would
         // restart the currently playing track from zero.
         if (tracks.Count == 0) return;
         var first = _queue.ReplaceAll(tracks, startIndex);
+        SourceLabel = source;
         IsShuffleEnabled = _queue.IsShuffleEnabled;
         if (first == null) return;
         // A new queue is a new chance: a stale failure streak from a previous queue must
@@ -189,13 +211,14 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
     /// restores is then the list's own order from that track, wrapping round.
     /// </summary>
-    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null)
+    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null, string? source = null)
     {
         if (tracks.Count == 0) return;
         rng ??= Random.Shared;
         var start = rng.Next(tracks.Count);
         var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
         var first = _queue.ReplaceAll(rotated, 0);
+        SourceLabel = source;
         _queue.SetShuffle(true, rng);
         IsShuffleEnabled = true;
         if (first == null) return;
@@ -377,20 +400,20 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     /// <summary>"Play Next" for several tracks (an album or playlist from the long-press sheet):
     /// in their order at the front of Up Next, one save. With nothing loaded there is no "next"
-    /// to insert before, so the tracks simply play.</summary>
-    public void PlayNext(IReadOnlyList<Track> tracks)
+    /// to insert before, so the tracks simply play (from <paramref name="source"/>).</summary>
+    public void PlayNext(IReadOnlyList<Track> tracks, string? source = null)
     {
         if (tracks.Count == 0) return;
-        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        if (CurrentTrack == null) { PlayTracks(tracks, 0, source); return; }
         for (var i = tracks.Count - 1; i >= 0; i--) _queue.AddNext(tracks[i]);
         QueueChanged();
     }
 
     /// <summary>"Add to Queue" for several tracks; with nothing loaded they simply play.</summary>
-    public void AddToQueue(IReadOnlyList<Track> tracks)
+    public void AddToQueue(IReadOnlyList<Track> tracks, string? source = null)
     {
         if (tracks.Count == 0) return;
-        if (CurrentTrack == null) { PlayTracks(tracks, 0); return; }
+        if (CurrentTrack == null) { PlayTracks(tracks, 0, source); return; }
         _queue.AddRange(tracks);
         QueueChanged();
     }
@@ -449,6 +472,11 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         UpNext.ReplaceAll(_queue.UpNext);
         OnPropertyChanged(nameof(HasUpNext));
+        // _queue.Current, not CurrentTrack: a queue that ran out keeps its last track loaded
+        // for the mini bar, but has no place left to number.
+        QueuePositionText = _queue.Current != null && _queue.PlayedInQueue is { } played
+            ? $"Track {played + 1} of {played + 1 + _queue.UpNext.Count}"
+            : string.Empty;
     }
 
     private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
@@ -534,6 +562,8 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             IsShuffleEnabled = snapshot.IsShuffleEnabled,
             IsMuted = _player.IsMuted,
             OriginalOrderIds = snapshot.OriginalOrderIds.ToList(),
+            SourceLabel = SourceLabel,
+            PlayedInQueue = snapshot.PlayedInQueue,
         };
         return _persistence.SaveQueueStateAsync(state);
     }
@@ -572,8 +602,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
         _queue = PlaybackQueue.Restore(
             new PlaybackQueueState(state.CurrentTrackId, state.UpNextIds, state.HistoryIds, state.RepeatCycleIds,
-                state.RepeatMode, state.IsShuffleEnabled, state.OriginalOrderIds),
+                state.RepeatMode, state.IsShuffleEnabled, state.OriginalOrderIds, state.PlayedInQueue),
             id => _library.GetTrackById(id));
+        SourceLabel = state.SourceLabel;
         RepeatMode = state.RepeatMode;
         IsShuffleEnabled = state.IsShuffleEnabled;
         CurrentTrack = _queue.Current;

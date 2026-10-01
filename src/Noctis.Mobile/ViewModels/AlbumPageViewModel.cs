@@ -75,7 +75,7 @@ public sealed partial class AlbumPageViewModel : MobilePage
     [RelayCommand]
     private void Shuffle()
     {
-        if (Album.Tracks.Count > 0) Shell.Player.PlayShuffled(Album.Tracks);
+        if (Album.Tracks.Count > 0) Shell.Player.PlayShuffled(Album.Tracks, source: Album.Name);
     }
 
     [RelayCommand]
@@ -88,7 +88,7 @@ public sealed partial class AlbumPageViewModel : MobilePage
     private void PlayFrom(int index)
     {
         if (Album.Tracks.Count == 0 || index < 0) return;
-        Shell.Player.PlayTracks(Album.Tracks, index);
+        Shell.Player.PlayTracks(Album.Tracks, index, Album.Name);
     }
 
     [RelayCommand] private void OpenArtist() => Shell.OpenArtistCommand.Execute(Album.Artist);
