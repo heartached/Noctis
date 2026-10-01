@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using Noctis.Mobile.ViewModels;
@@ -207,6 +208,38 @@ public class MobileLibraryRowsTests
         Assert.Equal(new[] { LibraryRowKind.Songs, LibraryRowKind.Playlists, LibraryRowKind.Artists, LibraryRowKind.Favorites, LibraryRowKind.Albums },
             next.Shell.LibraryRows.Rows.Select(r => r.Kind));
         nextWindow.Close();
+    }
+
+    /// <summary>The real gesture: press the ≡ handle, the row follows the finger, release over
+    /// another row and the list moves; nothing is left translated afterwards.</summary>
+    [AvaloniaFact]
+    public void PointerDragOnTheHandle_FollowsTheFinger_AndDropsTheRowWhereItIsReleased()
+    {
+        using var rig = MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.LibraryRows.EditCommand.Execute(null);
+        window.UpdateLayout();
+        var rowList = MobileFixtures.Named<ItemsControl>(view, "LibraryRowList");
+        var songs = RowButton(view, LibraryRowKind.Songs);
+        var handle = songs.GetVisualDescendants().OfType<Border>().First(b => b.Name == "RowHandle");
+        var start = handle.TranslatePoint(new Point(handle.Bounds.Width / 2, handle.Bounds.Height / 2), window)!.Value;
+        var rowHeight = rowList.ContainerFromIndex(3)!.Bounds.Height;
+
+        window.MouseDown(start, Avalonia.Input.MouseButton.Left);
+        window.MouseMove(start - new Point(0, 2 * rowHeight + 6));
+        window.UpdateLayout();
+        var dragged = rowList.ContainerFromIndex(3)!;
+        Assert.Equal(-(2 * rowHeight + 6), dragged.RenderTransform!.Value.M32, 1);   // under the finger
+        Assert.Equal(1, dragged.ZIndex);                                            // above the rows it passes
+
+        window.MouseUp(start - new Point(0, 2 * rowHeight + 6), Avalonia.Input.MouseButton.Left);
+        window.UpdateLayout();
+        Assert.Equal(new[] { LibraryRowKind.Playlists, LibraryRowKind.Songs, LibraryRowKind.Artists, LibraryRowKind.Albums, LibraryRowKind.Favorites },
+            rig.Shell.LibraryRows.Rows.Select(r => r.Kind));
+        Assert.True(rig.Shell.LibraryRows.Rows.Single(r => r.Kind == LibraryRowKind.Songs).IsShown);   // a drag is not a tap
+        Assert.All(Enumerable.Range(0, rowList.ItemCount).Select(i => rowList.ContainerFromIndex(i)!),
+            c => Assert.True(c.RenderTransform == null && c.ZIndex == 0));
+        window.Close();
     }
 
     [AvaloniaFact]
