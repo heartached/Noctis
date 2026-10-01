@@ -6,8 +6,8 @@
     <RootNamespace>Noctis.Plugins</RootNamespace>
     <AssemblyName>Noctis.Plugins.Abstractions</AssemblyName>
     <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step. -->
-    <Version>1.1.0</Version>
-    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search, settings, storage) and extension points (visual layers, lyrics providers, track menu commands).</Description>
+    <Version>1.2.0</Version>
+    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search, BPM/key writes, settings, storage) and extension points (visual layers, lyrics providers, track menu commands).</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- NuGet metadata (not published yet; `dotnet pack -c Release` produces the package). -->
     <IsPackable>true</IsPackable>
@@ -18,7 +18,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/heartached/Noctis</PackageProjectUrl>
     <RepositoryUrl>https://github.com/heartached/Noctis</RepositoryUrl>
-    <PackageReleaseNotes>1.1: plugin.json manifest, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notifications. Additive over 1.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.2: TrackInfo.Bpm/MusicalKey, ILibraryReader.GetAll, BPM/key writes ("library.write.analysis"). 1.1: plugin.json manifest, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notifications. Additive over 1.0.</PackageReleaseNotes>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />

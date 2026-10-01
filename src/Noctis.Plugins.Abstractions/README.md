@@ -4,7 +4,7 @@ The plugin kit for [Noctis](https://github.com/heartached/Noctis), a desktop mus
 Reference it with `ExcludeAssets="runtime"`: the app supplies this assembly (and Avalonia) at run time.
 
 ```xml
-<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.1.*" ExcludeAssets="runtime" PrivateAssets="all" />
+<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.2.*" ExcludeAssets="runtime" PrivateAssets="all" />
 ```
 
 Implement `INoctisPlugin`, add a `plugin.json` manifest next to your DLL, zip the folder and

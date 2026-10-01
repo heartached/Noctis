@@ -28,8 +28,8 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1 have default bodies that throw <see cref="NotSupportedException"/>,
-/// so code compiled against 1.0 (and any 1.0 implementation of this interface) keeps working;
+/// Members added in API 1.1 and 1.2 have default bodies that throw <see cref="NotSupportedException"/>,
+/// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
 /// </summary>
@@ -99,8 +99,14 @@ public interface IPluginHost
     /// Fires whether or not a scrobbling service is connected.</summary>
     IDisposable OnTrackScrobbled(Action<TrackInfo, DateTimeOffset> handler) => throw Missing();
 
-    private static NotSupportedException Missing()
-        => new("This Noctis build does not implement plugin API 1.1. Set minAppVersion in plugin.json.");
+    // ── API 1.2 ──
+
+    /// <summary>API 1.2, "library.write.analysis": sets BPM and key of library tracks (only those
+    /// two values, only in Noctis's library, never in file tags).</summary>
+    ITrackAnalysisWriter TrackAnalysis => throw Missing("1.2");
+
+    private static NotSupportedException Missing(string api = "1.1")
+        => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");
 }
 
 /// <summary>Current track and transport state. Events are raised on the UI thread.</summary>

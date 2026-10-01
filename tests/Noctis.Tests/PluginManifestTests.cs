@@ -185,7 +185,7 @@ public class PluginManifestTests
     {
         var v = typeof(PluginApi).Assembly.GetName().Version!;
         Assert.Equal((PluginApi.Major, PluginApi.Minor), (v.Major, v.Minor));
-        Assert.Equal("1.1", PluginApi.Version);
+        Assert.Equal("1.2", PluginApi.Version);
     }
 
     [Theory]
