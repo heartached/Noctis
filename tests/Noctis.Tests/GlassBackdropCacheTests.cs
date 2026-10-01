@@ -257,6 +257,125 @@ public class GlassBackdropCacheTests
         Assert.False(GlassBackdropCache.HasRetired);
     }
 
+    // ---- Two panels within each other's blur reach (the phone's mini player 10 dp above
+    // the tab capsule) ---------------------------------------------------------------------
+
+    private static readonly SKRectI Upper = new(40, 30, 200, 60), Lower = new(40, 72, 200, 102);
+
+    /// <summary>
+    /// Replays the compositor for the two stacked panels: each frame repaints the union of
+    /// what was invalidated; every panel the dirty rect meets draws (a requested repaint is new
+    /// render data, so whole), and every reach ring it meets asks its panel for a full repaint
+    /// when <paramref name="reachRule"/> says so. Frame 1 is a change right above the upper
+    /// panel only (a row scrolling past its edge). Returns the full repaints asked for in
+    /// frames 2..<paramref name="frames"/>: anything above 0 is a repaint loop.
+    /// </summary>
+    private static int RepaintsAfterOneChange(Func<SKRectI, SKRectI, IntPtr, GlassBackdropCache, bool> reachRule, int frames)
+    {
+        using var s = NewSurface();
+        var rects = new[] { Upper, Lower };
+        var pending = new bool[2];
+        var caches = new GlassBackdropCache[2];
+        for (var i = 0; i < 2; i++)
+        {
+            var k = i;
+            caches[k] = new GlassBackdropCache(() => pending[k] = true);
+        }
+        var reach = (int)Math.Ceiling(3 * Sigma);
+        var asked = 0;
+        try
+        {
+            void RunFrame(SKRectI dirty, bool[] whole)
+            {
+                var c = s.Canvas;
+                c.Save();
+                c.ClipRect(SKRect.Create(dirty.Left, dirty.Top, dirty.Width, dirty.Height));
+                Beneath(c);
+                for (var i = 0; i < 2; i++)
+                {
+                    if (SKRectI.Intersect(rects[i], dirty).IsEmpty) continue;
+                    using var path = new SKPath();
+                    path.AddRoundRect(new SKRoundRect(SKRect.Create(rects[i].Left, rects[i].Top, rects[i].Width, rects[i].Height), 12));
+                    caches[i].NoteOwnRect(rects[i], s.Handle);
+                    caches[i].Draw(c, s, path, Sigma, 1, wholePanelRepainted: whole[i]);
+                }
+                c.Restore();
+                for (var i = 0; i < 2; i++)
+                {
+                    var ring = new SKRectI(rects[i].Left - reach, rects[i].Top - reach, rects[i].Right + reach, rects[i].Bottom + reach);
+                    if (SKRectI.Intersect(ring, dirty).IsEmpty) continue;
+                    if (reachRule(dirty, rects[i], s.Handle, caches[i])) pending[i] = true;
+                }
+            }
+
+            RunFrame(Whole, new[] { true, true });
+            Array.Clear(pending);
+            RunFrame(new SKRectI(60, 4, 120, 18), new[] { false, false });
+            for (var f = 2; f <= frames; f++)
+            {
+                if (!pending[0] && !pending[1]) break;
+                var whole = (bool[])pending.Clone();
+                var dirty = SKRectI.Empty;
+                for (var i = 0; i < 2; i++)
+                    if (whole[i]) dirty = dirty.IsEmpty ? rects[i] : SKRectI.Union(dirty, rects[i]);
+                Array.Clear(pending);
+                RunFrame(dirty, whole);
+                asked += (pending[0] ? 1 : 0) + (pending[1] ? 1 : 0);
+            }
+            return asked;
+        }
+        finally
+        {
+            foreach (var cache in caches) cache.Release();
+        }
+    }
+
+    [Fact]
+    public void AdjacentPanels_SettleAfterAChangeBesideOne_InsteadOfReFrostingEachOtherForever()
+    {
+        Assert.Equal(0, RepaintsAfterOneChange(GlassReachOp.ShouldRepaint, frames: 30));
+    }
+
+    [Fact]
+    public void TheOldReachRule_PingPongsBetweenAdjacentPanels()
+    {
+        // Guard for the test above: the rule before the fix (any repaint in the ring that
+        // neither lies inside the panel nor covers it) keeps the two panels repainting each
+        // other, one per frame — the phone's bar rendered at the display rate while idle.
+        static bool OldRule(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache self) =>
+            !(clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel));
+        Assert.Equal(29, RepaintsAfterOneChange(OldRule, frames: 30));
+    }
+
+    [Fact]
+    public void AChangeBesideAPanel_StillReachesIt_EvenNextToAnotherPanel()
+    {
+        using var s = NewSurface();
+        var upper = new GlassBackdropCache();
+        var lower = new GlassBackdropCache();
+        try
+        {
+            upper.NoteOwnRect(Upper, s.Handle);
+            lower.NoteOwnRect(Lower, s.Handle);
+            // The upper panel repainting itself: not news for the lower one.
+            Assert.False(GlassReachOp.ShouldRepaint(Upper, Lower, s.Handle, lower));
+            // A row scrolling in the gap and under the upper panel: content beside the lower one.
+            Assert.True(GlassReachOp.ShouldRepaint(new SKRectI(30, 40, 210, 70), Lower, s.Handle, lower));
+            // Content beside it with no panel around.
+            Assert.True(GlassReachOp.ShouldRepaint(new SKRectI(205, 80, 230, 95), Lower, s.Handle, lower));
+            // A panel on another surface says nothing about this one.
+            Assert.True(GlassReachOp.ShouldRepaint(Upper, Lower, IntPtr.Zero + 1, lower));
+            // Once the upper panel's copy is released it no longer counts.
+            upper.Release();
+            Assert.True(GlassReachOp.ShouldRepaint(Upper, Lower, s.Handle, lower));
+        }
+        finally
+        {
+            upper.Release();
+            lower.Release();
+        }
+    }
+
     [Fact]
     public void Draw_CopiesOnlyTheRegionItReads()
     {

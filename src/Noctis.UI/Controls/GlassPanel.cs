@@ -189,6 +189,7 @@ public class GlassPanel : Decorator
             if (!EffectiveGlassActive) ReleaseBackdrop();
             InvalidateVisual();
             _reach?.InvalidateVisual();
+            _shadow?.InvalidateVisual();
         };
         AppGlass.Changed += _glassChanged;
         // A released GPU copy can only be freed on the render thread: repaint so this
@@ -217,6 +218,9 @@ public class GlassPanel : Decorator
             if (!EffectiveGlassActive || !NeedsBackdrop) ReleaseBackdrop();
             _reach?.InvalidateVisual();
         }
+        if (change.Property == BoxShadowProperty || change.Property == CornerRadiusProperty || change.Property == FadeProperty
+            || change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty)
+            _shadow?.InvalidateVisual();
     }
 
     private void ReleaseBackdrop()
@@ -233,15 +237,24 @@ public class GlassPanel : Decorator
     /// </summary>
     private readonly GlassReach _reach;
 
+    /// <summary>The <see cref="BoxShadow"/> while glass is on, drawn by its own visual: see <see cref="GlassShadow"/>.</summary>
+    private readonly GlassShadow _shadow;
+
     /// <summary>Set by Render: this panel's current drawing frosts. Read on the render thread.</summary>
     private volatile bool _frosting;
     private int _repaintPosted;
+    private Size _arranged;
 
     public GlassPanel()
     {
         _reach = new GlassReach(this);
         VisualChildren.Add(_reach);
+        _shadow = new GlassShadow(this);
+        VisualChildren.Add(_shadow);
     }
+
+    /// <summary>The backdrop copy this panel frosts with, if any; read by its reach op on the render thread.</summary>
+    internal GlassBackdropCache? Backdrop => _backdrop;
 
     /// <summary>How far past each edge the blur reads, in layout units (3σ, rounded up).</summary>
     internal double Reach => BlurRadius > 0 ? Math.Ceiling(3 * BlurRadius) + 1 : 0;
@@ -249,6 +262,7 @@ public class GlassPanel : Decorator
     protected override Size MeasureOverride(Size availableSize)
     {
         _reach.Measure(Size.Infinity);
+        _shadow.Measure(Size.Infinity);
         return base.MeasureOverride(availableSize);
     }
 
@@ -257,6 +271,12 @@ public class GlassPanel : Decorator
         var size = base.ArrangeOverride(finalSize);
         var r = Reach;
         _reach.Arrange(new Rect(-r, -r, size.Width + 2 * r, size.Height + 2 * r));
+        _shadow.Arrange(new Rect(size));
+        if (size != _arranged)
+        {
+            _arranged = size;
+            _shadow.InvalidateVisual();
+        }
         return size;
     }
 
@@ -316,12 +336,8 @@ public class GlassPanel : Decorator
             return;
         }
 
-        // Cast before the backdrop is read, so every frame (partial or whole) frosts the same
-        // pixels around the panel. Avalonia clips an outer shadow out of the shape itself, so
-        // nothing darkens the glass from beneath.
-        if (shadows.Count > 0)
-            using (fade < 1 ? context.PushOpacity(fade) : default)
-                context.DrawRectangle(null, null, rrect, shadows);
+        // The shadow is GlassShadow's: drawn here it made this panel's whole-panel repaints
+        // reach its neighbours.
 
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
         if (NeedsBackdrop)
@@ -469,6 +485,10 @@ internal sealed class GlassBackdropCache
     private static readonly ConcurrentQueue<SKSurface> s_retired = new();
     private static int s_retiredCount;
 
+    /// <summary>Every unreleased copy, so a reach op can tell a neighbour's own repaint apart
+    /// from content changing beside its panel (<see cref="IsAnotherPanelsOwnRepaint"/>).</summary>
+    private static readonly ConcurrentDictionary<GlassBackdropCache, byte> s_live = new();
+
     /// <summary>Raised on the UI thread when a released GPU copy waits for the render thread.</summary>
     public static event EventHandler? Retired;
 
@@ -485,7 +505,56 @@ internal sealed class GlassBackdropCache
     /// <param name="requestFullRepaint">Asks for the whole panel to be repainted next frame;
     /// called from the render thread. Needed only when a frame could not be frosted exactly
     /// (the copy was lost while the panel sat in an opacity layer, or it was remade mid-way).</param>
-    public GlassBackdropCache(Action? requestFullRepaint = null) => _requestFullRepaint = requestFullRepaint;
+    public GlassBackdropCache(Action? requestFullRepaint = null)
+    {
+        _requestFullRepaint = requestFullRepaint;
+        s_live[this] = 0;
+    }
+
+    private SKRectI _ownRect;
+    private IntPtr _ownSurface;
+
+    /// <summary>
+    /// Render thread: <paramref name="deviceRect"/> on <paramref name="surface"/> is everything
+    /// this panel draws for itself (glass, tint, rim, edge; its shadow and children are other
+    /// visuals), so a repaint of the panel alone dirties no more than that.
+    /// </summary>
+    public void NoteOwnRect(SKRectI deviceRect, IntPtr surface)
+    {
+        lock (_gate)
+        {
+            _ownRect = deviceRect;
+            _ownSurface = surface;
+        }
+    }
+
+    /// <summary>
+    /// Render thread: the frame's dirty <paramref name="clip"/> lies wholly inside what another
+    /// live glass panel on <paramref name="surface"/> draws for itself — that panel repainting
+    /// (its follow-up after a partial frame), not content changing. Glass stacked within each
+    /// other's blur reach (the mini player 10 dp above the tab capsule) otherwise re-frosted
+    /// each other in turn, every frame, forever: A's repaint lay in B's reach, B's in A's.
+    /// Content scrolling beside a panel dirties more than a neighbour's own rect and still
+    /// reaches it.
+    /// </summary>
+    public static bool IsAnotherPanelsOwnRepaint(SKRectI clip, IntPtr surface, GlassBackdropCache? self)
+    {
+        if (clip.IsEmpty) return false;
+        foreach (var entry in s_live)
+        {
+            var other = entry.Key;
+            if (ReferenceEquals(other, self)) continue;
+            SKRectI rect;
+            IntPtr on;
+            lock (other._gate)
+            {
+                rect = other._ownRect;
+                on = other._ownSurface;
+            }
+            if (on == surface && !rect.IsEmpty && rect.Contains(clip)) return true;
+        }
+        return false;
+    }
 
     /// <summary>True while pixels under the panel may still hold frost the copy does not cover.</summary>
     internal bool IsSuspect { get { lock (_gate) return _suspect; } }
@@ -646,6 +715,7 @@ internal sealed class GlassBackdropCache
         {
             if (_released) return;
             _released = true;
+            s_live.TryRemove(this, out _);
             parked = FreeClean(onRenderThread: false);
             _captured.Dispose();
         }
@@ -746,6 +816,11 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
             GlassBlur.Draw(canvas, surface, dev, path, sigma, (float)_fade, lens);
             return;
         }
+        // What the panel draws for itself: its rect, plus the rim light's anti-aliased edge
+        // (1 layout px) and a pixel either way for rounding.
+        var own = GlassBlur.RoundOut(m.MapRect(new SKRect((float)Bounds.X - 1, (float)Bounds.Y - 1, (float)Bounds.Right + 1, (float)Bounds.Bottom + 1)));
+        own.Inflate(2, 2);
+        _cache.NoteOwnRect(own, surface.Handle);
         // New render data repaints the panel's whole bounds in the frame that brings it, so
         // this op's first draw leaves no stale frost of the panel anywhere.
         var first = !_drawn;
@@ -830,6 +905,38 @@ internal sealed class GlassRimOp : ICustomDrawOperation
 }
 
 /// <summary>
+/// The outer <see cref="GlassPanel.BoxShadow"/> of a frosting panel, drawn by this child
+/// rather than by the panel. Whatever the panel draws, its whole-panel repaint dirties; with
+/// the shadow among it, the repaint of one panel reached a neighbour inside its shadow (the
+/// mini player 10 dp above the tab capsule), whose repaint reached back, and the two
+/// re-frosted each other every frame. Here the shadow repaints only when it changes. It
+/// draws after the panel's glass (a child), so the panel's backdrop never holds its own
+/// shadow beneath it; Avalonia clips an outer shadow out of the shape, so the glass stays
+/// clear. Off, the panel draws background and shadow itself, as a Border does.
+/// </summary>
+internal sealed class GlassShadow : Control
+{
+    private readonly GlassPanel _owner;
+
+    public GlassShadow(GlassPanel owner)
+    {
+        _owner = owner;
+        IsHitTestVisible = false;
+        Focusable = false;
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        var shadows = _owner.BoxShadow;
+        var fade = Math.Clamp(_owner.Fade, 0, 1);
+        if (shadows.Count == 0 || fade <= 0 || !_owner.EffectiveGlassActive || Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        var rrect = new RoundedRect(new Rect(Bounds.Size), _owner.CornerRadius);
+        using (fade < 1 ? context.PushOpacity(fade) : default)
+            context.DrawRectangle(null, null, rrect, shadows);
+    }
+}
+
+/// <summary>
 /// An invisible child a <see cref="GlassPanel"/> lays over the ring its blur reads (3σ past
 /// each edge). The compositor replays a visual's drawing only where its layout bounds meet
 /// the frame's dirty rect, so the panel itself never hears of a repaint right beside it —
@@ -885,9 +992,19 @@ internal sealed class GlassReachOp : ICustomDrawOperation
         var r = (float)_reach;
         var panel = GlassBlur.RoundOut(api.SkCanvas.TotalMatrix.MapRect(
             new SKRect(r, r, (float)Bounds.Width - r, (float)Bounds.Height - r)));
+        if (ShouldRepaint(clip, panel, api.SkSurface?.Handle ?? IntPtr.Zero, _owner.Backdrop))
+            _owner.OnReachRepainted();
+    }
+
+    /// <summary>
+    /// Whether a frame whose dirty rect is <paramref name="clip"/> (meeting the reach ring of
+    /// the panel at device rect <paramref name="panel"/>) changed pixels the panel's blur reads.
+    /// </summary>
+    internal static bool ShouldRepaint(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache? self)
+    {
         // Inside the panel the backdrop op handles the repaint itself; a repaint covering the
         // whole panel frosted it from what is there now.
-        if (panel.Contains(clip) || clip.Contains(panel)) return;
-        _owner.OnReachRepainted();
+        if (clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel)) return false;
+        return !GlassBackdropCache.IsAnotherPanelsOwnRepaint(clip, surface, self);
     }
 }
