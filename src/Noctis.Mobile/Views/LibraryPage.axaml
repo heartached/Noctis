@@ -174,12 +174,12 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
-        <!-- The chevron's narrow glyph centred in a 28 box: the negative margin puts the glyph,
+        <!-- The chevron's narrow glyph centred in its box: the negative margin puts the glyph,
              not the box, on the row's right edge. -->
         <Style Selector="PathIcon.row-chevron">
-            <Setter Property="Width" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Margin" Value="0,0,-10,0" />
+            <Setter Property="Width" Value="19" />
+            <Setter Property="Height" Value="19" />
+            <Setter Property="Margin" Value="0,0,-7,0" />
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
