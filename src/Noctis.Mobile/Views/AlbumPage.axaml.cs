@@ -30,6 +30,7 @@ public partial class AlbumPage : UserControl
 
     /// <summary>The cover's per-row luminance, once its colours are extracted (for the status bar).</summary>
     private IReadOnlyList<double>? _coverRows;
+    private bool _coverTopMixed;
 
     /// <summary>The status bar icons last asked of the theme host; null = the theme's own.</summary>
     private bool? _statusIcons;
@@ -153,6 +154,8 @@ public partial class AlbumPage : UserControl
         var coverEnd = Hero.Height - AlbumScroll.Offset.Y;
         var progress = Math.Clamp((top + TopBarHeight + ScrimRun - coverEnd) / ScrimRun, 0, 1);
         TopScrim.Opacity = progress;
+        StatusShade.Height = top + 70;
+        StatusShade.Opacity = _coverTopMixed ? 1 - progress : 0;
         UpdateStatusBar();
     }
 
@@ -168,8 +171,10 @@ public partial class AlbumPage : UserControl
         bool? dark = null;
         if (_shell is { IsNowPlayingOpen: false, IsLyricsOpen: false, IsQueueOpen: false } && _tint?.TintColor is { } tint)
         {
-            dark = PageTint.PrefersDarkText(StatusBarBackdropLuminance(_coverRows, Hero.Height, HeroFadeShare,
-                AlbumScroll.Offset.Y, _shell.SafeArea.Top, tint, TopScrim.Opacity));
+            dark = StatusShade.Opacity >= 0.5
+                ? false   // the shade over a busy cover top: light icons on it
+                : PageTint.PrefersDarkText(StatusBarBackdropLuminance(_coverRows, Hero.Height, HeroFadeShare,
+                    AlbumScroll.Offset.Y, _shell.SafeArea.Top, tint, TopScrim.Opacity));
         }
         SetStatusIcons(dark);
     }
@@ -219,7 +224,10 @@ public partial class AlbumPage : UserControl
     /// </summary>
     private void ApplyTint()
     {
-        _coverRows = _tint?.TintColor != null ? DominantColorExtractor.GetCachedHeroColors(_vm?.Album.ArtworkPath)?.RowLuminance : null;
+        var hero = _tint?.TintColor != null ? DominantColorExtractor.GetCachedHeroColors(_vm?.Album.ArtworkPath) : null;
+        _coverRows = hero?.RowLuminance;
+        _coverTopMixed = hero?.TopMixed == true;
+        StatusShade.Opacity = _coverTopMixed ? 1 - TopScrim.Opacity : 0;
         UpdateStatusBar();
         if (_tint?.TintColor is { } tint)
         {

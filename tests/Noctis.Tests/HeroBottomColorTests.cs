@@ -181,4 +181,22 @@ public class HeroBottomColorTests
         Assert.Null(DominantColorExtractor.ExtractHeroColorsFromFile(null));
         Assert.Null(DominantColorExtractor.ExtractHeroColorsFromFile(Path.Combine(Path.GetTempPath(), "no-such-cover.png")));
     }
+
+    /// <summary>
+    /// What lies under the status bar: a high-contrast mix of light and dark (a black-and-white
+    /// graffiti cover) leaves no icon colour readable, so the page shades it; plain, soft or
+    /// lightly lettered tops are left alone.
+    /// </summary>
+    [Fact]
+    public void TopBandIsMixed_OnlyOnAHighContrastTexture()
+    {
+        (byte, byte, byte) white = (0xF2, 0xF2, 0xF2), black = (0x10, 0x10, 0x10);
+        Assert.True(DominantColorExtractor.TopBandIsMixed(Fill(N, N, (x, y) => (x / 3 + y / 3) % 2 == 0 ? white : black), N, N));
+
+        Assert.False(DominantColorExtractor.TopBandIsMixed(Fill(N, N, (_, _) => white), N, N));
+        Assert.False(DominantColorExtractor.TopBandIsMixed(Fill(N, N, (_, _) => black), N, N));
+        Assert.False(DominantColorExtractor.TopBandIsMixed(Fill(N, N, (_, y) => ((byte)(60 + y * 2), (byte)(120 + y), (byte)200)), N, N));
+        // Handwritten black title on beige (thin strokes): readable with dark icons, no shade.
+        Assert.False(DominantColorExtractor.TopBandIsMixed(Fill(N, N, (x, _) => x % 8 == 0 ? black : ((byte)0xDA, (byte)0xCB, (byte)0xB4)), N, N));
+    }
 }

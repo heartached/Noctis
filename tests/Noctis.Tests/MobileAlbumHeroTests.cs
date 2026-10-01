@@ -429,4 +429,51 @@ public class MobileAlbumHeroTests : IDisposable
         Assert.Null(theme.Icons[^1]);
         window.Close();
     }
+
+    private string RealCover(Func<int, int, SkiaSharp.SKColor> pixel)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"noctis-hero-real-{Guid.NewGuid():N}.png");
+        using (var bmp = new SkiaSharp.SKBitmap(128, 128))
+        {
+            for (int y = 0; y < 128; y++)
+            for (int x = 0; x < 128; x++)
+                bmp.SetPixel(x, y, pixel(x, y));
+            using var data = bmp.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            File.WriteAllBytes(path, data.ToArray());
+        }
+        _files.Add(path);
+        Noctis.Services.DominantColorExtractor.ExtractHeroColorsFromFile(path);   // what the page reads back
+        return path;
+    }
+
+    /// <summary>A busy black-and-white top (the graffiti cover) gets a soft shade behind the
+    /// status bar and light icons on it; a plain light top keeps dark icons and no shade.</summary>
+    [AvaloniaFact]
+    public void BusyCoverTop_IsShadedUnderTheStatusBar_WithLightIcons()
+    {
+        var theme = new RecordingTheme();
+        var busy = RealCover((x, y) => (x / 6 + y / 6) % 2 == 0 ? new SkiaSharp.SKColor(0xF2, 0xF2, 0xF2) : new SkiaSharp.SKColor(0x10, 0x10, 0x10));
+        var (album, tracks) = Sample(busy);
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album }, tint: Tint(Color.FromRgb(0x50, 0x50, 0x55)), theme: theme);
+        rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+        var page = MobileFixtures.Find<AlbumPage>(view);
+        Assert.Equal(1, MobileFixtures.Named<Border>(page, "StatusShade").Opacity);
+        Assert.Equal(false, theme.Icons[^1]);
+        rig.Shell.NavigateBackCommand.Execute(null);
+
+        var plain = RealCover((_, _) => new SkiaSharp.SKColor(0xF4, 0xF4, 0xF4));
+        var (album2, tracks2) = Sample(plain);
+        using var rig2 = MobileFixtures.MakeRig(tracks2, new[] { album2 }, tint: Tint(Color.FromRgb(0xF4, 0xF4, 0xF4)), theme: theme);
+        rig2.Shell.SafeArea = new Thickness(0, 40, 0, 0);
+        var window2 = MobileFixtures.Mount(rig2.Shell, out var view2);
+        rig2.Shell.OpenAlbumCommand.Execute(album2);
+        window2.UpdateLayout();
+        Assert.Equal(0, MobileFixtures.Named<Border>(MobileFixtures.Find<AlbumPage>(view2), "StatusShade").Opacity);
+        Assert.Equal(true, theme.Icons[^1]);
+        window.Close();
+        window2.Close();
+    }
 }

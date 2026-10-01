@@ -270,6 +270,19 @@
             </StackPanel>
         </ScrollViewer>
 
+        <!-- A soft shade behind the status bar over a busy black-and-white cover top, where no
+             icon colour reads (the page then asks for light icons); gone as the page colour
+             takes over on scroll. -->
+        <Border Name="StatusShade" VerticalAlignment="Top" Height="110" Opacity="0" IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#80000000" />
+                    <GradientStop Offset="0.55" Color="#40000000" />
+                    <GradientStop Offset="1" Color="#00000000" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
         <!-- The page colour behind the status bar and the buttons, faded in as the cover scrolls
              away so rows never run under the clock (iOS's scroll-edge fade). -->
         <Border Name="TopScrim" VerticalAlignment="Top" Height="100" Opacity="0" IsHitTestVisible="False" />

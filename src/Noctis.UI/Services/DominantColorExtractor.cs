@@ -853,6 +853,28 @@ public static class DominantColorExtractor
         return ((mL, mA, mB), Accumulate(out _, out _, out _));
     }
 
+    /// <summary>
+    /// Whether the top eighth of the cover (what sits under the status bar at rest) is a
+    /// high-contrast mix of light and dark, like a black-and-white graffiti cover: on such a
+    /// texture neither icon colour reads, whatever the mean. Measured on device covers (top
+    /// band, light/dark share): graffiti 0.20/0.34 and a parental-advisory label on black
+    /// 0.19/0.37 are mixed; plain white, beige, pink and dark covers carry under 0.10 of the
+    /// minority tone, and thin lettering stays below the bar too.
+    /// </summary>
+    internal static bool TopBandIsMixed(byte[] rgb, int width, int height)
+    {
+        const double light = 0.45, dark = 0.08, lightShare = 0.15, darkShare = 0.25;
+        var rows = Math.Max(1, height / 8);
+        int lit = 0, dim = 0, total = rows * width;
+        for (int i = 0; i < total * 3; i += 3)
+        {
+            var l = 0.2126 * SrgbToLinear(rgb[i]) + 0.7152 * SrgbToLinear(rgb[i + 1]) + 0.0722 * SrgbToLinear(rgb[i + 2]);
+            if (l > light) lit++;
+            else if (l < dark) dim++;
+        }
+        return lit >= total * lightShare && dim >= total * darkShare;
+    }
+
     /// <summary>Relative luminance (WCAG, 0 … 1) of each row's linear-light mean, top first.</summary>
     internal static double[] RowLuminance(byte[] rgb, int width, int height)
     {
@@ -1003,8 +1025,9 @@ public static class DominantColorExtractor
     /// <summary>The phone album hero's colours: <see cref="Bottom"/>, the page colour the
     /// full-bleed cover fades into (<see cref="PickHeroBottomColor"/>), and
     /// <see cref="RowLuminance"/>, the luminance of each of the visible square's 64 rows, top
-    /// first: what lies under the status bar at any scroll position.</summary>
-    public sealed record HeroColors(Color Bottom, IReadOnlyList<double> RowLuminance);
+    /// first: what lies under the status bar at any scroll position; <see cref="TopMixed"/>, the
+    /// top band is a high-contrast texture (<see cref="TopBandIsMixed"/>).</summary>
+    public sealed record HeroColors(Color Bottom, IReadOnlyList<double> RowLuminance, bool TopMixed = false);
 
     /// <summary>The hero colours already extracted for a path, without decoding; null if not cached.</summary>
     public static HeroColors? GetCachedHeroColors(string? artworkPath) =>
@@ -1047,7 +1070,7 @@ public static class DominantColorExtractor
 
             var rgb = BoxDownscaleCentreSquare(raw, n);
             if (PickHeroBottomColor(rgb, n, n) is not { } bottom) return null;
-            var colors = new HeroColors(bottom, RowLuminance(rgb, n, n));
+            var colors = new HeroColors(bottom, RowLuminance(rgb, n, n), TopBandIsMixed(rgb, n, n));
 
             if (HeroFileCache.Count >= MaxCacheSize) HeroFileCache.Clear();
             HeroFileCache.TryAdd(artworkPath, colors);
