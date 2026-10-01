@@ -22,6 +22,7 @@
                     <SolidColorBrush x:Key="QueueRule" Color="#1AFFFFFF" />
                     <SolidColorBrush x:Key="QueueCloseFill" Color="#2EFFFFFF" />
                     <SolidColorBrush x:Key="QueueGrabber" Color="#99FFFFFF" />
+                    <x:Double x:Key="QueueAccentWash">0.22</x:Double>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="QueueSheetBase" Color="#FFF2F2F5" />
@@ -31,6 +32,7 @@
                     <SolidColorBrush x:Key="QueueRule" Color="#1F000000" />
                     <SolidColorBrush x:Key="QueueCloseFill" Color="#14000000" />
                     <SolidColorBrush x:Key="QueueGrabber" Color="#4D000000" />
+                    <x:Double x:Key="QueueAccentWash">0.15</x:Double>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
@@ -104,21 +106,31 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- The control pill: plain glyphs, the accent when a mode is on, and the two ends as
-             accent-filled circles. -->
+        <!-- The control pill, as the mockup draws it: plain glyphs in the text colour (the
+             accent when a mode is on), and the two ends as soft circles, an accent wash under an
+             accent glyph. The wash is its own layer so the glyph keeps the full accent. -->
         <Style Selector="Button.icon.on PathIcon">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         </Style>
-        <Style Selector="Button.round.accent">
+        <Style Selector="Button.round.soft">
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
             <Setter Property="CornerRadius" Value="20" />
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
-        <Style Selector="Button.round.accent PathIcon">
+        <Style Selector="Button.round.soft Border.wash">
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
+        </Style>
+        <Style Selector="Button.round.soft PathIcon">
             <Setter Property="Width" Value="18" />
             <Setter Property="Height" Value="18" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         </Style>
 
         <!-- "Currently playing" equalizer: four bars at rest, bouncing while the class
@@ -287,44 +299,50 @@
                         <Panel Grid.Row="3" Name="PillHost" VerticalAlignment="Bottom">
                             <controls:GlassPanel Name="ControlPill" UseAppGlass="False" IsGlassActive="True" BlurRadius="11"
                                                  Background="{DynamicResource GlassBarTint}" EdgeBrush="{DynamicResource GlassBarEdge}"
-                                                 EdgeThickness="1" CornerRadius="31" Height="62" Margin="14,0,14,10">
+                                                 EdgeThickness="1" CornerRadius="28" Height="56" Margin="20,0,20,12">
                                 <Panel>
-                                    <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="31" IsHitTestVisible="False" />
-                                    <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="6,0">
-                                        <Button Grid.Column="0" Name="QueueListButton" Classes="round accent" HorizontalAlignment="Center"
+                                    <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="28" IsHitTestVisible="False" />
+                                    <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="8,0">
+                                        <Button Grid.Column="0" Name="QueueListButton" Classes="round soft" HorizontalAlignment="Center"
                                                 Command="{Binding ToggleQueueCommand}">
-                                            <PathIcon Data="{DynamicResource QueueListIcon}" />
+                                            <Panel>
+                                                <Border Classes="wash" />
+                                                <PathIcon Data="{DynamicResource QueueListIcon}" />
+                                            </Panel>
                                         </Button>
                                         <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
-                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="20" Height="20"
+                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="18" Height="18" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="18" Height="18"
                                                           IsVisible="{Binding Player.IsRepeatOne}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.PreviousCommand}">
-                                            <PathIcon Data="{DynamicResource RewindIcon}" Width="26" Height="26" />
+                                            <PathIcon Data="{DynamicResource RewindIcon}" Width="30" Height="30" />
                                         </Button>
                                         <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.TogglePlayPauseCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource PlayIcon}" Width="24" Height="24" IsVisible="{Binding !Player.IsPlaying}" />
-                                                <PathIcon Data="{DynamicResource PauseIcon}" Width="24" Height="24" IsVisible="{Binding Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PlayIcon}" Width="30" Height="30" IsVisible="{Binding !Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PauseIcon}" Width="30" Height="30" IsVisible="{Binding Player.IsPlaying}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="4" Name="QueueNextButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.NextCommand}">
-                                            <PathIcon Data="{DynamicResource FastForwardIcon}" Width="26" Height="26" />
+                                            <PathIcon Data="{DynamicResource FastForwardIcon}" Width="30" Height="30" />
                                         </Button>
                                         <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
-                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="20" Height="20" />
+                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="18" Height="18" />
                                         </Button>
-                                        <Button Grid.Column="6" Name="QueueMoreButton" Classes="round accent" HorizontalAlignment="Center"
+                                        <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
                                                 Command="{Binding OpenCurrentTrackSheetCommand}">
-                                            <PathIcon Data="{DynamicResource QueueMoreIcon}" />
+                                            <Panel>
+                                                <Border Classes="wash" />
+                                                <PathIcon Data="{DynamicResource QueueMoreIcon}" />
+                                            </Panel>
                                         </Button>
                                     </Grid>
                                 </Panel>

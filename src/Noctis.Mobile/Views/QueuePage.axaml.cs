@@ -36,7 +36,7 @@ public partial class QueuePage : UserControl
 
     /// <summary>The sheet's slide up and down.</summary>
     private static readonly TimeSpan Slide = TimeSpan.FromMilliseconds(350);
-    private const double PillHeight = 62, PillGap = 10, ListEndGap = 16;
+    private const double PillHeight = 56, PillGap = 12, ListEndGap = 16;
 
     private ShellViewModel? _vm;
     private bool _shown;        // the sheet is up, or on its way up

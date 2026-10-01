@@ -189,6 +189,30 @@ public class MobileQueueSheetTests
         window.Close();
     }
 
+    /// <summary>The mockup's pill: the queue and "…" ends are soft accent-washed circles (not
+    /// solid accent), repeat and shuffle small, the transport large.</summary>
+    [AvaloniaFact]
+    public void ThePill_EndsAreSoftAccentCircles_AndTheTransportIsLarge()
+    {
+        var (rig, window, _, page, _) = OpenQueue();
+        using var _rig = rig;
+        Button B(string name) => MobileFixtures.Named<Button>(page, name);
+        double Glyph(string name) => B(name).GetVisualDescendants().OfType<PathIcon>().First(p => p.IsVisible).Bounds.Width;
+
+        foreach (var end in new[] { "QueueListButton", "QueueMoreButton" })
+        {
+            Assert.False(B(end).Classes.Contains("accent"), $"{end} is a solid accent circle");
+            var wash = B(end).GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("wash"));
+            Assert.InRange(wash.Opacity, 0.12, 0.25);
+            Assert.Equal(B(end).Bounds.Size, wash.Bounds.Size);
+        }
+        foreach (var big in new[] { "QueuePreviousButton", "QueuePlayPauseButton", "QueueNextButton" })
+            Assert.True(Glyph(big) >= 28, $"{big} glyph is {Glyph(big)}");
+        foreach (var small in new[] { "QueueRepeatButton", "QueueShuffleButton" })
+            Assert.True(Glyph(small) <= 20, $"{small} glyph is {Glyph(small)}");
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Tapping_TheCloseButton_ClosesTheQueue()
     {
