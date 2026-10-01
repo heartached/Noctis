@@ -276,15 +276,20 @@ public partial class QueuePage : UserControl
         if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying)) UpdateBars();
     }
 
-    /// <summary>The pill sits above the tab bar (and the navigation bar under it); the list ends
-    /// far enough below its last row for that row to scroll clear of the pill (in landscape the
-    /// pill has a column of its own) and the tab bar.</summary>
+    /// <summary>The pill sits above the tab bar (and the navigation bar under it). Rows scroll
+    /// under the pill but stop halfway down it, so below it there is only the sheet and the tab
+    /// bar, as in the owner's mockup: halfway, where the pill's round ends are widest, the cut
+    /// never shows past them (cut at its foot, a sliver of the next cover peeked out under the
+    /// rounded corner). The list ends far enough below its last row for that row to scroll
+    /// clear of the pill. In landscape the pill has a column of its own and the list ends at the
+    /// tab bar.</summary>
     private void ApplySafeArea()
     {
         var bottom = Math.Max(_tabBarInset, _vm?.SafeArea.Bottom ?? 0);
         PillHost.Margin = new Thickness(0, 0, 0, bottom);
-        var underPill = _landscape == true ? 0 : PillHeight + PillGap;
-        QueueScroll.Padding = new Thickness(0, 0, 0, underPill + bottom + ListEndGap);
+        var landscape = _landscape == true;
+        QueueScroll.Margin = new Thickness(0, 0, 0, bottom + (landscape ? 0 : PillGap + PillHeight / 2));
+        QueueScroll.Padding = new Thickness(0, 0, 0, (landscape ? 0 : PillHeight / 2) + ListEndGap);
     }
 
     private bool? _landscape;

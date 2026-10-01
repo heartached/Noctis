@@ -287,6 +287,8 @@ public class MobileQueueSheetTests
 
         Assert.True(Bottom(pill) <= Top(chrome) - 8, $"the pill ends at {Bottom(pill)}, the tab bar starts at {Top(chrome)}");
         Assert.True(scroll.Padding.Bottom >= Bottom(scroll) - Top(pill), "the last row cannot scroll clear of the pill");
+        // Rows pass under the pill but stop halfway down it: below it only the sheet and the tab bar.
+        Assert.Equal(Top(pill) + pill.Bounds.Height / 2, Bottom(scroll), 3);
         Assert.True(Top(chrome) - Bottom(pill) <= 20, "the pill floats far above the tab bar");
         window.Close();
     }
@@ -384,10 +386,11 @@ public class MobileQueueSheetTests
         Assert.True(Left(scroll) >= Right(cover));
         Assert.True(Top(scroll) < Top(pill), "the list starts under the right column's header, not under the cover");
         Assert.True(scroll.Bounds.Height > 412 / 2.0, $"Up Next is only {scroll.Bounds.Height} tall");
-        // No pill under the list to clear, only the tab bar.
+        // No pill under the list to clear, and the list ends at the tab bar.
         var chromeTop = view.FindControl<Panel>("ChromeHost")!.TranslatePoint(default, page)!.Value.Y;
         var scrollBottom = scroll.TranslatePoint(new Point(0, scroll.Bounds.Height), page)!.Value.Y;
-        Assert.Equal(scrollBottom - chromeTop + 16, scroll.Padding.Bottom, 3);
+        Assert.Equal(16, scroll.Padding.Bottom);
+        Assert.Equal(chromeTop, scrollBottom, 3);
         Assert.True(Top(pill) + pill.Bounds.Height <= chromeTop, "the pill sits on the tab bar");
         Assert.True(Left(MobileFixtures.Named<Button>(page, "QueueCloseButton")) > Left(scroll), "✕ stays at the sheet's right edge");
         window.Close();
