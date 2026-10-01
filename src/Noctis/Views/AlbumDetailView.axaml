@@ -1088,14 +1088,8 @@
                                                Opacity="0.55"
                                                Width="220"
                                                HorizontalAlignment="Left"
-                                               TextTrimming="CharacterEllipsis">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0} · {1} songs">
-                                                <Binding Path="Year" />
-                                                <Binding Path="TrackCount" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding YearSongsLine}" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
@@ -1336,14 +1330,8 @@
                                                Opacity="0.55"
                                                Width="220"
                                                HorizontalAlignment="Left"
-                                               TextTrimming="CharacterEllipsis">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0} · {1} songs">
-                                                <Binding Path="Year" />
-                                                <Binding Path="TrackCount" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding YearSongsLine}" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

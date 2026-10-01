@@ -351,6 +351,24 @@ public class Album : ObservableObject
         }
     }
 
+    /// <summary>Artist-page tile caption: "Album · 1982"; the kind alone when the year is unknown.</summary>
+    public string ReleaseKindYearLine => Year > 0 ? $"{ReleaseKindTitle} · {Year}" : ReleaseKindTitle;
+
+    /// <summary>Album-page related tile caption: "1982 · 8 songs"; the count alone when the year is unknown.</summary>
+    public string YearSongsLine => Year > 0 ? $"{Year} · {TrackCount} songs" : $"{TrackCount} songs";
+
+    /// <summary>
+    /// Album year from its tracks in album order: the first track's, or the first dated
+    /// track's when that one has none, so an undated WAV copy in first place (Discord
+    /// Tangent, Coda kept as MP3 + WAV) no longer leaves the whole album at year 0.
+    /// </summary>
+    public static int ResolveYear(IReadOnlyList<Track> tracks)
+    {
+        foreach (var t in tracks)
+            if (t.Year > 0) return t.Year;
+        return 0;
+    }
+
     /// <summary>"12 tracks" / "1 track" for the album header's facts line.</summary>
     public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
 

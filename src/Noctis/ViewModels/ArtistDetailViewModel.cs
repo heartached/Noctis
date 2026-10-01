@@ -248,8 +248,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>"1 song · 2:52"</summary>
     public string LatestReleaseSongsLine => LatestRelease == null ? "" : LatestReleaseSongsLineFor(LatestRelease);
 
-    internal static string LatestReleaseKindLineFor(Album a)
-        => a.Year > 0 ? $"{a.ReleaseKindTitle} · {a.Year}" : a.ReleaseKindTitle;
+    internal static string LatestReleaseKindLineFor(Album a) => a.ReleaseKindYearLine;
 
     internal static string LatestReleaseSongsLineFor(Album a)
     {
