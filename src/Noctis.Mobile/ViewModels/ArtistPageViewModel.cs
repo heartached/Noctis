@@ -55,10 +55,16 @@ public enum ArtistCardKind { Featured, MostPlayed, LatestSingle }
 /// </summary>
 public sealed record ArtistCard(ArtistCardKind Kind, Album Album)
 {
-    /// <summary>"FEATURED ALBUM", "MOST PLAYED", "LATEST SINGLE" / "LATEST EP".</summary>
+    /// <summary>"FEATURED ALBUM" (or SINGLE / EP, as the release is), "MOST PLAYED", "LATEST
+    /// SINGLE" / "LATEST EP".</summary>
     public string Label => Kind switch
     {
-        ArtistCardKind.Featured => "FEATURED ALBUM",
+        ArtistCardKind.Featured => Album.ReleaseType switch
+        {
+            ReleaseType.Single => "FEATURED SINGLE",
+            ReleaseType.EP => "FEATURED EP",
+            _ => "FEATURED ALBUM",
+        },
         ArtistCardKind.MostPlayed => "MOST PLAYED",
         _ => Album.ReleaseType == ReleaseType.EP ? "LATEST EP" : "LATEST SINGLE",
     };
@@ -183,9 +189,10 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         var inAlbums = new HashSet<Guid>(albumOrder.Select(t => t.Id));
         Songs = albumOrder.Concat(all.Where(t => !inAlbums.Contains(t.Id))).ToList();
 
-        Cards = BuildCards(Releases);
+        _plays = PlayCounter(Shell.Library.History?.Events);
+        Cards = BuildCards(Releases, _plays);
 
-        var ranked = RankTopSongs(Songs).Take(TopSongCount).ToList();
+        var ranked = RankTopSongs(Songs, _plays).Take(TopSongCount).ToList();
         TopSongs = ranked
             .Select((t, i) => new ArtistTopSong(t, i + 1, showsRule: i % TopSongRowsPerPage != TopSongRowsPerPage - 1 && i != ranked.Count - 1))
             .ToList();
@@ -201,24 +208,44 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     /// and EPs on their own rail, everything else under Albums.</summary>
     public static bool IsSingleOrEp(Album album) => album.ReleaseType is ReleaseType.Single or ReleaseType.EP;
 
-    /// <summary>Most plays first (the songs' play counts), then title: Apple's Top Songs from the
-    /// library's own listening.</summary>
-    public static IEnumerable<Track> RankTopSongs(IEnumerable<Track> songs) =>
-        songs.OrderByDescending(t => t.PlayCount).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
+    /// <summary>A song's plays as the page counts them (<see cref="PlayCounter"/>).</summary>
+    private Func<Track, long> _plays = t => t.PlayCount;
+
+    /// <summary>
+    /// A song's plays: its play count (from the tags or the desktop's sync) or the phone's own
+    /// play log (plays not skipped before half the song), whichever is more. The phone counts
+    /// its plays in the log, not in the track, and a synced count may already include them, so
+    /// the two are not added.
+    /// </summary>
+    public static Func<Track, long> PlayCounter(IEnumerable<PlayHistoryEvent>? log)
+    {
+        if (log == null) return t => t.PlayCount;
+        var logged = log.Where(e => !e.Skipped).GroupBy(e => e.TrackId).ToDictionary(g => g.Key, g => (long)g.Count());
+        return t => Math.Max(t.PlayCount, logged.GetValueOrDefault(t.Id));
+    }
+
+    /// <summary>Most plays first (<paramref name="plays"/>, else the songs' play counts), then
+    /// title: Apple's Top Songs from the library's own listening.</summary>
+    public static IEnumerable<Track> RankTopSongs(IEnumerable<Track> songs, Func<Track, long>? plays = null)
+    {
+        plays ??= t => t.PlayCount;
+        return songs.OrderByDescending(plays).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
+    }
 
     /// <summary>
     /// The carousel: the newest release (Featured), then the release played most (its songs'
-    /// play counts summed, ties to the newer) and the newest single or EP, each only when it is
+    /// plays summed, ties to the newer) and the newest single or EP, each only when it is
     /// a release not already on a card.
     /// </summary>
-    public static IReadOnlyList<ArtistCard> BuildCards(IReadOnlyList<Album> releasesNewestFirst)
+    public static IReadOnlyList<ArtistCard> BuildCards(IReadOnlyList<Album> releasesNewestFirst, Func<Track, long>? plays = null)
     {
+        plays ??= t => t.PlayCount;
         var cards = new List<ArtistCard>();
         if (releasesNewestFirst.Count == 0) return cards;
         cards.Add(new ArtistCard(ArtistCardKind.Featured, releasesNewestFirst[0]));
 
         var mostPlayed = releasesNewestFirst
-            .Select((a, i) => (Album: a, Order: i, Plays: a.Tracks.Sum(t => (long)t.PlayCount)))
+            .Select((a, i) => (Album: a, Order: i, Plays: a.Tracks.Sum(plays)))
             .Where(x => x.Plays > 0)
             .OrderByDescending(x => x.Plays)
             .ThenBy(x => x.Order)
@@ -339,7 +366,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     /// <summary>Top Songs' ›: every song by the artist, most played first, under the artist's name.</summary>
     [RelayCommand]
     private void OpenAllSongs() =>
-        Shell.Navigate(new SongListPageViewModel(Shell, Name, () => RankTopSongs(Songs)));
+        Shell.Navigate(new SongListPageViewModel(Shell, Name, () => RankTopSongs(Songs, _plays)));
 
     [RelayCommand] private void OpenCard(ArtistCard? card) => Shell.OpenAlbumCommand.Execute(card?.Album);
 

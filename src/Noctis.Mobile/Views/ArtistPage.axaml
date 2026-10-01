@@ -187,7 +187,7 @@
                     <ItemsControl Name="CardList" ItemsSource="{Binding Cards}" Margin="16,0,16,0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="12" />
+                                <StackPanel Orientation="Horizontal" Spacing="{x:Static views:ArtistPage.CardGap}" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -244,7 +244,7 @@
                         <ItemsControl Name="TopSongPages" ItemsSource="{Binding TopSongPages}" Margin="16,0,16,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="14" />
+                                    <StackPanel Orientation="Horizontal" Spacing="{x:Static views:ArtistPage.ColumnGap}" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
@@ -264,8 +264,10 @@
                                                                 <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
                                                                 <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="144" Stretch="UniformToFill" />
                                                                 <!-- The playing song: Apple's bars over the darkened cover. -->
-                                                                <Border Name="PlayingScrim" Background="#66000000" IsVisible="{Binding IsCurrent}">
+                                                                <!-- The bars at 1.6x: the row indicator's size is for a 30 dp number column. -->
+                                                                <Border Name="PlayingScrim" Background="#80000000" IsVisible="{Binding IsCurrent}">
                                                                     <views:PlayingBars Name="EqBars" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                                       RenderTransform="scale(1.6)"
                                                                                        IsPlaying="{Binding IsAnimating}" IsVisible="{Binding IsCurrent}" />
                                                                 </Border>
                                                             </Panel>

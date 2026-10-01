@@ -20,9 +20,10 @@ public partial class ArtistPage : UserControl
     /// <summary>The fade covers the photo's lower half: the name and the buttons sit on it.</summary>
     internal const double HeroFadeShare = 0.5;
 
-    /// <summary>The side inset of the carousel and the grid, the gap between their pages, and
+    /// <summary>The side inset of the carousel and the grid, the gap between their pages (no
+    /// smaller than the inset, or the previous page's edge shows at the left once snapped), and
     /// how much of the next card or column shows at the right edge.</summary>
-    internal const double PageInset = 16, CardGap = 12, CardPeek = 44, ColumnGap = 14, ColumnPeek = 30;
+    public const double PageInset = 16, CardGap = 16, CardPeek = 44, ColumnGap = 16, ColumnPeek = 30;
 
     /// <summary>How far the round buttons' and the cards' fills move from the page colour
     /// (HSL lightness; see <see cref="Shade"/>).</summary>

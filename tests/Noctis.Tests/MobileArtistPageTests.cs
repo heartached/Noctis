@@ -75,7 +75,7 @@ public class MobileArtistPageTests : IDisposable
         Assert.Equal(new[] { ArtistCardKind.Featured, ArtistCardKind.MostPlayed }, cards.Select(c => c.Kind));
         Assert.Same(single, cards[0].Album);
         Assert.Same(ep, cards[1].Album);
-        Assert.Equal("FEATURED ALBUM · SEP 12, 2025", cards[0].Kicker);
+        Assert.Equal("FEATURED SINGLE · SEP 12, 2025", cards[0].Kicker);
         Assert.Equal("1 song", cards[0].SongsText);
         Assert.Equal("MOST PLAYED · 2020", cards[1].Kicker);
         Assert.Equal("4 songs", cards[1].SongsText);
@@ -91,6 +91,31 @@ public class MobileArtistPageTests : IDisposable
         var quiet = Release("Quiet", "Band", 7, 2019).Album;
         Assert.Equal(new[] { ArtistCardKind.Featured }, ArtistPageViewModel.BuildCards(new[] { quiet, Release("Older", "Band", 10, 2010).Album }).Select(c => c.Kind));
         Assert.Empty(ArtistPageViewModel.BuildCards(Array.Empty<Album>()));
+    }
+
+    /// <summary>The phone counts its plays in the play log, not in the tracks: the Most Played
+    /// card and Top Songs read both (whichever is more for a song, never the two added).</summary>
+    [Fact]
+    public void MostPlayed_AndTopSongs_CountThePhonesPlayLog()
+    {
+        var newest = Release("Fresh", "Band", 1, 2025);
+        var old = Release("Old Record", "Band", 8, 2015);
+        old.Tracks[3].PlayCount = 2;                     // synced from the desktop
+        var (tracks, albums) = Discography(newest, old);
+        using var rig = MobileFixtures.MakeRig(tracks, albums, log: h =>
+        {
+            for (var i = 0; i < 3; i++) h.Seed(old.Tracks[5], DateTime.UtcNow.AddMinutes(-i));
+            h.Seed(old.Tracks[3], DateTime.UtcNow);      // already in its synced count
+            h.EventList.Add(new PlayHistoryEvent { TrackId = newest.Tracks[0].Id, PlayedAtUtc = DateTime.UtcNow, Skipped = true });
+        });
+
+        rig.Shell.OpenArtistCommand.Execute("Band");
+        var vm = (ArtistPageViewModel)rig.Shell.CurrentPage!;
+
+        Assert.Equal(new[] { ArtistCardKind.Featured, ArtistCardKind.MostPlayed }, vm.Cards.Select(c => c.Kind));
+        Assert.Same(old.Album, vm.Cards[1].Album);
+        Assert.Equal(new[] { "Old Record 6", "Old Record 4" }, vm.TopSongs.Take(2).Select(s => s.Track.Title));
+        Assert.Equal(new long[] { 3, 2 }, vm.TopSongs.Take(2).Select(s => ArtistPageViewModel.PlayCounter(rig.History.Events)(s.Track)));
     }
 
     [AvaloniaFact]
