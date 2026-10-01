@@ -392,6 +392,10 @@ public class AppSettings
     /// newest first instead of chronologically.</summary>
     public bool AlbumSortNewestFirst { get; set; }
 
+    /// <summary>Albums grid release Type filter: "album", "single", "ep", "other", or ""
+    /// for All. Unknown values load as All.</summary>
+    public string AlbumReleaseTypeFilter { get; set; } = "";
+
     // ── Home section collapse state ──
     // Every Home section can be folded away to its header, so the page can be cut down
     // to only the rows the user currently cares about. All default to expanded — the
