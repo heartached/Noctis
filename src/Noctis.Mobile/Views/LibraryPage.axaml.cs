@@ -53,8 +53,10 @@ public partial class LibraryPage : UserControl
             EndDrag();
             return;
         }
+        // The row's content, not its Button: the Button keeps its eased press dim (MobileStyles),
+        // which Appear's own transitions would replace.
         foreach (var row in _rows.Rows.Where(r => !r.IsShown))
-            if (LibraryRowList.ContainerFromItem(row) is ContentPresenter { Child: { } button }) Appear.Play(button);
+            if (LibraryRowList.ContainerFromItem(row) is ContentPresenter { Child: Button { Content: Control content } }) Appear.Play(content);
     }
 
     // ── Drag to reorder (handle) ───────────────────────────────────

@@ -23,8 +23,9 @@
             <Setter Property="Opacity" Value="0.6" />
         </Style>
         <Style Selector="Button.back-link PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="-4,0,-3,0" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         </Style>
         <Style Selector="Button.back-link TextBlock">
@@ -106,11 +107,11 @@
 
         <Border Grid.Row="2" Name="FindField" Classes="find-field" Margin="16,0,16,10" IsVisible="{Binding HasArtists}">
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0,4,0">
-                <PathIcon Data="{DynamicResource PhSearch}" Width="16" Height="16" Opacity="0.55" />
+                <PathIcon Data="{DynamicResource PhSearch}" Width="20" Height="20" Margin="-2,0" Opacity="0.55" />
                 <TextBox Grid.Column="1" Name="FindBox" Classes="find" Text="{Binding Query}" PlaceholderText="Find in Artists" />
                 <Button Grid.Column="2" Name="ClearFindButton" Classes="icon" Width="32" Height="32" Command="{Binding ClearQueryCommand}"
                         IsVisible="{Binding IsFiltering}">
-                    <PathIcon Data="{DynamicResource PhClose}" Width="14" Height="14" Opacity="0.55" />
+                    <PathIcon Data="{DynamicResource PhClose}" Width="20" Height="20" Opacity="0.55" />
                 </Button>
             </Grid>
         </Border>

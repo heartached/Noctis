@@ -72,8 +72,8 @@
             </Setter>
         </Style>
         <Style Selector="Button.edit-done PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
         <Style Selector="Button.edit-done:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.edit-done:pressed /template/ ContentPresenter#PART_ContentPresenter">
@@ -111,9 +111,11 @@
                 </Transitions>
             </Setter>
         </Style>
+        <!-- Icon boxes are the 24-grid the phone glyphs carry (PhoneIcons.axaml), so a box of
+             N dp draws the glyph at N/24. -->
         <Style Selector="Border.row-check PathIcon">
-            <Setter Property="Width" Value="11" />
-            <Setter Property="Height" Value="11" />
+            <Setter Property="Width" Value="17" />
+            <Setter Property="Height" Value="17" />
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
             <Setter Property="IsVisible" Value="False" />
         </Style>
@@ -140,13 +142,13 @@
             <Setter Property="Margin" Value="62,0,20,0" />
         </Style>
         <Style Selector="PathIcon.row-icon">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="-3" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
         </Style>
-        <!-- One glyph per row kind (the Tag is the row's key). Favorites and Downloaded borrow
-             the closest existing glyphs until the icon set has their own. -->
+        <!-- One glyph per row kind (the Tag is the row's key). -->
         <Style Selector="PathIcon.row-icon[Tag=Playlists]">
             <Setter Property="Data" Value="{DynamicResource ChipPlaylistsIcon}" />
         </Style>
@@ -163,7 +165,7 @@
             <Setter Property="Data" Value="{DynamicResource TabFavoritesIcon}" />
         </Style>
         <Style Selector="PathIcon.row-icon[Tag=Downloaded]">
-            <Setter Property="Data" Value="{DynamicResource QueueGrabberIcon}" />
+            <Setter Property="Data" Value="{DynamicResource PhDownload}" />
         </Style>
         <Style Selector="TextBlock.row-label">
             <Setter Property="FontSize" Value="20" />
@@ -172,9 +174,12 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
+        <!-- The chevron's narrow glyph centred in a 28 box: the negative margin puts the glyph,
+             not the box, on the row's right edge. -->
         <Style Selector="PathIcon.row-chevron">
-            <Setter Property="Width" Value="14" />
-            <Setter Property="Height" Value="14" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,0,-10,0" />
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
@@ -203,8 +208,8 @@
             </Setter>
         </Style>
         <Style Selector="Border.row-handle PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
             <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
             <Setter Property="Opacity" Value="0.6" />
         </Style>
@@ -267,7 +272,7 @@
                 </controls:GlassPanel>
                 <controls:GlassPanel Name="LibraryProfileGlass" Classes="header-glass">
                     <Button Name="LibraryProfileButton" Classes="glass-round" Command="{Binding OpenSettingsCommand}">
-                        <PathIcon Data="{DynamicResource PersonIcon}" />
+                        <PathIcon Data="{DynamicResource PhPerson}" />
                     </Button>
                 </controls:GlassPanel>
             </StackPanel>
