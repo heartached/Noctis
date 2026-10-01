@@ -4,8 +4,9 @@ Copy these into Play Console → your app. Section names are the Console's as of
 September 2026; if a label moved, the question text is what to match. Facts behind each
 answer were verified against the Android build (see docs/superpowers/plans/phase4-parts/
 part-a-release.md, Task A5); the Noctis-account answers against the account design
-(docs/superpowers/specs/2026-09-28-android-account-sync-design.md). Re-check "Data safety"
-if a later version adds any online lookup.
+(docs/superpowers/specs/2026-09-28-android-account-sync-design.md). The app now makes one
+online lookup, album descriptions from Last.fm (October 2026): see "Data safety" below.
+Re-check that section if another one is added.
 
 ## Create app
 
@@ -49,7 +50,7 @@ their computer; there is no account on any developer server to give the reviewer
 form offers an instructions box, paste: "Noctis plays audio files already on the device. Tap
 Add folder and pick any folder that contains music files. Settings → Account optionally
 connects to the Noctis desktop app the user runs on their own computer (local network); the
-rest of the app works without it."
+rest of the app works without it. Album pages show a description fetched from Last.fm."
 
 **Content rating** (IARC questionnaire). Email: your contact email. Category: the one for
 utility / productivity / communication / other apps (Noctis is not a game, not social,
@@ -98,8 +99,26 @@ children: No. (Selecting any under-13 group puts the app under the Families poli
     interactions and Other user-generated content (plays, favourites, ratings, playlists);
     encrypted in transit: Yes; users can request deletion: Yes (Sign out, or remove the
     device in the desktop's Settings → Account & Devices).
+- **Last.fm album descriptions (since October 2026).** Opening an album page sends an HTTPS
+  GET to Last.fm's public API (ws.audioscrobbler.com, method album.getinfo) with only the
+  album's artist and title and the app's API key; no account, device id or install id. The
+  answer is cached in app-private storage. Last.fm, a third party, sees the request and the
+  device's IP address. (Verified in code: Noctis.Core LastFmAlbumDescriptions,
+  FetchForExactNameAsync; the phone creates it in AndroidApp.axaml.cs.)
+  - Owner's call — UNVERIFIED against the Console's current wording, check its definitions
+    before answering. The artist and title are public catalogue facts about music, not
+    information about the user, so "No" may still hold. But they reveal which albums the user
+    opens, and Google counts data sent to a third party from the app as shared. The safer
+    declaration, if in doubt: App activity → App interactions — collected: Yes, shared: Yes
+    (with Last.fm, to show album descriptions), processed ephemerally: No (Last.fm's own
+    policy governs its logs), required: Yes (no switch to turn the lookup off today),
+    purpose: App functionality, encrypted in transit: Yes, deletion: not applicable (nothing
+    is stored by the developer; Last.fm's policy covers its logs).
+  - If you want "No" to stay clearly true, a Settings switch to turn the lookup off (or make
+    it opt-in) would make it optional; not built yet.
 - With "No", the Console skips the data-type questions. If it asks about encryption in
-  transit or deletion requests, those apply only to collected data: none.
+  transit or deletion requests, those apply only to collected data: none (or, if you
+  declare the Last.fm lookup, as listed above).
 
 **Government apps:** No. **Financial features:** My app doesn't provide any financial
 features. **Health:** My app does not have any health features.
