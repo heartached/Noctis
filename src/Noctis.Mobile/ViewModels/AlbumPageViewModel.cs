@@ -169,12 +169,16 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     }
 
     /// <summary>"Lossless · 24-bit/96 kHz FLAC": Core's badge and its detail line (the desktop's
-    /// tooltip), the badge alone when there is no detail, empty without a badge.</summary>
+    /// tooltip), the badge alone when there is no detail, empty without a badge. A lossy album's
+    /// badge is its codec, which the detail also ends with: said once ("MP3 · 128 kbps 44.1 kHz",
+    /// not "… 44.1 kHz MP3", seen on the device).</summary>
     public static string BuildQualityLine(Album album)
     {
         var badge = album.AudioQualityBadge;
         if (badge.Length == 0) return string.Empty;
         var detail = album.AudioQualityDetailedInfo;
+        if (detail.EndsWith(" " + badge, StringComparison.Ordinal)) detail = detail[..^(badge.Length + 1)];
+        else if (detail == badge) detail = string.Empty;
         return detail.Length > 0 ? $"{badge} · {detail}" : badge;
     }
 

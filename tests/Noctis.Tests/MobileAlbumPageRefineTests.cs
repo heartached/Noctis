@@ -281,6 +281,22 @@ public class MobileAlbumPageRefineTests
     }
 
     [Theory]
+    [InlineData("FLAC", 24, 96000, 0, "Hi-Res Lossless · 24-bit/96 kHz FLAC")]
+    [InlineData("ALAC", 0, 48000, 0, "Lossless · 48 kHz ALAC")]
+    [InlineData("MPEG Audio Layer 3", 0, 44100, 128, "MP3 · 128 kbps 44.1 kHz")]
+    public void QualityLine_IsTheBadgeAndItsDetail_SayingTheCodecOnce(string codec, int bits, int rate, int kbps, string expected)
+    {
+        var (album, tracks) = Sample(1, (t, _) =>
+        {
+            t.Codec = codec;
+            t.BitsPerSample = bits;
+            t.SampleRate = rate;
+            t.Bitrate = kbps;
+        });
+        Assert.Equal(expected, AlbumPageViewModel.BuildQualityLine(album));
+    }
+
+    [Theory]
     [InlineData(1, 59, "1 song, 0 minutes")]
     [InlineData(15, 56 * 60 + 40, "15 songs, 56 minutes")]
     [InlineData(21, 3600 + 61, "21 songs, 1 hour, 1 minute")]
