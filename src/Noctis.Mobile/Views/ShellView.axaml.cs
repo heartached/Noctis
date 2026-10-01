@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Mobile.ViewModels;
@@ -112,6 +113,14 @@ public partial class ShellView : UserControl
 
     private ShellViewModel? _vm;
     private bool _transitionsOn;
+    private int _pillIndex = -1;
+    private DispatcherTimer? _settleTimer;
+
+    /// <summary>The droplet's slide between tabs, how long it takes to lift (and to settle),
+    /// and how long it stays up: it lands as the slide's spring comes to rest.</summary>
+    private static readonly TimeSpan Slide = TimeSpan.FromMilliseconds(420);
+    private static readonly TimeSpan LiftTime = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan LiftHold = TimeSpan.FromMilliseconds(170);
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
@@ -165,9 +174,15 @@ public partial class ShellView : UserControl
         };
         SearchBubbleContent.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = Morph, Easing = ease } };
         MiniBar.Transitions = new Transitions { new ThicknessTransition { Property = MarginProperty, Duration = Morph, Easing = ease } };
+        // The droplet slides with a little spring (it overshoots the tab by a few percent and
+        // settles) while it lifts; see LiftSelectionPill.
+        SelectionPillHost.Transitions = new Transitions
+        {
+            new TransformOperationsTransition { Property = RenderTransformProperty, Duration = Slide, Easing = new CubicBezierEase(0.3, 1.18, 0.45, 1) },
+        };
         SelectionPill.Transitions = new Transitions
         {
-            new TransformOperationsTransition { Property = RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(320), Easing = ease },
+            new DoubleTransition { Property = GlassDroplet.LiftProperty, Duration = LiftTime, Easing = new CubicBezierEase(0.25, 0.1, 0.25, 1) },
         };
     }
 
@@ -180,7 +195,27 @@ public partial class ShellView : UserControl
         SearchBubble.Transitions = null;
         SearchBubbleContent.Transitions = null;
         MiniBar.Transitions = null;
+        SelectionPillHost.Transitions = null;
         SelectionPill.Transitions = null;
+        SelectionPill.Lift = 0;
+    }
+
+    /// <summary>
+    /// A tab tap: the droplet lifts (its transition eases Lift up), and once it has travelled
+    /// most of the way it settles back, so it is lifted over the slide and a resting grey
+    /// pill again on the new tab. Two property sets per tap, never one per frame; a tap
+    /// mid-flight re-lifts from wherever the droplet is.
+    /// </summary>
+    private void LiftSelectionPill()
+    {
+        SelectionPill.Lift = 1;
+        _settleTimer ??= new DispatcherTimer(LiftTime + LiftHold, DispatcherPriority.Normal, (_, _) =>
+        {
+            _settleTimer!.Stop();
+            SelectionPill.Lift = 0;
+        });
+        _settleTimer.Stop();
+        _settleTimer.Start();
     }
 
     /// <summary>How tall the expanded chrome stands (mini player + tabs, or tabs alone).</summary>
@@ -238,7 +273,10 @@ public partial class ShellView : UserControl
         };
         SelectionPill.Width = slot - 8;
         SelectionPill.Height = TabHeight - 10;
-        SelectionPill.RenderTransform = TransformOperations.Parse($"translateX({(index * slot + 4).ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
+        var pillX = TransformOperations.Parse($"translateX({(index * slot + 4).ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
+        if (_transitionsOn && index != _pillIndex && _pillIndex >= 0) LiftSelectionPill();
+        _pillIndex = index;
+        SelectionPillHost.RenderTransform = pillX;
 
         // Once the bar has been laid out at its real width, so it appears in place rather
         // than animating in from zero.
