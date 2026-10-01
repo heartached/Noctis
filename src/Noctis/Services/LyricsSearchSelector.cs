@@ -62,6 +62,22 @@ public static class LyricsSearchSelector
             ?? validated.FirstOrDefault(r => r.HasLyrics);
     }
 
+    /// <summary>Rank of a word-synced answer — the top of <see cref="FormatRank"/>.</summary>
+    public const int WordSyncedRank = 3;
+
+    /// <summary>
+    /// How rich a result's lyrics are, for picking between sources: word-synced (a Lyricsfile,
+    /// or synced text carrying ELRC word tags) 3, line-synced 2, plain 1, nothing 0.
+    /// </summary>
+    public static int FormatRank(LrcLibResult? result)
+    {
+        if (result == null) return 0;
+        if (result.HasLyricsfile) return WordSyncedRank;
+        if (result.HasSyncedLyrics)
+            return EnhancedLrcParser.ContainsWordTags(result.SyncedLyrics) ? WordSyncedRank : 2;
+        return result.HasLyrics ? 1 : 0;
+    }
+
     /// <summary>Trimmed, case-insensitive containment either way — tolerates
     /// "Title (Remastered)" vs "Title" without a fuzzy-matching dependency.</summary>
     private static bool NamesMatch(string? candidate, string? local)

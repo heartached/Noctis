@@ -571,6 +571,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Lyrics providers of running plugins (set by MainWindowViewModel); read per search.</summary>
     internal Func<IReadOnlyList<Services.Plugins.PluginLyricsSource>>? PluginLyricsSources { get; set; }
 
+    /// <summary>Built-in sources past LRCLIB and NetEase — Musixmatch, Kugou, YouTube Music (issue #113),
+    /// in priority order. Set by MainWindowViewModel; each is searched when its Settings switch is on.</summary>
+    internal IReadOnlyList<Services.Lyrics.OnlineLyricsSource> ExtraLyricsSources { get; set; } =
+        Array.Empty<Services.Lyrics.OnlineLyricsSource>();
+
+    /// <summary>Longest an extra source may take before it counts as "could not answer".</summary>
+    internal TimeSpan ExtraSourceTimeout { get; set; } = TimeSpan.FromSeconds(8);
+
+    /// <summary>
+    /// How long an automatic search keeps waiting on the extra sources once LRCLIB / NetEase
+    /// have answered with something less than word-synced. They run alongside from the start;
+    /// this only bounds the wait for a richer format, so a slow source can't hold lyrics back.
+    /// </summary>
+    internal TimeSpan ExtraSourceGrace { get; set; } = TimeSpan.FromSeconds(2.5);
+
+
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
         _timeline = new LyricsTimeline(LyricLines, WordLookahead, LyricsLookahead);
@@ -1128,14 +1144,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             catch { pluginSources = Array.Empty<Services.Plugins.PluginLyricsSource>(); }
             var pluginResults = new LrcLibResult?[pluginSources.Count];
             var pluginErrored = new bool[pluginSources.Count];
+            // Musixmatch / Kugou / YouTube Music (issue #113): switched on in Settings, ranked
+            // after LRCLIB and NetEase and before plugins, waited on only as long as they could
+            // still improve the pick (see WaitForExtraSourcesAsync).
+            var extraSources = ExtraLyricsSources.Where(s => s.IsEnabled(settings)).ToList();
+            var extraResults = new LrcLibResult?[extraSources.Count];
+            var extraErrored = new bool[extraSources.Count];
+            var extraTasks = new Task[extraSources.Count];
+            var extraCts = new CancellationTokenSource();
 
             var artist = track.Artist ?? "";
             var title = track.Title ?? "";
             var duration = track.Duration.TotalSeconds;
-
-            // "Unknown Artist" is the library's placeholder default, not a name —
-            // sending it verbatim guarantees a /get miss and poisons /search relevance.
-            var hasKnownArtist = !LyricsSearchSelector.IsUnknownArtist(artist);
 
             LrcLibResult? lrcLibResult = null;
             LrcLibResult? netEaseResult = null;
@@ -1165,7 +1185,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // With both providers switched off, Task.WhenAll on an empty list completed
             // instantly and the user got "No Lyrics found." — indistinguishable from a
             // genuine miss, with no hint that the providers are disabled in Settings.
-            if (tasks.Count == 0)
+            if (tasks.Count == 0 && extraSources.Count == 0)
             {
                 LyricLines.Clear();
                 UnsyncedLines.Clear();
@@ -1174,32 +1194,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 return;
             }
 
+            for (var i = 0; i < extraSources.Count; i++)
+                extraTasks[i] = FetchExtraAsync(i);
+
             await Task.WhenAll(tasks);
+            await WaitForExtraSourcesAsync();
+            // Sources still running past the wait are left out of this pick; stop them.
+            extraCts.Cancel();
+            _ = Task.WhenAll(extraTasks).ContinueWith(_ => extraCts.Dispose(), TaskScheduler.Default);
 
             async Task FetchLrcLibAsync()
             {
                 try
                 {
-                    // /get needs an exact artist match — pointless with the placeholder.
-                    var result = hasKnownArtist
-                        ? await _lrcLib.GetLyricsAsync(artist, title, duration)
-                        : null;
-
-                    if (result != null && result.Instrumental)
+                    var result = await FetchFromLrcLibAsync(_lrcLib, artist, title, duration, CancellationToken.None);
+                    if (result is { Instrumental: true })
                     {
                         // The exact match says this track is instrumental — that is an
-                        // answer, not a miss. Falling through to fuzzy /search would
-                        // surface a different song's lyrics.
+                        // answer, not a miss.
                         lrcLibInstrumental = true;
                         return;
-                    }
-
-                    if (result == null || !result.HasLyrics)
-                    {
-                        // /search is fuzzy and relevance-ordered; validate candidates
-                        // against the local track before preferring richer formats.
-                        var results = await _lrcLib.SearchLyricsAsync(hasKnownArtist ? artist : "", title);
-                        result = LyricsSearchSelector.PickFromSearchResults(results, artist, title, duration);
                     }
                     lrcLibResult = result;
                 }
@@ -1242,15 +1256,60 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 }
             }
 
+            async Task FetchExtraAsync(int index)
+            {
+                try
+                {
+                    extraResults[index] = await SearchExtraSourceAsync(extraSources[index], artist, title, duration, extraCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    extraErrored[index] = true;
+                    if (!extraCts.IsCancellationRequested)
+                    {
+                        DebugLogger.Warn(DebugLogger.Category.Lyrics, $"{extraSources[index].Name}:Error", ex.Message);
+                        DebugLog.WriteOnce("Lyrics", $"{extraSources[index].Name}:{ex.GetBaseException().GetType().Name}",
+                            $"{extraSources[index].Name} fetch failed: {ex.Message}");
+                    }
+                }
+            }
+
+            // LRCLIB, NetEase and the plugins are in. The extra sources rank after the first
+            // two, so they can only win with a richer format: never wait for them over a
+            // word-synced built-in answer, at most ExtraSourceGrace when there is something to
+            // show already, up to their own time box when there is nothing — and stop as soon
+            // as nothing still running could beat what has arrived.
+            async Task WaitForExtraSourcesAsync()
+            {
+                if (extraTasks.Length == 0) return;
+                var builtInRank = Math.Max(LyricsSearchSelector.FormatRank(lrcLibResult), LyricsSearchSelector.FormatRank(netEaseResult));
+                if (builtInRank >= LyricsSearchSelector.WordSyncedRank) return;
+                var hasAnswer = builtInRank > 0 || pluginResults.Any(r => r is { HasLyrics: true });
+                var deadline = Task.Delay(hasAnswer ? ExtraSourceGrace : ExtraSourceTimeout + TimeSpan.FromSeconds(1));
+                while (true)
+                {
+                    var pending = extraTasks.Where(t => !t.IsCompleted).ToArray();
+                    if (pending.Length == 0 || ExtraPickIsFinal(builtInRank, extraResults, extraTasks.Select(t => t.IsCompleted).ToArray()))
+                        return;
+                    if (await Task.WhenAny(Task.WhenAny(pending), deadline) == deadline) return;
+                }
+            }
+
             // Race condition guard
             if (generation != _searchGeneration) return;
 
-            // Pick best result: prefer synced over unsynced, then provider order
-            // (LRCLIB, NetEase, then plugin providers in load order).
+            // Pick best result: the richest format (word-synced > line-synced > plain), then
+            // provider order (LRCLIB, NetEase, the extra sources, then plugin providers in load
+            // order). An extra source still running when the wait ended is left out.
             var candidates = new List<(LrcLibResult? Result, string Source)> { (lrcLibResult, "LRCLIB"), (netEaseResult, "NetEase") };
+            for (var i = 0; i < extraSources.Count; i++)
+                candidates.Add((extraTasks[i].IsCompleted ? extraResults[i] : null, extraSources[i].Name));
             for (var i = 0; i < pluginSources.Count; i++) candidates.Add((pluginResults[i], pluginSources[i].Name));
             var (primary, primarySource, alternate, altSource) = PickBestResult(candidates);
-            var pluginInstrumental = pluginResults.Any(r => r is { Instrumental: true, HasLyrics: false });
+            var pluginInstrumental = pluginResults.Any(r => r is { Instrumental: true, HasLyrics: false })
+                                     || extraResults.Any(r => r is { Instrumental: true, HasLyrics: false });
+            // An extra source that never answered in time counts as errored for the message below.
+            var extrasAllErrored = extraTasks.Select((t, i) => !t.IsCompleted || extraErrored[i]).All(e => e);
 
             if (primary != null && primary.HasLyrics)
             {
@@ -1278,7 +1337,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:Instrumental");
                     SearchFailedMessage = "This track is instrumental.";
                 }
-                else if ((!lrcLibEnabled || lrcLibErrored) && (!netEaseEnabled || netEaseErrored) && pluginErrored.All(e => e))
+                else if ((!lrcLibEnabled || lrcLibErrored) && (!netEaseEnabled || netEaseErrored) && pluginErrored.All(e => e)
+                         && extrasAllErrored)
                 {
                     // EVERY enabled provider errored — plausibly an offline user (or
                     // a blanket outage), which must not read as "this track has no
@@ -1322,10 +1382,74 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// LRCLIB's lookup for one track: the exact /get, then — when that has no lyrics — the
+    /// fuzzy /search with every candidate validated against the local track. An instrumental
+    /// /get answer is returned as is (Instrumental, no lyrics) and never falls through to
+    /// /search, which would surface a different song's lyrics.
+    /// </summary>
+    internal static async Task<LrcLibResult?> FetchFromLrcLibAsync(
+        ILrcLibService lrcLib, string artist, string title, double duration, CancellationToken ct)
+    {
+        // "Unknown Artist" is the library's placeholder default, not a name —
+        // sending it verbatim guarantees a /get miss and poisons /search relevance.
+        var hasKnownArtist = !LyricsSearchSelector.IsUnknownArtist(artist);
+
+        // /get needs an exact artist match — pointless with the placeholder.
+        var result = hasKnownArtist
+            ? await lrcLib.GetLyricsAsync(artist, title, duration, ct)
+            : null;
+        if (result is { Instrumental: true }) return result;
+
+        if (result == null || !result.HasLyrics)
+        {
+            // /search is fuzzy and relevance-ordered; validate candidates
+            // against the local track before preferring richer formats.
+            var results = await lrcLib.SearchLyricsAsync(hasKnownArtist ? artist : "", title, ct);
+            result = LyricsSearchSelector.PickFromSearchResults(results, artist, title, duration);
+        }
+        return result;
+    }
+
+    /// <summary>One extra source's search, time-boxed by <see cref="ExtraSourceTimeout"/>; a source
+    /// that runs past it throws <see cref="LyricsProviderException"/> like any other failure.</summary>
+    internal async Task<LrcLibResult?> SearchExtraSourceAsync(
+        Services.Lyrics.OnlineLyricsSource source, string artist, string title, double duration, CancellationToken ct)
+    {
+        // Task.Run: the search must not run its synchronous start on the caller (the UI thread).
+        var task = Task.Run(() => source.SearchAsync(artist, title, duration, ct), CancellationToken.None);
+        try
+        {
+            return await task.WaitAsync(ExtraSourceTimeout, ct);
+        }
+        catch (TimeoutException ex)
+        {
+            _ = task.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            throw new LyricsProviderException(source.Name, ex);
+        }
+    }
+
+    /// <summary>
+    /// True when no extra source still running could beat the answer already in hand: an extra
+    /// source has a word-synced answer (the top format) and every extra source ranked ahead of
+    /// it has finished. Built-in answers rank ahead of all extras and are handled by the caller.
+    /// </summary>
+    internal static bool ExtraPickIsFinal(int builtInRank, IReadOnlyList<LrcLibResult?> extraResults, IReadOnlyList<bool> completed)
+    {
+        if (builtInRank >= LyricsSearchSelector.WordSyncedRank) return true;
+        for (var i = 0; i < extraResults.Count; i++)
+        {
+            if (!completed[i]) return false;
+            if (LyricsSearchSelector.FormatRank(extraResults[i]) >= LyricsSearchSelector.WordSyncedRank) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Picks the best lyrics result over providers in priority order (built-ins first, then plugin
-    /// providers): the first synced answer wins, else the first answer with any lyrics;
+    /// providers): the richest format wins — word-synced, then line-synced, then plain
+    /// (<see cref="LyricsSearchSelector.FormatRank"/>) — and the earlier provider wins a tie;
     /// the alternate is the best of the rest by the same rule. With LRCLIB and NetEase
-    /// alone this is exactly the old two-way rule (synced beats unsynced, LRCLIB wins ties).
+    /// alone this is the old two-way rule (synced beats unsynced, LRCLIB wins ties).
     /// </summary>
     internal static (LrcLibResult? Primary, string PrimarySource, LrcLibResult? Alternate, string? AlternateSource)
         PickBestResult(IReadOnlyList<(LrcLibResult? Result, string Source)> candidates)
@@ -1334,7 +1458,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (withLyrics.Count == 0) return (null, "", null, null);
 
         static (LrcLibResult? Result, string Source) Best(List<(LrcLibResult? Result, string Source)> list)
-            => list.FirstOrDefault(c => c.Result!.HasSyncedLyrics) is { Result: not null } synced ? synced : list[0];
+        {
+            var best = list[0];
+            foreach (var c in list)
+                if (LyricsSearchSelector.FormatRank(c.Result) > LyricsSearchSelector.FormatRank(best.Result))
+                    best = c;
+            return best;
+        }
 
         var primary = Best(withLyrics);
         var rest = withLyrics.Where(c => !ReferenceEquals(c.Result, primary.Result)).ToList();
@@ -1435,6 +1565,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// Writes freshly fetched online lyrics to sidecar files next to the track and
     /// updates the in-memory track fields, so the Metadata editor's Plain/Synced
     /// tabs reflect them immediately and persistently. Best-effort; never throws.
+    /// Word-synced (ELRC) text follows <see cref="Services.Lyrics.LyricsWriter"/>'s rule: the
+    /// word timings go to an .elrc and the .lrc keeps a line-level projection, so players that
+    /// only know LRC still read it.
     /// </summary>
     private void PersistOnlineLyricsToSidecar(LrcLibResult result, bool allowReplaceAppSidecar = false)
     {
@@ -1460,7 +1593,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+        var elrcPath = Path.ChangeExtension(trackPath, ".elrc");
         var canWriteSidecar = !string.IsNullOrWhiteSpace(synced);
+        var isWordLevel = canWriteSidecar && EnhancedLrcParser.ContainsWordTags(synced);
+        var lrcText = isWordLevel ? Services.Lyrics.LyricsWriter.LineLevelProjection(synced!) : synced;
         var stamp = Volatile.Read(ref _lyricsRemovalStamp);
 
         // Everything below runs on the FIFO writer lane, where File.Exists sees the
@@ -1520,8 +1656,28 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     return;
                 }
 
-                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced!), new UTF8Encoding(false));
+                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(lrcText!), new UTF8Encoding(false));
                 SidecarRegistry.Add(lrcPath);
+
+                // The .elrc is only touched where the .lrc could be written: it outranks the
+                // .lrc on the next play, so one beside a user's own .lrc would override it.
+                var elrcExists = File.Exists(elrcPath);
+                var elrcIsOurs = elrcExists && SidecarRegistry.Contains(elrcPath);
+                if (isWordLevel)
+                {
+                    if (!elrcExists || (allowReplaceAppSidecar && elrcIsOurs))
+                    {
+                        File.WriteAllText(elrcPath, NormalizeLyricsForLrc(synced!), new UTF8Encoding(false));
+                        SidecarRegistry.Add(elrcPath);
+                    }
+                }
+                else if (elrcIsOurs && allowReplaceAppSidecar)
+                {
+                    // An explicit switch to line-synced lyrics: the app's own .elrc from the
+                    // previous pick would out-rank the new .lrc and revert the choice.
+                    if (TrashSidecarFile(elrcPath) || !File.Exists(elrcPath))
+                        SidecarRegistry.Remove(elrcPath);
+                }
             }
             catch { /* best effort — sidecar write is non-fatal */ }
         });

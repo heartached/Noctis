@@ -561,6 +561,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _lyricsVm.PluginLyricsSources = () => Plugins.LyricsProviders;
+        // Musixmatch, Kugou and YouTube Music (issue #113): searched when switched on in Settings.
+        if (App.Services?.GetService<IMusixmatchService>() is { } musixmatch
+            && App.Services.GetService<IKugouLyricsService>() is { } kugou
+            && App.Services.GetService<IYouTubeMusicLyricsService>() is { } youTubeMusic)
+            _lyricsVm.ExtraLyricsSources = Services.Lyrics.OnlineLyricsSource.BuiltIns(musixmatch, kugou, youTubeMusic);
         // Lyrics offset nudges (Ctrl+wheel, GitHub #102) confirm in the notice pill, which
         // shows over both the lyrics page and the side panel.
         _lyricsVm.ShowNotice = text => TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text);
