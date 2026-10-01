@@ -39,4 +39,29 @@ public class ArtworkSourceSizeTests
         Assert.Null(SkiaArtworkDecoder.ReadPixelSize(null));
         Assert.Null(SkiaArtworkDecoder.ReadPixelSize(System.Array.Empty<byte>()));
     }
+
+    /// <summary>The album page's artwork viewer (#114) captions the cover file's real size.</summary>
+    [Fact]
+    public void ReadsTheSize_FromACoverFile()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "noctis-size-" + System.Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        try
+        {
+            var cover = System.IO.Path.Combine(dir, "cover.jpg");
+            System.IO.File.WriteAllBytes(cover, Jpeg(1400, 1200));
+            var size = SkiaArtworkDecoder.ReadFilePixelSize(cover);
+            Assert.Equal((1400, 1200), (size!.Value.Width, size.Value.Height));
+
+            var junk = System.IO.Path.Combine(dir, "junk.jpg");
+            System.IO.File.WriteAllBytes(junk, new byte[] { 1, 2, 3, 4 });
+            Assert.Null(SkiaArtworkDecoder.ReadFilePixelSize(junk));
+            Assert.Null(SkiaArtworkDecoder.ReadFilePixelSize(System.IO.Path.Combine(dir, "missing.jpg")));
+            Assert.Null(SkiaArtworkDecoder.ReadFilePixelSize(null));
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
 }

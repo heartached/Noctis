@@ -187,6 +187,26 @@ public static class SkiaArtworkDecoder
     }
 
     /// <summary>
+    /// As <see cref="ReadPixelSize"/>, for a cover file: only its header is read. Null when
+    /// the file is missing or not an image.
+    /// </summary>
+    public static PixelSize? ReadFilePixelSize(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+        try
+        {
+            using var codec = OpenCodec(path);
+            if (codec == null) return null;
+            var info = codec.Info;
+            return info.Width > 0 && info.Height > 0 ? new PixelSize(info.Width, info.Height) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Skia's own file stream (native, no managed buffer). Should the native open ever
     /// fail for a path the .NET side can read (an exotic encoding), fall back to one
     /// exact-size managed read copied into native memory: plain garbage, not a pooled
