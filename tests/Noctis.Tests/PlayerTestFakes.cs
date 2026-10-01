@@ -154,11 +154,47 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
 }
 
+/// <summary>In-memory ITrackFileAccess: sidecars by extension (any path), optional audio bytes.</summary>
+internal sealed class FakeTrackFiles : ITrackFileAccess
+{
+    public Dictionary<string, string> Sidecars { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public byte[]? Audio { get; set; }
+    public int SidecarReads { get; private set; }
+
+    public SidecarFile? ReadSidecar(string trackPath, IReadOnlyList<string> extensions)
+    {
+        SidecarReads++;
+        foreach (var ext in extensions)
+            if (Sidecars.TryGetValue(ext, out var text))
+                return new SidecarFile(ext, System.Text.Encoding.UTF8.GetBytes(text));
+        return null;
+    }
+
+    public Stream? OpenAudio(string trackPath) => Audio == null ? null : new MemoryStream(Audio);
+}
+
 internal sealed class FakeAnimatedCoverService : IAnimatedCoverService
 {
     public string? Resolve(Track track) => null;
     public Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope) => Task.FromResult(string.Empty);
     public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
+}
+
+/// <summary>In-memory play log. RecordPlay appends like PlayHistoryService; Seed adds an
+/// event at a chosen time so tests can build history.</summary>
+internal sealed class FakeHistoryLog : IPlayHistoryService
+{
+    public List<PlayHistoryEvent> EventList { get; } = new();
+    public IReadOnlyList<PlayHistoryEvent> Events => EventList;
+    public Task PreloadAsync() => Task.CompletedTask;
+    public void RecordPlay(Track track) => Seed(track, DateTime.UtcNow);
+    public void RecordSkip(Track track) { }
+    public Task FlushAsync() => Task.CompletedTask;
+
+    public void Seed(Track track, DateTime playedAtUtc) => EventList.Add(new PlayHistoryEvent
+    {
+        TrackId = track.Id, Title = track.Title, Artist = track.Artist, PlayedAtUtc = playedAtUtc,
+    });
 }
 
 #pragma warning restore CS0067

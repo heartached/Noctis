@@ -265,6 +265,14 @@ public partial class SidebarViewModel : ViewModelBase
             desired[i] = existing;
         }
 
+        // Rows leaving (a closed folder's playlists) go first. Left in place, the loop below
+        // Moved every row under them up past them instead, and the ListBox treats a Move as
+        // remove + insert: those rows got new containers and their cover collages reloaded,
+        // a visible flash under a folder that had just closed.
+        var keep = new HashSet<PlaylistNavItem>(desired);
+        for (int i = SidebarRows.Count - 1; i >= 0; i--)
+            if (!keep.Contains(SidebarRows[i])) SidebarRows.RemoveAt(i);
+
         // Minimal moves/inserts; desired rows are distinct, so a row not yet
         // placed sits at an index >= i (or is absent). Excess rows fall off the end.
         for (int i = 0; i < desired.Count; i++)

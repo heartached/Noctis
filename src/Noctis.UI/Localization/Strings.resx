@@ -454,7 +454,7 @@
   <data name="Settings.FoldersWhereMusicStored" xml:space="preserve"><value>Folders where your music is stored.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Add Folder</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Import dropped files</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: they play or queue from where they are and the library is left alone.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: files stay where they are; drop them to play, to add them to the library or a playlist, or to make a new playlist.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Playlist page</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Album headers</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Show the album name above each run of tracks from the same album.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -943,6 +943,7 @@
   <data name="Main.MostPlayed" xml:space="preserve"><value>Most played</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Random" xml:space="preserve"><value>Random</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Ascending" xml:space="preserve"><value>Ascending</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.NewestAlbumsFirst" xml:space="preserve"><value>Newest Albums First</value><comment>Albums sort menu toggle in MainWindow.axaml (GitHub #106): under Album Artist sort, each artist's albums newest first</comment></data>
   <data name="Main.Descending" xml:space="preserve"><value>Descending</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
@@ -1009,8 +1010,24 @@
   <data name="Main.ScanReplayGain" xml:space="preserve"><value>Scan ReplayGain</value><comment>Queue row menu in MainWindow.axaml</comment></data>
   <data name="Main.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.DropFilesImport" xml:space="preserve"><value>Drop files to import</value><comment>Text in MainWindow.axaml</comment></data>
-  <data name="Main.DropFilesPlay" xml:space="preserve"><value>Drop files to play them</value><comment>Drag overlay text in MainWindow.axaml.cs: Import dropped files is off and nothing is loaded</comment></data>
-  <data name="Main.DropFilesQueue" xml:space="preserve"><value>Drop files to add them to the queue</value><comment>Drag overlay text in MainWindow.axaml.cs: Import dropped files is off and something is playing</comment></data>
+  <data name="Main.DropZonePlay" xml:space="preserve"><value>Play now</value><comment>Drop zone in DropOverlay.axaml (Import dropped files off): play the dropped files, nothing is loaded</comment></data>
+  <data name="Main.DropZoneQueue" xml:space="preserve"><value>Add to queue</value><comment>Drop zone in DropOverlay.axaml (Import dropped files off): something is playing, the files join the queue</comment></data>
+  <data name="Main.DropZonePlayHint" xml:space="preserve"><value>Not added to your library</value><comment>Small line under the Play now / Add to queue drop zone</comment></data>
+  <data name="Main.DropZoneLibrary" xml:space="preserve"><value>Add to library</value><comment>Drop zone in DropOverlay.axaml: add the dropped files to the library without moving them</comment></data>
+  <data name="Main.DropZoneLibraryHint" xml:space="preserve"><value>Files stay where they are</value><comment>Small line under the Add to library drop zone</comment></data>
+  <data name="Main.DropZonePlaylist" xml:space="preserve"><value>New playlist</value><comment>Drop zone in DropOverlay.axaml: a new playlist named after the dropped files' folder (shown below it)</comment></data>
+  <data name="Main.DropPlaylistFallbackName" xml:space="preserve"><value>New Playlist</value><comment>Name of a playlist made from dropped files when their folder gives none (a drive root)</comment></data>
+  <data name="Main.DropPreparing" xml:space="preserve"><value>Preparing…</value><comment>Drop pill while dropped files are being collected</comment></data>
+  <data name="Main.DropAddingSongs" xml:space="preserve"><value>Adding songs {0} of {1}</value><comment>Drop pill progress; {0} = songs read so far, {1} = songs dropped</comment></data>
+  <data name="Main.DropNoAudio" xml:space="preserve"><value>No audio files found in the dropped items</value><comment>Drop pill when nothing dropped could be read as audio</comment></data>
+  <data name="Main.DropAddedToLibraryOne" xml:space="preserve"><value>Added 1 song to your library</value><comment>Drop pill after the Add to library drop zone</comment></data>
+  <data name="Main.DropAddedToLibraryMany" xml:space="preserve"><value>Added {0} songs to your library</value><comment>Drop pill after the Add to library drop zone; {0} = song count</comment></data>
+  <data name="Main.DropAlreadyInLibrary" xml:space="preserve"><value>Already in your library</value><comment>Drop pill after the Add to library drop zone when every dropped song was in the library</comment></data>
+  <data name="Main.DropNewPlaylistOne" xml:space="preserve"><value>Added 1 song to the new playlist {0}</value><comment>Drop pill after the New playlist drop zone; {0} = playlist name</comment></data>
+  <data name="Main.DropNewPlaylistMany" xml:space="preserve"><value>Added {0} songs to the new playlist {1}</value><comment>Drop pill after the New playlist drop zone; {0} = song count, {1} = playlist name</comment></data>
+  <data name="Main.DropAddedToPlaylistOne" xml:space="preserve"><value>Added 1 song to {0}</value><comment>Drop pill after files were dropped onto a sidebar playlist; {0} = playlist name</comment></data>
+  <data name="Main.DropAddedToPlaylistMany" xml:space="preserve"><value>Added {0} songs to {1}</value><comment>Drop pill after files were dropped onto a sidebar playlist; {0} = song count, {1} = playlist name</comment></data>
+  <data name="Main.DropAlreadyInPlaylist" xml:space="preserve"><value>Already in {0}</value><comment>Drop pill when every song dropped onto a sidebar playlist was in it already; {0} = playlist name</comment></data>
 
   <!-- MetadataFinderDialog.axaml (auto-migrated) -->
   <data name="MetadataFinder.FindMetadata" xml:space="preserve"><value>Find Metadata</value><comment>Title in MetadataFinderDialog.axaml</comment></data>
@@ -1422,6 +1439,10 @@
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Back</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Search (Ctrl+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Search</value><comment>Text in SidebarView.axaml</comment></data>
+  <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Words can match any field: "radiohead ok computer", "rock 1994".
+Narrow a word with a tag: artist:madonna remix
+Tags: title: artist: albumartist: album: genre: composer: year:
+Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.RightClickNewPlaylistTip" xml:space="preserve"><value>Right-click for New Playlist</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
@@ -1745,13 +1766,16 @@
   <data name="AccountSync.OtherAccounts" xml:space="preserve"><value>OTHER ACCOUNTS</value><comment>Account &amp; Sync section title</comment></data>
   <data name="AccountSync.OtherTitle" xml:space="preserve"><value>Family and guests</value><comment>Other accounts card title</comment></data>
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in from their own devices.</value><comment>Other accounts card help</comment></data>
+  <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>On your phone: Settings → Account, enter this address, your account name and password, and check the fingerprint matches.</value><comment>Pairing block help above the address and fingerprint</comment></data>
+  <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>SIGNED-IN DEVICES</value><comment>Account card list label</comment></data>
+  <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>No device has signed in yet.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Sync between your devices</value><comment>Sync card title</comment></data>
   <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and playlists stay the same on every signed-in device. The newest change wins.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>This device</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Music files stay where they are. Needs Noctis Server to be on.</value><comment>Sync card footnote</comment></data>
 
-  <data name="LyricsStudioSettings.ModelSection" xml:space="preserve"><value>SPEECH MODEL</value><comment>Lyrics Studio tab section title</comment></data>
+  <data name="LyricsStudioSettings.ModelSection" xml:space="preserve"><value>LYRICS MODEL</value><comment>Lyrics Studio tab section title</comment></data>
   <data name="LyricsStudioSettings.Title" xml:space="preserve"><value>Lyrics Studio</value><comment>Card title</comment></data>
   <data name="LyricsStudioSettings.Description" xml:space="preserve"><value>Times lyrics word by word on this computer. You review before saving.</value><comment>Card description</comment></data>
   <data name="LyricsStudioSettings.Model" xml:space="preserve"><value>Model</value><comment>Row label</comment></data>
@@ -1782,7 +1806,7 @@
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve"><value>Skip songs already in this format</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve"><value>Word timings (ELRC) and line timings (LRC) are different formats. Songs that only have line timings are still processed.</value><comment>Footer checkbox tooltip</comment></data>
   <data name="LyricsStudio.TranscribeOnly" xml:space="preserve"><value>Transcribe instead of using lyrics · Experimental</value><comment>Footer checkbox</comment></data>
-  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>The speech model listens to every song and writes the words itself, even when the song already has lyrics. Sung vocals often come out wrong: each transcript opens in the lyrics box for you to fix before it is aligned.</value><comment>Footer checkbox tooltip</comment></data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>Lullaby listens to every song and writes the words itself, even when the song already has lyrics. Sung vocals often come out wrong: each transcript opens in the lyrics box for you to fix before it is aligned.</value><comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve"><value>Look up lyrics online when a song has none</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve"><value>Plain lyrics are fetched from LRCLIB first, so the model only has to time them. Off, or when nothing is found, the song waits for you to paste its lyrics.</value><comment>Footer checkbox tooltip</comment></data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve"><value>Download model</value><comment>Footer button</comment></data>
@@ -1819,10 +1843,10 @@
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>All lines 0.1 s earlier · shortcut [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>All lines 0.1 s later · shortcut ]</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review button</comment></data>
-  <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let the speech model write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let Lullaby write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review button</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
-  <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: model, language, run options</comment></data>
+  <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>
   <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the -0.1s / +0.1s buttons</comment></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
@@ -1834,7 +1858,7 @@
   <data name="LyricsStudio.ImportFile" xml:space="preserve"><value>Import file…</value><comment>Lyrics box button</comment></data>
   <data name="LyricsStudio.ImportFileTip" xml:space="preserve"><value>Load lyrics from a .txt, .lrc or .elrc file (timestamps are dropped and re-timed)</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>Listen instead · Experimental</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
-  <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>The speech model writes down what it hears. Sung vocals often transcribe poorly: fix the words before aligning.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby writes down what it hears. Sung vocals often transcribe poorly: fix the words before aligning.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>Align lyrics</value><comment>Lyrics box primary button</comment></data>
   <data name="LyricsStudio.Beta" xml:space="preserve"><value>Beta</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>Preview</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
@@ -1850,6 +1874,54 @@
   <data name="LyricsStudio.Tap" xml:space="preserve"><value>Tap</value><comment>Tap bar button</comment></data>
   <data name="LyricsStudio.TapCancel" xml:space="preserve"><value>Done</value><comment>Tap bar leave button</comment></data>
   <data name="LyricsStudio.PlayFromHere" xml:space="preserve"><value>Play from here</value><comment>Time pill tooltip</comment></data>
+  <data name="LyricsStudio.ModelNeededTitle" xml:space="preserve"><value>Download Lullaby to start</value><comment>Model card title: no model on disk yet "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelNeededBody" xml:space="preserve"><value>Lyrics Studio listens to songs with Lullaby, the Noctis lyrics model built on OpenAI Whisper, right on this computer. It is a one-time download of {0}.</value><comment>Model card text. {0} = download size, e.g. 1.4 GB "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelDownloadSize" xml:space="preserve"><value>Download ({0})</value><comment>Model card button. {0} = download size</comment></data>
+  <data name="LyricsStudio.ModelPausedTitle" xml:space="preserve"><value>Lullaby download paused</value><comment>Model card title: a stopped download can be resumed "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelPausedBody" xml:space="preserve"><value>{0} of {1} downloaded. Resume continues from there.</value><comment>Model card text. {0} = bytes on disk, {1} = total</comment></data>
+  <data name="LyricsStudio.ModelResume" xml:space="preserve"><value>Resume download</value><comment>Model card button</comment></data>
+  <data name="LyricsStudio.ModelDownloadingTitle" xml:space="preserve"><value>Downloading Lullaby</value><comment>Model card title while downloading "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelConnecting" xml:space="preserve"><value>Connecting…</value><comment>Model card text before any bytes arrive</comment></data>
+  <data name="LyricsStudio.ModelResuming" xml:space="preserve"><value>Reconnecting to resume from {0}…</value><comment>Model card text. {0} = bytes already on disk</comment></data>
+  <data name="LyricsStudio.ModelBytesOf" xml:space="preserve"><value>{0} of {1}</value><comment>Model card progress. {0} = downloaded, {1} = total, e.g. 612 MB of 1.43 GB</comment></data>
+  <data name="LyricsStudio.EtaSeconds" xml:space="preserve"><value>about {0} s left</value><comment>Download time left, seconds</comment></data>
+  <data name="LyricsStudio.EtaMinutes" xml:space="preserve"><value>about {0} min left</value><comment>Download time left, minutes</comment></data>
+  <data name="LyricsStudio.EtaHours" xml:space="preserve"><value>about {0} h {1} min left</value><comment>Download time left, hours and minutes</comment></data>
+  <data name="LyricsStudio.ModelRetrying" xml:space="preserve"><value>Connection lost · retrying in {0} s (attempt {1})</value><comment>Model card text. {0} = seconds, {1} = attempt number</comment></data>
+  <data name="LyricsStudio.ModelReconnecting" xml:space="preserve"><value>Connection lost · reconnecting (attempt {0})…</value><comment>Model card text. {0} = attempt number</comment></data>
+  <data name="LyricsStudio.ModelVerifyingTitle" xml:space="preserve"><value>Checking the download</value><comment>Model card title: checksum of the finished download</comment></data>
+  <data name="LyricsStudio.ModelVerifyingBody" xml:space="preserve"><value>Making sure the file arrived complete and intact.</value><comment>Model card text during the checksum</comment></data>
+  <data name="LyricsStudio.ModelCheckingTitle" xml:space="preserve"><value>Checking Lullaby</value><comment>Model card title: one-time check of a model downloaded by an older version "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelCheckingBody" xml:space="preserve"><value>A one-time check that the model file is complete and intact.</value><comment>Model card text during the one-time check</comment></data>
+  <data name="LyricsStudio.ModelFailedTitle" xml:space="preserve"><value>Lullaby download failed</value><comment>Model card title "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelFailedBody" xml:space="preserve"><value>{0}. What arrived is kept, so the next try continues from there.</value><comment>Model card text. {0} = the error</comment></data>
+  <data name="LyricsStudio.ModelChecksumFailedBody" xml:space="preserve"><value>The downloaded file did not match the published model, so it was discarded. Retry downloads it again.</value><comment>Model card text after a checksum mismatch</comment></data>
+  <data name="LyricsStudio.ModelRetry" xml:space="preserve"><value>Retry</value><comment>Model card button after a failure</comment></data>
+  <data name="LyricsStudio.ModelDamagedTitle" xml:space="preserve"><value>The Lullaby file is damaged</value><comment>Model card title: the file on disk failed its check "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelDamagedBody" xml:space="preserve"><value>It does not match the published model, so it will not be used. Download it again ({0}).</value><comment>Model card text. {0} = download size</comment></data>
+  <data name="LyricsStudio.ModelDownloadAgain" xml:space="preserve"><value>Download again</value><comment>Model card button for a damaged file</comment></data>
+  <data name="LyricsStudio.ModelCancel" xml:space="preserve"><value>Cancel</value><comment>Model card button while downloading</comment></data>
+  <data name="LyricsStudio.ModelCancelTip" xml:space="preserve"><value>Stop the download. What has arrived is kept, so you can resume later.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.ModelLoadingTitle" xml:space="preserve"><value>Loading Lullaby</value><comment>Model card while the model loads at the start of a run "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ModelLoadingBody" xml:space="preserve"><value>It loads once per run and takes a few seconds, longer the first time.</value><comment>Model card text while the model loads</comment></data>
+  <data name="LyricsStudio.StepDecode" xml:space="preserve"><value>Decode audio</value><comment>Step row while a song runs: step 1</comment></data>
+  <data name="LyricsStudio.StepListen" xml:space="preserve"><value>Listen</value><comment>Step row while a song runs: step 2 (the speech model hears the vocals)</comment></data>
+  <data name="LyricsStudio.StepTranscribe" xml:space="preserve"><value>Transcribe</value><comment>Step row, step 2 when transcribing</comment></data>
+  <data name="LyricsStudio.StepTime" xml:space="preserve"><value>Time lyrics</value><comment>Step row while a song runs: step 3</comment></data>
+  <data name="LyricsStudio.StageFindingLyrics" xml:space="preserve"><value>Looking up the lyrics…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageDecoding" xml:space="preserve"><value>Decoding the audio…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageListening" xml:space="preserve"><value>Listening to the vocals…</value><comment>Song run status</comment></data>
+  <data name="LyricsStudio.StageTranscribing" xml:space="preserve"><value>Writing down what is sung…</value><comment>Song run status when transcribing</comment></data>
+  <data name="LyricsStudio.StageTimingWords" xml:space="preserve"><value>Timing every word…</value><comment>Song run status (word timings)</comment></data>
+  <data name="LyricsStudio.StageTimingLines" xml:space="preserve"><value>Timing the lines…</value><comment>Song run status (line timings)</comment></data>
+  <data name="LyricsStudio.StageShortFinding" xml:space="preserve"><value>Finding lyrics</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortDecoding" xml:space="preserve"><value>Decoding</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortListening" xml:space="preserve"><value>Listening</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortTranscribing" xml:space="preserve"><value>Transcribing</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StageShortTiming" xml:space="preserve"><value>Timing</value><comment>Queue row status while a song runs</comment></data>
+  <data name="LyricsStudio.StagePercent" xml:space="preserve"><value>{0} · {1}</value><comment>Queue row status. {0} = step, {1} = percent, e.g. Listening · 42%</comment></data>
+  <data name="LyricsStudio.BatchProgress" xml:space="preserve"><value>Song {0} of {1}</value><comment>Run progress over the queue</comment></data>
+  <data name="LyricsStudio.RerunStopped" xml:space="preserve"><value>Stopped · previous timings kept</value><comment>Song status after Stop during a re-sync or Time every word</comment></data>
   <data name="Settings.Desc.General" xml:space="preserve"><value>Language, startup, and how the window and sidebar behave.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Appearance" xml:space="preserve"><value>Themes, accent colour, glass, text animation and artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Player" xml:space="preserve"><value>The player island, the mini player, Cover Flow and Now Playing artwork.</value><comment>Settings page description</comment></data>

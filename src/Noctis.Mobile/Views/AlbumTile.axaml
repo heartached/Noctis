@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.AlbumTile"
+             x:DataType="models:Album">
+    <!-- Square cover (a fixed 160 box scaled by the Viewbox, so the tile stays square at any
+         column width), then name and artist. -->
+    <StackPanel Spacing="4">
+        <Viewbox Stretch="Uniform">
+            <Border Classes="art" Width="160" Height="160" CornerRadius="10">
+                <Panel>
+                    <PathIcon Data="{DynamicResource AlbumsIcon}" Width="40" Height="40" Opacity="0.4" />
+                    <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="384" Stretch="UniformToFill" />
+                </Panel>
+            </Border>
+        </Viewbox>
+        <TextBlock Classes="row-title" FontSize="14" Text="{Binding Name}" />
+        <TextBlock Classes="row-sub" FontSize="12" Text="{Binding Artist}" />
+    </StackPanel>
+</UserControl>

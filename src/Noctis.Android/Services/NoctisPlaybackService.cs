@@ -2,6 +2,8 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using AndroidX.Media3.Session;
+using Noctis.Mobile.Services;
+using Noctis.Services;
 
 namespace Noctis.Android.Services;
 
@@ -46,6 +48,7 @@ public sealed class NoctisPlaybackService : MediaSessionService
             PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
         _session = new MediaSession.Builder(this, player)
             .SetSessionActivity(sessionActivity)
+            .SetCallback(new ControllerGate())
             .Build();
 
         // MediaSessionService only manages the sessions it has been handed. Normally that
@@ -84,5 +87,26 @@ public sealed class NoctisPlaybackService : MediaSessionService
         _session?.Release();
         _session = null;
         base.OnDestroy();
+    }
+
+    /// <summary>
+    /// The service is exported, so any installed app can bind to it: only the system's clients,
+    /// this app and trusted controllers connect (MediaControllerPolicy). Accepted ones get exactly
+    /// Media3's default (onConnectAsync's AcceptedResultBuilder(session, controller)).
+    /// </summary>
+    private sealed class ControllerGate : Java.Lang.Object, MediaSession.ICallback
+    {
+        public MediaSession.ConnectionResult? OnConnect(MediaSession? session, MediaSession.ControllerInfo? controller)
+        {
+            if (session == null || controller == null) return MediaSession.ConnectionResult.Reject();
+            var knownSystem = session.IsMediaNotificationController(controller)
+                              || session.IsAutoCompanionController(controller)
+                              || session.IsAutomotiveController(controller);
+            if (MediaControllerPolicy.Allows(controller.ControllerVersion, controller.Uid, global::Android.OS.Process.MyUid(),
+                    controller.IsTrusted, knownSystem))
+                return new MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller).Build();
+            DebugLog.Write("Audio", $"Media controller refused: {controller.PackageName}");
+            return MediaSession.ConnectionResult.Reject();
+        }
     }
 }

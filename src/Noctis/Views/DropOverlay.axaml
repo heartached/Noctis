@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             x:Class="Noctis.Views.DropOverlay"
+             IsVisible="False"
+             IsHitTestVisible="False"
+             Opacity="0">
+    <!-- Shown while files dragged in from outside the app are over the window. With
+         "Import dropped files" on: one card, the drop imports (GitHub #71). Off (#108):
+         drop zones — play / queue, add to the library, new playlist — the one under the
+         pointer lit in the accent. Hit-tested from MainWindow (this layer never takes the
+         pointer, so the sidebar's playlist rows underneath stay drop targets). -->
+    <UserControl.Transitions>
+        <Transitions>
+            <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+    </UserControl.Transitions>
+
+    <UserControl.Styles>
+        <!-- Zone tiles sit on the island's dark glass in every theme, so their fills are
+             white-based like the island's own chips. The lit zone takes the accent fill of
+             the app's accent pills. Content hangs from the top so icons and titles line up
+             across the tiles even when one hint wraps to a second line. -->
+        <Style Selector="Border.drop-zone">
+            <Setter Property="Width" Value="184" />
+            <Setter Property="Height" Value="124" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="12,22,12,10" />
+            <Setter Property="Background" Value="#12FFFFFF" />
+            <Setter Property="BorderBrush" Value="#1FFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <!-- The lit zone eases up to 106 % and back down when the pointer moves on. Scale
+                 only: a brush tween from the translucent fill to the accent passes through a
+                 pale mid-tone (the white-flash trap from 09-17). Highlight() runs on every
+                 DragOver, but Classes.Set is a no-op when the state is unchanged, so the tween
+                 never restarts mid-way. The card's 10 px padding and spacing leave room for it. -->
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.drop-zone.active">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.06)" />
+        </Style>
+        <Style Selector="Border.drop-zone PathIcon">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.drop-zone TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
+        </Style>
+        <Style Selector="Border.drop-zone TextBlock.zone-title">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Border.drop-zone TextBlock.zone-hint">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxLines" Value="2" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Border.drop-zone.active PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Border.drop-zone.active TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Border.drop-zone.active TextBlock.zone-hint">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- The page dims under the drop: with Glass on, the island fill is see-through and
+         artist names behind the cards bled into the zone text (09-30, real-app capture). -->
+    <Border Background="#8C000000"
+            BorderBrush="{DynamicResource AccentColorBrush}"
+            BorderThickness="2"
+            Margin="4"
+            CornerRadius="8">
+        <Panel>
+            <!-- "Import dropped files" on. 09-24: the icon and text sit on the island's fill
+                 (they were drawn straight over the page and collided with whatever was under
+                 the pointer), in the user's accent (a StaticResource froze the pre-accent
+                 red), and the import arrow is a filled glyph (the old stroke-only path
+                 rendered nothing in a PathIcon). -->
+            <Border x:Name="ImportCard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="28,18"
+                    CornerRadius="20"
+                    Background="{DynamicResource IslandBackground}"
+                    BorderBrush="#22FFFFFF"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <PathIcon Data="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"
+                              Width="32" Height="32"
+                              HorizontalAlignment="Center"
+                              Foreground="{DynamicResource AccentColorBrush}" />
+                    <TextBlock Text="{loc:T Main.DropFilesImport}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource IslandForeground}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- "Import dropped files" off (#108): where the drop goes. Files stay where they are.
+                 A solid backing under the island fill keeps the zone text readable when Glass
+                 makes the island translucent; the theme's tint still shows on top. -->
+            <Border x:Name="ZonesCard"
+                    IsVisible="False"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    CornerRadius="28"
+                    Background="#F0101010">
+            <Border Padding="10"
+                    CornerRadius="28"
+                    Background="{DynamicResource IslandBackground}"
+                    BorderBrush="#22FFFFFF"
+                    BorderThickness="1">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border x:Name="PlayZone" Classes="drop-zone">
+                        <StackPanel VerticalAlignment="Top" Spacing="5">
+                            <PathIcon x:Name="PlayZoneIcon" Data="{StaticResource PlayIcon}" Margin="0,0,0,5" />
+                            <TextBlock x:Name="PlayZoneTitle" Classes="zone-title" Text="{loc:T Main.DropZonePlay}" />
+                            <TextBlock Classes="zone-hint" Text="{loc:T Main.DropZonePlayHint}" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="LibraryZone" Classes="drop-zone">
+                        <StackPanel VerticalAlignment="Top" Spacing="5">
+                            <!-- Stacked squares with a plus (Material "library_add"). -->
+                            <PathIcon Data="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"
+                                      Margin="0,0,0,5" />
+                            <TextBlock Classes="zone-title" Text="{loc:T Main.DropZoneLibrary}" />
+                            <TextBlock Classes="zone-hint" Text="{loc:T Main.DropZoneLibraryHint}" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="PlaylistZone" Classes="drop-zone">
+                        <StackPanel VerticalAlignment="Top" Spacing="5">
+                            <!-- List lines with a note (Material "queue_music"). -->
+                            <PathIcon Data="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
+                                      Margin="0,0,0,5" />
+                            <TextBlock Classes="zone-title" Text="{loc:T Main.DropZonePlaylist}" />
+                            <TextBlock x:Name="PlaylistZoneName" Classes="zone-hint" MaxLines="1" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            </Border>
+        </Panel>
+    </Border>
+</UserControl>

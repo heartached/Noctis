@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.SearchPage"
+             x:DataType="vm:SearchPageViewModel">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0" Classes="title" Text="Search" Margin="20,12,20,8" />
+        <TextBox Grid.Row="1" Name="SearchBox" Margin="16,0,16,8" Text="{Binding Query}"
+                 PlaceholderText="Artists, songs, albums" CornerRadius="12" />
+
+        <TextBlock Grid.Row="2" Name="SearchPrompt" Classes="subtle" Text="Search your library" HorizontalAlignment="Center"
+                   Margin="0,40,0,0" IsVisible="{Binding ShowPrompt}" />
+        <TextBlock Grid.Row="2" Name="NoResults" Classes="subtle" Text="No results" HorizontalAlignment="Center"
+                   Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasQuery}">
+            <StackPanel Margin="12,0,12,24" Spacing="12">
+                <StackPanel Spacing="4" IsVisible="{Binding HasArtists}">
+                    <TextBlock Classes="section" Text="Artists" Margin="8,0" />
+                    <ItemsControl Name="ArtistResults" ItemsSource="{Binding Artists}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ArtistListItem">
+                                <Button Classes="row"
+                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenArtistCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="Auto,*" Height="60" Margin="8,0">
+                                        <Border Classes="art" Width="44" Height="44" CornerRadius="22">
+                                            <Panel>
+                                                <PathIcon Data="{DynamicResource ArtistsIcon}" Width="18" Height="18" Opacity="0.5" />
+                                                <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="row-title" Margin="12,0,8,0" VerticalAlignment="Center" Text="{Binding Name}" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8" IsVisible="{Binding HasAlbums}">
+                    <TextBlock Classes="section" Text="Albums" Margin="8,0" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="AlbumResults" ItemsSource="{Binding Albums}" Margin="8,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="12" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:Album">
+                                    <Button Classes="row" Width="140"
+                                            Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenAlbumCommand}"
+                                            CommandParameter="{Binding}"
+                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
+                                        <views:AlbumTile />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <StackPanel Spacing="4" IsVisible="{Binding HasSongs}">
+                    <TextBlock Classes="section" Text="Songs" Margin="8,0" />
+                    <ItemsControl Name="SongResults" ItemsSource="{Binding Songs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:Track">
+                                <Button Classes="row"
+                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).PlaySongCommand}"
+                                        CommandParameter="{Binding}"
+                                        views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}">
+                                    <views:SongRow />
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

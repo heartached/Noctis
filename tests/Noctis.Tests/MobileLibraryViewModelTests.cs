@@ -97,4 +97,34 @@ public class MobileLibraryViewModelTests : IDisposable
         Assert.Equal(1, vm.SongCount);
         Assert.Single(vm.Songs);
     }
+    /// <summary>Settings that cannot be written (disk full, storage gone): the save throws.</summary>
+    private sealed class UnsavablePersistence : TestPersistenceService
+    {
+        public override Task SaveSettingsAsync(AppSettings settings) => throw new IOException("disk full");
+    }
+
+    [Fact]
+    public async Task SetAlbumPinned_SettingsSaveFails_IsLoggedNotThrown()
+    {
+        using var persistence = new UnsavablePersistence();
+        var vm = new LibraryViewModel(new FakeLibraryService(), persistence, new ScriptedPicker(), marshal: a => a());
+        await vm.InitializeAsync();
+
+        // An exception escaping here reaches the UI thread from the sheet's async handler and
+        // kills the process.
+        await vm.SetAlbumPinnedAsync(Guid.NewGuid(), pinned: true);
+    }
+
+    [Fact]
+    public async Task AddFolder_SettingsSaveFails_IsLoggedNotThrown()
+    {
+        using var persistence = new UnsavablePersistence();
+        var library = new FakeLibraryService();
+        var vm = new LibraryViewModel(library, persistence, new ScriptedPicker { Next = "content://tree/picked" }, marshal: a => a());
+        await vm.InitializeAsync();
+
+        await vm.AddFolderCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsScanning);
+    }
 }

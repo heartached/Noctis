@@ -32,7 +32,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
     [ObservableProperty] private string _name;
-    [ObservableProperty] private int _trackCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrackCountText))]
+    private int _trackCount;
+
+    /// <summary>Header stats: "1 track", "12 tracks" (the header read "1 tracks").</summary>
+    public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
     [ObservableProperty] private bool _isSmartPlaylist;
@@ -248,26 +253,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
 
     /// <summary>
-    /// True when the track matches the "Find in Playlist" query. Matches Title, Artist,
-    /// or Album (all visible columns) case-insensitively. A blank query matches everything.
+    /// True when the track matches the "Find in Playlist" query: the library search syntax
+    /// (<see cref="Noctis.Helpers.SearchQuery"/>, GitHub #107). A blank query matches everything.
+    /// Scans should parse once and call <see cref="Noctis.Helpers.SearchQuery.Matches"/> instead.
     /// </summary>
     public static bool MatchesSearch(Track track, string query)
-    {
-        if (string.IsNullOrWhiteSpace(query)) return true;
-        return Noctis.Helpers.SearchText.Matches(track.Title, query)
-            || Noctis.Helpers.SearchText.Matches(track.Artist, query)
-            || Noctis.Helpers.SearchText.Matches(track.Album, query);
-    }
-
-    /// <summary><see cref="MatchesSearch(Track, string)"/> against the track's cached search keys,
-    /// with <paramref name="queryKey"/> = SearchText.Normalize(query) computed once per scan.</summary>
-    public static bool MatchesSearch(Track track, string query, string queryKey)
-    {
-        if (string.IsNullOrWhiteSpace(query)) return true;
-        return Noctis.Helpers.SearchText.Matches(track.Title, track.SearchTitleKey, query, queryKey)
-            || Noctis.Helpers.SearchText.Matches(track.Artist, track.SearchArtistKey, query, queryKey)
-            || Noctis.Helpers.SearchText.Matches(track.Album, track.SearchAlbumKey, query, queryKey);
-    }
+        => Noctis.Helpers.SearchQuery.Parse(query).Matches(track);
 
     [RelayCommand]
     private void SetSort(string mode)
@@ -372,7 +363,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
                 var filtered = string.IsNullOrWhiteSpace(filter)
                     ? all
-                    : all.Where(t => MatchesSearch(t, filter)).ToList();
+                    : all.Where(Noctis.Helpers.SearchQuery.Parse(filter).Matches).ToList();
 
                 return (all, SortTracks(filtered, sortMode));
             });

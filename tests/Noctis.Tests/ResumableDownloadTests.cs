@@ -161,11 +161,18 @@ public class ResumableDownloadTests : IDisposable
 
     // ── Callers ──────────────────────────────────────────────────────────────
 
+    /// <summary>The Medium entry with this test data's length and checksum (the real file is 1.5 GB).</summary>
+    private static WhisperModelInfo ModelOf(byte[] data) => WhisperModelManager.Lullaby with
+    {
+        Bytes = data.Length,
+        Sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant(),
+    };
+
     [Fact]
     public async Task WhisperModel_ResumesLeftoverPart_FromAnEarlierFailedRun()
     {
         var server = new FakeServer(Data, Step.Serve());
-        var manager = new WhisperModelManager(_root, server.Client(), Fast);
+        var manager = new WhisperModelManager(_root, server.Client(), Fast, ModelOf(Data));
         var target = manager.PathFor(WhisperModelSize.Base);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         await File.WriteAllBytesAsync(target + ".part", Data.AsSpan(0, 200_000).ToArray());
@@ -175,27 +182,107 @@ public class ResumableDownloadTests : IDisposable
         Assert.Equal(new long?[] { 200_000 }, server.RangeStarts);
         Assert.Equal(Data, await File.ReadAllBytesAsync(target));
         Assert.False(File.Exists(target + ".part"));
-        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Base), server.Urls.Single());
+        Assert.Equal(WhisperModelManager.Lullaby.Url, server.Urls.Single());
+        Assert.Equal(WhisperModelState.Ready, manager.State);
     }
 
     [Fact]
     public async Task WhisperModel_KeepsPartOnFailure_SoTheNextTryContinues()
     {
         var manager = new WhisperModelManager(_root,
-            new FakeServer(Data, Step.DropAfter(90_000), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0)).Client(), Fast);
+            new FakeServer(Data, Step.DropAfter(90_000), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0), Step.DropAfter(0)).Client(), Fast, ModelOf(Data));
 
         await Assert.ThrowsAsync<IOException>(() => manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None));
 
         var part = manager.PathFor(WhisperModelSize.Medium) + ".part";
         Assert.Equal(90_000, new FileInfo(part).Length);
+        Assert.Equal(WhisperModelState.Partial, manager.State);
     }
 
     [Fact]
-    public void WhisperModelUrl_MatchesWhisperNetDownloaderLayout()
+    public async Task WhisperModel_ThatFailsItsChecksum_IsDiscarded_NotInstalled()
     {
-        Assert.Equal("https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-base.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Base));
-        Assert.Equal("https://huggingface.co/sandrohanea/whisper.net/resolve/v4/classic/ggml-medium.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Medium));
-        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Base), WhisperModelManager.ModelUrl(WhisperModelSize.Tiny));
+        var corrupt = Data.ToArray();
+        corrupt[123_456] ^= 0x40; // same length, one bit off in transit
+        var manager = new WhisperModelManager(_root, new FakeServer(corrupt, Step.Serve()).Client(), Fast, ModelOf(Data));
+
+        await Assert.ThrowsAsync<WhisperModelIntegrityException>(() => manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None));
+
+        Assert.False(File.Exists(manager.ModelPath));
+        Assert.False(File.Exists(manager.ModelPath + ".part")); // a resume would keep the bad byte
+        Assert.Equal(WhisperModelState.Missing, manager.State);
+        Assert.False(manager.IsInstalled());
+    }
+
+    [Fact]
+    public async Task WhisperModel_ReportsEachPhase_IncludingTheRetry()
+    {
+        var server = new FakeServer(Data, Step.DropAfter(100_000), Step.Serve());
+        var manager = new WhisperModelManager(_root, server.Client(), Fast, ModelOf(Data));
+        var reports = new List<ModelDownloadProgress>();
+
+        await manager.DownloadAsync(WhisperModelSize.Medium, new InlineProgress<ModelDownloadProgress>(r => { lock (reports) reports.Add(r); }), CancellationToken.None);
+
+        Assert.Equal(ModelDownloadPhase.Connecting, reports[0].Phase);
+        Assert.Equal(ModelDownloadPhase.Done, reports[^1].Phase);
+        Assert.True(reports.FindIndex(r => r.Phase == ModelDownloadPhase.Retrying) > reports.FindIndex(r => r.Phase == ModelDownloadPhase.Downloading));
+        Assert.True(reports.FindIndex(r => r.Phase == ModelDownloadPhase.Verifying) > reports.FindLastIndex(r => r.Phase == ModelDownloadPhase.Downloading));
+        var retry = reports.First(r => r.Phase == ModelDownloadPhase.Retrying);
+        Assert.Equal(1, retry.Attempt);
+        Assert.Equal(100_000, retry.BytesDone);
+        Assert.Equal(Data.Length, reports.Where(r => r.Phase == ModelDownloadPhase.Downloading).Max(r => r.BytesDone));
+        Assert.Equal(1.0, reports.Where(r => r.Phase == ModelDownloadPhase.Verifying).Max(r => r.VerifyFraction));
+    }
+
+    [Fact]
+    public async Task WhisperModel_ASecondDownloadWhileOneRuns_JoinsIt()
+    {
+        // 09-29: closing the Studio mid-download and opening it again offered Download again, and
+        // the second download failed on the first one's open .part ("used by another process").
+        var gate = new TaskCompletionSource();
+        var server = new FakeServer(Data, Step.Serve()) { Gate = gate.Task };
+        var manager = new WhisperModelManager(_root, server.Client(), Fast, ModelOf(Data));
+
+        var first = manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+        for (var i = 0; i < 200 && server.RangeStarts.Count == 0; i++) await Task.Delay(10);
+        Assert.True(manager.IsDownloading);
+        var second = manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+        gate.SetResult();
+        await Task.WhenAll(first, second);
+
+        Assert.Single(server.RangeStarts);
+        Assert.Equal(Data, await File.ReadAllBytesAsync(manager.ModelPath));
+        Assert.Equal(WhisperModelState.Ready, manager.State);
+    }
+
+    [Fact]
+    public async Task WhisperModel_Cancel_KeepsThePart_ForAResume()
+    {
+        var server = new FakeServer(Data, Step.StallAfter(120_000), Step.Serve());
+        var manager = new WhisperModelManager(_root, server.Client(), Fast with { StallTimeout = TimeSpan.FromSeconds(30) }, ModelOf(Data));
+
+        var download = manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+        for (var i = 0; i < 300 && manager.CurrentDownload?.BytesDone != 120_000; i++) await Task.Delay(10);
+        Assert.Equal(ModelDownloadPhase.Downloading, manager.CurrentDownload?.Phase);
+        manager.CancelDownload();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => download);
+
+        Assert.False(manager.IsDownloading);
+        Assert.Equal(WhisperModelState.Partial, manager.State);
+        Assert.Equal(120_000, manager.PartialBytes);
+
+        await manager.DownloadAsync(WhisperModelSize.Medium, null, CancellationToken.None);
+        Assert.Equal(new long?[] { null, 120_000 }, server.RangeStarts);
+        Assert.Equal(WhisperModelState.Ready, manager.State);
+    }
+
+    [Fact]
+    public void WhisperModelUrl_IsTheFixedLullabyRelease()
+    {
+        Assert.Equal("https://github.com/heartached/Noctis/releases/download/lullaby-v1/lullaby.bin", WhisperModelManager.ModelUrl(WhisperModelSize.Medium));
+        // Retired sizes are the one model.
+        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Base));
+        Assert.Equal(WhisperModelManager.ModelUrl(WhisperModelSize.Medium), WhisperModelManager.ModelUrl(WhisperModelSize.Tiny));
     }
 
     [Fact]
@@ -226,6 +313,8 @@ public class ResumableDownloadTests : IDisposable
     private sealed class FakeServer(byte[] data, params Step[] steps) : HttpMessageHandler
     {
         private int _next;
+        /// <summary>Bodies hold their first byte until this completes (a download kept in flight).</summary>
+        public Task? Gate { get; init; }
         public List<long?> RangeStarts { get; } = new();
         public List<string> Urls { get; } = new();
 
@@ -249,7 +338,7 @@ public class ResumableDownloadTests : IDisposable
                 return Task.FromResult(full);
             }
 
-            var body = new ScriptedStream(data, start, step.DropAt, step.StallAt);
+            var body = new ScriptedStream(data, start, step.DropAt, step.StallAt, Gate);
             var response = new HttpResponseMessage(start > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK) { Content = new StreamContent(body) };
             response.Content.Headers.ContentLength = data.Length - start;
             if (start > 0)
@@ -259,12 +348,13 @@ public class ResumableDownloadTests : IDisposable
     }
 
     /// <summary>Serves data[start..]; after <c>dropAfter</c> bytes throws like a reset socket, after <c>stallAfter</c> bytes hangs.</summary>
-    private sealed class ScriptedStream(byte[] data, int start, int? dropAfter, int? stallAfter) : Stream
+    private sealed class ScriptedStream(byte[] data, int start, int? dropAfter, int? stallAfter, Task? gate = null) : Stream
     {
         private int _sent;
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
         {
+            if (gate is not null) await gate.WaitAsync(ct);
             var limit = data.Length - start;
             if (dropAfter is { } d) limit = Math.Min(limit, d);
             if (stallAfter is { } s) limit = Math.Min(limit, s);

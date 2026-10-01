@@ -175,12 +175,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
 
         public CapturingEngine(string root)
         {
-            Models = new WhisperModelManager(root);
-            var path = Models.PathFor(WhisperModelSize.Base);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            if (File.Exists(path)) return;
-            using var f = new FileStream(path, FileMode.Create);
-            f.SetLength(WhisperModelManager.Info(WhisperModelSize.Base).ApproxBytes);
+            Models = StudioTestModel.Installed(root);
         }
 
         public IDisposable OpenSession(WhisperModelSize model) => new Handle();
@@ -197,7 +192,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
                 // The UI thread is held while the report and the run's continuation queue up behind it.
                 Dispatcher.UIThread.Post(() => Thread.Sleep(150));
                 Thread.Sleep(20);
-                progress?.Report(new LyricsStudioProgress(options.SourceLines is null ? "Finding lyrics" : "Ready", 1));
+                progress?.Report(new LyricsStudioProgress(options.SourceLines is null ? LyricsStudioStage.FindingLyrics : LyricsStudioStage.Done, 1));
                 if (options.SourceLines is null) throw new LyricsStudioNeedsLyricsException();
             }
             else if (options.SourceLines is null) throw new LyricsStudioNeedsLyricsException();

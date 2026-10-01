@@ -19,6 +19,10 @@ public interface IServerLibrary : Sync.ISyncApplier
 {
     Task<LibrarySnapshot> SnapshotAsync();
 
+    /// <summary>A library scan is running: snapshots may list only part of the library
+    /// (getScanStatus reports it, so a phone does not drop the songs not listed yet).</summary>
+    bool IsScanning => false;
+
     /// <summary>Path of the album's cover file, or null.</summary>
     string? ArtworkPath(Guid albumId);
 
@@ -27,6 +31,9 @@ public interface IServerLibrary : Sync.ISyncApplier
 
     /// <summary>Counts a play (submission=true scrobble).</summary>
     Task ScrobbleAsync(Guid trackId);
+
+    /// <summary>Counts a play that happened at <paramref name="playedUtc"/> (already clamped to the past; a phone's offline play).</summary>
+    Task ScrobbleAsync(Guid trackId, DateTime playedUtc) => ScrobbleAsync(trackId);
 
     Task<Playlist> CreatePlaylistAsync(string name, IReadOnlyList<Guid> trackIds);
 

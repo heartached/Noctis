@@ -194,6 +194,38 @@ public class LibrarySortTests
         Assert.Equal(new[] { "Solo", "Early", "Late" }, result.Select(a => a.Name));
     }
 
+    /// <summary>GitHub #106: "Newest Albums First" keeps artists A→Z but runs each artist's releases newest→oldest.</summary>
+    [Fact]
+    public void Albums_AlbumArtistMode_NewestFirst_ArtistsAlphabeticalThenNewestFirst()
+    {
+        var albums = new List<Album>
+        {
+            Alb("Early", "Beta",  2010),
+            Alb("Solo",  "Alpha", 2005),
+            Alb("Undated", "beta", 0),
+            Alb("Late",  "beta",  2020),
+        };
+
+        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "albumartist", ascending: true, newestFirst: true).ToList();
+
+        Assert.Equal(new[] { "Solo", "Late", "Early", "Undated" }, result.Select(a => a.Name));
+    }
+
+    /// <summary>GitHub #106: the toggle is scoped to Album Artist; other modes ignore it.</summary>
+    [Fact]
+    public void Albums_NewestFirst_IgnoredOutsideAlbumArtistMode()
+    {
+        var albums = new List<Album>
+        {
+            Alb("B", "x", 2010),
+            Alb("A", "y", 2020),
+        };
+
+        Assert.Equal(
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: true).Select(a => a.Name),
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: true, newestFirst: true).Select(a => a.Name));
+    }
+
     [Fact]
     public void Albums_YearMode_NewestFirstUnknownYearsLast()
     {

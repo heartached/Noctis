@@ -122,6 +122,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// float rather than a single ordering key.</summary>
     [ObservableProperty] private bool _albumSortAscending = true;
 
+    /// <summary>GitHub #106: under "albumartist", each artist's releases run newest first.</summary>
+    [ObservableProperty] private bool _albumSortNewestFirst;
+
+    /// <summary>The "Newest Albums First" toggle only applies to the Album Artist sort.</summary>
+    public bool AlbumSortNewestFirstEnabled => AlbumSortMode == "albumartist";
+
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
@@ -174,6 +180,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         OnPropertyChanged(nameof(AlbumSortLabel));
         OnPropertyChanged(nameof(AlbumSortDirectionEnabled));
+        OnPropertyChanged(nameof(AlbumSortNewestFirstEnabled));
         if (!_adoptingPersistedState) _settings.AlbumSortMode = value;
         if (!_suspendSortRebuild) RebuildFilteredRows();
     }
@@ -182,6 +189,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         OnPropertyChanged(nameof(AlbumSortDescending));
         if (!_adoptingPersistedState) _settings.AlbumSortAscending = value;
+        if (!_suspendSortRebuild) RebuildFilteredRows();
+    }
+
+    partial void OnAlbumSortNewestFirstChanged(bool value)
+    {
+        if (!_adoptingPersistedState) _settings.AlbumSortNewestFirst = value;
         if (!_suspendSortRebuild) RebuildFilteredRows();
     }
 
@@ -208,6 +221,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 return;
             case "descending":
                 AlbumSortAscending = false;
+                return;
+            case "newestfirst":
+                AlbumSortNewestFirst = !AlbumSortNewestFirst;
                 return;
         }
 
@@ -256,6 +272,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
+            AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
         }
         finally
         {
@@ -537,6 +554,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var qualityFilter = QualityFilter;
         var sortMode = AlbumSortMode;
         var sortAscending = AlbumSortAscending;
+        var newestFirst = AlbumSortNewestFirst;
         var library = refreshFromLibrary ? _library : null;
 
         ThreadPool.QueueUserWorkItem(_ =>
@@ -545,7 +563,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (library != null)
                 albums = library.Albums.ToList();
 
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending, newestFirst);
 
             // Only apply if no newer rebuild was requested. A superseded library
             // reload must re-mark dirty: the newer request may have captured the
@@ -571,7 +589,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
         ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default",
-        bool sortAscending = true)
+        bool sortAscending = true, bool newestFirst = false)
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -612,11 +630,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
+            // GitHub #107: an album matches when one of its tracks satisfies the whole
+            // query, so "artist album" and "genre year" combine across fields.
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
             filtered = filtered.Where(a =>
-                MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
-                MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces) ||
-                a.Tracks.Any(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
-                                  MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces)));
+                (!parsed.HasFieldTerms &&
+                 (MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
+                  MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces))) ||
+                a.Tracks.Any(parsed.Matches));
 
             // Artist discographies read as one timeline: collab albums sit among the
             // artist's own releases by year (Discord request), not after them.
@@ -640,7 +661,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             // Benign race: a mid-rebuild seed bump queues its own rebuild and the
             // generation guard discards this one, so a torn read cannot stick.
-            filtered = ApplySortMode(filtered, sortMode, sortAscending, _randomSortSeed);
+            filtered = ApplySortMode(filtered, sortMode, sortAscending, _randomSortSeed, newestFirst);
 
             IEnumerable<Album> sortedAlbums = filtered;
             if (_settings.CollapseAlbumEditions)
@@ -708,9 +729,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// rather than shuffling them into reverse alphabetical order. "random" ignores
     /// it entirely and deals the seeded shuffle of <paramref name="randomSeed"/>.
     /// </para>
+    /// <para>
+    /// <paramref name="newestFirst"/> (GitHub #106) flips the year order inside each artist
+    /// for "albumartist" only; undated releases then sit after the dated ones.
+    /// </para>
     /// </summary>
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
-    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending, int randomSeed = 0) =>
+    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending, int randomSeed = 0,
+        bool newestFirst = false) =>
         sortMode switch
         {
             // Straight alphabetical by album title — what Apple Music's Albums view does,
@@ -734,11 +760,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                     : albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount)))
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
             // Album Artist/Year (Apple Music/MusicBee): artists A→Z, each artist's
-            // releases in chronological order. Album.Artist is the album artist.
-            "albumartist" => (ascending
-                    ? albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
-                    : albums.OrderByDescending(a => a.Artist, StringComparer.OrdinalIgnoreCase))
-                .ThenBy(a => a.Year)
+            // releases in chronological order, or newest first (GitHub #106).
+            // Album.Artist is the album artist.
+            "albumartist" => (newestFirst
+                    ? ByAlbumArtist(albums, ascending).ThenByDescending(a => a.Year)
+                    : ByAlbumArtist(albums, ascending).ThenBy(a => a.Year))
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
             // Descending by default so newest releases lead; unknown years (0) sink
             // to the bottom there, and lead when the direction is flipped.
@@ -752,6 +778,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             "random" => ShuffleBySeed(albums, randomSeed),
             _ => albums,
         };
+
+    private static IOrderedEnumerable<Album> ByAlbumArtist(IEnumerable<Album> albums, bool ascending) =>
+        ascending
+            ? albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+            : albums.OrderByDescending(a => a.Artist, StringComparer.OrdinalIgnoreCase);
 
     private static DateTime LatestModified(Album album) =>
         album.Tracks.Count > 0 ? album.Tracks.Max(t => t.LastModified) : DateTime.MinValue;
@@ -794,7 +825,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
-            tracks = tracks.Where(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces));
+            var parsed = Noctis.Helpers.SearchQuery.Parse(q);
+            tracks = tracks.Where(t =>
+                (!parsed.HasFieldTerms && MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces)) ||
+                parsed.Matches(t));
         }
 
         var orderedSongs = tracks

@@ -112,6 +112,62 @@ public class AudioKeepAliveTests
         Assert.Equal(expected, VlcSilenceKeepAlive.ShouldRun(suspended, heldByPause, idleStopMs, idleForMs));
     }
 
+    [Theory]
+    // parked, suspended, warmUpMs, nowMs, pendingWarmUntil → expected warmUntil
+    [InlineData(true, false, 1000, 50_000L, 0L, 51_000L)]        // GitHub #70: first play after a park holds
+    [InlineData(false, false, 1000, 50_000L, 0L, 0L)]            // loop running: no hold, ever
+    [InlineData(true, true, 1000, 50_000L, 0L, 0L)]              // exclusive output: the loop can't run
+    [InlineData(true, false, 0, 50_000L, 0L, 0L)]                // NOCTIS_KEEPALIVE_WARM_MS=0: off
+    [InlineData(true, false, 1000, 50_300L, 51_000L, 51_000L)]   // a burst of plays keeps ONE deadline
+    [InlineData(false, false, 1000, 50_300L, 51_000L, 51_000L)]  // ...also once the loop restarted
+    [InlineData(true, false, 1000, 90_000L, 51_000L, 91_000L)]   // an expired deadline re-arms on the next park
+    public void NextWarmUntil_ArmsOnlyWhenParked_AndNeverExtends(
+        bool parked, bool suspended, int warmUpMs, long nowMs, long warmUntilMs, long expected)
+    {
+        Assert.Equal(expected, VlcSilenceKeepAlive.NextWarmUntil(parked, suspended, warmUpMs, nowMs, warmUntilMs));
+    }
+
+    [Theory]
+    [InlineData(0L, 50_000L, 0)]            // nothing armed
+    [InlineData(51_000L, 50_000L, 1000)]    // straight after the play
+    [InlineData(51_000L, 50_700L, 300)]     // the worker got the lock later: only the rest
+    [InlineData(51_000L, 52_000L, 0)]       // already warm
+    [InlineData(99_000L, 50_000L, VlcSilenceKeepAlive.MaxWarmUpMs)] // never past the cap
+    public void RemainingWarmUpMs_IsTheRestOfTheDeadline_Capped(long warmUntilMs, long nowMs, int expected)
+    {
+        Assert.Equal(expected, VlcSilenceKeepAlive.RemainingWarmUpMs(warmUntilMs, nowMs));
+    }
+
+    [Theory]
+    [InlineData(null, 1000)]
+    [InlineData("", 1000)]
+    [InlineData("junk", 1000)]
+    [InlineData("-5", 1000)]
+    [InlineData("0", 0)]
+    [InlineData("1500", 1500)]
+    [InlineData("60000", VlcSilenceKeepAlive.MaxWarmUpMs)] // stays under Dispose's 3 s lock wait
+    public void ParseWarmUpMs_DefaultsTo1s_AndIsCapped(string? env, int expected)
+    {
+        Assert.Equal(expected, VlcSilenceKeepAlive.ParseWarmUpMs(env));
+    }
+
+    private sealed class CountingKeepAlive : IAudioKeepAlive
+    {
+        public int Notified;
+        public void NotifyActivity() => Notified++;
+        public void SetSuspended(bool suspended) { }
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public void WakeForPlayback_DefaultsToNotifyWithoutHold()
+    {
+        // WasapiSilenceKeepAlive keeps this default: Windows plays are never held.
+        var keepAlive = new CountingKeepAlive();
+        Assert.Equal(0, ((IAudioKeepAlive)keepAlive).WakeForPlayback());
+        Assert.Equal(1, keepAlive.Notified);
+    }
+
     [Fact]
     public void TryStart_ReturnsNull_OnWindows_EvenWhenOptedIn()
     {

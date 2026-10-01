@@ -52,6 +52,10 @@ public partial class SettingsViewModel
         return sync;
     }
 
+    /// <summary>False while the account features are parked (<see cref="Services.AccountFeatures"/>):
+    /// the Account &amp; Sync cards show disabled under a Coming soon badge.</summary>
+    public bool AccountFeaturesEnabled => AccountFeatures.Enabled;
+
     [ObservableProperty] private bool _syncEnabled;
     [ObservableProperty] private string _syncDeviceName = string.Empty;
     [ObservableProperty] private string _syncStatusText = string.Empty;
@@ -84,6 +88,8 @@ public partial class SettingsViewModel
 
     partial void OnSyncEnabledChanged(bool value)
     {
+        // Parked: nothing turns sync on, and the stored flag is left as it is.
+        if (!AccountFeatures.Enabled) { if (value) SyncEnabled = false; return; }
         if (!_settingsLoaded) return;
         _settings.SyncEnabled = value;
         _ = SaveAsync();
@@ -112,16 +118,19 @@ public partial class SettingsViewModel
         QueueSettingsSave();
     }
 
+    private const string SyncOffText = "Off. Turn on to share favourites, ratings, play counts and playlists with your other devices.";
+
     private void RefreshSyncStatus()
     {
         SyncDeviceIdText = Sync?.DeviceId ?? string.Empty;
         SyncDevices.Clear();
-        if (Sync is not { } sync) { SyncStatusText = string.Empty; OnPropertyChanged(nameof(HasSyncDevices)); return; }
+        // No ledger (parked, see Program's AccountFeatures gate): the card still reads as off.
+        if (Sync is not { } sync) { SyncStatusText = AccountFeatures.Enabled ? string.Empty : SyncOffText; OnPropertyChanged(nameof(HasSyncDevices)); return; }
         try
         {
             var devices = sync.Devices().Where(d => !string.Equals(d.Id, sync.DeviceId, StringComparison.OrdinalIgnoreCase)).ToList();
             foreach (var d in devices) SyncDevices.Add(new SyncDeviceRow(d));
-            if (!SyncEnabled) SyncStatusText = "Off. Turn on to share favourites, ratings, play counts and playlists with your other devices.";
+            if (!SyncEnabled) SyncStatusText = SyncOffText;
             else if (!NoctisServerEnabled) SyncStatusText = "Waiting for Noctis Server — devices sync through it. Turn it on below.";
             else if (devices.Count == 0) SyncStatusText = "On. No device has synced yet — sign in from the Noctis app on your phone.";
             else SyncStatusText = $"On · {devices.Count} device{(devices.Count == 1 ? "" : "s")} · {sync.CurrentSeq} changes in the ledger";
@@ -133,8 +142,62 @@ public partial class SettingsViewModel
         OnPropertyChanged(nameof(HasSyncDevices));
     }
 
+    /// <summary>
+    /// "Pair a device": everything the phone needs, in one click — the server on (it is how the
+    /// phone connects) and sync on (with its first-enable seeding), then the address and the
+    /// certificate fingerprint to type/compare on the phone.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
+    private void TogglePairing()
+    {
+        IsPairingVisible = !IsPairingVisible;
+        if (!IsPairingVisible) return;
+        if (!SyncEnabled) SyncEnabled = true;
+        if (!NoctisServerEnabled) NoctisServerEnabled = true;
+        RefreshSignedInDevices();
+    }
+
+    // ── Signed-in devices (phones that signed in with the account; each has its own key) ──
+
+    public ObservableCollection<SignedInDeviceRow> SignedInDevices { get; } = new();
+    public bool HasSignedInDevices => SignedInDevices.Count > 0;
+
+    private void RefreshSignedInDevices()
+    {
+        SignedInDevices.Clear();
+        try
+        {
+            foreach (var d in ServerUsers.Devices()) SignedInDevices.Add(new SignedInDeviceRow(d));
+        }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
+        OnPropertyChanged(nameof(HasSignedInDevices));
+    }
+
+    /// <summary>Signs the device out: its key stops working on its next request.</summary>
     [RelayCommand]
-    private void TogglePairing() => IsPairingVisible = !IsPairingVisible;
+    private void RemoveSignedInDevice(SignedInDeviceRow row)
+    {
+        try { ServerUsers.RevokeDevice(row.Device.User, row.Device.DeviceId); }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
+        RefreshSignedInDevices();
+    }
+
+    public sealed record SignedInDeviceRow(ServerDevice Device)
+    {
+        public string Name => Device.DeviceName;
+        public string LastUsedText
+        {
+            get
+            {
+                var at = Device.LastUsedUtc ?? Device.CreatedUtc;
+                var ago = DateTime.UtcNow - at;
+                if (ago < TimeSpan.FromMinutes(1)) return $"{Device.User} · Used just now";
+                if (ago < TimeSpan.FromHours(1)) return $"{Device.User} · Used {(int)ago.TotalMinutes} min ago";
+                if (ago < TimeSpan.FromDays(1)) return $"{Device.User} · Used {(int)ago.TotalHours} h ago";
+                return $"{Device.User} · Used {at.ToLocalTime():d MMM, HH:mm}";
+            }
+        }
+    }
 
     [RelayCommand]
     private void TurnOnNoctisServer()
@@ -157,15 +220,17 @@ public partial class SettingsViewModel
         ServerUserError = string.Empty;
         try
         {
+            // Also signs out every device and drops the API key (ServerUserStore.ChangePassword).
             ServerUsers.ChangePassword(user.Name, ChangePasswordValue);
             ChangePasswordValue = string.Empty;
             IsChangePasswordVisible = false;
+            RefreshServerUsers();
         }
         catch (Exception ex) { ServerUserError = ex.Message; }
     }
 
     /// <summary>Create-your-account button on the Account &amp; Sync tab (first account is the admin).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
     private void CreatePrimaryAccount()
     {
         AddServerUserCommand.Execute(null);
@@ -268,30 +333,22 @@ public partial class SettingsViewModel
 
     // ── Lyrics Studio ──
 
-    public IReadOnlyList<WhisperModelInfo> LyricsModelOptions => WhisperModelManager.Catalog;
     public IReadOnlyList<SpeechLanguageOption> LyricsLanguageOptions => LyricsStudioViewModel.Languages;
 
-    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Info(WhisperModelSize.Base);
+    /// <summary>The one speech model (09-29); kept so the saved preference is rewritten as Medium.</summary>
+    [ObservableProperty] private WhisperModelInfo _lyricsStudioModel = WhisperModelManager.Lullaby;
     [ObservableProperty] private SpeechLanguageOption _lyricsStudioLanguage = LyricsStudioViewModel.Languages[0];
     [ObservableProperty] private bool _lyricsStudioWordTimings = true;
     [ObservableProperty] private bool _lyricsStudioEmbedTags;
     [ObservableProperty] private bool _lyricsStudioOnlineLyrics = true;
     /// <summary>Skip songs that already carry the format being written.</summary>
     [ObservableProperty] private bool _lyricsStudioSkipAlreadyTimed = true;
-    [ObservableProperty] private string _lyricsModelStatus = string.Empty;
-    [ObservableProperty] private bool _isLyricsModelInstalled;
-    [ObservableProperty] private bool _isDownloadingLyricsModel;
-    [ObservableProperty] private double _lyricsModelProgress;
     [ObservableProperty] private string _lyricsStudioStats = string.Empty;
     /// <summary>Per-format song counts for the Lyrics Studio card, empty until the count finishes.</summary>
     [ObservableProperty] private IReadOnlyList<LyricsStudioCount> _lyricsStudioCounts = Array.Empty<LyricsStudioCount>();
-    [ObservableProperty] private string _lyricsStudioFfmpegStatus = string.Empty;
-
-    private ILyricsStudioEngine? LyricsEngine => App.Services?.GetService<ILyricsStudioEngine>();
 
     partial void OnLyricsStudioModelChanged(WhisperModelInfo value)
     {
-        RefreshLyricsModelStatus();
         if (!_settingsLoaded) return;
         _settings.LyricsStudioModel = value.Size.ToString();
         QueueSettingsSave();
@@ -341,17 +398,6 @@ public partial class SettingsViewModel
         LyricsStudioSkipAlreadyTimed = prefs.SkipAlreadyTimed;
         LyricsStudioEmbedTags = prefs.EmbedTags;
         LyricsStudioOnlineLyrics = prefs.OnlineLyrics;
-    }
-
-    private void RefreshLyricsModelStatus()
-    {
-        var engine = LyricsEngine;
-        if (engine is null) { LyricsModelStatus = string.Empty; IsLyricsModelInstalled = false; return; }
-        IsLyricsModelInstalled = engine.Models.IsInstalled(LyricsStudioModel.Size);
-        LyricsModelStatus = IsLyricsModelInstalled
-            ? $"Installed · {LyricsStudioModel.Description}"
-            : $"Not installed ({LyricsStudioModel.SizeText}) · {LyricsStudioModel.Description}";
-        LyricsStudioFfmpegStatus = engine.HasFfmpeg ? string.Empty : "ffmpeg is needed to decode songs — set its path under Advanced → Helper programs.";
     }
 
     private CancellationTokenSource? _lyricsStatsCts;
@@ -429,36 +475,6 @@ public partial class SettingsViewModel
         return $"{elrc} with word timings (ELRC) · {lrc} with line timings (LRC) · {plain} plain only · {none} without lyrics";
     }
 
-    [RelayCommand]
-    private async Task DownloadLyricsModel()
-    {
-        var engine = LyricsEngine;
-        if (engine is null || IsDownloadingLyricsModel) return;
-        IsDownloadingLyricsModel = true;
-        LyricsModelProgress = 0;
-        var model = LyricsStudioModel;
-        LyricsModelStatus = $"Downloading the {model.DisplayName} model ({model.SizeText})…";
-        try
-        {
-            await engine.Models.DownloadAsync(model.Size, new Progress<double>(p => Dispatcher.UIThread.Post(() => LyricsModelProgress = p)), CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            LyricsModelStatus = $"Download failed — {ex.Message}";
-            IsDownloadingLyricsModel = false;
-            return;
-        }
-        IsDownloadingLyricsModel = false;
-        RefreshLyricsModelStatus();
-    }
-
-    [RelayCommand]
-    private void DeleteLyricsModel()
-    {
-        LyricsEngine?.Models.Delete(LyricsStudioModel.Size);
-        RefreshLyricsModelStatus();
-    }
-
     /// <summary>Opens Lyrics Studio with the songs that lack the chosen format — ELRC when word timings are on, any timed LRC when off (first 40, so a run stays reviewable).</summary>
     [RelayCommand]
     private Task OpenLyricsStudioForMissing() => MetadataHelper.OpenLyricsStudioForLibrary(_settings.LyricsStudioWordTimings);
@@ -471,7 +487,7 @@ public partial class SettingsViewModel
 
         if (string.IsNullOrWhiteSpace(_settings.SyncDeviceId))
             _settings.SyncDeviceId = Guid.NewGuid().ToString("N")[..12];
-        SyncEnabled = _settings.SyncEnabled;
+        SyncEnabled = AccountFeatures.Enabled && _settings.SyncEnabled;
         SyncDeviceName = string.IsNullOrWhiteSpace(_settings.SyncDeviceName) ? Environment.MachineName : _settings.SyncDeviceName;
 
         YouTubeDownloadFolder = _settings.YouTubeDownloadFolder ?? string.Empty;
@@ -489,7 +505,7 @@ public partial class SettingsViewModel
     private void SaveFeatureSettings()
     {
         _settings.UpmixMode = UpmixMode ?? "Off";
-        _settings.SyncEnabled = SyncEnabled;
+        if (AccountFeatures.Enabled) _settings.SyncEnabled = SyncEnabled;
         _settings.SyncDeviceName = SyncDeviceName ?? string.Empty;
         _settings.YouTubeDownloadFolder = YouTubeDownloadFolder ?? string.Empty;
         _settings.YtDlpPath = YtDlpPath ?? string.Empty;

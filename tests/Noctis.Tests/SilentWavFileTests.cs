@@ -35,23 +35,15 @@ public class SilentWavFileTests
     }
 
     [Fact]
-    public void EnsureCached_CreatesFileAndIsIdempotent()
+    public void Write_ZeroSeconds_IsAHeaderWithUnknownDataLength()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "NoctisKeepAliveTest_" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var path1 = SilentWavFile.EnsureCached(dir);
-            Assert.True(File.Exists(path1));
-            var len1 = new FileInfo(path1).Length;
-            Assert.Equal(SilentWavFile.HeaderBytes + 48000 * 2 * 2, len1);
+        using var ms = new MemoryStream();
+        SilentWavFile.Write(ms, seconds: 0, sampleRate: 48000, channels: 2);
+        var b = ms.ToArray();
 
-            var path2 = SilentWavFile.EnsureCached(dir); // reuse, no throw
-            Assert.Equal(path1, path2);
-            Assert.Equal(len1, new FileInfo(path2).Length);
-        }
-        finally
-        {
-            try { Directory.Delete(dir, recursive: true); } catch { }
-        }
+        Assert.Equal(SilentWavFile.HeaderBytes, b.Length);
+        Assert.Equal(36, BitConverter.ToInt32(b, 4));  // RIFF size of a header-only file
+        Assert.Equal("data", Encoding.ASCII.GetString(b, 36, 4));
+        Assert.Equal(0, BitConverter.ToInt32(b, 40));  // 0 = length unknown, read to EOF
     }
 }

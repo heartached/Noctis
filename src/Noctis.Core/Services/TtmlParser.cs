@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -19,9 +20,17 @@ namespace Noctis.Services;
 /// recursed into so their timed descendants still contribute.
 /// Apple's translation and romanization layers (&lt;iTunesMetadata&gt; in the head,
 /// keyed by each &lt;p&gt;'s itunes:key) attach to their lines — issue #78.
+/// Inline translation (<c>x-translation</c>) and romanization (<c>x-roman</c>) spans
+/// become the same layers instead of words; an inline layer wins over the head's.
 /// </summary>
 public static class TtmlParser
 {
+    private static readonly XmlReaderSettings UntrustedXml = new()
+    {
+        DtdProcessing = DtdProcessing.Ignore,
+        XmlResolver = null,
+    };
+
     /// <summary>Cheap discriminator — TTML documents open with a &lt;tt&gt; root element.</summary>
     public static bool LooksLikeTtml(string? content)
     {
@@ -52,10 +61,13 @@ public static class TtmlParser
         XDocument doc;
         try
         {
-            // DTD stays prohibited (XDocument.Parse default) — sidecars are untrusted input.
+            // Untrusted input (sidecars, and lyrics a desktop sends the phone): a DOCTYPE is
+            // skipped, not processed — XDocument.Parse does process internal DTD entities —
+            // and nothing external is ever resolved.
             // PreserveWhitespace keeps the whitespace-only text nodes between <span>s;
             // they are the word boundaries (spans with none between are syllables).
-            doc = XDocument.Parse(content, LoadOptions.PreserveWhitespace);
+            using var reader = XmlReader.Create(new StringReader(content), UntrustedXml);
+            doc = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
         }
         catch (Exception)
         {
@@ -68,7 +80,10 @@ public static class TtmlParser
         var root = doc.Root;
         if (root == null || !LocalNameIs(root, "tt")) return (null, null);
 
-        var ignoreFormattingWhitespace = joinSplitWords && UsesAuthoredSpaces(root);
+        // Only the body's word spans decide the convention: Apple head transliterations and
+        // inline x-roman spans carry their own authored spaces and say nothing about the lyric.
+        var body = root.Elements().FirstOrDefault(e => LocalNameIs(e, "body")) ?? root;
+        var ignoreFormattingWhitespace = joinSplitWords && UsesAuthoredSpaces(body);
 
         var translations = LayerEntries(root, "translation", preferredLanguage);
         var transliterations = LayerEntries(root, "transliteration", preferredLanguage);
@@ -107,13 +122,17 @@ public static class TtmlParser
     /// picks this branch and over-joins the lines that rely on indentation — the Settings
     /// toggle is the escape hatch.
     /// </summary>
-    private static bool UsesAuthoredSpaces(XElement root) =>
-        root.Descendants().Any(e =>
+    private static bool UsesAuthoredSpaces(XElement scope) =>
+        scope.Descendants().Any(e =>
             LocalNameIs(e, "span")
             && e.Attribute("begin") != null
             && !e.Elements().Any()
             && e.Value.Length > 0
-            && (char.IsWhiteSpace(e.Value[0]) || char.IsWhiteSpace(e.Value[^1])));
+            && (char.IsWhiteSpace(e.Value[0]) || char.IsWhiteSpace(e.Value[^1]))
+            // Cheap checks above filter out almost every span before this walk runs, so
+            // the ancestor chain (worst case O(depth) per span) stays off the hot path
+            // for ordinary documents — see MaxNestingDepth for why depth is untrusted.
+            && !e.AncestorsAndSelf().Any(a => AuxiliaryRole(a) != null));
 
     /// <summary>Whitespace-only text carrying a line break is XML indentation, not content.</summary>
     private static bool IsFormattingWhitespace(string value) =>
@@ -129,7 +148,8 @@ public static class TtmlParser
         var words = new List<WordTiming>();
         var bgText = new StringBuilder();
         var bgWords = new List<WordTiming>();
-        CollectContent(p, text, words, bgText, bgWords, inBackground: false,
+        var layers = new LineLayers();
+        CollectContent(p, text, words, bgText, bgWords, layers, inBackground: false,
             ignoreFormattingWhitespace: ignoreFormattingWhitespace);
 
         var lineText = text.ToString().Trim();
@@ -152,6 +172,8 @@ public static class TtmlParser
             EndTimestamp = end,
             Text = backgroundOnly ? bgLineText : lineText,
             IsBackgroundOnly = backgroundOnly,
+            Translation = layers.Translation,
+            Transliteration = layers.Romanization,
         };
 
         if (words.Count > 0)
@@ -225,13 +247,14 @@ public static class TtmlParser
             ?.Value.Trim();
         if (string.IsNullOrEmpty(key)) return;
 
-        if (translations.TryGetValue(key, out var translation))
+        // An inline x-translation / x-roman span on the paragraph already set the layer; it wins.
+        if (line.Translation == null && translations.TryGetValue(key, out var translation))
         {
             var (text, _) = CollectLayer(translation, ignoreFormattingWhitespace);
             if (text.Length > 0) line.Translation = text;
         }
 
-        if (transliterations.TryGetValue(key, out var transliteration))
+        if (line.Transliteration == null && transliterations.TryGetValue(key, out var transliteration))
         {
             var (text, words) = CollectLayer(transliteration, ignoreFormattingWhitespace);
             if (text.Length > 0) line.Transliteration = text;
@@ -255,7 +278,7 @@ public static class TtmlParser
         var words = new List<WordTiming>();
         var bgText = new StringBuilder();
         var bgWords = new List<WordTiming>();
-        CollectContent(entry, text, words, bgText, bgWords, inBackground: false,
+        CollectContent(entry, text, words, bgText, bgWords, new LineLayers(), inBackground: false,
             ignoreFormattingWhitespace: ignoreFormattingWhitespace);
 
         var main = text.ToString().Trim();
@@ -318,6 +341,7 @@ public static class TtmlParser
         XElement parent,
         StringBuilder text, List<WordTiming> words,
         StringBuilder bgText, List<WordTiming> bgWords,
+        LineLayers layers,
         bool inBackground,
         bool ignoreFormattingWhitespace,
         int depth = 0)
@@ -344,6 +368,23 @@ public static class TtmlParser
                     AppendText(" ", targetText, targetWords);
                     break;
 
+                // Translation / romanization spans are layers of the line, not words. The
+                // untimed-wrapper path below used to walk into them, appending the English
+                // to the line and gluing it onto the last Japanese word. First span per
+                // role wins (one language per layer); inside background vocals they
+                // translate the adlib, not the line, and are dropped.
+                case XElement el when LocalNameIs(el, "span") && AuxiliaryRole(el) is { } role:
+                    if (!inBackground)
+                    {
+                        var layerText = CollapseWhitespace(TextWithoutBackground(el));
+                        if (layerText.Length > 0)
+                        {
+                            if (role == LayerRole.Translation) layers.Translation ??= layerText;
+                            else layers.Romanization ??= layerText;
+                        }
+                    }
+                    break;
+
                 case XElement el when LocalNameIs(el, "span"):
                     var isBg = inBackground || IsBackgroundRole(el);
                     var spanText = isBg ? bgText : text;
@@ -368,7 +409,7 @@ public static class TtmlParser
                     {
                         // Untimed or wrapper span — recurse (background wrappers route
                         // their timed descendants into the background buffers).
-                        CollectContent(el, text, words, bgText, bgWords, isBg,
+                        CollectContent(el, text, words, bgText, bgWords, layers, isBg,
                             ignoreFormattingWhitespace, depth + 1);
                     }
                     break;
@@ -380,6 +421,68 @@ public static class TtmlParser
         el.Attributes().Any(a =>
             string.Equals(a.Name.LocalName, "role", StringComparison.OrdinalIgnoreCase)
             && string.Equals(a.Value, "x-bg", StringComparison.OrdinalIgnoreCase));
+
+    private enum LayerRole { Translation, Romanization }
+
+    /// <summary>Inline layer text collected while walking one &lt;p&gt;.</summary>
+    private sealed class LineLayers
+    {
+        public string? Translation;
+        public string? Romanization;
+    }
+
+    private static LayerRole? AuxiliaryRole(XElement el)
+    {
+        foreach (var a in el.Attributes())
+        {
+            if (!string.Equals(a.Name.LocalName, "role", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(a.Value, "x-translation", StringComparison.OrdinalIgnoreCase)) return LayerRole.Translation;
+            if (string.Equals(a.Value, "x-roman", StringComparison.OrdinalIgnoreCase)) return LayerRole.Romanization;
+        }
+        return null;
+    }
+
+    /// <summary>Text of an element minus any nested x-bg span (background vocals inside a
+    /// translation translate the adlib, not the line), with each &lt;br&gt; contributing a
+    /// single space (matching the main-line walk in <see cref="CollectContent"/>). An
+    /// explicit-stack pre-order walk: linear time (each node visited once, no per-text
+    /// ancestor climb) and non-recursive, so hostile nesting cannot recurse the call stack —
+    /// descent stops past <see cref="MaxNestingDepth"/>.</summary>
+    private static string TextWithoutBackground(XElement el)
+    {
+        var sb = new StringBuilder();
+        var stack = new Stack<(XNode Node, int Depth)>();
+        foreach (var child in el.Nodes().Reverse())
+            stack.Push((child, 1));
+
+        while (stack.Count > 0)
+        {
+            var (node, depth) = stack.Pop();
+            if (depth > MaxNestingDepth) continue;
+
+            switch (node)
+            {
+                case XText t:
+                    sb.Append(t.Value);
+                    break;
+                case XElement e when LocalNameIs(e, "br"):
+                    sb.Append(' ');
+                    break;
+                case XElement e when IsBackgroundRole(e):
+                    // Skip the whole x-bg subtree — it translates the adlib, not the line.
+                    break;
+                case XElement e:
+                    foreach (var grandchild in e.Nodes().Reverse())
+                        stack.Push((grandchild, depth + 1));
+                    break;
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static string CollapseWhitespace(string s) =>
+        string.Join(' ', s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static void AppendText(string value, StringBuilder text, List<WordTiming> words)
     {

@@ -59,6 +59,42 @@ public static class FolderTreeBuilder
             .ToList();
     }
 
+    /// <summary>
+    /// GitHub #108: the roots for the tree — the music folders, plus the folder of each file
+    /// added to the library on its own (Track.AddedIndividually) that no music folder holds,
+    /// so those tracks show under their real folder instead of nowhere. A folder inside
+    /// another such folder nests under it rather than becoming a root of its own.
+    /// </summary>
+    public static IReadOnlyList<string> WithAddedFileFolders(
+        IReadOnlyList<string> musicFolders, IEnumerable<string> addedFilePaths)
+    {
+        var roots = musicFolders
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(NormalizePath)
+            .ToList();
+        var extra = addedFilePaths
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => NormalizePath(Path.GetDirectoryName(p) ?? string.Empty))
+            .Where(d => d.Length > 0 && !roots.Any(r => IsSameOrUnder(d, r)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(d => d.Length)
+            .ToList();
+
+        var result = musicFolders.ToList();
+        var taken = new List<string>();
+        foreach (var dir in extra)
+        {
+            if (taken.Any(t => IsSameOrUnder(dir, t))) continue;
+            taken.Add(dir);
+            result.Add(dir);
+        }
+        return result;
+    }
+
+    private static bool IsSameOrUnder(string dir, string root) =>
+        dir.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+        dir.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+
     private static FolderNode EnsureNode(
         FolderNode rootNode,
         string targetDir,

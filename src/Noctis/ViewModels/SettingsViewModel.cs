@@ -999,6 +999,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _songsShowOnlyFavorites;
     [ObservableProperty] private string _albumSortMode = "default";
     [ObservableProperty] private bool _albumSortAscending = true;
+    [ObservableProperty] private bool _albumSortNewestFirst;
     [ObservableProperty] private string _artistSortMode = "name";
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
@@ -1009,6 +1010,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortNewestFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1111,8 +1113,24 @@ public partial class SettingsViewModel : ViewModelBase
                 var adapter = new LibraryServerAdapter(_library, _persistence, _playHistory,
                     () => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.LoadPlaylistsAsync() ?? Task.CompletedTask,
                     marshal: work => Dispatcher.UIThread.CheckAccess() ? work() : Dispatcher.UIThread.InvokeAsync(work));
-                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync);
+                // Covers shrink to what the phone asks for (cached under server/covers); the
+                // desktop's server is for the home network, so other addresses get a 403.
+                var covers = new ServerCoverResizer(Path.Combine(ServerDataDirectory, "covers"));
+                // ALAC songs as FLAC for phones without an ALAC decoder (format=flac), made with
+                // the converter's ffmpeg and cached under server/transcode. No ffmpeg → originals.
+                var ffmpeg = App.Services?.GetService<IAudioConverterService>();
+                var flac = new FlacTranscodeCache(Path.Combine(ServerDataDirectory, "transcode"),
+                    new ServerFlacTranscoder(() => ffmpeg?.GetFfmpegPath()).TranscodeAsync);
+                _noctisServer = new NoctisServer(adapter, ServerUsers, UpdateService.CurrentVersionDisplay, Sync, covers.ResizeAsync, flac.GetAsync)
+                {
+                    PrivateClientsOnly = true,
+                    // Phone sign-in waits with the rest of the account features (AccountFeatures).
+                    DeviceSignInEnabled = AccountFeatures.Enabled,
+                    // A phone asking for a song's lyrics also gets what the lyrics page fetched online.
+                    LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
+                };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
+                _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshSignedInDevices);
             }
             if (!_noctisServer.IsRunning)
             {
@@ -1173,6 +1191,8 @@ public partial class SettingsViewModel : ViewModelBase
             RaiseAccountDerivedProperties();
         }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
+        // Deleting an account or changing its password signs its devices out.
+        RefreshSignedInDevices();
     }
 
     /// <summary>Account errors ("Invalid user name or password.") leave on their own like
@@ -1180,9 +1200,10 @@ public partial class SettingsViewModel : ViewModelBase
     private void ShowServerUserError(string message)
         => TransientStatus.Show(nameof(ServerUserError), v => ServerUserError = v, message);
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(AccountFeaturesEnabled))]
     private void AddServerUser()
     {
+        if (!AccountFeatures.Enabled) return; // parked; CreatePrimaryAccount calls Execute directly
         ServerUserError = string.Empty;
         try
         {
@@ -2454,6 +2475,7 @@ public partial class SettingsViewModel : ViewModelBase
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
+            AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
@@ -2902,6 +2924,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
+        _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;
@@ -5736,12 +5759,17 @@ public partial class SettingsViewModel : ViewModelBase
         var artists = tracks
             .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
             .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g => new StatItem
+            .Select(g =>
             {
-                Label = g.Key,
-                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
-                Value = g.Sum(t => t.PlayCount),
-                ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
+                // long: an int Sum throws on overflow (play counts arrive from synced devices).
+                var plays = g.Sum(t => (long)t.PlayCount);
+                return new StatItem
+                {
+                    Label = g.Key,
+                    SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
+                    Value = (int)Math.Min(plays, int.MaxValue),
+                    ValueLabel = $"{plays} plays"
+                };
             })
             .Where(i => i.Value > 0)
             .OrderByDescending(i => i.Value)
@@ -5756,12 +5784,12 @@ public partial class SettingsViewModel : ViewModelBase
             .Select(g =>
             {
                 albumsById.TryGetValue(g.Key, out var album);
-                var plays = g.Sum(t => t.PlayCount);
+                var plays = g.Sum(t => (long)t.PlayCount);
                 return new StatItem
                 {
                     Label = album?.Name ?? g.First().Album,
                     SubLabel = album?.Artist ?? g.First().Artist,
-                    Value = plays,
+                    Value = (int)Math.Min(plays, int.MaxValue),
                     ValueLabel = $"{plays} plays"
                 };
             })

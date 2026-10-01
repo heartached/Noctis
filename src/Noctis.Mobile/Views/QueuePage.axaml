@@ -2,28 +2,88 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
              xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.QueuePage"
              x:DataType="vm:ShellViewModel"
-             Background="#121214">
+             Background="#FF121214"
+             Foreground="White">
 
-    <Grid RowDefinitions="Auto,*" Margin="20,40,20,24">
-        <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{loc:T Tab.Queue}" FontSize="28" FontWeight="Bold" />
-            <Button Grid.Column="1" Content="Done" Command="{Binding ToggleQueueCommand}" />
+    <UserControl.Styles>
+        <Style Selector="Button.icon, Button.pill">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="TextBlock.row-sub, TextBlock.subtle">
+            <Setter Property="Foreground" Value="#B3FFFFFF" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Padding="{Binding SafeArea}">
+        <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16,8,16,16">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Text="{loc:T Tab.Queue}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Name="ClearButton" Classes="pill" Content="Clear" Margin="0,0,8,0"
+                        Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
+                <Button Grid.Column="2" Name="DoneButton" Classes="icon" Command="{Binding ToggleQueueCommand}">
+                    <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
+                </Button>
+            </Grid>
+
+            <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="0,12,0,4" IsVisible="{Binding Player.HasTrack}">
+                <Border Classes="art" Width="52" Height="52">
+                    <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Classes="subtle" FontSize="11" Text="NOW PLAYING" />
+                    <TextBlock Classes="row-title" Text="{Binding Player.CurrentTrack.Title}" />
+                    <TextBlock Classes="row-sub" Text="{Binding Player.CurrentTrack.Artist}" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Grid.Row="2" Name="QueueHint" Classes="subtle" Margin="0,8,0,4" IsVisible="{Binding Player.HasUpNext}"
+                       Text="Playing next · drag ≡ to reorder, swipe left to remove" />
+
+            <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
+                       Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
+
+            <ScrollViewer Grid.Row="3" Name="QueueScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:Track">
+                            <!-- Transparent background: the whole row must hit-test for the swipe. -->
+                            <Border Classes="queue-row" Height="60" Background="Transparent"
+                                    PointerPressed="OnRowPressed" PointerMoved="OnRowMoved"
+                                    PointerReleased="OnRowReleased" PointerCaptureLost="OnRowCaptureLost">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <Border Classes="art" Width="44" Height="44">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
+                                            <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                        <TextBlock Classes="row-title" Text="{Binding Title}" />
+                                        <TextBlock Classes="row-sub" Text="{Binding Artist}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Name="RemoveButton" Classes="icon" Width="40" Height="40" Click="OnRemoveClick">
+                                        <PathIcon Data="{DynamicResource DismissIcon}" Width="14" Height="14" />
+                                    </Button>
+                                    <Border Grid.Column="3" Name="DragHandle" Width="44" Background="Transparent"
+                                            PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
+                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                        <PathIcon Data="{DynamicResource PlaylistsIcon}" Width="18" Height="18" Opacity="0.7" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
         </Grid>
-        <ListBox Grid.Row="1" Name="QueueList" ItemsSource="{Binding Player.UpNext}" Background="Transparent" Margin="0,12,0,0">
-            <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="models:Track">
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,6">
-                        <StackPanel>
-                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Artist}" Opacity="0.6" FontSize="12" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="✕" Background="Transparent" Click="OnRemoveClick" />
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-    </Grid>
+    </Border>
 </UserControl>

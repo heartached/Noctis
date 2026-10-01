@@ -1,0 +1,30 @@
+Noctis plays the music you already own, from folders on your phone, and shows its lyrics the way they were written: word by word, in time with the song.
+
+WORD-SYNCED LYRICS
+• TTML lyrics with word-level timing, with the translation and romanization lines shown under the original.
+• Enhanced (word-synced) LRC and standard LRC: the current line lights up and the page follows the song.
+• Found automatically: put a .ttml, .elrc or .lrc file with the same name next to the song, or keep lyrics embedded in the file's tags.
+• Turn translation and romanization on or off on the lyrics page. Noctis remembers your choice.
+• Lyrics follow Android's font size setting.
+
+YOUR LIBRARY, YOUR FILES
+• Choose the folders that hold your music. Noctis reads only those folders and asks for no storage or media permission.
+• Your library is built from your files' own tags and embedded cover art.
+• Plays MP3, FLAC, AAC/M4A, Ogg Vorbis, Opus and WAV.
+• Album pages with the full track list, and artist pages with their albums.
+• Search your whole library by song, album or artist.
+• Dark, light and themed looks, with your own accent colour.
+
+PLAYBACK
+• Keeps playing in the background, with controls in the notification and on the lock screen.
+• Gapless playback, shuffle, repeat and a play queue.
+• Picks up where you left off after the app is closed.
+
+PRIVATE BY DESIGN
+• Works fully offline. No account, no ads, no analytics, no tracking.
+• Nothing about you or your music is sent to the developer or anyone else.
+
+OPEN SOURCE
+Noctis is free and open source (MIT license) and also available for Windows, macOS and Linux. Source code, bug reports and feature requests: https://github.com/heartached/Noctis
+
+Noctis does not include or stream any music. It plays audio files you already have on your device.

@@ -141,12 +141,16 @@ public sealed partial class WebRemoteServer : IDisposable
         StartCore(port, token);
     }
 
+    /// <summary>Test seam: tests bind the LAN remote to loopback so Windows Firewall never prompts
+    /// for the test runner (a listener on all interfaces does).</summary>
+    internal IPAddress? BindAddressOverride { get; set; }
+
     private void StartCore(int port, string token)
     {
         Stop();
         _token = token;
         _cts = new CancellationTokenSource();
-        var bind = Mode == WebRemoteMode.LocalApi ? IPAddress.Loopback : IPAddress.Any;
+        var bind = BindAddressOverride ?? (Mode == WebRemoteMode.LocalApi ? IPAddress.Loopback : IPAddress.Any);
         _listener = new TcpListener(bind, port);
         _listener.Start();
         Port = ((IPEndPoint)_listener.LocalEndpoint).Port;

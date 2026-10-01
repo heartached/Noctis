@@ -853,33 +853,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// dedupe by track or album themselves.
     /// </summary>
     internal static List<Track> BuildRecentFromLog(IReadOnlyList<PlayHistoryEvent> events, Func<Guid, Track?> resolve, int scan)
-    {
-        var result = new List<Track>(Math.Min(scan, events.Count));
-        var floor = Math.Max(0, events.Count - scan);
-        for (var i = events.Count - 1; i >= floor; i--)
-        {
-            var track = resolve(events[i].TrackId);
-            if (track != null) result.Add(track);
-        }
-        return result;
-    }
+        => HomeRowsBuilder.BuildRecentFromLog(events, resolve, scan);
 
     /// <summary>
     /// The most recent distinct tracks from a newest-first history: a track that was
     /// played twice keeps only its newest position.
     /// </summary>
     internal static List<Track> BuildLastPlayed(IEnumerable<Track> historyNewestFirst, int max)
-    {
-        var seen = new HashSet<Guid>();
-        var result = new List<Track>(max);
-        foreach (var t in historyNewestFirst)
-        {
-            if (!seen.Add(t.Id)) continue;
-            result.Add(t);
-            if (result.Count >= max) break;
-        }
-        return result;
-    }
+        => HomeRowsBuilder.BuildLastPlayed(historyNewestFirst, max);
 
     private void ReplaceLastPlayed(IEnumerable<Track> historyNewestFirst)
     {

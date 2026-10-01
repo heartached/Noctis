@@ -8,6 +8,10 @@ public class AppSettings
     /// <summary>Directories to scan for music files.</summary>
     public List<string> MusicFolders { get; set; } = new();
 
+    /// <summary>Phone: albums the user pinned from the long-press sheet (Library → Pinned rail).
+    /// Playlists pin through Playlist.IsPinned instead.</summary>
+    public List<Guid> PinnedAlbumIds { get; set; } = new();
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>
@@ -79,6 +83,13 @@ public class AppSettings
 
     /// <summary>Accent recolours from the playing track's cover; the chosen accent returns when nothing plays.</summary>
     public bool AccentFollowsArtwork { get; set; }
+
+    /// <summary>Phone: "System" (follow Android's dark/light), "Dark" (the dark theme in
+    /// <see cref="Theme"/>) or "Light".</summary>
+    public string MobileAppearance { get; set; } = "System";
+
+    /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
+    public double MobileLyricsTextScale { get; set; } = 1.0;
 
     /// <summary>User-defined custom themes selectable from the Themes row.</summary>
     public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
@@ -301,8 +312,8 @@ public class AppSettings
 
     // ── Lyrics Studio ──
 
-    /// <summary>Whisper model: Tiny | Base | Small | Medium.</summary>
-    public string LyricsStudioModel { get; set; } = "Base";
+    /// <summary>Whisper model. Only Medium is offered (09-29); older values (Tiny, Base, Small) are read as Medium.</summary>
+    public string LyricsStudioModel { get; set; } = "Medium";
 
     /// <summary>ISO 639-1 language for the speech model, or "auto".</summary>
     public string LyricsStudioLanguage { get; set; } = "auto";
@@ -376,6 +387,10 @@ public class AppSettings
     /// <summary>Albums sort direction. Only meaningful outside "default"; each mode
     /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
     public bool AlbumSortAscending { get; set; } = true;
+
+    /// <summary>GitHub #106: under the "albumartist" sort, list each artist's releases
+    /// newest first instead of chronologically.</summary>
+    public bool AlbumSortNewestFirst { get; set; }
 
     // ── Home section collapse state ──
     // Every Home section can be folded away to its header, so the page can be cut down

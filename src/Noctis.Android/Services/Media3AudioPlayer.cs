@@ -1,8 +1,14 @@
 using Android.Content;
 using Android.Media;
+using Android.OS;
+using Android.Runtime;
 using AndroidX.Media3.Common;
+using AndroidX.Media3.DataSource;
 using AndroidX.Media3.ExoPlayer;
+using AndroidX.Media3.ExoPlayer.Source;
+using AndroidX.Media3.ExoPlayer.Upstream;
 using Avalonia.Threading;
+using Noctis.Mobile.Services;
 using Noctis.Models;
 using Noctis.Services;
 using AUri = Android.Net.Uri;
@@ -27,13 +33,28 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 {
     private const int PositionPollMs = 250;
 
+    private const int StreamConnectTimeoutMs = 5000;
+    private const int StreamReadTimeoutMs = 15000;
+    /// <summary>Retries of a failed load before the error surfaces (the stock policy allows 3).</summary>
+    private const int StreamLoadRetries = 1;
+
     private readonly Context _context;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IExoPlayer _player;
+    // The signed-in desktop and its device key for stream requests (SetStreamAuth); null when
+    // signed out. Read on ExoPlayer's loader threads by StreamAuthResolver.
+    private volatile StreamAuth? _streamAuth;
     private readonly Listener _listener;
     private readonly SessionForwardingPlayer _sessionPlayer;
-    private readonly DispatcherTimer _positionTimer;
+    // The position poll runs on the main looper's own Handler, not a DispatcherTimer. At
+    // DispatcherPriority.Background Avalonia pumps the timer together with frames, so it
+    // stopped whenever the app drew nothing, screen off included (device run 2026-09-22:
+    // engine at 110 s, UI and the 5 s resume checkpoint frozen at 00:32 until a tap). A
+    // Handler message is delivered whether or not anything renders, on the same thread as
+    // before (the main looper is Avalonia's UI thread here), so no marshalling changes.
+    private readonly Handler _positionHandler = new(Looper.MainLooper!);
+    private int _positionPumpGeneration;
 
     private Dictionary<string, Track>? _byPath;
     private bool _gapless = true;
@@ -71,6 +92,14 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     /// <summary>See <see cref="HasNextInQueue"/>.</summary>
     public Func<bool>? HasPreviousInQueue { get; set; }
 
+    /// <summary>
+    /// Where a desktop song ("noctis-remote://…") plays from: its downloaded file, else its
+    /// https stream URL (INoctisAccountService.ResolvePlaybackUri); null for every other path.
+    /// The MediaItem's id stays the library path, so the gapless handoff and the metadata
+    /// lookup still match by it, and no URL reaches the session's MediaControllers.
+    /// </summary>
+    public Func<string, string?>? ResolveRemote { get; set; }
+
     public Media3AudioPlayer(Context context, ILibraryService library, IPersistenceService persistence)
     {
         _context = context;
@@ -81,13 +110,31 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .SetUsage(C.UsageMedia)
             .SetContentType(C.AudioContentTypeMusic)
             .Build();
+        // The stock source stack with one addition for http: streams from the owner's desktop
+        // authenticate with its device key in a header (SetStreamAuth), never in the URL, so
+        // the key is in no MediaItem URI and no logged address. The resolver adds the header
+        // per request, and only to the signed-in desktop's stream endpoint (StreamAuthScope) —
+        // not as a factory-wide default request property, which would hand the key to any URL
+        // the player were ever given. Files and content:// URIs never reach it.
+        // Timeouts: the stock 8 s connect + three backed-off retries left a desktop song buffering
+        // for over a minute (66 s measured on the emulator) when the desktop was off, before the
+        // queue could move on. A LAN desktop that is up answers in milliseconds, so fail fast.
+        var http = new DefaultHttpDataSource.Factory()
+            .SetConnectTimeoutMs(StreamConnectTimeoutMs)
+            .SetReadTimeoutMs(StreamReadTimeoutMs);
+        var httpSources = new ResolvingDataSource.Factory(http, new StreamAuthResolver(this));
         _player = new ExoPlayerBuilder(context)
+            .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources))
+                .SetLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy(StreamLoadRetries)))
             .SetAudioAttributes(attributes, true)     // true = Media3 handles audio focus (pause on loss, duck on transient)
             .SetHandleAudioBecomingNoisy(true)        // headphones unplugged → pause
-            .SetWakeMode(C.WakeModeLocal)             // keep the CPU awake while playing with the screen off
+            // CPU and Wi-Fi awake while playing with the screen off: a desktop stream stalls if
+            // the radio powers down (WakeModeLocal held only the CPU). Files are unaffected.
+            .SetWakeMode(C.WakeModeNetwork)
             .Build();
         _listener = new Listener(this);
         _player.AddListener(_listener);
+        _ = HasDecoder("audio/alac"); // logged at startup; the account service asks the same (cached) answer
         PlaybackEngine.Player = _player;
 
         // Wraps _player for the MediaSession only (PlaybackEngine.SessionPlayer): intercepts
@@ -97,12 +144,6 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         PlaybackEngine.SessionPlayer = _sessionPlayer;
 
         OutputLatency = EstimateOutputLatency(context);
-        // The 3-arg (interval, priority, callback) constructor auto-starts (confirmed by
-        // disassembling it — it chains to the 4-arg ctor, which calls Start()). We don't want
-        // the poll running before the first Play(), so build with the priority-only ctor and
-        // start it ourselves.
-        _positionTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(PositionPollMs) };
-        _positionTimer.Tick += (_, _) => PollPosition();
         _library.LibraryUpdated += OnLibraryUpdated;
     }
 
@@ -137,7 +178,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             State = PlaybackState.Playing;
             RaiseDurationIfKnown();
             EnsureServiceStarted();
-            _positionTimer.Start();
+            StartPositionPump();
             return;
         }
 
@@ -155,7 +196,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         Position = TimeSpan.Zero;
         State = PlaybackState.Playing;
         EnsureServiceStarted();
-        _positionTimer.Start();
+        StartPositionPump();
     }
 
     public void Pause()
@@ -166,7 +207,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         // Only our own Pause() stops the poll: an externally-caused pause (audio focus,
         // headphone unplug, lock-screen) never calls this, so the timer keeps ticking and
         // OnPlayerPosition's "the tick is where the UI catches up" resync still fires.
-        _positionTimer.Stop();
+        StopPositionPump();
     }
 
     public void Resume()
@@ -174,13 +215,13 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         if (_disposed || State != PlaybackState.Paused) return;
         _player.Play();
         State = PlaybackState.Playing;
-        _positionTimer.Start();
+        StartPositionPump();
     }
 
     public void Stop()
     {
         if (_disposed) return;
-        _positionTimer.Stop();
+        StopPositionPump();
         _player.Stop();
         _player.ClearMediaItems();
         _autoTransitionPending = false;
@@ -226,6 +267,16 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             _player.RemoveMediaItem(_player.MediaItemCount - 1);
     }
 
+    /// <summary>
+    /// The signed-in desktop ("https://host:port") and its device key, sent as the
+    /// X-Noctis-Key header with that desktop's stream requests; nulls once signed out. Set only
+    /// while signed in. Any thread: the next request reads it.
+    /// </summary>
+    public void SetStreamAuth(string? serverUrl, string? deviceKey) =>
+        _streamAuth = string.IsNullOrEmpty(serverUrl) || string.IsNullOrEmpty(deviceKey) ? null : new StreamAuth(serverUrl, deviceKey);
+
+    private sealed record StreamAuth(string ServerUrl, string DeviceKey);
+
     public void SetPlaybackRate(double rate)
     {
         if (_disposed) return;
@@ -253,7 +304,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         {
             // End of the LAST item (an auto-advance to a queued item raises
             // OnMediaItemTransition instead, never Ended).
-            _positionTimer.Stop();
+            StopPositionPump();
             State = PlaybackState.Stopped;
             TrackEnded?.Invoke(this, EventArgs.Empty);
         }
@@ -272,9 +323,75 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     private void OnPlayerError(PlaybackException error)
     {
-        _positionTimer.Stop();
+        StopPositionPump();
         State = PlaybackState.Stopped;
-        PlaybackError?.Invoke(this, $"{error.ErrorCodeName}: {error.Message}");
+        // Redacted: the text reaches the log and the Now Playing error line.
+        PlaybackError?.Invoke(this, LogRedactor.Redact($"{error.ErrorCodeName}: {error.Message}"));
+    }
+
+    /// <summary>
+    /// A song whose audio no decoder on this phone accepts does not fail in Media3: the audio
+    /// renderer is left disabled and the clock runs, so it "plays" in silence to the end
+    /// (reproduced with an ALAC .m4a on an emulator that has no ALAC decoder: session PLAYING,
+    /// position advancing, AudioFlinger "0 are active"). Surface it as a playback error so the
+    /// queue skips it and the reason is visible, instead of silence.
+    /// </summary>
+    private void OnTracksChanged(Tracks tracks)
+    {
+        if (!tracks.ContainsType(C.TrackTypeAudio) || tracks.IsTypeSupported(C.TrackTypeAudio, true)) return;
+        var mime = FirstAudioMime(tracks) ?? "an unknown format";
+        DebugLog.Write("Audio", $"No decoder on this phone for {mime}; skipping the song");
+        StopPositionPump();
+        State = PlaybackState.Stopped;
+        PlaybackError?.Invoke(this, $"This phone can't decode {DescribeMime(mime)}, so the song was skipped.");
+    }
+
+    private static string? FirstAudioMime(Tracks tracks)
+    {
+        // Groups is an untyped Java list: its items may arrive as plain Java objects.
+        foreach (var item in tracks.Groups)
+        {
+            var group = item as Tracks.Group ?? (item as Java.Lang.Object)?.JavaCast<Tracks.Group>();
+            if (group == null || group.Type != C.TrackTypeAudio) continue;
+            for (var i = 0; i < group.Length; i++)
+                if (group.GetTrackFormat(i).SampleMimeType is { Length: > 0 } mime) return mime;
+        }
+        return null;
+    }
+
+    private static string DescribeMime(string mime) => mime switch
+    {
+        "audio/alac" => "ALAC (Apple Lossless)",
+        _ => mime,
+    };
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> DecoderCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether this phone has a decoder for <paramref name="mime"/> (e.g. "audio/alac", missing on
+    /// many phones). Asked of MediaCodecList once per type and logged, so an exported log answers
+    /// "why is this song silent" without a debugger. False when the list cannot be read: the
+    /// caller then takes the path that plays everywhere (FLAC from the desktop).
+    /// </summary>
+    internal static bool HasDecoder(string mime) => DecoderCache.GetOrAdd(mime, QueryDecoders);
+
+    private static bool QueryDecoders(string mime)
+    {
+        try
+        {
+            var infos = new MediaCodecList(MediaCodecListKind.RegularCodecs).GetCodecInfos() ?? Array.Empty<MediaCodecInfo>();
+            var names = infos
+                .Where(i => !i.IsEncoder && i.GetSupportedTypes().Any(t => string.Equals(t, mime, StringComparison.OrdinalIgnoreCase)))
+                .Select(i => i.Name)
+                .ToList();
+            DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}");
+            return names.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Decoder list unavailable: {ex.GetType().Name}");
+            return false;
+        }
     }
 
     private void OnIsPlayingChanged(bool isPlaying)
@@ -303,8 +420,28 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // Without this the UI freezes (no more PositionChanged ticks) and IsPlaying/State
             // silently disagree until the next unrelated tick, if any.
             State = PlaybackState.Playing;
-            _positionTimer.Start();
+            StartPositionPump();
         }
+    }
+
+    /// <summary>
+    /// Starts (or restarts) the 250 ms position poll. Idempotent in effect: a restart orphans
+    /// the running chain, whose next tick sees a stale generation and stops, so there is never
+    /// more than one live chain and no RemoveCallbacks bookkeeping.
+    /// </summary>
+    private void StartPositionPump()
+    {
+        var generation = ++_positionPumpGeneration;
+        _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
+    }
+
+    private void StopPositionPump() => _positionPumpGeneration++;
+
+    private void PositionTick(int generation)
+    {
+        if (_disposed || generation != _positionPumpGeneration) return;
+        PollPosition();
+        _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
     }
 
     private void PollPosition()
@@ -366,9 +503,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     private MediaItem BuildItem(string path)
     {
-        var uri = path.StartsWith("content://", StringComparison.Ordinal)
-            ? AUri.Parse(path)!
-            : AUri.FromFile(new JFile(path))!;
+        var uri = PlaybackUri(path);
 
         var meta = new MediaMetadata.Builder();
         var track = Lookup(path);
@@ -410,21 +545,52 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .Build();
     }
 
+    /// <summary>What ExoPlayer reads for <paramref name="path"/>: a desktop song's download or
+    /// stream (<see cref="ResolveRemote"/>), a SAF content:// URI, or a file.</summary>
+    private AUri PlaybackUri(string path)
+    {
+        string? resolved = null;
+        try
+        {
+            resolved = ResolveRemote?.Invoke(path);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Resolving a desktop song failed: {ex.Message}");
+        }
+        if (resolved != null)
+        {
+            return resolved.StartsWith("http", StringComparison.OrdinalIgnoreCase) || resolved.StartsWith("file://", StringComparison.OrdinalIgnoreCase)
+                ? AUri.Parse(resolved)!
+                : AUri.FromFile(new JFile(resolved))!;
+        }
+        // An unresolved desktop song (signed out) falls through to a file that is not there:
+        // ExoPlayer reports a source error, which the ViewModel handles like any unreadable file.
+        return path.StartsWith("content://", StringComparison.Ordinal)
+            ? AUri.Parse(path)!
+            : AUri.FromFile(new JFile(path))!;
+    }
+
     /// <summary>
     /// Title for a path with no library match. GetFileNameWithoutExtension is meaningless for
     /// a SAF/MediaStore content:// URI like "content://…/document/…1234" (no file name, just
     /// an opaque id in the path) — decode the URI's last path segment instead, or fall back to
-    /// a plain label when even that is empty.
+    /// a plain label when even that is empty. Any other scheme (a desktop song's
+    /// noctis-remote://, a URL) or a query is never shown: it is no title, and the notification
+    /// and every MediaController would see it.
     /// </summary>
     private static string FallbackTitle(string path)
     {
+        const string unknown = "Unknown track";
         if (path.StartsWith("content://", StringComparison.Ordinal))
         {
             var last = AUri.Parse(path)?.LastPathSegment;
             var decoded = string.IsNullOrEmpty(last) ? null : AUri.Decode(last);
-            return string.IsNullOrWhiteSpace(decoded) ? "Unknown track" : decoded;
+            return string.IsNullOrWhiteSpace(decoded) ? unknown : decoded;
         }
-        return Path.GetFileNameWithoutExtension(path);
+        if (path.Contains("://", StringComparison.Ordinal) || path.Contains('?')) return unknown;
+        var name = Path.GetFileNameWithoutExtension(path);
+        return string.IsNullOrWhiteSpace(name) ? unknown : name;
     }
 
     private Track? Lookup(string path)
@@ -476,7 +642,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         if (_disposed) return;
         _disposed = true;
-        _positionTimer.Stop();
+        StopPositionPump();
         _library.LibraryUpdated -= OnLibraryUpdated;
         _player.RemoveListener(_listener);
         // NoctisPlaybackService may still hold a MediaSession wrapping _sessionPlayer (which
@@ -503,6 +669,23 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Adds the device key header to the signed-in desktop's stream requests; every
+    /// other request passes through untouched. Runs on ExoPlayer's loader threads.</summary>
+    private sealed class StreamAuthResolver : Java.Lang.Object, ResolvingDataSource.IResolver
+    {
+        private readonly Media3AudioPlayer _owner;
+        public StreamAuthResolver(Media3AudioPlayer owner) => _owner = owner;
+
+        public DataSpec? ResolveDataSpec(DataSpec? dataSpec)
+        {
+            var auth = _owner._streamAuth;
+            if (dataSpec == null || auth == null || !StreamAuthScope.Allows(dataSpec.Uri?.ToString(), auth.ServerUrl)) return dataSpec;
+            return dataSpec.WithAdditionalHeaders(new Dictionary<string, string> { [StreamAuthScope.HeaderName] = auth.DeviceKey });
+        }
+
+        public AUri? ResolveReportedUri(AUri? uri) => uri;
+    }
+
     /// <summary>Java-side listener; every IPlayerListener method has a default body, so only these four are overridden.</summary>
     private sealed class Listener : Java.Lang.Object, IPlayerListener
     {
@@ -511,6 +694,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlaybackStateChanged(int playbackState) => _owner.OnPlaybackStateChanged(playbackState);
         public void OnMediaItemTransition(MediaItem? mediaItem, int reason) => _owner.OnMediaItemTransition(mediaItem, reason);
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
+        public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
     }
 

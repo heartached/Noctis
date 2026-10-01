@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.RailTile"
+             x:DataType="vm:RailItem">
+    <StackPanel Spacing="4" Width="140">
+        <Border Classes="art" Width="140" Height="140" CornerRadius="10">
+            <Panel>
+                <PathIcon Data="{DynamicResource AlbumsIcon}" Width="36" Height="36" Opacity="0.4" />
+                <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="384" Stretch="UniformToFill" />
+            </Panel>
+        </Border>
+        <TextBlock Classes="row-title" FontSize="13" Text="{Binding Title}" />
+        <TextBlock Classes="row-sub" FontSize="12" Text="{Binding Subtitle}" />
+    </StackPanel>
+</UserControl>

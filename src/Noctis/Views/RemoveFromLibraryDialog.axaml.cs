@@ -57,7 +57,9 @@ public partial class RemoveFromLibraryDialog : Window
 
         var noun = itemCount == 1 ? "track" : "tracks";
         MessageText.Text = $"Remove {itemCount} {noun} from your library?";
-        SubText.Text = $"“Keep Files” leaves the files on disk — you can restore them later from Settings → Library. “Move to {binName}” also sends the files to the {binName}.";
+        SubText.Text = itemCount == 1
+            ? $"Keep Files only removes it from Noctis. Move to {binName} also deletes the file."
+            : $"Keep Files only removes them from Noctis. Move to {binName} also deletes the files.";
     }
 
     private void OnTrashClick(object? sender, RoutedEventArgs e)

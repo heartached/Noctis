@@ -425,8 +425,18 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// pass 0 for no cap (a search must surface a song ranked 40th).</summary>
     internal static List<TopSongRow> RankPopular(IEnumerable<Track> songs, string query, int cap)
     {
-        var ranked = songs
-            .Where(t => SearchText.Matches(t.Title, query))
+        // Title phrase as before; the library search syntax (GitHub #107) answers tags
+        // ("album:x") and phrases no title holds ("remix 2019"). This list is ordered by
+        // plays, not relevance, so a phrase hit must not be buried under looser word
+        // matches ("song 2" would pull in "Song 02", "Song 12", ...).
+        var parsed = SearchQuery.Parse(query);
+        var list = songs as IReadOnlyCollection<Track> ?? songs.ToList();
+        var matched = parsed.HasFieldTerms
+            ? list.Where(parsed.Matches).ToList()
+            : list.Where(t => SearchText.Matches(t.Title, query)).ToList();
+        if (matched.Count == 0 && !parsed.HasFieldTerms)
+            matched = list.Where(parsed.Matches).ToList();
+        var ranked = matched
             .OrderByDescending(t => t.PlayCount)
             .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
         var capped = cap > 0 ? ranked.Take(cap) : ranked;
@@ -476,11 +486,17 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     }
 
     /// <summary>An album answers a search when its name or any of its track titles matches,
-    /// accent- and punctuation-insensitively ("ultimo" finds "EL ÚLTIMO TOUR DEL MUNDO").</summary>
+    /// accent- and punctuation-insensitively ("ultimo" finds "EL ÚLTIMO TOUR DEL MUNDO"),
+    /// or when one of its tracks satisfies the library search syntax (GitHub #107).</summary>
     internal static bool AlbumMatches(Album album, string query)
-        => string.IsNullOrWhiteSpace(query)
-           || SearchText.Matches(album.Name, query)
-           || album.Tracks.Any(t => SearchText.Matches(t.Title, query));
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        var parsed = SearchQuery.Parse(query);
+        if (!parsed.HasFieldTerms &&
+            (SearchText.Matches(album.Name, query) || album.Tracks.Any(t => SearchText.Matches(t.Title, query))))
+            return true;
+        return album.Tracks.Any(parsed.Matches);
+    }
 
     /// <summary>Overview row contents: the newest <paramref name="cap"/> (0 = all).</summary>
     internal static List<Album> OverviewRow(IReadOnlyList<Album> releases, int cap)

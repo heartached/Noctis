@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:models="using:Noctis.Models"
+             x:Class="Noctis.Mobile.Views.PlaylistListPage"
+             x:DataType="vm:PlaylistListPageViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4" IsVisible="{Binding !IsEmbedded}">
+            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
+                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+            </Button>
+            <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
+                   Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
+                   Margin="32,40,32,0" IsVisible="{Binding !HasPlaylists}" />
+
+        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Playlists}" Margin="12,0,12,16">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:Playlist">
+                        <Button Classes="row"
+                                views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenPlaylistSheetCommand}"
+                                Command="{Binding $parent[views:PlaylistListPage].((vm:PlaylistListPageViewModel)DataContext).OpenCommand}"
+                                CommandParameter="{Binding}">
+                            <Grid ColumnDefinitions="Auto,*" Height="64" Margin="8,0">
+                                <Border Classes="art" Width="48" Height="48">
+                                    <PathIcon Data="{DynamicResource PlaylistsIcon}" Width="20" Height="20" Opacity="0.6" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Classes="row-title" Text="{Binding Name}" />
+                                    <TextBlock Classes="row-sub" Text="{Binding TrackIds.Count, StringFormat='{}{0} songs'}" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

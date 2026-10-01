@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.SongRow"
+             x:DataType="models:Track">
+    <!-- One song: cover, title, artist, explicit badge. Column 3 holds B4's overflow button. -->
+    <Grid Name="RowGrid" ColumnDefinitions="Auto,*,Auto,Auto" Height="60" Margin="8,0">
+        <Border Classes="art" Width="44" Height="44">
+            <Panel>
+                <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
+                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+            </Panel>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+            <TextBlock Classes="row-title" Text="{Binding Title}" />
+            <TextBlock Classes="row-sub" Text="{Binding Artist}" />
+        </StackPanel>
+        <Border Grid.Column="2" Name="ExplicitBadge" Classes="explicit" IsVisible="{Binding IsExplicit}">
+            <TextBlock Text="E" />
+        </Border>
+        <Button Grid.Column="3" Name="MoreButton" Classes="icon" Width="36" Height="36"
+                Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                CommandParameter="{Binding}">
+            <PathIcon Data="{DynamicResource MoreDotsIcon}" Width="16" Height="16" />
+        </Button>
+    </Grid>
+</UserControl>

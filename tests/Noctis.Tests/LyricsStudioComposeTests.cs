@@ -247,12 +247,7 @@ public class LyricsStudioComposeTests : IDisposable
 
         public FakeEngine(string root)
         {
-            Models = new WhisperModelManager(root);
-            // IsInstalled wants a file at least 90% of the published size: a sparse file will do.
-            var path = Models.PathFor(WhisperModelSize.Base);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            using var f = new FileStream(path, FileMode.Create);
-            f.SetLength(WhisperModelManager.Info(WhisperModelSize.Base).ApproxBytes);
+            Models = StudioTestModel.Installed(root);
         }
 
         public IDisposable OpenSession(WhisperModelSize model) => new Handle();

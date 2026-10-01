@@ -684,16 +684,19 @@
                         <!-- Genre kicker ("HIP HOP"): dominant library genre, else MusicBrainz. -->
                         <TextBlock Text="{Binding GenreKicker}"
                                    Classes="genre-kicker"
-                                   FontSize="11"
+                                   FontSize="12"
                                    FontWeight="Bold"
                                    LetterSpacing="1.5"
-                                   Opacity="0.55"
-                                   Margin="1,0,0,2"
+                                   Opacity="0.7"
+                                   Margin="1,0,0,0"
+                                   Padding="0,0,0,2"
                                    IsVisible="{Binding HasGenreKicker}" />
+                        <!-- LineHeight >= Inter's natural 1.21em box (~51px at 42), else descenders (g, y, p) clip. -->
                         <TextBlock Text="{Binding ArtistName}"
                                    FontSize="42"
                                    FontWeight="Bold"
-                                   LineHeight="48"
+                                   LineHeight="52"
+                                   Margin="0,-2,0,-2"
                                    TextTrimming="CharacterEllipsis"
                                    MaxLines="2"
                                    TextWrapping="Wrap" />

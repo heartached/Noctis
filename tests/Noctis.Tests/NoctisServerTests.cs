@@ -57,7 +57,7 @@ public class NoctisServerTests : IAsyncLifetime
             artworkPath: art);
 
         _server = new NoctisServer(_lib, _users, "test");
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
     }
 
@@ -354,7 +354,7 @@ public class NoctisServerTests : IAsyncLifetime
         {
             var fp = ServerCertificate.Fingerprint(cert);
             await using var server = new NoctisServer(_lib, _users, "test");
-            await server.StartAsync(0, cert, TestContext.Current.CancellationToken);
+            await server.StartAsync(0, cert, TestContext.Current.CancellationToken, IPAddress.Loopback);
             using var handler = new HttpClientHandler
             {
                 // Pin the fingerprint, as the phone does.
@@ -364,6 +364,18 @@ public class NoctisServerTests : IAsyncLifetime
             var json = await https.GetStringAsync("rest/ping.view?f=json", TestContext.Current.CancellationToken);
             Assert.Equal("ok", JsonDocument.Parse(json).RootElement.GetProperty("subsonic-response").GetProperty("status").GetString());
         }
+    }
+
+    /// <summary>A phone must not read a mid-scan (partial) catalog as the whole library.</summary>
+    [Fact]
+    public async Task GetScanStatus_ReportsARunningScan()
+    {
+        var idle = (await Get("getScanStatus")).GetProperty("scanStatus");
+        Assert.False(idle.GetProperty("scanning").GetBoolean());
+        Assert.Equal(3, idle.GetProperty("count").GetInt32());
+
+        _lib.IsScanning = true;
+        Assert.True((await Get("getScanStatus")).GetProperty("scanStatus").GetProperty("scanning").GetBoolean());
     }
 
     private static bool Contains(byte[] haystack, byte[] needle)
@@ -386,6 +398,7 @@ public class NoctisServerTests : IAsyncLifetime
             foreach (var a in Albums) a.Tracks = Tracks.Where(t => t.AlbumId == a.Id).ToList();
         }
 
+        public bool IsScanning { get; set; }
         public Task<LibrarySnapshot> SnapshotAsync() => Task.FromResult(new LibrarySnapshot(Tracks.ToList(), Albums.ToList(), Artists.ToList(), Playlists.ToList()));
         public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _artworkPath : null;
         public Task SetStarredAsync(IReadOnlyList<Guid> trackIds, IReadOnlyList<Guid> albumIds, IReadOnlyList<Guid> artistIds, bool starred)

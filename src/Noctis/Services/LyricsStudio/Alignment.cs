@@ -90,7 +90,7 @@ public static class LyricsAligner
         // Two passes: the second breaks near-ties between equally good matches in favour of
         // the one nearest where the first pass's neighbours put the line.
         var first = AlignPass(cleanLines, lineWords, lyricTokens, heard, totalDuration, expected: null);
-        return AlignPass(cleanLines, lineWords, lyricTokens, heard, totalDuration, ExpectedTokenTimes(first, lineWords));
+        return LineWindows.Fit(AlignPass(cleanLines, lineWords, lyricTokens, heard, totalDuration, ExpectedTokenTimes(first, lineWords)), totalDuration);
     }
 
     /// <summary>
@@ -188,6 +188,11 @@ public static class LyricsAligner
 
         // Anchored lines: anchored words, then interpolate the rest.
         var result = new AlignedLine?[cleanLines.Count];
+        var timing = new ((RecognizedWord Word, double Sim)?[] Anchors, TimeSpan?[] PullBack)?[cleanLines.Count];
+        // Words the model missed before a line's first heard word (and after its last) are
+        // spread at the song's own pace: at a fixed 0.42 s/word a rap line whose first two
+        // words were missed started ~0.4 s early (benchmark 09-29, dev: lines > 1 s off 83 → 70).
+        var pace = AnchorPace(kept);
         for (var li = 0; li < cleanLines.Count; li++)
         {
             var words = lineWords[li];
@@ -203,13 +208,29 @@ public static class LyricsAligner
             }
             if (anchorCount == 0) continue; // placed by FillUnanchoredLines
 
-            var timed = InterpolateWords(words, lineAnchors, knownStart: null, PullBackStarts(kept[li], heard));
+            var pullBack = PullBackStarts(kept[li], heard);
+            var timed = InterpolateWords(words, lineAnchors, knownStart: null, pullBack, pace: pace);
             var confidence = words.Length == 0 ? 0 : Math.Clamp(simSum / words.Length, 0, 1);
             result[li] = new AlignedLine(cleanLines[li], timed[0].Start, timed[^1].End, timed, confidence, Interpolated: false);
+            timing[li] = (lineAnchors, pullBack);
         }
 
         FillUnanchoredLines(result, lineWords, totalDuration, heard.Count > 0 ? heard[^1].Word.End : (TimeSpan?)null);
+        var placed = result.Select(r => r!.Start).ToArray();
         EnforceMonotonic(result);
+
+        // Words the model missed after a line's last heard word run on at a default pace; where
+        // that reaches the next line, they share the room up to its start instead (line starts
+        // stay as placed; lines EnforceMonotonic moved are left to LineWindows.Fit). Final pass
+        // only: the first pass's line ends feed ExpectedTokenTimes as they were tuned.
+        for (var li = 0; expected is not null && li + 1 < cleanLines.Count; li++)
+        {
+            if (timing[li] is not { } t || result[li] is not { } line || line.Start != placed[li]) continue;
+            var next = result[li + 1]!.Start;
+            if (line.End <= next || next <= line.Start) continue;
+            var timed = InterpolateWords(lineWords[li], t.Anchors, knownStart: null, t.PullBack, knownEnd: next, pace: pace);
+            result[li] = line with { Start = timed[0].Start, End = timed[^1].End, Words = timed };
+        }
         return result.Select(r => r!).ToList();
     }
 
@@ -235,6 +256,7 @@ public static class LyricsAligner
         var heard = PrepareHeard(recognized);
 
         var result = new AlignedLine?[lines.Count];
+        var timing = new (string[] Words, (RecognizedWord Word, double Sim)?[] Anchors, TimeSpan?[] PullBack)?[lines.Count];
         for (var li = 0; li < lines.Count; li++)
         {
             var text = (lines[li] ?? string.Empty).Trim();
@@ -283,14 +305,19 @@ public static class LyricsAligner
 
             if (anchorCount > 0)
             {
-                var timed = InterpolateWords(words, lineAnchors, knownStart: start, PullBackStarts(kept, heard));
+                var pullBack = PullBackStarts(kept, heard);
+                var timed = InterpolateWords(words, lineAnchors, knownStart: start, pullBack);
                 var confidence = Math.Clamp(simSum / words.Length, 0, 1);
                 result[li] = new AlignedLine(text, timed[0].Start, timed[^1].End, timed, confidence, Interpolated: false);
+                timing[li] = (words, lineAnchors, pullBack);
             }
             else
             {
-                // Nothing heard: keep the line where the file had it and spread the words to the next line.
+                // Nothing heard: keep the line where the file had it and spread the words at a
+                // natural pace, at most up to the next line (not across a long instrumental after
+                // it: benchmark 09-29, word starts p90 0.40 → 0.34 s held-out, 0.27 → 0.25 s dev).
                 var lineSpan = nextStart - start;
+                if (perWord * Math.Max(1, words.Length) < lineSpan) lineSpan = perWord * Math.Max(1, words.Length);
                 var slice = words.Length == 0 ? lineSpan : lineSpan / Math.Max(1, words.Length);
                 var timed = new List<AlignedWord>(words.Length);
                 for (var w = 0; w < words.Length; w++)
@@ -299,8 +326,30 @@ public static class LyricsAligner
             }
         }
 
+        var placed = result.Select(r => r!.Start).ToArray();
         EnforceMonotonic(result);
-        return result.Select(r => r!).ToList();
+
+        // The next line may start before its stamp (its first word was heard early): words that
+        // would run into it share the room up to its actual start — the unheard ones after the
+        // line's last heard word, or every word of a line nothing was heard of.
+        for (var li = 0; li + 1 < lines.Count; li++)
+        {
+            var line = result[li]!;
+            var next = result[li + 1]!.Start;
+            if (line.End <= next || next <= line.Start || line.Start != placed[li]) continue;
+            if (timing[li] is { } t)
+            {
+                var timed = InterpolateWords(t.Words, t.Anchors, knownStart: lineStarts[li], t.PullBack, knownEnd: next);
+                result[li] = line with { Start = timed[0].Start, End = timed[^1].End, Words = timed };
+            }
+            else if (line.Words.Count > 0)
+            {
+                var slice = (next - line.Start) / line.Words.Count;
+                var spread = line.Words.Select((w, k) => new AlignedWord(w.Text, line.Start + slice * k, line.Start + slice * (k + 1))).ToList();
+                result[li] = line with { End = spread[^1].End, Words = spread };
+            }
+        }
+        return LineWindows.Fit(result.Select(r => r!).ToList(), totalDuration);
     }
 
     /// <summary>Seconds per word used to predict where a word of a stamped line falls.</summary>
@@ -696,7 +745,26 @@ public static class LyricsAligner
         return result;
     }
 
-    private static List<AlignedWord> InterpolateWords(string[] words, (RecognizedWord Word, double Sim)?[] anchors, TimeSpan? knownStart, TimeSpan?[] pullBack)
+    /// <summary>
+    /// Seconds per word between consecutive heard words of one line (both matched, heard one
+    /// after the other): the song's own singing pace, median, within 0.18–0.6 s. Null (the
+    /// 0.42 s default) with fewer than 12 such pairs.
+    /// </summary>
+    private static TimeSpan? AnchorPace((Heard H, double Sim)?[][] kept)
+    {
+        var gaps = new List<double>();
+        foreach (var line in kept)
+            for (var wi = 1; wi < line.Length; wi++)
+                if (line[wi] is { } b && line[wi - 1] is { } a && b.H.Index == a.H.Index + 1)
+                    gaps.Add((b.H.Word.Start - a.H.Word.Start).TotalSeconds);
+        if (gaps.Count < 12) return null;
+        gaps.Sort();
+        return TimeSpan.FromSeconds(Math.Clamp(gaps[gaps.Count / 2], 0.18, 0.6));
+    }
+
+    /// <param name="knownEnd">Where the line's window ends: unheard words after the last heard one that would run past it at <paramref name="pace"/> share the room up to it.</param>
+    /// <param name="pace">Seconds per unheard word before the first / after the last heard one (default 0.42 s).</param>
+    private static List<AlignedWord> InterpolateWords(string[] words, (RecognizedWord Word, double Sim)?[] anchors, TimeSpan? knownStart, TimeSpan?[] pullBack, TimeSpan? knownEnd = null, TimeSpan? pace = null)
     {
         var count = words.Length;
         var starts = new TimeSpan?[count];
@@ -712,7 +780,7 @@ public static class LyricsAligner
 
         var first = Array.FindIndex(starts, s => s.HasValue);
         var last = Array.FindLastIndex(starts, s => s.HasValue);
-        var perWord = TimeSpan.FromSeconds(DefaultSecondsPerWord);
+        var perWord = pace ?? TimeSpan.FromSeconds(DefaultSecondsPerWord);
         if (knownStart is { } ks && first > 0 && starts[first]!.Value > ks)
         {
             // Leading words the model missed: spread from the known line start to the first anchor.
@@ -729,11 +797,15 @@ public static class LyricsAligner
                 starts[i] = s < TimeSpan.Zero ? TimeSpan.Zero : s;
             }
         }
-        // Trailing unanchored words: run on from the last anchor.
+        // Trailing unanchored words: run on from the last anchor (inside the known end, when given).
+        var trailing = count - last - 1;
+        var trailingPace = perWord;
+        if (trailing > 0 && knownEnd is { } ke && ends[last]!.Value + perWord * trailing > ke && ke > ends[last]!.Value)
+            trailingPace = (ke - ends[last]!.Value) / trailing;
         for (var i = last + 1; i < count; i++)
         {
             starts[i] = ends[i - 1];
-            ends[i] = starts[i]!.Value + perWord;
+            ends[i] = starts[i]!.Value + trailingPace;
         }
         // Interior gaps: spread evenly between the surrounding anchors.
         var i0 = first;
@@ -915,15 +987,138 @@ public static class LyricsAligner
 }
 
 /// <summary>
+/// The contract of a saved ELRC, applied to every path's output (aligned, upgraded, transcribed):
+/// lines in order, each starting at least <see cref="MinLineGap"/> after the one before; every word
+/// inside its own line's window — from the line's start to the next line's start (the last line:
+/// to the song's end) — in order and never overlapping the next word; the line's end tag (its last
+/// word's end) no later than the next line's start. Benchmark 09-29 (v1.5.7, 47 songs): words ran
+/// into the next line in 46 of 47 aligned songs (694 tags) and all 47 upgraded ones (972) — trailing
+/// words the model missed run on at a default pace, and a heard word's end overlaps the next line's
+/// first word. Words past the window are pulled back just enough to leave each of them
+/// <see cref="MinWordSpan"/> (less only when the window is shorter than that per word) and share the
+/// room from the last word that stays evenly; words inside are untouched. Line starts are never
+/// moved, except to keep them in order and inside the song.
+/// </summary>
+public static class LineWindows
+{
+    /// <summary>Line starts closer than this are pushed apart (the written stamps are 10 ms).</summary>
+    public static readonly TimeSpan MinLineGap = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>Shortest span a word pulled back into its window is given, when the window has the room.</summary>
+    public static readonly TimeSpan MinWordSpan = TimeSpan.FromMilliseconds(100);
+
+    public static IReadOnlyList<AlignedLine> Fit(IReadOnlyList<AlignedLine> lines, TimeSpan? songEnd = null)
+    {
+        var n = lines.Count;
+        if (n == 0) return lines;
+        var end = songEnd is { } se && se > TimeSpan.Zero ? se : (TimeSpan?)null;
+
+        // Line starts: never negative, in order, and (when the song's length is known) inside it.
+        var starts = new TimeSpan[n];
+        for (var i = 0; i < n; i++)
+        {
+            var s = lines[i].Start < TimeSpan.Zero ? TimeSpan.Zero : lines[i].Start;
+            if (i > 0 && s < starts[i - 1] + MinLineGap) s = starts[i - 1] + MinLineGap;
+            starts[i] = s;
+        }
+        if (end is { } e)
+        {
+            var limit = e - MinLineGap;
+            for (var i = n - 1; i >= 0; i--)
+            {
+                if (starts[i] > limit) starts[i] = limit < TimeSpan.Zero ? TimeSpan.Zero : limit;
+                limit = starts[i] - MinLineGap;
+            }
+        }
+
+        var result = new List<AlignedLine>(n);
+        for (var i = 0; i < n; i++)
+        {
+            var line = lines[i];
+            TimeSpan? cap = i + 1 < n ? starts[i + 1] : end;
+            result.Add(FitLine(line, starts[i], cap));
+        }
+        return result;
+    }
+
+    private static AlignedLine FitLine(AlignedLine line, TimeSpan start, TimeSpan? cap)
+    {
+        var m = line.Words.Count;
+        if (m == 0)
+        {
+            var lineEnd = line.End < start ? start : line.End;
+            if (cap is { } c0 && lineEnd > c0) lineEnd = c0 < start ? start : c0;
+            return line with { Start = start, End = lineEnd };
+        }
+
+        // A line moved as a whole (kept in order / inside the song) takes its words with it.
+        var shift = start - line.Start;
+        var st = new TimeSpan[m];
+        var en = new TimeSpan[m];
+        for (var j = 0; j < m; j++)
+        {
+            var s = line.Words[j].Start + shift;
+            var e = line.Words[j].End + shift;
+            // Every word at or after the line's start and the previous word's start; an end never before its start.
+            var low = j == 0 ? start : st[j - 1];
+            if (s < low) s = low;
+            if (e < s) e = s;
+            st[j] = s;
+            en[j] = e;
+        }
+        for (var j = 0; j + 1 < m; j++)
+            if (en[j] > st[j + 1]) en[j] = st[j + 1];
+
+        if (cap is { } c)
+        {
+            if (c < start) c = start;
+            var room = c - start;
+            var min = MinWordSpan * m <= room ? MinWordSpan : room / m;
+            // First word without room left for itself and the words after it at the minimum span.
+            var k = -1;
+            for (var j = 0; j < m; j++)
+                if (st[j] > c - min * (m - j)) { k = j; break; }
+            if (k >= 0)
+            {
+                var from = start;
+                if (k > 0)
+                {
+                    // The block starts where the last word that stays ends, but leaves the block its room.
+                    from = en[k - 1] < c - min * (m - k) ? en[k - 1] : c - min * (m - k);
+                    if (from < st[k - 1]) from = st[k - 1];
+                    en[k - 1] = from;
+                }
+                var slice = (c - from) / (m - k);
+                for (var j = k; j < m; j++)
+                {
+                    st[j] = from + slice * (j - k);
+                    en[j] = j + 1 < m ? from + slice * (j - k + 1) : c;
+                }
+            }
+            else if (en[m - 1] > c)
+                en[m - 1] = c;
+        }
+
+        var words = new List<AlignedWord>(m);
+        for (var j = 0; j < m; j++)
+            words.Add(new AlignedWord(line.Words[j].Text, st[j], en[j]));
+        return line with { Start = start, End = en[m - 1], Words = words };
+    }
+}
+
+/// <summary>
 /// Turns a bare transcript into lyric lines when the track has no lyrics to align against:
 /// breaks on long pauses, sentence punctuation and a maximum line length.
 /// </summary>
 public static class TranscriptLines
 {
+    private static readonly char[] TagDelimiters = { '<', '>' };
+
     public static IReadOnlyList<AlignedLine> Group(
         IReadOnlyList<RecognizedWord> words,
         int maxWordsPerLine = 8,
-        TimeSpan? gapBreak = null)
+        TimeSpan? gapBreak = null,
+        TimeSpan? totalDuration = null)
     {
         var gap = gapBreak ?? TimeSpan.FromSeconds(1.0);
         maxWordsPerLine = Math.Clamp(maxWordsPerLine, 2, 32);
@@ -943,7 +1138,12 @@ public static class TranscriptLines
             current.Clear();
         }
 
-        foreach (var w in words.Where(w => w is not null && !string.IsNullOrWhiteSpace(w.Text)).OrderBy(w => w.Start))
+        // "<" and ">" delimit ELRC word tags: a heard "<" (benchmark 09-30, one transcript) made the
+        // saved line read back with a word too many. They are no lyric text; words of nothing else are dropped.
+        var clean = words.Where(w => w is not null && w.Text is not null)
+            .Select(w => w.Text.IndexOfAny(TagDelimiters) < 0 ? w : w with { Text = new string(w.Text.Where(c => c is not '<' and not '>').ToArray()) })
+            .Where(w => !string.IsNullOrWhiteSpace(w.Text));
+        foreach (var w in clean.OrderBy(w => w.Start))
         {
             if (current.Count > 0)
             {
@@ -956,6 +1156,6 @@ public static class TranscriptLines
             current.Add(w);
         }
         Flush();
-        return lines;
+        return LineWindows.Fit(lines, totalDuration);
     }
 }

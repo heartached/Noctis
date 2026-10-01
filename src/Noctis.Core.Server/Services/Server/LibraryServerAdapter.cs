@@ -65,6 +65,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             playlists.ToList())).ConfigureAwait(false);
     }
 
+    public bool IsScanning => _library.IsScanning;
+
     public string? ArtworkPath(Guid albumId)
     {
         var path = _persistence.GetArtworkPath(albumId);
@@ -92,14 +94,17 @@ public sealed class LibraryServerAdapter : IServerLibrary
             _library.NotifyFavoritesChanged(changed);
         });
 
-    public Task ScrobbleAsync(Guid trackId)
+    public Task ScrobbleAsync(Guid trackId) => ScrobbleAsync(trackId, DateTime.UtcNow);
+
+    public Task ScrobbleAsync(Guid trackId, DateTime playedUtc)
         => Run(async () =>
         {
             // Same bookkeeping as PlayerViewModel when a track starts on the desktop.
             var track = _library.GetTrackById(trackId);
             if (track is null) return;
-            track.PlayCount++;
-            track.LastPlayed = DateTime.UtcNow;
+            if (track.PlayCount < int.MaxValue) track.PlayCount++;
+            // An offline play reported late must not move "last played" backwards.
+            if (track.LastPlayed is null || playedUtc > track.LastPlayed) track.LastPlayed = playedUtc;
             _playHistory.RecordPlay(track);
             await _library.SaveTrackUserStateAsync(new[] { track });
         });

@@ -148,6 +148,29 @@ public class WhisperDtwTimingTests
     }
 
     [Fact]
+    public void Resume_AfterWhisperSkippedTheRestOfTheWindow_StartsAtTheLastSegmentsEnd()
+    {
+        // One ad-lib at 1.6–2.4 s, then "single timestamp ending": whisper.cpp would jump 30 s.
+        var step = WhisperTranscriber.NextWindowOffset(TimeSpan.FromSeconds(2.4), 100, Window);
+        Assert.Equal(Window, step);
+        Assert.Equal((int)(2.4 * Sr), WhisperTranscriber.ResumeOffset(step, TimeSpan.FromSeconds(2.4)));
+    }
+
+    [Fact]
+    public void Resume_NotWhenTheWindowEndedAtItsLastSegment_OrHadNone()
+    {
+        Assert.Null(WhisperTranscriber.ResumeOffset((int)(24.3 * Sr), TimeSpan.FromSeconds(24.3)));
+        Assert.Null(WhisperTranscriber.ResumeOffset(Window, TimeSpan.FromSeconds(28))); // under 3 s skipped
+        Assert.Null(WhisperTranscriber.ResumeOffset(Window, null));                      // nothing heard: nothing to resume from
+    }
+
+    [Fact]
+    public void Resume_AlwaysMovesAtLeastASecond()
+    {
+        Assert.Equal(Sr, WhisperTranscriber.ResumeOffset(Window, TimeSpan.FromSeconds(0.2)));
+    }
+
+    [Fact]
     public void DtwShift_PullsMediumEarlier_LeavesBaseAlone()
     {
         Assert.Equal(-10, WhisperTranscriber.DtwShiftCs(WhisperAlignmentHeadsPreset.Medium));
@@ -156,8 +179,9 @@ public class WhisperDtwTimingTests
     }
 
     [Theory]
-    [InlineData(WhisperModelSize.Tiny, WhisperAlignmentHeadsPreset.Base)]
-    [InlineData(WhisperModelSize.Base, WhisperAlignmentHeadsPreset.Base)]
+    // One model (09-29/30): every saved size loads lullaby.bin, a Medium underneath, so every size takes Medium's heads.
+    [InlineData(WhisperModelSize.Tiny, WhisperAlignmentHeadsPreset.Medium)]
+    [InlineData(WhisperModelSize.Base, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Small, WhisperAlignmentHeadsPreset.Medium)]
     [InlineData(WhisperModelSize.Medium, WhisperAlignmentHeadsPreset.Medium)]
     public void AlignmentHeads_FollowTheModelFileThatIsLoaded(WhisperModelSize size, WhisperAlignmentHeadsPreset expected)
