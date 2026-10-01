@@ -59,6 +59,11 @@ public sealed class HeartIcon : Panel
     public static readonly StyledProperty<Geometry?> GlyphProperty =
         AvaloniaProperty.Register<HeartIcon, Geometry?>(nameof(Glyph));
 
+    /// <summary>With <see cref="Glyph"/>, the not-favorited glyph of a filled/outline pair
+    /// (the phone's own heart). Null draws <see cref="Glyph"/> in both states.</summary>
+    public static readonly StyledProperty<Geometry?> OffGlyphProperty =
+        AvaloniaProperty.Register<HeartIcon, Geometry?>(nameof(OffGlyph));
+
     /// <summary>A click zooms the whole icon instead of popping the incoming glyph: in past
     /// full size on favorite, out on unfavorite, then back, while the colours crossfade
     /// (the artist page's star).</summary>
@@ -67,6 +72,7 @@ public sealed class HeartIcon : Panel
 
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
     public Geometry? Glyph { get => GetValue(GlyphProperty); set => SetValue(GlyphProperty, value); }
+    public Geometry? OffGlyph { get => GetValue(OffGlyphProperty); set => SetValue(OffGlyphProperty, value); }
     public bool ZoomOnToggle { get => GetValue(ZoomOnToggleProperty); set => SetValue(ZoomOnToggleProperty, value); }
     public double Size { get => GetValue(SizeProperty); set => SetValue(SizeProperty, value); }
     public IBrush? OnBrush { get => GetValue(OnBrushProperty); set => SetValue(OnBrushProperty, value); }
@@ -103,6 +109,7 @@ public sealed class HeartIcon : Panel
         OffOpacityProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyState(animate: false));
         OutlineWhenOffProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
         GlyphProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
+        OffGlyphProperty.Changed.AddClassHandler<HeartIcon>((h, _) => h.ApplyGeometry());
     }
 
     public HeartIcon()
@@ -146,7 +153,8 @@ public sealed class HeartIcon : Panel
     {
         if (Glyph is { } glyph)
         {
-            _on.Data = _off.Data = glyph;
+            _on.Data = glyph;
+            _off.Data = OffGlyph ?? glyph;
             return;
         }
         _on.Data = s_heart;

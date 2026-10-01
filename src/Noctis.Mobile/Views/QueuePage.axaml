@@ -89,8 +89,8 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="Button.round.close PathIcon">
-            <Setter Property="Width" Value="12" />
-            <Setter Property="Height" Value="12" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
         </Style>
         <!-- Clear: accent text on the UP NEXT line; its padding hangs past the margin so the
              word itself lines up with the sheet's right edge. -->
@@ -100,6 +100,7 @@
             <Setter Property="CornerRadius" Value="11" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="Height" Value="22" />
+            <Setter Property="MinHeight" Value="0" />
             <Setter Property="Margin" Value="0,0,-8,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FontSize" Value="13" />
@@ -126,8 +127,8 @@
             <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
         </Style>
         <Style Selector="Button.round.soft PathIcon">
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
@@ -198,7 +199,7 @@
                         <Grid Name="TopBar" Height="44">
                             <Button Name="QueueGrabber" Classes="icon" Width="64" Height="28" VerticalAlignment="Top"
                                     HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
-                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="30" Height="10"
+                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="40" Height="40" Margin="-5,-15"
                                           Foreground="{DynamicResource QueueGrabber}" />
                             </Button>
                             <Button Name="QueueCloseButton" Classes="round close" HorizontalAlignment="Right"
@@ -282,7 +283,7 @@
                                                 <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
                                                         PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
                                                         PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
-                                                    <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="20" Height="20"
+                                                    <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
                                                               Foreground="{DynamicResource AccentTextBrush}" />
                                                 </Border>
                                                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="sep" VerticalAlignment="Bottom" Margin="12,0,14,0" />
@@ -305,41 +306,41 @@
                                                 Command="{Binding ToggleQueueCommand}">
                                             <Panel>
                                                 <Border Classes="wash" />
-                                                <PathIcon Data="{DynamicResource QueueListIcon}" />
+                                                <PathIcon Data="{DynamicResource PhList}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource QueueRepeatIcon}" Width="18" Height="18" IsVisible="{Binding !Player.IsRepeatOne}" />
-                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource QueueRepeatOneIcon}" Width="18" Height="18"
+                                                <PathIcon Data="{DynamicResource PhRepeat}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" Width="20" Height="20"
                                                           IsVisible="{Binding Player.IsRepeatOne}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.PreviousCommand}">
-                                            <PathIcon Data="{DynamicResource RewindIcon}" Width="30" Height="30" />
+                                            <PathIcon Data="{DynamicResource PhRewindFill}" Width="36" Height="36" />
                                         </Button>
                                         <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.TogglePlayPauseCommand}">
                                             <Panel>
-                                                <PathIcon Data="{DynamicResource PlayIcon}" Width="30" Height="30" IsVisible="{Binding !Player.IsPlaying}" />
-                                                <PathIcon Data="{DynamicResource PauseIcon}" Width="30" Height="30" IsVisible="{Binding Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PhPlayFill}" Width="36" Height="36" IsVisible="{Binding !Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PhPauseFill}" Width="36" Height="36" IsVisible="{Binding Player.IsPlaying}" />
                                             </Panel>
                                         </Button>
                                         <Button Grid.Column="4" Name="QueueNextButton" Classes="icon" HorizontalAlignment="Center"
                                                 Command="{Binding Player.NextCommand}">
-                                            <PathIcon Data="{DynamicResource FastForwardIcon}" Width="30" Height="30" />
+                                            <PathIcon Data="{DynamicResource PhForwardFill}" Width="36" Height="36" />
                                         </Button>
                                         <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
                                                 HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
-                                            <PathIcon Data="{DynamicResource QueueShuffleIcon}" Width="18" Height="18" />
+                                            <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
                                         </Button>
                                         <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
                                                 Command="{Binding OpenCurrentTrackSheetCommand}">
                                             <Panel>
                                                 <Border Classes="wash" />
-                                                <PathIcon Data="{DynamicResource QueueMoreIcon}" />
+                                                <PathIcon Data="{DynamicResource PhMore}" />
                                             </Panel>
                                         </Button>
                                     </Grid>

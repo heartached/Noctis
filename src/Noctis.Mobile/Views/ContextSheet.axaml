@@ -11,8 +11,8 @@
             <Setter Property="Height" Value="52" />
         </Style>
         <Style Selector="Button.sheet-action PathIcon">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.sheet-action TextBlock">
@@ -51,31 +51,37 @@
 
                                 <StackPanel Name="Actions" IsVisible="{Binding !IsPickingPlaylist}">
                                     <Button Name="PlayNextAction" Classes="row sheet-action" Command="{Binding PlayNextCommand}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource NextIcon}" /><TextBlock Grid.Column="1" Text="Play Next" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhPlayNext}" /><TextBlock Grid.Column="1" Text="Play Next" /></Grid>
                                     </Button>
                                     <Button Name="AddToQueueAction" Classes="row sheet-action" Command="{Binding AddToQueueCommand}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PlaylistsIcon}" /><TextBlock Grid.Column="1" Text="Add to Queue" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhAddToQueue}" /><TextBlock Grid.Column="1" Text="Add to Queue" /></Grid>
                                     </Button>
                                     <Button Name="AddToPlaylistAction" Classes="row sheet-action" Command="{Binding ShowPlaylistsCommand}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource AddIcon}" /><TextBlock Grid.Column="1" Text="Add to Playlist…" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhAddToPlaylist}" /><TextBlock Grid.Column="1" Text="Add to Playlist…" /></Grid>
                                     </Button>
                                     <Button Name="FavouriteAction" Classes="row sheet-action" Command="{Binding ToggleFavouriteCommand}" IsVisible="{Binding CanFavourite}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource HeartOutlineIcon}" /><TextBlock Grid.Column="1" Text="{Binding FavouriteLabel}" /></Grid>
+                                        <Grid ColumnDefinitions="40,*">
+                                            <Panel>
+                                                <PathIcon Data="{DynamicResource PhHeart}" IsVisible="{Binding !IsFavourite}" />
+                                                <PathIcon Data="{DynamicResource PhHeartFill}" IsVisible="{Binding IsFavourite}" />
+                                            </Panel>
+                                            <TextBlock Grid.Column="1" Text="{Binding FavouriteLabel}" />
+                                        </Grid>
                                     </Button>
                                     <Button Name="DownloadAction" Classes="row sheet-action" Command="{Binding DownloadCommand}" IsVisible="{Binding CanDownload}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource SaveDiskIcon}" /><TextBlock Grid.Column="1" Text="{Binding DownloadLabel}" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhDownload}" /><TextBlock Grid.Column="1" Text="{Binding DownloadLabel}" /></Grid>
                                     </Button>
                                     <Button Name="RemoveDownloadAction" Classes="row sheet-action" Command="{Binding RemoveDownloadCommand}" IsVisible="{Binding CanRemoveDownload}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource TrashIcon}" /><TextBlock Grid.Column="1" Text="{Binding RemoveDownloadLabel}" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhTrash}" /><TextBlock Grid.Column="1" Text="{Binding RemoveDownloadLabel}" /></Grid>
                                     </Button>
                                     <Button Name="PinAction" Classes="row sheet-action" Command="{Binding TogglePinCommand}" IsVisible="{Binding CanPin}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource LibPinIcon}" /><TextBlock Grid.Column="1" Text="{Binding PinLabel}" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PhPin}" /><TextBlock Grid.Column="1" Text="{Binding PinLabel}" /></Grid>
                                     </Button>
                                     <Button Name="GoToAlbumAction" Classes="row sheet-action" Command="{Binding GoToAlbumCommand}" IsVisible="{Binding CanGoToAlbum}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource AlbumsIcon}" /><TextBlock Grid.Column="1" Text="Go to Album" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource ChipAlbumsIcon}" /><TextBlock Grid.Column="1" Text="Go to Album" /></Grid>
                                     </Button>
                                     <Button Name="GoToArtistAction" Classes="row sheet-action" Command="{Binding GoToArtistCommand}" IsVisible="{Binding CanGoToArtist}">
-                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource ArtistsIcon}" /><TextBlock Grid.Column="1" Text="Go to Artist" /></Grid>
+                                        <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource ChipArtistsIcon}" /><TextBlock Grid.Column="1" Text="Go to Artist" /></Grid>
                                     </Button>
                                 </StackPanel>
 
@@ -87,7 +93,7 @@
                                                 <Button Classes="row sheet-action"
                                                         Command="{Binding $parent[ItemsControl].((vm:ContextSheetViewModel)DataContext).AddToPlaylistCommand}"
                                                         CommandParameter="{Binding}">
-                                                    <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource PlaylistsIcon}" /><TextBlock Grid.Column="1" Text="{Binding Name}" /></Grid>
+                                                    <Grid ColumnDefinitions="40,*"><PathIcon Data="{DynamicResource ChipPlaylistsIcon}" /><TextBlock Grid.Column="1" Text="{Binding Name}" /></Grid>
                                                 </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
