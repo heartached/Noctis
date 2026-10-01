@@ -240,10 +240,10 @@
     <Style Selector="controls|GlassPanel.liquid">
         <Setter Property="UseAppGlass" Value="False" />
         <Setter Property="IsGlassActive" Value="True" />
-        <Setter Property="BlurRadius" Value="2" />
+        <Setter Property="BlurRadius" Value="1.5" />
         <Setter Property="Refraction" Value="20" />
         <Setter Property="RefractionAmount" Value="26" />
-        <Setter Property="Saturation" Value="1.25" />
+        <Setter Property="Saturation" Value="1.3" />
         <Setter Property="Specular" Value="0.8" />
         <Setter Property="BoxShadow" Value="0 4 18 0 #29000000" />
         <Setter Property="Background" Value="{DynamicResource GlassBarTint}" />
@@ -260,10 +260,10 @@
     <Style Selector="controls|GlassPanel.header-glass">
         <Setter Property="UseAppGlass" Value="False" />
         <Setter Property="IsGlassActive" Value="True" />
-        <Setter Property="BlurRadius" Value="2" />
+        <Setter Property="BlurRadius" Value="1.5" />
         <Setter Property="Refraction" Value="11" />
         <Setter Property="RefractionAmount" Value="14" />
-        <Setter Property="Saturation" Value="1.25" />
+        <Setter Property="Saturation" Value="1.3" />
         <Setter Property="Specular" Value="0.8" />
         <Setter Property="BoxShadow" Value="0 2 10 0 #22000000" />
         <Setter Property="Width" Value="40" />

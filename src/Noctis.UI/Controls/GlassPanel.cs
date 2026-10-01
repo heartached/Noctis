@@ -26,6 +26,10 @@ namespace Noctis.Controls;
 /// colour, and a 1px light inner edge. Popups and separate windows cannot be frosted
 /// this way — the snapshot only sees the surface this control renders into.
 ///
+/// Opt-in, for the phone's iOS 26 look: a refracting rim (<see cref="Refraction"/>, drawn
+/// through <see cref="GlassLens"/>), a rim light (<see cref="Specular"/>) and an outer
+/// <see cref="BoxShadow"/>. All default off, leaving the layers above unchanged.
+///
 /// Follows <see cref="AppGlass"/> by default; set <see cref="UseAppGlass"/> false to
 /// drive <see cref="IsGlassActive"/> directly (tests, previews).
 /// </summary>

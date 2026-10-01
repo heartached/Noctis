@@ -73,7 +73,7 @@
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="GlassBarTint" Color="#F7F7FA" Opacity="0.55" />
+                    <SolidColorBrush x:Key="GlassBarTint" Color="#F7F7FA" Opacity="0.5" />
                     <SolidColorBrush x:Key="GlassBarPill" Color="#000000" Opacity="0.07" />
                     <LinearGradientBrush x:Key="GlassBarEdge" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#FFFFFFFF" />
