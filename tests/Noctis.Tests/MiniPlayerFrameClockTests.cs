@@ -1,5 +1,6 @@
 using System.Reflection;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
@@ -172,5 +173,33 @@ public class MiniPlayerFrameClockTests
         SetField(win, "_lyricsChaseTarget", 300.0);
         Assert.True(Field<bool>(win, "_lyricsChaseRunning"));
         Assert.Equal(300.0, Field<double>(win, "_lyricsChaseTarget"));
+    }
+
+    [AvaloniaFact]
+    public void LyricsChase_StopsWhenWindowCloses()
+    {
+        var win = ShowWindow();
+        Pump(2);
+        SetField(win, "_lyricsChaseRunning", true);
+        win.Close();
+        PumpFor(300); // > 170 ms close animation, then the real Close runs OnClosed
+        Assert.False(Field<bool>(win, "_lyricsChaseRunning"));
+    }
+
+    [AvaloniaFact]
+    public void LyricsChase_StopsWhenTheOffsetIsCoerced()
+    {
+        var win = ShowWindow();
+        Pump(2);
+        // No lyrics loaded: the scroll extent is empty, so every offset write is coerced
+        // back to 0 and the target can never be reached. A chase that cannot land must stop
+        // instead of asking the compositor for a frame forever.
+        SetField(win, "_lyricsChaseTarget", 5000.0);
+        SetField(win, "_lyricsChaseRunning", true);
+        SetField(win, "_lyricsChaseLastTicks",
+            System.Diagnostics.Stopwatch.GetTimestamp() - System.Diagnostics.Stopwatch.Frequency / 20); // 50 ms ago
+        Call(win, "LyricsChaseFrame", TimeSpan.Zero);
+        Assert.Equal(0.0, win.FindControl<ScrollViewer>("LyricsScroll")!.Offset.Y);
+        Assert.False(Field<bool>(win, "_lyricsChaseRunning"));
     }
 }

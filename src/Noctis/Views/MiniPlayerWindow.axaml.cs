@@ -1150,6 +1150,7 @@ public partial class MiniPlayerWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _drawerHideTimer?.Stop();
+        _lyricsChaseRunning = false;
         _lyricsFontTimer?.Stop();
         _pillSpinner?.Stop();
         _flow?.Dispose();
@@ -1703,6 +1704,12 @@ public partial class MiniPlayerWindow : Window
             return;
         }
         LyricsScroll.Offset = new Vector(0, current + remaining * (1 - Math.Exp(-dt / LyricsChaseTauSeconds)));
+        // Coerced write = target unreachable (extent shrank); a chase that cannot land must not keep the compositor rendering.
+        if (Math.Abs(LyricsScroll.Offset.Y - current) < 1e-6)
+        {
+            _lyricsChaseRunning = false;
+            return;
+        }
         RequestAnimationFrame(LyricsChaseFrame);
     }
 }
