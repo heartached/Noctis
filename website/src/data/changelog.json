@@ -1,6 +1,57 @@
 {
   "releases": [
     {
+      "tag": "v1.5.9",
+      "version": "1.5.9",
+      "name": "v1.5.9",
+      "publishedAt": "2026-10-02T11:17:04Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.5.9",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Albums Type filter remembering your choice",
+            "Added Shuffle buttons turning on the bottom bar shuffle",
+            "Added Movement, Saturation and Blur sliders for Drift background",
+            "Added View Album and View Artist to Home track right-click",
+            "Added Kugou, Musixmatch and YouTube Music lyric sources",
+            "Added Auto lyric source that picks the best result",
+            "Added full-size album cover viewer",
+            "Added Mixxx plugin for BPM and key import",
+            "Added Get plugins list with Install button in Settings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Search Lyrics pop-up layout and animation",
+            "Improved Lyrics Studio top-right buttons",
+            "Improved Lyrics Studio word row and line shift controls",
+            "Improved Lyrics Studio Choose songs with explicit tags",
+            "Improved Plugins page layout and wording",
+            "Improved cover sharpness across the app"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed album year only coming from the first song",
+            "Fixed albums stuck with year 0",
+            "Fixed saving lyrics, ratings or tags erasing the date in the file",
+            "Fixed artist page tiles showing year 0",
+            "Fixed album page tiles showing year 0",
+            "Fixed blurry covers on album, lyrics, artist and mini player",
+            "Fixed no sound on Lyrics Studio Preview",
+            "Fixed Lyrics Studio freezing when picking a song",
+            "Fixed missing song title during Time every word",
+            "Fixed choppy Drift and Kawarp sliders",
+            "Fixed stray line and misleading message on the Plugins page"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.5.8",
       "version": "1.5.8",
       "name": "v1.5.8",
@@ -2991,6 +3042,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-10-01T00:20:27.336Z",
+  "updatedAt": "2026-10-02T11:17:40.907Z",
   "degraded": false
 }
