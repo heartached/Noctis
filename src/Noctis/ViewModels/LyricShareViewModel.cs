@@ -651,7 +651,9 @@ public partial class LyricShareViewModel : ViewModelBase
             // probes ContainsGlyph once per character, natively. At 16ms that was
             // 60–120k glyph probes a second competing with layout and input while
             // playback ran. The sweep is smooth at 30fps and the cost halves.
-            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            // 30 ms, not 33: Win32 DispatcherTimers fire on the 15.6 ms USER-timer grid and round
+            // UP — 33 ms measured 21.3 ticks/s (47 ms), 30 ms measured 31.7 ticks/s (31.6 ms).
+            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
             _animTimer.Tick += (_, _) => OnAnimTick();
         }
         _animTimer.Start();
