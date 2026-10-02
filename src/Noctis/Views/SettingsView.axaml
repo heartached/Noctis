@@ -2603,7 +2603,7 @@
                     <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftMovement}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="300" TickFrequency="5" IsSnapToTickEnabled="True"
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="300" TickFrequency="1" IsSnapToTickEnabled="True"
                                     Value="{Binding LyricsDriftMovement, Mode=TwoWay}" VerticalAlignment="Center"
                                     DoubleTapped="OnDriftMovementSliderDoubleTapped"/>
                             <TextBlock Grid.Column="2" Text="{Binding LyricsDriftMovement, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
@@ -2611,7 +2611,7 @@
                         </Grid>
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftSaturation}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="1" IsSnapToTickEnabled="True"
                                     Value="{Binding LyricsDriftSaturation, Mode=TwoWay}" VerticalAlignment="Center"
                                     DoubleTapped="OnDriftSaturationSliderDoubleTapped"/>
                             <TextBlock Grid.Column="2" Text="{Binding LyricsDriftSaturation, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
@@ -2619,7 +2619,7 @@
                         </Grid>
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftBlur}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True"
+                            <Slider Grid.Column="1" Classes="accent-slider" Minimum="0" Maximum="200" TickFrequency="1" IsSnapToTickEnabled="True"
                                     Value="{Binding LyricsDriftBlur, Mode=TwoWay}" VerticalAlignment="Center"
                                     DoubleTapped="OnDriftBlurSliderDoubleTapped"/>
                             <TextBlock Grid.Column="2" Text="{Binding LyricsDriftBlur, StringFormat='{}{0}%'}" FontSize="12" Opacity="0.7"
