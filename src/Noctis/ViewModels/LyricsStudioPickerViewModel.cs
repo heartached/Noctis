@@ -23,6 +23,8 @@ public sealed partial class LyricsStudioPickRow : ObservableObject
     public required string Title { get; init; }
     public required string Subtitle { get; init; }
     public string? ArtworkPath { get; init; }
+    /// <summary>The song is explicit; an album row: any song on it is (the E badge after the title).</summary>
+    public bool IsExplicit { get; init; }
     /// <summary>The local songs this row stands for (one for a song row).</summary>
     public required IReadOnlyList<Track> Tracks { get; init; }
 
@@ -187,6 +189,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
                     Title = album.Name,
                     Subtitle = album.Artist,
                     ArtworkPath = album.ArtworkPath,
+                    IsExplicit = album.IsExplicit,
                     Tracks = local,
                     StateText = local.Count == 1 ? "1 song" : $"{local.Count} songs",
                     IsSelected = local.All(t => _selectedIds.Contains(t.Id)),
@@ -207,6 +210,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
         Title = track.TitleDisplay,
         Subtitle = string.IsNullOrEmpty(track.Album) ? track.ArtistDisplay : $"{track.ArtistDisplay} · {track.Album}",
         ArtworkPath = track.AlbumArtworkPath,
+        IsExplicit = track.IsExplicit,
         Tracks = new[] { track },
         IsSelected = _selectedIds.Contains(track.Id),
     };

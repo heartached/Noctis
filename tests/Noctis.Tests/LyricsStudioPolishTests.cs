@@ -284,6 +284,62 @@ public class LyricsStudioPolishTests : IDisposable
         finally { win.Close(); }
     }
 
+    // ── C: the E badge in Choose songs ───────────────────────────────────
+
+    /// <summary>
+    /// Choose songs shows the E badge right after an explicit song's title and an album with an
+    /// explicit song, none on a clean song, and a long title trims so its badge stays in the row.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Picker_ShowsTheEBadge_AfterExplicitTitles_AndKeepsItOnLongOnes()
+    {
+        EnsureAppResources();
+        var lib = new FakeLibraryService();
+        var albumId = Guid.NewGuid();
+        Track T(string title, bool isExplicit) => new()
+        {
+            Title = title, Artist = "A Boogie wit da Hoodie", Album = "Hoodie SZN", AlbumId = albumId,
+            IsExplicit = isExplicit, FilePath = $@"C:\m\{Guid.NewGuid():N}.mp3",
+        };
+        var ballin = T("Ballin", true);
+        var longOne = T("Look Back at It (A Very Long Title That Has To Trim Before The Badge)", true);
+        var clean = T("Clean", false);
+        lib.TrackList.AddRange(new[] { ballin, longOne, clean });
+        ((List<Album>)lib.Albums).Add(new Album { Id = albumId, Name = "Hoodie SZN", Artist = "A Boogie wit da Hoodie", Tracks = new List<Track> { ballin, longOne, clean } });
+        var vm = new LyricsStudioPickerViewModel(lib, wordTimings: true, detectFormats: t => t.Select(_ => LyricsFormat.Lrc).ToList());
+        vm.SearchText = "boogie";
+        await vm.SearchRefresh;
+        vm.FormatScan.Wait(TimeSpan.FromSeconds(5));
+        Dispatcher.UIThread.RunJobs();
+
+        var dialog = new LyricsStudioPickerDialog { DataContext = vm, Width = 640, Height = 720 };
+        dialog.Show();
+        try
+        {
+            Settle(dialog);
+            Grid TitleCell(string title) => dialog.GetVisualDescendants().OfType<Grid>()
+                .Single(g => g.Children.OfType<TextBlock>().FirstOrDefault()?.Text == title && g.Children.OfType<Border>().Any(b => b.Classes.Contains("explicit-badge")));
+            Border Badge(string title) => TitleCell(title).Children.OfType<Border>().Single();
+
+            Assert.True(Badge("Hoodie SZN").IsEffectivelyVisible);   // the album holds explicit songs
+            Assert.True(Badge("Ballin").IsEffectivelyVisible);
+            Assert.False(Badge("Clean").IsVisible);
+            var ballinTitle = TitleCell("Ballin").Children.OfType<TextBlock>().First();
+            Assert.Equal(ballinTitle.Bounds.Right + Badge("Ballin").Margin.Left, Badge("Ballin").Bounds.Left, 1); // right after the title
+
+            // The long title trims and its badge stays inside the row's title column.
+            var longCell = TitleCell(longOne.Title);
+            var longBadge = Badge(longOne.Title);
+            Assert.True(longBadge.IsEffectivelyVisible);
+            Assert.True(longBadge.Bounds.Width > 0);
+            Assert.True(longBadge.Bounds.Right <= longCell.Bounds.Width + 0.5,
+                $"badge ends at {longBadge.Bounds.Right:F1} of a {longCell.Bounds.Width:F1}px title cell");
+            var column = (Control)longCell.GetVisualParent()!;
+            Assert.True(longCell.Bounds.Width <= column.Bounds.Width + 0.5);
+        }
+        finally { dialog.Close(); }
+    }
+
     /// <summary>Holds each song until the test says Finish; the lines are the song's own.</summary>
     private sealed class GateEngine(string root) : ILyricsStudioEngine
     {
