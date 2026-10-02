@@ -283,7 +283,7 @@ public sealed class PluginCatalogClient
             else
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, source.Location);
-                using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+                using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
                 json = await HttpSafety.ReadStringBoundedAsync(response.Content, PluginCatalog.MaxIndexBytes, ct).ConfigureAwait(false);
             }

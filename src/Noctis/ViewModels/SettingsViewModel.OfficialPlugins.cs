@@ -49,6 +49,7 @@ public partial class SettingsViewModel
     {
         if (PluginCatalogClient is not { } client || IsOfficialPluginsLoading) return;
         IsOfficialPluginsLoading = true;
+        OfficialPluginsNotice = string.Empty; // the header shows "Checking…" in its place
         try
         {
             var load = await Task.Run(() => client.LoadAsync());
