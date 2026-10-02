@@ -399,7 +399,7 @@ one row each with a single button:
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.0/Noctis.Plugins.Mixxx-1.0.0.zip",
       "sha256": "<lowercase hex SHA-256 of that exact zip>",
-      "size": 11837,
+      "size": 11758,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
     }
   ]

@@ -1683,8 +1683,6 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.InstallFailed" xml:space="preserve"><value>Could not install: {0}</value></data>
   <data name="Plugins.Get.Title" xml:space="preserve"><value>Get plugins</value></data>
   <data name="Plugins.Get.Refresh" xml:space="preserve"><value>Refresh list</value></data>
-  <data name="Plugins.Get.Loading" xml:space="preserve"><value>Checking for new plugins…</value></data>
-  <data name="Plugins.Get.Offline" xml:space="preserve"><value>Couldn't reach GitHub. Showing the built-in list.</value></data>
   <data name="Plugins.Get.Empty" xml:space="preserve"><value>No plugins to show right now.</value></data>
   <data name="Plugins.Get.Official" xml:space="preserve"><value>Official</value></data>
   <data name="Plugins.Get.Install" xml:space="preserve"><value>Install</value></data>

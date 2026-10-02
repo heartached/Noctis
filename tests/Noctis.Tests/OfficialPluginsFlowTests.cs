@@ -188,14 +188,12 @@ public class OfficialPluginsFlowTests : IDisposable
         Assert.Equal(OfficialPluginState.NeedsNewerApp, item.State);
         Assert.Equal(Loc.T("Plugins.Get.RequiresApp", "1.5.9"), item.ButtonText);
         Assert.False(item.CanClick);
-        Assert.False(m.Vm.HasOfficialPluginsNotice);
 
-        // Offline: the built-in copy stands in, with a note.
+        // Offline: the built-in copy stands in, quietly.
         var builtIn = PluginCatalog.Parse(PluginCatalogTests.Index(PluginCatalogTests.Entry(id: "dev.test.builtin", minAppVersion: null)));
         m.Vm.PluginCatalogClient = new PluginCatalogClient(new HttpClient(new PluginCatalogTests.FakeHandler()), () => null) { Embedded = () => builtIn };
         await m.Vm.LoadOfficialPluginsAsync();
         Assert.Equal("dev.test.builtin", Assert.Single(m.Vm.OfficialPlugins).Entry.Id);
-        Assert.Equal(Loc.T("Plugins.Get.Offline"), m.Vm.OfficialPluginsNotice);
         Assert.False(m.Vm.IsOfficialPluginsLoading);
     }
 
