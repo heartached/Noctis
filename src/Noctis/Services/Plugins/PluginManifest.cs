@@ -115,7 +115,7 @@ public sealed class PluginManifest
             var warnings = new List<string>();
 
             var id = RequiredString(root, "id");
-            if (id.Length is < 3 or > 100 || !IdPattern.IsMatch(id))
+            if (!IsValidId(id))
                 throw new PluginManifestException($"\"id\" \"{id}\" must be lowercase reverse-DNS style, e.g. \"dev.example.myplugin\" (letters, digits, '-', '_', at least one '.').");
 
             var name = RequiredString(root, "name").Trim();
@@ -234,6 +234,9 @@ public sealed class PluginManifest
             return $"Made for {string.Join(", ", Platforms)}; not available on {CurrentPlatform}.";
         return null;
     }
+
+    /// <summary>Lowercase reverse-DNS style, 3 to 100 characters ("dev.example.myplugin").</summary>
+    internal static bool IsValidId(string id) => id.Length is >= 3 and <= 100 && IdPattern.IsMatch(id);
 
     /// <summary>"windows", "macos" or "linux".</summary>
     public static string CurrentPlatform =>
