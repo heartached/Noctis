@@ -169,6 +169,121 @@ public class LyricsStudioPolishTests : IDisposable
         finally { win.Close(); }
     }
 
+    // ── B: the review header's actions ───────────────────────────────────
+
+    /// <summary>A review open on a line-level song (so "Time every word" shows), Preview on as on the page.</summary>
+    private (Window win, LyricsStudioPanel panel, LyricsStudioViewModel vm) MountReview(double width, bool preview = true, bool showHeader = false)
+    {
+        var vm = Studio(new GateEngine(_root), SongWithLrc("Ballin"));
+        if (preview) vm.ShowOnLyricsPage = (_, _) => Task.CompletedTask;
+        var (win, panel) = Mount(vm, width, showHeader);
+        vm.Selected = vm.Queue[0];
+        Settle(win);
+        Assert.True(vm.HasReview);
+        Assert.True(vm.ReviewCanUpgrade);
+        return (win, panel, vm);
+    }
+
+    /// <summary>The review's top block: title, actions, source and timing tools, tap bar.</summary>
+    private static StackPanel ReviewTop(LyricsStudioPanel panel) =>
+        (StackPanel)panel.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-actions"))
+            .GetVisualAncestors().OfType<StackPanel>().First();
+
+    /// <summary>The rounded review pane that clips everything in it.</summary>
+    private static Border ReviewPane(LyricsStudioPanel panel) =>
+        ReviewTop(panel).GetVisualAncestors().OfType<Border>().First(b => b.ClipToBounds);
+
+    /// <summary>
+    /// Every action and tool in the review header stays whole inside the review pane, at the
+    /// dialog's width and every page width down to the main window's minimum with the sidebar
+    /// pinned, whether the window opened at that width or was narrowed to it.
+    /// </summary>
+    [AvaloniaFact]
+    public void ReviewHeader_NeverClipsAButton_AtAnyWidth()
+    {
+        var (win, panel, _) = MountReview(1700);
+        try
+        {
+            // Real fonts: down to the page at the main window's minimum with the sidebar pinned (a
+            // 182px pane). The stub fonts are about twice as wide, so their floor sits higher.
+            for (var width = 1700; width >= (HeadlessTestApp.RealRendering ? 500 : 580); width -= 40)
+            {
+                win.Width = width;
+                Settle(win);
+                var pane = ReviewPane(panel);
+                foreach (var c in ReviewTop(panel).GetVisualDescendants().OfType<Control>()
+                             .Where(c => c is Button or TextBlock && c.IsEffectivelyVisible && c.Bounds.Width > 0))
+                {
+                    var right = c.TranslatePoint(new Point(c.Bounds.Width, 0), pane)!.Value.X;
+                    Assert.True(right <= pane.Bounds.Width + 0.5,
+                        $"{c.GetType().Name} '{(c as TextBlock)?.Text ?? (c as Button)?.Content?.ToString()}' ends at {right:F1} of a {pane.Bounds.Width:F1}px pane (window {width})");
+                }
+            }
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>
+    /// One accent action: Save. Time every word and Preview are plain pills, and Skip and
+    /// Transcribe instead are in the "…" menu with their commands and tooltip, not on the row.
+    /// </summary>
+    [AvaloniaFact]
+    public void ReviewHeader_SaveIsTheOnlyAccentAction_SkipAndTranscribeAreInTheMoreMenu()
+    {
+        var (win, panel, vm) = MountReview(1700);
+        try
+        {
+            var top = ReviewTop(panel);
+            var buttons = top.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible).ToList();
+            var accent = Assert.Single(buttons, b => b.Classes.Contains("accent-btn"));
+            Assert.Same(vm.SaveCommand, accent.Command);
+            var upgrade = Assert.Single(buttons, b => ReferenceEquals(b.Command, vm.UpgradeToWordTimingsCommand));
+            Assert.Contains("pill-outline", upgrade.Classes);
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.UpgradeTip"), ToolTip.GetTip(upgrade));
+            Assert.Single(buttons, b => ReferenceEquals(b.Command, vm.PreviewOnLyricsPageCommand));
+            Assert.DoesNotContain(buttons, b => ReferenceEquals(b.Command, vm.SkipCommand) || ReferenceEquals(b.Command, vm.RedoAsTranscriptionCommand));
+
+            var more = Assert.Single(buttons, b => b.Classes.Contains("studio-more"));
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.MoreTip"), ToolTip.GetTip(more));
+            var menu = Assert.IsType<MenuFlyout>(more.Flyout);
+            menu.ShowAt(more);
+            Settle(win);
+            var items = menu.Items.OfType<MenuItem>().ToList();
+            var skip = Assert.Single(items, i => ReferenceEquals(i.Command, vm.SkipCommand));
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.Skip"), skip.Header);
+            var redo = Assert.Single(items, i => ReferenceEquals(i.Command, vm.RedoAsTranscriptionCommand));
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.Redo"), redo.Header);
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.RedoTip"), ToolTip.GetTip(redo));
+            Assert.True(redo.IsVisible); // the review is not a transcription
+            menu.Hide();
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>Shift all lines is one [− 0.1s +] pill: each step keeps its tooltip and moves every line.</summary>
+    [AvaloniaFact]
+    public void ShiftAllLines_IsOneSegmentedPill_WhoseStepsMoveEveryLine()
+    {
+        var (win, panel, vm) = MountReview(1700);
+        try
+        {
+            var pill = ReviewTop(panel).GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("nudge-pill"));
+            var steps = pill.GetVisualDescendants().OfType<Button>().ToList();
+            Assert.Equal(2, steps.Count);
+            Assert.Same(vm.NudgeEarlierCommand, steps[0].Command);
+            Assert.Same(vm.NudgeLaterCommand, steps[1].Command);
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.NudgeEarlier"), ToolTip.GetTip(steps[0]));
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.NudgeLater"), ToolTip.GetTip(steps[1]));
+
+            var start = vm.ReviewLines.Select(l => l.Start).ToList();
+            steps[1].Command!.Execute(null);
+            Assert.Equal(start.Select(s => s + TimeSpan.FromMilliseconds(100)), vm.ReviewLines.Select(l => l.Start));
+            steps[0].Command!.Execute(null);
+            Assert.Equal(start, vm.ReviewLines.Select(l => l.Start));
+        }
+        finally { win.Close(); }
+    }
+
     /// <summary>Holds each song until the test says Finish; the lines are the song's own.</summary>
     private sealed class GateEngine(string root) : ILyricsStudioEngine
     {
