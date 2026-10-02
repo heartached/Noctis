@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="using:System"
         xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.LyricsSearchDialog"
@@ -26,10 +27,22 @@
         <Style Selector="Button.dialog-close:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+
+        <!-- Query fields: the Metadata window's white-outlined pills (metadata-info-field). -->
         <Style Selector="ComboBox.pill">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Padding" Value="12,7" />
             <Setter Property="FontSize" Value="13" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+        </Style>
+        <Style Selector="ComboBox.pill /template/ Border#Background">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBox.pill /template/ Border#HighlightBackground">
+            <Setter Property="CornerRadius" Value="999" />
         </Style>
         <Style Selector="ComboBox.pill ComboBoxItem">
             <Setter Property="Margin" Value="4,1" />
@@ -41,12 +54,30 @@
         </Style>
         <Style Selector="TextBox.pill">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Padding" Value="12,7" />
             <Setter Property="FontSize" Value="13" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
         </Style>
         <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
+        <Style Selector="TextBox.pill:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <Style Selector="TextBox.pill:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+
         <Style Selector="ListBox.results">
             <Setter Property="Background" Value="Transparent" />
         </Style>
@@ -60,50 +91,67 @@
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="18"
+    <!-- Dim overlay + card fade/scale in on open and back out before closing,
+         the same 0.18 s motion as the Remove from Library dialog. -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <Border x:Name="DialogCard"
+                CornerRadius="18"
                 ClipToBounds="True"
                 Background="{DynamicResource AppMainBackground}"
                 Width="600"
-                Height="480"
+                Height="460"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
             <DockPanel>
-                <!-- Header: title, then the song with its E badge; round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="20,14,14,4">
-                    <StackPanel Spacing="3" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T LyricsSearch.Title}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                            <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
-                                       MaxWidth="260" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                            <Border Classes="explicit-badge compact"
-                                    IsVisible="{Binding IsExplicit}"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="E"
-                                           Classes="explicit-badge-text compact"
-                                           FontSize="8"
-                                           Opacity="0.9" />
-                            </Border>
-                            <TextBlock Text="{Binding TrackArtist, StringFormat='— {0}'}" FontSize="12" Opacity="0.55"
-                                       MaxWidth="200" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                       IsVisible="{Binding HasTrackArtist}" />
-                        </StackPanel>
-                    </StackPanel>
+                <!-- Header: the title, round X at the top-right. -->
+                <Panel DockPanel.Dock="Top" Margin="20,14,14,0">
+                    <TextBlock Text="{loc:T LyricsSearch.Title}" FontSize="17" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                     <Button Classes="dialog-close" Command="{Binding CloseCommand}"
                             ToolTip.Tip="{loc:T Common.Close}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top">
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource DismissIcon}" Width="11" Height="11" />
                     </Button>
                 </Panel>
 
                 <!-- Query row: source picker, artist, title, Search. -->
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="150,6,*,6,*,6,Auto" Margin="20,10,20,10">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="184,6,*,6,*,6,Auto" Margin="20,12,20,10">
                     <ComboBox Grid.Column="0" Classes="pill"
                               ItemsSource="{Binding Sources}"
                               SelectedItem="{Binding SelectedSource}"
                               ToolTip.Tip="{loc:T LyricsSearch.Hint}"
-                              HorizontalAlignment="Stretch" />
+                              HorizontalAlignment="Stretch">
+                        <!-- Trim instead of hard-clipping a long name at the chevron. -->
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <TextBox Grid.Column="2" Classes="pill" Text="{Binding Artist}"
                              PlaceholderText="{loc:T LyricsSearch.ArtistWatermark}" />
                     <TextBox Grid.Column="4" Classes="pill" Text="{Binding Title}"
