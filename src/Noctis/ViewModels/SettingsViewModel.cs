@@ -4492,16 +4492,19 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _lyricsKawarpBlur = 6;
     public bool IsKawarpStyle => LyricsFlowingLightEnabled && FlowingStyles.IsKawarp(LyricsFlowingStyle);
 
+    // Slider-driven: push just this value live and persist on the trailing edge
+    // (QueueSettingsSave). A full ApplyPlayerSettings + SaveAsync per drag sample made
+    // the thumb stutter.
     partial void OnLyricsKawarpWarpChanged(double value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsKawarpWarp = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnLyricsKawarpBlurChanged(int value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsKawarpBlur = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     /// <summary>Drift knobs (GitHub #111), percent of the stock look — shown while a Drift style is active.</summary>
@@ -4512,20 +4515,20 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnLyricsDriftMovementChanged(int value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsDriftMovement = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnLyricsDriftSaturationChanged(int value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsDriftSaturation = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnLyricsDriftBlurChanged(int value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsDriftBlur = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnPluginsChanged(PluginHost? oldValue, PluginHost? newValue)
