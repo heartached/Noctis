@@ -201,16 +201,44 @@
             <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="Opacity" Value="1" />
         </Style>
+        <!-- Words toggle: a pill beside the time pill, same fill and height, so the pair reads as
+             the line's controls (it was a dim 10px chevron at the far end of the row, 10-01). -->
         <Style Selector="Button.word-toggle">
-            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Padding" Value="9,5" />
+            <Setter Property="MinWidth" Value="38" />
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="Background" Value="#22FFFFFF" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="MinHeight" Value="0" />
         </Style>
-        <Style Selector="Button.word-toggle:pointerover">
+        <Style Selector="Button.word-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                         Button.word-toggle.open /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#38FFFFFF" />
+        </Style>
+        <Style Selector="Button.word-toggle:pointerover, Button.word-toggle:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <!-- The chevron turns with the fold, on its timing (CollapsibleContent Fold: 220 ms cubic
+             in-out). A transition, never a keyframe animation: those cannot drive RenderTransform.
+             The rest pose is a style, not a local value, or the .open style could never win. -->
+        <Style Selector="Button.word-toggle PathIcon.words-chevron">
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseInOut />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.word-toggle.open PathIcon.words-chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)" />
+        </Style>
+        <Style Selector="Button.word-toggle:pointerover PathIcon.words-chevron, Button.word-toggle.open PathIcon.words-chevron">
             <Setter Property="Opacity" Value="1" />
         </Style>
         <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
@@ -773,65 +801,73 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ReviewLine">
                                         <Border Classes="review-line" Classes.low="{Binding IsLow}" Classes.edit-error="{Binding HasEditError}">
-                                            <StackPanel Spacing="4">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                    <Button Grid.Column="0" Classes="time-pill line-time" VerticalAlignment="Center"
-                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).PlayFromLineCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip.Tip="{loc:T LyricsStudio.PlayFromHere}">
-                                                        <TextBlock Text="{Binding TimeText}" />
-                                                    </Button>
-                                                    <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
-                                                    <TextBox Grid.Column="1" Classes="line-edit" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
-                                                             KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" />
-                                                    <Button Grid.Column="2" Classes="word-toggle" VerticalAlignment="Center"
-                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).ToggleWordsCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip.Tip="{loc:T LyricsStudio.WordsTip}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                                            <Ellipse Width="5" Height="5" VerticalAlignment="Center" IsVisible="{Binding HasWordTimings}" Fill="{DynamicResource AccentColorBrush}" />
-                                                            <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </Grid>
-                                                <TextBlock Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
-                                                           TextWrapping="Wrap" Margin="82,0,0,0" />
-                                                <!-- Word strip: one chip per word, click = select + hear it -->
-                                                <StackPanel Spacing="6" Margin="4,0,0,2" IsVisible="{Binding IsExpanded}">
-                                                    <ItemsControl ItemsSource="{Binding Words}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate x:DataType="vm:ReviewWord">
-                                                                <Button Classes="word-chip" Margin="0,0,4,4"
-                                                                        Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
-                                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
-                                                                        CommandParameter="{Binding}">
-                                                                    <StackPanel Spacing="1">
-                                                                        <TextBlock Text="{Binding Text}" FontSize="12" />
-                                                                        <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
-                                                                    </StackPanel>
-                                                                </Button>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordEarlierCommand}"
-                                                                IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordEarlier}">
-                                                            <TextBlock Text="−50ms" />
-                                                        </Button>
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordLaterCommand}"
-                                                                IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordLater}">
-                                                            <TextBlock Text="+50ms" />
-                                                        </Button>
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
-                                                                CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
-                                                            <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
-                                                        </Button>
+                                            <!-- Time | words toggle | line; the error and the word strip sit under the line's
+                                                 text column so they read as the line's own. No row spacing: the strip's gap is
+                                                 its body margin, inside the folding height (a panel gap would snap shut at the
+                                                 end of the fold). -->
+                                            <Grid ColumnDefinitions="Auto,Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6">
+                                                <Button Grid.Column="0" Classes="time-pill line-time" VerticalAlignment="Center"
+                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).PlayFromLineCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.PlayFromHere}">
+                                                    <TextBlock Text="{Binding TimeText}" />
+                                                </Button>
+                                                <!-- Words toggle (10-01): beside the time it belongs with, a pill-sized target; the
+                                                     accent dot = the line has word timings; the chevron turns as the strip opens. -->
+                                                <Button Grid.Column="1" Classes="word-toggle" Classes.open="{Binding IsExpanded}" VerticalAlignment="Center"
+                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).ToggleWordsCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.WordsTip}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <Ellipse Classes="words-dot" Width="6" Height="6" VerticalAlignment="Center"
+                                                                 IsVisible="{Binding HasWordTimings}" Fill="{DynamicResource AccentColorBrush}" />
+                                                        <PathIcon Classes="words-chevron" Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center" />
                                                     </StackPanel>
-                                                </StackPanel>
-                                            </StackPanel>
+                                                </Button>
+                                                <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
+                                                <TextBox Grid.Column="2" Classes="line-edit" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                         KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" />
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
+                                                           TextWrapping="Wrap" Margin="6,4,0,0" />
+                                                <!-- Word strip: one chip per word, click = select + hear it. Folds open and shut like
+                                                     the Settings sub-blocks; shut, it is not measured, so its chips are never built. -->
+                                                <controls:CollapsibleContent Grid.Row="2" Grid.Column="2" IsOpen="{Binding IsExpanded}" Lift="6">
+                                                    <StackPanel Spacing="6" Margin="2,6,0,4">
+                                                        <ItemsControl ItemsSource="{Binding Words}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:ReviewWord">
+                                                                    <Button Classes="word-chip" Margin="0,0,4,4"
+                                                                            Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
+                                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
+                                                                            CommandParameter="{Binding}">
+                                                                        <StackPanel Spacing="1">
+                                                                            <TextBlock Text="{Binding Text}" FontSize="12" />
+                                                                            <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordEarlierCommand}"
+                                                                    IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordEarlier}">
+                                                                <TextBlock Text="−50ms" />
+                                                            </Button>
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordLaterCommand}"
+                                                                    IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordLater}">
+                                                                <TextBlock Text="+50ms" />
+                                                            </Button>
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
+                                                                    CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
+                                                                <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </controls:CollapsibleContent>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

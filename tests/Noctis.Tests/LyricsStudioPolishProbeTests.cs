@@ -62,6 +62,7 @@ public class LyricsStudioPolishProbeTests : IDisposable
         // A line's word strip open.
         {
             var vm = Review(preview: true);
+            foreach (var i in new[] { 0, 1, 3 }) vm.ReviewLines[i].HasWordTimings = true; // the accent dots
             vm.ToggleWordsCommand.Execute(vm.ReviewLines[0]);
             vm.SelectWordCommand.Execute(vm.ReviewLines[0].Words[1]);
             Capture(vm, "review-words-open-1100", 1100, 720, showHeader: false);

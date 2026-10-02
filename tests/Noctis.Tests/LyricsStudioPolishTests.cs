@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Ellipse = Avalonia.Controls.Shapes.Ellipse;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
@@ -280,6 +281,154 @@ public class LyricsStudioPolishTests : IDisposable
             Assert.Equal(start.Select(s => s + TimeSpan.FromMilliseconds(100)), vm.ReviewLines.Select(l => l.Start));
             steps[0].Command!.Execute(null);
             Assert.Equal(start, vm.ReviewLines.Select(l => l.Start));
+        }
+        finally { win.Close(); }
+    }
+
+    // ── D: the per-line words toggle and the word strip ──────────────────
+
+    private static Border Row(LyricsStudioPanel panel, int index) =>
+        panel.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("review-line")).ElementAt(index);
+
+    private static Button WordToggle(Border row) => row.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("word-toggle"));
+
+    private static Noctis.Controls.CollapsibleContent Strip(Border row) =>
+        row.GetVisualDescendants().OfType<Noctis.Controls.CollapsibleContent>().Single();
+
+    private static int RealizedChips(Control root) =>
+        root.GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("word-chip"));
+
+    /// <summary>Transitions run off the wall clock: frames have to be spaced in real time.</summary>
+    private static void Pump(int frames)
+    {
+        for (var i = 0; i < frames; i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Thread.Sleep(16);
+        }
+    }
+
+    /// <summary>
+    /// The toggle sits right after the time pill, before the line's text, as a pill-sized target
+    /// (it was a 10px chevron at the far end of a wide row), and still marks a word-timed line.
+    /// </summary>
+    [AvaloniaFact]
+    public void WordToggle_SitsBetweenTheTimeAndTheText_AsAPillSizedTarget()
+    {
+        var (win, panel, vm) = MountReview(1300);
+        try
+        {
+            vm.ReviewLines[1].HasWordTimings = true;
+            Settle(win);
+            var row = Row(panel, 0);
+            var time = row.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("time-pill"));
+            var text = row.GetVisualDescendants().OfType<TextBox>().Single(t => t.Classes.Contains("line-edit"));
+            var toggle = WordToggle(row);
+            Point Left(Control c) => c.TranslatePoint(new Point(0, 0), row)!.Value;
+
+            Assert.True(Left(toggle).X >= Left(time).X + time.Bounds.Width, "the toggle follows the time pill");
+            Assert.True(Left(toggle).X + toggle.Bounds.Width <= Left(text).X, "the toggle comes before the line's text");
+            Assert.True(Left(text).X - (Left(time).X + time.Bounds.Width) < 60, "the text stays close to the time");
+            Assert.True(toggle.Bounds.Width >= 32 && toggle.Bounds.Height >= 20, $"toggle is {toggle.Bounds.Size}");
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.WordsTip"), ToolTip.GetTip(toggle));
+
+            Ellipse Dot(int i) => WordToggle(Row(panel, i)).GetVisualDescendants().OfType<Ellipse>().Single(e => e.Classes.Contains("words-dot"));
+            Assert.False(Dot(0).IsVisible); // line-level timings only
+            Assert.True(Dot(1).IsVisible);  // this line has its words timed
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>
+    /// The word strip folds open and shut (CollapsibleContent, not a snap), the chevron turns
+    /// 180° with it and back, and the row ends at its shut height with no leftover gap.
+    /// </summary>
+    [AvaloniaFact]
+    public void WordStrip_FoldsOpenAndShut_AndTheChevronTurns()
+    {
+        var (win, panel, vm) = MountReview(1300);
+        try
+        {
+            Pump(4); // the fold arms its transition once loaded
+            var row = Row(panel, 0);
+            var shutHeight = row.Bounds.Height;
+            var toggle = WordToggle(row);
+            var chevron = toggle.GetVisualDescendants().OfType<PathIcon>().Single(p => p.Classes.Contains("words-chevron"));
+            var strip = Strip(row);
+            double Turn() => chevron.RenderTransform!.Value.M11; // cos(angle): 1 at rest, −1 turned
+            Assert.False(strip.IsVisible);
+            Assert.Equal(1, Turn(), 3);
+
+            toggle.Command!.Execute(toggle.CommandParameter);
+            Assert.True(vm.ReviewLines[0].IsExpanded);
+            Assert.Contains("open", toggle.Classes);
+            Pump(3);
+            Assert.InRange(strip.Reveal, 0.001, 0.999); // gliding, not snapped open
+            Pump(30);
+            Settle(win);
+            Assert.Equal(1, strip.Reveal, 2);
+            Assert.Equal(-1, Turn(), 2);
+            Assert.True(row.Bounds.Height > shutHeight + 20, "the strip opened under the line");
+            Assert.True(RealizedChips(row) > 0);
+
+            toggle.Command!.Execute(toggle.CommandParameter);
+            Pump(3);
+            Assert.InRange(strip.Reveal, 0.001, 0.999);
+            Pump(30);
+            Settle(win);
+            Assert.Equal(0, strip.Reveal, 2);
+            Assert.False(strip.IsVisible);
+            Assert.Equal(1, Turn(), 2);
+            Assert.Equal(shutHeight, row.Bounds.Height, 1);
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>
+    /// The fold's last frame must not jump: the strip's gap lives inside its folding body, so the
+    /// row is the same height one hair before shut as when shut (a panel Spacing gap snapped).
+    /// </summary>
+    [AvaloniaFact]
+    public void WordStrip_LastFoldFrame_DoesNotJump()
+    {
+        var (win, panel, vm) = MountReview(1300);
+        try
+        {
+            var row = Row(panel, 0);
+            var strip = Strip(row);
+            var shut = row.Bounds.Height;
+            vm.ReviewLines[0].IsExpanded = true;
+            Settle(win);
+            strip.Reveal = 0.001; // the frame before the fold lands
+            Settle(win);
+            Assert.True(row.Bounds.Height - shut <= 1.0, $"the row jumps {row.Bounds.Height - shut:F1}px as the fold lands");
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>
+    /// A long song's review builds no word chips until a line is opened, and then only that
+    /// line's: a shut strip is never measured.
+    /// </summary>
+    [AvaloniaFact]
+    public void ShutWordStrips_BuildNoChips_UntilALineOpens()
+    {
+        var path = Path.Combine(_root, "long.mp3");
+        File.WriteAllText(Path.ChangeExtension(path, ".lrc"),
+            string.Concat(Enumerable.Range(0, 80).Select(i => $"[{i / 60:00}:{i % 60:00}.00]line number {i} goes here\n")));
+        var vm = Studio(new GateEngine(_root), new Track { Title = "Long", Artist = "A", FilePath = path, Duration = TimeSpan.FromMinutes(3) });
+        var (win, panel) = Mount(vm, 1300, showHeader: false);
+        try
+        {
+            vm.Selected = vm.Queue[0];
+            Settle(win);
+            Assert.Equal(80, vm.ReviewLines.Count);
+            Assert.Equal(0, RealizedChips(panel));
+
+            vm.ToggleWordsCommand.Execute(vm.ReviewLines[3]);
+            Settle(win);
+            Assert.Equal(vm.ReviewLines[3].Words.Count, RealizedChips(panel));
         }
         finally { win.Close(); }
     }
