@@ -2352,7 +2352,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private double _queueBandStartRow;
     private Point _queueBandLastPos;
     private int[]? _queueBandKeep;
-    private DispatcherTimer? _queueBandScrollTimer;
+    // Band auto-scroll runs on the compositor frame clock (one step per rendered frame) —
+    // a 16 ms DispatcherTimer on Windows lands on the 15.6 ms USER-timer grid and ticked at
+    // 41–48/s with uneven 16/31 ms steps. One frame in flight at a time; the loop ends
+    // itself when the band is released.
+    private bool _queueBandFrameQueued;
+    private long _queueBandLastFrameTicks;
 
     /// <summary>First on-screen realized row: its index, its top (margin included) in
     /// <paramref name="listBox"/> coordinates, and the row pitch.</summary>
@@ -2415,8 +2420,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 return;
             _queueBandActive = true;
             e.Pointer.Capture(listBox);
-            _queueBandScrollTimer ??= CreateQueueBandScrollTimer();
-            _queueBandScrollTimer.Start();
+            _queueBandLastFrameTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            QueueBandFrameRequest();
         }
         _queueBandLastPos = pos;
         UpdateQueueBand(listBox);
@@ -2474,30 +2479,42 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         marquee.IsVisible = true;
     }
 
-    private DispatcherTimer CreateQueueBandScrollTimer()
+    private void QueueBandFrameRequest()
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        timer.Tick += (_, _) =>
+        if (!_queueBandActive || _queueBandFrameQueued) return;
+        _queueBandFrameQueued = true;
+        RequestAnimationFrame(QueueBandFrame);
+    }
+
+    private void QueueBandFrame(TimeSpan _)
+    {
+        _queueBandFrameQueued = false;
+        if (!_queueBandActive) return;
+
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        // Real elapsed time, clamped so a stalled UI thread can't produce one giant jump.
+        var dt = Math.Min((now - _queueBandLastFrameTicks) / (double)System.Diagnostics.Stopwatch.Frequency, 0.1);
+        _queueBandLastFrameTicks = now;
+
+        if (this.FindControl<ListBox>("QueuePopupListBox") is { } listBox
+            && listBox.FindDescendantOfType<ScrollViewer>() is { } scroller)
         {
-            if (!_queueBandActive
-                || this.FindControl<ListBox>("QueuePopupListBox") is not { } listBox
-                || listBox.FindDescendantOfType<ScrollViewer>() is not { } scroller)
-                return;
-            var y = _queueBandLastPos.Y;
-            var height = listBox.Bounds.Height;
-            var depth = y < QueueBandEdge ? y - QueueBandEdge
-                : y > height - QueueBandEdge ? y - (height - QueueBandEdge)
-                : 0;
-            if (depth == 0) return;
-            var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
-            var next = Math.Clamp(scroller.Offset.Y + Math.Clamp(depth, -60, 60) * 0.5, 0, max);
-            if (Math.Abs(next - scroller.Offset.Y) < 0.5) return;
-            scroller.Offset = scroller.Offset.WithY(next);
-            // Realize/arrange the rows at the new offset before measuring off them.
-            listBox.UpdateLayout();
-            UpdateQueueBand(listBox);
-        };
-        return timer;
+            var delta = QueueBandAutoScroll.Step(_queueBandLastPos.Y, listBox.Bounds.Height, QueueBandEdge, dt);
+            if (delta != 0)
+            {
+                var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
+                var next = Math.Clamp(scroller.Offset.Y + delta, 0, max);
+                if (Math.Abs(next - scroller.Offset.Y) > 0.01)
+                {
+                    scroller.Offset = scroller.Offset.WithY(next);
+                    // Realize/arrange the rows at the new offset before measuring off them.
+                    listBox.UpdateLayout();
+                    UpdateQueueBand(listBox);
+                }
+            }
+        }
+
+        QueueBandFrameRequest();
     }
 
     private void EndQueueBand()
@@ -2505,7 +2522,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _queueBandPending = false;
         _queueBandActive = false;
         _queueBandKeep = null;
-        _queueBandScrollTimer?.Stop();
         if (this.FindControl<Border>("QueueMarquee") is { } marquee)
             marquee.IsVisible = false;
     }
