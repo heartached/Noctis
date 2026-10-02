@@ -163,6 +163,20 @@ public class MiniPlayerFrameClockTests
     }
 
     [AvaloniaFact]
+    public void DrawerGlide_LandsOnTargetAndCallsBack()
+    {
+        var win = ShowWindow();
+        Pump(2);
+        var h0 = win.Height;
+        var landed = false;
+        // Eases Height by (target − _drawerHeight), 0 at start, and calls back once landed.
+        Call(win, "AnimateDrawer", 120.0, (Action)(() => landed = true));
+        PumpFor(400); // > 240 ms glide
+        Assert.True(landed, "onLanded never ran");
+        Assert.Equal(h0 + 120, win.Height, 0.5);
+    }
+
+    [AvaloniaFact]
     public void LyricsChase_RetargetsWithoutSecondLoop()
     {
         var win = ShowWindow();

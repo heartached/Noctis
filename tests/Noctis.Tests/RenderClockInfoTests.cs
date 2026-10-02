@@ -21,4 +21,19 @@ public class RenderClockInfoTests
         Assert.DoesNotContain("unknown", text);
         Assert.Contains("Timer", text); // headless registers a *RenderTimer
     }
+
+    /// <summary>
+    /// Headless registers HeadlessRenderTimer : DefaultRenderTimer, which — like the
+    /// UiThreadRenderTimer that Avalonia.Win32 and Avalonia.X11 fall back to without
+    /// composition — exposes its fixed rate as FramesPerSecond, not DesiredFps. A fixed-rate
+    /// timer must be logged with its rate, never as "(display-synced)".
+    /// </summary>
+    [AvaloniaFact]
+    public void Describe_NamesTheRateOfAFramesPerSecondTimer()
+    {
+        var text = RenderClockInfo.Describe();
+        Assert.DoesNotContain("unknown", text);
+        Assert.Contains("HeadlessRenderTimer", text);
+        Assert.EndsWith(" Hz", text);
+    }
 }

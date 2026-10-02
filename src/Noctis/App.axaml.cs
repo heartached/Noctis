@@ -122,14 +122,15 @@ public partial class App : Application
             window.Opened -= LogRenderer;
             try
             {
+                // Which clock drives RequestAnimationFrame / transitions on this machine. Logged
+                // before the GPU-interop probe, whose throw would otherwise take this line with it.
+                DebugLog.Write("Startup", $"frame clock: {Helpers.RenderClockInfo.Describe()}");
                 // GPU backends (ANGLE/D3D11, Vulkan) expose GPU interop; the software renderer does not.
                 var compositor = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(window)?.Compositor;
                 var interop = compositor == null ? null : await compositor.TryGetCompositionGpuInterop();
                 DebugLog.Write("Startup", interop != null
                     ? $"renderer: GPU ({interop.GetType().Name})"
                     : "renderer: software (no GPU interop) — scroll frames are rasterized on the CPU");
-                // Which clock drives RequestAnimationFrame / transitions on this machine.
-                DebugLog.Write("Startup", $"frame clock: {Helpers.RenderClockInfo.Describe()}");
             }
             catch (Exception ex)
             {

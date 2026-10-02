@@ -639,10 +639,14 @@ public partial class MiniPlayerWindow : Window
             Width = Math.Round(fromWidth + (targetWidth - fromWidth) * eased);
             Height = Math.Round(fromHeight + (targetHeight - fromHeight) * eased);
             // Same eased value as the size, in the same frame, so an anchored edge holds still.
+            // Only when the pixel changed: Position's setter moves the native window unconditionally.
             if (toPosition is { } to)
-                Position = new PixelPoint(
+            {
+                var p = new PixelPoint(
                     (int)Math.Round(fromPosition.X + (to.X - fromPosition.X) * eased),
                     (int)Math.Round(fromPosition.Y + (to.Y - fromPosition.Y) * eased));
+                if (p != Position) Position = p;
+            }
 
             if (t < 1) { RequestAnimationFrame(Frame); return; }
 

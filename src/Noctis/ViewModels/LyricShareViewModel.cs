@@ -644,7 +644,6 @@ public partial class LyricShareViewModel : ViewModelBase
 
         if (_animTimer == null)
         {
-            // ~60 Hz: matches typical display refresh so the sweep never visibly steps.
             // 30 Hz, not 60. Each tick re-renders the whole Skia card and copies the
             // surface back (1.17 MB Square / 2.07 MB Story) on the UI thread, and
             // DrawKaraokeRows re-measures every row through SplitFallbackRuns — which
