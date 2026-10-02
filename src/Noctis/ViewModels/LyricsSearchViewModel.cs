@@ -44,9 +44,6 @@ public partial class LyricsSearchViewModel : ViewModelBase
         _selectedSource = AutoLabel;
         _artist = LyricsSearchSelector.IsUnknownArtist(track.Artist) ? string.Empty : track.Artist ?? string.Empty;
         _title = track.Title ?? string.Empty;
-        TrackTitle = track.Title ?? string.Empty;
-        TrackArtist = _artist;
-        IsExplicit = track.IsExplicit;
     }
 
     /// <summary>The picker's first entry: search every Auto source and mark the best answer.</summary>
@@ -54,11 +51,6 @@ public partial class LyricsSearchViewModel : ViewModelBase
 
     public IReadOnlyList<string> Sources { get; }
 
-    /// <summary>Header: the song's title, an E badge when explicit, then its artist (empty when unknown).</summary>
-    public string TrackTitle { get; }
-    public string TrackArtist { get; }
-    public bool HasTrackArtist => !string.IsNullOrEmpty(TrackArtist);
-    public bool IsExplicit { get; }
 
     public ObservableCollection<LyricsSearchResultRow> Results { get; } = new();
 

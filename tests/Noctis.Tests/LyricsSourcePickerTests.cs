@@ -277,26 +277,6 @@ public class LyricsSourcePickerTests
     }
 
     [AvaloniaFact]
-    public void PickerHeader_CarriesTheTitleTheArtistAndTheExplicitFlag()
-    {
-        IReadOnlyList<string> NoSources() => Array.Empty<string>();
-        LyricsSearchViewModel Picker(Track t) => new(t, NoSources(),
-            () => Task.FromResult(NoSources()),
-            (_, _, _, _) => Task.FromResult<IReadOnlyList<LyricsSourceHit>>(Array.Empty<LyricsSourceHit>()),
-            (_, _) => { });
-
-        var explicitSong = Picker(new Track { Title = "Alright", Artist = "Juice WRLD", IsExplicit = true });
-        Assert.Equal("Alright", explicitSong.TrackTitle);
-        Assert.Equal("Juice WRLD", explicitSong.TrackArtist);
-        Assert.True(explicitSong.HasTrackArtist);
-        Assert.True(explicitSong.IsExplicit);
-
-        var untagged = Picker(new Track { Title = "Demo", Artist = "Unknown Artist" });
-        Assert.False(untagged.IsExplicit);
-        Assert.False(untagged.HasTrackArtist); // no "— Unknown Artist" in the header
-    }
-
-    [AvaloniaFact]
     public async Task SearchLyricsForTrack_WithLyricsAlreadyShown_OpensThePicker_WithoutLyrics_SearchesAsBefore()
     {
         var lrcLib = new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) };
@@ -318,7 +298,7 @@ public class LyricsSourcePickerTests
             vm.SearchLyricsForTrack(track);
             await PumpUntilAsync(() => opened != null);
             Assert.NotNull(opened);
-            Assert.Equal("Test Song", opened!.TrackTitle);
+            Assert.Equal("Test Song", opened!.Title);
         }
         finally { Cleanup(track); }
     }
@@ -336,7 +316,7 @@ public class LyricsSourcePickerTests
             });
 
         var searches = 0;
-        var vm = new LyricsSearchViewModel(new Track { Title = "Test Song", Artist = "Test Artist", IsExplicit = true }, new[] { "LRCLIB", "Kugou" },
+        var vm = new LyricsSearchViewModel(new Track { Title = "Test Song", Artist = "Test Artist" }, new[] { "LRCLIB", "Kugou" },
             () => Task.FromResult<IReadOnlyList<string>>(new[] { "LRCLIB", "Kugou" }),
             (_, _, _, _) =>
             {
@@ -364,7 +344,23 @@ public class LyricsSourcePickerTests
             Assert.Contains(window.GetVisualDescendants().OfType<SelectableTextBlock>(), t => t.Text?.Contains("word timed") == true);
             Assert.Equal(vm.AutoLabel, picker.SelectedItem);
             Assert.Equal(1, searches); // binding the picker must not start a second search
-            Assert.Contains(window.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("explicit-badge") && b.IsEffectivelyVisible);
+
+            // Opens like the Remove from Library dialog: overlay fades to 1, card scales to 1.
+            Dispatcher.UIThread.RunJobs();
+            var overlay = window.FindControl<Border>("DialogOverlay")!;
+            var card = window.FindControl<Border>("DialogCard")!;
+            // Base values: the transitions animate toward these.
+            Assert.Equal(1, overlay.GetBaseValue(Visual.OpacityProperty).Value);
+            Assert.Equal(1, card.GetBaseValue(Visual.RenderTransformProperty).Value!.Value.M11);
+
+            // Close animates out first, then the window closes.
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+            vm.CloseCommand.Execute(null);
+            Assert.Equal(0, overlay.GetBaseValue(Visual.OpacityProperty).Value);
+            Assert.False(closed);
+            await PumpUntilAsync(() => closed, 2000);
+            Assert.True(closed);
         }
         finally { window.Close(); }
     }
