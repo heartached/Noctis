@@ -924,10 +924,8 @@
   <data name="Lyrics.Gradient" xml:space="preserve"><value>Gradient</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Search Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Searching for Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
-  <data name="Lyrics.ChooseSource" xml:space="preserve"><value>Choose Source</value><comment>Button in LyricsView.axaml — opens the Search Lyrics dialog with a source picker</comment></data>
   <data name="LyricsSearch.Title" xml:space="preserve"><value>Search Lyrics</value><comment>LyricsSearchDialog.axaml title</comment></data>
-  <data name="LyricsSearch.Hint" xml:space="preserve"><value>Auto searches the sources switched on in Settings and picks word-synced over synced over plain.</value><comment>LyricsSearchDialog.axaml subtitle</comment></data>
-  <data name="LyricsSearch.Source" xml:space="preserve"><value>Lyrics source</value><comment>Tooltip on the source picker in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Hint" xml:space="preserve"><value>Auto searches the sources switched on in Settings and picks word-synced over synced over plain.</value><comment>Tooltip on the source picker in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.Auto" xml:space="preserve"><value>Auto (best match)</value><comment>First source-picker entry (LyricsSearchViewModel)</comment></data>
   <data name="LyricsSearch.ArtistWatermark" xml:space="preserve"><value>Artist</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
   <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Title</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>

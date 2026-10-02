@@ -2039,7 +2039,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Called from context menus to search lyrics for a specific track.
-    /// Loads the track first, and if no local lyrics found, triggers online search.
+    /// Loads the track first, and if no local lyrics found, triggers online search;
+    /// a track that already has lyrics opens the Search Lyrics dialog to pick another source.
     /// </summary>
     public void SearchLyricsForTrack(Track track)
     {
@@ -2058,6 +2059,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // If no local lyrics were found, trigger online search automatically
             if (ShowSearchButton)
                 SearchLyricsCommand.Execute(null);
+            else if (!IsSearching)
+                await OpenLyricsSearchCommand.ExecuteAsync(null);
         });
     }
 

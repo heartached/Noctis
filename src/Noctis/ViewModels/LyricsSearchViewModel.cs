@@ -44,7 +44,9 @@ public partial class LyricsSearchViewModel : ViewModelBase
         _selectedSource = AutoLabel;
         _artist = LyricsSearchSelector.IsUnknownArtist(track.Artist) ? string.Empty : track.Artist ?? string.Empty;
         _title = track.Title ?? string.Empty;
-        TrackLabel = string.IsNullOrWhiteSpace(track.Artist) ? track.Title ?? string.Empty : $"{track.Title} — {track.Artist}";
+        TrackTitle = track.Title ?? string.Empty;
+        TrackArtist = _artist;
+        IsExplicit = track.IsExplicit;
     }
 
     /// <summary>The picker's first entry: search every Auto source and mark the best answer.</summary>
@@ -52,7 +54,11 @@ public partial class LyricsSearchViewModel : ViewModelBase
 
     public IReadOnlyList<string> Sources { get; }
 
-    public string TrackLabel { get; }
+    /// <summary>Header: the song's title, an E badge when explicit, then its artist (empty when unknown).</summary>
+    public string TrackTitle { get; }
+    public string TrackArtist { get; }
+    public bool HasTrackArtist => !string.IsNullOrEmpty(TrackArtist);
+    public bool IsExplicit { get; }
 
     public ObservableCollection<LyricsSearchResultRow> Results { get; } = new();
 
@@ -63,11 +69,14 @@ public partial class LyricsSearchViewModel : ViewModelBase
     [ObservableProperty] private string _statusText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PreviewText), nameof(HasPreview))]
+    [NotifyPropertyChangedFor(nameof(PreviewText), nameof(HasPreview), nameof(PreviewDetail))]
     [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
     private LyricsSearchResultRow? _selectedResult;
 
     public string PreviewText => SelectedResult?.PreviewText ?? string.Empty;
+
+    /// <summary>What the selected answer matched ("Title — Artist · m:ss"), shown above its preview.</summary>
+    public string PreviewDetail => SelectedResult?.Detail ?? string.Empty;
     public bool HasPreview => !string.IsNullOrWhiteSpace(PreviewText);
 
     public event EventHandler? Closed;
@@ -192,6 +201,9 @@ public sealed class LyricsSearchResultRow
     public LrcLibResult? Result { get; }
     public bool IsBest { get; }
     public bool HasLyrics => Result is { HasLyrics: true };
+
+    /// <summary>Rows that found nothing are dimmed so the answers stand out.</summary>
+    public double RowOpacity => HasLyrics ? 1.0 : 0.45;
 
     /// <summary>"Word-synced", "Synced", "Plain", or why there is nothing.</summary>
     public string FormatLabel { get; }

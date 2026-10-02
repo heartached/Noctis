@@ -276,6 +276,53 @@ public class LyricsSourcePickerTests
         finally { Cleanup(track); }
     }
 
+    [AvaloniaFact]
+    public void PickerHeader_CarriesTheTitleTheArtistAndTheExplicitFlag()
+    {
+        IReadOnlyList<string> NoSources() => Array.Empty<string>();
+        LyricsSearchViewModel Picker(Track t) => new(t, NoSources(),
+            () => Task.FromResult(NoSources()),
+            (_, _, _, _) => Task.FromResult<IReadOnlyList<LyricsSourceHit>>(Array.Empty<LyricsSourceHit>()),
+            (_, _) => { });
+
+        var explicitSong = Picker(new Track { Title = "Alright", Artist = "Juice WRLD", IsExplicit = true });
+        Assert.Equal("Alright", explicitSong.TrackTitle);
+        Assert.Equal("Juice WRLD", explicitSong.TrackArtist);
+        Assert.True(explicitSong.HasTrackArtist);
+        Assert.True(explicitSong.IsExplicit);
+
+        var untagged = Picker(new Track { Title = "Demo", Artist = "Unknown Artist" });
+        Assert.False(untagged.IsExplicit);
+        Assert.False(untagged.HasTrackArtist); // no "— Unknown Artist" in the header
+    }
+
+    [AvaloniaFact]
+    public async Task SearchLyricsForTrack_WithLyricsAlreadyShown_OpensThePicker_WithoutLyrics_SearchesAsBefore()
+    {
+        var lrcLib = new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) };
+        var (vm, track, _) = Mount(lrcLib);
+        LyricsSearchViewModel? opened = null;
+        vm.ShowLyricsSearchDialog = picker => { opened = picker; return Task.CompletedTask; };
+        var lrcPath = Sidecar(track, ".lrc");
+
+        try
+        {
+            // No lyrics yet: the menu's Search Lyrics fetches them straight away, no dialog.
+            vm.SearchLyricsForTrack(track);
+            await PumpUntilAsync(() => vm.LyricsSourceName == "LRCLIB");
+            Assert.Equal("LRCLIB", vm.LyricsSourceName);
+            Assert.Null(opened);
+
+            // Lyrics on the page now: the same menu item opens the source picker for this song.
+            File.WriteAllText(lrcPath, "[00:05.00]my own timing");
+            vm.SearchLyricsForTrack(track);
+            await PumpUntilAsync(() => opened != null);
+            Assert.NotNull(opened);
+            Assert.Equal("Test Song", opened!.TrackTitle);
+        }
+        finally { Cleanup(track); }
+    }
+
     // ── Dialog ──
 
     [AvaloniaFact]
@@ -289,7 +336,7 @@ public class LyricsSourcePickerTests
             });
 
         var searches = 0;
-        var vm = new LyricsSearchViewModel(new Track { Title = "Test Song", Artist = "Test Artist" }, new[] { "LRCLIB", "Kugou" },
+        var vm = new LyricsSearchViewModel(new Track { Title = "Test Song", Artist = "Test Artist", IsExplicit = true }, new[] { "LRCLIB", "Kugou" },
             () => Task.FromResult<IReadOnlyList<string>>(new[] { "LRCLIB", "Kugou" }),
             (_, _, _, _) =>
             {
@@ -317,6 +364,7 @@ public class LyricsSourcePickerTests
             Assert.Contains(window.GetVisualDescendants().OfType<SelectableTextBlock>(), t => t.Text?.Contains("word timed") == true);
             Assert.Equal(vm.AutoLabel, picker.SelectedItem);
             Assert.Equal(1, searches); // binding the picker must not start a second search
+            Assert.Contains(window.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("explicit-badge") && b.IsEffectivelyVisible);
         }
         finally { window.Close(); }
     }
