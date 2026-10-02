@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "plugins": [
+    {
+      "id": "dev.noctis.plugins.mixxx",
+      "name": "Mixxx",
+      "author": "Noctis",
+      "description": "Imports the BPM and musical key that Mixxx found for your tracks. Only Noctis is changed, never your files.",
+      "version": "1.0.0",
+      "minAppVersion": "1.5.9",
+      "type": "dotnet",
+      "platforms": ["windows", "macos", "linux"],
+      "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.0/Noctis.Plugins.Mixxx-1.0.0.zip",
+      "sha256": "7b7c5ea058ca9f9940c14337975a2430937fc2725b711ef4c63c3eba3c223e02",
+      "size": 11837,
+      "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
+    }
+  ]
+}

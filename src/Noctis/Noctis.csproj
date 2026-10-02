@@ -61,6 +61,11 @@
     <ProjectReference Include="..\Noctis.Core.Server\Noctis.Core.Server.csproj" />
     <ProjectReference Include="..\Noctis.UI\Noctis.UI.csproj" />
   </ItemGroup>
+  <!-- The official plugin list (plugins/index.json), used by Settings → Plugins → Get plugins
+       when the live copy on GitHub cannot be fetched. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\plugins\index.json" LogicalName="Noctis.Plugins.index.json" Link="Assets\plugins-index.json" />
+  </ItemGroup>
 
   <!-- Avalonia UI -->
   <ItemGroup>

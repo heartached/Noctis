@@ -1608,14 +1608,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="ShortcutKeyChip.PressKeys" xml:space="preserve"><value>Press keys…</value><comment>Text in ShortcutKeyChip.axaml</comment></data>
 
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve"><value>Plugins</value></data>
-  <data name="Plugins.Description" xml:space="preserve"><value>Install a plugin from its .zip file, or put its folder in the plugins folder and press Reload.</value></data>
-  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins can do anything Noctis can. Only install ones you trust.</value></data>
   <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityDescription" xml:space="preserve"><value>Let plugins made by other people run. While this is off, plugins stay installed but don't run.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
+  <data name="Plugins.InstalledTitle" xml:space="preserve"><value>Installed</value></data>
   <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Plugins are off. Turn on Community plugins to use them.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
@@ -1683,6 +1681,24 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Updated" xml:space="preserve"><value>Updated {0} to {1}.</value></data>
   <data name="Plugins.AlreadyInstalled" xml:space="preserve"><value>{0} {1} is already installed; this file has version {2}, which is not newer.</value></data>
   <data name="Plugins.InstallFailed" xml:space="preserve"><value>Could not install: {0}</value></data>
+  <data name="Plugins.Get.Title" xml:space="preserve"><value>Get plugins</value></data>
+  <data name="Plugins.Get.Refresh" xml:space="preserve"><value>Refresh list</value></data>
+  <data name="Plugins.Get.Loading" xml:space="preserve"><value>Checking for new plugins…</value></data>
+  <data name="Plugins.Get.Offline" xml:space="preserve"><value>Couldn't reach GitHub. Showing the built-in list.</value></data>
+  <data name="Plugins.Get.Empty" xml:space="preserve"><value>No plugins to show right now.</value></data>
+  <data name="Plugins.Get.Official" xml:space="preserve"><value>Official</value></data>
+  <data name="Plugins.Get.Install" xml:space="preserve"><value>Install</value></data>
+  <data name="Plugins.Get.Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Plugins.Get.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Plugins.Get.RequiresApp" xml:space="preserve"><value>Requires Noctis {0}</value></data>
+  <data name="Plugins.Get.NotForThisOs" xml:space="preserve"><value>Not available on this OS</value></data>
+  <data name="Plugins.Get.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Plugins.Get.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Plugins.Get.Cancelled" xml:space="preserve"><value>Download cancelled.</value></data>
+  <data name="Plugins.Get.DownloadFailed" xml:space="preserve"><value>Download failed. Check your connection and try again.</value></data>
+  <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>The download didn't match the official list, so it wasn't installed.</value></data>
+  <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>This download link isn't allowed, so nothing was installed.</value></data>
+  <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>The download isn't {0} {1}, so it wasn't installed.</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>

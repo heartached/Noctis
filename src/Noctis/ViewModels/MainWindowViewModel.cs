@@ -407,6 +407,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Plugins = new PluginHost(Player, persistence.DataDirectory, () => Settings.GetSettings(),
             () => _ = Settings.SaveAsync(), UpdateService.CurrentVersion.ToString(3), library);
         Settings.Plugins = Plugins;
+        // Get plugins (official list) fetches only when the Plugins page opens.
+        if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
+            Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
         Plugins.NotificationRequested += (_, notice) =>
             TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, $"{notice.PluginName}: {notice.Message}", TimeSpan.FromSeconds(4));
