@@ -128,6 +128,8 @@ public partial class App : Application
                 DebugLog.Write("Startup", interop != null
                     ? $"renderer: GPU ({interop.GetType().Name})"
                     : "renderer: software (no GPU interop) — scroll frames are rasterized on the CPU");
+                // Which clock drives RequestAnimationFrame / transitions on this machine.
+                DebugLog.Write("Startup", $"frame clock: {Helpers.RenderClockInfo.Describe()}");
             }
             catch (Exception ex)
             {

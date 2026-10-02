@@ -64,7 +64,9 @@ public class EqVisualizer : TemplatedControl
     // used to keep running for bars nobody could see. ~30 fps: the motion is time-based
     // (sines and dt-scaled smoothing), so a coarser tick samples the same curves, and
     // every tick costs the whole window a composition frame.
-    internal static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(33);
+    // 30 ms, not 33: Win32 DispatcherTimers fire on the 15.6 ms USER-timer grid and round
+    // UP — 33 ms measured 21.3 ticks/s (47 ms), 30 ms measured 31.7 ticks/s (31.6 ms).
+    internal static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(30);
     internal static readonly TimeSpan HiddenPollInterval = TimeSpan.FromMilliseconds(250);
 
     // Live state: one spectrum band per bar for tonal colour, the beat pulse for the
