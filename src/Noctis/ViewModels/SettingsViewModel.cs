@@ -240,17 +240,29 @@ public partial class SettingsViewModel : ViewModelBase
         await InstallPluginPackageAsync(path);
     }
 
-    /// <summary>Install flow after the file is picked: refuse duplicates, offer an update when newer.</summary>
-    internal async Task InstallPluginPackageAsync(string zipPath)
+    /// <summary>
+    /// Install flow after the file is picked: refuse duplicates, offer an update when newer.
+    /// <paramref name="official"/> is set for a verified Get plugins download: the zip must then
+    /// be that plugin and version, and its Update button already asked, so no second dialog.
+    /// True when the plugin was installed or updated.
+    /// </summary>
+    internal async Task<bool> InstallPluginPackageAsync(string zipPath, PluginCatalogEntry? official = null)
     {
-        if (Plugins is null) return;
+        if (Plugins is null) return false;
         PluginPackage package;
         LoadedPlugin? existing;
         try { (package, existing) = Plugins.InspectPackage(zipPath); }
         catch (PluginInstallException ex)
         {
             ShowPluginStatus(Loc.T("Plugins.InstallFailed", ex.Message));
-            return;
+            return false;
+        }
+
+        if (official is not null && (!string.Equals(package.Manifest.Id, official.Id, StringComparison.OrdinalIgnoreCase)
+                                     || PluginVersion.Compare(package.Manifest.Version, official.Version) != 0))
+        {
+            ShowPluginStatus(Loc.T("Plugins.Get.WrongPackage", official.Name, official.Version));
+            return false;
         }
 
         var allowUpdate = false;
@@ -259,14 +271,17 @@ public partial class SettingsViewModel : ViewModelBase
             if (PluginVersion.Compare(package.Manifest.Version, existing.Version) <= 0)
             {
                 ShowPluginStatus(Loc.T("Plugins.AlreadyInstalled", existing.Name, existing.Version, package.Manifest.Version));
-                return;
+                return false;
             }
-            var update = await ShowPluginDialog(new Views.ConfirmationRequest(
-                Loc.T("Plugins.UpdateBody"),
-                Title: Loc.T("Plugins.UpdateTitle", existing.Name, existing.Version, package.Manifest.Version),
-                ConfirmText: Loc.T("Plugins.UpdateConfirm"),
-                Width: 420));
-            if (!update.Confirmed) return;
+            if (official is null)
+            {
+                var update = await ShowPluginDialog(new Views.ConfirmationRequest(
+                    Loc.T("Plugins.UpdateBody"),
+                    Title: Loc.T("Plugins.UpdateTitle", existing.Name, existing.Version, package.Manifest.Version),
+                    ConfirmText: Loc.T("Plugins.UpdateConfirm"),
+                    Width: 420));
+                if (!update.Confirmed) return false;
+            }
             allowUpdate = true;
         }
 
@@ -279,6 +294,7 @@ public partial class SettingsViewModel : ViewModelBase
             PluginInstallOutcome.Failed => Loc.T("Plugins.InstallFailed", result.Message),
             _ => result.Message,
         });
+        return result.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
     }
 
     [RelayCommand]
@@ -365,6 +381,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedTabTitle));
         OnPropertyChanged(nameof(SelectedTabDescription));
         OnFeatureTabOpened(value);
+        if (value == TabPlugins) OnPluginsPageOpened();
 
         // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
         // a Connect click, not to persisted state — drop them when navigating tabs so
@@ -4538,6 +4555,7 @@ public partial class SettingsViewModel : ViewModelBase
             oldValue.VisualLayersChanged -= OnPluginVisualLayersChanged;
             oldValue.CommunityPluginsChanged -= OnCommunityPluginsChanged;
             oldValue.Content.Changed -= OnPluginContentChanged;
+            oldValue.Plugins.CollectionChanged -= OnInstalledPluginsChanged;
             oldValue.ConfirmEnable = null;
         }
         if (newValue is not null)
@@ -4545,6 +4563,7 @@ public partial class SettingsViewModel : ViewModelBase
             newValue.VisualLayersChanged += OnPluginVisualLayersChanged;
             newValue.CommunityPluginsChanged += OnCommunityPluginsChanged;
             newValue.Content.Changed += OnPluginContentChanged;
+            newValue.Plugins.CollectionChanged += OnInstalledPluginsChanged;
             newValue.ConfirmEnable = ConfirmEnablePluginAsync;
         }
         SyncCommunityPluginsSwitch();

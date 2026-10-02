@@ -1196,6 +1196,12 @@
         <Style Selector="Border.setting-row.divided">
             <Setter Property="BorderThickness" Value="0,1,0,0"/>
         </Style>
+        <!-- Rows an ItemsControl makes inside a group card (Plugins page): a hairline between them,
+             none above the first. Each row is the only child of its container, so the
+             :nth-child(1) rule above can't tell them apart; the container's index can. -->
+        <Style Selector="ItemsControl.row-list ContentPresenter:nth-child(n+2) > Border.setting-row">
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        </Style>
         <!-- Coming soon cards (AccountFeatures off): shown, disabled, dimmed. -->
         <Style Selector="Border.setting-row.parked">
             <Setter Property="Opacity" Value="0.55"/>
@@ -5439,6 +5445,62 @@
                     <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap"
                                IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
+            </Border>
+
+            <!-- Get plugins: the official list (plugins/index.json), fetched when this page opens. -->
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,6,0,8">
+                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{loc:T Plugins.Get.Loading}" FontSize="11" Opacity="0.45" Margin="10,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsOfficialPluginsLoading}"/>
+                <TextBlock Grid.Column="1" Text="{Binding OfficialPluginsNotice}" FontSize="11" Opacity="0.45" Margin="10,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding HasOfficialPluginsNotice}"/>
+                <Button Grid.Column="2" x:Name="RefreshOfficialPluginsButton"
+                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
+                        ToolTip.Tip="{loc:T Plugins.Get.Refresh}"
+                        Command="{Binding RefreshOfficialPluginsCommand}"
+                        IsEnabled="{Binding !IsOfficialPluginsLoading}">
+                    <PathIcon Data="{StaticResource SyncIcon}" Width="13" Height="13" Opacity="0.7"/>
+                </Button>
+            </Grid>
+            <TextBlock Text="{loc:T Plugins.Get.Empty}" FontSize="12" Opacity="0.5" Margin="22,0,0,10"
+                       IsVisible="{Binding HasNoOfficialPlugins}"/>
+            <Border Classes="setting-card group-card" IsVisible="{Binding !!OfficialPlugins.Count}">
+                <ItemsControl x:Name="OfficialPluginsList" Classes="row-list" ItemsSource="{Binding OfficialPlugins}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OfficialPluginItem">
+                            <Border Classes="setting-row">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0" VerticalAlignment="Center">
+                                        <WrapPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:T Plugins.Get.Official}" FontSize="10.5" Opacity="0.8"/>
+                                            </Border>
+                                        </WrapPanel>
+                                        <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasDescription}"/>
+                                        <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasError}"/>
+                                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
+                                                     Margin="0,4,0,0" IsVisible="{Binding IsBusy}"/>
+                                    </StackPanel>
+                                    <!-- Install / Update (accent), Cancel while downloading, or a disabled
+                                         Installed / Requires Noctis x / Not available on this OS. -->
+                                    <Button Grid.Column="1" Classes.accent-pill="{Binding IsPrimary}" Classes.pill-action="{Binding !IsPrimary}"
+                                            Padding="14,7" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center"
+                                            IsEnabled="{Binding CanClick}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{Binding ButtonText}" FontSize="12" FontWeight="SemiBold"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Border>
 
             <TextBlock Text="{loc:T Plugins.None}" FontSize="12" Opacity="0.5" Margin="22,8"

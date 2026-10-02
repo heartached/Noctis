@@ -408,6 +408,9 @@ public sealed class PluginHost
     /// <summary>Where plugin folders live.</summary>
     public string PluginsDirectory { get; }
 
+    /// <summary>The bare app version ("1.5.9") that minAppVersion is checked against.</summary>
+    public string AppVersion => _appVersion;
+
     /// <summary>Per-plugin data folders, outside the plugin folders so updates keep them.</summary>
     public string PluginDataRoot { get; }
 
