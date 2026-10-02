@@ -6,3 +6,7 @@ src/Noctis/Assets/Icons/*.json  linguist-vendored
 
 # Generated Avalonia build-tasks output isn't authored code.
 src/Noctis/.avalonia-build-tasks/  linguist-generated
+
+# Plugin packages are reproducible (samples/PluginPackage.targets) and plugin.json goes into
+# the zip as checked out, so keep its line endings the same on every OS.
+plugins/*/plugin.json  text eol=lf
