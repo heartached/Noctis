@@ -534,12 +534,16 @@
                          and where the run is in the queue. Stop is in the toolbar. -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" Margin="0,0,16,0" Width="420"
                                 IsVisible="{Binding IsSelectedWorking}">
-                        <!-- Same title + E badge as the queue row and the review head, centred (user ask 09-30). -->
-                        <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
-                            <Border Grid.Column="0" Name="WorkingTitleBox">
+                        <!-- Same title + E badge as the queue row and the review head, centred (user ask 09-30).
+                             The cell spans the column and the star columns centre the pair: the title's
+                             cap is the cell's width minus the badge, so a cell sized to its own content
+                             (HorizontalAlignment=Center) fed the cap back into itself and, seeded at 0
+                             while this view was hidden, showed the badge with no title (10-01). -->
+                        <Grid ColumnDefinitions="*,Auto,Auto,*" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
+                            <Border Grid.Column="1" Name="WorkingTitleBox">
                                 <TextBlock Text="{Binding ReviewTitle}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                             </Border>
-                            <Border Grid.Column="1" Name="WorkingExplicitBadge"
+                            <Border Grid.Column="2" Name="WorkingExplicitBadge"
                                     Background="{DynamicResource IslandExplicitBadge}" CornerRadius="2" Padding="4,0" Height="14"
                                     Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding ReviewIsExplicit}"
                                     ToolTip.Tip="{loc:T PlaybackBar.ExplicitTip}">
