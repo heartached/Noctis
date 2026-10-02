@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -65,4 +66,35 @@ public partial class LyricsStudioPickerDialog : Window
     }
 
     private void OnOverlayWheel(object? sender, PointerWheelEventArgs e) => e.Handled = true;
+
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once per cell and
+    /// stashed in Tag: LayoutUpdated fires after every window layout pass and a cell's children never change.</summary>
+    private sealed record TitleCellChildren(TextBlock Title, Border? ExplicitBadge);
+
+    /// <summary>
+    /// A row's title cell is an Auto,Auto grid so the E badge hugs the title; Auto columns measure
+    /// unbounded, so the title's MaxWidth is capped to the cell minus the badge here and
+    /// TextTrimming does the rest (the AddSongsDialog recipe). A cell not laid out is left alone.
+    /// </summary>
+    private void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (sender is not Grid cell || !cell.IsEffectivelyVisible || cell.Bounds.Width <= 0) return;
+        if (cell.Tag is not TitleCellChildren children)
+        {
+            var title = cell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title is null) return;
+            children = new TitleCellChildren(title, cell.Children.OfType<Border>().FirstOrDefault());
+            cell.Tag = children;
+        }
+
+        var reserved = 0.0;
+        if (children.ExplicitBadge is { IsVisible: true } badge)
+        {
+            var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
+            reserved = width + badge.Margin.Left + badge.Margin.Right;
+        }
+        var max = Math.Max(0, cell.Bounds.Width - reserved);
+        if (Math.Abs(children.Title.MaxWidth - max) > 0.5)
+            children.Title.MaxWidth = max;
+    }
 }

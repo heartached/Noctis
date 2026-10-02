@@ -1877,12 +1877,13 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Click a time to hear that line. Edit text in place. Tinted lines need a second look.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>All lines 0.1 s earlier · shortcut [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>All lines 0.1 s later · shortcut ]</value><comment>Tooltip</comment></data>
-  <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review "…" menu item</comment></data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let Lullaby write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
-  <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review "…" menu item</comment></data>
+  <data name="LyricsStudio.MoreTip" xml:space="preserve"><value>More</value><comment>Tooltip on the review's "…" button (Skip, Transcribe instead)</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
   <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>
-  <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the -0.1s / +0.1s buttons</comment></data>
+  <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the [− 0.1s +] pill</comment></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
   <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Video audio</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>

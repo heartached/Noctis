@@ -150,8 +150,8 @@ public class LyricsStudioRunAndReviewTests : IDisposable
         foreach (var cls in new[] { "review-tools", "review-actions" })
         {
             var group = panel.GetVisualDescendants().OfType<WrapPanel>().First(s => s.Classes.Contains(cls));
-            var grid = (Grid)group.GetVisualParent()!;
-            var other = grid.Children.OfType<StackPanel>().First();
+            var grid = (Panel)group.GetVisualParent()!;
+            var other = grid.Children.First(c => c != group);
             var groupBox = InGrid(group);
             var otherBox = new Rect(other.Bounds.Position, new Size(Math.Min(other.DesiredSize.Width, other.Bounds.Width), other.Bounds.Height));
 

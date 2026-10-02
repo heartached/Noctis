@@ -23,11 +23,13 @@ public partial class LyricsStudioPanel : UserControl
     /// <summary>
     /// A title cell is an Auto,Auto grid so the E badge hugs the title; Auto columns measure
     /// unbounded, so the title's MaxWidth is capped to the cell minus the badge here and
-    /// TextTrimming does the rest (the AddSongsDialog recipe).
+    /// TextTrimming does the rest (the AddSongsDialog recipe). The cell must take its width from
+    /// its parent (stretched), never from the title it caps. A cell that is not laid out (its view
+    /// hidden) is left alone: its 0 width would cap the title to nothing until the next pass.
     /// </summary>
     private void OnTitleCellLayoutUpdated(object? sender, System.EventArgs e)
     {
-        if (sender is not Grid cell) return;
+        if (sender is not Grid cell || !cell.IsEffectivelyVisible || cell.Bounds.Width <= 0) return;
         if (cell.Tag is not TitleCellChildren children)
         {
             // Suffix match: names are unique per scope, so a second cell outside a template is "Working…".
