@@ -15,9 +15,9 @@
     <Window.Styles>
         <!-- Round header X (same look as the Settings header close). -->
         <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="CornerRadius" Value="15" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -28,7 +28,8 @@
         </Style>
         <Style Selector="ComboBox.pill">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
         </Style>
         <Style Selector="ComboBox.pill ComboBoxItem">
             <Setter Property="Margin" Value="4,1" />
@@ -40,7 +41,8 @@
         </Style>
         <Style Selector="TextBox.pill">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
         </Style>
         <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
@@ -49,72 +51,87 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="ListBox.results ListBoxItem">
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
         <Style Selector="ListBox.results ListBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
     </Window.Styles>
 
     <Border Background="#50000000">
-        <Border CornerRadius="20"
+        <Border CornerRadius="18"
                 ClipToBounds="True"
                 Background="{DynamicResource AppMainBackground}"
-                Width="820"
-                MaxHeight="720"
-                Margin="0,50"
+                Width="600"
+                Height="480"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
+                VerticalAlignment="Center"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
-                <!-- Header: title + the song, round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
-                    <StackPanel Spacing="2" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T LyricsSearch.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="{Binding TrackLabel}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{loc:T LyricsSearch.Hint}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"
-                                   TextWrapping="Wrap" TextAlignment="Center" />
+                <!-- Header: title, then the song with its E badge; round X at the top-right. -->
+                <Panel DockPanel.Dock="Top" Margin="20,14,14,4">
+                    <StackPanel Spacing="3" Margin="34,2,34,0">
+                        <TextBlock Text="{loc:T LyricsSearch.Title}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                                       MaxWidth="260" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <Border Classes="explicit-badge compact"
+                                    IsVisible="{Binding IsExplicit}"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="E"
+                                           Classes="explicit-badge-text compact"
+                                           FontSize="8"
+                                           Opacity="0.9" />
+                            </Border>
+                            <TextBlock Text="{Binding TrackArtist, StringFormat='— {0}'}" FontSize="12" Opacity="0.55"
+                                       MaxWidth="200" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                       IsVisible="{Binding HasTrackArtist}" />
+                        </StackPanel>
                     </StackPanel>
                     <Button Classes="dialog-close" Command="{Binding CloseCommand}"
                             ToolTip.Tip="{loc:T Common.Close}"
                             HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="11" Height="11" />
                     </Button>
                 </Panel>
 
                 <!-- Query row: source picker, artist, title, Search. -->
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="190,8,*,8,*,8,Auto" Margin="24,8,24,12">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="150,6,*,6,*,6,Auto" Margin="20,10,20,10">
                     <ComboBox Grid.Column="0" Classes="pill"
                               ItemsSource="{Binding Sources}"
                               SelectedItem="{Binding SelectedSource}"
-                              ToolTip.Tip="{loc:T LyricsSearch.Source}"
+                              ToolTip.Tip="{loc:T LyricsSearch.Hint}"
                               HorizontalAlignment="Stretch" />
                     <TextBox Grid.Column="2" Classes="pill" Text="{Binding Artist}"
                              PlaceholderText="{loc:T LyricsSearch.ArtistWatermark}" />
                     <TextBox Grid.Column="4" Classes="pill" Text="{Binding Title}"
                              PlaceholderText="{loc:T LyricsSearch.TitleWatermark}" />
-                    <Button Grid.Column="6" Content="{loc:T LyricsSearch.Search}" Command="{Binding SearchCommand}"
-                            IsDefault="True" Padding="20,8" CornerRadius="999" Cursor="Hand"
-                            VerticalAlignment="Stretch" VerticalContentAlignment="Center" />
+                    <Button Grid.Column="6" Command="{Binding SearchCommand}"
+                            ToolTip.Tip="{loc:T LyricsSearch.Search}"
+                            IsDefault="True" Width="34" Padding="0" CornerRadius="999" Cursor="Hand"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="13" Height="13" />
+                    </Button>
                 </Grid>
 
                 <!-- Sticky bar: status on the left, Use Lyrics on the right. -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
+                <Border DockPanel.Dock="Bottom" Padding="20,10,20,12"
                         Background="#09FFFFFF"
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                         BorderThickness="0,1,0,0">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <ProgressBar IsIndeterminate="True" Width="60" Height="4" CornerRadius="2"
+                            <ProgressBar IsIndeterminate="True" Width="48" Height="4" CornerRadius="2"
                                          IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding StatusText}" FontSize="13" Opacity="0.8"
+                            <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.75"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                         <Button Grid.Column="1" Content="{loc:T LyricsSearch.Use}" Command="{Binding ApplyCommand}"
-                                Padding="22,10"
+                                Padding="18,7"
+                                FontSize="13"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
@@ -123,27 +140,26 @@
                     </Grid>
                 </Border>
 
-                <!-- Results (one per source) on the left, the selected one's lyrics on the right. -->
-                <Grid ColumnDefinitions="300,16,*" Margin="24,0,24,12" MinHeight="320">
+                <!-- One row per source on the left (rows that found nothing are dimmed);
+                     the selected answer's match and lyrics on the right. -->
+                <Grid ColumnDefinitions="170,12,*" Margin="20,0,20,12">
                     <ListBox Grid.Column="0" Classes="results"
                              ItemsSource="{Binding Results}"
                              SelectedItem="{Binding SelectedResult}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:LyricsSearchResultRow">
-                                <StackPanel Spacing="2">
+                                <StackPanel Spacing="1" Opacity="{Binding RowOpacity}">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0" Text="{Binding Source}" FontSize="13" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <Border Grid.Column="1" CornerRadius="999" Padding="8,1"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <Border Grid.Column="1" CornerRadius="999" Padding="7,1" Margin="6,0,0,0"
                                                 Background="{DynamicResource AccentColorBrush}"
                                                 IsVisible="{Binding IsBest}" VerticalAlignment="Center">
                                             <TextBlock Text="{loc:T LyricsSearch.Best}" FontSize="10" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}" />
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="{Binding FormatLabel}" FontSize="11" Opacity="0.75" />
-                                    <TextBlock Text="{Binding Detail}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"
-                                               IsVisible="{Binding HasLyrics}" />
+                                    <TextBlock Text="{Binding FormatLabel}" FontSize="11" Opacity="0.65" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -151,12 +167,18 @@
 
                     <Border Grid.Column="2" Background="#10FFFFFF" CornerRadius="12">
                         <Panel>
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                                          Padding="16,12" IsVisible="{Binding HasPreview}">
-                                <SelectableTextBlock Text="{Binding PreviewText}" FontSize="13" TextWrapping="Wrap" LineHeight="20" />
-                            </ScrollViewer>
+                            <DockPanel IsVisible="{Binding HasPreview}">
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding PreviewDetail}"
+                                           FontSize="11" Opacity="0.5" Margin="14,10,14,0"
+                                           TextTrimming="CharacterEllipsis" />
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                                              Padding="14,6,14,12">
+                                    <SelectableTextBlock Text="{Binding PreviewText}" FontSize="13" TextWrapping="Wrap" LineHeight="20" />
+                                </ScrollViewer>
+                            </DockPanel>
                             <TextBlock Text="{loc:T LyricsSearch.SelectToPreview}" FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" TextAlignment="Center" Margin="16,0"
                                        IsVisible="{Binding !HasPreview}" />
                         </Panel>
                     </Border>
