@@ -1364,6 +1364,20 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(tracks, startIndex, unshuffled: null);
 
     /// <summary>
+    /// Plays <paramref name="track"/> as the whole queue, opened at <paramref name="start"/>: the
+    /// engine opens the file there (the one-shot start a restored session resumes with) instead
+    /// of being seeked once playing. A <see cref="SeekTo"/> sent right after a start reaches
+    /// VlcAudioPlayer while it is still opening the song, where it is dropped or lands on the
+    /// song before. A start past the tag's length (or a song without one) plays from the top.
+    /// </summary>
+    public void PlayFrom(Track track, TimeSpan start)
+    {
+        _resumePositionMs = start > TimeSpan.Zero ? (long)start.TotalMilliseconds : -1;
+        _resumeTrackId = track.Id;
+        ReplaceQueueAndPlay(new[] { track }, 0);
+    }
+
+    /// <summary>
     /// GitHub #110: plays <paramref name="tracks"/> shuffled, in the mode the bar's Shuffle
     /// toggle turns on — it lights up, and turning it off continues <paramref name="tracks"/>'
     /// own order (album, playlist, folder order) after the playing song. Every Shuffle button
