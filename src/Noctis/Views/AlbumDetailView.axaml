@@ -309,9 +309,14 @@
                                VerticalAlignment="Center"
                                Opacity="0.2"
                                IsVisible="{Binding HeaderArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                    <!-- PixelExact: decoded at the cover's own device pixels and drawn 1:1, as
+                         sharp as the full-size viewer (a 512 bucket was shrunk to 425 px at 125%
+                         and stretched to 680 px at 200%). -->
                     <controls:CachedImage SourcePath="{Binding HeaderArtPath}"
                                           DecodeWidth="512"
+                                          PixelExact="True"
                                           Stretch="UniformToFill"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality"
                                           IsVisible="{Binding HeaderArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <!-- Bitmap-rendered (not a native VideoView): composes/clips like a
                          normal control, so it doesn't bleed over or jump relative to the

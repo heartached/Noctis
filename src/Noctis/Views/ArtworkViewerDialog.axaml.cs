@@ -13,7 +13,7 @@ namespace Noctis.Views;
 /// <summary>
 /// GitHub #114: the album page's cover, full size, over the dimmed window. The cover is
 /// fitted inside the window and decoded at exactly the device pixels it is drawn at, from
-/// the original artwork file (the header shows a 512px cached decode). The bitmap is this
+/// the original artwork file (the header's decode is sized for the header). The bitmap is this
 /// window's own, not the shared artwork cache's, and is disposed when the window closes.
 /// </summary>
 public partial class ArtworkViewerDialog : Window

@@ -638,6 +638,7 @@
                      the page-background fade below dissolves its bottom into the sections. -->
                 <ctrl:CachedImage SourcePath="{Binding ImagePath}"
                                   DecodeWidth="1024"
+                                  PixelExact="True"
                                   Stretch="Uniform"
                                   Width="400" Height="400"
                                   HorizontalAlignment="Right"

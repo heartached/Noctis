@@ -31,7 +31,7 @@
                        Stretch="UniformToFill"
                        RenderOptions.BitmapInterpolationMode="HighQuality"
                        IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
                                       DecodeWidth="{Binding #Root.DecodeWidth}"
                                       Stretch="UniformToFill"
                                       RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -84,7 +84,7 @@
                                        Stretch="UniformToFill"
                                        RenderOptions.BitmapInterpolationMode="HighQuality"
                                        IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
                                                       DecodeWidth="{Binding #Root.DecodeWidth}"
                                                       Stretch="UniformToFill"
                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -197,7 +197,7 @@
                                            Stretch="UniformToFill"
                                            RenderOptions.BitmapInterpolationMode="HighQuality"
                                            IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                    <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                                    <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
                                                           DecodeWidth="{Binding #Root.DecodeWidth}"
                                                           Stretch="UniformToFill"
                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -237,7 +237,7 @@
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
                                               DecodeWidth="{Binding #Root.DecodeWidth}"
                                               Stretch="UniformToFill"
                                               RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -292,7 +292,7 @@
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False"
+                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
                                               DecodeWidth="{Binding #Root.DecodeWidth}"
                                               Stretch="UniformToFill"
                                               RenderOptions.BitmapInterpolationMode="HighQuality"
