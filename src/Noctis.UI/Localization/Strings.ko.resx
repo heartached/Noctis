@@ -5331,15 +5331,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>플러그인</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>plugins 디렉터리에 플러그인 폴더를 넣고 다시 불러오세요. 여기서 플러그인을 삭제하지 않고 끌 수 있습니다.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>플러그인은 Noctis와 같은 권한으로 실행됩니다. 신뢰하는 플러그인만 설치하세요.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>플러그인 폴더 열기</value>
   </data>

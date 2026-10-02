@@ -1608,14 +1608,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="ShortcutKeyChip.PressKeys" xml:space="preserve"><value>Press keys…</value><comment>Text in ShortcutKeyChip.axaml</comment></data>
 
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve"><value>Plugins</value></data>
-  <data name="Plugins.Description" xml:space="preserve"><value>Install a plugin from its .zip file, or put its folder in the plugins folder and press Reload.</value></data>
-  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins can do anything Noctis can. Only install ones you trust.</value></data>
   <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityDescription" xml:space="preserve"><value>Let plugins made by other people run. While this is off, plugins stay installed but don't run.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
+  <data name="Plugins.InstalledTitle" xml:space="preserve"><value>Installed</value></data>
   <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Plugins are off. Turn on Community plugins to use them.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>

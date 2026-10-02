@@ -5331,15 +5331,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>Extensions</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>Déposez un dossier de plugin dans le dossier des plugins et rechargez. Désactivez un plugin ici sans le supprimer.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>Les plugins fonctionnent avec le même accès que Noctis. N'installez que ceux en qui vous avez confiance.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>Ouvrir le dossier des extensions</value>
   </data>

@@ -5331,15 +5331,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>插件</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>将插件文件夹拖放到插件目录并重新加载。将插件关闭到此处而不删除它。</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>插件与Noctis 相同的访问权限运行。仅安装您信任的插件。</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>打开插件文件夹</value>
   </data>

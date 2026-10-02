@@ -69,7 +69,11 @@ public partial class SettingsViewModel
         OnPropertyChanged(nameof(HasNoOfficialPlugins));
     }
 
-    private void OnInstalledPluginsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshOfficialPluginStates();
+    private void OnInstalledPluginsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RefreshOfficialPluginStates();
+        OnPropertyChanged(nameof(ShowPluginsOffNotice));
+    }
 
     private void RefreshOfficialPluginStates()
     {

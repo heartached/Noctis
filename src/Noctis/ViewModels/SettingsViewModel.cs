@@ -149,8 +149,13 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsSettingsLoaded => _settingsLoaded;
     public event EventHandler? SettingsLoaded;
 
-    /// <summary>Transient line under the Plugins buttons ("Reloaded · 2 plugins found").</summary>
+    /// <summary>Transient line under the Installed header ("Reloaded · 2 plugins found").</summary>
     [ObservableProperty] private string _pluginsStatus = string.Empty;
+
+    /// <summary>The folder button's tooltip: what it does, and where the folder is.</summary>
+    public string PluginsFolderTip => Plugins is null
+        ? Loc.T("Plugins.OpenFolder")
+        : Loc.T("Plugins.OpenFolder") + Environment.NewLine + Plugins.PluginsDirectory;
 
     [RelayCommand]
     private void OpenPluginsFolder()
@@ -208,7 +213,16 @@ public partial class SettingsViewModel : ViewModelBase
         _syncingCommunityPlugins = true;
         try { CommunityPluginsEnabled = Plugins?.CommunityPluginsEnabled ?? false; }
         finally { _syncingCommunityPlugins = false; }
+        OnPropertyChanged(nameof(ShowPluginsOffNotice));
     }
+
+    /// <summary>"Plugins are off" above the installed list: only while community plugins are off
+    /// and something they would run (a code plugin) is installed. Content packs work either way.</summary>
+    public bool ShowPluginsOffNotice => Plugins is { CommunityPluginsEnabled: false } host && host.Plugins.Any(p => p.IsCodePlugin);
+
+    /// <summary>The notice's Turn on button: the same as flipping the switch, confirmation included.</summary>
+    [RelayCommand]
+    private void TurnOnCommunityPlugins() => CommunityPluginsEnabled = true;
 
     /// <summary>The first-enable approval: what the plugin declares, and what that does and does not mean.</summary>
     internal async Task<bool> ConfirmEnablePluginAsync(LoadedPlugin plugin)
@@ -4568,6 +4582,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        OnPropertyChanged(nameof(PluginsFolderTip));
     }
 
     private void OnCommunityPluginsChanged(object? sender, EventArgs e) => SyncCommunityPluginsSwitch();

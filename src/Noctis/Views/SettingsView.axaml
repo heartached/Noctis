@@ -5402,53 +5402,8 @@
             </StackPanel>
 
             <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
-            <!-- Community plugins switch (restricted mode when off, Obsidian-style). -->
-            <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0">
-                            <TextBlock Text="{loc:T Plugins.CommunityTitle}" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Plugins.CommunityDescription}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1" IsChecked="{Binding CommunityPluginsEnabled, Mode=TwoWay}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <TextBlock Text="{loc:T Plugins.Warning}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
-                    <Border IsVisible="{Binding !CommunityPluginsEnabled}" CornerRadius="12" Padding="12,9"
-                            Background="#14FFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1">
-                        <TextBlock Text="{loc:T Plugins.RestrictedNotice}" FontSize="12" TextWrapping="Wrap"/>
-                    </Border>
-                </StackPanel>
-            </Border>
-
-            <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="{loc:T Plugins.Title}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Plugins.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <WrapPanel Orientation="Horizontal">
-                        <Button Classes="accent-pill" Command="{Binding InstallPluginFromFileCommand}"
-                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
-                            <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="13" FontWeight="SemiBold"/>
-                        </Button>
-                        <Button Classes="pill-action" Command="{Binding OpenPluginsFolderCommand}"
-                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
-                            <TextBlock Text="{loc:T Plugins.OpenFolder}" FontSize="13"/>
-                        </Button>
-                        <Button Classes="pill-action" Command="{Binding ReloadPluginsCommand}"
-                                Padding="14,8" CornerRadius="999" Cursor="Hand" Margin="0,0,8,8">
-                            <TextBlock Text="{loc:T Plugins.Reload}" FontSize="13"/>
-                        </Button>
-                    </WrapPanel>
-                    <TextBlock Text="{Binding Plugins.PluginsDirectory}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap"
-                               IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                </StackPanel>
-            </Border>
-
             <!-- Get plugins: the official list (plugins/index.json), fetched when this page opens. -->
-            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,6,0,8">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,2,0,8">
                 <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{loc:T Plugins.Get.Loading}" FontSize="11" Opacity="0.45" Margin="10,0"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsOfficialPluginsLoading}"/>
@@ -5503,135 +5458,181 @@
                 </ItemsControl>
             </Border>
 
-            <TextBlock Text="{loc:T Plugins.None}" FontSize="12" Opacity="0.5" Margin="22,8"
-                       IsVisible="{Binding !Plugins.Plugins.Count}"/>
+            <!-- Installed: Install from file is this section's action; the folder and reload are
+                 small icon buttons (the folder's path is in its tooltip). -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="2,10,0,8">
+                <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.InstalledTitle}" Margin="0" VerticalAlignment="Center"/>
+                <Button Grid.Column="2" x:Name="InstallPluginFromFileButton" Classes="pill-action"
+                        Command="{Binding InstallPluginFromFileCommand}"
+                        Padding="12,6" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,4,0">
+                    <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="12" FontWeight="SemiBold"/>
+                </Button>
+                <Button Grid.Column="3" x:Name="OpenPluginsFolderButton"
+                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
+                        VerticalAlignment="Center" ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
+                    <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Opacity="0.7"/>
+                </Button>
+                <Button Grid.Column="4" x:Name="ReloadPluginsButton"
+                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
+                        VerticalAlignment="Center" ToolTip.Tip="{loc:T Plugins.Reload}" Command="{Binding ReloadPluginsCommand}">
+                    <PathIcon Data="{StaticResource SyncIcon}" Width="13" Height="13" Opacity="0.7"/>
+                </Button>
+            </Grid>
+            <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="22,0,0,8"
+                       IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <!-- Only when it matters: community plugins are off and a code plugin is installed. -->
+            <Border x:Name="PluginsOffNotice" IsVisible="{Binding ShowPluginsOffNotice}" CornerRadius="16" Padding="16,9" Margin="0,0,0,10"
+                    Background="#14FFFFFF" BorderBrush="#1FFFFFFF" BorderThickness="1">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{loc:T Plugins.RestrictedNotice}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Grid.Column="1" x:Name="TurnOnCommunityPluginsButton" Classes="pill-action"
+                            Command="{Binding TurnOnCommunityPluginsCommand}"
+                            Padding="12,5" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Plugins.TurnOnConfirm}" FontSize="12" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border x:Name="InstalledPluginsCard" Classes="setting-card group-card">
+                <StackPanel>
+                    <TextBlock Text="{loc:T Plugins.None}" FontSize="12" Opacity="0.5" Margin="0,14"
+                               IsVisible="{Binding !Plugins.Plugins.Count}"/>
+                    <ItemsControl Classes="row-list" ItemsSource="{Binding Plugins.Plugins}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="plugins:LoadedPlugin">
+                                <Border Classes="setting-row">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0">
+                                                <WrapPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                    <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <TextBlock Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                    <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
+                                                            VerticalAlignment="Center" IsVisible="{Binding IsLegacy}">
+                                                        <TextBlock Text="{loc:T Plugins.LegacyBadge}" FontSize="10.5" Opacity="0.8"/>
+                                                    </Border>
+                                                    <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
+                                                            VerticalAlignment="Center" IsVisible="{Binding IsContentPack}">
+                                                        <TextBlock Text="{loc:T Plugins.ContentBadge}" FontSize="10.5" Opacity="0.8"/>
+                                                    </Border>
+                                                </WrapPanel>
+                                                <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.45"
+                                                           IsVisible="{Binding HasAuthor}"/>
+                                                <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                                                           IsVisible="{Binding HasDescription}"/>
+                                            </StackPanel>
+                                            <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host
+                                                 (approval dialog on first enable, start/stop + persist). -->
+                                            <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                                  IsEnabled="{Binding CanToggle}"
+                                                                  VerticalAlignment="Top"/>
+                                        </Grid>
 
-            <ItemsControl ItemsSource="{Binding Plugins.Plugins}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="4"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="plugins:LoadedPlugin">
-                        <Border Classes="setting-card">
-                            <StackPanel Spacing="10">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" Spacing="3" Margin="0,0,16,0">
-                                        <WrapPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.5" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                            <Border CornerRadius="999" Padding="8,1" Background="#22FFFFFF" VerticalAlignment="Center" Margin="0,0,6,0">
-                                                <TextBlock Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"/>
-                                            </Border>
-                                            <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
-                                                    VerticalAlignment="Center" IsVisible="{Binding IsLegacy}">
-                                                <TextBlock Text="{loc:T Plugins.LegacyBadge}" FontSize="10.5" Opacity="0.8"/>
-                                            </Border>
-                                            <Border CornerRadius="999" Padding="8,1" Background="#14FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1"
-                                                    VerticalAlignment="Center" IsVisible="{Binding IsContentPack}">
-                                                <TextBlock Text="{loc:T Plugins.ContentBadge}" FontSize="10.5" Opacity="0.8"/>
-                                            </Border>
-                                        </WrapPanel>
-                                        <TextBlock Text="{Binding Author}" FontSize="11" Opacity="0.45"
-                                                   IsVisible="{Binding HasAuthor}"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
-                                                   IsVisible="{Binding HasDescription}"/>
+                                        <TextBlock Text="{loc:T Plugins.LegacyNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsLegacy}"/>
+
+                                        <TextBlock Text="{loc:T Plugins.ContentNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsContentPack}"/>
+
+                                        <!-- Permissions as quiet chips (code plugins only: a content pack has none). -->
+                                        <StackPanel Spacing="5" IsVisible="{Binding IsCodePlugin}">
+                                            <TextBlock Text="{loc:T Plugins.Permissions}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
+                                            <ItemsControl ItemsSource="{Binding PermissionChips}" IsVisible="{Binding HasPermissions}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="sys:String">
+                                                        <Border CornerRadius="999" Padding="9,2" Margin="0,0,6,6"
+                                                                Background="#12FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1">
+                                                            <TextBlock Text="{Binding}" FontSize="11"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="{loc:T Plugins.NoPermissionsShort}" FontSize="11" Opacity="0.5"
+                                                       IsVisible="{Binding !HasPermissions}"/>
+                                        </StackPanel>
+
+                                        <TextBlock Text="{Binding Extensions}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasExtensions}"/>
+                                        <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasError}"/>
+                                        <TextBlock Text="{Binding Warnings}" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasWarnings}"/>
+
+                                        <!-- Settings declared in plugin.json, drawn by Noctis. -->
+                                        <StackPanel Spacing="8" IsVisible="{Binding HasSettings}">
+                                            <TextBlock Text="{loc:T Plugins.Settings}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
+                                            <ItemsControl ItemsSource="{Binding SettingItems}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Spacing="8"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="plugins:PluginSettingItem">
+                                                        <Grid ColumnDefinitions="*,Auto">
+                                                            <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                                <TextBlock Text="{Binding Label}" FontSize="13" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"
+                                                                           IsVisible="{Binding HasDescription}"/>
+                                                            </StackPanel>
+                                                            <Panel Grid.Column="1" VerticalAlignment="Center">
+                                                                <controls:LottieToggle IsVisible="{Binding IsBool}"
+                                                                                      IsChecked="{Binding BoolValue, Mode=TwoWay}"/>
+                                                                <TextBox IsVisible="{Binding IsString}" Text="{Binding TextValue, Mode=TwoWay}"
+                                                                         Width="220" CornerRadius="999" Padding="14,6" BorderThickness="1.5" MinHeight="0"/>
+                                                                <NumericUpDown IsVisible="{Binding IsNumber}" Value="{Binding NumberValue, Mode=TwoWay}"
+                                                                               Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                                                                               Width="150" CornerRadius="999" FormatString="0.###"/>
+                                                                <ComboBox IsVisible="{Binding IsChoice}" Classes="pill-list"
+                                                                          ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
+                                                                          MinWidth="160" CornerRadius="999" Padding="14,6"/>
+                                                            </Panel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginDirectoryCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{loc:T Plugins.OpenPluginFolder}" FontSize="12"/>
+                                            </Button>
+                                            <Button Classes="pill-action danger-ghost-pill" Padding="12,6" CornerRadius="999" Cursor="Hand"
+                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemovePluginCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{loc:T Plugins.Remove}" FontSize="12"/>
+                                            </Button>
+                                        </StackPanel>
                                     </StackPanel>
-                                    <!-- Two-way: LoadedPlugin.IsEnabled routes the flip back to the host
-                                         (approval dialog on first enable, start/stop + persist). -->
-                                    <controls:LottieToggle Grid.Column="1" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                          IsEnabled="{Binding CanToggle}"
-                                                          VerticalAlignment="Top"/>
-                                </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
 
-                                <TextBlock Text="{loc:T Plugins.LegacyNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
-                                           IsVisible="{Binding IsLegacy}"/>
-
-                                <TextBlock Text="{loc:T Plugins.ContentNote}" FontSize="11" Opacity="0.55" TextWrapping="Wrap"
-                                           IsVisible="{Binding IsContentPack}"/>
-
-                                <!-- Permissions as quiet chips (code plugins only: a content pack has none). -->
-                                <StackPanel Spacing="5" IsVisible="{Binding IsCodePlugin}">
-                                    <TextBlock Text="{loc:T Plugins.Permissions}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
-                                    <ItemsControl ItemsSource="{Binding PermissionChips}" IsVisible="{Binding HasPermissions}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="sys:String">
-                                                <Border CornerRadius="999" Padding="9,2" Margin="0,0,6,6"
-                                                        Background="#12FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1">
-                                                    <TextBlock Text="{Binding}" FontSize="11"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Text="{loc:T Plugins.NoPermissionsShort}" FontSize="11" Opacity="0.5"
-                                               IsVisible="{Binding !HasPermissions}"/>
-                                </StackPanel>
-
-                                <TextBlock Text="{Binding Extensions}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"
-                                           IsVisible="{Binding HasExtensions}"/>
-                                <TextBlock Text="{Binding Error}" FontSize="11" Foreground="#FF6B6B" TextWrapping="Wrap"
-                                           IsVisible="{Binding HasError}"/>
-                                <TextBlock Text="{Binding Warnings}" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
-                                           IsVisible="{Binding HasWarnings}"/>
-
-                                <!-- Settings declared in plugin.json, drawn by Noctis. -->
-                                <StackPanel Spacing="8" IsVisible="{Binding HasSettings}">
-                                    <TextBlock Text="{loc:T Plugins.Settings}" FontSize="11" FontWeight="SemiBold" Opacity="0.5"/>
-                                    <ItemsControl ItemsSource="{Binding SettingItems}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Spacing="8"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="plugins:PluginSettingItem">
-                                                <Grid ColumnDefinitions="*,Auto">
-                                                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                        <TextBlock Text="{Binding Label}" FontSize="13" TextWrapping="Wrap"/>
-                                                        <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"
-                                                                   IsVisible="{Binding HasDescription}"/>
-                                                    </StackPanel>
-                                                    <Panel Grid.Column="1" VerticalAlignment="Center">
-                                                        <controls:LottieToggle IsVisible="{Binding IsBool}"
-                                                                              IsChecked="{Binding BoolValue, Mode=TwoWay}"/>
-                                                        <TextBox IsVisible="{Binding IsString}" Text="{Binding TextValue, Mode=TwoWay}"
-                                                                 Width="220" CornerRadius="999" Padding="14,6" BorderThickness="1.5" MinHeight="0"/>
-                                                        <NumericUpDown IsVisible="{Binding IsNumber}" Value="{Binding NumberValue, Mode=TwoWay}"
-                                                                       Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
-                                                                       Width="150" CornerRadius="999" FormatString="0.###"/>
-                                                        <ComboBox IsVisible="{Binding IsChoice}" Classes="pill-list"
-                                                                  ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
-                                                                  MinWidth="160" CornerRadius="999" Padding="14,6"/>
-                                                    </Panel>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <Button Classes="pill-action" Padding="12,6" CornerRadius="999" Cursor="Hand"
-                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenPluginDirectoryCommand}"
-                                            CommandParameter="{Binding}">
-                                        <TextBlock Text="{loc:T Plugins.OpenPluginFolder}" FontSize="12"/>
-                                    </Button>
-                                    <Button Classes="pill-action danger-ghost-pill" Padding="12,6" CornerRadius="999" Cursor="Hand"
-                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemovePluginCommand}"
-                                            CommandParameter="{Binding}">
-                                        <TextBlock Text="{loc:T Plugins.Remove}" FontSize="12"/>
-                                    </Button>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- Community plugins: restricted mode when off (Obsidian-style). Last, as a set-once
+                 safety switch; the notice above points here when it blocks something. -->
+            <Border x:Name="CommunityPluginsCard" Classes="setting-card" Margin="0,14,0,10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Plugins.CommunityTitle}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Plugins.CommunityLine}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1" x:Name="CommunityPluginsToggle"
+                                          IsChecked="{Binding CommunityPluginsEnabled, Mode=TwoWay}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
