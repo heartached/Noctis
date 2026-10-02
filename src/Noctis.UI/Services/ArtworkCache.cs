@@ -95,6 +95,13 @@ public static class ArtworkCache
     private static readonly int[] Buckets = { 128, 256, 384, 512, 768, 1024, 1280, 2048 };
 
     /// <summary>
+    /// Ceiling of an exact (unbucketed) request: a single cover drawn 1:1 at its device
+    /// pixels (<see cref="Noctis.Controls.CachedImage.PixelExact"/>). The decode never
+    /// exceeds the source's own width either.
+    /// </summary>
+    public const int MaxExactWidth = 4096;
+
+    /// <summary>
     /// Returns a cached bitmap if available, or null on cache miss. No I/O performed.
     /// Lock-free on the hot path.
     /// </summary>
@@ -102,8 +109,15 @@ public static class ArtworkCache
         => TryGet(path, DecodeWidth);
 
     public static Bitmap? TryGet(string path, int decodeWidth)
+        => TryGet(path, decodeWidth, exact: false);
+
+    /// <summary>
+    /// As <see cref="TryGet(string,int)"/>; <paramref name="exact"/> keys the request at
+    /// <paramref name="decodeWidth"/> itself instead of rounding it up to its bucket.
+    /// </summary>
+    public static Bitmap? TryGet(string path, int decodeWidth, bool exact)
     {
-        var key = BuildKey(path, decodeWidth);
+        var key = BuildKey(path, decodeWidth, exact);
         if (Cache.TryGetValue(key, out var entry))
         {
             Touch(entry);
@@ -130,9 +144,17 @@ public static class ArtworkCache
     /// longer ends up resident once per surface that shows it.
     /// </summary>
     public static Bitmap? TryGetAnyWidth(string path, int decodeWidth, out bool sufficient)
+        => TryGetAnyWidth(path, decodeWidth, out sufficient, exact: false);
+
+    /// <summary>
+    /// As <see cref="TryGetAnyWidth(string,int,out bool)"/>. An <paramref name="exact"/>
+    /// request is never "sufficient": any other width would be resampled on screen, which
+    /// is what an exact request is for avoiding. It still gets a bitmap to paint meanwhile.
+    /// </summary>
+    public static Bitmap? TryGetAnyWidth(string path, int decodeWidth, out bool sufficient, bool exact)
     {
         sufficient = false;
-        var requested = NormalizeDecodeWidth(decodeWidth);
+        var requested = KeyWidth(decodeWidth, exact);
         CacheEntry? atLeast = null, below = null;
         int atLeastWidth = int.MaxValue, belowWidth = -1;
         foreach (var width in _observedWidths.Keys)
@@ -152,7 +174,7 @@ public static class ArtworkCache
         var chosen = atLeast ?? below;
         if (chosen == null)
             return null;
-        sufficient = chosen == atLeast && atLeastWidth <= requested * 2;
+        sufficient = !exact && chosen == atLeast && atLeastWidth <= requested * 2;
         Touch(chosen);
         return chosen.Bitmap;
     }
@@ -204,7 +226,8 @@ public static class ArtworkCache
         // DecodeWidth added in XAML can't silently escape invalidation.
         foreach (var width in _observedWidths.Keys)
         {
-            if (Cache.TryRemove(BuildKey(path, width), out var removed))
+            // Keyed as observed: an exact width is not a bucket and must not be rounded.
+            if (Cache.TryRemove($"{width}|{path}", out var removed))
                 OnEntryRemoved(removed);
         }
         ArtworkThumbnailCache.Invalidate(path);
@@ -227,14 +250,21 @@ public static class ArtworkCache
         => LoadAndCache(path, DecodeWidth);
 
     public static Bitmap? LoadAndCache(string path, int decodeWidth)
+        => LoadAndCache(path, decodeWidth, exact: false);
+
+    /// <summary>
+    /// As <see cref="LoadAndCache(string,int)"/>; <paramref name="exact"/> decodes and keys
+    /// at <paramref name="decodeWidth"/> itself instead of its bucket.
+    /// </summary>
+    public static Bitmap? LoadAndCache(string path, int decodeWidth, bool exact)
     {
         try
         {
             if (DecoderOverride is null && !File.Exists(path))
                 return null;
 
-            var width = NormalizeDecodeWidth(decodeWidth);
-            var key = BuildKey(path, width);
+            var width = KeyWidth(decodeWidth, exact);
+            var key = BuildKey(path, width, exact);
 
             // Double-check: another thread may have cached this while we waited for I/O to start
             if (Cache.TryGetValue(key, out var hit))
@@ -375,12 +405,16 @@ public static class ArtworkCache
         Interlocked.Exchange(ref _totalBytes, 0);
     }
 
-    private static string BuildKey(string path, int decodeWidth)
+    private static string BuildKey(string path, int decodeWidth, bool exact = false)
     {
-        var width = NormalizeDecodeWidth(decodeWidth);
+        var width = KeyWidth(decodeWidth, exact);
         _observedWidths.TryAdd(width, 0);
         return $"{width}|{path}";
     }
+
+    /// <summary>The width a request is decoded and keyed at: its bucket, or itself when exact.</summary>
+    private static int KeyWidth(int decodeWidth, bool exact)
+        => exact ? Math.Clamp(decodeWidth, 1, MaxExactWidth) : NormalizeDecodeWidth(decodeWidth);
 
     /// <summary>
     /// Rounds a requested decode width up to its bucket (64–2048). Grids and lists ask
