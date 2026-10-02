@@ -1579,14 +1579,14 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
 
   <!-- Settings → Plugins -->
   <data name="Plugins.Title" xml:space="preserve"><value>Plugins</value></data>
-  <data name="Plugins.Description" xml:space="preserve"><value>Install a plugin from its .zip, or drop its folder into the plugins directory and reload. Switch a plugin off here without deleting it.</value></data>
-  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins run with the same access as Noctis. Only install ones you trust.</value></data>
+  <data name="Plugins.Description" xml:space="preserve"><value>Install a plugin from its .zip file, or put its folder in the plugins folder and press Reload.</value></data>
+  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins can do anything Noctis can. Only install ones you trust.</value></data>
   <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityDescription" xml:space="preserve"><value>Run plugins made by other people. While this is off (restricted mode) Noctis loads no plugin code; installed plugins stay listed.</value></data>
-  <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Restricted mode is on: no plugin code runs. Turn on Community plugins to use the plugins below.</value></data>
+  <data name="Plugins.CommunityDescription" xml:space="preserve"><value>Let plugins made by other people run. While this is off, plugins stay installed but don't run.</value></data>
+  <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Plugins are off. Turn on Community plugins to use them.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
@@ -1934,7 +1934,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.Desc.Advanced" xml:space="preserve"><value>Storage, helper programs, updates and reset.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.AccountDevices" xml:space="preserve"><value>Your account, sync between devices, and Web Remote.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Integrations" xml:space="preserve"><value>Discord, scrobbling, TIDAL and music servers.</value><comment>Settings page description</comment></data>
-  <data name="Settings.Desc.Plugins" xml:space="preserve"><value>Installed plugins.</value><comment>Settings page description</comment></data>
+  <data name="Settings.Desc.Plugins" xml:space="preserve"><value>Add extra features to Noctis.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Statistics" xml:space="preserve"><value>Your library and listening at a glance.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.About" xml:space="preserve"><value>Version, updates and links.</value><comment>Settings page description</comment></data>
   <data name="Settings.Section.Language" xml:space="preserve"><value>Language</value><comment>Settings section label</comment></data>
