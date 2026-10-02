@@ -146,6 +146,9 @@
     <!-- ═══ Settings rail: Account &amp; Sync, Lyrics Studio ═══ -->
     <!-- Two arrows chasing each other (arrow_sync) -->
     <StreamGeometry x:Key="SyncIcon">M16.25 4.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0V6.31l-.34.34A9.75 9.75 0 0 0 2.25 12a.75.75 0 0 1-1.5 0A11.25 11.25 0 0 1 19.73 5.5H17a.75.75 0 0 1-.75-.75ZM22.5 11.25a.75.75 0 0 1 .75.75A11.25 11.25 0 0 1 4.27 18.5H7a.75.75 0 0 1 0 1.5H4a.75.75 0 0 1-.75-.75v-3a.75.75 0 0 1 1.5 0v1.44l.34-.34A9.75 9.75 0 0 0 21.75 12a.75.75 0 0 1 .75-.75Z</StreamGeometry>
+    <!-- Outline glyphs (24 box, drawn with a 2px round stroke, not filled): Plugins page icon chips. -->
+    <StreamGeometry x:Key="PluginsFolderGlyph">M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z</StreamGeometry>
+    <StreamGeometry x:Key="PluginsRefreshGlyph">M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5</StreamGeometry>
     <!-- Microphone (mic) -->
     <StreamGeometry x:Key="MicIcon">M12 2a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4Zm0 1.5A2.5 2.5 0 0 0 9.5 6v6a2.5 2.5 0 0 0 5 0V6A2.5 2.5 0 0 0 12 3.5ZM5.75 11a.75.75 0 0 1 .75.75v.25a5.5 5.5 0 0 0 11 0v-.25a.75.75 0 0 1 1.5 0V12a7 7 0 0 1-6.25 6.96v1.29h2.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1 0-1.5h2.5v-1.29A7 7 0 0 1 5 12v-.25a.75.75 0 0 1 .75-.75Z</StreamGeometry>
 

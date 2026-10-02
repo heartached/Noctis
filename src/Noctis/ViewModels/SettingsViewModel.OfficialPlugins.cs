@@ -25,11 +25,6 @@ public partial class SettingsViewModel
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasNoOfficialPlugins))]
     private bool _isOfficialPluginsLoading;
 
-    /// <summary>Shown while the built-in list stands in for the live one; else empty.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasOfficialPluginsNotice))]
-    private string _officialPluginsNotice = string.Empty;
-
-    public bool HasOfficialPluginsNotice => OfficialPluginsNotice.Length > 0;
     public bool HasNoOfficialPlugins => !IsOfficialPluginsLoading && OfficialPlugins.Count == 0;
 
     /// <summary>The live list loaded this session: opening the page again does not fetch it again.</summary>
@@ -49,12 +44,12 @@ public partial class SettingsViewModel
     {
         if (PluginCatalogClient is not { } client || IsOfficialPluginsLoading) return;
         IsOfficialPluginsLoading = true;
-        OfficialPluginsNotice = string.Empty; // the header shows "Checking…" in its place
         try
         {
+            // No note when the built-in copy stands in (offline, or the list isn't on GitHub
+            // yet): it is a valid list, and a refresh or the next page open tries again.
             var load = await Task.Run(() => client.LoadAsync());
             _officialPluginsFetched = !load.IsFallback;
-            OfficialPluginsNotice = load.IsFallback ? Loc.T("Plugins.Get.Offline") : string.Empty;
             ShowOfficialPlugins(load.Catalog);
         }
         finally { IsOfficialPluginsLoading = false; }

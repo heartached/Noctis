@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Localization;
 using Noctis.Services;
@@ -135,6 +137,13 @@ public class PluginsPageLayoutTests : IDisposable
 
             // The path is no longer a line of its own on the page.
             Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == host.PluginsDirectory);
+
+            // No hairline above a list's first row (it showed above Mixxx); none on the status line either.
+            var firstRow = view.FindControl<ItemsControl>("OfficialPluginsList")!
+                .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("setting-row"));
+            Assert.Equal(new Thickness(0), firstRow.BorderThickness);
+            Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.IsEffectivelyVisible && t.Text?.Contains("GitHub") == true);
         }
         finally { window.Close(); }
     }

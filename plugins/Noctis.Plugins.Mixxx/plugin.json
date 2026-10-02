@@ -3,7 +3,7 @@
   "name": "Mixxx",
   "version": "1.0.0",
   "author": "Noctis",
-  "description": "Imports the BPM and musical key Mixxx analysed for your tracks. Reads Mixxx's library without changing it, and sets BPM and key in Noctis only, never in your files. Track menu → Import BPM and key from Mixxx.",
+  "description": "Imports the BPM and key from your Mixxx library.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.Mixxx.dll",
   "apiVersion": "1.2",

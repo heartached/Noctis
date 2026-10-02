@@ -1199,8 +1199,29 @@
         <!-- Rows an ItemsControl makes inside a group card (Plugins page): a hairline between them,
              none above the first. Each row is the only child of its container, so the
              :nth-child(1) rule above can't tell them apart; the container's index can. -->
+        <Style Selector="ItemsControl.row-list ContentPresenter > Border.setting-row">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
         <Style Selector="ItemsControl.row-list ContentPresenter:nth-child(n+2) > Border.setting-row">
             <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        </Style>
+        <!-- Round icon buttons beside a pill-action (Plugins page): same height and fill as the
+             pill, a 15px outline glyph drawn at a 2/24 stroke so both icons share one weight. -->
+        <Style Selector="Button.icon-chip">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.icon-chip /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.icon-chip:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
         </Style>
         <!-- Coming soon cards (AccountFeatures off): shown, disabled, dimmed. -->
         <Style Selector="Border.setting-row.parked">
@@ -5403,19 +5424,19 @@
 
             <StackPanel x:Name="PluginsTabPanel" Classes="tab-page" IsVisible="{Binding IsPluginsTabVisible}" Spacing="4">
             <!-- Get plugins: the official list (plugins/index.json), fetched when this page opens. -->
-            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,2,0,8">
+            <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,8">
                 <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.Get.Title}" Margin="0" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{loc:T Plugins.Get.Loading}" FontSize="11" Opacity="0.45" Margin="10,0"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsOfficialPluginsLoading}"/>
-                <TextBlock Grid.Column="1" Text="{Binding OfficialPluginsNotice}" FontSize="11" Opacity="0.45" Margin="10,0"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                           IsVisible="{Binding HasOfficialPluginsNotice}"/>
-                <Button Grid.Column="2" x:Name="RefreshOfficialPluginsButton"
-                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
+                <!-- Dims while the list loads. -->
+                <Button Grid.Column="1" x:Name="RefreshOfficialPluginsButton" Classes="icon-chip"
                         ToolTip.Tip="{loc:T Plugins.Get.Refresh}"
                         Command="{Binding RefreshOfficialPluginsCommand}"
                         IsEnabled="{Binding !IsOfficialPluginsLoading}">
-                    <PathIcon Data="{StaticResource SyncIcon}" Width="13" Height="13" Opacity="0.7"/>
+                    <Viewbox Width="15" Height="15">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                        </Canvas>
+                    </Viewbox>
                 </Button>
             </Grid>
             <TextBlock Text="{loc:T Plugins.Get.Empty}" FontSize="12" Opacity="0.5" Margin="22,0,0,10"
@@ -5464,18 +5485,26 @@
                 <TextBlock Grid.Column="0" Classes="section-title" Text="{loc:T Plugins.InstalledTitle}" Margin="0" VerticalAlignment="Center"/>
                 <Button Grid.Column="2" x:Name="InstallPluginFromFileButton" Classes="pill-action"
                         Command="{Binding InstallPluginFromFileCommand}"
-                        Padding="12,6" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,4,0">
+                        Height="34" Padding="14,0" VerticalContentAlignment="Center" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center" Margin="0,0,6,0">
                     <TextBlock Text="{loc:T Plugins.InstallFromFile}" FontSize="12" FontWeight="SemiBold"/>
                 </Button>
-                <Button Grid.Column="3" x:Name="OpenPluginsFolderButton"
-                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
-                        VerticalAlignment="Center" ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
-                    <PathIcon Data="{StaticResource FolderIcon}" Width="14" Height="14" Opacity="0.7"/>
+                <Button Grid.Column="3" x:Name="OpenPluginsFolderButton" Classes="icon-chip" Margin="0,0,6,0"
+                        ToolTip.Tip="{Binding PluginsFolderTip}" Command="{Binding OpenPluginsFolderCommand}">
+                    <Viewbox Width="15" Height="15">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource PluginsFolderGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                        </Canvas>
+                    </Viewbox>
                 </Button>
-                <Button Grid.Column="4" x:Name="ReloadPluginsButton"
-                        Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="999" Cursor="Hand"
-                        VerticalAlignment="Center" ToolTip.Tip="{loc:T Plugins.Reload}" Command="{Binding ReloadPluginsCommand}">
-                    <PathIcon Data="{StaticResource SyncIcon}" Width="13" Height="13" Opacity="0.7"/>
+                <Button Grid.Column="4" x:Name="ReloadPluginsButton" Classes="icon-chip"
+                        ToolTip.Tip="{loc:T Plugins.Reload}" Command="{Binding ReloadPluginsCommand}">
+                    <Viewbox Width="15" Height="15">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource PluginsRefreshGlyph}" Stroke="{Binding $parent[Button].Foreground}"
+                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                        </Canvas>
+                    </Viewbox>
                 </Button>
             </Grid>
             <TextBlock Text="{Binding PluginsStatus}" FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="22,0,0,8"

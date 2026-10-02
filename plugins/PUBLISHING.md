@@ -44,7 +44,7 @@ Expected (what `index.json` says now):
 
 | Zip | sha256 | size |
 |---|---|---|
-| Noctis.Plugins.Mixxx-1.0.0.zip | `7b7c5ea058ca9f9940c14337975a2430937fc2725b711ef4c63c3eba3c223e02` | 11837 |
+| Noctis.Plugins.Mixxx-1.0.0.zip | `15aa84fa8683445815ec8da8fa1b381f787d67417b401dd17b4cecc82454f061` | 11758 |
 
 ### 3. Update `index.json` if anything differs
 
