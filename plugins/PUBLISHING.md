@@ -12,7 +12,9 @@ GitHub release, tagged `plugin-<short name>-v<version>`. Format and app behaviou
   plugin release starts the Scoop/winget job, which then fails looking for the app's zip). Release
   workflows run the file **at the tagged commit**, so tag plugin releases on `main` after that merge.
 - **Mixxx needs Noctis 1.5.9** (`minAppVersion` 1.5.9, plugin API 1.2). 1.5.8 has no Get plugins
-  page; a 1.5.8 user who installs the zip by hand sees "Needs Noctis 1.5.9". Kawarp needs 1.5.3.
+  page; a 1.5.8 user who installs the zip by hand sees "Needs Noctis 1.5.9".
+- Kawarp is not listed: Noctis has Kawarp built in, so the plugin would only add duplicate
+  "Kawarp background" options. It stays in `plugins/` as a code sample.
 - The app has a copy of `index.json` built in (used offline, or when GitHub can't be reached).
   Make sure the sha256/size in `index.json` describe the zips you upload **before** building the
   1.5.9 app release, so that copy matches too.
@@ -23,25 +25,19 @@ The zips below were built on Windows with .NET SDK 10.0.401. The build is reprod
 source, OS and SDK give the same bytes. Another SDK or OS may give a different (equally valid)
 zip; then use the new hash and size in step 3.
 
-### 1. Build the zips
+### 1. Build the zip
 
 ```powershell
 dotnet build plugins/Noctis.Plugins.Mixxx/Noctis.Plugins.Mixxx.csproj -c Release
-dotnet build plugins/Noctis.Plugins.Kawarp/Noctis.Plugins.Kawarp.csproj -c Release
 ```
 
-Output:
-
-- `plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip`
-- `plugins/Noctis.Plugins.Kawarp/bin/Release/Noctis.Plugins.Kawarp-1.0.0.zip`
+Output: `plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip`
 
 ### 2. Check SHA-256 and size
 
 ```powershell
-foreach ($z in "plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip",
-               "plugins/Noctis.Plugins.Kawarp/bin/Release/Noctis.Plugins.Kawarp-1.0.0.zip") {
-  "{0}  {1}  {2}" -f (Get-FileHash $z -Algorithm SHA256).Hash.ToLower(), (Get-Item $z).Length, $z
-}
+$z = "plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip"
+"{0}  {1}" -f (Get-FileHash $z -Algorithm SHA256).Hash.ToLower(), (Get-Item $z).Length
 ```
 
 Expected (what `index.json` says now):
@@ -49,14 +45,13 @@ Expected (what `index.json` says now):
 | Zip | sha256 | size |
 |---|---|---|
 | Noctis.Plugins.Mixxx-1.0.0.zip | `7b7c5ea058ca9f9940c14337975a2430937fc2725b711ef4c63c3eba3c223e02` | 11837 |
-| Noctis.Plugins.Kawarp-1.0.0.zip | `2cade9cb3f407f237af3d841c09853ddbc5238afb480d6642315a54bab6f9e07` | 10338 |
 
 ### 3. Update `index.json` if anything differs
 
 Put the new `sha256` and `size` in the plugin's entry, commit, and push to `main` (step 5).
 They must describe the exact file you upload, or Noctis refuses to install it.
 
-### 4. Create the releases
+### 4. Create the release
 
 ```powershell
 gh release create plugin-mixxx-v1.0.0 `
@@ -64,13 +59,6 @@ gh release create plugin-mixxx-v1.0.0 `
   --repo heartached/Noctis --target main `
   --title "Mixxx plugin 1.0.0" `
   --notes "Imports the BPM and musical key that Mixxx found for your tracks. Needs Noctis 1.5.9 or newer. Install it from Settings → Plugins → Get plugins." `
-  --prerelease --latest=false
-
-gh release create plugin-kawarp-v1.0.0 `
-  plugins/Noctis.Plugins.Kawarp/bin/Release/Noctis.Plugins.Kawarp-1.0.0.zip `
-  --repo heartached/Noctis --target main `
-  --title "Kawarp plugin 1.0.0" `
-  --notes "A fluid, warped album-art background behind the lyrics that moves with the beat. Install it from Settings → Plugins → Get plugins." `
   --prerelease --latest=false
 ```
 
