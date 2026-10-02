@@ -4756,7 +4756,14 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public void Resume()
     {
-        if (_disposed || _currentMedia == null) return;
+        if (_disposed) return;
+        if (_currentMedia == null)
+        {
+            // The view model shows Playing after this all the same; say so in the log.
+            DebugLogger.Info(DebugLogger.Category.Playback, "Resume.Ignored",
+                $"reason=noMedia, vlcState={_player.State}, paused={_isPaused}");
+            return;
+        }
         _keepAlive?.NotifyActivity();
 
         // Queued to the ThreadPool like every other playback entry point (Play, Stop,
@@ -4894,6 +4901,8 @@ public class VlcAudioPlayer : IAudioPlayer
             Interlocked.Exchange(ref _pendingSeekMs, restartMs);
             // Paused in the engine tail: the restart must open paused too.
             _restartPausedRequest = _isPaused;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Restart",
+                $"reason=ended, vlcState={state}, targetMs={restartMs}, opensPaused={_isPaused}");
             Play(_currentMediaPath, _currentFallbackPath);
             return;
         }
@@ -4936,6 +4945,8 @@ public class VlcAudioPlayer : IAudioPlayer
             // restart; exact-zero restarts need no pending seek.
             Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
             _restartPausedRequest = _isPaused;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Restart",
+                $"reason=startRegion, vlcState={state}, targetMs={clampedMs}, opensPaused={_isPaused}");
             Play(_currentMediaPath, _currentFallbackPath);
             return;
         }

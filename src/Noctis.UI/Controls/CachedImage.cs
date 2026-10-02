@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Services;
 
 namespace Noctis.Controls;
@@ -70,6 +71,39 @@ public class CachedImage : Image
         set => SetValue(FastDownscaleProperty, value);
     }
 
+    public static readonly StyledProperty<bool> PixelExactProperty =
+        AvaloniaProperty.Register<CachedImage, bool>(nameof(PixelExact));
+
+    /// <summary>
+    /// For a single large cover (the album page header, the lyrics page, the artist portrait,
+    /// the mini player): decode at exactly the device pixels the cover is drawn at — no width
+    /// bucket, and no <see cref="DecodeWidth"/> cap once arranged — so the renderer draws it
+    /// 1:1 instead of resampling it a second time.
+    ///
+    /// That second pass is what made the album header softer than the full-size viewer: the
+    /// 340 DIP header asked for the 512 bucket, which at 125% was shrunk to 425 px, at 150% to
+    /// 510 px (a 0.4% shrink drifts the sampling phase across the whole cover: the softest case
+    /// of all), and from 175% up was stretched to 595–680 px because 512 was also the cap.
+    /// Rendered through Avalonia's Skia renderer and compared with a Lanczos resize of the
+    /// source (10 real covers, 10-01): +2.2 dB at 125%, +4.3 at 150%, +7.5 at 200%, and 84–87%
+    /// of the reference's edge contrast where the old path kept 40–70%. The 1:1 draw needs no
+    /// sampling change: Avalonia.Skia 12 only uses its cubic filter when the bitmap is enlarged
+    /// (otherwise trilinear, which copies whole pixels).
+    ///
+    /// A size change (window resize, render scaling, a Viewbox around the image) re-decodes
+    /// once the size has held for <see cref="ExactResizeDelay"/>; meanwhile the current bitmap
+    /// is drawn resampled. Not for list tiles: every slot size would be a decode of its own
+    /// instead of a shared bucket.
+    /// </summary>
+    public bool PixelExact
+    {
+        get => GetValue(PixelExactProperty);
+        set => SetValue(PixelExactProperty, value);
+    }
+
+    /// <summary>How long a <see cref="PixelExact"/> image's size must hold before it re-decodes. Internal for tests.</summary>
+    internal static TimeSpan ExactResizeDelay { get; set; } = TimeSpan.FromMilliseconds(200);
+
     public static readonly StyledProperty<bool> ClearOnSourceChangeProperty =
         AvaloniaProperty.Register<CachedImage, bool>(nameof(ClearOnSourceChange), defaultValue: true);
 
@@ -91,14 +125,21 @@ public class CachedImage : Image
     private readonly object _generationLock = new();
     /// <summary>The cache bitmap currently acquired on behalf of this control.</summary>
     private Bitmap? _held;
+    /// <summary>The artwork path <see cref="_held"/> was loaded for.</summary>
+    private string? _heldPath;
     /// <summary>Width the current load was sized for; a later size change that needs a bigger bucket reloads.</summary>
     private int _loadedWidth;
     private bool _attached;
+    /// <summary>Debounces a <see cref="PixelExact"/> re-decode while the size is still changing.</summary>
+    private DispatcherTimer? _exactResizeTimer;
+    /// <summary>Nearest Viewbox ancestor of a <see cref="PixelExact"/> image, while attached.</summary>
+    private Viewbox? _viewbox;
 
     static CachedImage()
     {
         SourcePathProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
         DecodeWidthProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
+        PixelExactProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
     }
 
     /// <summary>The mode the XAML configured, while <see cref="FastDownscale"/> has swapped in LowQuality.</summary>
@@ -154,11 +195,51 @@ public class CachedImage : Image
         return densityX is >= 0.5 and <= 1.01 && densityY is >= 0.5 and <= 1.01;
     }
 
+    /// <summary>
+    /// The width a <see cref="PixelExact"/> decode needs to land 1:1: the slot in device pixels,
+    /// through the stretch, for square art (covers are; one that is not is drawn resampled
+    /// with the configured mode, as before). Filling a tall slot takes its height; a whole
+    /// cover in a wide slot only its height.
+    /// </summary>
+    internal static int ExactDecodeWidth(Size slot, double deviceScale, Stretch stretch)
+    {
+        var width = slot.Width;
+        if (slot.Height > 0)
+        {
+            if (stretch == Stretch.UniformToFill) width = Math.Max(width, slot.Height);
+            else if (stretch == Stretch.Uniform) width = Math.Min(width, slot.Height);
+        }
+        // Layout rounding puts the slot on whole device pixels; the tolerance keeps float noise
+        // (0.1 × 3 = 0.30000000000000004) from asking for a pixel more than is drawn.
+        var device = (int)Math.Ceiling(width * deviceScale - 0.001);
+        return Math.Clamp(device, 1, ArtworkCache.MaxExactWidth);
+    }
+
+    /// <summary>
+    /// Scale the nearest Viewbox ancestor draws this image at (the lyrics page's disc, vinyl
+    /// and cassette costumes: a 200-unit canvas stretched to the slot); 1 without one.
+    /// </summary>
+    private double ViewboxScale()
+    {
+        if (_viewbox is not { Child: { } child } viewbox) return 1;
+        var natural = child.Bounds.Size;
+        if (natural.Width <= 0 || natural.Height <= 0 || viewbox.Bounds.Width <= 0 || viewbox.Bounds.Height <= 0)
+            return 1;
+        var scale = viewbox.Stretch.CalculateScaling(viewbox.Bounds.Size, natural, viewbox.StretchDirection);
+        return Math.Max(scale.X, scale.Y);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         _attached = true;
         ArtworkCache.Invalidated += OnArtworkInvalidated;
+        if (PixelExact)
+        {
+            // A Viewbox rescales without re-arranging what is inside it: watch it directly.
+            _viewbox = this.FindAncestorOfType<Viewbox>();
+            if (_viewbox != null) _viewbox.SizeChanged += OnViewboxSizeChanged;
+        }
         // Re-acquire what a detach released (a cached page coming back, a recycled row).
         if (Source is null && !string.IsNullOrEmpty(SourcePath))
             OnSourcePathChanged();
@@ -168,6 +249,12 @@ public class CachedImage : Image
     {
         ArtworkCache.Invalidated -= OnArtworkInvalidated;
         _attached = false;
+        _exactResizeTimer?.Stop();
+        if (_viewbox != null)
+        {
+            _viewbox.SizeChanged -= OnViewboxSizeChanged;
+            _viewbox = null;
+        }
         // Let go of the bitmap while off screen. Pages parked by CachedViewLocator kept
         // every one of their covers reachable (and therefore never disposed) this way.
         lock (_generationLock) { _loadGeneration++; }
@@ -177,6 +264,10 @@ public class CachedImage : Image
 
     /// <summary>Width of the slot the control was last arranged into, in logical px.</summary>
     private double _slotWidth;
+    /// <summary>Height of that slot, in logical px (a <see cref="PixelExact"/> fill of a tall slot needs it).</summary>
+    private double _slotHeight;
+    /// <summary>Render scaling at that arrange.</summary>
+    private double _arrangedScaling;
 
     /// <summary>
     /// An Image with no Source arranges itself to 0×0, so Bounds never says how wide
@@ -186,8 +277,14 @@ public class CachedImage : Image
     protected override Size ArrangeOverride(Size finalSize)
     {
         var width = double.IsNaN(finalSize.Width) || double.IsInfinity(finalSize.Width) ? 0 : finalSize.Width;
-        var changed = width != _slotWidth;
+        var height = double.IsNaN(finalSize.Height) || double.IsInfinity(finalSize.Height) ? 0 : finalSize.Height;
+        // The scaling counts too: a window moved to a monitor with another one re-arranges
+        // at the same logical size and needs a decode of another pixel size.
+        var scaling = (VisualRoot as TopLevel)?.RenderScaling ?? 1.0;
+        var changed = width != _slotWidth || height != _slotHeight || scaling != _arrangedScaling;
         _slotWidth = width;
+        _slotHeight = height;
+        _arrangedScaling = scaling;
         var result = base.ArrangeOverride(finalSize);
         if (width > 0 && (_pendingLoad || _loadedForUnknownSize || (changed && !string.IsNullOrEmpty(SourcePath))))
             Dispatcher.UIThread.Post(OnArranged, DispatcherPriority.Loaded);
@@ -216,28 +313,62 @@ public class CachedImage : Image
                 OnSourcePathChanged();
             return;
         }
+        if (PixelExact)
+        {
+            // Any change: a bitmap bigger than the slot is resampled as much as a smaller one.
+            // Waits for the size to hold, so a window drag decodes once, at the size it ends on.
+            if (RequestedWidth() != _loadedWidth)
+            {
+                if (_exactResizeTimer == null)
+                {
+                    _exactResizeTimer = new DispatcherTimer();
+                    _exactResizeTimer.Tick += OnExactResizeTick;
+                }
+                _exactResizeTimer.Stop();
+                _exactResizeTimer.Interval = ExactResizeDelay;
+                _exactResizeTimer.Start();
+            }
+            return;
+        }
         // A grow past the bucket it was decoded for (e.g. the album tile size
         // slider, a window resize on a stretched cover): fetch the right size.
         if (RequestedWidth() > _loadedWidth)
             OnSourcePathChanged();
     }
 
+    private void OnExactResizeTick(object? sender, EventArgs e)
+    {
+        _exactResizeTimer?.Stop();
+        if (_attached && !string.IsNullOrEmpty(SourcePath) && RequestedWidth() != _loadedWidth)
+            OnSourcePathChanged();
+    }
+
+    private void OnViewboxSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_slotWidth > 0)
+            Dispatcher.UIThread.Post(OnArranged, DispatcherPriority.Loaded);
+    }
+
     /// <summary>
     /// Decode width to ask the cache for: the control's slot width in device pixels,
-    /// bucketed, capped by <see cref="DecodeWidth"/>. Falls back to the cap while the
-    /// control has not been arranged.
+    /// bucketed, capped by <see cref="DecodeWidth"/>; for <see cref="PixelExact"/>, the exact
+    /// device width it is drawn at (<see cref="ExactDecodeWidth"/>). Falls back to the cap
+    /// while the control has not been arranged.
     /// </summary>
     internal int RequestedWidth()
     {
         var cap = ArtworkCache.NormalizeDecodeWidth(DecodeWidth);
         if (_slotWidth <= 0) return cap;
         var scale = (VisualRoot as TopLevel)?.RenderScaling ?? 1.0;
+        if (PixelExact)
+            return ExactDecodeWidth(new Size(_slotWidth, _slotHeight), scale * ViewboxScale(), Stretch);
         var device = (int)Math.Ceiling(_slotWidth * scale);
         return Math.Min(cap, ArtworkCache.NormalizeDecodeWidth(device));
     }
 
-    private void SetSource(Bitmap? bitmap)
+    private void SetSource(Bitmap? bitmap, string? path = null)
     {
+        _heldPath = bitmap is null ? null : path;
         if (ReferenceEquals(bitmap, _held) && ReferenceEquals(Source, bitmap)) return;
         if (bitmap is not null) ArtworkCache.Acquire(bitmap);
         var previous = _held;
@@ -318,12 +449,13 @@ public class CachedImage : Image
 
         var decodeWidth = RequestedWidth();
         _loadedWidth = decodeWidth;
+        var exact = PixelExact;
 
         // Fast path: cache hit returns immediately, no I/O
-        var cached = ArtworkCache.TryGet(path, decodeWidth);
+        var cached = ArtworkCache.TryGet(path, decodeWidth, exact);
         if (cached != null)
         {
-            SetSource(cached);
+            SetSource(cached, path);
             return;
         }
 
@@ -340,10 +472,14 @@ public class CachedImage : Image
         // player) take it only when it is big enough. Their cache is usually a 128-384px
         // tile decode, which stretched to a ~1000px cover showed blurry for the length of
         // the full decode and then snapped sharp. The previous cover stays up instead.
-        var fallback = ArtworkCache.TryGetAnyWidth(path, decodeWidth, out var sufficient);
-        if (fallback != null && (sufficient || ClearOnSourceChange || fallback.PixelSize.Width >= decodeWidth))
+        // A new size of the cover already on screen (a resize, another scaling) is treated
+        // the same way on every surface: it stays up unless the cache has one big enough.
+        var showingThisCover = _held is not null && _heldPath == path;
+        var fallback = ArtworkCache.TryGetAnyWidth(path, decodeWidth, out var sufficient, exact);
+        if (fallback != null
+            && (sufficient || (ClearOnSourceChange && !showingThisCover) || fallback.PixelSize.Width >= decodeWidth))
         {
-            SetSource(fallback);
+            SetSource(fallback, path);
             if (sufficient) return;
         }
         // Keeping the previous Source visible avoids a placeholder flash on every track
@@ -351,12 +487,12 @@ public class CachedImage : Image
         // where a recycled container gets a new SourcePath and keeps rendering the
         // PREVIOUS item's art until the decode lands. Scrolling a large grid past the
         // cache budget therefore showed a trail of wrong covers.
-        else if (ClearOnSourceChange)
+        else if (ClearOnSourceChange && !showingThisCover)
             SetSource(null);
 
         try
         {
-            var bitmap = await Task.Run(() => DecodeInBackground(path, decodeWidth, generation));
+            var bitmap = await Task.Run(() => DecodeInBackground(path, decodeWidth, generation, exact));
 
             // Discard result if the control was recycled (SourcePath changed again)
             bool isCurrentGeneration;
@@ -366,7 +502,7 @@ public class CachedImage : Image
             }
 
             if (isCurrentGeneration)
-                SetSource(bitmap);
+                SetSource(bitmap, path);
         }
         catch (Exception ex)
         {
@@ -382,7 +518,7 @@ public class CachedImage : Image
     /// of paying for a cover nobody will see, and decodes run below normal priority so, when
     /// they saturate the cores, the UI and render threads still get theirs.
     /// </summary>
-    internal Bitmap? DecodeInBackground(string path, int decodeWidth, int generation)
+    internal Bitmap? DecodeInBackground(string path, int decodeWidth, int generation, bool exact = false)
     {
         lock (_generationLock)
         {
@@ -394,7 +530,7 @@ public class CachedImage : Image
         try
         {
             thread.Priority = ThreadPriority.BelowNormal;
-            return ArtworkCache.LoadAndCache(path, decodeWidth);
+            return ArtworkCache.LoadAndCache(path, decodeWidth, exact);
         }
         finally
         {

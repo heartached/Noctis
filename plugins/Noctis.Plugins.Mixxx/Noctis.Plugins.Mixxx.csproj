@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Mixxx for Noctis: imports the BPM and musical key that Mixxx (the open-source DJ app)
+    worked out for your tracks, read from Mixxx's library database (mixxxdb.sqlite, opened
+    read-only). Uses plugin API 1.2 ("library.write.analysis"): values land in Noctis's
+    library only, never in file tags. `dotnet build -c Release` writes
+    bin/Release/Noctis.Plugins.Mixxx-<version>.zip.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Noctis.Plugins.Mixxx</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Noctis.Plugins.Abstractions\Noctis.Plugins.Abstractions.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <!-- Compile-time only: Noctis ships this exact Microsoft.Data.Sqlite (and the native SQLite
+         behind it) for its own library index, and a plugin's load context resolves assemblies the
+         app has to the app's copy, so the package carries no SQLite of its own. -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.31" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <Import Project="..\..\samples\PluginPackage.targets" />
+</Project>

@@ -293,6 +293,66 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.True(reloaded.AlbumSortNewestFirst);
     }
 
+    private static LibraryAlbumsViewModel CreateAlbumsViewModel(SettingsViewModel settings)
+    {
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        return new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
+    }
+
+    /// <summary>The Albums view's release Type filter (All/Albums/Singles/EPs/Other) survives a restart.</summary>
+    [AvaloniaTheory]
+    [InlineData("album", ReleaseType.Album, "Albums")]
+    [InlineData("single", ReleaseType.Single, "Singles")]
+    [InlineData("ep", ReleaseType.EP, "EPs")]
+    [InlineData("other", ReleaseType.Compilation, "Other")]
+    public async Task AlbumReleaseTypeFilter_SurvivesSaveAndReload(string key, ReleaseType expected, string label)
+    {
+        var vm = CreateViewModel();
+        var albums = CreateAlbumsViewModel(vm);
+        await vm.LoadAsync();
+        Assert.Null(albums.ReleaseTypeFilter);
+
+        albums.SetReleaseTypeFilterCommand.Execute(key);
+        Assert.Equal(key, vm.AlbumReleaseTypeFilter);
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        var reloadedAlbums = CreateAlbumsViewModel(reloaded);
+        await reloaded.LoadAsync();
+
+        Assert.Equal(expected, reloadedAlbums.ReleaseTypeFilter);
+        Assert.Equal(label, reloadedAlbums.ReleaseTypeFilterLabel);
+
+        // Picking All again is remembered too.
+        reloadedAlbums.SetReleaseTypeFilterCommand.Execute("all");
+        await reloaded.SaveAsync();
+        var again = CreateViewModel();
+        var againAlbums = CreateAlbumsViewModel(again);
+        await again.LoadAsync();
+        Assert.Null(againAlbums.ReleaseTypeFilter);
+    }
+
+    /// <summary>A settings file from before the filter was persisted (no key), or one holding
+    /// an unknown value, loads as "All".</summary>
+    [AvaloniaTheory]
+    [InlineData("{ \"albumSortMode\": \"title\" }")]
+    [InlineData("{ \"albumReleaseTypeFilter\": \"bogus\" }")]
+    [InlineData("{ \"albumReleaseTypeFilter\": null }")]
+    public async Task AlbumReleaseTypeFilter_MissingOrUnknown_LoadsAsAll(string json)
+    {
+        Directory.CreateDirectory(_root);
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), json);
+
+        var vm = CreateViewModel();
+        var albums = CreateAlbumsViewModel(vm);
+        await vm.LoadAsync();
+
+        Assert.Null(albums.ReleaseTypeFilter);
+        Assert.Equal("All", albums.ReleaseTypeFilterLabel);
+    }
+
     /// <summary>GitHub #89: the Folders track-pane sort defaults to folder order and survives a restart.</summary>
     [AvaloniaFact]
     public async Task FoldersSort_DefaultsToFolderOrder_AndSurvivesSaveAndReload()

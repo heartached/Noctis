@@ -2,16 +2,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
              x:Class="Noctis.Mobile.Views.RailTile"
              x:DataType="vm:RailItem">
-    <StackPanel Spacing="4" Width="140">
-        <Border Classes="art" Width="140" Height="140" CornerRadius="10">
+    <!-- Takes the width its host gives it (a rail's fixed tile width, or a grid column) and
+         keeps the cover square. Artists show as circles, everything else as rounded squares. -->
+    <StackPanel Spacing="2" views:Appear.IsEnabled="True">
+        <Border Name="TileArt" Classes="art rail" Classes.artist="{Binding IsArtist}"
+                Height="{Binding $self.Bounds.Width}" Margin="0,0,0,4">
             <Panel>
-                <PathIcon Data="{DynamicResource AlbumsIcon}" Width="36" Height="36" Opacity="0.4" />
+                <PathIcon Data="{DynamicResource AlbumsIcon}" Width="30" Height="30" Opacity="0.4" />
                 <controls:CachedImage SourcePath="{Binding ArtworkPath}" DecodeWidth="384" Stretch="UniformToFill" />
             </Panel>
         </Border>
-        <TextBlock Classes="row-title" FontSize="13" Text="{Binding Title}" />
+        <TextBlock Classes="row-title" FontSize="13" FontWeight="SemiBold" Text="{Binding Title}" />
         <TextBlock Classes="row-sub" FontSize="12" Text="{Binding Subtitle}" />
     </StackPanel>
 </UserControl>

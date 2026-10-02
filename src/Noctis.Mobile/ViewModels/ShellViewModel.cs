@@ -26,14 +26,12 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
         Search = new SearchPageViewModel(this);
-        Home = new HomePageViewModel(this);
     }
 
     public LibraryViewModel Library { get; }
     public NowPlayingViewModel Player { get; }
     public LyricsPageViewModel Lyrics { get; }
     public SearchPageViewModel Search { get; }
-    public HomePageViewModel Home { get; }
 
     /// <summary>Makes the cover tint for album and artist pages; tests inject a synchronous one.</summary>
     public Func<PageTint> TintFactory { get; init; } = () => new PageTint();
@@ -56,6 +54,24 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>Saves the log for Settings → Export logs (Android create-document picker).</summary>
     public ILogExporter? Logs { get; init; }
+
+    /// <summary>The album page's description paragraph (Last.fm on Android); null in tests unless
+    /// injected, and the paragraph then stays hidden.</summary>
+    public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
+
+    /// <summary>Artist photos (Deezer on Android) for the artist page, the Artists grid, pinned
+    /// artists, the artist sheet and search; null in tests unless injected, and the artist's
+    /// album cover then stands in everywhere.</summary>
+    public IArtistPhotoSource? ArtistPhotos
+    {
+        get => _artistPhotos;
+        init
+        {
+            _artistPhotos = value;
+            Library.ArtistPhotos = value;   // the pinned artists' circles
+        }
+    }
+    private readonly IArtistPhotoSource? _artistPhotos;
 
     /// <summary>"Noctis 1.2.3" for Settings → About; the head reads the package version.</summary>
     public string VersionText { get; init; } = "Noctis";
@@ -95,20 +111,59 @@ public sealed partial class ShellViewModel : ObservableObject
     public ObservableCollection<MobilePage> Pages { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible))]
+    [NotifyPropertyChangedFor(nameof(IsMiniBarVisible), nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible),
+        nameof(StatusBarIconsDark))]
     private bool _isNowPlayingOpen;
 
-    [ObservableProperty] private bool _isQueueOpen;
-    [ObservableProperty] private bool _isLyricsOpen;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool _isQueueOpen;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected),
-        nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible))]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool _isLyricsOpen;
+
+    /// <summary>The status bar icons the page under the bar asks for (the album cover: dark on a
+    /// light cover); null leaves them to the theme.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBarIconsDark))]
+    private bool? _pageStatusBarIcons;
+
+    /// <summary>
+    /// What the status bar shows: light icons over Now Playing, Lyrics and the Queue (all on a
+    /// dark backdrop under the bar, whatever the theme), else the page's choice, else the
+    /// theme's (null). Applied to <see cref="Theme"/> on every change.
+    /// </summary>
+    public bool? StatusBarIconsDark => IsNowPlayingOpen || IsLyricsOpen || IsQueueOpen ? false : PageStatusBarIcons;
+
+    private bool? _appliedStatusBarIcons;
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.PropertyName != nameof(StatusBarIconsDark) || StatusBarIconsDark == _appliedStatusBarIcons) return;
+        _appliedStatusBarIcons = StatusBarIconsDark;
+        Theme?.SetStatusBarIcons(_appliedStatusBarIcons);
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFavoritesSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected), nameof(IsPlaylistsSelected),
+        nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
     private MobileTab _selectedTab = MobileTab.Library;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsHomeRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible))]
+    [NotifyPropertyChangedFor(nameof(HasPage), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible), nameof(IsSearchRootVisible),
+        nameof(IsPlaylistsRootVisible))]
     private MobilePage? _currentPage;
+
+    /// <summary>
+    /// The tab bar folded into the compact row (the current tab's button, the mini player,
+    /// Search), as Apple Music's bar does on scroll down. Set by <see cref="ReportContentScroll"/>;
+    /// any tab or page change unfolds it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMiniBarExpandedVisible), nameof(IsMiniBarInlineVisible))]
+    private bool _isTabBarCollapsed;
 
     /// <summary>
     /// System-bar insets (status bar on top, navigation/gesture bar at the bottom) from the
@@ -119,32 +174,39 @@ public sealed partial class ShellViewModel : ObservableObject
     private Thickness _safeArea;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAllMusicChip), nameof(IsPlaylistsChip), nameof(IsAlbumsChip), nameof(IsArtistsChip), nameof(IsSongsChip))]
-    private LibraryChip _libraryChip = LibraryChip.AllMusic;
-
-    /// <summary>The list shown under a non-"All Music" chip: the same page a tile pushes, embedded.</summary>
-    [ObservableProperty] private MobilePage? _libraryChipPage;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSheetOpen))]
     private ContextSheetViewModel? _sheet;
 
     public bool IsSheetOpen => Sheet != null;
 
-    public bool IsAllMusicChip => LibraryChip == LibraryChip.AllMusic;
-    public bool IsPlaylistsChip => LibraryChip == LibraryChip.Playlists;
-    public bool IsAlbumsChip => LibraryChip == LibraryChip.Albums;
-    public bool IsArtistsChip => LibraryChip == LibraryChip.Artists;
-    public bool IsSongsChip => LibraryChip == LibraryChip.Songs;
+    private LibraryRowsViewModel? _libraryRows;
 
-    public bool IsHomeSelected => SelectedTab == MobileTab.Home;
+    /// <summary>The Library tab's list rows (Playlists, Artists…) and their Edit mode. Made on
+    /// first use, after the host has set <see cref="Account"/> (it decides the Downloaded row).</summary>
+    public LibraryRowsViewModel LibraryRows => _libraryRows ??= new LibraryRowsViewModel(this);
+
+    public bool IsFavoritesSelected => SelectedTab == MobileTab.Favorites;
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
+    public bool IsPlaylistsSelected => SelectedTab == MobileTab.Playlists;
 
     public bool HasPage => CurrentPage != null;
-    public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
+    public bool IsFavoritesRootVisible => IsFavoritesSelected && !HasPage;
     public bool IsLibraryRootVisible => IsLibrarySelected && !HasPage;
     public bool IsSearchRootVisible => IsSearchSelected && !HasPage;
+    public bool IsPlaylistsRootVisible => IsPlaylistsSelected && !HasPage;
+
+    private PlaylistListPageViewModel? _playlistsRoot;
+    private SongListPageViewModel? _favoritesRoot;
+
+    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
+    /// Made on first use; it re-reads on every library refresh.</summary>
+    public PlaylistListPageViewModel PlaylistsRoot =>
+        _playlistsRoot ??= new PlaylistListPageViewModel(this) { IsEmbedded = true };
+
+    /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
+    public SongListPageViewModel FavoritesRoot =>
+        _favoritesRoot ??= new SongListPageViewModel(this, Loc.T("Nav.Favorites"), Library.Favourites) { IsEmbedded = true };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -154,19 +216,85 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it.</summary>
     public bool IsMiniBarVisible => Player.HasTrack && !IsNowPlayingOpen;
 
+    /// <summary>The mini player as its own capsule above the full tab bar.</summary>
+    public bool IsMiniBarExpandedVisible => IsMiniBarVisible && !IsTabBarCollapsed;
+
+    /// <summary>The mini player inside the folded bar, between the tab and Search buttons.</summary>
+    public bool IsMiniBarInlineVisible => IsMiniBarVisible && IsTabBarCollapsed;
+
+    /// <summary>Scroll distance in one direction that folds or unfolds the bar, so a finger's
+    /// wobble does neither.</summary>
+    internal const double TabBarScrollThreshold = 24;
+
+    /// <summary>After a tab or page change, scrolls are the new view settling or ScrollMemory
+    /// putting a page back, not the user: they are ignored for this long.</summary>
+    internal const long TabBarSettleMs = 400;
+
+    /// <summary>Milliseconds clock; tests drive it.</summary>
+    internal Func<long> TickSource { get; set; } = () => Environment.TickCount64;
+
+    private double _scrollRun;
+    private long _ignoreScrollUntil;
+
+    /// <summary>
+    /// A vertical scroll of the visible tab content: <paramref name="offsetY"/> is the new offset,
+    /// <paramref name="deltaY"/> how far it moved (positive = down). Folds the bar after
+    /// <see cref="TabBarScrollThreshold"/> of travel down, unfolds it after as much travel up or
+    /// on reaching the top.
+    /// </summary>
+    public void ReportContentScroll(double offsetY, double deltaY)
+    {
+        // Under the Queue the bar stands expanded (OnIsQueueOpenChanged): a list moving in the
+        // hidden tab content must not fold it there.
+        if (deltaY == 0 || IsQueueOpen) return;
+        if (offsetY <= 1)
+        {
+            _scrollRun = 0;
+            IsTabBarCollapsed = false;
+            return;
+        }
+        if (TickSource() < _ignoreScrollUntil) return;
+        // A run counts travel in one direction; turning around starts a new one.
+        if (Math.Sign(deltaY) != Math.Sign(_scrollRun)) _scrollRun = 0;
+        _scrollRun += deltaY;
+        if (_scrollRun >= TabBarScrollThreshold) IsTabBarCollapsed = true;
+        else if (_scrollRun <= -TabBarScrollThreshold) IsTabBarCollapsed = false;
+    }
+
+    private void UnfoldTabBar()
+    {
+        _scrollRun = 0;
+        _ignoreScrollUntil = TickSource() + TabBarSettleMs;
+        IsTabBarCollapsed = false;
+    }
+
+    [RelayCommand] private void ExpandTabBar() => UnfoldTabBar();
+
+    partial void OnCurrentPageChanged(MobilePage? value) => UnfoldTabBar();
+
+    /// <summary>The tab bar stays up under the Queue sheet (ShellView), and the folded row has
+    /// no place there: opening the Queue unfolds it.</summary>
+    partial void OnIsQueueOpenChanged(bool value)
+    {
+        if (value) UnfoldTabBar();
+    }
+
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.HasTrack) or nameof(NowPlayingViewModel.CurrentTrack))
+        {
             OnPropertyChanged(nameof(IsMiniBarVisible));
+            OnPropertyChanged(nameof(IsMiniBarExpandedVisible));
+            OnPropertyChanged(nameof(IsMiniBarInlineVisible));
+        }
     }
 
-    /// <summary>A started track's play reached the log: the Shelf and Home rows re-read it,
+    /// <summary>A started track's play reached the log: the Library's play-log rails re-read it,
     /// and a desktop song's play is queued for the desktop (sent as a scrobble on the next sync).</summary>
     private void OnPlayRecorded(object? sender, EventArgs e)
     {
         RecordRemotePlay();
         Library.RefreshRecents();
-        Home.Refresh();
     }
 
     private void RecordRemotePlay()
@@ -185,7 +313,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSelectedTabChanged(MobileTab value)
     {
-        if (value == MobileTab.Home) Home.Refresh();
+        UnfoldTabBar();
     }
 
     /// <summary>Push <paramref name="page"/> over the current tab. A page opened from Now
@@ -216,10 +344,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void NavigateBack() => GoBack();
 
-    /// <summary>A tab tap always lands on that tab's root, so re-tapping the current tab pops to it.</summary>
+    /// <summary>A tab tap always lands on that tab's root, so re-tapping the current tab pops to it.
+    /// The bar stays up under the Queue, and a tap there closes the Queue and Now Playing too.</summary>
     [RelayCommand]
     private void SelectTab(MobileTab tab)
     {
+        CloseNowPlaying();
         PopToRoot();
         SelectedTab = tab;
     }
@@ -242,9 +372,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>
     /// Android Back: the topmost thing closes first — the long-press sheet, Queue, Lyrics, Now
-    /// Playing, then pushed pages, then a non-start tab returns to Library. A Library chip
-    /// other than All Music then returns to All Music. Returns whether the press was consumed;
-    /// only at the All Music root does the activity fall through to the system default (finish).
+    /// Playing, then pushed pages, then a non-start tab returns to Library. The Library rows'
+    /// Edit mode then finishes (as Done would). Returns whether the press was consumed; only at
+    /// the Library root does the activity fall through to the system default (finish).
     /// </summary>
     public bool TryHandleBack()
     {
@@ -254,9 +384,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (IsNowPlayingOpen) { IsNowPlayingOpen = false; return true; }
         if (GoBack()) return true;
         if (SelectedTab != MobileTab.Library) { SelectedTab = MobileTab.Library; return true; }
-        // A chip list (Songs, Albums…) reads as a page of its own: Back returns to All Music
-        // rather than leaving the app from it.
-        if (LibraryChip != LibraryChip.AllMusic) { SelectLibraryChip(LibraryChip.AllMusic); return true; }
+        if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
         return false;
     }
 
@@ -268,7 +396,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var songs = Library.Songs.ToList();
         var index = songs.IndexOf(track);
         if (index < 0) return;
-        Player.PlayTracks(songs, index);
+        Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
     [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs));
@@ -282,6 +410,13 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void OpenArtists() => Navigate(new ArtistListPageViewModel(this));
 
     [RelayCommand] private void OpenPlaylists() => Navigate(new PlaylistListPageViewModel(this));
+
+    // Library sections' › headers.
+    [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Pinned", () => Library.PinnedRail));
+
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "On Repeat", Library.OnRepeatTracks));
+
+    [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Recently Played", () => Library.RecentlyPlayedRail));
 
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
@@ -310,22 +445,6 @@ public sealed partial class ShellViewModel : ObservableObject
     public IEnumerable<Track> ResolvePlaylist(Playlist playlist) =>
         playlist.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>();
 
-    [RelayCommand]
-    private void SelectLibraryChip(LibraryChip chip)
-    {
-        if (chip == LibraryChip) return;
-        LibraryChipPage?.OnClosed();
-        LibraryChip = chip;
-        LibraryChipPage = chip switch
-        {
-            LibraryChip.Playlists => new PlaylistListPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Albums => new AlbumGridPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Artists => new ArtistListPageViewModel(this) { IsEmbedded = true },
-            LibraryChip.Songs => new SongListPageViewModel(this, Loc.T("Nav.Songs"), () => Library.Songs) { IsEmbedded = true },
-            _ => null,
-        };
-    }
-
     /// <summary>A rail tile: albums and playlists open, an On Repeat song plays that rail from it.</summary>
     [RelayCommand]
     private void OpenRailItem(RailItem? item)
@@ -338,11 +457,16 @@ public sealed partial class ShellViewModel : ObservableObject
             case Playlist playlist:
                 OpenPlaylist(playlist);
                 break;
+            case Artist artist:
+                OpenArtist(artist.Name);
+                break;
             case Track track:
-                var rail = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
-                var index = rail.IndexOf(track);
-                if (index >= 0) Player.PlayTracks(rail, index);
-                else Player.PlayTracks(new[] { track }, 0);
+                // A song plays the rail it sits on: On Repeat, else the pinned songs.
+                var onRepeat = Library.OnRepeatRail.Select(r => r.Payload).OfType<Track>().ToList();
+                var pinned = Library.PinnedRail.Select(r => r.Payload).OfType<Track>().ToList();
+                if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, "On Repeat");
+                else if (pinned.IndexOf(track) is var p and >= 0) Player.PlayTracks(pinned, p, "Pinned");
+                else Player.PlayTracks(new[] { track }, 0, null);
                 break;
         }
     }
@@ -373,7 +497,15 @@ public sealed partial class ShellViewModel : ObservableObject
             case Album album: OpenAlbumSheet(album); break;
             case Playlist playlist: OpenPlaylistSheet(playlist); break;
             case Track track: OpenTrackSheet(track); break;
+            case Artist artist: Sheet = ContextSheetViewModel.ForArtist(this, artist, item.ArtworkPath); break;
         }
+    }
+
+    /// <summary>A long-pressed artist row: play, queue or pin the artist.</summary>
+    [RelayCommand]
+    private void OpenArtistSheet(ArtistListItem? item)
+    {
+        if (item != null) Sheet = ContextSheetViewModel.ForArtist(this, item.Artist, item.ArtworkPath);
     }
 
     [RelayCommand]
@@ -425,7 +557,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Outputs?.Show() == false) DebugLog.Write("Android", "No output switcher could be shown");
     }
 
-    /// <summary>The profile button (Library and Home, top right).</summary>
+    /// <summary>The profile button (top right of the tab pages).</summary>
     [RelayCommand]
     private void OpenSettings()
     {

@@ -16,6 +16,9 @@ permissions:
 jobs:
   resolve:
     name: Resolve version and checksums
+    # Official plugin releases (plugin-<name>-v<version>, see plugins/PUBLISHING.md) carry no
+    # app build: skip them, and with this job the Scoop and winget jobs that need it.
+    if: ${{ !startsWith(github.event.release.tag_name, 'plugin-') }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}

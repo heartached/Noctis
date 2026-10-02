@@ -117,21 +117,16 @@ public class MobileNavigationTests : IDisposable
     }
 
     [Fact]
-    public void TryHandleBack_OnTheLibraryTab_ResetsANonAllMusicChip_BeforeLeavingTheApp()
+    public void TryHandleBack_InLibraryEditMode_FinishesEditing_BeforeLeavingTheApp()
     {
         var shell = MakeShell();
-        shell.SelectLibraryChipCommand.Execute(LibraryChip.Songs);
-        shell.Navigate(new NavTestPage("Pushed"));
+        shell.LibraryRows.EditCommand.Execute(null);
+        Assert.True(shell.LibraryRows.IsEditing);
 
-        Assert.True(shell.TryHandleBack());                // the pushed page first
-        Assert.Null(shell.CurrentPage);
-        Assert.Equal(LibraryChip.Songs, shell.LibraryChip);
+        Assert.True(shell.TryHandleBack());                // Back is Done
+        Assert.False(shell.LibraryRows.IsEditing);
 
-        Assert.True(shell.TryHandleBack());                // then the chip returns to All Music
-        Assert.Equal(LibraryChip.AllMusic, shell.LibraryChip);
-        Assert.Null(shell.LibraryChipPage);
-
-        Assert.False(shell.TryHandleBack());               // All Music root: the system finishes the activity
+        Assert.False(shell.TryHandleBack());               // Library root: the system finishes the activity
     }
 
     [Fact]
@@ -150,11 +145,28 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(1, b.Closed);
 
         shell.Navigate(new NavTestPage("C"));
-        shell.SelectTabCommand.Execute(MobileTab.Home);
+        shell.SelectTabCommand.Execute(MobileTab.Favorites);
         Assert.Empty(shell.Pages);
-        Assert.True(shell.IsHomeSelected);
-        Assert.True(shell.IsHomeRootVisible);
+        Assert.True(shell.IsFavoritesSelected);
+        Assert.True(shell.IsFavoritesRootVisible);
         Assert.False(shell.IsLibraryRootVisible);
+    }
+
+    /// <summary>The tab bar stays up under the Queue: a tab tapped there lands on that tab's
+    /// page, not back on the player.</summary>
+    [Fact]
+    public void SelectTab_FromUnderTheQueue_ClosesTheQueueAndNowPlaying()
+    {
+        var shell = MakeShell();
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleQueueCommand.Execute(null);
+
+        shell.SelectTabCommand.Execute(MobileTab.Playlists);
+
+        Assert.False(shell.IsQueueOpen);
+        Assert.False(shell.IsNowPlayingOpen);
+        Assert.False(shell.IsLyricsOpen);
+        Assert.True(shell.IsPlaylistsRootVisible);
     }
 
     [Fact]
@@ -206,7 +218,7 @@ public class MobileNavigationTests : IDisposable
 
         Assert.Equal(24, shell.TopSafePadding.Top);
         Assert.Equal(24, view.FindControl<Panel>("TabContent")!.Margin.Top);
-        Assert.Equal(48, view.FindControl<StackPanel>("BottomChrome")!.Margin.Bottom);
+        Assert.Equal(48, view.FindControl<Panel>("BottomChrome")!.Margin.Bottom);
         window.Close();
     }
 
@@ -225,7 +237,7 @@ public class MobileNavigationTests : IDisposable
         Assert.Equal(new Thickness(30, 0, 48, 16), shell.BottomSafePadding);
         var content = view.FindControl<Panel>("TabContent")!.Margin;
         Assert.Equal((30.0, 48.0), (content.Left, content.Right));
-        var chrome = view.FindControl<StackPanel>("BottomChrome")!.Margin;
+        var chrome = view.FindControl<Panel>("BottomChrome")!.Margin;
         Assert.Equal((30.0, 48.0), (chrome.Left, chrome.Right));
         window.Close();
     }

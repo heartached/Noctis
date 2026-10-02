@@ -149,8 +149,13 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsSettingsLoaded => _settingsLoaded;
     public event EventHandler? SettingsLoaded;
 
-    /// <summary>Transient line under the Plugins buttons ("Reloaded · 2 plugins found").</summary>
+    /// <summary>Transient line under the Installed header ("Reloaded · 2 plugins found").</summary>
     [ObservableProperty] private string _pluginsStatus = string.Empty;
+
+    /// <summary>The folder button's tooltip: what it does, and where the folder is.</summary>
+    public string PluginsFolderTip => Plugins is null
+        ? Loc.T("Plugins.OpenFolder")
+        : Loc.T("Plugins.OpenFolder") + Environment.NewLine + Plugins.PluginsDirectory;
 
     [RelayCommand]
     private void OpenPluginsFolder()
@@ -208,7 +213,16 @@ public partial class SettingsViewModel : ViewModelBase
         _syncingCommunityPlugins = true;
         try { CommunityPluginsEnabled = Plugins?.CommunityPluginsEnabled ?? false; }
         finally { _syncingCommunityPlugins = false; }
+        OnPropertyChanged(nameof(ShowPluginsOffNotice));
     }
+
+    /// <summary>"Plugins are off" above the installed list: only while community plugins are off
+    /// and something they would run (a code plugin) is installed. Content packs work either way.</summary>
+    public bool ShowPluginsOffNotice => Plugins is { CommunityPluginsEnabled: false } host && host.Plugins.Any(p => p.IsCodePlugin);
+
+    /// <summary>The notice's Turn on button: the same as flipping the switch, confirmation included.</summary>
+    [RelayCommand]
+    private void TurnOnCommunityPlugins() => CommunityPluginsEnabled = true;
 
     /// <summary>The first-enable approval: what the plugin declares, and what that does and does not mean.</summary>
     internal async Task<bool> ConfirmEnablePluginAsync(LoadedPlugin plugin)
@@ -240,17 +254,29 @@ public partial class SettingsViewModel : ViewModelBase
         await InstallPluginPackageAsync(path);
     }
 
-    /// <summary>Install flow after the file is picked: refuse duplicates, offer an update when newer.</summary>
-    internal async Task InstallPluginPackageAsync(string zipPath)
+    /// <summary>
+    /// Install flow after the file is picked: refuse duplicates, offer an update when newer.
+    /// <paramref name="official"/> is set for a verified Get plugins download: the zip must then
+    /// be that plugin and version, and its Update button already asked, so no second dialog.
+    /// True when the plugin was installed or updated.
+    /// </summary>
+    internal async Task<bool> InstallPluginPackageAsync(string zipPath, PluginCatalogEntry? official = null)
     {
-        if (Plugins is null) return;
+        if (Plugins is null) return false;
         PluginPackage package;
         LoadedPlugin? existing;
         try { (package, existing) = Plugins.InspectPackage(zipPath); }
         catch (PluginInstallException ex)
         {
             ShowPluginStatus(Loc.T("Plugins.InstallFailed", ex.Message));
-            return;
+            return false;
+        }
+
+        if (official is not null && (!string.Equals(package.Manifest.Id, official.Id, StringComparison.OrdinalIgnoreCase)
+                                     || PluginVersion.Compare(package.Manifest.Version, official.Version) != 0))
+        {
+            ShowPluginStatus(Loc.T("Plugins.Get.WrongPackage", official.Name, official.Version));
+            return false;
         }
 
         var allowUpdate = false;
@@ -259,14 +285,17 @@ public partial class SettingsViewModel : ViewModelBase
             if (PluginVersion.Compare(package.Manifest.Version, existing.Version) <= 0)
             {
                 ShowPluginStatus(Loc.T("Plugins.AlreadyInstalled", existing.Name, existing.Version, package.Manifest.Version));
-                return;
+                return false;
             }
-            var update = await ShowPluginDialog(new Views.ConfirmationRequest(
-                Loc.T("Plugins.UpdateBody"),
-                Title: Loc.T("Plugins.UpdateTitle", existing.Name, existing.Version, package.Manifest.Version),
-                ConfirmText: Loc.T("Plugins.UpdateConfirm"),
-                Width: 420));
-            if (!update.Confirmed) return;
+            if (official is null)
+            {
+                var update = await ShowPluginDialog(new Views.ConfirmationRequest(
+                    Loc.T("Plugins.UpdateBody"),
+                    Title: Loc.T("Plugins.UpdateTitle", existing.Name, existing.Version, package.Manifest.Version),
+                    ConfirmText: Loc.T("Plugins.UpdateConfirm"),
+                    Width: 420));
+                if (!update.Confirmed) return false;
+            }
             allowUpdate = true;
         }
 
@@ -279,6 +308,7 @@ public partial class SettingsViewModel : ViewModelBase
             PluginInstallOutcome.Failed => Loc.T("Plugins.InstallFailed", result.Message),
             _ => result.Message,
         });
+        return result.Outcome is PluginInstallOutcome.Installed or PluginInstallOutcome.Updated;
     }
 
     [RelayCommand]
@@ -365,6 +395,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedTabTitle));
         OnPropertyChanged(nameof(SelectedTabDescription));
         OnFeatureTabOpened(value);
+        if (value == TabPlugins) OnPluginsPageOpened();
 
         // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
         // a Connect click, not to persisted state — drop them when navigating tabs so
@@ -1000,6 +1031,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _albumSortMode = "default";
     [ObservableProperty] private bool _albumSortAscending = true;
     [ObservableProperty] private bool _albumSortNewestFirst;
+    [ObservableProperty] private string _albumReleaseTypeFilter = "";
     [ObservableProperty] private string _artistSortMode = "name";
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
@@ -1011,6 +1043,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortNewestFirstChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumReleaseTypeFilterChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1733,6 +1766,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
+    [ObservableProperty] private bool _musixmatchEnabled;
+    [ObservableProperty] private bool _kugouEnabled = true;
+    [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
     [ObservableProperty] private bool _deezerEnabled = true;
@@ -2427,6 +2463,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFlowingStyle = FlowingStyles.Normalize(_settings.LyricsFlowingStyle);
             LyricsKawarpWarp = Math.Clamp(_settings.LyricsKawarpWarp, 0, 3);
             LyricsKawarpBlur = Math.Clamp(_settings.LyricsKawarpBlur, 1, 16);
+            LyricsDriftMovement = Math.Clamp(_settings.LyricsDriftMovement, 0, 300);
+            LyricsDriftSaturation = Math.Clamp(_settings.LyricsDriftSaturation, 0, 200);
+            LyricsDriftBlur = Math.Clamp(_settings.LyricsDriftBlur, 0, 200);
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
@@ -2476,6 +2515,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
+            AlbumReleaseTypeFilter = _settings.AlbumReleaseTypeFilter;
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
@@ -2528,6 +2568,9 @@ public partial class SettingsViewModel : ViewModelBase
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
+            MusixmatchEnabled = _settings.MusixmatchEnabled;
+            KugouEnabled = _settings.KugouEnabled;
+            YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
 
             // Equalizer
@@ -2885,6 +2928,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsFlowingStyle = LyricsFlowingStyle;
         _settings.LyricsKawarpWarp = LyricsKawarpWarp;
         _settings.LyricsKawarpBlur = LyricsKawarpBlur;
+        _settings.LyricsDriftMovement = LyricsDriftMovement;
+        _settings.LyricsDriftSaturation = LyricsDriftSaturation;
+        _settings.LyricsDriftBlur = LyricsDriftBlur;
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -2925,6 +2971,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
+        _settings.AlbumReleaseTypeFilter = AlbumReleaseTypeFilter;
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;
@@ -2969,6 +3016,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
+        _settings.MusixmatchEnabled = MusixmatchEnabled;
+        _settings.KugouEnabled = KugouEnabled;
+        _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
@@ -3178,6 +3228,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsFlowingStyle = LyricsFlowingStyle;
         _player.LyricsKawarpWarp = LyricsKawarpWarp;
         _player.LyricsKawarpBlur = LyricsKawarpBlur;
+        _player.LyricsDriftMovement = LyricsDriftMovement;
+        _player.LyricsDriftSaturation = LyricsDriftSaturation;
+        _player.LyricsDriftBlur = LyricsDriftBlur;
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
@@ -4408,6 +4461,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(SelectedFlowingOption));
         OnPropertyChanged(nameof(IsKawarpStyle));
+        OnPropertyChanged(nameof(IsDriftStyle));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -4459,6 +4513,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (value is null) { LyricsFlowingStyle = FlowingStyles.Drift; return; }
         OnPropertyChanged(nameof(SelectedFlowingOption));
         OnPropertyChanged(nameof(IsKawarpStyle));
+        OnPropertyChanged(nameof(IsDriftStyle));
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -4468,16 +4523,43 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _lyricsKawarpBlur = 6;
     public bool IsKawarpStyle => LyricsFlowingLightEnabled && FlowingStyles.IsKawarp(LyricsFlowingStyle);
 
+    // Slider-driven: push just this value live and persist on the trailing edge
+    // (QueueSettingsSave). A full ApplyPlayerSettings + SaveAsync per drag sample made
+    // the thumb stutter.
     partial void OnLyricsKawarpWarpChanged(double value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsKawarpWarp = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnLyricsKawarpBlurChanged(int value)
     {
-        ApplyPlayerSettings();
-        if (_settingsLoaded) _ = SaveAsync();
+        if (_player != null) _player.LyricsKawarpBlur = value;
+        if (_settingsLoaded) QueueSettingsSave();
+    }
+
+    /// <summary>Drift knobs (GitHub #111), percent of the stock look — shown while a Drift style is active.</summary>
+    [ObservableProperty] private int _lyricsDriftMovement = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftSaturation = AppSettings.LyricsDriftKnobDefault;
+    [ObservableProperty] private int _lyricsDriftBlur = AppSettings.LyricsDriftKnobDefault;
+    public bool IsDriftStyle => LyricsFlowingLightEnabled && FlowingStyles.IsDrift(LyricsFlowingStyle);
+
+    partial void OnLyricsDriftMovementChanged(int value)
+    {
+        if (_player != null) _player.LyricsDriftMovement = value;
+        if (_settingsLoaded) QueueSettingsSave();
+    }
+
+    partial void OnLyricsDriftSaturationChanged(int value)
+    {
+        if (_player != null) _player.LyricsDriftSaturation = value;
+        if (_settingsLoaded) QueueSettingsSave();
+    }
+
+    partial void OnLyricsDriftBlurChanged(int value)
+    {
+        if (_player != null) _player.LyricsDriftBlur = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnPluginsChanged(PluginHost? oldValue, PluginHost? newValue)
@@ -4487,6 +4569,7 @@ public partial class SettingsViewModel : ViewModelBase
             oldValue.VisualLayersChanged -= OnPluginVisualLayersChanged;
             oldValue.CommunityPluginsChanged -= OnCommunityPluginsChanged;
             oldValue.Content.Changed -= OnPluginContentChanged;
+            oldValue.Plugins.CollectionChanged -= OnInstalledPluginsChanged;
             oldValue.ConfirmEnable = null;
         }
         if (newValue is not null)
@@ -4494,10 +4577,12 @@ public partial class SettingsViewModel : ViewModelBase
             newValue.VisualLayersChanged += OnPluginVisualLayersChanged;
             newValue.CommunityPluginsChanged += OnCommunityPluginsChanged;
             newValue.Content.Changed += OnPluginContentChanged;
+            newValue.Plugins.CollectionChanged += OnInstalledPluginsChanged;
             newValue.ConfirmEnable = ConfirmEnablePluginAsync;
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        OnPropertyChanged(nameof(PluginsFolderTip));
     }
 
     private void OnCommunityPluginsChanged(object? sender, EventArgs e) => SyncCommunityPluginsSwitch();
@@ -4602,6 +4687,24 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnNetEaseEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnMusixmatchEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnKugouEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnYouTubeMusicLyricsEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -6494,6 +6597,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFlowingStyle = defaultSettings.LyricsFlowingStyle;
             LyricsKawarpWarp = defaultSettings.LyricsKawarpWarp;
             LyricsKawarpBlur = defaultSettings.LyricsKawarpBlur;
+            LyricsDriftMovement = defaultSettings.LyricsDriftMovement;
+            LyricsDriftSaturation = defaultSettings.LyricsDriftSaturation;
+            LyricsDriftBlur = defaultSettings.LyricsDriftBlur;
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
@@ -6581,6 +6687,9 @@ public partial class SettingsViewModel : ViewModelBase
             // Lyrics providers
             LrcLibEnabled = true;
             NetEaseEnabled = true;
+            MusixmatchEnabled = defaultSettings.MusixmatchEnabled;
+            KugouEnabled = defaultSettings.KugouEnabled;
+            YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers
             DeezerEnabled = true;

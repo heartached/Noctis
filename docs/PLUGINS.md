@@ -18,6 +18,7 @@ deciding whether to install one.
 - [Lifecycle, threading and failures](#lifecycle-threading-and-failures)
 - [Building and packaging](#building-and-packaging)
 - [Installing, updating, removing](#installing-updating-removing)
+- [Official plugins (Get plugins)](#official-plugins-get-plugins)
 - [Publishing plan](#publishing-plan)
 - [Versioning and deprecation policy](#versioning-and-deprecation-policy)
 - [Legacy plugins (API 1.0, no plugin.json)](#legacy-plugins-api-10-no-pluginjson)
@@ -25,7 +26,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.1** (Noctis 1.5.3 and later):
+API **1.2** (Noctis 1.5.9 and later; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -36,13 +37,14 @@ API **1.1** (Noctis 1.5.3 and later):
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
 | Storage | A private data folder that survives updates | — |
 | Playback control | Play, pause, next, previous, seek | `playback.control` |
-| Library | Read-only search over the library (copies, never live objects) | `library.read` |
+| Library | Read-only search over the library, or all of it (copies, never live objects) | `library.read` |
+| BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
 | Track menu | Entries in the track context menu | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
 
-Not available (yet): writing to the library or tags, the queue, new pages or sidebar entries,
-and the mobile apps (Android does not load plugins).
+Not available (yet): writing other library fields or file tags, the queue, new pages or sidebar
+entries, and the mobile apps (Android does not load plugins).
 
 Themes, lyrics-page presets and translations do not need code at all: ship them as a
 [content pack](#content-packs) (`"type": "content"`), plain JSON that installs without the
@@ -117,6 +119,9 @@ samples live in the repository:
   library search and a notice, a lyrics provider stub, a scrobble hook, and declared settings.
 - `plugins/Noctis.Plugins.Kawarp` — a Skia-shader visual layer (Noctis also ships Kawarp built in;
   this copy stays as a realistic visual-layer example).
+- `plugins/Noctis.Plugins.Mixxx` — *Mixxx* (API 1.2): imports the BPM and key the Mixxx DJ app
+  analysed, reading its `mixxxdb.sqlite` read-only with the app's SQLite, matching tracks by file
+  path, and writing through `host.TrackAnalysis`.
 
 ## plugin.json reference
 
@@ -184,19 +189,20 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
 | `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`. Safe from any thread. |
-| `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500). |
+| `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
 | `IDisposable RegisterLyricsProvider(ILyricsProvider)` | 1.1 | `lyrics.provider` | See below. |
 | `IDisposable RegisterTrackCommand(string label, string? icon, Action<TrackInfo>)` | 1.1 | `menu.commands` | Menu entry in the track context menu. `icon`: SVG path data (24×24 box) or null. The handler runs on the UI thread. |
 | `IDisposable RegisterTrackCommand(string label, string? icon, Func<TrackInfo, Task>)` | 1.1 | `menu.commands` | Async variant. |
 | `IDisposable OnTrackScrobbled(Action<TrackInfo, DateTimeOffset>)` | 1.1 | | Fires when a track counts as listened (Last.fm rule), with its start time, whether or not a scrobbling service is connected. |
+| `ITrackAnalysisWriter TrackAnalysis` | 1.2 | `library.write.analysis` | Sets BPM and key of library tracks; see below. |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
 `TrackInfo` is an immutable copy of a library track: `Id`, `Title`, `Artist`, `Album`,
 `AlbumArtist`, `Duration`, `Year`, `Genre`, `TrackNumber`, `FilePath`, `IsFavorite`,
-`PlayCount`, `Rating`.
+`PlayCount`, `Rating`, and since 1.2 `Bpm` (0 = unknown) and `MusicalKey` (empty = unknown).
 
 ### Lyrics providers
 
@@ -219,6 +225,32 @@ public sealed record PluginLyrics(string? Synced, string? Plain, bool Instrument
   out is logged; it does not stop the plugin.
 - `Synced` is LRC (ELRC word timing allowed); `Plain` is plain text.
 
+### BPM and key
+
+```csharp
+public interface ITrackAnalysisWriter
+{
+    Task<int> SetTrackAnalysisAsync(IReadOnlyList<TrackAnalysisUpdate> updates, bool overwrite = false);
+}
+public sealed record TrackAnalysisUpdate(string TrackId, int? Bpm = null, string? MusicalKey = null);
+```
+
+For plugins that bring tempo and key from elsewhere (a DJ app's analysis, an online service).
+These are the two values Noctis's own background tempo/key analysis fills in, used by the Songs
+BPM column, AutoMix transitions and Track Radio.
+
+- Only Noctis's library changes. File tags are never written and no other field can be set.
+- `TrackId` is `TrackInfo.Id` (find tracks with `Library.GetAll()` or `Search`). `null` leaves a
+  value alone. Without `overwrite` only empty values are filled (BPM 0, no key).
+- Skipped silently: unknown ids, BPM outside 1–999, a blank key or one longer than 32 characters.
+  Write keys the way Noctis's analysis does (`"A minor"`, `"F# major"`); Camelot (`"8A"`) and
+  short forms (`"Am"`) are understood too.
+- The values are set on the UI thread, then the library is saved once per call: send one batch,
+  not one call per track. Callable from any thread; returns how many tracks changed. A stopped
+  plugin's calls change nothing.
+- Values set this way survive a rescan unless the file's own tags carry a BPM or key, and tracks
+  that have both are skipped by the background analysis.
+
 ## Permissions
 
 | Name | Grants | Shown to the user as |
@@ -230,6 +262,7 @@ public sealed record PluginLyrics(string? Synced, string? Plain, bool Instrument
 | `lyrics.provider` | `RegisterLyricsProvider` | Supply lyrics to the lyrics search |
 | `menu.commands` | `RegisterTrackCommand` | Add entries to the track menu |
 | `notifications` | `Notify` | Show short notices |
+| `library.write.analysis` | `TrackAnalysis` (1.2) | Set the BPM and musical key of library tracks (in Noctis only, never in your files) |
 
 The first time a user switches a plugin on, Noctis shows exactly this list and asks. If an
 update asks for more, the plugin waits in *Needs approval* until the user switches it on again.
@@ -312,26 +345,107 @@ hello-1.0.0.zip
 - Do **not** ship `Noctis.Plugins.Abstractions.dll`, `Avalonia*.dll` or `SkiaSharp*.dll`: the
   app's copies are used so types match. (`ExcludeAssets="runtime"` keeps them out of `bin`.)
 - Other dependencies load in the plugin's own context; native libraries resolve through
-  `deps.json`.
+  `deps.json`. An assembly the app has already loaded is always the app's copy, and one the
+  plugin does not ship falls back to the app's: that is how the Mixxx plugin uses the app's
+  `Microsoft.Data.Sqlite` (referenced with `ExcludeAssets="runtime"`, so the zip carries no SQLite).
 - The samples import `samples/PluginPackage.targets`, which zips `bin/Release/<name>-<version>.zip`
   after every Release build. Copy it into your project or zip by hand.
+- That zip is **reproducible**: Release builds leave the commit hash and PDB path out of the DLL,
+  and the zip lists its files in name order with one fixed date. The same source, OS and .NET SDK
+  give a byte-identical zip, so a published SHA-256 can be checked by rebuilding.
 - Keep `version` in plugin.json and `<Version>` in the csproj in step.
 
 ## Installing, updating, removing
 
-- **Install**: Settings → Plugins → *Install from file…* and pick the zip. It lands in
+- **Get plugins**: Settings → Plugins → *Get plugins* lists the official plugins with an
+  *Install* button each; see [Official plugins](#official-plugins-get-plugins).
+- **Install**: Settings → Plugins → Installed → *Install from file* and pick the zip. It lands in
   `plugins/<id>/`, switched off, until you enable it (with the permission prompt).
 - **Update**: installing a zip with the same id and a **higher** version offers to update; the
   folder is replaced, data and settings are kept, and approval carries over unless new
   permissions are requested. Same or lower versions are refused.
 - **Remove**: the *Remove* button asks, deletes the plugin folder, and keeps its data and
   settings unless you tick *Also delete its data and settings*. A reinstall asks for approval again.
-- **By hand**: drop the unzipped folder into the plugins folder and press *Reload plugins*.
+- **By hand**: drop the unzipped folder into the plugins folder (the folder button next to
+  *Install from file*; its tooltip shows the path) and press the reload button next to it.
+
+## Official plugins (Get plugins)
+
+Settings → Plugins starts with **Get plugins**: the plugins the Noctis project publishes itself,
+one row each with a single button:
+
+| Button | When |
+|---|---|
+| Install | not installed |
+| Update | an older version is installed (same flow; data and settings are kept, approval carries over unless new permissions are asked for) |
+| Installed | this version or a newer one is installed |
+| Requires Noctis x.y.z | this Noctis is older than the plugin's `minAppVersion` (disabled) |
+| Not available on this OS | the plugin's `platforms` leave this OS out (disabled) |
+
+**The list** is one file in this repository, [`plugins/index.json`](../plugins/index.json):
+
+```json
+{
+  "schema": 1,
+  "plugins": [
+    {
+      "id": "dev.noctis.plugins.mixxx",
+      "name": "Mixxx",
+      "author": "Noctis",
+      "description": "One or two plain sentences.",
+      "version": "1.0.0",
+      "minAppVersion": "1.5.9",
+      "type": "dotnet",
+      "platforms": ["windows", "macos", "linux"],
+      "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.0/Noctis.Plugins.Mixxx-1.0.0.zip",
+      "sha256": "<lowercase hex SHA-256 of that exact zip>",
+      "size": 11758,
+      "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
+    }
+  ]
+}
+```
+
+- `id`, `name`, `version`, `minAppVersion`, `type` and `platforms` must match the plugin's own
+  plugin.json (a unit test checks every listed plugin). `download` must be https on GitHub; the
+  release tag is `plugin-<short name>-v<version>`.
+- An entry with a missing or bad field is skipped (and logged), never the whole list; a file
+  with another `schema` is ignored.
+
+**Where the app reads it**: `https://raw.githubusercontent.com/heartached/Noctis/main/plugins/index.json`,
+when the Plugins page is opened (once per session) and when you press the refresh button, never
+at startup. A copy of the file is built into the app: it shows at once while the live list
+loads, and stays (with "Couldn't reach GitHub…") when the live one can't be fetched, e.g.
+offline or before main has the file. The website reads the same file when it is built.
+
+**Installing from the list**: the zip is downloaded (resumed on a flaky connection, cancellable),
+then its size and SHA-256 are checked against the list **before** anything touches the plugins
+folder; a mismatch is refused. The zip must also be the listed id and version. It then installs
+exactly like *Install from file*: it lands switched off and asks for approval when you switch it
+on. A .NET plugin installed while *Community plugins* is off offers that switch's own
+confirmation; saying no leaves the plugin installed and off.
+
+**Testing a list locally**: set `NOCTIS_PLUGIN_INDEX` to a file path or a URL before starting
+Noctis. That list is used instead of the live one, and only for it, `download` may also be
+`http://`, a local file, or a path relative to the list file. For example, next to a copy of
+`index.json` whose Mixxx `download` is `"Noctis.Plugins.Mixxx-1.0.0.zip"`:
+
+```powershell
+$env:NOCTIS_PLUGIN_INDEX = "D:\plugin-test\index.json"
+dotnet run --project src/Noctis/Noctis.csproj -p:Version=1.5.9
+```
+
+(`-p:Version=1.5.9` only matters while the app is still 1.5.8 and the plugin needs 1.5.9.)
+
+**Publishing an official plugin** (build zip → SHA-256 → release tag → update `index.json` →
+push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING.md).
 
 ## Publishing plan
 
-Phase 1 (this release) ships the loader, manifest, permissions, restricted mode and
-install-from-file. There is **no in-app directory yet**; share zips through GitHub releases.
+Phase 1 shipped the loader, manifest, permissions, restricted mode and install-from-file.
+Noctis 1.5.9 adds [Get plugins](#official-plugins-get-plugins) for the official plugins
+(`plugins/index.json`, SHA-256 checked on download). There is no directory of community plugins
+yet; share those zips through GitHub releases.
 
 Planned for phase 2, modelled on Flow Launcher and Obsidian:
 
@@ -366,6 +480,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 |---|---|---|
 | 1.0 | before 1.5.3 | Plugin entry point, now playing, beat/spectrum taps, data folder, visual layers. |
 | 1.1 | 1.5.3+ | plugin.json, permissions, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notices, `PluginDirectory`; data folder moved out of the plugin folder. |
+| 1.2 | 1.5.9+ | `TrackInfo.Bpm` / `MusicalKey`, `ILibraryReader.GetAll()`, `ITrackAnalysisWriter` (`host.TrackAnalysis`) with the `library.write.analysis` permission. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 
@@ -550,11 +665,11 @@ for languages or variants that are not there yet, and for trying a translation o
 
 ### Testing a pack locally
 
-1. Put the folder (plugin.json at its top) into the plugins folder (Settings → Plugins → *Open
-   plugins folder*) and press *Reload plugins*, or zip it and use *Install from file…*.
+1. Put the folder (plugin.json at its top) into the plugins folder (Settings → Plugins →
+   Installed → folder button) and press the reload button, or zip it and use *Install from file*.
 2. The pack's card says what it found ("2 themes · 1 lyrics preset · 1 language"), or why it
    was refused.
-3. Edit the JSON and press *Reload plugins* again; an active pack theme re-applies with the new colours.
+3. Edit the JSON and press reload again; an active pack theme re-applies with the new colours.
 
 `samples/Noctis.ContentPack.Sample` builds its zip with `dotnet build -c Release`
 (`samples/PluginPackage.targets` zips `pack/` when the project sets

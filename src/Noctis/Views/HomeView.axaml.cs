@@ -182,7 +182,9 @@ public partial class HomeView : UserControl
             convertCommand: vm.ConvertTrackCommand,
             scanReplayGainCommand: vm.ScanTrackReplayGainCommand,
             startRadioCommand: vm.StartRadioCommand,
-            snoozeCommand: vm.SnoozeForMonthCommand);
+            snoozeCommand: vm.SnoozeForMonthCommand,
+            viewAlbumCommand: vm.ViewAlbumFromTrackCommand,
+            viewArtistCommand: vm.ViewArtistCommand);
 
         OpenMenu(_trackMenuBuilder.Menu, owner);
         return true;

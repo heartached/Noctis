@@ -65,6 +65,22 @@ public class HeartIconTests
         Assert.Equal(1, off.Opacity);
     }
 
+    /// <summary>A filled/outline pair of glyphs (the phone's PhHeartFill / PhHeart): Glyph
+    /// draws the favourited state, OffGlyph the other one, with the same pop between them.</summary>
+    [AvaloniaFact]
+    public void OffGlyph_DrawsTheOffState_GlyphTheOnState()
+    {
+        var filled = Geometry.Parse("M0,0 L10,0 L5,10 Z");
+        var outline = Geometry.Parse("M0,0 L10,0 L10,10 Z");
+        var heart = Layout(new HeartIcon { Glyph = filled, OffGlyph = outline, Size = 16 });
+
+        Assert.Same(outline, heart.VisibleGlyph!.Data);
+        heart.IsFavorite = true;
+        Assert.Same(filled, heart.VisibleGlyph!.Data);
+        heart.IsFavorite = false;
+        Assert.Same(outline, heart.VisibleGlyph!.Data);
+    }
+
     /// <summary>
     /// The artist page star (ZoomOnToggle): a click after the re-bind window starts the
     /// zoom and the state still lands. Running the zoom on a bare ScaleTransform threw

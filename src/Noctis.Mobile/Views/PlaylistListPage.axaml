@@ -8,17 +8,17 @@
     <Grid RowDefinitions="Auto,*">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,4" IsVisible="{Binding !IsEmbedded}">
             <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource ChevronLeftIcon}" />
+                <PathIcon Data="{DynamicResource PhBack}" />
             </Button>
             <TextBlock Grid.Column="1" Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" />
         </Grid>
 
-        <TextBlock Grid.Row="1" Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
-                   Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
-                   Margin="32,40,32,0" IsVisible="{Binding !HasPlaylists}" />
-
-        <ScrollViewer Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Playlists}" Margin="12,0,12,16">
+        <ScrollViewer Classes="page-scroll" Grid.Row="1" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="12,0,12,16">
+            <TextBlock Name="EmptyText" Classes="subtle" TextWrapping="Wrap" TextAlignment="Center"
+                       Text="No playlists yet. Long-press a song to start one." HorizontalAlignment="Center"
+                       Margin="20,24,20,0" IsVisible="{Binding !HasPlaylists}" />
+            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Playlists}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:Playlist">
                         <Button Classes="row"
@@ -38,6 +38,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>

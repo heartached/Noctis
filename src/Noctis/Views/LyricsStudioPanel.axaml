@@ -32,7 +32,10 @@
         </Style>
         <!-- Narrow windows (09-24). The review's action buttons and whole-song tools drop onto a
              row of their own (and wrap) instead of drawing over the title and source pill, and the
-             queue gives up some width. Placement comes from styles so the queries can move it. -->
+             queue gives up some width. Placement comes from styles so the queries can move it.
+             Docked, not in an Auto grid column (10-01): an Auto column measures the group at its
+             full one-row width, so just above a query's width the buttons ran off the pane's
+             right edge ("Previe"); docked, the group wraps inside the width it is given. -->
         <Style Selector="Border.studio-queue">
             <Setter Property="Width" Value="320" />
         </Style>
@@ -42,26 +45,55 @@
             </Style>
         </ContainerQuery>
         <Style Selector="WrapPanel.review-actions, WrapPanel.review-tools">
-            <Setter Property="Grid.Column" Value="1" />
+            <Setter Property="DockPanel.Dock" Value="Right" />
+            <Setter Property="Margin" Value="12,0,0,0" />
         </Style>
         <ContainerQuery Name="ReviewHead" Query="max-width:600">
             <Style Selector="WrapPanel.review-actions">
-                <Setter Property="Grid.Row" Value="1" />
-                <Setter Property="Grid.Column" Value="0" />
-                <Setter Property="Grid.ColumnSpan" Value="2" />
+                <Setter Property="DockPanel.Dock" Value="Bottom" />
                 <Setter Property="HorizontalAlignment" Value="Left" />
                 <Setter Property="Margin" Value="0,8,0,0" />
             </Style>
         </ContainerQuery>
-        <ContainerQuery Name="ReviewMeta" Query="max-width:860">
+        <ContainerQuery Name="ReviewMeta" Query="max-width:640">
             <Style Selector="WrapPanel.review-tools">
-                <Setter Property="Grid.Row" Value="1" />
-                <Setter Property="Grid.Column" Value="0" />
-                <Setter Property="Grid.ColumnSpan" Value="2" />
+                <Setter Property="DockPanel.Dock" Value="Bottom" />
                 <Setter Property="HorizontalAlignment" Value="Left" />
                 <Setter Property="Margin" Value="0,8,0,0" />
             </Style>
         </ContainerQuery>
+        <!-- Shift all lines as one segmented pill: [− 0.1s +], the Settings rim around two round
+             steps that wash on hover. -->
+        <Style Selector="Border.nudge-pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.nudge-step">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF" />
+        </Style>
+        <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
         <Style Selector="Border.model-banner">
             <Setter Property="CornerRadius" Value="14" />
             <Setter Property="Padding" Value="16,12" />
@@ -111,6 +143,8 @@
         <Style Selector="Border.review-line">
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="CornerRadius" Value="8" />
+            <!-- The 2px gap between lines (the virtualizing panel has no Spacing). -->
+            <Setter Property="Margin" Value="0,0,0,2" />
         </Style>
         <Style Selector="Border.review-line.low">
             <Setter Property="Background" Value="#22E5A34D" />
@@ -169,16 +203,44 @@
             <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="Opacity" Value="1" />
         </Style>
+        <!-- Words toggle: a pill beside the time pill, same fill and height, so the pair reads as
+             the line's controls (it was a dim 10px chevron at the far end of the row, 10-01). -->
         <Style Selector="Button.word-toggle">
-            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Padding" Value="9,5" />
+            <Setter Property="MinWidth" Value="38" />
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="Background" Value="#22FFFFFF" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="MinHeight" Value="0" />
         </Style>
-        <Style Selector="Button.word-toggle:pointerover">
+        <Style Selector="Button.word-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                         Button.word-toggle.open /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#38FFFFFF" />
+        </Style>
+        <Style Selector="Button.word-toggle:pointerover, Button.word-toggle:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <!-- The chevron turns with the fold, on its timing (CollapsibleContent Fold: 220 ms cubic
+             in-out). A transition, never a keyframe animation: those cannot drive RenderTransform.
+             The rest pose is a style, not a local value, or the .open style could never win. -->
+        <Style Selector="Button.word-toggle PathIcon.words-chevron">
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseInOut />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.word-toggle.open PathIcon.words-chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)" />
+        </Style>
+        <Style Selector="Button.word-toggle:pointerover PathIcon.words-chevron, Button.word-toggle.open PathIcon.words-chevron">
             <Setter Property="Opacity" Value="1" />
         </Style>
         <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
@@ -534,12 +596,16 @@
                          and where the run is in the queue. Stop is in the toolbar. -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" Margin="0,0,16,0" Width="420"
                                 IsVisible="{Binding IsSelectedWorking}">
-                        <!-- Same title + E badge as the queue row and the review head, centred (user ask 09-30). -->
-                        <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
-                            <Border Grid.Column="0" Name="WorkingTitleBox">
+                        <!-- Same title + E badge as the queue row and the review head, centred (user ask 09-30).
+                             The cell spans the column and the star columns centre the pair: the title's
+                             cap is the cell's width minus the badge, so a cell sized to its own content
+                             (HorizontalAlignment=Center) fed the cap back into itself and, seeded at 0
+                             while this view was hidden, showed the badge with no title (10-01). -->
+                        <Grid ColumnDefinitions="*,Auto,Auto,*" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
+                            <Border Grid.Column="1" Name="WorkingTitleBox">
                                 <TextBlock Text="{Binding ReviewTitle}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                             </Border>
-                            <Border Grid.Column="1" Name="WorkingExplicitBadge"
+                            <Border Grid.Column="2" Name="WorkingExplicitBadge"
                                     Background="{DynamicResource IslandExplicitBadge}" CornerRadius="2" Padding="4,0" Height="14"
                                     Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding ReviewIsExplicit}"
                                     ToolTip.Tip="{loc:T PlaybackBar.ExplicitTip}">
@@ -627,8 +693,54 @@
 
                     <DockPanel IsVisible="{Binding HasReview}">
                         <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,16,10">
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Container.Name="ReviewHead" Container.Sizing="Width">
-                                <StackPanel Grid.Column="0" Spacing="2">
+                            <!-- One accent action (Save); Time every word and Preview as plain pills; Skip and
+                                 Transcribe instead behind "…" (10-01: two accent pills competed, and the row
+                                 ran off the pane). The group docks right of the title, below it when narrow. -->
+                            <DockPanel Container.Name="ReviewHead" Container.Sizing="Width">
+                                <WrapPanel Classes="review-actions" ItemSpacing="6" LineSpacing="6" VerticalAlignment="Center">
+                                    <Button Command="{Binding UpgradeToWordTimingsCommand}" IsVisible="{Binding ReviewCanUpgrade}"
+                                            Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.UpgradeTip}">
+                                        <TextBlock Text="{loc:T LyricsStudio.Upgrade}" />
+                                    </Button>
+                                    <!-- Plays the song on the real lyrics page with these unsaved timings (09-23). -->
+                                    <Button Command="{Binding PreviewOnLyricsPageCommand}" IsVisible="{Binding CanPreview}"
+                                            Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.PreviewTip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="{loc:T LyricsStudio.Preview}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <!-- Save and "…" wrap as a pair, so the dots never sit alone on a line. -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
+                                                Classes="studio-btn accent-btn"
+                                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                            <TextBlock Text="{loc:T LyricsStudio.Save}" />
+                                        </Button>
+                                        <!-- The rarely used actions behind one round pill: the album page's dots in the
+                                             Studio's outline (local Padding: the studio-btn style's would win). -->
+                                        <Button Classes="studio-btn pill-outline studio-more" Padding="8,7" ToolTip.Tip="{loc:T LyricsStudio.MoreTip}">
+                                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15" VerticalAlignment="Center" />
+                                            <Button.Flyout>
+                                                <MenuFlyout Placement="BottomEdgeAlignedRight" helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                                    <MenuItem Header="{loc:T LyricsStudio.Skip}" Command="{Binding SkipCommand}">
+                                                        <MenuItem.Icon>
+                                                            <PathIcon Data="{StaticResource NextIcon}" Width="14" Height="14" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
+                                                              IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
+                                                              ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">
+                                                        <MenuItem.Icon>
+                                                            <PathIcon Data="{StaticResource MicIcon}" Width="14" Height="14" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </MenuFlyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </StackPanel>
+                                </WrapPanel>
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
                                     <!-- Same title + E badge as the queue row; artist in the accent like the row (user ask 09-19). -->
                                     <Grid ColumnDefinitions="Auto,Auto" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
                                         <Border Grid.Column="0" Name="TitleBox">
@@ -644,53 +756,31 @@
                                     </Grid>
                                     <TextBlock Text="{Binding ReviewSubtitle}" FontSize="12" Foreground="{DynamicResource AccentColorBrush}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <WrapPanel Classes="review-actions" ItemSpacing="6" LineSpacing="6" VerticalAlignment="Center">
-                                    <Button Command="{Binding UpgradeToWordTimingsCommand}" IsVisible="{Binding ReviewCanUpgrade}"
-                                            Classes="studio-btn accent-btn" ToolTip.Tip="{loc:T LyricsStudio.UpgradeTip}"
-                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                                        <TextBlock Text="{loc:T LyricsStudio.Upgrade}" />
-                                    </Button>
-                                    <!-- Plays the song on the real lyrics page with these unsaved timings (09-23). -->
-                                    <Button Command="{Binding PreviewOnLyricsPageCommand}" IsVisible="{Binding CanPreview}"
-                                            Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.PreviewTip}">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                            <TextBlock Text="{loc:T LyricsStudio.Preview}" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <!-- Source + confidence on the left (wrapping when narrow); the whole-song shift on the right -->
+                            <DockPanel Container.Name="ReviewMeta" Container.Sizing="Width">
+                                <!-- Whole-song shift, labelled, with [ and ] as keys (09-23): one [− 0.1s +] pill (10-01). -->
+                                <WrapPanel Classes="review-tools" ItemSpacing="8" LineSpacing="6" VerticalAlignment="Center">
+                                    <TextBlock Text="{loc:T LyricsStudio.ShiftAllLines}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                                    <Border Classes="nudge-pill">
+                                        <StackPanel Orientation="Horizontal" Spacing="2">
+                                            <Button Classes="nudge-step" Command="{Binding NudgeEarlierCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEarlier}">
+                                                <TextBlock Text="−" />
+                                            </Button>
+                                            <TextBlock Text="0.1s" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center" />
+                                            <Button Classes="nudge-step" Command="{Binding NudgeLaterCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeLater}">
+                                                <TextBlock Text="+" />
+                                            </Button>
                                         </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding SkipCommand}" Classes="studio-btn pill-outline">
-                                        <TextBlock Text="{loc:T LyricsStudio.Skip}" />
-                                    </Button>
-                                    <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
-                                            Classes="studio-btn accent-btn"
-                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                                        <TextBlock Text="{loc:T LyricsStudio.Save}" />
-                                    </Button>
-                                </WrapPanel>
-                            </Grid>
-                            <!-- Source + confidence on the left; whole-song timing tools on the right -->
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Container.Name="ReviewMeta" Container.Sizing="Width">
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                    <Border CornerRadius="999" Padding="8,3" Background="#22FFFFFF" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding ReviewSourceText}" FontSize="11" Opacity="0.85" VerticalAlignment="Center" />
                                     </Border>
-                                    <TextBlock Text="{Binding ReviewConfidenceText}" FontSize="11" Opacity="0.55" VerticalAlignment="Center" />
-                                </StackPanel>
-                                <!-- Whole-song shift, labelled, with [ and ] as keys (09-23). -->
-                                <WrapPanel Classes="review-tools" ItemSpacing="6" LineSpacing="6" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T LyricsStudio.ShiftAllLines}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" Margin="0,0,2,0" />
-                                    <Button Classes="studio-btn pill-outline" Command="{Binding NudgeEarlierCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEarlier}">
-                                        <TextBlock Text="−0.1s" />
-                                    </Button>
-                                    <Button Classes="studio-btn pill-outline" Command="{Binding NudgeLaterCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeLater}">
-                                        <TextBlock Text="+0.1s" />
-                                    </Button>
-                                    <Button Classes="studio-btn pill-outline" Command="{Binding RedoAsTranscriptionCommand}" IsVisible="{Binding !ReviewIsTranscription}"
-                                            IsEnabled="{Binding CanTranscribeDraft}" ToolTip.Tip="{loc:T LyricsStudio.RedoTip}" Margin="8,0,0,0">
-                                        <TextBlock Text="{loc:T LyricsStudio.Redo}" />
-                                    </Button>
                                 </WrapPanel>
-                            </Grid>
+                                <WrapPanel ItemSpacing="10" LineSpacing="4" VerticalAlignment="Center">
+                                    <Border CornerRadius="999" Padding="8,3" Background="#22FFFFFF" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ReviewSourceText}" FontSize="11" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </Border>
+                                    <TextBlock Text="{Binding ReviewConfidenceText}" FontSize="11" Opacity="0.55" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </WrapPanel>
+                            </DockPanel>
                             <Border CornerRadius="10" Padding="12,8" Background="{DynamicResource AccentButtonBackground}" IsVisible="{Binding IsTapping}">
                                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                                     <TextBlock Grid.Column="0" Text="{Binding TapHint}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"
@@ -707,71 +797,83 @@
 
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
                             <ItemsControl ItemsSource="{Binding ReviewLines}">
+                                <!-- Virtualized: only the lines in view exist. As a StackPanel every line of
+                                     the song (a TextBox, buttons and a word strip each) was built and laid
+                                     out when a song was picked in the list: ~0.8-1.5 s for 76 lines
+                                     (LyricsStudioSelectionPerfTests), the "freeze" on every click. -->
                                 <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ReviewLine">
                                         <Border Classes="review-line" Classes.low="{Binding IsLow}" Classes.edit-error="{Binding HasEditError}">
-                                            <StackPanel Spacing="4">
-                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                    <Button Grid.Column="0" Classes="time-pill line-time" VerticalAlignment="Center"
-                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).PlayFromLineCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip.Tip="{loc:T LyricsStudio.PlayFromHere}">
-                                                        <TextBlock Text="{Binding TimeText}" />
-                                                    </Button>
-                                                    <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
-                                                    <TextBox Grid.Column="1" Classes="line-edit" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
-                                                             KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" />
-                                                    <Button Grid.Column="2" Classes="word-toggle" VerticalAlignment="Center"
-                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).ToggleWordsCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip.Tip="{loc:T LyricsStudio.WordsTip}">
-                                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                                            <Ellipse Width="5" Height="5" VerticalAlignment="Center" IsVisible="{Binding HasWordTimings}" Fill="{DynamicResource AccentColorBrush}" />
-                                                            <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </Grid>
-                                                <TextBlock Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
-                                                           TextWrapping="Wrap" Margin="82,0,0,0" />
-                                                <!-- Word strip: one chip per word, click = select + hear it -->
-                                                <StackPanel Spacing="6" Margin="4,0,0,2" IsVisible="{Binding IsExpanded}">
-                                                    <ItemsControl ItemsSource="{Binding Words}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate x:DataType="vm:ReviewWord">
-                                                                <Button Classes="word-chip" Margin="0,0,4,4"
-                                                                        Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
-                                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
-                                                                        CommandParameter="{Binding}">
-                                                                    <StackPanel Spacing="1">
-                                                                        <TextBlock Text="{Binding Text}" FontSize="12" />
-                                                                        <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
-                                                                    </StackPanel>
-                                                                </Button>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordEarlierCommand}"
-                                                                IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordEarlier}">
-                                                            <TextBlock Text="−50ms" />
-                                                        </Button>
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordLaterCommand}"
-                                                                IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordLater}">
-                                                            <TextBlock Text="+50ms" />
-                                                        </Button>
-                                                        <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
-                                                                CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
-                                                            <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
-                                                        </Button>
+                                            <!-- Time | words toggle | line; the error and the word strip sit under the line's
+                                                 text column so they read as the line's own. No row spacing: the strip's gap is
+                                                 its body margin, inside the folding height (a panel gap would snap shut at the
+                                                 end of the fold). -->
+                                            <Grid ColumnDefinitions="Auto,Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6">
+                                                <Button Grid.Column="0" Classes="time-pill line-time" VerticalAlignment="Center"
+                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).PlayFromLineCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.PlayFromHere}">
+                                                    <TextBlock Text="{Binding TimeText}" />
+                                                </Button>
+                                                <!-- Words toggle (10-01): beside the time it belongs with, a pill-sized target; the
+                                                     accent dot = the line has word timings; the chevron turns as the strip opens. -->
+                                                <Button Grid.Column="1" Classes="word-toggle" Classes.open="{Binding IsExpanded}" VerticalAlignment="Center"
+                                                        Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).ToggleWordsCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.WordsTip}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                        <Ellipse Classes="words-dot" Width="6" Height="6" VerticalAlignment="Center"
+                                                                 IsVisible="{Binding HasWordTimings}" Fill="{DynamicResource AccentColorBrush}" />
+                                                        <PathIcon Classes="words-chevron" Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center" />
                                                     </StackPanel>
-                                                </StackPanel>
-                                            </StackPanel>
+                                                </Button>
+                                                <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
+                                                <TextBox Grid.Column="2" Classes="line-edit" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                         KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" />
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
+                                                           TextWrapping="Wrap" Margin="6,4,0,0" />
+                                                <!-- Word strip: one chip per word, click = select + hear it. Folds open and shut like
+                                                     the Settings sub-blocks; shut, it is not measured, so its chips are never built. -->
+                                                <controls:CollapsibleContent Grid.Row="2" Grid.Column="2" IsOpen="{Binding IsExpanded}" Lift="6">
+                                                    <StackPanel Spacing="6" Margin="2,6,0,4">
+                                                        <ItemsControl ItemsSource="{Binding Words}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:ReviewWord">
+                                                                    <Button Classes="word-chip" Margin="0,0,4,4"
+                                                                            Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
+                                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
+                                                                            CommandParameter="{Binding}">
+                                                                        <StackPanel Spacing="1">
+                                                                            <TextBlock Text="{Binding Text}" FontSize="12" />
+                                                                            <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordEarlierCommand}"
+                                                                    IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordEarlier}">
+                                                                <TextBlock Text="−50ms" />
+                                                            </Button>
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).NudgeWordLaterCommand}"
+                                                                    IsEnabled="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).HasSelectedWord}" ToolTip.Tip="{loc:T LyricsStudio.WordLater}">
+                                                                <TextBlock Text="+50ms" />
+                                                            </Button>
+                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
+                                                                    CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
+                                                                <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </controls:CollapsibleContent>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

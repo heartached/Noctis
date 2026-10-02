@@ -350,6 +350,9 @@ internal class Program
         services.AddSingleton<ShortcutService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
+        services.AddSingleton<IMusixmatchService, MusixmatchService>();
+        services.AddSingleton<IKugouLyricsService, KugouLyricsService>();
+        services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
         // Singleton so the startup archive pass and the Wrap dialog share one instance
         // (and one lock over wrap_archive.json).

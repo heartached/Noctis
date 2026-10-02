@@ -131,4 +131,15 @@ public class FreshInstallDefaultsTests
         Assert.True(Fresh.DeezerEnabled);
         Assert.True(Fresh.MusicBrainzEnabled);
     }
+
+    [Fact]
+    public void AddedLyricsSources_OnlyKugouSearchesAutomatically()
+    {
+        // Issue #113: Kugou answered every test lookup; Musixmatch's token endpoint went to a
+        // captcha during testing and YouTube Music costs ~1 MB per lookup, so those two are
+        // picker-only until switched on.
+        Assert.True(Fresh.KugouEnabled);
+        Assert.False(Fresh.MusixmatchEnabled);
+        Assert.False(Fresh.YouTubeMusicLyricsEnabled);
+    }
 }

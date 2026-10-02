@@ -12,13 +12,21 @@ public sealed partial class SearchPageViewModel : ObservableObject
     internal const int AlbumCap = 12;
     internal const int ArtistCap = 12;
 
+    /// <summary>How long an artist result stays before its photo is asked for: the next
+    /// keystroke usually replaces it first.</summary>
+    internal static readonly TimeSpan PhotoDelay = TimeSpan.FromMilliseconds(350);
+
     public SearchPageViewModel(ShellViewModel shell)
     {
         Shell = shell;
+        Photos = new ArtistPhotoRequests(() => shell.ArtistPhotos);
         shell.Library.Refreshed += (_, _) => Run();
     }
 
     public ShellViewModel Shell { get; }
+
+    /// <summary>The artist results' photo asks; a new search drops the last one's.</summary>
+    internal ArtistPhotoRequests Photos { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasQuery), nameof(ShowPrompt))]
@@ -43,7 +51,9 @@ public sealed partial class SearchPageViewModel : ObservableObject
         var results = MobileSearch.Find(Shell.Library.Service, Query, SongCap, AlbumCap, ArtistCap);
         Songs.ReplaceAll(results.Songs);
         Albums.ReplaceAll(results.Albums);
-        Artists.ReplaceAll(results.Artists);
+        Photos.CancelAll();
+        Artists.ReplaceAll(results.Artists.Select(Photos.Fill));
+        foreach (var artist in Artists) Photos.Request(artist, PhotoDelay);
         HasSongs = Songs.Count > 0;
         HasAlbums = Albums.Count > 0;
         HasArtists = Artists.Count > 0;
@@ -57,7 +67,7 @@ public sealed partial class SearchPageViewModel : ObservableObject
         if (track == null) return;
         var list = Songs.ToList();
         var index = list.IndexOf(track);
-        if (index >= 0) Shell.Player.PlayTracks(list, index);
+        if (index >= 0) Shell.Player.PlayTracks(list, index, "Search");
     }
 
     [RelayCommand]

@@ -38,7 +38,7 @@ public class QueueState
     /// <summary>
     /// Pre-shuffle order, so turning shuffle off after a cold start restores the album
     /// order instead of leaving the queue scrambled. PlaybackQueue.Snapshot carries it;
-    /// the desktop player writes its own QueueState and simply leaves this empty.
+    /// the desktop player writes its own (GitHub #110), the playing track included.
     /// </summary>
     public List<Guid> OriginalOrderIds { get; set; } = new();
 
@@ -48,6 +48,19 @@ public class QueueState
     /// Id lists alone could never resolve them on the next launch. Null in older files.
     /// </summary>
     public Dictionary<Guid, string>? ExternalTrackPaths { get; set; }
+
+    /// <summary>
+    /// What the queue was started from, as the phone's Queue sheet shows it ("Playing from
+    /// Abbey Road"): an album, playlist or artist name, "Songs", "Search"... Null when unknown,
+    /// in older files, and on the desktop, which does not write it.
+    /// </summary>
+    public string? SourceLabel { get; set; }
+
+    /// <summary>
+    /// PlaybackQueue.PlayedInQueue: tracks of this queue played before the current one, for
+    /// the phone's "Track N of M". Null when unknown, in older files and on the desktop.
+    /// </summary>
+    public int? PlayedInQueue { get; set; }
 }
 
 /// <summary>

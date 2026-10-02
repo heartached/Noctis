@@ -89,7 +89,7 @@ public class FolderMetadataBackfillTests : IDisposable
         Assert.Equal(Track.UnknownAlbumBucketId, track.AlbumId);
     }
 
-    private sealed class BackfillTestPersistence : IPersistenceService, IDisposable
+    internal sealed class BackfillTestPersistence : IPersistenceService, IDisposable
     {
         public string DataDirectory { get; } =
             Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
@@ -126,7 +126,7 @@ public class FolderMetadataBackfillTests : IDisposable
         }
     }
 
-    private sealed class FakeAuditTrail : IAuditTrailService
+    internal sealed class FakeAuditTrail : IAuditTrailService
     {
         public Task AppendAsync(AuditEvent auditEvent, CancellationToken ct = default)
             => Task.CompletedTask;

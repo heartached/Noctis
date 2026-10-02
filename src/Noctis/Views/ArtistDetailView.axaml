@@ -421,14 +421,8 @@
                                                            FontSize="12"
                                                            Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0} · {1}">
-                                                            <Binding Path="ReleaseKindTitle" />
-                                                            <Binding Path="Year" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
+                                                           MaxLines="1"
+                                                           Text="{Binding ReleaseKindYearLine}" />
                                                 <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
                                                     <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
                                                 </Panel>
@@ -644,6 +638,7 @@
                      the page-background fade below dissolves its bottom into the sections. -->
                 <ctrl:CachedImage SourcePath="{Binding ImagePath}"
                                   DecodeWidth="1024"
+                                  PixelExact="True"
                                   Stretch="Uniform"
                                   Width="400" Height="400"
                                   HorizontalAlignment="Right"

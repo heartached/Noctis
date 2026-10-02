@@ -745,7 +745,7 @@
             <!-- ── Form: Icon (tiny square — artwork only, hover controls) ── -->
             <Grid x:Name="IconFormRoot" Classes="form-root" Background="Transparent">
                 <Panel x:Name="IconArtClip">
-                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False" PixelExact="True"
                                           DecodeWidth="512"
                                           Stretch="UniformToFill"
                                           RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -1190,7 +1190,7 @@
                      since the frost is a copy of that same artwork, both the sharp top and
                      the frosted bottom faded together — which left no visible band at all. -->
                 <Panel x:Name="LargeArtClip">
-                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False" PixelExact="True"
                                           DecodeWidth="768"
                                           Stretch="UniformToFill"
                                           RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -1490,7 +1490,7 @@
                          out mid-column and parked a hard-edged blur smudge above the
                          transport buttons.) -->
                     <Panel x:Name="LyricsArtClip">
-                        <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                        <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False" PixelExact="True"
                                               DecodeWidth="512"
                                               Stretch="UniformToFill"
                                               RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -1705,10 +1705,19 @@
                              below, so the background keeps the artwork's own colours — the old
                              palette-tinted blobs recoloured the whole page when the toggle went on. -->
                         <Panel x:Name="MiniFlowBackdrop">
-                            <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                            <Image x:Name="MiniFlowBaseArt"
                             Stretch="UniformToFill"
                             RenderOptions.BitmapInterpolationMode="HighQuality"
                             IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <!-- Drift's Blur / Saturation knobs (GitHub #111), baked in like the page. -->
+                            <Image.Source>
+                            <MultiBinding Converter="{StaticResource PreBlurArt}">
+                                <Binding Path="Player.AlbumArt"/>
+                                <Binding Path="Player.LyricsFlowingLightEnabled"/>
+                                <Binding Path="Player.LyricsDriftBlur"/>
+                                <Binding Path="Player.LyricsDriftSaturation"/>
+                            </MultiBinding>
+                            </Image.Source>
                             <Image.RenderTransform>
                             <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                             </Image.RenderTransform>
@@ -1720,12 +1729,12 @@
                             <Panel x:Name="MiniFlowLayerHost" IsHitTestVisible="False"
                                    IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
                                 <Image x:Name="MiniFlowLayer1"
-                                       Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                                       Source="{Binding #MiniFlowBaseArt.Source}"
                                        Stretch="UniformToFill"
                                        RenderOptions.BitmapInterpolationMode="HighQuality"
                                        Opacity="0.5"/>
                                 <Image x:Name="MiniFlowLayer2"
-                                       Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                                       Source="{Binding #MiniFlowBaseArt.Source}"
                                        Stretch="UniformToFill"
                                        RenderOptions.BitmapInterpolationMode="HighQuality"
                                        Opacity="0.36"/>

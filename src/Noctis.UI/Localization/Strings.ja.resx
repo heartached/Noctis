@@ -5331,15 +5331,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>プラグイン</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>プラグインフォルダをpluginディレクトリにドロップして再読み込みします。プラグインを削除せずにここから切り替えます。</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>プラグインはNoctisと同じアクセスで実行されます。信頼できるプラグインのみをインストールしてください。</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>プラグインフォルダーを開く</value>
   </data>

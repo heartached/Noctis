@@ -67,6 +67,14 @@ public interface IMetadataService
     bool WriteAlbumArt(string filePath, byte[]? imageData);
 
     /// <summary>
+    /// Removes the year (and the date frames it lives in) from an audio file. The editor
+    /// calls it when the user empties the Year field, because
+    /// <see cref="WriteTrackMetadata(Track)"/> treats year 0 as unknown and leaves the
+    /// file's date alone. Returns false when the file could not be written.
+    /// </summary>
+    bool ClearYear(string filePath) => false;
+
+    /// <summary>
     /// Writes only the rating and "not liked" tags to an audio file
     /// (ID3 POPM / Vorbis RATING) without touching other metadata.
     /// </summary>

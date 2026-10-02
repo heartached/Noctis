@@ -157,6 +157,7 @@ public partial class LyricsPanelView : UserControl
     {
         _flow.BeatReactive = Noctis.Models.FlowingStyles.IsBeatReactive(
             Noctis.Models.FlowingStyles.Normalize(_vm?.Player.LyricsFlowingStyle));
+        _flow.Speed = (_vm?.Player.LyricsDriftMovement ?? Noctis.Models.AppSettings.LyricsDriftKnobDefault) / 100.0;
         _flow.Enabled = _vm != null && this.VisualRoot != null && _shown
                         && _vm.IsColorModeArtwork && _vm.Player.LyricsFlowingLightEnabled;
     }
@@ -164,7 +165,8 @@ public partial class LyricsPanelView : UserControl
     private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
-                or nameof(PlayerViewModel.LyricsFlowingStyle))
+                or nameof(PlayerViewModel.LyricsFlowingStyle)
+                or nameof(PlayerViewModel.LyricsDriftMovement))
             UpdateFlowAnimationState();
     }
 

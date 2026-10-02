@@ -260,6 +260,13 @@ public class Album : ObservableObject
     /// <summary>Whether copyright info is available for display.</summary>
     public bool HasCopyright => !string.IsNullOrWhiteSpace(Copyright);
 
+    /// <summary>Record label from the first track whose tags name one (<see cref="Track.Label"/>);
+    /// empty when none does. Unlike <see cref="LabelName"/>, never guessed from the copyright
+    /// notice, whose holder is often the artist rather than the label.</summary>
+    public string RecordLabel =>
+        Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.Label))?.Label.Trim()
+        ?? string.Empty;
+
     /// <summary>
     /// Record label extracted from the copyright notice: strips ℗/©/(P)/(C) marks,
     /// years, and joiners from the front, then cuts at the first clause break — so
@@ -349,6 +356,24 @@ public class Album : ObservableObject
             var label = ReleaseKindLabel;
             return label == "EP" ? label : char.ToUpperInvariant(label[0]) + label[1..].ToLowerInvariant();
         }
+    }
+
+    /// <summary>Artist-page tile caption: "Album · 1982"; the kind alone when the year is unknown.</summary>
+    public string ReleaseKindYearLine => Year > 0 ? $"{ReleaseKindTitle} · {Year}" : ReleaseKindTitle;
+
+    /// <summary>Album-page related tile caption: "1982 · 8 songs"; the count alone when the year is unknown.</summary>
+    public string YearSongsLine => Year > 0 ? $"{Year} · {TrackCount} songs" : $"{TrackCount} songs";
+
+    /// <summary>
+    /// Album year from its tracks in album order: the first track's, or the first dated
+    /// track's when that one has none, so an undated WAV copy in first place (Discord
+    /// Tangent, Coda kept as MP3 + WAV) no longer leaves the whole album at year 0.
+    /// </summary>
+    public static int ResolveYear(IReadOnlyList<Track> tracks)
+    {
+        foreach (var t in tracks)
+            if (t.Year > 0) return t.Year;
+        return 0;
     }
 
     /// <summary>"12 tracks" / "1 track" for the album header's facts line.</summary>

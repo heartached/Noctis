@@ -12,6 +12,20 @@ public class AppSettings
     /// Playlists pin through Playlist.IsPinned instead.</summary>
     public List<Guid> PinnedAlbumIds { get; set; } = new();
 
+    /// <summary>Phone: artists pinned to Library → Pinned, by name (artists have no stable id
+    /// across rescans).</summary>
+    public List<string> PinnedArtistNames { get; set; } = new();
+
+    /// <summary>Phone: songs pinned to Library → Pinned.</summary>
+    public List<Guid> PinnedTrackIds { get; set; } = new();
+
+    /// <summary>Phone: the Library tab's list rows (Playlists, Artists, Albums, Songs, Favorites,
+    /// Downloaded) in the order the user arranged them under Edit. Each entry is a row key; a
+    /// leading "-" marks a row switched off ("-Favorites"). Empty = the default set. Keys this
+    /// build does not know are skipped, and rows missing from the list (added by a later build)
+    /// follow the listed ones in their default order and state.</summary>
+    public List<string> PhoneLibraryRows { get; set; } = new();
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.</summary>
@@ -392,6 +406,10 @@ public class AppSettings
     /// newest first instead of chronologically.</summary>
     public bool AlbumSortNewestFirst { get; set; }
 
+    /// <summary>Albums grid release Type filter: "album", "single", "ep", "other", or ""
+    /// for All. Unknown values load as All.</summary>
+    public string AlbumReleaseTypeFilter { get; set; } = "";
+
     // ── Home section collapse state ──
     // Every Home section can be folded away to its header, so the page can be cut down
     // to only the rows the user currently cares about. All default to expanded — the
@@ -711,6 +729,20 @@ public class AppSettings
     /// <summary>Kawarp styles: 1–16 box-blur passes on the cover before warping; more = dreamier.</summary>
     public int LyricsKawarpBlur { get; set; } = 6;
 
+    /// <summary>Fresh-install value of the three Drift knobs below (GitHub #111): 100% is the
+    /// look Drift had before they existed. Double-tapping a slider in Settings snaps back to it.</summary>
+    public const int LyricsDriftKnobDefault = 100;
+
+    /// <summary>Drift styles: how fast the cover copies drift and turn, in percent of the stock
+    /// speed (0–300). 0 holds them still; the beat pulse is the style's own choice.</summary>
+    public int LyricsDriftMovement { get; set; } = LyricsDriftKnobDefault;
+
+    /// <summary>Drift styles: colour saturation of the blurred cover, in percent (0–200; 0 = grey).</summary>
+    public int LyricsDriftSaturation { get; set; } = LyricsDriftKnobDefault;
+
+    /// <summary>Drift styles: blur strength of the cover, in percent of the stock blur (0–200).</summary>
+    public int LyricsDriftBlur { get; set; } = LyricsDriftKnobDefault;
+
     /// <summary>Live audio visualizer (spectrum) drawn behind the lyrics on the lyrics page.
     /// Reads the samples the app renders, so it needs an output chain with a sample tap
     /// (the Windows engines); elsewhere it rests flat. Ships off like the other extras.</summary>
@@ -780,6 +812,18 @@ public class AppSettings
 
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
+
+    /// <summary>Whether Musixmatch (anonymous app token, word-synced richsync) is searched
+    /// automatically. Off on fresh installs: its token endpoint answers a captcha after a burst
+    /// of requests (issue #113 testing). Always available in the Search Lyrics source picker.</summary>
+    public bool MusixmatchEnabled { get; set; }
+
+    /// <summary>Whether Kugou (word-synced KRC lyrics) is searched automatically.</summary>
+    public bool KugouEnabled { get; set; } = true;
+
+    /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
+    /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
+    public bool YouTubeMusicLyricsEnabled { get; set; }
 
     // ── Metadata providers ──
 

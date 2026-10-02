@@ -287,8 +287,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(allTracks);
     }
 
     // ── Track commands ──────────────────────────────────────────
@@ -307,11 +306,8 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void ShuffleTrack(Track track)
     {
         var allTracks = GetAllFavoriteTracks();
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
-        // Put selected track first
-        var idx = shuffled.FindIndex(t => t.Id == track.Id);
-        if (idx > 0) { var t = shuffled[idx]; shuffled.RemoveAt(idx); shuffled.Insert(0, t); }
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        // Selected track first
+        _player.PlayShuffled(allTracks, first: track);
     }
 
     [RelayCommand]
@@ -367,8 +363,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
-        _player.ReplaceQueueAndPlay(shuffled, 0);
+        _player.PlayShuffled(album.Tracks);
     }
 
     [RelayCommand]

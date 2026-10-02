@@ -1,9 +1,11 @@
 using Android.Content;
 using Android.Content.PM;
+using AndroidX.Core.View;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Noctis.Android.Services;
 using Noctis.Helpers;
@@ -111,6 +113,12 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Logs = new AndroidLogExporter(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            // The desktop's album descriptions: Last.fm, asked by artist and album name only
+            // when an album page opens (Settings → About says so).
+            AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
+            // The desktop's artist photos: Deezer, asked by artist name only when an artist page
+            // opens or artist circles come into view (Settings → About says so).
+            ArtistPhotos = DeezerArtistPhotoSource.Create(persistence.DataDirectory, new HttpClient(), library),
         };
         _shell = shell;
 
@@ -290,6 +298,47 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
         DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}");
         _theme.Apply(this, resolved, accentHex);
+        // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
+        Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
+    }
+
+    /// <summary>The status bar icons a page asked for (<see cref="SetStatusBarIcons"/>); null = the theme's.</summary>
+    private bool? _statusBarIconsDark;
+
+    /// <summary>
+    /// A page drawn under the status bar (the album cover) sets the icon colour from what is
+    /// under it. Avalonia 12.1.3 has no public way to: IInsetsManager.SystemBarColor only colours
+    /// the bars (and returns early when edge-to-edge), and AndroidInsetsManager.SystemBarTheme,
+    /// which sets AppearanceLightStatusBars, is internal and driven by the app's theme variant
+    /// (TopLevelImpl.SetFrameThemeVariant). So this sets the AndroidX flag itself; null puts
+    /// back the theme's value (dark icons on Light), the same one Avalonia sets.
+    /// </summary>
+    public void SetStatusBarIcons(bool? dark)
+    {
+        _statusBarIconsDark = dark;
+        ApplyStatusBarIcons();
+    }
+
+    /// <summary>MainActivity, on regaining focus: Avalonia re-applies its theme value whenever its
+    /// view becomes visible again (AvaloniaView.OnVisibilityChanged, after the app comes back from
+    /// the background), so a page's own choice is put back. Nothing to do without one.</summary>
+    public void ReassertStatusBarIcons()
+    {
+        if (_statusBarIconsDark != null) ApplyStatusBarIcons();
+    }
+
+    private void ApplyStatusBarIcons()
+    {
+        try
+        {
+            if (MainActivity.Current?.Window is not { } window || window.DecorView is not { } decor) return;
+            var dark = _statusBarIconsDark ?? ActualThemeVariant == ThemeVariant.Light;
+            new WindowInsetsControllerCompat(window, decor).AppearanceLightStatusBars = dark;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Theme", $"Status bar icons failed: {ex.Message}");
+        }
     }
 
     /// <summary>

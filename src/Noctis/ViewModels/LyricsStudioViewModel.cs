@@ -1025,6 +1025,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var synced = BuildReviewText();
         if (_player is not null)
         {
+            LogPlayerBefore("LyricsStudio.Preview", item.Track, ReviewLines[0].Start - TimeSpan.FromSeconds(2));
             if (_player.CurrentTrack?.Id != item.Track.Id || _player.IsPlayingMusicVideoAudio)
                 await PlayFromTime(ReviewLines[0].Start - TimeSpan.FromSeconds(2));
             else if (_player.State != PlaybackState.Playing)
@@ -1279,21 +1280,44 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         if (_player is null || Selected is null) return;
         var track = Selected.Track;
+        if (target < TimeSpan.Zero) target = TimeSpan.Zero;
+        LogPlayerBefore("LyricsStudio.PlayFrom", track, target);
         if (_player.CurrentTrack?.Id != track.Id || _player.IsPlayingMusicVideoAudio)
         {
             // Lines are timed against the song file: never play them over a music video's audio.
             _player.RequestOriginalAudio(track);
+            if (track.Duration > TimeSpan.Zero)
+            {
+                // Opened at the time. It used to start the song and seek at once: PlayTrack sets
+                // the tag's length synchronously, so the wait below never waited, and the seek
+                // reached the engine while it was still opening the song (dropped, or applied to
+                // the song before it; owner 10-01, Preview after "Time every word").
+                _player.PlayFrom(track, target);
+                return;
+            }
+            // No length in the tags: start it, and seek once the engine reports one.
             _player.ReplaceQueueAndPlay(new[] { track }, 0);
-            // Wait for the engine to report the real length rather than a fixed delay: seeking
-            // by a fraction of the tag's Duration against the engine's landed a little off.
             for (var i = 0; i < 40 && _player.Duration <= TimeSpan.Zero; i++)
                 await Task.Delay(50);
         }
         if (_player.Duration <= TimeSpan.Zero) return;
-        if (target < TimeSpan.Zero) target = TimeSpan.Zero;
         _player.SeekTo(target);
         if (_player.State != PlaybackState.Playing)
             _player.PlayPauseCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Session-log line (Settings > Advanced > Copy Logs) with the player as the Studio found it
+    /// before starting the song: owner 10-01, a Preview after "Time every word" moved the
+    /// timeline with no sound, and only the player's state at that moment can say why.
+    /// </summary>
+    private void LogPlayerBefore(string what, Track track, TimeSpan target)
+    {
+        if (_player is null) return;
+        var current = _player.CurrentTrack is null ? "none" : _player.CurrentTrack.Id == track.Id ? "this song" : "another song";
+        DebugLogger.Info(DebugLogger.Category.Lyrics, what,
+            $"{track.Title} at {target.TotalSeconds:0.00}s | player: current={current}, state={_player.State}, " +
+            $"pos={_player.Position.TotalSeconds:0.0}s, volume={_player.Volume}, muted={_player.IsMuted}, videoAudio={_player.IsPlayingMusicVideoAudio}");
     }
 
     [RelayCommand]

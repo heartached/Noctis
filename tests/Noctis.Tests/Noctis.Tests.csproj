@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\samples\Noctis.SamplePlugin\Noctis.SamplePlugin.csproj" />
     <ProjectReference Include="..\..\samples\Noctis.SamplePlugin.TrackTools\Noctis.SamplePlugin.TrackTools.csproj" />
     <ProjectReference Include="..\..\plugins\Noctis.Plugins.Kawarp\Noctis.Plugins.Kawarp.csproj" />
+    <ProjectReference Include="..\..\plugins\Noctis.Plugins.Mixxx\Noctis.Plugins.Mixxx.csproj" />
   </ItemGroup>
 </Project>
 

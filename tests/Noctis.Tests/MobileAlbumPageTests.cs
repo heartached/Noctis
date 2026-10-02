@@ -60,9 +60,9 @@ public class MobileAlbumPageTests : IDisposable
         Assert.Equal(2, rows.GetRealizedContainers().Count());
         var second = rows.ContainerFromIndex(1)!;
         Assert.Contains(second.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "2");
-        Assert.True(second.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit")).IsEffectivelyVisible);
-        Assert.False(rows.ContainerFromIndex(0)!.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit")).IsEffectivelyVisible);
-        Assert.Equal("2 tracks, 3m 00s", MobileFixtures.Named<TextBlock>(page, "Footer").Text);
+        Assert.True(second.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit-badge")).IsEffectivelyVisible);
+        Assert.False(rows.ContainerFromIndex(0)!.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("explicit-badge")).IsEffectivelyVisible);
+        Assert.Equal("2 songs, 3 minutes", MobileFixtures.Named<TextBlock>(page, "FooterSongs").Text);
         window.Close();
     }
 
@@ -149,7 +149,32 @@ public class MobileAlbumPageTests : IDisposable
         Assert.True(page.Classes.Contains("light"));
         Assert.Equal(Color.FromRgb(240, 236, 228), ((ISolidColorBrush)page.Background!).Color);
         var title = MobileFixtures.Named<TextBlock>(page, "AlbumTitle");
-        Assert.Equal(Color.Parse("#111111"), ((ISolidColorBrush)title.Foreground!).Color);
+        Assert.Equal(Colors.Black, ((ISolidColorBrush)title.Foreground!).Color);
+        window.Close();
+    }
+
+    /// <summary>A mid-light tint (luminance ~0.3): the old 0.55 threshold kept white text on it at
+    /// ~3:1; the hero page flips by contrast, so the title is black at ~7:1.</summary>
+    [AvaloniaFact]
+    public void MidLightTint_TakesDarkText_ByContrast()
+    {
+        var mid = Color.FromRgb(0x96, 0x96, 0x96);
+        var (album, tracks) = Sample(FakeCover());
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album },
+            tint: () => new PageTint(_ => mid, work => Task.FromResult(work())));
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+
+        var page = MobileFixtures.Find<AlbumPage>(view);
+        Assert.True(page.Classes.Contains("light"));
+        var title = ((ISolidColorBrush)MobileFixtures.Named<TextBlock>(page, "AlbumTitle").Foreground!).Color;
+        Assert.Equal(Colors.Black, title);
+        Assert.True(PageTint.ContrastRatio(title, mid) >= 4.5);
+        var meta = ((ISolidColorBrush)MobileFixtures.Named<TextBlock>(page, "MetaLine").Foreground!).Color;
+        Assert.NotEqual(title, meta);
+        Assert.True(PageTint.ContrastRatio(meta, mid) >= 4.5, $"meta {meta} on {mid}");
         window.Close();
     }
 

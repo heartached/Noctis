@@ -528,6 +528,14 @@ public partial class Track : ObservableObject
     /// <summary>Copyright notice from file tags (e.g., "℗ 2014 Taylor Swift").</summary>
     public string Copyright { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Record label from file tags (e.g., "Big Machine Label Group"): a LABEL field, else the
+    /// publisher (ID3v2 TPUB, Vorbis ORGANIZATION); see <see cref="Services.ExtendedTagIO.ReadLabel"/>.
+    /// Read by the scan, so a track indexed before the field existed keeps it empty until its
+    /// file is read again (a rescan skips unchanged files).
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
+
     // ── Audio quality properties ──
 
     /// <summary>Audio bitrate in kbps.</summary>

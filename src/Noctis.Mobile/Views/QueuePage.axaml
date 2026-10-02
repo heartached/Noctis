@@ -3,87 +3,353 @@
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:models="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
-             xmlns:loc="using:Noctis.Localization"
+             xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Mobile.Views.QueuePage"
              x:DataType="vm:ShellViewModel"
-             Background="#FF121214"
-             Foreground="White">
+             Foreground="{DynamicResource QueueText}">
+
+    <!-- The sheet follows the app theme (it sits outside ShellView's always-dark scope): light
+         frosted glass with dark text under Light, the dark frost under Dark. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="QueueSheetBase" Color="#FF121214" />
+                    <SolidColorBrush x:Key="QueueSheetScrim" Color="#A6000000" />
+                    <SolidColorBrush x:Key="QueueText" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="QueueSubtleText" Color="#B3FFFFFF" />
+                    <SolidColorBrush x:Key="QueueRule" Color="#1AFFFFFF" />
+                    <SolidColorBrush x:Key="QueueCloseFill" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="QueueGrabber" Color="#99FFFFFF" />
+                    <x:Double x:Key="QueueAccentWash">0.22</x:Double>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="QueueSheetBase" Color="#FFF2F2F5" />
+                    <SolidColorBrush x:Key="QueueSheetScrim" Color="#BFF7F7F9" />
+                    <SolidColorBrush x:Key="QueueText" Color="#FF1C1C1E" />
+                    <SolidColorBrush x:Key="QueueSubtleText" Color="#7A000000" />
+                    <SolidColorBrush x:Key="QueueRule" Color="#1F000000" />
+                    <SolidColorBrush x:Key="QueueCloseFill" Color="#14000000" />
+                    <SolidColorBrush x:Key="QueueGrabber" Color="#4D000000" />
+                    <x:Double x:Key="QueueAccentWash">0.15</x:Double>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
 
     <UserControl.Styles>
-        <Style Selector="Button.icon, Button.pill">
-            <Setter Property="Foreground" Value="White" />
+        <Style Selector="Button.icon, Button.round, Button.pill">
+            <Setter Property="Foreground" Value="{DynamicResource QueueText}" />
         </Style>
         <Style Selector="TextBlock.row-sub, TextBlock.subtle">
-            <Setter Property="Foreground" Value="#B3FFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
+        </Style>
+        <!-- Rows as the mockup sets them: a regular-weight title over the artist and album in
+             one grey. -->
+        <Style Selector="TextBlock.row-title">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style Selector="TextBlock.row-album">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource QueueSubtleText}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.kicker">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="LineHeight" Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="0.6" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <!-- The header's lines, as the mockup sets them: regular weight, the primary text colour. -->
+        <Style Selector="TextBlock.head">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="LineHeight" Value="21" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.position">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="LineHeight" Value="17" />
+        </Style>
+        <Style Selector="Border.sep">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource QueueRule}" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+
+        <!-- The round glass close button. -->
+        <Style Selector="Button.round.close">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Background" Value="{DynamicResource QueueCloseFill}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource GlassBarEdge}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.round.close PathIcon">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+        <!-- Clear: accent text on the UP NEXT line; its padding hangs past the margin so the
+             word itself lines up with the sheet's right edge. -->
+        <Style Selector="Button.pill.clear">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Margin" Value="0,0,-8,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <!-- The control pill, as the mockup draws it: plain glyphs in the text colour (the
+             accent when a mode is on), and the two ends as soft circles, an accent wash under an
+             accent glyph. The wash is its own layer so the glyph keeps the full accent. -->
+        <Style Selector="Button.icon.on PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Button.round.soft">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.round.soft Border.wash">
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="{DynamicResource QueueAccentWash}" />
+        </Style>
+        <Style Selector="Button.round.soft PathIcon">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+
+        <!-- "Currently playing" equalizer: four bars at rest, bouncing while the class
+             "playing" is on (the code-behind sets it only while a track plays AND the sheet
+             is up, so nothing animates behind a hidden page). Height, not a transform: a
+             style animation of RenderTransform does not run here (repo trap). -->
+        <Style Selector="Panel#EqBars > Border">
+            <Setter Property="Width" Value="2.5" />
+            <Setter Property="CornerRadius" Value="1.25" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Panel#EqBars.playing > Border.b1">
+            <Style.Animations>
+                <Animation Duration="0:0:0.45" IterationCount="Infinite" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Height" Value="3" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Height" Value="11" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Panel#EqBars.playing > Border.b2">
+            <Style.Animations>
+                <Animation Duration="0:0:0.6" IterationCount="Infinite" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Height" Value="12" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Height" Value="4" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Panel#EqBars.playing > Border.b3">
+            <Style.Animations>
+                <Animation Duration="0:0:0.5" IterationCount="Infinite" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Height" Value="5" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Height" Value="12" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Panel#EqBars.playing > Border.b4">
+            <Style.Animations>
+                <Animation Duration="0:0:0.7" IterationCount="Infinite" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Height" Value="9" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Height" Value="3" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </UserControl.Styles>
 
-    <Border Padding="{Binding SafeArea}">
-        <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16,8,16,16">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Text="{loc:T Tab.Queue}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Name="ClearButton" Classes="pill" Content="Clear" Margin="0,0,8,0"
-                        Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
-                <Button Grid.Column="2" Name="DoneButton" Classes="icon" Command="{Binding ToggleQueueCommand}">
-                    <PathIcon Data="{DynamicResource ChevronDownThinIcon}" Width="18" Height="18" />
-                </Button>
-            </Grid>
+    <!-- No background of its own: only the sheet takes touches, and the code-behind turns
+         that off while the sheet slides away. -->
+    <Panel>
+        <Border Name="Dim" Background="#73000000" IsHitTestVisible="False" Opacity="0" />
 
-            <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="0,12,0,4" IsVisible="{Binding Player.HasTrack}">
-                <Border Classes="art" Width="52" Height="52">
-                    <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
-                </Border>
-                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Classes="subtle" FontSize="11" Text="NOW PLAYING" />
-                    <TextBlock Classes="row-title" Text="{Binding Player.CurrentTrack.Title}" />
-                    <TextBlock Classes="row-sub" Text="{Binding Player.CurrentTrack.Artist}" />
-                </StackPanel>
-            </Grid>
+        <!-- A page sheet: a sliver of the page underneath stays visible above it. -->
+        <Panel Margin="{Binding TopSafePadding}">
+            <Border Name="Sheet" Margin="0,10,0,0" CornerRadius="14,14,0,0" ClipToBounds="True"
+                    Background="{DynamicResource QueueSheetBase}">
+                <Panel>
+                    <!-- Blurred once per cover (PreBlurredArtworkConverter) from the header cover's own bitmap. -->
+                    <Image Name="Backdrop" Source="{Binding #NowArtwork.Source, Converter={StaticResource PreBlur}}"
+                           Stretch="UniformToFill" IsHitTestVisible="False" />
+                    <Border Name="Scrim" Background="{DynamicResource QueueSheetScrim}" IsHitTestVisible="False" />
 
-            <TextBlock Grid.Row="2" Name="QueueHint" Classes="subtle" Margin="0,8,0,4" IsVisible="{Binding Player.HasUpNext}"
-                       Text="Playing next · drag ≡ to reorder, swipe left to remove" />
+                    <Grid Name="Layout" RowDefinitions="Auto,Auto,Auto,*">
+                        <!-- Both the grabber and ✕ close the sheet. -->
+                        <Grid Name="TopBar" Height="44">
+                            <Button Name="QueueGrabber" Classes="icon" Width="64" Height="28" VerticalAlignment="Top"
+                                    HorizontalAlignment="Center" Command="{Binding ToggleQueueCommand}">
+                                <PathIcon Data="{DynamicResource QueueGrabberIcon}" Width="40" Height="40" Margin="-5,-15"
+                                          Foreground="{DynamicResource QueueGrabber}" />
+                            </Button>
+                            <Button Name="QueueCloseButton" Classes="round close" HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom" Margin="0,0,16,0" Command="{Binding ToggleQueueCommand}">
+                                <PathIcon Data="{DynamicResource QueueCloseIcon}" />
+                            </Button>
+                        </Grid>
 
-            <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
-                       Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
-
-            <ScrollViewer Grid.Row="3" Name="QueueScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-                <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <VirtualizingStackPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="models:Track">
-                            <!-- Transparent background: the whole row must hit-test for the swipe. -->
-                            <Border Classes="queue-row" Height="60" Background="Transparent"
-                                    PointerPressed="OnRowPressed" PointerMoved="OnRowMoved"
-                                    PointerReleased="OnRowReleased" PointerCaptureLost="OnRowCaptureLost">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                    <Border Classes="art" Width="44" Height="44">
-                                        <Panel>
-                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
-                                            <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
-                                        </Panel>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                        <TextBlock Classes="row-title" Text="{Binding Title}" />
-                                        <TextBlock Classes="row-sub" Text="{Binding Artist}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="2" Name="RemoveButton" Classes="icon" Width="40" Height="40" Click="OnRemoveClick">
-                                        <PathIcon Data="{DynamicResource DismissIcon}" Width="14" Height="14" />
-                                    </Button>
-                                    <Border Grid.Column="3" Name="DragHandle" Width="44" Background="Transparent"
-                                            PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
-                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
-                                        <PathIcon Data="{DynamicResource PlaylistsIcon}" Width="18" Height="18" Opacity="0.7" />
-                                    </Border>
-                                </Grid>
+                        <!-- The owner's mockup: the cover, and stacked beside it the kicker, the track,
+                             where the queue plays from and the track's place in it, then UP NEXT
+                             (with Clear) over the list. Unknown lines hide. -->
+                        <Grid Grid.Row="1" Name="NowRow" ColumnDefinitions="Auto,*" Margin="20,2,20,0" IsVisible="{Binding Player.HasTrack}">
+                            <!-- The shadow on an outer border: the cover itself clips to its corners. -->
+                            <Border Width="120" Height="120" CornerRadius="10" VerticalAlignment="Center"
+                                    BoxShadow="0 4 16 0 #38000000">
+                                <Border Name="NowCover" Classes="art" CornerRadius="10">
+                                    <Panel>
+                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="36" Height="36" Opacity="0.4" />
+                                        <controls:CachedImage Name="NowArtwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                              DecodeWidth="384" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                    </Panel>
+                                </Border>
                             </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </Grid>
-    </Border>
+                            <StackPanel Grid.Column="1" Name="NowText" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Name="NowKicker" Classes="kicker" Text="CURRENTLY PLAYING" VerticalAlignment="Center" />
+                                    <Panel Name="EqBars" Width="14" Height="12" VerticalAlignment="Center">
+                                        <Border Classes="b1" Height="6" />
+                                        <Border Classes="b2" Height="10" Margin="3.8,0,0,0" />
+                                        <Border Classes="b3" Height="7" Margin="7.6,0,0,0" />
+                                        <Border Classes="b4" Height="9" Margin="11.4,0,0,0" />
+                                    </Panel>
+                                </StackPanel>
+                                <TextBlock Name="NowTitle" Classes="head" Text="{Binding Player.CurrentTrack.Title}" />
+                                <TextBlock Name="NowArtist" Classes="head" Text="{Binding Player.CurrentTrack.Artist}" />
+                                <TextBlock Name="SourceLine" Classes="head" Margin="0,6,0,0" Text="{Binding Player.PlayingFromText}"
+                                           IsVisible="{Binding Player.HasSourceLabel}" />
+                                <TextBlock Name="PositionLine" Classes="position" Text="{Binding Player.QueuePositionText}"
+                                           IsVisible="{Binding Player.HasQueuePosition}" />
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                    <TextBlock Name="UpNextLabel" Classes="kicker" Text="UP NEXT" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Name="ClearButton" Classes="pill clear" Content="Clear" VerticalAlignment="Center"
+                                            Command="{Binding Player.ClearUpNextCommand}" IsVisible="{Binding Player.HasUpNext}" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Grid.Row="2" Name="HeaderRule" Classes="sep" Margin="20,14,20,4" />
+
+                        <TextBlock Grid.Row="3" Name="EmptyQueue" Classes="subtle" Text="Nothing up next" HorizontalAlignment="Center"
+                                   Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
+
+                        <!-- Runs to the bottom of the sheet: in portrait the rows scroll under the control
+                             pill, and the bottom padding (code-behind, it follows the safe area) lets the
+                             last one clear it. -->
+                        <ScrollViewer Grid.Row="3" Name="QueueScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                            <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <VirtualizingStackPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Track">
+                                        <!-- Transparent background: the whole row must hit-test for the swipe. -->
+                                        <Border Classes="queue-row" Height="68" Background="Transparent"
+                                                PointerPressed="OnRowPressed" PointerMoved="OnRowMoved"
+                                                PointerReleased="OnRowReleased" PointerCaptureLost="OnRowCaptureLost">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0,6,0">
+                                                <Border Classes="art" Width="52" Height="52" CornerRadius="6">
+                                                    <Panel>
+                                                        <PathIcon Data="{DynamicResource SongsIcon}" Width="18" Height="18" Opacity="0.5" />
+                                                        <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
+                                                    </Panel>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                    <TextBlock Classes="row-title" Text="{Binding Title}" />
+                                                    <TextBlock Classes="row-sub" Text="{Binding Artist}" />
+                                                    <TextBlock Classes="row-album" Text="{Binding Album}" />
+                                                </StackPanel>
+                                                <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
+                                                        PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
+                                                        PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                                    <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
+                                                              Foreground="{DynamicResource AccentTextBrush}" />
+                                                </Border>
+                                                <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="sep" VerticalAlignment="Bottom" Margin="12,0,14,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- The floating Liquid Glass control pill above the navigation bar: over the end of
+                             the list, or under the current track once landscape splits the layout in two
+                             columns (the code-behind keeps its margin on the safe area). -->
+                        <Panel Grid.Row="3" Name="PillHost" VerticalAlignment="Bottom">
+                            <controls:GlassPanel Name="ControlPill" Classes="liquid" CornerRadius="28" Height="56" Margin="20,0,20,12">
+                                <Panel>
+                                    <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="28" IsHitTestVisible="False" />
+                                    <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="8,0">
+                                        <Button Grid.Column="0" Name="QueueListButton" Classes="round soft" HorizontalAlignment="Center"
+                                                Command="{Binding ToggleQueueCommand}">
+                                            <Panel>
+                                                <Border Classes="wash" />
+                                                <PathIcon Data="{DynamicResource PhList}" />
+                                            </Panel>
+                                        </Button>
+                                        <Button Grid.Column="1" Name="QueueRepeatButton" Classes="icon" Classes.on="{Binding Player.IsRepeatOn}"
+                                                HorizontalAlignment="Center" Command="{Binding Player.CycleRepeatCommand}">
+                                            <Panel>
+                                                <PathIcon Data="{DynamicResource PhRepeat}" Width="20" Height="20" IsVisible="{Binding !Player.IsRepeatOne}" />
+                                                <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" Width="20" Height="20"
+                                                          IsVisible="{Binding Player.IsRepeatOne}" />
+                                            </Panel>
+                                        </Button>
+                                        <Button Grid.Column="2" Name="QueuePreviousButton" Classes="icon" HorizontalAlignment="Center"
+                                                Command="{Binding Player.PreviousCommand}">
+                                            <PathIcon Data="{DynamicResource PhRewindFill}" Width="36" Height="36" />
+                                        </Button>
+                                        <Button Grid.Column="3" Name="QueuePlayPauseButton" Classes="icon" HorizontalAlignment="Center"
+                                                Command="{Binding Player.TogglePlayPauseCommand}">
+                                            <Panel>
+                                                <PathIcon Data="{DynamicResource PhPlayFill}" Width="36" Height="36" IsVisible="{Binding !Player.IsPlaying}" />
+                                                <PathIcon Data="{DynamicResource PhPauseFill}" Width="36" Height="36" IsVisible="{Binding Player.IsPlaying}" />
+                                            </Panel>
+                                        </Button>
+                                        <Button Grid.Column="4" Name="QueueNextButton" Classes="icon" HorizontalAlignment="Center"
+                                                Command="{Binding Player.NextCommand}">
+                                            <PathIcon Data="{DynamicResource PhForwardFill}" Width="36" Height="36" />
+                                        </Button>
+                                        <Button Grid.Column="5" Name="QueueShuffleButton" Classes="icon" Classes.on="{Binding Player.IsShuffleEnabled}"
+                                                HorizontalAlignment="Center" Command="{Binding Player.ToggleShuffleCommand}">
+                                            <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
+                                        </Button>
+                                        <Button Grid.Column="6" Name="QueueMoreButton" Classes="round soft" HorizontalAlignment="Center"
+                                                Command="{Binding OpenCurrentTrackSheetCommand}">
+                                            <Panel>
+                                                <Border Classes="wash" />
+                                                <PathIcon Data="{DynamicResource PhMore}" />
+                                            </Panel>
+                                        </Button>
+                                    </Grid>
+                                </Panel>
+                            </controls:GlassPanel>
+                        </Panel>
+                    </Grid>
+                </Panel>
+            </Border>
+        </Panel>
+    </Panel>
 </UserControl>

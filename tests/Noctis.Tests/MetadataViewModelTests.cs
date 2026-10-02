@@ -53,6 +53,37 @@ public class MetadataViewModelTests
         Assert.Equal("Work B", tracks[1].WorkName);
     }
 
+    // ── Year: 0 is "unknown" to WriteTrackMetadata, so emptying the field clears it explicitly ──
+
+    [Fact]
+    public async Task AlbumScope_EmptyingTheYear_ClearsItInTheFiles()
+    {
+        var tracks = Album("Coda", "Led Zeppelin", 2);
+        foreach (var t in tracks) t.Year = 1982;
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        vm.Year = "";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.All(tracks, t => Assert.Equal(0, t.Year));
+        Assert.Equal(tracks.Select(t => t.FilePath).OrderBy(x => x), meta.ClearedYearPaths.OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task AlbumScope_OtherEdit_DoesNotClearTheYear()
+    {
+        var tracks = Album("Coda", "Led Zeppelin", 2);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.NotEmpty(meta.WrittenTagPaths);
+        Assert.Empty(meta.ClearedYearPaths);
+    }
+
     // ── Album scope: play count ──
 
     [Fact]
@@ -794,6 +825,14 @@ public class MetadataViewModelTests
             return true;
         }
         public bool WriteRating(string filePath, int rating, bool isDisliked) => true;
+
+        public List<string> ClearedYearPaths { get; } = new();
+
+        public bool ClearYear(string filePath)
+        {
+            lock (_gate) ClearedYearPaths.Add(filePath);
+            return true;
+        }
 
         bool IMetadataService.WriteAdvancedFields(string filePath,
             Noctis.Services.AdvancedTagIO.AdvancedFields fields,

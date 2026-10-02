@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 10;
+    private const int CurrentMetadataSchemaVersion = 11;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -2162,7 +2162,7 @@ public class LibraryService : ILibraryService
                         Id = first.AlbumId,
                         Name = first.Album,
                         Artist = !string.IsNullOrWhiteSpace(first.AlbumArtist) ? first.AlbumArtist : first.Artist,
-                        Year = first.Year,
+                        Year = Album.ResolveYear(albumTracks),
                         Genre = first.Genre,
                         TrackCount = albumTracks.Count,
                         TotalDuration = TimeSpan.FromTicks(albumTracks.Sum(t => t.Duration.Ticks)),
@@ -2381,6 +2381,11 @@ public class LibraryService : ILibraryService
         // the odd tracks of mixed albums their own cover (Discord, veil 2026-09-22).
         if (settings.MetadataSchemaVersion < 10)
             didBackfillMetadata |= await BackfillTrackArtworkAsync(_tracks);
+
+        // v11: the record label (Track.Label, the phone album page's footer) is read by the
+        // scan now. A rescan skips unchanged files, so existing libraries would never get it.
+        if (settings.MetadataSchemaVersion < 11)
+            didBackfillMetadata |= await BackfillLabelAsync(_tracks);
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -2689,6 +2694,59 @@ public class LibraryService : ILibraryService
                     }
                 });
         });
+
+        return changedCount > 0;
+    }
+
+    /// <summary>
+    /// One-time v11 migration: the record label for tracks indexed before it was read. Local
+    /// files are re-read in place (like <see cref="BackfillReleaseDateAndCopyrightAsync"/>).
+    /// The phone's files live behind Android's document tree (content://), which only a scan
+    /// through its file source can open, so those are marked instead: clearing the stored
+    /// modification stamp makes the next scan treat them as changed and re-read them once,
+    /// keeping their user state like any re-tagged file. Streamed desktop songs and tracks
+    /// that already have a label are left alone.
+    /// </summary>
+    private async Task<bool> BackfillLabelAsync(List<Track> tracks)
+    {
+        var unlabelled = tracks.Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)).ToList();
+        if (unlabelled.Count == 0) return false;
+
+        var changedCount = 0;
+        foreach (var track in unlabelled.Where(t => t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)))
+        {
+            track.LastModified = default;
+            changedCount++;
+        }
+
+        var local = unlabelled.Where(t => File.Exists(t.FilePath)).ToList();
+        if (local.Count > 0)
+        {
+            await Task.Run(() =>
+            {
+                Parallel.ForEach(
+                    local,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                        CancellationToken = _shutdownCts.Token
+                    },
+                    track =>
+                    {
+                        try
+                        {
+                            var label = _metadata.ReadTrackMetadata(track.FilePath)?.Label;
+                            if (string.IsNullOrWhiteSpace(label)) return;
+                            track.Label = label;
+                            Interlocked.Increment(ref changedCount);
+                        }
+                        catch
+                        {
+                            // Non-fatal: skip tracks that can't be read.
+                        }
+                    });
+            });
+        }
 
         return changedCount > 0;
     }
@@ -3072,7 +3130,9 @@ public class LibraryService : ILibraryService
                         Id = entry.Id,
                         Name = entry.Name,
                         Artist = entry.Artist,
-                        Year = entry.Year,
+                        // From the tracks, not the cached value, so a cache written while
+                        // the year came from the first track alone heals on the next launch.
+                        Year = Album.ResolveYear(albumTracks),
                         Genre = entry.Genre,
                         TrackCount = entry.TrackCount,
                         TotalDuration = TimeSpan.FromTicks(entry.TotalDurationTicks),

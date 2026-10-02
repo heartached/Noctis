@@ -5331,15 +5331,6 @@
     <comment>Text in ShortcutKeyChip.axaml</comment>
   </data>
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve">
-    <value>الإضافات</value>
-  </data>
-  <data name="Plugins.Description" xml:space="preserve">
-    <value>إسقاط مجلد البرنامج المساعد في دليل الإضافات وإعادة التحميل. قم بتبديل البرنامج المساعد إلى هنا دون حذفه.</value>
-  </data>
-  <data name="Plugins.Warning" xml:space="preserve">
-    <value>الإضافات تعمل بنفس الصلاحية مثل Noctis. فقط قم بتثبيت المكونات التي تثق بها.</value>
-  </data>
   <data name="Plugins.OpenFolder" xml:space="preserve">
     <value>فتح مجلد الإضافات</value>
   </data>

@@ -248,8 +248,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>"1 song · 2:52"</summary>
     public string LatestReleaseSongsLine => LatestRelease == null ? "" : LatestReleaseSongsLineFor(LatestRelease);
 
-    internal static string LatestReleaseKindLineFor(Album a)
-        => a.Year > 0 ? $"{a.ReleaseKindTitle} · {a.Year}" : a.ReleaseKindTitle;
+    internal static string LatestReleaseKindLineFor(Album a) => a.ReleaseKindYearLine;
 
     internal static string LatestReleaseSongsLineFor(Album a)
     {
@@ -915,7 +914,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(ShuffleHelper.WeightedShuffle(tracks), 0);
+        _player.PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -970,7 +969,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = PopularSongs.Select(r => r.Track).ToList();
         if (songs.Count == 0) return;
-        _player.ReplaceQueueAndPlay(ShuffleHelper.WeightedShuffle(songs), 0);
+        _player.PlayShuffled(songs);
     }
 
     [RelayCommand]
@@ -978,7 +977,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = _allSongs.Where(t => t.IsFavorite).ToList();
         if (songs.Count == 0) return;
-        _player.ReplaceQueueAndPlay(ShuffleHelper.WeightedShuffle(songs), 0);
+        _player.PlayShuffled(songs);
     }
 
     [RelayCommand]

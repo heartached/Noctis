@@ -444,6 +444,13 @@
   <data name="Settings.CommunityLyricsDatabase" xml:space="preserve"><value>Community lyrics database</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NetEaseCloudMusic" xml:space="preserve"><value>NetEase Cloud Music</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LargeSyncedLyricsCatalog" xml:space="preserve"><value>Large synced lyrics catalog</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Musixmatch" xml:space="preserve"><value>Musixmatch</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>Word-synced lyrics · may pause when it asks for a captcha</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.KugouHint" xml:space="preserve"><value>Word-synced lyrics catalog</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synced lyrics · slower lookups</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Choose Source on the lyrics page searches any of these, even when switched off here.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
   <data name="Settings.METADATA" xml:space="preserve"><value>METADATA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TagSourcesSearchMetadata" xml:space="preserve"><value>Tag sources for Search metadata, in order.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Deezer" xml:space="preserve"><value>Deezer</value><comment>Text in SettingsView.axaml</comment></data>
@@ -602,6 +609,9 @@
   <data name="AlbumDetail.Text" xml:space="preserve"><value>&#x266A;</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OpenArtistPageTip" xml:space="preserve"><value>Open the artist page</value><comment>ToolTip.Tip in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.SeeDiscography" xml:space="preserve"><value>See discography</value><comment>Text in AlbumDetailView.axaml</comment></data>
+
+  <!-- ArtworkViewerDialog.axaml -->
+  <data name="ArtworkViewer.Title" xml:space="preserve"><value>Album Artwork</value><comment>Title of ArtworkViewerDialog.axaml (the full-size album cover)</comment></data>
 
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve"><value>Play</value><comment>Header in ArtistDetailView.axaml</comment></data>
@@ -914,6 +924,26 @@
   <data name="Lyrics.Gradient" xml:space="preserve"><value>Gradient</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Search Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Searching for Lyrics</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="LyricsSearch.Title" xml:space="preserve"><value>Search Lyrics</value><comment>LyricsSearchDialog.axaml title</comment></data>
+  <data name="LyricsSearch.Hint" xml:space="preserve"><value>Auto searches the sources switched on in Settings and picks word-synced over synced over plain.</value><comment>Tooltip on the source picker in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Auto" xml:space="preserve"><value>Auto (best match)</value><comment>First source-picker entry (LyricsSearchViewModel)</comment></data>
+  <data name="LyricsSearch.ArtistWatermark" xml:space="preserve"><value>Artist</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.TitleWatermark" xml:space="preserve"><value>Title</value><comment>Placeholder in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Search" xml:space="preserve"><value>Search</value><comment>Button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Use" xml:space="preserve"><value>Use Lyrics</value><comment>Primary button in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Best" xml:space="preserve"><value>Best</value><comment>Badge on the Auto pick in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.SelectToPreview" xml:space="preserve"><value>Pick a result to preview its lyrics.</value><comment>Empty preview in LyricsSearchDialog.axaml</comment></data>
+  <data name="LyricsSearch.Searching" xml:space="preserve"><value>Searching…</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.BestMatch" xml:space="preserve"><value>Best match: {0}</value><comment>Status in LyricsSearchViewModel; {0} = source name</comment></data>
+  <data name="LyricsSearch.NotFound" xml:space="preserve"><value>No lyrics found for this song.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.Failed" xml:space="preserve"><value>Search failed — check your internet connection.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.NoSources" xml:space="preserve"><value>Every lyrics source is switched off in Settings — pick one above.</value><comment>Status in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.WordSynced" xml:space="preserve"><value>Word-synced</value><comment>Result format in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.LineSynced" xml:space="preserve"><value>Synced</value><comment>Result format in LyricsSearchViewModel (line-level timing)</comment></data>
+  <data name="LyricsSearch.Plain" xml:space="preserve"><value>Plain</value><comment>Result format in LyricsSearchViewModel (no timing)</comment></data>
+  <data name="LyricsSearch.NoMatch" xml:space="preserve"><value>No match</value><comment>Result in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.CouldNotConnect" xml:space="preserve"><value>Couldn't connect</value><comment>Result in LyricsSearchViewModel</comment></data>
+  <data name="LyricsSearch.Instrumental" xml:space="preserve"><value>Instrumental</value><comment>Result in LyricsSearchViewModel</comment></data>
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Written By: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Follow</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.PreviewUnsaved" xml:space="preserve"><value>Preview · unsaved lyrics</value><comment>Text in LyricsView.axaml — Lyrics Studio preview indicator</comment></data>
@@ -1578,15 +1608,13 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="ShortcutKeyChip.PressKeys" xml:space="preserve"><value>Press keys…</value><comment>Text in ShortcutKeyChip.axaml</comment></data>
 
   <!-- Settings → Plugins -->
-  <data name="Plugins.Title" xml:space="preserve"><value>Plugins</value></data>
-  <data name="Plugins.Description" xml:space="preserve"><value>Install a plugin from its .zip, or drop its folder into the plugins directory and reload. Switch a plugin off here without deleting it.</value></data>
-  <data name="Plugins.Warning" xml:space="preserve"><value>Plugins run with the same access as Noctis. Only install ones you trust.</value></data>
   <data name="Plugins.OpenFolder" xml:space="preserve"><value>Open plugins folder</value></data>
   <data name="Plugins.Reload" xml:space="preserve"><value>Reload plugins</value></data>
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityDescription" xml:space="preserve"><value>Run plugins made by other people. While this is off (restricted mode) Noctis loads no plugin code; installed plugins stay listed.</value></data>
-  <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Restricted mode is on: no plugin code runs. Turn on Community plugins to use the plugins below.</value></data>
+  <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
+  <data name="Plugins.InstalledTitle" xml:space="preserve"><value>Installed</value></data>
+  <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Plugins are off. Turn on Community plugins to use them.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
@@ -1625,12 +1653,14 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.PermShort.LyricsProvider" xml:space="preserve"><value>Lyrics provider</value></data>
   <data name="Plugins.PermShort.MenuCommands" xml:space="preserve"><value>Track menu</value></data>
   <data name="Plugins.PermShort.Notifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Plugins.PermShort.LibraryWriteAnalysis" xml:space="preserve"><value>Set BPM and key</value></data>
   <data name="Plugins.Perm.PlaybackControl" xml:space="preserve"><value>Control playback: play, pause, skip and seek</value></data>
   <data name="Plugins.Perm.LibraryRead" xml:space="preserve"><value>Search your library (titles, artists, albums, file paths, play counts)</value></data>
   <data name="Plugins.Perm.Network" xml:space="preserve"><value>Connect to the internet</value></data>
   <data name="Plugins.Perm.LyricsProvider" xml:space="preserve"><value>Supply lyrics to the lyrics search</value></data>
   <data name="Plugins.Perm.MenuCommands" xml:space="preserve"><value>Add entries to the track menu</value></data>
   <data name="Plugins.Perm.Notifications" xml:space="preserve"><value>Show short notices</value></data>
+  <data name="Plugins.Perm.LibraryWriteAnalysis" xml:space="preserve"><value>Set the BPM and musical key of library tracks (in Noctis only, never in your files)</value></data>
   <data name="Plugins.EnableTitle" xml:space="preserve"><value>Enable {0}?</value></data>
   <data name="Plugins.EnableBody" xml:space="preserve"><value>{0} {1} asks to:</value></data>
   <data name="Plugins.EnableBodyBy" xml:space="preserve"><value>{0} {1} by {2} asks to:</value></data>
@@ -1651,6 +1681,22 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Updated" xml:space="preserve"><value>Updated {0} to {1}.</value></data>
   <data name="Plugins.AlreadyInstalled" xml:space="preserve"><value>{0} {1} is already installed; this file has version {2}, which is not newer.</value></data>
   <data name="Plugins.InstallFailed" xml:space="preserve"><value>Could not install: {0}</value></data>
+  <data name="Plugins.Get.Title" xml:space="preserve"><value>Get plugins</value></data>
+  <data name="Plugins.Get.Refresh" xml:space="preserve"><value>Refresh list</value></data>
+  <data name="Plugins.Get.Empty" xml:space="preserve"><value>No plugins to show right now.</value></data>
+  <data name="Plugins.Get.Official" xml:space="preserve"><value>Official</value></data>
+  <data name="Plugins.Get.Install" xml:space="preserve"><value>Install</value></data>
+  <data name="Plugins.Get.Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Plugins.Get.Installed" xml:space="preserve"><value>Installed</value></data>
+  <data name="Plugins.Get.RequiresApp" xml:space="preserve"><value>Requires Noctis {0}</value></data>
+  <data name="Plugins.Get.NotForThisOs" xml:space="preserve"><value>Not available on this OS</value></data>
+  <data name="Plugins.Get.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Plugins.Get.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Plugins.Get.Cancelled" xml:space="preserve"><value>Download cancelled.</value></data>
+  <data name="Plugins.Get.DownloadFailed" xml:space="preserve"><value>Download failed. Check your connection and try again.</value></data>
+  <data name="Plugins.Get.Mismatch" xml:space="preserve"><value>The download didn't match the official list, so it wasn't installed.</value></data>
+  <data name="Plugins.Get.NotAllowed" xml:space="preserve"><value>This download link isn't allowed, so nothing was installed.</value></data>
+  <data name="Plugins.Get.WrongPackage" xml:space="preserve"><value>The download isn't {0} {1}, so it wasn't installed.</value></data>
 
   <!-- Settings → Integrations → Noctis Server -->
   <data name="Server.Title" xml:space="preserve"><value>Noctis Server</value></data>
@@ -1682,6 +1728,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.FlowingDriftCalm" xml:space="preserve"><value>Drift (no beat)</value><comment>Flowing-background picker row</comment></data>
   <data name="Settings.KawarpWarp" xml:space="preserve"><value>Warp strength</value><comment>Kawarp slider label</comment></data>
   <data name="Settings.KawarpBlur" xml:space="preserve"><value>Blur</value><comment>Kawarp slider label</comment></data>
+  <data name="Settings.DriftMovement" xml:space="preserve"><value>Movement</value><comment>Drift slider label: how fast the cover drifts (0% holds it still)</comment></data>
+  <data name="Settings.DriftSaturation" xml:space="preserve"><value>Saturation</value><comment>Drift slider label: colour strength of the cover</comment></data>
+  <data name="Settings.DriftBlur" xml:space="preserve"><value>Blur</value><comment>Drift slider label</comment></data>
 
   <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
   <data name="PlaybackBar.Pitch" xml:space="preserve"><value>Pitch</value><comment>Speed menu → pitch submenu header (island)</comment></data>
@@ -1842,12 +1891,13 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Click a time to hear that line. Edit text in place. Tinted lines need a second look.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>All lines 0.1 s earlier · shortcut [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>All lines 0.1 s later · shortcut ]</value><comment>Tooltip</comment></data>
-  <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review "…" menu item</comment></data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let Lullaby write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
-  <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review button</comment></data>
+  <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review "…" menu item</comment></data>
+  <data name="LyricsStudio.MoreTip" xml:space="preserve"><value>More</value><comment>Tooltip on the review's "…" button (Skip, Transcribe instead)</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
   <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>
-  <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the -0.1s / +0.1s buttons</comment></data>
+  <data name="LyricsStudio.ShiftAllLines" xml:space="preserve"><value>Shift all lines</value><comment>Review toolbar label before the [− 0.1s +] pill</comment></data>
   <data name="LyricsStudio.ShowMusicVideos" xml:space="preserve"><value>Show music videos</value><comment>Music videos card: the on/off toggle label</comment></data>
   <data name="LyricsStudio.RoundedCorners" xml:space="preserve"><value>Rounded corners</value><comment>Music videos card: rounded video corners toggle label</comment></data>
   <data name="LyricsStudio.MusicVideoAudio" xml:space="preserve"><value>Video audio</value><comment>Music videos card: play the clip's own audio toggle label</comment></data>
@@ -1932,7 +1982,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.Desc.Advanced" xml:space="preserve"><value>Storage, helper programs, updates and reset.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.AccountDevices" xml:space="preserve"><value>Your account, sync between devices, and Web Remote.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Integrations" xml:space="preserve"><value>Discord, scrobbling, TIDAL and music servers.</value><comment>Settings page description</comment></data>
-  <data name="Settings.Desc.Plugins" xml:space="preserve"><value>Installed plugins.</value><comment>Settings page description</comment></data>
+  <data name="Settings.Desc.Plugins" xml:space="preserve"><value>Add extra features to Noctis.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Statistics" xml:space="preserve"><value>Your library and listening at a glance.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.About" xml:space="preserve"><value>Version, updates and links.</value><comment>Settings page description</comment></data>
   <data name="Settings.Section.Language" xml:space="preserve"><value>Language</value><comment>Settings section label</comment></data>
