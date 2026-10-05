@@ -290,6 +290,20 @@
         <Style Selector="Button.similar-tile:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- About card: beside the other two, or a full-width row under them when stacked. -->
+        <!-- Column and Width live here, not on the element: a local value would beat the
+             stacked style below. -->
+        <Style Selector="Border.about-card">
+            <Setter Property="Width" Value="340" />
+            <Setter Property="Grid.Column" Value="4" />
+        </Style>
+        <Style Selector="Grid#OverviewTopRow.stacked Border.about-card">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Grid.Row" Value="1" />
+            <Setter Property="Grid.Column" Value="0" />
+            <Setter Property="Grid.ColumnSpan" Value="3" />
+            <Setter Property="Margin" Value="0,24,0,0" />
+        </Style>
         <!-- A related artist the library lacks: inert and dimmed, portrait still shown. -->
         <Style Selector="Button.similar-tile:disabled">
             <Setter Property="Opacity" Value="0.5" />
@@ -619,9 +633,13 @@
                     </Button.Clip>
                     <Border Width="190" Height="190" CornerRadius="95" Background="{DynamicResource ArtworkPlaceholderBackground}" ClipToBounds="True">
                         <Panel>
+                            <!-- Placeholder only without a portrait: a not-in-library tile is
+                                 drawn at half opacity, which reaches each layer, so a glyph under
+                                 the photo showed through it as a ghost silhouette. -->
                             <Path Data="{StaticResource ArtistsIcon}" Stretch="Uniform"
                                   Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Height="52"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.35" />
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.35"
+                                  IsVisible="{Binding !HasImage}" />
                             <ctrl:CachedImage SourcePath="{Binding ImagePath}"
                                               DecodeWidth="380"
                                               Stretch="UniformToFill"
@@ -880,8 +898,11 @@
 
             <!-- ── Overview ─────────────────────────────────────────── -->
             <StackPanel x:Name="OverviewPanel" Classes="tab-page" IsVisible="{Binding IsTabOverview}">
-                <!-- Popular | Latest Release | About -->
-                <Grid ColumnDefinitions="*,24,Auto,24,Auto" Margin="32,22,32,0">
+                <!-- Popular | Latest Release | About. "stacked" (code-behind, below ~1110px of
+                     row) moves About under the other two: its 340px and Latest Release's 380px
+                     are fixed, so a narrow page (wide sidebar, smaller window) squeezed Popular
+                     to a sliver of numbers and covers. -->
+                <Grid x:Name="OverviewTopRow" ColumnDefinitions="*,24,Auto,24,Auto" RowDefinitions="Auto,Auto" Margin="32,22,32,0">
                     <StackPanel Grid.Column="0" Spacing="6">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
                             <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Popular}" Classes="section-title" VerticalAlignment="Center" />
@@ -984,7 +1005,7 @@
 
                     <!-- About card: bio, facts with glyphs, links, library stat tiles. Shown
                          even when the web lookup found nothing — the stats are ours. -->
-                    <Border Grid.Column="4" Width="340"
+                    <Border Classes="about-card"
                             Background="{DynamicResource HomeCardBackground}"
                             CornerRadius="12"
                             Padding="20,16,20,18"
