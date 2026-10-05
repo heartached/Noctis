@@ -161,9 +161,25 @@ public partial class LibraryArtistsView : UserControl
         }
     }
 
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        UpdateGridColumns(e.NewSize.Width);
+    }
+
+    /// <summary>DockPanel margin (16 + 2) plus the vertical scrollbar's gutter.</summary>
+    private const double GridChromeWidth = 30;
+
+    private void UpdateGridColumns(double viewWidth)
+    {
+        if (viewWidth > 0 && DataContext is LibraryArtistsViewModel vm)
+            vm.UpdateGridColumns(viewWidth - GridChromeWidth);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        UpdateGridColumns(Bounds.Width);
 
         // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)

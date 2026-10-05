@@ -24,7 +24,7 @@
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Artist grid: outer ListBox virtualizes rows, inner UniformGrid lays out 7 portraits per row -->
+            <!-- Artist grid: outer ListBox virtualizes rows, inner UniformGrid lays out GridColumns portraits per row -->
             <ListBox x:Name="ArtistListBox"
                      ItemsSource="{Binding ArtistRows}"
                      Background="Transparent"
@@ -58,7 +58,7 @@
                         <ItemsControl ItemsSource="{Binding Artists}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="7" Rows="1" />
+                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
