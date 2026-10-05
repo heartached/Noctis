@@ -889,11 +889,18 @@ public partial class MiniPlayerWindow : Window
         var grid = FormGrid.Bounds.Size;
         if (grid.Width <= 0 || grid.Height <= 0) return;
         var i = _designGroundInsets;
+        var trim = Vm?.Form == MiniPlayerForm.Pill ? PillGroundTrim : 0;
         Canvas.SetLeft(g.Ground, i.Left - _designGroundRootOffset.X);
-        Canvas.SetTop(g.Ground, i.Top - _designGroundRootOffset.Y);
+        Canvas.SetTop(g.Ground, i.Top - _designGroundRootOffset.Y + trim);
         g.Ground.Width = Math.Max(0, grid.Width - i.Left - i.Right);
-        g.Ground.Height = Math.Max(0, grid.Height - i.Top - i.Bottom);
+        g.Ground.Height = Math.Max(0, grid.Height - i.Top - i.Bottom - 2 * trim);
     }
+
+    /// <summary>The Pill's slab is the cover's height on paper, but the slab (a Canvas child)
+    /// and the cover snap to device pixels separately: at 125% the slab's top landed a pixel
+    /// above the cover's and its square left corner showed as a step. A DIP in from the top
+    /// and bottom keeps the slab's edge inside the cover's outline at any scale.</summary>
+    internal const double PillGroundTrim = 1;
 
     private static bool NearlyEqual(Thickness a, Thickness b) =>
         Math.Abs(a.Left - b.Left) < 0.5 && Math.Abs(a.Top - b.Top) < 0.5 &&
@@ -1012,7 +1019,7 @@ public partial class MiniPlayerWindow : Window
             var pill = vm.Form == MiniPlayerForm.Pill;
             var ground = pill ? PillGround : SleeveGround;
             if (LayoutRectIn(ground, this) is { Width: > 0, Height: > 0 } slab)
-                shapes.Add(new RegionShape(slab, ground.CornerRadius.TopLeft, false));
+                shapes.Add(new RegionShape(slab, ground.CornerRadius.TopRight, false));
             if (pill && LayoutRectIn(PillCover, this) is { Width: > 0, Height: > 0 } cover)
                 shapes.Add(new RegionShape(cover, cover.Width / 2, true));
         }

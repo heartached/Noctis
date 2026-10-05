@@ -2015,7 +2015,11 @@
                      own stale insets and the wrong measurement became self-consistent).
                      Rect from SyncDesignGround / ApplyDesignGroundRect. -->
                 <Canvas x:Name="PillGroundHost" IsHitTestVisible="False" ClipToBounds="False">
-                    <Border x:Name="PillGround" CornerRadius="24">
+                    <!-- Square on the left: that end sits under the round cover, whose centre is
+                         on the slab's left edge. A rounded corner there curved away exactly where
+                         the cover's arc did and left a notch of desktop between them, top and
+                         bottom (1v1ctus, 2026-10-05). See also PillGroundTrim. -->
+                    <Border x:Name="PillGround" CornerRadius="0,24,24,0">
                         <Border.Background>
                             <SolidColorBrush Color="{DynamicResource AppMainBackgroundColor}" Opacity="{Binding Settings.MiniPlayerBackgroundOpacity}"/>
                         </Border.Background>

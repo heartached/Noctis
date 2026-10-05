@@ -133,7 +133,7 @@ public class MiniPlayerDesignTests
             Assert.Equal(0, root.BorderThickness.Top, 3);
             Assert.False(win.FindControl<Border>("GlassSheen")!.IsVisible);
             Assert.True(win.FindControl<Border>("PillGround")!.IsVisible);
-            Assert.Equal(24, win.FindControl<Border>("PillGround")!.CornerRadius.TopLeft, 3);
+            Assert.Equal(24, win.FindControl<Border>("PillGround")!.CornerRadius.TopRight, 3); // left end is square under the cover
             // The window took the design's canonical size.
             var (pw, ph) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Pill);
             Assert.Equal(pw, win.Width, 1.0);

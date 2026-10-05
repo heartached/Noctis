@@ -300,6 +300,50 @@ public class MiniPlayerFrostSettingTests : IDisposable
         }
     }
 
+    /// <summary>1v1ctus 2026-10-05: a notch of desktop showed where the Pill's cover met its
+    /// slab, top and bottom. The slab's left end (under the cover) is square and its edges sit
+    /// just inside the cover's height, so the slab never pokes out past the round cover.</summary>
+    [AvaloniaFact]
+    public async Task PillSlab_IsSquareUnderTheCover_AndStaysInsideItsHeight()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+        vm.SetDesignCommand.Execute("Pill");
+        var win = new MiniPlayerWindow { DataContext = vm };
+        win.Show();
+        try
+        {
+            var end = Environment.TickCount64 + 400;
+            while (Environment.TickCount64 < end)
+            {
+                Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(8);
+            }
+            Rect R(string n) { var c = win.FindControl<Control>(n)!; return new Rect(c.TranslatePoint(new Point(0, 0), win)!.Value, c.Bounds.Size); }
+            var ground = win.FindControl<Border>("PillGround")!;
+            var slab = R("PillGround");
+            var cover = R("PillCover");
+
+            Assert.Equal(0, ground.CornerRadius.TopLeft);
+            Assert.Equal(0, ground.CornerRadius.BottomLeft);
+            Assert.Equal(24, ground.CornerRadius.TopRight);
+            Assert.Equal(cover.Center.X, slab.Left, 1);   // the square end is under the cover
+            Assert.Equal(cover.Top + MiniPlayerWindow.PillGroundTrim, slab.Top, 1);
+            Assert.Equal(cover.Bottom - MiniPlayerWindow.PillGroundTrim, slab.Bottom, 1);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
     [Fact]
     public void RegionPixels_CoverTheShapeInDevicePixels()
     {
