@@ -662,11 +662,17 @@ public partial class PlaylistView : UserControl
 
     private void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        // Only a drag took the capture (StartPlaylistDrag). This handler tunnels, so on a
+        // plain click it runs BEFORE the row's buttons see the release: dropping the
+        // capture there reset the pressed Button and its Click never fired, killing the
+        // artist/album links, heart, art play and "..." menu (Discord Luwi 2026-10-03).
         if (_dragActive)
+        {
             BeginPlaylistSettle();
+            e.Pointer.Capture(null);
+        }
         else
             ResetPlaylistDragState();
-        e.Pointer.Capture(null);
     }
 
     private void OnTrackRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
