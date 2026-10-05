@@ -65,4 +65,25 @@ public partial class PlaylistNavItem : NavItem
 
     /// <summary>Playlist rows inside an expanded folder render indented.</summary>
     [ObservableProperty] private bool _isInFolder;
+
+    /// <summary>Where the row sits in an open folder's tray (the backdrop that groups the
+    /// header with its playlists in the sidebar); None outside one.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGroupHeader))]
+    [NotifyPropertyChangedFor(nameof(IsGroupMember))]
+    [NotifyPropertyChangedFor(nameof(IsGroupLast))]
+    private SidebarGroupPosition _groupPosition;
+
+    public bool IsGroupHeader => GroupPosition == SidebarGroupPosition.Header;
+    public bool IsGroupMember => GroupPosition == SidebarGroupPosition.Member;
+    public bool IsGroupLast => GroupPosition == SidebarGroupPosition.Last;
+}
+
+/// <summary>A sidebar row's place in an open folder: its header, a playlist, or the last playlist.</summary>
+public enum SidebarGroupPosition
+{
+    None,
+    Header,
+    Member,
+    Last,
 }

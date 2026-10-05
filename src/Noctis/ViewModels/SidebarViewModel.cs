@@ -97,6 +97,7 @@ public partial class SidebarViewModel : ViewModelBase
         _persistence = persistence;
         _library = library;
         _library.LibraryUpdated += (_, _) => RefreshFavoritesCount();
+        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(RefreshPlaylistCounts);
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
         Loc.Instance.CultureChanged += (_, _) => RelabelSections();
     }
@@ -262,6 +263,7 @@ public partial class SidebarViewModel : ViewModelBase
             existing.Label = desired[i].Label;
             existing.IsExpanded = desired[i].IsExpanded;
             existing.TrackCount = desired[i].TrackCount;
+            existing.GroupPosition = desired[i].GroupPosition;
             desired[i] = existing;
         }
 
@@ -287,8 +289,8 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder
-    /// on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
+    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder and
+    /// GroupPosition on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
     /// maps folders the user dragged into place to their position (see FolderOrders).
     /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
     /// "playlist:id") the user placed among each other to their position (see
@@ -305,6 +307,7 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var item in all.Where(i => i.IsPinned))
         {
             item.IsInFolder = false;
+            item.GroupPosition = SidebarGroupPosition.None;
             rows.Add(item);
         }
 
@@ -329,6 +332,7 @@ public partial class SidebarViewModel : ViewModelBase
             if (folder == null)
             {
                 members[0].IsInFolder = false;
+                members[0].GroupPosition = SidebarGroupPosition.None;
                 rows.Add(members[0]);
                 continue;
             }
@@ -341,13 +345,19 @@ public partial class SidebarViewModel : ViewModelBase
                 IsFolder = true,
                 IsExpanded = expanded,
                 TrackCount = members.Count,
+                GroupPosition = expanded ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
             });
 
-            if (!expanded) continue;
-            foreach (var item in members)
+            if (!expanded)
             {
-                item.IsInFolder = true;
-                rows.Add(item);
+                foreach (var item in members) item.GroupPosition = SidebarGroupPosition.None;
+                continue;
+            }
+            for (var m = 0; m < members.Count; m++)
+            {
+                members[m].IsInFolder = true;
+                members[m].GroupPosition = m == members.Count - 1 ? SidebarGroupPosition.Last : SidebarGroupPosition.Member;
+                rows.Add(members[m]);
             }
         }
 
@@ -486,6 +496,43 @@ public partial class SidebarViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
+    /// <summary>
+    /// Songs the playlist page will actually list: entries the library resolves. Songs under
+    /// a hidden library folder (or files gone from disk) don't resolve, and the sidebar said
+    /// "4 songs" over a page of 2. Before the library has loaded nothing resolves yet, so the
+    /// stored count stands in until <see cref="RefreshPlaylistCounts"/> runs.
+    /// </summary>
+    private int CountShownTracks(Playlist pl)
+    {
+        if (_library.Tracks.Count == 0) return pl.TrackIds.Count;
+        var shown = 0;
+        foreach (var id in pl.TrackIds)
+            if (_library.GetTrackById(id) != null) shown++;
+        return shown;
+    }
+
+    /// <summary>Re-resolves every playlist row's count, meta line and collage after the
+    /// library changed (load, scan, a folder hidden or shown).</summary>
+    private void RefreshPlaylistCounts()
+    {
+        foreach (var navItem in PlaylistItems)
+        {
+            if (navItem.PlaylistId is not { } id) continue;
+            var playlist = Playlists.FirstOrDefault(p => p.Id == id);
+            if (playlist != null) ApplyRebuilt(navItem, BuildPlaylistNavItem(playlist));
+        }
+    }
+
+    private static void ApplyRebuilt(PlaylistNavItem navItem, PlaylistNavItem rebuilt)
+    {
+        navItem.TrackCount = rebuilt.TrackCount;
+        navItem.MetaText = rebuilt.MetaText;
+        navItem.Art1 = rebuilt.Art1;
+        navItem.Art2 = rebuilt.Art2;
+        navItem.Art3 = rebuilt.Art3;
+        navItem.Art4 = rebuilt.Art4;
+    }
+
     /// <summary>Builds a PlaylistNavItem with resolved artwork for sidebar display.</summary>
     private PlaylistNavItem BuildPlaylistNavItem(Playlist pl)
     {
@@ -496,7 +543,7 @@ public partial class SidebarViewModel : ViewModelBase
             IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
             IsSmartPlaylist = pl.IsSmartPlaylist,
             PlaylistId = pl.Id,
-            TrackCount = pl.TrackIds.Count,
+            TrackCount = CountShownTracks(pl),
             CoverArtPath = pl.CoverArtPath,
             Color = pl.Color,
             IsPinned = pl.IsPinned,
@@ -510,7 +557,7 @@ public partial class SidebarViewModel : ViewModelBase
             var t = _library.GetTrackById(trackId);
             if (t != null) totalDuration += t.Duration;
         }
-        var tracksLabel = pl.TrackIds.Count == 1 ? "1 track" : $"{pl.TrackIds.Count:N0} tracks";
+        var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
         var durationLabel = totalDuration.TotalHours >= 1
             ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
             : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
