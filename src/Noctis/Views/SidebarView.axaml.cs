@@ -42,6 +42,7 @@ public partial class SidebarView : UserControl
         PlaylistList.AddHandler(PointerReleasedEvent, OnPlaylistRowPointerReleased, RoutingStrategies.Tunnel);
         PlaylistList.AddHandler(PointerCaptureLostEvent, OnPlaylistRowPointerCaptureLost);
         PlaylistList.ContainerPrepared += OnPlaylistContainerPrepared;
+        PlaylistList.LayoutUpdated += UpdateGroupTrays;
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -967,6 +968,48 @@ public partial class SidebarView : UserControl
         }
         // Rows outside the viewport never get a container this pass; don't animate them later.
         Dispatcher.UIThread.Post(_pendingUnfold.Clear, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Stretches each open folder's tray (drawn by its header row, see the group-tray styles)
+    /// from the header's top to the bottom of the group's last realized row, measured from the
+    /// containers' real bounds every layout pass, so it tracks the fold and drag-reorder. The
+    /// header container is put below its group (ZIndex) so the faint tray never lies over a
+    /// recycled member that happens to come earlier in the panel's children.
+    /// </summary>
+    private void UpdateGroupTrays(object? sender, EventArgs e)
+    {
+        var rows = PlaylistList.GetRealizedContainers()
+            .OfType<Control>()
+            .Where(c => c.DataContext is PlaylistNavItem && c.IsVisible)
+            .OrderBy(c => c.Bounds.Top)
+            .ToList();
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var header = rows[i];
+            var isHeader = header.DataContext is PlaylistNavItem { IsGroupHeader: true };
+            var z = isHeader ? -1 : 0;
+            if (header.ZIndex != z) header.ZIndex = z;
+            if (!isHeader) continue;
+
+            var tray = header.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(b => b.Classes.Contains("group-tray"));
+            if (tray == null) continue;
+
+            var bottom = header.Bounds.Bottom;
+            for (var j = i + 1; j < rows.Count; j++)
+            {
+                if (rows[j].DataContext is not PlaylistNavItem { IsGroupMember: true } and not PlaylistNavItem { IsGroupLast: true })
+                    break;
+                bottom = rows[j].Bounds.Bottom;
+                if (rows[j].DataContext is PlaylistNavItem { IsGroupLast: true }) break;
+            }
+            var height = Math.Max(0, bottom - header.Bounds.Top);
+            if (double.IsNaN(tray.Height) || Math.Abs(tray.Height - height) > 0.25)
+                tray.Height = height;
+            if (double.IsNaN(tray.Width) || Math.Abs(tray.Width - header.Bounds.Width) > 0.25)
+                tray.Width = header.Bounds.Width;
+        }
     }
 
     private void OnPlaylistContainerPrepared(object? sender, ContainerPreparedEventArgs e)

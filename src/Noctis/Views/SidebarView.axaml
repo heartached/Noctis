@@ -74,6 +74,10 @@
              (the "playlists dancing around" report, Discord Luwi 09-22). -->
         <Style Selector="ListBox#PlaylistList ListBoxItem">
             <Setter Property="Padding" Value="8.5" />
+            <!-- ListBoxItem clips by default, which cut off the 2px the group tray reaches
+                 into the row gaps and left dark seams across it. A fold still clips the row
+                 while it runs (FoldingListBoxItem sets it locally). -->
+            <Setter Property="ClipToBounds" Value="False" />
         </Style>
         <Style Selector="ListBox#PlaylistList ListBoxItem /template/ ContentPresenter">
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -85,35 +89,25 @@
         </Style>
 
         <!-- Open folder tray (Discord Luwi 10-04: in the collapsed rail a folder's playlists
-             looked like loose ones). Each row draws its own slice of one faint rounded backdrop
-             behind the header and its playlists, from the row's GroupPosition: the header
-             rounds the top, the last playlist the bottom, and the slices reach 2px into the
-             row margins (ListBox.sidebar ListBoxItem Margin 0,2) so they meet. The -10 is the
-             row inset (Padding 8.5 + rim 1.5), radius 24 = the 48px row pill's. Scoped to the
-             list, so the drag card (same template) shows none. The header fades with the fold. -->
+             looked like loose ones). ONE faint rounded backdrop behind an open folder's header
+             and its playlists, drawn by the header row and stretched by code-behind
+             (UpdateGroupTrays) to the bottom of the group's last realized row, so it follows
+             the fold and drag-reorder. Per-row slices met at independently rounded edges and
+             showed seams. The -10 is the row inset (Padding 8.5 + rim 1.5); radius 24 = the
+             48px row pill's. Scoped to the list, so the drag card (same template) shows none. -->
         <Style Selector="Border.group-tray">
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Background" Value="{DynamicResource IslandForeground}" />
+            <Setter Property="CornerRadius" Value="24" />
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="{x:Static ctrl:FoldingListBoxItem.FoldDuration}" Easing="{x:Static ctrl:FoldingListBoxItem.FoldEase}" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="ListBox#PlaylistList Border.group-tray.header.open, ListBox#PlaylistList Border.group-tray.member, ListBox#PlaylistList Border.group-tray.last">
+        <Style Selector="ListBox#PlaylistList Border.group-tray.header.open">
             <Setter Property="Opacity" Value="0.06" />
-        </Style>
-        <Style Selector="Border.group-tray.header">
-            <Setter Property="Margin" Value="-10,-10,-10,-12" />
-            <Setter Property="CornerRadius" Value="24,24,0,0" />
-        </Style>
-        <Style Selector="Border.group-tray.member">
-            <Setter Property="Margin" Value="-10,-12,-10,-12" />
-        </Style>
-        <Style Selector="Border.group-tray.last">
-            <Setter Property="Margin" Value="-10,-12,-10,-10" />
-            <Setter Property="CornerRadius" Value="0,0,24,24" />
         </Style>
 
         <!-- Right-click menu for playlist rows and folder headers. One shared menu; the
@@ -521,12 +515,17 @@
                             <DataTemplate x:DataType="m:PlaylistNavItem">
                                 <Panel>
 
-                                <!-- This row's slice of its open folder's tray (styles above). -->
+                                <!-- An open folder's tray, drawn by its header row (styles above). -->
+                                <!-- In a zero-size Canvas so its code-set height never grows
+                                     the header row; -10 = back out to the row pill's edge. -->
+                                <Canvas Width="0" Height="0" HorizontalAlignment="Left" VerticalAlignment="Top">
                                 <Border Classes="group-tray"
+                                        Canvas.Left="-10" Canvas.Top="-10"
                                         Classes.header="{Binding IsGroupHeader}"
                                         Classes.open="{Binding IsExpanded}"
                                         Classes.member="{Binding IsGroupMember}"
                                         Classes.last="{Binding IsGroupLast}" />
+                                </Canvas>
 
                                 <!-- Folder header row -->
                                 <StackPanel Orientation="Horizontal" Spacing="10"

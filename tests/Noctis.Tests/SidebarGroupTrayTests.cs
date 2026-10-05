@@ -218,16 +218,21 @@ public class SidebarGroupTrayTests
         Assert.True(a2.Classes.Contains("last"));
         Assert.False(loose.Classes.Contains("header") || loose.Classes.Contains("member") || loose.Classes.Contains("last"));
 
+        // One tray, drawn by the header: it spans from the header's top to the bottom of
+        // the group's last row (per-row slices met at separately rounded edges and showed
+        // seams), and the member rows draw none.
         Assert.True(header.Opacity > 0);
-        Assert.True(a1.Opacity > 0);
-        Assert.True(a2.Opacity > 0);
+        Assert.Equal(0, a1.Opacity);
+        Assert.Equal(0, a2.Opacity);
         Assert.Equal(0, loose.Opacity);
-        // The slices span the row pill and meet across the 4px gap between rows.
-        var row1 = (Control)list.ContainerFromIndex(1)!;
-        Assert.Equal(row1.Bounds.Width, a1.Bounds.Width, 1);
-        Assert.Equal(row1.Bounds.Height + 4, a1.Bounds.Height, 1);
-        Assert.Equal(new CornerRadius(24, 24, 0, 0), header.CornerRadius);
-        Assert.Equal(new CornerRadius(0, 0, 24, 24), a2.CornerRadius);
+        var row0 = (Control)list.ContainerFromIndex(0)!;
+        var row2 = (Control)list.ContainerFromIndex(2)!;
+        Assert.Equal(row0.Bounds.Width, header.Bounds.Width, 1);
+        Assert.Equal(row2.Bounds.Bottom - row0.Bounds.Top, header.Bounds.Height, 1);
+        // The header row keeps its own height (the tray must not grow it) and does not clip.
+        Assert.True(row0.Bounds.Height < header.Bounds.Height);
+        Assert.False(row0.ClipToBounds);
+        Assert.Equal(new CornerRadius(24), header.CornerRadius);
         win.Close();
     }
 }
