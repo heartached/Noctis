@@ -97,6 +97,7 @@ public partial class SidebarViewModel : ViewModelBase
         _persistence = persistence;
         _library = library;
         _library.LibraryUpdated += (_, _) => RefreshFavoritesCount();
+        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(RefreshPlaylistCounts);
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
         Loc.Instance.CultureChanged += (_, _) => RelabelSections();
     }
@@ -495,6 +496,43 @@ public partial class SidebarViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
+    /// <summary>
+    /// Songs the playlist page will actually list: entries the library resolves. Songs under
+    /// a hidden library folder (or files gone from disk) don't resolve, and the sidebar said
+    /// "4 songs" over a page of 2. Before the library has loaded nothing resolves yet, so the
+    /// stored count stands in until <see cref="RefreshPlaylistCounts"/> runs.
+    /// </summary>
+    private int CountShownTracks(Playlist pl)
+    {
+        if (_library.Tracks.Count == 0) return pl.TrackIds.Count;
+        var shown = 0;
+        foreach (var id in pl.TrackIds)
+            if (_library.GetTrackById(id) != null) shown++;
+        return shown;
+    }
+
+    /// <summary>Re-resolves every playlist row's count, meta line and collage after the
+    /// library changed (load, scan, a folder hidden or shown).</summary>
+    private void RefreshPlaylistCounts()
+    {
+        foreach (var navItem in PlaylistItems)
+        {
+            if (navItem.PlaylistId is not { } id) continue;
+            var playlist = Playlists.FirstOrDefault(p => p.Id == id);
+            if (playlist != null) ApplyRebuilt(navItem, BuildPlaylistNavItem(playlist));
+        }
+    }
+
+    private static void ApplyRebuilt(PlaylistNavItem navItem, PlaylistNavItem rebuilt)
+    {
+        navItem.TrackCount = rebuilt.TrackCount;
+        navItem.MetaText = rebuilt.MetaText;
+        navItem.Art1 = rebuilt.Art1;
+        navItem.Art2 = rebuilt.Art2;
+        navItem.Art3 = rebuilt.Art3;
+        navItem.Art4 = rebuilt.Art4;
+    }
+
     /// <summary>Builds a PlaylistNavItem with resolved artwork for sidebar display.</summary>
     private PlaylistNavItem BuildPlaylistNavItem(Playlist pl)
     {
@@ -505,7 +543,7 @@ public partial class SidebarViewModel : ViewModelBase
             IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
             IsSmartPlaylist = pl.IsSmartPlaylist,
             PlaylistId = pl.Id,
-            TrackCount = pl.TrackIds.Count,
+            TrackCount = CountShownTracks(pl),
             CoverArtPath = pl.CoverArtPath,
             Color = pl.Color,
             IsPinned = pl.IsPinned,
@@ -519,7 +557,7 @@ public partial class SidebarViewModel : ViewModelBase
             var t = _library.GetTrackById(trackId);
             if (t != null) totalDuration += t.Duration;
         }
-        var tracksLabel = pl.TrackIds.Count == 1 ? "1 track" : $"{pl.TrackIds.Count:N0} tracks";
+        var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
         var durationLabel = totalDuration.TotalHours >= 1
             ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
             : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
