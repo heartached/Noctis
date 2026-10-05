@@ -321,7 +321,7 @@
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player (Classic design).</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Song Transitions</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve"><value>Songs blend into each other. Albums play without transitions.</value><comment>Text in SettingsView.axaml</comment></data>

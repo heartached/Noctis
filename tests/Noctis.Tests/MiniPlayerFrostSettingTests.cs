@@ -185,6 +185,50 @@ public class MiniPlayerFrostSettingTests : IDisposable
         }
     }
 
+    /// <summary>The frost needs a window region, whose edge is never anti-aliased, so the Pill
+    /// and Sleeve came out stair-stepped with it on (1v1ctus, 2026-10-05). The designs skip
+    /// the OS backdrop; Classic keeps it, and switching between them follows live.</summary>
+    [AvaloniaFact]
+    public void Frost_AppliesToClassicOnly_AndFollowsADesignSwitch()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null)
+            {
+                Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml"),
+            });
+
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        settings.MiniPlayerFrostedBackground = true;
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+        vm.SetDesignCommand.Execute("Pill");
+
+        var win = new MiniPlayerWindow { DataContext = vm };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+
+            vm.SetDesignCommand.Execute("Classic");
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(OperatingSystem.IsWindows()), win.TransparencyLevelHint);
+
+            vm.SetDesignCommand.Execute("Sleeve");
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
     /// <summary>The OS backdrop fills the window rect, so while frosted the window is clipped
     /// to the design's outline (a Win32 window region). The region itself is not visible
     /// headlessly; this pins the outline it is built from, per design.</summary>

@@ -452,6 +452,7 @@ public partial class MiniPlayerWindow : Window
                 _lastVmForm = Vm?.Form;
 
                 SyncFormVisual();
+                ApplyTransparencyHint(); // frost is Classic-only; a design switch turns it on or off
                 UpdateLyricsSurfaceRegistration();
                 UpdateFlowAnimationState();
                 if (Vm?.IsLyricsForm == true)
@@ -982,7 +983,12 @@ public partial class MiniPlayerWindow : Window
     {
         // The opaque fallback (no compositor / NOCTIS_MINI_OPAQUE) owns the hint.
         if (_squareCard) return;
-        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true;
+        // Classic only. The frost needs the window region below, and a region edge is never
+        // anti-aliased: the Pill's round cover and both designs' rounded slabs came out
+        // stair-stepped (and lost their drop shadows) — GitHub/Discord 1v1ctus 2026-10-05.
+        // The designs sit on their own opaque-ish ground, so they skip the OS backdrop.
+        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true
+                      && Vm is not { IsDesignForm: true };
         TransparencyLevelHint = TransparencyLevels(frosted);
         if (frosted == _frosted) return;
         _frosted = frosted;
