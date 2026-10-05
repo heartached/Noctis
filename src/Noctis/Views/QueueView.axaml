@@ -94,7 +94,7 @@
                                            Opacity="0.9" />
                             </Border>
                         </Grid>
-                        <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
+                        <TextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay}"
                                    FontSize="12"
                                    Opacity="0.6"
                                    TextTrimming="CharacterEllipsis" />

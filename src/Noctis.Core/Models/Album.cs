@@ -87,7 +87,10 @@ public class Album : ObservableObject
     }
 
     /// <summary>Grid-tile subtitle: "Artist · Year"; artist alone when the year is unknown.</summary>
-    public string TileSubtitle => Year > 0 ? $"{Artist} · {Year}" : Artist;
+    public string TileSubtitle => Year > 0 ? $"{ArtistDisplay} · {Year}" : ArtistDisplay;
+
+    /// <summary>Artist as shown: separators read as commas (<see cref="ArtistCredit.Display"/>).</summary>
+    public string ArtistDisplay => ArtistCredit.Display(Artist);
 
     /// <summary>Formatted total duration.</summary>
     public string TotalDurationFormatted =>

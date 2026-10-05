@@ -396,6 +396,7 @@
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
+                                helpers:ArtistCreditLink.IsEnabled="True"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
                             <controls:HighlightTextBlock Classes="accent-link"

@@ -653,7 +653,7 @@
                             HorizontalAlignment="Center"
                             IsVisible="{Binding !HasMultipleArtists}">
                         <controls:MarqueeTextBlock x:Name="ArtistMarquee"
-                                                   Text="{Binding Player.CurrentTrack.Artist, FallbackValue=''}"
+                                                   Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="17"
                                                    Foreground="{Binding LyricsAccentFg}"
                                                    MaxDisplayWidth="520"

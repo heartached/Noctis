@@ -823,14 +823,21 @@
                                                Opacity="0.9" />
                                 </Border>
                             </Grid>
-                            <!-- Track artist subtitle: display only (not clickable) -->
-                            <TextBlock Text="{Binding ArtistDisplay}"
-                                       FontSize="13"
-                                       Opacity="0.6"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxLines="1"
-                                       HorizontalAlignment="Left"
-                                       IsVisible="{Binding ShouldShowArtistSubtitleInAlbum}" />
+                            <!-- Track artist subtitle: each credited name opens its artist page
+                                 (ArtistCreditLink; Discord Luwi 2026-10-03). -->
+                            <Button Classes="track-artist-link"
+                                    Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                    Cursor="Hand" HorizontalAlignment="Left"
+                                    IsVisible="{Binding ShouldShowArtistSubtitleInAlbum}"
+                                    helpers:ArtistCreditLink.IsEnabled="True"
+                                    Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ViewArtistFromTrackCommand}"
+                                    CommandParameter="{Binding Artist}">
+                                <TextBlock Text="{Binding ArtistDisplay}"
+                                           FontSize="13"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1" />
+                            </Button>
                         </StackPanel>
 
                         <!-- Stars + Heart + Duration + Track options (column 2, fixed-width grid for alignment) -->

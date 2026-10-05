@@ -89,7 +89,7 @@
                                         </Grid>
                                         <TextBlock Grid.Column="3"
                                                    Classes="chart-artist"
-                                                   Text="{Binding Track.Artist}"
+                                                   Text="{Binding Track.ArtistDisplay}"
                                                    FontSize="13"
                                                    Opacity="0.7"
                                                    VerticalAlignment="Center"
@@ -427,7 +427,7 @@
                                            Opacity="0.72"
                                            TextTrimming="CharacterEllipsis"
                                            MaxLines="1">
-                                    <Run Text="{Binding ContinueTrack.Artist, FallbackValue=''}" />
+                                    <Run Text="{Binding ContinueTrack.ArtistDisplay, FallbackValue=''}" />
                                     <Run Text="{Binding ContinueDetail}" />
                                 </TextBlock>
                             </StackPanel>
@@ -813,7 +813,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>
@@ -870,7 +870,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>
@@ -927,7 +927,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>

@@ -878,6 +878,7 @@
                                         </Grid>
                                         <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                                 Cursor="Hand" HorizontalAlignment="Left"
+                                                helpers:ArtistCreditLink.IsEnabled="True"
                                                 Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
                                                 CommandParameter="{Binding Artist}">
                                             <controls:HighlightTextBlock Classes="accent-link"

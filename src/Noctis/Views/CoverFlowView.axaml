@@ -526,7 +526,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding OffPreviousArtworkPath}"
                                         Title="{Binding OffPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffPreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding OffPreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding OffPreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding OffPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -536,7 +536,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding EdgePreviousArtworkPath}"
                                         Title="{Binding EdgePreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgePreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding EdgePreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding EdgePreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding EdgePreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -546,7 +546,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding FarPreviousArtworkPath}"
                                         Title="{Binding FarPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarPreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding FarPreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding FarPreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding FarPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -556,7 +556,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding PreviousArtworkPath}"
                                         Title="{Binding PreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding PreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding PreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding PreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -590,7 +590,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding NextArtworkPath}"
                                         Title="{Binding NextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding NextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding NextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding NextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -600,7 +600,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding FarNextArtworkPath}"
                                         Title="{Binding FarNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding FarNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding FarNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -610,7 +610,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding EdgeNextArtworkPath}"
                                         Title="{Binding EdgeNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgeNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding EdgeNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding EdgeNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -620,7 +620,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding OffNextArtworkPath}"
                                         Title="{Binding OffNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding OffNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding OffNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 

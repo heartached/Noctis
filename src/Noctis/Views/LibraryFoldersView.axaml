@@ -209,6 +209,7 @@
                                         Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                         Cursor="Hand" HorizontalAlignment="Right" VerticalAlignment="Center"
                                         Margin="16,0,0,0"
+                                        helpers:ArtistCreditLink.IsEnabled="True"
                                         Command="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).ViewArtistCommand}"
                                         CommandParameter="{Binding Artist}">
                                     <TextBlock Text="{Binding ArtistDisplay}"
