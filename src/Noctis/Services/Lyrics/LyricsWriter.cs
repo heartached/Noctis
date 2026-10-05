@@ -113,6 +113,38 @@ public sealed class LyricsWriter
         return new LyricsSaveOutcome(true, sidecarWritten, replaced, kept);
     }
 
+    /// <summary>
+    /// The lyrics files beside <paramref name="audioPath"/> that a <see cref="SaveDetailed"/> of
+    /// <paramref name="synced"/> (no TTML) would replace or remove, quoted names only, in the
+    /// lyrics page's read order — for the prompt before a save. A file that already holds exactly
+    /// what the save writes is left out: re-saving lyrics already on disk changes nothing.
+    /// </summary>
+    internal static List<string> FilesChangedBySave(string audioPath, string synced)
+    {
+        var changed = new List<string>();
+        var isWordLevel = LyricsFormatDetector.Detect(null, synced) == LyricsFormat.Elrc;
+        Check(".lyricsfile", null);
+        Check(".ttml", null);
+        Check(".elrc", isWordLevel ? synced : null);
+        Check(".lrc", isWordLevel ? LineLevelProjection(synced) : synced);
+        return changed;
+
+        void Check(string ext, string? written)
+        {
+            var path = Path.ChangeExtension(audioPath, ext);
+            try
+            {
+                if (!File.Exists(path)) return;
+                if (written is not null && Comparable(File.ReadAllText(path)) == Comparable(written)) return;
+            }
+            catch { /* unreadable: say it will be replaced */ }
+            changed.Add($"“{Path.GetFileName(path)}”");
+        }
+
+        static string Comparable(string text) =>
+            text.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
+    }
+
     /// <summary>Removes the app's own lyrics artefacts for the track and clears its fields.</summary>
     public void Remove(Track track, bool clearTags)
     {

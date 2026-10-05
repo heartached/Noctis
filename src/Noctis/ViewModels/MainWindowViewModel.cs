@@ -2643,7 +2643,9 @@ public partial class MainWindowViewModel : ViewModelBase
             isSyncedActive: _lyricsVm.IsSyncTabSelected,
             isPlainActive: _lyricsVm.IsUnsyncTabSelected,
             isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable,
-            canShare: _lyricsVm.ShareAvailable);
+            canShare: _lyricsVm.ShareAvailable,
+            saveLyrics: () => _lyricsVm.SaveLyricsToFileCommand.Execute(null),
+            canSaveLyrics: _lyricsVm.CanSaveToFile);
 
         _lyricsVm.PropertyChanged -= OnLyricsVmPropertyChanged;
         _lyricsVm.PropertyChanged += OnLyricsVmPropertyChanged;
@@ -2660,13 +2662,15 @@ public partial class MainWindowViewModel : ViewModelBase
         if (e.PropertyName == nameof(LyricsViewModel.IsSyncTabSelected)
             || e.PropertyName == nameof(LyricsViewModel.IsUnsyncTabSelected)
             || e.PropertyName == nameof(LyricsViewModel.HasSyncedLyricsAvailable)
-            || e.PropertyName == nameof(LyricsViewModel.ShareAvailable))
+            || e.PropertyName == nameof(LyricsViewModel.ShareAvailable)
+            || e.PropertyName == nameof(LyricsViewModel.CanSaveToFile))
         {
             Player.UpdateLyricsPageState(
                 isSyncedActive: _lyricsVm.IsSyncTabSelected,
                 isPlainActive: _lyricsVm.IsUnsyncTabSelected,
                 isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable,
-                canShare: _lyricsVm.ShareAvailable);
+                canShare: _lyricsVm.ShareAvailable,
+                canSaveLyrics: _lyricsVm.CanSaveToFile);
         }
     }
 

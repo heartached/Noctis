@@ -466,6 +466,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
     [ObservableProperty] private bool _canShareLyrics;
+    /// <summary>The lyrics page shows synced online lyrics of a local file (GitHub #115).</summary>
+    [ObservableProperty] private bool _canSaveLyricsToFile;
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -484,6 +486,7 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _openLyricsBackgroundColor;
     private Action? _removeLyrics;
     private Action? _shareLyrics;
+    private Action? _saveLyrics;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -1139,6 +1142,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void ShareCurrentTrackLyrics() => _shareLyrics?.Invoke();
 
+    [RelayCommand]
+    private void SaveCurrentTrackLyrics() => _saveLyrics?.Invoke();
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -1152,17 +1158,21 @@ public partial class PlayerViewModel : ViewModelBase
         bool isSyncedActive,
         bool isPlainActive,
         bool isSyncedAvailable,
-        bool canShare)
+        bool canShare,
+        Action? saveLyrics = null,
+        bool canSaveLyrics = false)
     {
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
         _removeLyrics = removeLyrics;
         _shareLyrics = shareLyrics;
+        _saveLyrics = saveLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
         CanShareLyrics = canShare;
+        CanSaveLyricsToFile = canSaveLyrics;
         IsLyricsPageActive = true;
     }
 
@@ -1176,23 +1186,26 @@ public partial class PlayerViewModel : ViewModelBase
         _openLyricsBackgroundColor = null;
         _removeLyrics = null;
         _shareLyrics = null;
+        _saveLyrics = null;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;
         IsLyricsSyncedAvailable = false;
         CanShareLyrics = false;
+        CanSaveLyricsToFile = false;
     }
 
     /// <summary>
     /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
     /// or synced-availability changes, to keep the menu's checkmarks accurate.
     /// </summary>
-    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare)
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare, bool canSaveLyrics = false)
     {
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
         CanShareLyrics = canShare;
+        CanSaveLyricsToFile = canSaveLyrics;
     }
 
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>

@@ -947,6 +947,16 @@
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Written By: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Follow</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.PreviewUnsaved" xml:space="preserve"><value>Preview · unsaved lyrics</value><comment>Text in LyricsView.axaml — Lyrics Studio preview indicator</comment></data>
+  <data name="Lyrics.SaveReplaceOne" xml:space="preserve"><value>“{0}” already has {1}.
+
+Saving replaces it with the lyrics on screen. A lyrics file Noctis didn't write goes to the Recycle Bin first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = one quoted file name</comment></data>
+  <data name="Lyrics.SaveReplaceMany" xml:space="preserve"><value>“{0}” already has {1}.
+
+Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't write goes to the Recycle Bin first.</value><comment>Save Lyrics to File prompt in LyricsViewModel; {0} = song title, {1} = quoted file names joined by Lyrics.SaveFilesJoin</comment></data>
+  <data name="Lyrics.SaveFilesJoin" xml:space="preserve"><value> and </value><comment>Joins the file names in Lyrics.SaveReplaceMany (keep the spaces)</comment></data>
+  <data name="Lyrics.Saved" xml:space="preserve"><value>Saved Lyrics</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
+  <data name="Lyrics.SaveKeptOld" xml:space="preserve"><value>Saved · an old lyrics file was kept, couldn't move it to the Recycle Bin</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
+  <data name="Lyrics.SaveFailed" xml:space="preserve"><value>Save failed — check file permissions</value><comment>Lyrics page status after Save Lyrics to File</comment></data>
   <data name="Lyrics.OffsetEarlier" xml:space="preserve"><value>Lyrics {0:0.0} s earlier</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
   <data name="Lyrics.OffsetLater" xml:space="preserve"><value>Lyrics {0:0.0} s later</value><comment>Notice pill after Ctrl+scroll over the lyrics (LyricsViewModel); {0} = seconds</comment></data>
   <data name="Lyrics.OffsetInSync" xml:space="preserve"><value>Lyrics in sync</value><comment>Notice pill after Ctrl+scroll brings the lyrics offset back to 0 (LyricsViewModel)</comment></data>
@@ -1340,6 +1350,7 @@
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Plain</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Background Color</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Share lyrics</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.SaveLyrics" xml:space="preserve"><value>Save Lyrics to File</value><comment>Header in PlaybackBarView.axaml (lyrics page, online lyrics shown)</comment></data>
   <data name="PlaybackBar.QueueTip" xml:space="preserve"><value>Queue</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.LyricsTip" xml:space="preserve"><value>Lyrics</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.VolumeTip" xml:space="preserve"><value>Volume</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>

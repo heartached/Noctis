@@ -1376,6 +1376,17 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Lyrics page, online lyrics shown (GitHub #115): save them next to the
+                                     song under its name, replacing its lyrics files (asks first). -->
+                                <MenuItem Header="{loc:T PlaybackBar.SaveLyrics}"
+                                          Command="{Binding SaveCurrentTrackLyricsCommand}"
+                                          IsVisible="{Binding CanSaveLyricsToFile}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource SaveDiskIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <!-- Lyrics side-panel toggle (everywhere but the lyrics full view). -->
                                 <MenuItem Header="{loc:T PlaybackBar.LyricsPanel}"
                                           Click="OnLyricsPanelButtonClick"
