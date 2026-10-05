@@ -402,6 +402,11 @@ public class AppSettings
     /// both tabs and every artist.</summary>
     public string ArtistReleaseSortMode { get; set; } = "newest";
 
+    /// <summary>Whether the artist page Overview's "Similar Artists" section shows its
+    /// tiles (Luwi, Discord 10-04). One setting for every artist; defaults to expanded,
+    /// the pre-feature layout.</summary>
+    public bool ArtistSimilarExpanded { get; set; } = true;
+
     /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
     /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
     public string FoldersSortMode { get; set; } = "default";

@@ -24,6 +24,43 @@
             <Setter Property="FontSize" Value="20"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
+        <!-- Collapsible section header, same look as Home's (HomeView.axaml section-toggle):
+             the whole title is the hit target, no plate on hover/press, and the thin chevron
+             points right when folded and turns down when open. The resting rotation lives
+             in the style, not on the PathIcon, or the .expanded style could never win. -->
+        <Style Selector="Button.section-toggle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.section-toggle PathIcon.section-chevron">
+            <Setter Property="Opacity" Value="0.4"/>
+            <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.section-toggle.expanded PathIcon.section-chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pointerover PathIcon.section-chevron">
+            <Setter Property="Opacity" Value="0.85"/>
+        </Style>
         <Style Selector="TextBlock.fact-label">
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -1050,20 +1087,32 @@
                            FontSize="13" Opacity="0.5" Margin="34,26,0,0"
                            IsVisible="{Binding !HasReleases}" />
 
-                <!-- Similar Artists: the first eight, "See all" opens the tab -->
-                <StackPanel Margin="32,26,32,0" Spacing="8" IsVisible="{Binding HasOverviewSimilar}">
+                <!-- Similar Artists: the first eight, "See all" opens the tab. The title folds
+                     the tiles away (one setting for every artist page), like Home's sections. -->
+                <StackPanel Margin="32,26,32,0" Spacing="8" IsVisible="{Binding ShowOverviewSimilar}">
                     <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,8">
-                        <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.SimilarArtists}" Classes="section-title" VerticalAlignment="Center" />
+                        <Button x:Name="SimilarSectionToggle" Grid.Column="0" Classes="section-toggle"
+                                Classes.expanded="{Binding IsOverviewSimilarExpanded}"
+                                Command="{Binding ToggleSimilarSectionCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.HideShowSectionTip}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" Classes="section-title" />
+                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
+                                          Width="12" Height="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
                                 Command="{Binding SelectTabCommand}" CommandParameter="similar" VerticalAlignment="Center" />
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding OverviewSimilar}" ItemTemplate="{StaticResource SimilarTile}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
+                    <ctrl:CollapsibleContent x:Name="SimilarSectionBody" IsOpen="{Binding IsOverviewSimilarExpanded}" Lift="10" Motion="Glide">
+                        <ItemsControl ItemsSource="{Binding OverviewSimilar}" ItemTemplate="{StaticResource SimilarTile}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ctrl:CollapsibleContent>
                 </StackPanel>
 
                 <!-- Appears On: albums the artist is only featured on -->
