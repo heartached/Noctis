@@ -2889,7 +2889,15 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             // Skip intro placeholder "..."
             if (line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
-            batch.Add(new LyricLine { Text = LyricsTextHelper.CleanDisplayText(line.Text), IsActive = true });
+            // The romanization / translation layers (TTML, or LRC lines sharing a timestamp —
+            // GitHub #116) are the user's text too; the Plain tab renders them as static rows.
+            batch.Add(new LyricLine
+            {
+                Text = LyricsTextHelper.CleanDisplayText(line.Text),
+                Transliteration = line.Transliteration,
+                Translation = line.Translation,
+                IsActive = true,
+            });
         }
         UnsyncedLines.ReplaceAll(batch);
     }
@@ -3032,13 +3040,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// loaded. Display text carries the soft-wrap newline SoftWrapText inserted, which is
     /// unfolded back to the space it replaced.
     /// </summary>
-    private string? BuildSeedFromLoadedLines()
+    internal string? BuildSeedFromLoadedLines()
     {
         if (!_hasSyncedLyrics || LyricLines.Count == 0) return null;
 
+        // A line's romanization / translation go back as lines at its own timestamp
+        // (GitHub #116) — the LRC shape they load from — so the editor's save keeps them.
         var lines = LyricLines
             .Where(l => !string.IsNullOrWhiteSpace(l.Text) && l.Text != "...")
-            .Select(l => (l.Timestamp, Text: l.Text.Replace("\r\n", " ").Replace('\n', ' ').Trim()))
+            .SelectMany(l => LrcParser.CompanionLines(l)
+                .Prepend(l.Text.Replace("\r\n", " ").Replace('\n', ' ').Trim())
+                .Select(text => (l.Timestamp, Text: text)))
             .ToList();
 
         return lines.Any(l => l.Timestamp.HasValue)

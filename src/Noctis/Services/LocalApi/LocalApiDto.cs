@@ -152,8 +152,12 @@ public static class LocalApiDto
 /// <summary>A word with its own timing (ELRC / TTML karaoke lyrics).</summary>
 public sealed record LocalApiLyricWord(long StartMs, long? EndMs, string Text);
 
-/// <summary>One lyric line. StartMs is null for plain (unsynced) lyrics.</summary>
-public sealed record LocalApiLyricLine(long? StartMs, long? EndMs, string Text, IReadOnlyList<LocalApiLyricWord>? Words);
+/// <summary>
+/// One lyric line. StartMs is null for plain (unsynced) lyrics. Romanization and Translation
+/// are the line's extra layers (TTML, or LRC lines sharing its timestamp), null when absent.
+/// </summary>
+public sealed record LocalApiLyricLine(long? StartMs, long? EndMs, string Text, IReadOnlyList<LocalApiLyricWord>? Words,
+    string? Romanization = null, string? Translation = null);
 
 /// <summary>Lyrics of one track as the app currently shows them.</summary>
 public sealed record LocalApiLyrics(

@@ -482,6 +482,23 @@ public class LocalApiServerTests
         Assert.Null(LyricsViewModelLyricsSource.Build(id, new List<LyricLine>(), new List<LyricLine>()));
     }
 
+    [Fact]
+    public void LyricsSourceBuild_KeepsTheRomanizationAndTranslationOfSameTimestampLrcLines()
+    {
+        // GitHub #116: the three file lines are one entry now; the API must not lose two of them.
+        var lines = LrcParser.Parse("[00:01.00]泣き\n[00:01.00]naki\n[00:01.00]Llorando\n[00:02.00]next");
+
+        var built = LyricsViewModelLyricsSource.Build(Guid.NewGuid(), lines, new List<LyricLine>())!;
+
+        Assert.Equal(2, built.Lines.Count);
+        Assert.Equal(("泣き", "naki", "Llorando"), (built.Lines[0].Text, built.Lines[0].Romanization, built.Lines[0].Translation));
+        Assert.Null(built.Lines[1].Translation);
+        Assert.Equal("泣き\nnaki\nLlorando\nnext", built.PlainText);
+        var json = System.Text.Json.JsonSerializer.Serialize(built, LocalApiDto.Json);
+        Assert.Contains("\"romanization\":\"naki\"", json);
+        Assert.Contains("\"translation\":\"Llorando\"", json);
+    }
+
     [AvaloniaFact]
     public async Task Artwork_ServesImageBytes_ForCurrentAndById_And404sOtherwise()
     {
