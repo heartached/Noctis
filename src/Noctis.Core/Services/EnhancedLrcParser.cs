@@ -371,7 +371,8 @@ public static partial class EnhancedLrcParser
         AppendBackground(line, bg, bg[^1].End ?? line.EndTimestamp);
     }
 
-    private static bool IsBackgroundCandidate(LyricLine line)
+    /// <summary>A word-timed, fully parenthesized line: an adlib <see cref="FoldBackgroundLines"/> folds into the line before it.</summary>
+    internal static bool IsBackgroundCandidate(LyricLine line)
     {
         if (!line.HasWords || !line.Timestamp.HasValue) return false;
         var text = line.Text.Trim();

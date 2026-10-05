@@ -104,6 +104,10 @@ public static partial class LrcParser
         // spend the line budget so a file of them cannot run unbounded.
         var bgLines = 0;
 
+        // Unwrapped display text per line: a same-timestamp companion becomes a
+        // translation/romanization layer, which wraps itself (SoftWrap's "\n" would stay).
+        var rawText = new Dictionary<LyricLine, string>();
+
         foreach (var rawLine in rawLines)
         {
             if (lines.Count + bgLines >= MaxLines) break;
@@ -192,6 +196,7 @@ public static partial class LrcParser
                         }
 
                         lines.Add(line);
+                        rawText[line] = text;
                     }
                 }
             }
@@ -212,11 +217,108 @@ public static partial class LrcParser
         lines.Clear();
         lines.AddRange(sorted);
 
+        // Lines sharing one timestamp (original + romaji + translation, GitHub #116) are
+        // one entry; before the fold so an adlib at the same instant still folds.
+        MergeSameTimestampLines(lines, rawText);
+
         // Fold parenthesized adlib lines into the preceding line's background layer
         // (Apple Music-style background vocals).
         EnhancedLrcParser.FoldBackgroundLines(lines);
 
         return lines;
+    }
+
+    /// <summary>
+    /// Folds the plain lines that share a timestamp with a line into that line (file order —
+    /// the sort above is stable — so the first is the main line): they become its layers
+    /// through <see cref="MapCompanionLines"/>. A companion is line-level text in the main
+    /// line's voice; a word-timed line or one in another duet voice at the same instant is
+    /// sung, not a layer, and stays its own line (overlapping vocals, a duet, Studio lines
+    /// clamped to 0:00); a word-timed fully parenthesized line is still an adlib for
+    /// <see cref="EnhancedLrcParser.FoldBackgroundLines"/>. A companion's "[bg: …]" vocal
+    /// moves onto the main line; one repeating text already in the entry is dropped.
+    /// </summary>
+    private static void MergeSameTimestampLines(List<LyricLine> lines, Dictionary<LyricLine, string> rawText)
+    {
+        var merged = new List<LyricLine>(lines.Count);
+        var i = 0;
+        while (i < lines.Count)
+        {
+            var end = i + 1;
+            while (end < lines.Count && lines[i].Timestamp.HasValue && lines[end].Timestamp == lines[i].Timestamp)
+                end++;
+            if (end - i == 1)
+            {
+                merged.Add(lines[i++]);
+                continue;
+            }
+            var pending = lines.GetRange(i, end - i);
+            i = end;
+
+            // Each pass takes the first remaining line as an entry and pulls its companions
+            // out; sung lines left behind (another voice, word timing) start their own entry.
+            while (pending.Count > 0)
+            {
+                var main = pending[0];
+                pending.RemoveAt(0);
+                merged.Add(main);
+                // An adlib folds into the line before it and takes no layers itself.
+                if (EnhancedLrcParser.IsBackgroundCandidate(main)) continue;
+
+                var seen = new HashSet<string>(StringComparer.Ordinal) { Raw(main) };
+                List<string>? companions = null;
+                for (var k = 0; k < pending.Count; k++)
+                {
+                    var other = pending[k];
+                    if (other.HasWords || other.Voice != main.Voice) continue;
+                    pending.RemoveAt(k--);
+                    if (other.HasBackgroundWords)
+                        EnhancedLrcParser.AppendBackground(main, other.BackgroundWords!, other.BackgroundEndTimestamp);
+                    var text = Raw(other);
+                    if (seen.Add(text))
+                        (companions ??= new List<string>()).Add(text);
+                }
+
+                if (companions != null)
+                    (main.Transliteration, main.Translation) = MapCompanionLines(companions);
+            }
+        }
+
+        lines.Clear();
+        lines.AddRange(merged);
+
+        string Raw(LyricLine l) =>
+            LyricsTextHelper.CleanDisplayText(rawText.TryGetValue(l, out var raw) ? raw : l.Text).Trim();
+    }
+
+    /// <summary>
+    /// How the extra lines of a same-timestamp LRC group map onto the display layers
+    /// (GitHub #116), in file order: one extra line is the translation; two are the
+    /// romanization then the translation (original, romaji, translation — the common
+    /// layout); more than two keep the second as the romanization and stack the rest,
+    /// one per row, as the translation so no text is dropped.
+    /// </summary>
+    public static (string? Transliteration, string? Translation) MapCompanionLines(IReadOnlyList<string> companions) =>
+        companions.Count switch
+        {
+            0 => (null, null),
+            1 => (null, companions[0]),
+            _ => (companions[0], string.Join("\n", companions.Skip(1))),
+        };
+
+    /// <summary>
+    /// The inverse of <see cref="MapCompanionLines"/>: the extra lines to write under a
+    /// line's own at the same timestamp when it is serialized back to LRC, so its
+    /// romanization and translation survive the round trip.
+    /// </summary>
+    public static List<string> CompanionLines(LyricLine line)
+    {
+        var result = new List<string>();
+        if (!string.IsNullOrWhiteSpace(line.Transliteration))
+            result.Add(line.Transliteration.Trim());
+        if (!string.IsNullOrWhiteSpace(line.Translation))
+            result.AddRange(line.Translation.Split('\n').Select(t => t.Trim()).Where(t => t.Length > 0));
+        return result;
     }
 
     /// <summary>
