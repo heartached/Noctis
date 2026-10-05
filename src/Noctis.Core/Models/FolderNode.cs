@@ -34,4 +34,12 @@ public sealed partial class FolderNode : ObservableObject
     /// when navigating away and back.
     /// </summary>
     [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>This folder itself is in AppSettings.HiddenLibraryFolders — its menu offers
+    /// "Show in Library".</summary>
+    [ObservableProperty] private bool _isHiddenFromLibrary;
+
+    /// <summary>This folder or one of its parents is hidden: drawn dimmed, and its tracks are
+    /// left out of the track pane and the folder play commands.</summary>
+    [ObservableProperty] private bool _isInHiddenFolder;
 }

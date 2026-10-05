@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using Avalonia.Controls;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Helpers;
@@ -18,6 +19,8 @@ public sealed class FolderContextMenuBuilder
     public MenuItem AddToQueue { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
+    /// <summary>"Hide from Library" / "Show in Library", depending on the bound node.</summary>
+    public MenuItem ToggleHidden { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
 
@@ -57,6 +60,9 @@ public sealed class FolderContextMenuBuilder
         ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
 
+        ToggleHidden = new MenuItem { Header = Loc.T("LibraryFolders.HideFromLibrary") };
+        items.Add(ToggleHidden);
+
         return Menu;
     }
 
@@ -70,7 +76,8 @@ public sealed class FolderContextMenuBuilder
         ICommand playNextCommand,
         ICommand addToQueueCommand,
         ICommand addToPlaylistCommand,
-        ICommand showFolderCommand)
+        ICommand showFolderCommand,
+        ICommand toggleHiddenCommand)
     {
         Menu.DataContext = node;
 
@@ -91,5 +98,11 @@ public sealed class FolderContextMenuBuilder
 
         ShowFolder.Command = showFolderCommand;
         ShowFolder.CommandParameter = node;
+
+        // A folder hidden through a parent can only be shown again from that parent.
+        ToggleHidden.Header = Loc.T(node.IsInHiddenFolder ? "LibraryFolders.ShowInLibrary" : "LibraryFolders.HideFromLibrary");
+        ToggleHidden.IsEnabled = !node.IsInHiddenFolder || node.IsHiddenFromLibrary;
+        ToggleHidden.Command = toggleHiddenCommand;
+        ToggleHidden.CommandParameter = node;
     }
 }

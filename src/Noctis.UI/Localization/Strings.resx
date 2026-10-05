@@ -459,6 +459,9 @@
   <data name="Settings.OpenMusicEncyclopedia" xml:space="preserve"><value>Open music encyclopedia</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MediaFolderLocations" xml:space="preserve"><value>Media Folder Locations</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FoldersWhereMusicStored" xml:space="preserve"><value>Folders where your music is stored.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFolders" xml:space="preserve"><value>Hidden Folders</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFoldersHint" xml:space="preserve"><value>Hidden from every view except Folders. Nothing is deleted; show a folder to bring its songs back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowHiddenFolder" xml:space="preserve"><value>Show</value><comment>Button in SettingsView.axaml (Hidden Folders list)</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Add Folder</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Import dropped files</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: files stay where they are; drop them to play, to add them to the library or a playlist, or to make a new playlist.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -833,6 +836,10 @@
 
   <!-- LibraryFoldersView.axaml (auto-migrated) -->
   <data name="LibraryFolders.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in LibraryFoldersView.axaml</comment></data>
+  <data name="LibraryFolders.HideFromLibrary" xml:space="preserve"><value>Hide from Library</value><comment>Folder context menu in the Folders view (FolderContextMenuBuilder)</comment></data>
+  <data name="LibraryFolders.ShowInLibrary" xml:space="preserve"><value>Show in Library</value><comment>Folder context menu in the Folders view (FolderContextMenuBuilder)</comment></data>
+  <data name="LibraryFolders.HiddenTag" xml:space="preserve"><value>Hidden</value><comment>Tag after a hidden folder's name in LibraryFoldersView.axaml</comment></data>
+  <data name="LibraryFolders.HiddenFolderNote" xml:space="preserve"><value>Hidden from Library</value><comment>Header note for a hidden folder in LibraryFoldersView.axaml</comment></data>
 
   <!-- LibraryPlaylistsView.axaml (auto-migrated) -->
   <data name="LibraryPlaylists.Play" xml:space="preserve"><value>Play</value><comment>Text in LibraryPlaylistsView.axaml</comment></data>

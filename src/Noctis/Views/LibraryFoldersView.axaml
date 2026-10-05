@@ -23,6 +23,9 @@
         <Style Selector="TreeViewItem" x:DataType="m:FolderNode">
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
         </Style>
+        <Style Selector="StackPanel.hidden-folder">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
         <!-- Row background moves off the ListBoxItem onto the inner row-body Border so
              the hover box and the now-playing box are one element and cannot drift apart.
              The ListBoxItem keeps its hit-testing and layout role but paints nothing. Same
@@ -96,9 +99,17 @@
                       AutoScrollToSelectedItem="False">
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate x:DataType="m:FolderNode" ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <!-- Hidden from Library (right-click menu): dimmed, and the folder the
+                             user hid carries a "Hidden" tag so it is easy to find again. -->
+                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                    Classes.hidden-folder="{Binding IsInHiddenFolder}">
                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding TotalTrackCount, StringFormat='({0})'}" Opacity="0.6" />
+                            <TextBlock Text="{loc:T LibraryFolders.HiddenTag}"
+                                       FontSize="11"
+                                       Opacity="0.8"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsHiddenFromLibrary}" />
                         </StackPanel>
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
@@ -128,6 +139,11 @@
                            FontSize="12"
                            Opacity="0.55"
                            IsVisible="{Binding FolderSummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="{loc:T LibraryFolders.HiddenFolderNote}"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Opacity="0.55"
+                           IsVisible="{Binding SelectedNode.IsInHiddenFolder, FallbackValue=False}" />
             </StackPanel>
 
             <ListBox x:Name="TrackList"
