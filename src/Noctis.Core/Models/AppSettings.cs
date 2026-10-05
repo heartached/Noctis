@@ -705,6 +705,10 @@ public class AppSettings
     /// <summary>ListenBrainz username (populated after a successful validate-token call).</summary>
     public string ListenBrainzUsername { get; set; } = "";
 
+    /// <summary>ListenBrainz-compatible API URL for self-hosted servers (Koito, Maloja, …).
+    /// Empty = the official api.listenbrainz.org (GitHub #118).</summary>
+    public string ListenBrainzApiUrl { get; set; } = "";
+
     /// <summary>
     /// Internal metadata schema version used for one-time library backfills
     /// when parsing rules are improved (for example explicit tag detection).

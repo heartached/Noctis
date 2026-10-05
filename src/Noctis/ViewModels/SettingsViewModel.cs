@@ -1900,9 +1900,26 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
     [ObservableProperty] private string _listenBrainzToken = "";
     [ObservableProperty] private string _listenBrainzUsername = "";
-    [ObservableProperty] private bool _isListenBrainzConnected;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
+    private bool _isListenBrainzConnected;
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
     [ObservableProperty] private string _listenBrainzError = "";
+    /// <summary>Typed API URL for a self-hosted ListenBrainz-compatible server; blank = official.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
+    private string _listenBrainzApiUrl = "";
+
+    /// <summary>"SERVER" line on the connected card: the custom server's address, empty for the official one.</summary>
+    public string ListenBrainzServerDisplay
+    {
+        get
+        {
+            if (!IsListenBrainzConnected) return "";
+            var url = ListenBrainzService.NormalizeApiUrl(ListenBrainzApiUrl);
+            return url == null || url == ListenBrainzService.DefaultApiUrl ? "" : url;
+        }
+    }
 
     // ── Media server ──
     // The editable fields below are typing state; the authoritative connected
@@ -2662,6 +2679,8 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzScrobblingEnabled = _settings.ListenBrainzScrobblingEnabled;
             ListenBrainzToken = _settings.ListenBrainzToken;
             ListenBrainzUsername = _settings.ListenBrainzUsername;
+            ListenBrainzApiUrl = _settings.ListenBrainzApiUrl;
+            _listenBrainz?.SetApiUrl(_settings.ListenBrainzApiUrl);
             if (_listenBrainz != null && !string.IsNullOrEmpty(_settings.ListenBrainzToken))
             {
                 _listenBrainz.Configure(_settings.ListenBrainzToken);
@@ -3071,6 +3090,8 @@ public partial class SettingsViewModel : ViewModelBase
         // connected (validated) token is stored.
         _settings.ListenBrainzToken = IsListenBrainzConnected ? (ListenBrainzToken ?? string.Empty) : string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+        // Not a secret, so it is kept even while disconnected (logout leaves the server in place).
+        _settings.ListenBrainzApiUrl = ListenBrainzApiUrl?.Trim() ?? string.Empty;
 
         // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
         // stored list is rebuilt from the connected state on every save (the on-disk
@@ -5203,6 +5224,12 @@ public partial class SettingsViewModel : ViewModelBase
         _listenBrainz?.Configure(value);
     }
 
+    partial void OnListenBrainzApiUrlChanged(string value)
+    {
+        // Applied to the service on Connect, which validates it first.
+        ListenBrainzError = "";
+    }
+
     [RelayCommand]
     private async Task TestListenBrainz()
     {
@@ -5214,9 +5241,21 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
 
+        // GitHub #118: validate against the configured server (blank = official).
+        var apiUrl = ListenBrainzService.NormalizeApiUrl(ListenBrainzApiUrl);
+        if (apiUrl == null)
+        {
+            ListenBrainzError = Loc.T("Settings.ListenBrainzUrlInvalid");
+            ListenBrainzStatusText = "Not connected";
+            return;
+        }
+        // Show the URL that is actually used; the official one goes back to blank.
+        ListenBrainzApiUrl = apiUrl == ListenBrainzService.DefaultApiUrl ? "" : apiUrl;
+
         ListenBrainzError = "";
         ListenBrainzStatusText = "Validating...";
         _listenBrainz.Configure(ListenBrainzToken);
+        _listenBrainz.SetApiUrl(apiUrl);
         var username = await _listenBrainz.ValidateTokenAsync();
         if (!string.IsNullOrEmpty(username))
         {
@@ -5233,7 +5272,13 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsListenBrainzConnected = false;
             ListenBrainzUsername = "";
-            ListenBrainzError = "Token invalid or network error.";
+            ListenBrainzError = _listenBrainz.LastValidationError switch
+            {
+                ListenBrainzValidationError.InvalidToken => Loc.T("Settings.ListenBrainzTokenRejected"),
+                ListenBrainzValidationError.Unreachable => Loc.T("Settings.ListenBrainzUnreachable"),
+                ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
+                _ => "Token invalid or network error.",
+            };
             ListenBrainzStatusText = "Not connected";
         }
     }
@@ -6777,7 +6822,9 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
             ListenBrainzStatusText = "Not connected";
+            ListenBrainzApiUrl = "";
             _listenBrainz?.Logout();
+            _listenBrainz?.SetApiUrl(null);
 
             // Media server — drop the connection (SyncToSettings would otherwise
             // re-persist the stale one over the freshly defaulted file).

@@ -320,6 +320,8 @@ public partial class SettingsView : UserControl
     {
         var tokenBox = this.FindControl<TextBox>("ListenBrainzTokenBox");
         if (tokenBox is not { IsFocused: true })
+            tokenBox = this.FindControl<TextBox>("ListenBrainzApiUrlBox");
+        if (tokenBox is not { IsFocused: true })
             return;
 
         bool insideBox = false;
