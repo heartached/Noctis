@@ -480,7 +480,8 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
                     .Select(d => d.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                                  + Path.DirectorySeparatorChar)
                     .ToList();
-                var ids = _library.Tracks
+                // AllTracks: a file deleted under a hidden folder must still leave the library.
+                var ids = _library.AllTracks
                     .Where(t => removeSet.Contains(t.FilePath) ||
                                 dirPrefixes.Any(p => t.FilePath.StartsWith(p, PathComparison.Comparison)))
                     .Select(t => t.Id)

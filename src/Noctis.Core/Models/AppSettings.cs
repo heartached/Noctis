@@ -45,6 +45,11 @@ public class AppSettings
     /// <summary>Persistent include/exclude rules for scanning.</summary>
     public List<FolderRule> FolderRules { get; set; } = new();
 
+    /// <summary>Folders (any level) the user hid from the library in the Folders view. Their
+    /// tracks stay scanned and in library.json, with their play counts, favorites and ratings,
+    /// but drop out of every other view until the folder is shown again. No rescan either way.</summary>
+    public List<string> HiddenLibraryFolders { get; set; } = new();
+
     /// <summary>Directory names to ignore while scanning (case-insensitive).</summary>
     public List<string> IgnoredFolderNames { get; set; } = new() { ".git", "node_modules", "$recycle.bin", "system volume information" };
 

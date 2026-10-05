@@ -7,8 +7,23 @@ namespace Noctis.Services;
 /// </summary>
 public interface ILibraryService
 {
-    /// <summary>All tracks in the library.</summary>
+    /// <summary>All tracks in the library, minus those under a hidden folder
+    /// (<see cref="HiddenFolders"/>). Albums, artists and <see cref="GetTrackById"/> follow it.</summary>
     IReadOnlyList<Track> Tracks { get; }
+
+    /// <summary>Every track, hidden folders included — for the Folders view (which must keep
+    /// showing a hidden folder so it can be shown again) and file bookkeeping.</summary>
+    IReadOnlyList<Track> AllTracks => Tracks;
+
+    /// <summary>Folders hidden from the library (AppSettings.HiddenLibraryFolders).</summary>
+    IReadOnlyList<string> HiddenFolders => Array.Empty<string>();
+
+    /// <summary>
+    /// Hides (or shows again) every track under <paramref name="folderPath"/>, at any depth.
+    /// Nothing is deleted or rescanned: the setting is saved, the indexes rebuild from the
+    /// tracks already in memory and <see cref="LibraryUpdated"/> fires.
+    /// </summary>
+    Task SetFolderHiddenAsync(string folderPath, bool hidden) => Task.CompletedTask;
 
     /// <summary>All albums, aggregated from tracks.</summary>
     IReadOnlyList<Album> Albums { get; }

@@ -27,8 +27,19 @@ public class LibraryService : ILibraryService
     private readonly ISqliteLibraryIndexService _sqliteIndex;
     private readonly IAuditTrailService _auditTrail;
 
+    // The whole scanned set — persisted, rescanned and journaled as before. Hidden folders
+    // only narrow what Tracks/Albums/Artists/GetTrackById publish (VisibleTracks).
     private List<Track> _tracks = new();
     private List<Album> _albums = new();
+
+    // AppSettings.HiddenLibraryFolders, loaded in LoadAsync and replaced (never mutated) by
+    // SetFolderHiddenAsync, so a reader always sees one consistent array.
+    private string[] _hiddenFolders = Array.Empty<string>();
+
+    // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
+    // from (both are swapped, never edited in place), so Tracks costs one filter per change.
+    private sealed record VisibleSnapshot(List<Track> Source, string[] Hidden, List<Track> Visible);
+    private volatile VisibleSnapshot? _visible;
     private List<Artist> _artists = new();
 
     // Lookup tables for fast ID resolution
@@ -65,7 +76,9 @@ public class LibraryService : ILibraryService
     // serializes its own calls. Imports (ImportFilesAsync) take it too.
     private readonly SemaphoreSlim _scanGate = new(1, 1);
 
-    public IReadOnlyList<Track> Tracks => _tracks;
+    public IReadOnlyList<Track> Tracks => VisibleTracks(_tracks);
+    public IReadOnlyList<Track> AllTracks => _tracks;
+    public IReadOnlyList<string> HiddenFolders => _hiddenFolders;
     public IReadOnlyList<Album> Albums => _albums;
     public IReadOnlyList<Artist> Artists => _artists;
 
@@ -1355,6 +1368,53 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// <paramref name="all"/> minus the tracks under a hidden folder; the same list when
+    /// nothing is hidden. Cached per (list, hidden set) — see <see cref="_visible"/>.
+    /// </summary>
+    private List<Track> VisibleTracks(List<Track> all)
+    {
+        var hidden = _hiddenFolders;
+        if (hidden.Length == 0) return all;
+        var cached = _visible;
+        if (cached != null && ReferenceEquals(cached.Source, all) && ReferenceEquals(cached.Hidden, hidden))
+            return cached.Visible;
+        var visible = all.Where(t => !FolderPathMatch.IsInOrSameAsAny(t.FilePath, hidden)).ToList();
+        _visible = new VisibleSnapshot(all, hidden, visible);
+        return visible;
+    }
+
+    public async Task SetFolderHiddenAsync(string folderPath, bool hidden)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath)) return;
+
+        var current = _hiddenFolders;
+        var isHidden = current.Any(f => FolderPathMatch.IsSame(f, folderPath));
+        if (isHidden == hidden) return;
+
+        var updated = hidden
+            ? current.Append(folderPath).ToArray()
+            : current.Where(f => !FolderPathMatch.IsSame(f, folderPath)).ToArray();
+        _hiddenFolders = updated;
+        DebugLog.Write("Library", $"folder {(hidden ? "hidden" : "shown")}: {folderPath} ({updated.Length} hidden)");
+
+        // Load-modify-save like ExcludeFilePathsAndCleanFoldersAsync: SettingsViewModel
+        // re-bases on the file before each save and never writes this key, so it survives.
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            settings.HiddenLibraryFolders = updated.ToList();
+            await _persistence.SaveSettingsAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Saving hidden folders failed: {ex.Message}");
+        }
+
+        await RebuildIndexesAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
     public Track? GetTrackById(Guid id)
     {
         _trackIndex.TryGetValue(id, out var track);
@@ -1741,6 +1801,10 @@ public class LibraryService : ILibraryService
         // read, parse, journal overlay and index-cache parse all run on the pool and
         // only the LibraryUpdated fan-out below returns to the UI thread.
         var tracks = await Task.Run(() => _persistence.LoadLibraryAsync());
+
+        // Before any index is built or restored: they cover the visible tracks only.
+        await Task.Run(LoadHiddenFoldersAsync);
+
         if (tracks != null && tracks.Count > 0)
         {
             _tracks = tracks;
@@ -1810,6 +1874,21 @@ public class LibraryService : ILibraryService
                 DebugLog.Write("Library", $"SQLite index init failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[LibraryService] SQLite index init failed: {ex.Message}");
             }
+        }
+    }
+
+    private async Task LoadHiddenFoldersAsync()
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            _hiddenFolders = settings.HiddenLibraryFolders
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .ToArray();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Loading hidden folders failed: {ex.Message}");
         }
     }
 
@@ -2110,7 +2189,9 @@ public class LibraryService : ILibraryService
 
     private async Task RebuildIndexesCoreAsync(bool persistCache)
     {
-        var tracks = _tracks;
+        // Albums, artists and the id lookup are built from the visible tracks only, so a
+        // hidden folder's songs vanish from every view that reads them.
+        var tracks = VisibleTracks(_tracks);
         var persistence = _persistence;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
@@ -3078,7 +3159,10 @@ public class LibraryService : ILibraryService
         try
         {
             var cache = await _persistence.LoadIndexCacheAsync();
-            if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != _tracks.Count)
+            // The cache holds the visible set it was built from (RebuildIndexesCoreAsync), so
+            // validating against today's visible set also catches a changed hidden list.
+            var tracks = VisibleTracks(_tracks);
+            if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != tracks.Count)
                 return false;
 
             // The artist list is only valid for the grouping it was built under; a
@@ -3094,7 +3178,6 @@ public class LibraryService : ILibraryService
             // successful, non-stale rebuild. Track.AlbumArtworkPath is a plain property
             // (no change notification) and nothing reads these indexes until LoadAsync
             // raises LibraryUpdated, so the off-thread writes are safe.
-            var tracks = _tracks;
             List<Album>? newAlbums = null;
             Dictionary<Guid, Track>? newTrackIndex = null;
             Dictionary<Guid, Album>? newAlbumIndex = null;
