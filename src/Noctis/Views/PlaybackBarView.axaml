@@ -137,6 +137,14 @@
             <Setter Property="RenderTransform" Value="scale(1)"/>
             <Setter Property="Opacity" Value="0.45"/>
         </Style>
+        <!-- Next with nothing after it (end of queue): dimmed, not a lit button that does
+             nothing. Fluent's disabled grey fill is kept off the transparent pill. -->
+        <Style Selector="Button.transport-btn:disabled">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+        <Style Selector="Button.transport-btn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
 
         <!-- Secondary controls (volume, menu) -->
         <Style Selector="Button.secondary-btn">

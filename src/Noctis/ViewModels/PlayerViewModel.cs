@@ -605,6 +605,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Subscribe to queue changes to update HasContent (skipped during batch updates)
         UpNext.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
         History.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
+        // HasContent is raised after every queue/history change, batch ones included.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(HasContent) or nameof(RepeatMode) or nameof(CurrentTrack))
+                NextCommand.NotifyCanExecuteChanged();
+        };
 
         // Sync volume to audio player
         _audioPlayer.Volume = _volume;
@@ -670,19 +676,28 @@ public partial class PlayerViewModel : ViewModelBase
         State = PlaybackState.Paused;
     }
 
-    [RelayCommand]
+    /// <summary>
+    /// Whether Next has anywhere to go. Also the command's CanExecute, so the bar and mini
+    /// player Next buttons dim at the end of the queue: they stayed lit and silently did
+    /// nothing (Discord, Andre 10-03: 33 presses of "Next | queueLen=0"). Execute() does not
+    /// consult it, so hotkeys, media keys and the APIs still land in <see cref="Next"/>.
+    /// </summary>
+    private bool CanGoNext() =>
+        // The repeat-all wrap lives inside AdvanceQueueCore, so returning on an empty
+        // UpNext made it unreachable from a user skip: with Repeat All on and the last
+        // track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were all
+        // silent no-ops, and only a natural track end wrapped.
+        UpNext.Count > 0 ||
+        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || History.Count > 0));
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
+        DebugLogger.Info(DebugLogger.Category.Playback, "Next",
+            $"queueLen={UpNext.Count}, shuffle={IsShuffleEnabled}, repeat={RepeatMode}");
         CancelAutoMixTransition("user skipped");
 
-        // The repeat-all wrap lives inside AdvanceQueueCore, so returning here on an
-        // empty UpNext made it unreachable from a user skip: with Repeat All on and the
-        // last track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were
-        // all silent no-ops, and only a natural track end wrapped.
-        var canWrap = RepeatMode == RepeatMode.All &&
-                      (_repeatCycleTracks.Count > 0 || History.Count > 0);
-        if (UpNext.Count == 0 && !canWrap) return;
+        if (!CanGoNext()) return;
 
         // A user skip before the halfway point counts as a skip in the play log. A play
         // not counted yet has no log event, and RecordSkip would mark an earlier play of

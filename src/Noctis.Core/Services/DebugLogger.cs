@@ -31,8 +31,10 @@ public static class DebugLogger
     /// <para>
     /// Without this, entries here reached only the in-app debug panel, so a bug report
     /// carrying a full session log still had no record of device changes, keep-alive
-    /// errors or session-volume resolution — the audio-dropout evidence. Playback only:
-    /// the other categories are UI chatter that would flush DebugLog's 500-line ring.
+    /// errors or session-volume resolution — the audio-dropout evidence. Queue too (one
+    /// line per user action or track end): a "Next does nothing" report showed only
+    /// "Next | queueLen=0", never how the queue got empty. The other categories are UI
+    /// chatter that would flush DebugLog's 500-line ring.
     /// </para>
     /// </summary>
     public static bool MirrorPlaybackToSessionLog { get; set; }
@@ -69,11 +71,11 @@ public static class DebugLogger
             System.Diagnostics.Debug.WriteLine($"[DBG:{category}:{level}] {action}{meta}");
         }
 
-        if (MirrorPlaybackToSessionLog && category == Category.Playback &&
+        if (MirrorPlaybackToSessionLog && category is Category.Playback or Category.Queue &&
             !SessionLogSelfWriters.Contains(action))
         {
             var meta = metadata != null ? $" | {metadata}" : "";
-            DebugLog.Write("Playback", level == Level.Info ? $"{action}{meta}" : $"{level}: {action}{meta}");
+            DebugLog.Write(category.ToString(), level == Level.Info ? $"{action}{meta}" : $"{level}: {action}{meta}");
         }
 
         EntryAdded?.Invoke(entry);

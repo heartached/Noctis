@@ -170,6 +170,13 @@
         <Style Selector="Button.mini-transport:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#40FFFFFF"/>
         </Style>
+        <!-- Next at the end of the queue: dimmed, without Fluent's disabled grey circle. -->
+        <Style Selector="Button.mini-transport:disabled">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+        <Style Selector="Button.mini-transport:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
         <!-- Favorite heart opts out of the hover/press circle: glyph-only feedback -->
         <Style Selector="Button.mini-transport.no-hover-circle:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
