@@ -158,6 +158,74 @@ public class LyricsSaveOnlineTests
         await DrainWriterLaneAsync();
     }
 
+    // ── Word timings LRCLIB sends as a Lyricsfile (live check 10-05) ──
+
+    /// <summary>What LRCLIB answers for a song it has word timings for: a line-level
+    /// syncedLyrics AND the word timings in a Lyricsfile.</summary>
+    private const string Lyricsfile = """
+        version: '1.0'
+        metadata:
+          title: Test Song
+        lines:
+          - text: word timed
+            start_ms: 1000
+            end_ms: 2000
+            words:
+              - text: 'word '
+                start_ms: 1000
+                end_ms: 1500
+              - text: timed
+                start_ms: 1500
+                end_ms: 2000
+        """;
+
+    private static LrcLibResult LrclibWordResult() => new()
+    {
+        TrackName = "Test Song", ArtistName = "Test Artist", Duration = 200,
+        SyncedLyrics = "[00:01.00]word timed", PlainLyrics = "word timed", Lyricsfile = Lyricsfile,
+    };
+
+    [Fact]
+    public void Lyricsfile_ToElrc_KeepsTheWordTimings()
+    {
+        Assert.Equal(Elrc, LyricsfileParser.ToElrc(Lyricsfile));
+        Assert.Equal(Elrc, LyricsViewModel.SyncedToWrite(LrclibWordResult()));
+        Assert.Equal(Lrc, LyricsViewModel.SyncedToWrite(Result(synced: Lrc)));
+    }
+
+    [AvaloniaFact]
+    public async Task Save_LrclibWordSynced_WritesTheWordTimings_NotJustTheLineLevelTwin()
+    {
+        var h = Mount();
+        try
+        {
+            await ShowPickOverOwnTtmlAsync(h, LrclibWordResult());
+
+            await h.Vm.SaveLyricsToFileCommand.ExecuteAsync(null);
+            await DrainWriterLaneAsync();
+
+            Assert.Equal(Elrc, Read(Sidecar(h.Track, ".elrc")));
+            Assert.Equal("[00:01.00]word timed", Read(Sidecar(h.Track, ".lrc")));
+        }
+        finally { Cleanup(h.Track); }
+    }
+
+    /// <summary>The automatic save wrote only the line-level .lrc, which out-ranks the cached
+    /// Lyricsfile: word-by-word on the first play, line-by-line ever after.</summary>
+    [AvaloniaFact]
+    public async Task AutoSave_LrclibWordSynced_KeepsTheSongWordSyncedNextTime()
+    {
+        var h = Mount();
+        try
+        {
+            h.Vm.ApplySearchedLyrics(h.Track, LrclibWordResult(), "LRCLIB");
+            await DrainWriterLaneAsync();
+
+            Assert.Equal(Elrc, Read(Sidecar(h.Track, ".elrc")));
+        }
+        finally { Cleanup(h.Track); }
+    }
+
     // ── Save ──
 
     [AvaloniaFact]

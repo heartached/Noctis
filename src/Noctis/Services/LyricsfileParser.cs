@@ -132,6 +132,38 @@ public static class LyricsfileParser
         return (lines, dto.Plain);
     }
 
+    /// <summary>
+    /// The Lyricsfile as enhanced LRC — <c>[mm:ss.xx]&lt;mm:ss.xx&gt;word … &lt;end&gt;</c> for lines with
+    /// word timings, <c>[mm:ss.xx]text</c> for the rest — so its word timings can be written
+    /// beside the song. Null when it is malformed or has no word timings at all (then its
+    /// line-level <c>syncedLyrics</c> twin says the same thing).
+    /// </summary>
+    public static string? ToElrc(string? content)
+    {
+        var (lines, _) = Parse(content);
+        if (lines is not { Count: > 0 } || !lines.Any(l => l.Words is { Count: > 0 })) return null;
+        var sb = new System.Text.StringBuilder();
+        foreach (var line in lines)
+        {
+            if (line.Timestamp is not { } start) continue;
+            sb.Append('[').Append(LyricsStudio.TimedLyricsBuilder.FormatTimestamp(start)).Append(']');
+            if (line.Words is { Count: > 0 } words)
+            {
+                for (var i = 0; i < words.Count; i++)
+                {
+                    if (i > 0) sb.Append(' ');
+                    sb.Append('<').Append(LyricsStudio.TimedLyricsBuilder.FormatTimestamp(words[i].Start)).Append('>')
+                      .Append(words[i].Text.Trim());
+                }
+                var end = words[^1].End ?? line.EndTimestamp ?? words[^1].Start;
+                sb.Append('<').Append(LyricsStudio.TimedLyricsBuilder.FormatTimestamp(end)).Append('>');
+            }
+            else sb.Append(line.Text.Trim());
+            sb.Append('\n');
+        }
+        return sb.ToString().TrimEnd('\n');
+    }
+
     /// <summary>Passes parser events through, throwing on any alias (<c>*name</c>).</summary>
     private sealed class NoAliasParser : IParser
     {

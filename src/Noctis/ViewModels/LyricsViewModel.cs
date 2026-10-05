@@ -1631,8 +1631,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Save is offered for synced online lyrics of a song that is a file on this computer.</summary>
     private static bool CanSaveOnlineLyrics(Track? track, LrcLibResult? result) =>
-        result is { HasSyncedLyrics: true }
-        && track is { SourceType: SourceType.Local } && !string.IsNullOrWhiteSpace(track.FilePath);
+        result is not null && (result.HasSyncedLyrics || result.HasLyricsfile)
+        && track is { SourceType: SourceType.Local } && !string.IsNullOrWhiteSpace(track.FilePath)
+        && SyncedToWrite(result) is not null;
+
+    /// <summary>
+    /// The synced text an online result is written as: the word timings of its Lyricsfile as
+    /// ELRC when it has them, else its line-level synced lyrics. LRCLIB sends both; writing only
+    /// the line-level twin made Save turn word-synced lyrics into line-synced ones, and the
+    /// automatic save left a line-level .lrc that out-ranks the cached Lyricsfile, so the song
+    /// went word-by-word on the first play and line-by-line from then on (live check 10-05).
+    /// </summary>
+    internal static string? SyncedToWrite(LrcLibResult result) =>
+        (result.HasLyricsfile ? LyricsfileParser.ToElrc(result.Lyricsfile) : null)
+        ?? (string.IsNullOrWhiteSpace(result.SyncedLyrics) ? null : result.SyncedLyrics);
 
     /// <summary>
     /// GitHub #115: saves the online lyrics on the page next to the song, under its name, and
@@ -1654,7 +1666,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (_currentTrack is not { } track || _currentOnlineResult is not { } result
             || !CanSaveOnlineLyrics(track, result) || IsPreviewActive) return;
         var trackPath = track.FilePath;
-        var synced = result.SyncedLyrics!;
+        var synced = SyncedToWrite(result)!;
         var plain = !string.IsNullOrWhiteSpace(result.PlainLyrics) ? result.PlainLyrics : LyricsTextHelper.StripTimestamps(synced);
 
         try
@@ -1712,7 +1724,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var track = target ?? _currentTrack;
         if (track == null) return;
 
-        var synced = result.SyncedLyrics;
+        var synced = SyncedToWrite(result);
         var plain = !string.IsNullOrWhiteSpace(result.PlainLyrics)
             ? result.PlainLyrics
             : LyricsTextHelper.StripTimestamps(synced);
