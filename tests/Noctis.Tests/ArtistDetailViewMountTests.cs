@@ -541,4 +541,33 @@ public class ArtistDetailViewMountTests
             AdvancedTagIO.AdvancedFields original) => false;
         public AudioFileInfo? ReadFileInfo(string filePath) => null;
     }
+
+    /// <summary>A narrow page (wide sidebar, smaller window) squeezed Top Songs to a sliver
+    /// beside the fixed Latest Release and About columns; About now stacks underneath, and
+    /// a wide page keeps the three columns.</summary>
+    [AvaloniaTheory]
+    [InlineData(900, true)]
+    [InlineData(1700, false)]
+    public void Overview_StacksTheAboutCard_OnlyWhenNarrow(double width, bool stacked)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        ((List<Album>)lib.Albums).Add(MakeAlbum("Phases", "Chase Atlantic", 2019, 12));
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var view = new ArtistDetailView { DataContext = new ArtistDetailViewModel("Chase Atlantic", lib, player) };
+        var win = new Window { Width = width, Height = 900, Content = view };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var row = view.FindControl<Grid>("OverviewTopRow")!;
+        var about = row.Children.OfType<Border>().Single(b => b.Classes.Contains("about-card"));
+        Assert.Equal(stacked, row.Classes.Contains("stacked"));
+        Assert.Equal(stacked ? 1 : 0, Grid.GetRow(about));
+        Assert.Equal(stacked ? 0 : 4, Grid.GetColumn(about));
+        // Top Songs keeps a usable width either way.
+        var popular = row.Children.OfType<StackPanel>().First(p => Grid.GetColumn(p) == 0);
+        Assert.True(popular.Bounds.Width >= 300, $"Top Songs column is {popular.Bounds.Width}px");
+        win.Close();
+    }
 }

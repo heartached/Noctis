@@ -127,9 +127,16 @@ public partial class ArtistDetailView : UserControl
             vm.BioOverflows = overflows;
     }
 
+    /// <summary>Page width under which the Overview's About card stacks below (see above).</summary>
+    internal const double OverviewStackBelow = 64 + 380 + 24 + 24 + 340 + 340;
+
     private void OnPageContentSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (e.NewSize.Width <= 0 || DataContext is not ArtistDetailViewModel vm) return;
+        if (e.NewSize.Width <= 0) return;
+        // Popular needs ~340px beside Latest Release (380) and About (340) + gaps (48) +
+        // margins (64); below that About drops under them (OverviewTopRow.stacked).
+        OverviewTopRow.Classes.Set("stacked", e.NewSize.Width < OverviewStackBelow);
+        if (DataContext is not ArtistDetailViewModel vm) return;
 
         // Tiles at the size Home and the Albums grid use (AlbumGridMetrics: five across in
         // Auto, else the cover-size setting) over the section width (margins 32+32, 2px

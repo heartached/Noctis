@@ -653,6 +653,7 @@
   <data name="ArtistDetail.Songs" xml:space="preserve"><value>Songs</value><comment>Tab in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SimilarArtists" xml:space="preserve"><value>Similar Artists</value><comment>Tab in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SeeAll" xml:space="preserve"><value>See all</value><comment>Content in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.HideShowSectionTip" xml:space="preserve"><value>Hide or show this section</value><comment>ToolTip.Tip on the Overview's Similar Artists header in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.NoSongsMatch" xml:space="preserve"><value>No songs match.</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.AboutTitle" xml:space="preserve"><value>About </value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Links" xml:space="preserve"><value>Links</value><comment>Text in ArtistDetailView.axaml</comment></data>

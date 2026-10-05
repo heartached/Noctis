@@ -1036,6 +1036,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
     [ObservableProperty] private string _artistReleaseSortMode = "newest";
+    [ObservableProperty] private bool _artistSimilarExpanded = true;
 
     partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1048,6 +1049,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistReleaseSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSimilarExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Home section collapse state ──
     //
@@ -2544,6 +2546,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
             ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
+            ArtistSimilarExpanded = _settings.ArtistSimilarExpanded;
             HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
             HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
             HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
@@ -3000,6 +3003,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;
         _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
+        _settings.ArtistSimilarExpanded = ArtistSimilarExpanded;
         _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
         _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
         _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;

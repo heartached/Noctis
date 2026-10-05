@@ -24,6 +24,43 @@
             <Setter Property="FontSize" Value="20"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
+        <!-- Collapsible section header, same look as Home's (HomeView.axaml section-toggle):
+             the whole title is the hit target, no plate on hover/press, and the thin chevron
+             points right when folded and turns down when open. The resting rotation lives
+             in the style, not on the PathIcon, or the .expanded style could never win. -->
+        <Style Selector="Button.section-toggle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.section-toggle PathIcon.section-chevron">
+            <Setter Property="Opacity" Value="0.4"/>
+            <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.section-toggle.expanded PathIcon.section-chevron">
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        </Style>
+        <Style Selector="Button.section-toggle:pointerover PathIcon.section-chevron">
+            <Setter Property="Opacity" Value="0.85"/>
+        </Style>
         <Style Selector="TextBlock.fact-label">
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -252,6 +289,20 @@
         </Style>
         <Style Selector="Button.similar-tile:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- About card: beside the other two, or a full-width row under them when stacked. -->
+        <!-- Column and Width live here, not on the element: a local value would beat the
+             stacked style below. -->
+        <Style Selector="Border.about-card">
+            <Setter Property="Width" Value="340" />
+            <Setter Property="Grid.Column" Value="4" />
+        </Style>
+        <Style Selector="Grid#OverviewTopRow.stacked Border.about-card">
+            <Setter Property="Width" Value="NaN" />
+            <Setter Property="Grid.Row" Value="1" />
+            <Setter Property="Grid.Column" Value="0" />
+            <Setter Property="Grid.ColumnSpan" Value="3" />
+            <Setter Property="Margin" Value="0,24,0,0" />
         </Style>
         <!-- A related artist the library lacks: inert and dimmed, portrait still shown. -->
         <Style Selector="Button.similar-tile:disabled">
@@ -582,9 +633,13 @@
                     </Button.Clip>
                     <Border Width="190" Height="190" CornerRadius="95" Background="{DynamicResource ArtworkPlaceholderBackground}" ClipToBounds="True">
                         <Panel>
+                            <!-- Placeholder only without a portrait: a not-in-library tile is
+                                 drawn at half opacity, which reaches each layer, so a glyph under
+                                 the photo showed through it as a ghost silhouette. -->
                             <Path Data="{StaticResource ArtistsIcon}" Stretch="Uniform"
                                   Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Height="52"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.35" />
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.35"
+                                  IsVisible="{Binding !HasImage}" />
                             <ctrl:CachedImage SourcePath="{Binding ImagePath}"
                                               DecodeWidth="380"
                                               Stretch="UniformToFill"
@@ -843,8 +898,11 @@
 
             <!-- ── Overview ─────────────────────────────────────────── -->
             <StackPanel x:Name="OverviewPanel" Classes="tab-page" IsVisible="{Binding IsTabOverview}">
-                <!-- Popular | Latest Release | About -->
-                <Grid ColumnDefinitions="*,24,Auto,24,Auto" Margin="32,22,32,0">
+                <!-- Popular | Latest Release | About. "stacked" (code-behind, below ~1110px of
+                     row) moves About under the other two: its 340px and Latest Release's 380px
+                     are fixed, so a narrow page (wide sidebar, smaller window) squeezed Popular
+                     to a sliver of numbers and covers. -->
+                <Grid x:Name="OverviewTopRow" ColumnDefinitions="*,24,Auto,24,Auto" RowDefinitions="Auto,Auto" Margin="32,22,32,0">
                     <StackPanel Grid.Column="0" Spacing="6">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
                             <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Popular}" Classes="section-title" VerticalAlignment="Center" />
@@ -947,7 +1005,7 @@
 
                     <!-- About card: bio, facts with glyphs, links, library stat tiles. Shown
                          even when the web lookup found nothing — the stats are ours. -->
-                    <Border Grid.Column="4" Width="340"
+                    <Border Classes="about-card"
                             Background="{DynamicResource HomeCardBackground}"
                             CornerRadius="12"
                             Padding="20,16,20,18"
@@ -1050,20 +1108,32 @@
                            FontSize="13" Opacity="0.5" Margin="34,26,0,0"
                            IsVisible="{Binding !HasReleases}" />
 
-                <!-- Similar Artists: the first eight, "See all" opens the tab -->
-                <StackPanel Margin="32,26,32,0" Spacing="8" IsVisible="{Binding HasOverviewSimilar}">
+                <!-- Similar Artists: the first eight, "See all" opens the tab. The title folds
+                     the tiles away (one setting for every artist page), like Home's sections. -->
+                <StackPanel Margin="32,26,32,0" Spacing="8" IsVisible="{Binding ShowOverviewSimilar}">
                     <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,8">
-                        <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.SimilarArtists}" Classes="section-title" VerticalAlignment="Center" />
+                        <Button x:Name="SimilarSectionToggle" Grid.Column="0" Classes="section-toggle"
+                                Classes.expanded="{Binding IsOverviewSimilarExpanded}"
+                                Command="{Binding ToggleSimilarSectionCommand}"
+                                ToolTip.Tip="{loc:T ArtistDetail.HideShowSectionTip}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" Classes="section-title" />
+                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
+                                          Width="12" Height="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
                                 Command="{Binding SelectTabCommand}" CommandParameter="similar" VerticalAlignment="Center" />
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding OverviewSimilar}" ItemTemplate="{StaticResource SimilarTile}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
+                    <ctrl:CollapsibleContent x:Name="SimilarSectionBody" IsOpen="{Binding IsOverviewSimilarExpanded}" Lift="10" Motion="Glide">
+                        <ItemsControl ItemsSource="{Binding OverviewSimilar}" ItemTemplate="{StaticResource SimilarTile}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ctrl:CollapsibleContent>
                 </StackPanel>
 
                 <!-- Appears On: albums the artist is only featured on -->
