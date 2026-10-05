@@ -152,6 +152,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public int MetadataChangedCount { get; private set; }
     public void NotifyMetadataChanged() => MetadataChangedCount++;
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
 }
 

@@ -470,7 +470,7 @@ public sealed class SubsonicClient : IMediaServerClient
                 var name = entry.TryGetProperty("name", out var n) ? n.GetString() : null;
                 if (!string.IsNullOrWhiteSpace(name)) names.Add(name!);
             }
-            if (names.Count > 0) return string.Join(", ", names);
+            if (names.Count > 0) return string.Join(ArtistCredit.JoinText, names);
         }
 
         return GetString(song, "artist") is { Length: > 0 } a ? a : albumArtist;

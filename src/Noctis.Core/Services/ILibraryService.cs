@@ -192,6 +192,16 @@ public interface ILibraryService
     Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default);
 
     /// <summary>
+    /// GitHub #117: multi-value artist tags are stored joined with ArtistCredit.JoinText, which
+    /// follows the separators. When the join recorded in AppSettings.ArtistCreditJoin differs
+    /// from the active one, re-reads the artist tags of local tracks whose credit carries a
+    /// stale join (a rescan reuses unchanged files, so it never would), then records the new
+    /// join. User state is untouched: only Artist / AlbumArtist (and AlbumId) change.
+    /// Passes run one at a time. Returns the number of tracks changed.
+    /// </summary>
+    Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Extracts and caches covers for indexed albums that have none (embedded tag art
     /// when enabled, else a cover image beside the tracks), then republishes and
     /// persists the indexes if anything was healed. Albums that already have cached

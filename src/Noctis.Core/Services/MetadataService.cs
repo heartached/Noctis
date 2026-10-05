@@ -1112,7 +1112,10 @@ public class MetadataService : IMetadataService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return normalized.Length == 0 ? string.Empty : string.Join(", ", normalized);
+        // Joined with an ACTIVE separator so the values split back apart. A hard-coded ", "
+        // never split again once "," left the separators (GitHub #117), and every credit
+        // combination ("A, B", "A, B, C") became its own artist.
+        return normalized.Length == 0 ? string.Empty : string.Join(ArtistCredit.JoinText, normalized);
     }
 
     /// <summary>
@@ -1265,18 +1268,7 @@ public class MetadataService : IMetadataService
             .Any(f => artist.IndexOf(f, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
-    private static string[] SplitArtistList(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Array.Empty<string>();
-
-        return value
-            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
+    private static string[] SplitArtistList(string value) => ArtistCredit.SplitForTag(value);
 
     private static bool IsLosslessFormat(string codec, string ext)
     {

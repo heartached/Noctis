@@ -4181,6 +4181,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyArtistGrouping()
     {
         var before = ArtistCredit.Version;
+        var joinBefore = ArtistCredit.JoinText;
         ArtistCredit.Configure(ArtistGroupModes.Parse(ArtistGroupMode), ArtistTagSeparators);
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -4189,6 +4190,26 @@ public partial class SettingsViewModel : ViewModelBase
         // which every grid already listens to; the status line just acknowledges.
         _library.NotifyMetadataChanged();
         SetScanStatus("Regrouping artists…", autoClear: true);
+        // GitHub #117: multi-value artist tags were stored joined with the old join text,
+        // which may no longer split; re-read those tracks in the background.
+        if (!string.Equals(joinBefore, ArtistCredit.JoinText, StringComparison.Ordinal))
+            _ = ApplyArtistCreditJoinToLibraryAsync();
+    }
+
+    private async Task ApplyArtistCreditJoinToLibraryAsync()
+    {
+        try
+        {
+            var changed = await _library.ApplyArtistCreditJoinAsync();
+            if (changed > 0)
+                SetScanStatus(changed == 1
+                    ? "Artist credits updated on 1 track."
+                    : $"Artist credits updated on {changed:N0} tracks.", autoClear: true);
+        }
+        catch (Exception)
+        {
+            // Non-fatal: the next start repeats the pass.
+        }
     }
 
     // Guards the status line against a superseded flip finishing after a newer one.

@@ -611,6 +611,12 @@ public class AppSettings
     /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
     public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
 
+    /// <summary>The join (ArtistCredit.JoinText) the indexed artist credits were read with —
+    /// multi-value artist tags are joined with it. Every build before GitHub #117 used ", ".
+    /// When the active join differs, LibraryService.ApplyArtistCreditJoinAsync re-reads the
+    /// affected tracks' tags so their credits split under the current separators.</summary>
+    public string ArtistCreditJoin { get; set; } = ", ";
+
     /// <summary>GitHub #99: the Artists grid's name sort skips a leading word from
     /// <see cref="ArtistSortIgnoredWords"/> ("The Beatles" sorts under B). Off by default.</summary>
     public bool IgnoreLeadingWordsInArtistSort { get; set; } = false;
