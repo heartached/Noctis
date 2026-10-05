@@ -855,9 +855,24 @@ public partial class PlaybackBarView : UserControl
     }
 
     // Clicking the album-art thumbnail toggles the compact always-on-top mini player window.
+    // The art toggles the Mini Player on a completed click (press AND release over it),
+    // not on press: a press that turned into a drag, or slid off the art, used to open it.
+    private bool _albumArtPressed;
+
     private void OnAlbumArtPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        _albumArtPressed = true;
+        e.Handled = true;
+    }
+
+    private void OnAlbumArtReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_albumArtPressed || e.InitialPressMouseButton != MouseButton.Left) return;
+        _albumArtPressed = false;
+        if (sender is not Control art) return;
+        var p = e.GetPosition(art);
+        if (p.X < 0 || p.Y < 0 || p.X > art.Bounds.Width || p.Y > art.Bounds.Height) return;
 
         if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
         {

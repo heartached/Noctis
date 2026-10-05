@@ -934,18 +934,25 @@
                        radius left a bright sliver of card fill inside the card's corner. -->
                   <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="3,0,3,0">
 
-                    <!-- Album art thumbnail (click opens the Mini Player) -->
+                    <!-- Album art thumbnail (a click opens the Mini Player). 32px, not 34: the
+                         2px it gives up is a gap above the seek line, and the seek hit strip
+                         below reaches up over the art's bottom edge. Flush against the line,
+                         a seek aimed a pixel high opened the Mini Player (Discord Luwi
+                         2026-10-05). It toggles on RELEASE over the art, so a drag that starts
+                         on it no longer fires. -->
                     <Border Grid.Column="0"
-                            Width="34" Height="34"
+                            x:Name="AlbumArtThumb"
+                            Width="32" Height="32"
                             CornerRadius="7"
                             ClipToBounds="True"
-                            Margin="0,1,8,0"
+                            Margin="1,1,8,0"
                             VerticalAlignment="Top"
                             Cursor="Hand"
                             ToolTip.Tip="{loc:T PlaybackBar.MiniPlayerTip}"
                             ToolTip.Placement="Top"
                             ToolTip.VerticalOffset="-6"
                             PointerPressed="OnAlbumArtPressed"
+                            PointerReleased="OnAlbumArtReleased"
                             Background="{DynamicResource IslandAlbumArtPlaceholder}">
                         <Panel>
                             <!-- Placeholder when no art -->
@@ -1253,12 +1260,17 @@
                                           BoxShadow="0 2 4 0 #40000000"/>
                               </Panel>
                           </Canvas>
+                          <!-- Hit strip 14px tall, bottom-aligned: it reaches 8px up over the
+                               row above (the art's bottom edge included — this row is drawn
+                               later, so it wins the hit test). The drawn line is unchanged; the
+                               old 6px strip made a seek near the art open the Mini Player. -->
                           <Slider Value="{Binding PositionFraction, Mode=TwoWay}"
                                   Classes="seek-slider"
                                   Minimum="0" Maximum="1"
                                   Focusable="False"
-                                  Height="6"
-                                  VerticalAlignment="Center"
+                                  Height="14"
+                                  Margin="0,-8,0,0"
+                                  VerticalAlignment="Bottom"
                                   x:Name="SeekSlider" />
                       </Grid>
                   </Grid>
