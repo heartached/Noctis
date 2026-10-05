@@ -277,6 +277,45 @@ public class LyricsSourcePickerTests
     }
 
     [AvaloniaFact]
+    public async Task ApplySearchedLyrics_UnderTheSongsOwnTtml_WritesNoHiddenSidecar_AndLeavesTheTrackFields()
+    {
+        // GitHub #115: the .ttml out-ranks .elrc/.lrc on the lyrics page, so files written beside
+        // it never showed; they only cluttered the folder, and the track fields advertised lyrics
+        // that disk overrode on the next play. The pick still shows for this session.
+        var (vm, track, _) = Mount(new StubLrcLib());
+        vm.ShowLyricsSearchDialog = _ => Task.CompletedTask;
+        var ttmlPath = Sidecar(track, ".ttml");
+        File.WriteAllText(ttmlPath, Noctis.Services.LyricsStudio.TimedLyricsBuilder.BuildTtml(new[]
+        {
+            new Noctis.Services.LyricsStudio.AlignedLine("my ttml line", TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(7),
+                Array.Empty<Noctis.Services.LyricsStudio.AlignedWord>(), 1, false),
+        }));
+
+        try
+        {
+            vm.SearchLyricsForTrack(track);
+            await PumpUntilAsync(() => vm.LyricLines.Any(l => l.Text == "my ttml line"));
+            Assert.Contains(vm.LyricLines, l => l.Text == "my ttml line");
+
+            vm.ApplySearchedLyrics(track, Result(synced: Elrc), "Kugou");
+            await LyricsViewModel.EnqueueLyricsFileWork(() => { });
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("Kugou", vm.LyricsSourceName);
+            Assert.Contains(vm.LyricLines, l => l.Text == "word timed");
+            Assert.False(File.Exists(Sidecar(track, ".lrc")));
+            Assert.False(File.Exists(Sidecar(track, ".elrc")));
+            Assert.True(File.Exists(ttmlPath));
+            Assert.Equal(string.Empty, track.SyncedLyrics);
+        }
+        finally
+        {
+            Cleanup(track);
+            try { File.Delete(ttmlPath); } catch { }
+        }
+    }
+
+    [AvaloniaFact]
     public async Task SearchLyricsForTrack_WithLyricsAlreadyShown_OpensThePicker_WithoutLyrics_SearchesAsBefore()
     {
         var lrcLib = new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) };

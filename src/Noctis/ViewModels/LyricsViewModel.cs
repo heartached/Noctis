@@ -1757,12 +1757,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var sidecarExists = File.Exists(lrcPath);
                 var replaceAppSidecar = canWriteSidecar && sidecarExists && allowReplaceAppSidecar
                     && SidecarRegistry.Contains(lrcPath);
+                // An explicit switch on a song whose page already showed a file the probe reads
+                // before .lrc — a .lyricsfile, a .ttml, or the user's own .elrc — must not write
+                // here: the new files stayed hidden under it, cluttered the folder, and the track
+                // fields advertised lyrics disk overrode on the next play (GitHub #115).
+                var hiddenByHigherSidecar = allowReplaceAppSidecar && canWriteSidecar && HigherSidecarHidesLrc(trackPath);
                 // On an explicit switch that leaves an existing sidecar standing
                 // (user-owned, or nothing synced to replace an app-written one with)
                 // the track fields stay untouched: they must not advertise lyrics
                 // that disk will override on the next play. The switched-to lyrics
                 // still display (and cache) for this session.
-                var blockedBySidecar = sidecarExists && allowReplaceAppSidecar && !replaceAppSidecar;
+                var blockedBySidecar = (sidecarExists && allowReplaceAppSidecar && !replaceAppSidecar) || hiddenByHigherSidecar;
 
                 if (!blockedBySidecar)
                 {
@@ -1779,6 +1784,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 }
 
                 if (!canWriteSidecar) return;
+                if (hiddenByHigherSidecar)
+                {
+                    DebugLogger.Info(DebugLogger.Category.Lyrics, "Sidecar.SkipHidden", trackPath);
+                    return;
+                }
                 if (sidecarExists && !replaceAppSidecar)
                 {
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "Sidecar.SkipExisting", lrcPath);
@@ -1810,6 +1820,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             catch { /* best effort — sidecar write is non-fatal */ }
         });
+    }
+
+    /// <summary>A file the lyrics page reads before .elrc/.lrc beside the song: any .lyricsfile or
+    /// .ttml, or an .elrc this app didn't write (the app's own .elrc is replaced along with the .lrc).</summary>
+    private static bool HigherSidecarHidesLrc(string trackPath)
+    {
+        if (File.Exists(Path.ChangeExtension(trackPath, ".lyricsfile"))
+            || File.Exists(Path.ChangeExtension(trackPath, ".ttml")))
+            return true;
+        var elrcPath = Path.ChangeExtension(trackPath, ".elrc");
+        return File.Exists(elrcPath) && !SidecarRegistry.Contains(elrcPath);
     }
 
     // Sidecars this app created itself. RemoveLyrics deletes only these, so a user's
