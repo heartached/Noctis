@@ -136,4 +136,48 @@ public class HomeChartRowBehaviourTests
         Assert.Equal(new[] { "b", "a" }, vm.TopSongRows.Select(r => r.Track.Title));
         Assert.Equal(new[] { 1, 2 }, vm.TopSongRows.Select(r => r.Rank));
     }
+
+    // Discord (Andre, 10-05): a counted play bumps the row's "N plays" live (bound per
+    // track) but never re-ranked Most Played — a counted play raises no LibraryUpdated,
+    // so Home stayed clean and showed 47 plays at #5 under 46 at #4.
+    [AvaloniaFact]
+    public async Task CountedPlay_ReRanksMostPlayed()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-home-rank-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var lib = new FakeLibraryService();
+            var a = T("a", 5);
+            var b = T("b", 5);
+            b.FilePath = Path.Combine(dir, "b.mp3");
+            File.WriteAllBytes(b.FilePath, new byte[] { 0 });
+            b.Duration = TimeSpan.FromMinutes(3);
+            lib.TrackList.AddRange(new[] { a, b });
+            var persistence = new TestPersistenceService();
+            var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+            var vm = new HomeViewModel(player, lib, new SidebarViewModel(persistence, lib));
+
+            await vm.RefreshAsync();
+            Assert.Equal(new[] { "a", "b" }, vm.TopSongRows.Select(r => r.Track.Title));
+
+            player.ReplaceQueueAndPlay(new[] { b }, 0);
+            // The re-rank sorts off the UI thread (like RefreshAsync); pump until it lands.
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            do
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                if (vm.TopSongRows.FirstOrDefault()?.Track == b) break;
+                await Task.Delay(10);
+            } while (DateTime.UtcNow < deadline);
+
+            Assert.Equal(6, b.PlayCount);
+            Assert.Equal(new[] { "b", "a" }, vm.TopSongRows.Select(r => r.Track.Title));
+            Assert.Equal(new[] { 1, 2 }, vm.TopSongRows.Select(r => r.Rank));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
 }

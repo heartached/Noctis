@@ -378,8 +378,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var recentTracks = LastPlayed.Where(t => t.Id != track.Id).ToList();
             recentTracks.Insert(0, track);
             ReplaceLastPlayed(recentTracks);
+
+            // A counted play raises no LibraryUpdated, so Home stays clean and RefreshAsync
+            // keeps the old ranking: the row's "N plays" ticks up live while its rank doesn't
+            // (Discord: 47 plays at #5 under 46 at #4).
+            _ = RefreshTopSongsAsync();
         });
     }
+
+    private async Task RefreshTopSongsAsync()
+    {
+        var allTracks = _library.Tracks;
+        var top = await Task.Run(() => PickTopSongs(allTracks));
+        ReplaceTopSongsIfChanged(top);
+    }
+
+    private static List<Track> PickTopSongs(IReadOnlyList<Track> tracks)
+        => tracks
+            .Where(t => t.PlayCount > 0)
+            .OrderByDescending(t => t.PlayCount)
+            .Take(6)
+            .ToList();
 
     /// <summary>
     /// Set by MainWindowViewModel when Home becomes (or stops being) the current view.
@@ -440,12 +459,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var allTracks = _library.Tracks;
             if (allTracks.Count > 0)
             {
-                var top = await Task.Run(() =>
-                    allTracks
-                        .Where(t => t.PlayCount > 0)
-                        .OrderByDescending(t => t.PlayCount)
-                        .Take(6)
-                        .ToList());
+                var top = await Task.Run(() => PickTopSongs(allTracks));
                 ReplaceTopSongsIfChanged(top);
             }
             else
