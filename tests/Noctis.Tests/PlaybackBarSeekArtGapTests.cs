@@ -31,9 +31,21 @@ public class PlaybackBarSeekArtGapTests
     private static bool IsInside(Control? hit, Control target)
         => hit != null && (ReferenceEquals(hit, target) || hit.GetVisualAncestors().Contains(target));
 
+    private static void EnsureAppStyles()
+    {
+        // Other tests load the app styles into the shared headless app; load them here too so
+        // this test sees the same layout whichever order the suite runs in.
+        var app = Application.Current!;
+        if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
+        app.Resources["InterSemiBold"] = Avalonia.Media.FontFamily.Default;
+        app.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
+        app.Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
+    }
+
     [AvaloniaFact]
     public void PressesNearTheSeekLine_SeekInsteadOfOpeningTheMiniPlayer()
     {
+        EnsureAppStyles();
         var bar = new PlaybackBarView { DataContext = MakePlayer(), CompactWhenLyricsPageActive = false };
         var win = new Window { Width = 1200, Height = 200, Content = bar };
         try
