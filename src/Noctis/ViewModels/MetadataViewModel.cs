@@ -2008,14 +2008,23 @@ public partial class MetadataViewModel : ViewModelBase
         SyncedLyricsSearchStatus = "Searching…";
         try
         {
-            var result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds);
+            // An error on /get (LRCLIB answers 503 "busy" there while /search works — live
+            // check 10-05) falls through to /search; only both failing is an error.
+            LrcLibResult? result = null;
+            LyricsProviderException? getError = null;
+            try { result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds); }
+            catch (LyricsProviderException ex) { getError = ex; }
             if (result == null || !result.HasSyncedLyrics)
             {
                 // /search is fuzzy — validate against the edited tags and the track's
                 // duration so a different song's lyrics can't be picked up.
-                var alts = await _lrcLib.SearchLyricsAsync(Artist, Title);
+                List<LrcLibResult> alts;
+                try { alts = await _lrcLib.SearchLyricsAsync(Artist, Title); }
+                catch (LyricsProviderException) when (getError is not null) { throw getError; }
                 result = LyricsSearchSelector.PickFromSearchResults(
                     alts, Artist, Title, _track.Duration.TotalSeconds, requireSynced: true);
+                // Nothing from /search after a /get error is not "no lyrics": /get might have had them.
+                if (result is null && getError is not null) throw getError;
             }
 
             if (result?.SyncedLyrics is { Length: > 0 } synced)
@@ -2033,8 +2042,9 @@ public partial class MetadataViewModel : ViewModelBase
         catch (LyricsProviderException)
         {
             // Network failure / timeout / provider outage — not "no lyrics", and the
-            // raw exception text ("The request was canceled…") helps nobody.
-            SyncedLyricsSearchStatus = "Search failed — check your internet connection.";
+            // raw exception text ("The request was canceled…") helps nobody. Not "check your
+            // internet connection" either: a busy LRCLIB (503) on an online machine said that.
+            SyncedLyricsSearchStatus = "Search failed — LRCLIB didn't answer (busy or offline). Try again in a moment.";
         }
         catch (Exception ex)
         {

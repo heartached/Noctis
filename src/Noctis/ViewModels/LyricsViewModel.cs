@@ -1396,18 +1396,28 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // sending it verbatim guarantees a /get miss and poisons /search relevance.
         var hasKnownArtist = !LyricsSearchSelector.IsUnknownArtist(artist);
 
-        // /get needs an exact artist match — pointless with the placeholder.
-        var result = hasKnownArtist
-            ? await lrcLib.GetLyricsAsync(artist, title, duration, ct)
-            : null;
+        // /get needs an exact artist match — pointless with the placeholder. An error there
+        // (LRCLIB answers 503 "busy" to /get while /search still works) falls through to
+        // /search; the error surfaces only when /search fails too.
+        LrcLibResult? result = null;
+        LyricsProviderException? getError = null;
+        if (hasKnownArtist)
+        {
+            try { result = await lrcLib.GetLyricsAsync(artist, title, duration, ct); }
+            catch (LyricsProviderException ex) { getError = ex; }
+        }
         if (result is { Instrumental: true }) return result;
 
         if (result == null || !result.HasLyrics)
         {
             // /search is fuzzy and relevance-ordered; validate candidates
             // against the local track before preferring richer formats.
-            var results = await lrcLib.SearchLyricsAsync(hasKnownArtist ? artist : "", title, ct);
+            List<LrcLibResult> results;
+            try { results = await lrcLib.SearchLyricsAsync(hasKnownArtist ? artist : "", title, ct); }
+            catch (LyricsProviderException) when (getError is not null) { throw getError; }
             result = LyricsSearchSelector.PickFromSearchResults(results, artist, title, duration);
+            // Nothing from /search after a /get error is not "no lyrics": /get might have had them.
+            if (result is null && getError is not null) throw getError;
         }
         return result;
     }
