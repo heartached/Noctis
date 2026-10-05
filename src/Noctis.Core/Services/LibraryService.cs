@@ -204,8 +204,10 @@ public class LibraryService : ILibraryService
         // Developer Mode: names each new/changed file right before TagLib opens it (#97).
         var tagOpen = new CappedBreadcrumb("Scan", "tags: open");
 
-        // Snapshot the current track index for read-only access during parallel scan
-        var trackIndexSnapshot = _trackIndex;
+        // Snapshot the current track index for read-only access during parallel scan.
+        // Hidden folders included: matched against the visible index only, their files
+        // came back as new tracks with no favorite or play count.
+        var trackIndexSnapshot = AllTrackIndex();
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -1415,6 +1417,19 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Every known track by id, hidden folders included — what a scan or a file move must
+    /// match against. <see cref="_trackIndex"/> covers the visible tracks only, so it IS
+    /// the full index whenever nothing is hidden.
+    /// </summary>
+    private Dictionary<Guid, Track> AllTrackIndex()
+    {
+        if (_hiddenFolders.Length == 0) return _trackIndex;
+        var all = new Dictionary<Guid, Track>(_tracks.Count);
+        foreach (var t in _tracks) all.TryAdd(t.Id, t);
+        return all;
+    }
+
     public Track? GetTrackById(Guid id)
     {
         _trackIndex.TryGetValue(id, out var track);
@@ -1642,12 +1657,13 @@ public class LibraryService : ILibraryService
         if (moves == null || moves.Count == 0) return remap;
 
         var changed = false;
+        var known = AllTrackIndex(); // a move inside a hidden folder is still a move
         foreach (var (oldPath, newPath) in moves)
         {
             if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
 
             var oldId = ComputeFileId(oldPath);
-            if (!_trackIndex.TryGetValue(oldId, out var track)) continue;
+            if (!known.TryGetValue(oldId, out var track)) continue;
 
             track.FilePath = newPath;
             try

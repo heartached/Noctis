@@ -205,6 +205,33 @@ public class HiddenLibraryFoldersTests : IDisposable
         Assert.Equal(new[] { _rock }, (await persistence.LoadSettingsAsync()).HiddenLibraryFolders);
     }
 
+    /// <summary>A scan used to look known files up in the VISIBLE index only, so every hidden
+    /// track came back as a freshly tagged object with no favorite or play count; once shown
+    /// again, the next state save journaled that blank row over the real one.</summary>
+    [Fact]
+    public async Task Rescan_WhileHidden_KeepsUserStateOfHiddenTracks()
+    {
+        WriteMp3(Path.Combine(_rock, "r.mp3"), "RockSong");
+        WriteMp3(Path.Combine(_music, "Jazz", "j.mp3"), "JazzSong");
+        var persistence = new PersistenceService(Path.Combine(_root, "scan-state"));
+        await persistence.SaveSettingsAsync(new AppSettings { MusicFolders = { _music } });
+        var library = new LibraryService(new MetadataService(), persistence,
+            new SqliteLibraryIndexService(persistence), new NoOpAudit());
+        await library.ScanAsync(new[] { _music });
+        var rock = library.Tracks.Single(t => t.Title == "RockSong");
+        rock.IsFavorite = true;
+        rock.PlayCount = 7;
+        await library.SaveTrackUserStateAsync(new[] { rock });
+
+        await library.SetFolderHiddenAsync(_rock, hidden: true);
+        await library.ScanAsync(new[] { _music });
+        await library.SetFolderHiddenAsync(_rock, hidden: false);
+
+        var back = library.Tracks.Single(t => t.Title == "RockSong");
+        Assert.True(back.IsFavorite);
+        Assert.Equal(7, back.PlayCount);
+    }
+
     private static void WriteMp3(string path, string title)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
