@@ -38,7 +38,20 @@ public class LrcLibResult
     [JsonPropertyName("lyricsfile")]
     public string? Lyricsfile { get; set; }
 
+    /// <summary>LRCLIB's own flag: false when its Lyricsfile only times whole lines.</summary>
+    [JsonPropertyName("hasWordSync")]
+    public bool? HasWordSync { get; set; }
+
     public bool HasSyncedLyrics => !string.IsNullOrWhiteSpace(SyncedLyrics);
     public bool HasLyricsfile => !string.IsNullOrWhiteSpace(Lyricsfile);
+
+    /// <summary>
+    /// A Lyricsfile that actually times words. LRCLIB attaches a Lyricsfile to line-synced
+    /// results too (hasWordSync false, no "words:" in it), and counting any Lyricsfile as
+    /// word-synced labelled those "Word-synced" in Search Lyrics and let them beat a source
+    /// with real word timings for "best match".
+    /// </summary>
+    public bool HasWordSyncedLyricsfile =>
+        HasLyricsfile && HasWordSync != false && Lyricsfile!.Contains("words:", StringComparison.Ordinal);
     public bool HasLyrics => !string.IsNullOrWhiteSpace(PlainLyrics) || HasSyncedLyrics || HasLyricsfile;
 }

@@ -57,8 +57,8 @@ public static class LyricsSearchSelector
         if (requireSynced)
             return validated.FirstOrDefault(r => r.HasSyncedLyrics);
 
-        return validated.FirstOrDefault(r => r.HasLyricsfile)
-            ?? validated.FirstOrDefault(r => r.HasSyncedLyrics)
+        return validated.FirstOrDefault(r => r.HasWordSyncedLyricsfile)
+            ?? validated.FirstOrDefault(r => r.HasSyncedLyrics || r.HasLyricsfile)
             ?? validated.FirstOrDefault(r => r.HasLyrics);
     }
 
@@ -66,15 +66,17 @@ public static class LyricsSearchSelector
     public const int WordSyncedRank = 3;
 
     /// <summary>
-    /// How rich a result's lyrics are, for picking between sources: word-synced (a Lyricsfile,
-    /// or synced text carrying ELRC word tags) 3, line-synced 2, plain 1, nothing 0.
+    /// How rich a result's lyrics are, for picking between sources: word-synced (a Lyricsfile that
+    /// times words, or synced text carrying ELRC word tags) 3, line-synced 2, plain 1, nothing 0.
     /// </summary>
     public static int FormatRank(LrcLibResult? result)
     {
         if (result == null) return 0;
-        if (result.HasLyricsfile) return WordSyncedRank;
+        if (result.HasWordSyncedLyricsfile) return WordSyncedRank;
         if (result.HasSyncedLyrics)
             return EnhancedLrcParser.ContainsWordTags(result.SyncedLyrics) ? WordSyncedRank : 2;
+        // A Lyricsfile without word timings still times its lines.
+        if (result.HasLyricsfile) return 2;
         return result.HasLyrics ? 1 : 0;
     }
 
