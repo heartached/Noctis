@@ -490,6 +490,8 @@
                                               ToolTip.Tip="{loc:T LyricsStudio.OnlineLyricsTip}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding EmbedTags}" Content="{loc:T LyricsStudioSettings.EmbedTags}"
                                               ToolTip.Tip="{loc:T LyricsStudioSettings.EmbedTagsHint}" />
+                                    <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding SaveTtml}" Content="{loc:T LyricsStudioSettings.SaveTtml}"
+                                              ToolTip.Tip="{loc:T LyricsStudioSettings.SaveTtmlHint}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding TranscribeOnly}" Content="{loc:T LyricsStudio.TranscribeOnly}"
                                               ToolTip.Tip="{loc:T LyricsStudio.TranscribeOnlyTip}" />
                                 </StackPanel>

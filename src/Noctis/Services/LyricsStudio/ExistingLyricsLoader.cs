@@ -20,6 +20,7 @@ public static partial class ExistingLyricsLoader
 {
     private static readonly string[] ElrcExtensions = { ".elrc", ".ELRC", ".Elrc" };
     private static readonly string[] LrcExtensions = { ".lrc", ".LRC", ".Lrc" };
+    private static readonly string[] TtmlExtensions = { ".ttml", ".TTML", ".Ttml" };
 
     [GeneratedRegex(@"^\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]")]
     private static partial Regex LeadingTimestamp();
@@ -59,12 +60,19 @@ public static partial class ExistingLyricsLoader
         return null;
     }
 
-    /// <summary>Sidecar-aware format check: what a track has on disk or in its tags, without parsing everything.</summary>
+    /// <summary>
+    /// Sidecar-aware format check: what a track has on disk or in its tags, without parsing
+    /// everything. A .ttml counts first, as on the lyrics page: a song whose only lyrics were a
+    /// word-timed .ttml (Apple Music style, or the Studio's own "Also save as TTML") was listed
+    /// as having no timings, and "Skip songs already in this format" never skipped it.
+    /// </summary>
     public static LyricsFormat DetectFormat(Track track)
     {
         var path = track.FilePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
+            var ttml = FindSidecar(path, TtmlExtensions);
+            if (ttml is not null && TtmlFormat(ttml) is { } tf) return tf;
             var elrc = FindSidecar(path, ElrcExtensions);
             if (elrc is not null && TryRead(elrc, out var text))
             {
@@ -116,6 +124,7 @@ public static partial class ExistingLyricsLoader
 
     private static bool TryDetectSidecar(Dictionary<string, string> sidecars, string stem, out LyricsFormat format)
     {
+        if (sidecars.TryGetValue(stem + ".ttml", out var ttml) && TtmlFormat(ttml) is { } tf) { format = tf; return true; }
         foreach (var ext in new[] { ".elrc", ".lrc" })
         {
             if (!sidecars.TryGetValue(stem + ext, out var file) || !TryRead(file, out var text)) continue;
@@ -126,7 +135,7 @@ public static partial class ExistingLyricsLoader
         return false;
     }
 
-    /// <summary>Case-insensitive "stem.ext" → full path for every .lrc/.elrc in <paramref name="dir"/>; null when the folder can't be listed.</summary>
+    /// <summary>Case-insensitive "stem.ext" → full path for every .lrc/.elrc/.ttml in <paramref name="dir"/>; null when the folder can't be listed.</summary>
     private static Dictionary<string, string>? ListSidecars(string dir)
     {
         try
@@ -136,12 +145,23 @@ public static partial class ExistingLyricsLoader
             foreach (var file in Directory.EnumerateFiles(dir))
             {
                 var ext = System.IO.Path.GetExtension(file);
-                if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase) || ext.Equals(".elrc", StringComparison.OrdinalIgnoreCase))
+                if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase) || ext.Equals(".elrc", StringComparison.OrdinalIgnoreCase)
+                    || ext.Equals(".ttml", StringComparison.OrdinalIgnoreCase))
                     map.TryAdd(System.IO.Path.GetFileName(file), file);
             }
             return map;
         }
         catch { return null; }
+    }
+
+    /// <summary>A .ttml sidecar's timing as the lyrics page reads it: word spans → word timings (Elrc), timed lines → Lrc; null when unreadable or untimed.</summary>
+    private static LyricsFormat? TtmlFormat(string file)
+    {
+        if (!TryRead(file, out var text)) return null;
+        var (lines, _) = TtmlParser.Parse(text);
+        if (lines is not { Count: > 0 }) return null;
+        if (lines.Any(l => l.Words is { Count: > 0 })) return LyricsFormat.Elrc;
+        return lines.Any(l => l.Timestamp.HasValue) ? LyricsFormat.Lrc : null;
     }
 
     public static string? FindSidecar(string trackFilePath, string[] extensions)

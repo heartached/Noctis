@@ -344,6 +344,9 @@ public class AppSettings
     /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB) before falling back to transcription.</summary>
     public bool LyricsStudioOnlineLyrics { get; set; } = true;
 
+    /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
+    public bool LyricsStudioSaveTtml { get; set; }
+
     // ── Songs page optional columns ──
     // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;

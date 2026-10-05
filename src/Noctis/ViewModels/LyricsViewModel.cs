@@ -1895,7 +1895,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     // can fail (file locked/in use), and dropping the registry entry
                     // first left the app's own file on disk permanently looking
                     // user-owned — Remove would then never touch it again.
-                    foreach (var ext in new[] { ".elrc", ".lrc" })
+                    // .ttml: Lyrics Studio's "Also save as TTML" writes one, read before the rest.
+                    foreach (var ext in new[] { ".ttml", ".elrc", ".lrc" })
                     {
                         var lrcPath = Path.ChangeExtension(trackPath, ext);
                         if (!SidecarRegistry.Contains(lrcPath)) continue;

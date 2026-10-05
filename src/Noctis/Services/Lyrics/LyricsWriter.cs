@@ -58,7 +58,10 @@ public sealed class LyricsWriter
     /// line-timed .lrc in place would silently hide the word timings they just made. The old
     /// file goes to the recycle bin, not into the void; when the trash refuses it stays put.
     /// </summary>
-    public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar)
+    /// <param name="ttml">Also written as a .ttml sidecar when given (Lyrics Studio's "Also save as TTML").
+    /// The lyrics page reads .lyricsfile and .ttml before .elrc and .lrc, so without one a leftover
+    /// .ttml or .lyricsfile is removed like a stale .elrc — it would hide what was just saved.</param>
+    public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar, string? ttml = null)
     {
         var hasSynced = !string.IsNullOrWhiteSpace(synced);
         var hasPlain = !string.IsNullOrWhiteSpace(plain);
@@ -90,6 +93,14 @@ public sealed class LyricsWriter
                 // A leftover .elrc would out-rank the new .lrc on the lyrics page.
                 RemoveSidecar(elrcPath, replaceForeignSidecar, ref replaced, ref kept);
             }
+
+            var ttmlPath = Path.ChangeExtension(path, ".ttml");
+            if (!string.IsNullOrWhiteSpace(ttml))
+                WriteSidecar(ttmlPath, ttml, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
+            else
+                RemoveSidecar(ttmlPath, replaceForeignSidecar, ref replaced, ref kept);
+            // LRCGET's .lyricsfile out-ranks every other sidecar: a Studio save stayed invisible under one.
+            RemoveSidecar(Path.ChangeExtension(path, ".lyricsfile"), replaceForeignSidecar, ref replaced, ref kept);
         }
 
         if (embedInTags && !string.IsNullOrWhiteSpace(path) && track.SourceType == SourceType.Local)
@@ -118,7 +129,7 @@ public sealed class LyricsWriter
         var path = track.FilePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
-            foreach (var ext in new[] { ".elrc", ".lrc" })
+            foreach (var ext in new[] { ".ttml", ".elrc", ".lrc" })
             {
                 var sidecar = Path.ChangeExtension(path, ext);
                 if (!_registry.Contains(sidecar)) continue;

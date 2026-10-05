@@ -1777,6 +1777,37 @@ public partial class MetadataViewModel : ViewModelBase
         string.IsNullOrWhiteSpace(_track.SyncedLyrics) &&
         !_syncedSidecarUnreadable;
 
+    /// <summary>Moves a lyrics sidecar to the OS trash; replaceable in tests (as on LyricsWriter).</summary>
+    internal Func<string, bool> TrashFile { get; init; } = Helpers.RecycleBin.TryMoveToTrash;
+
+    /// <summary>The synced lyrics being saved differ from the ones this dialog loaded (searched, imported, edited, shifted).</summary>
+    private bool SyncedLyricsWereChanged =>
+        !string.IsNullOrWhiteSpace(_track.SyncedLyrics) &&
+        !string.Equals(NormalizeNewlines(_track.SyncedLyrics).Trim(), NormalizeNewlines(_loadedSyncedLyrics).Trim(), StringComparison.Ordinal);
+
+    private static string NormalizeNewlines(string? text) =>
+        (text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+
+    /// <summary>
+    /// The lyrics page reads .lyricsfile, .ttml and .elrc before .lrc. Synced lyrics changed or
+    /// removed here went into the .lrc only, so a Lyrics Studio .elrc (or a .ttml) beside the song
+    /// kept showing the old lyrics and the edit looked lost. Called only on a real change or
+    /// removal — a Year fix must not cost a song its word timings. To the trash, like the .lrc.
+    /// </summary>
+    private void TrashSidecarsAboveLrc(string trackPath)
+    {
+        foreach (var ext in new[] { ".lyricsfile", ".ttml", ".elrc" })
+        {
+            var path = Path.ChangeExtension(trackPath, ext);
+            try
+            {
+                if (File.Exists(path) && TrashFile(path))
+                    AppWrittenSidecarRegistry.Default.Remove(path);
+            }
+            catch { /* best effort, as the .lrc write */ }
+        }
+    }
+
     /// <summary>True when the user cleared plain lyrics that were genuinely loaded.</summary>
     private bool PlainLyricsWereRemoved =>
         !string.IsNullOrWhiteSpace(_loadedPlainLyrics) &&
@@ -2492,9 +2523,17 @@ public partial class MetadataViewModel : ViewModelBase
         {
             var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
             if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
+            {
                 await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
-            else if (SyncedLyricsWereRemoved && File.Exists(lrcPath))
-                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(lrcPath));
+                if (SyncedLyricsWereChanged)
+                    await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+            }
+            else if (SyncedLyricsWereRemoved)
+            {
+                if (File.Exists(lrcPath))
+                    await Task.Run(() => TrashFile(lrcPath));
+                await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+            }
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 

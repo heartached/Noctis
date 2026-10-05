@@ -173,7 +173,7 @@ public class LyricsStudioComposeTests : IDisposable
 
         Assert.False(trashedOnUiThread ?? true, "the trash must run off the UI thread");
         Assert.Equal("[00:01.00]mine", File.ReadAllText(lrc));
-        Assert.Contains("old .lrc kept", vm.Queue[0].StatusText);
+        Assert.Contains("old lyrics file was kept", vm.Queue[0].StatusText);
         Assert.DoesNotContain("moved to the recycle bin", vm.Queue[0].StatusText);
     }
 

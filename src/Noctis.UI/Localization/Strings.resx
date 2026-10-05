@@ -1836,6 +1836,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudioSettings.WordTimingsHint" xml:space="preserve"><value>A time for every word. Off saves one per line.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.EmbedTags" xml:space="preserve"><value>Also write lyrics into the file's tags</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Also store the plain lyrics inside the audio file.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>Also save as TTML</value><comment>Toggle title</comment></data>
+  <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>Also write a .ttml file next to the song, for players that read TTML but not ELRC word timings.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>RUN</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Songs missing the chosen format</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Up to 40 songs that lack the format above.</value><comment>Run card help</comment></data>
