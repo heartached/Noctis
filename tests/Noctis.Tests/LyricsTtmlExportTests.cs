@@ -192,6 +192,42 @@ public class LyricsTtmlExportTests : IDisposable
         Assert.Empty(trashed);
     }
 
+    /// <summary>
+    /// The lyrics page reads ".TTML" too. On Linux a save that only looked for "song.ttml" left
+    /// "song.TTML" standing above it; on Windows the prompt named the wrong spelling.
+    /// </summary>
+    [Fact]
+    public void UpperCaseSidecars_AreNamedAsOnDisk_AndCleared()
+    {
+        var (writer, track, trashed) = NewWriter();
+        File.WriteAllText(Side(".TTML"), "<tt/>");
+        File.WriteAllText(Side(".Lyricsfile"), "lines: []");
+
+        var studioPrompt = LyricsStudioViewModel.ExistingLyricsFiles(track);
+        var pagePrompt = LyricsWriter.FilesChangedBySave(track.FilePath!, "[00:01.00]new");
+        Assert.Contains("“song.TTML”", studioPrompt);
+        Assert.Contains("“song.Lyricsfile”", studioPrompt);
+        Assert.Contains("“song.TTML”", pagePrompt);
+
+        writer.SaveDetailed(track, null, "[00:01.00]new", embedInTags: false, replaceForeignSidecar: true);
+
+        Assert.Empty(Directory.EnumerateFiles(_dir, "song.*").Where(f => f.EndsWith(".TTML", StringComparison.OrdinalIgnoreCase)
+            || f.EndsWith(".lyricsfile", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains("song.TTML", trashed);
+    }
+
+    [AvaloniaFact]
+    public async Task EditInfo_ChangedSyncedLyrics_ClearAnUpperCaseTtml()
+    {
+        var (vm, _, trashed) = NewMetadata("[00:01.00]old");
+        File.WriteAllText(Side(".TTML"), "<tt/>");
+
+        vm.ImportLyricsText("[00:03.00]new line", "new.lrc");
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Contains("song.TTML", trashed);
+    }
+
     // ── Lyrics Studio ────────────────────────────────────────────────────────
 
     [Fact]

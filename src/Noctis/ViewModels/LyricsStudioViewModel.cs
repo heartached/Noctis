@@ -1057,10 +1057,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var found = new List<string>();
         if (string.IsNullOrWhiteSpace(track.FilePath)) return found;
         foreach (var ext in new[] { ".lyricsfile", ".ttml", ".elrc", ".lrc" })
-        {
-            var path = Path.ChangeExtension(track.FilePath, ext);
-            try { if (File.Exists(path)) found.Add($"“{Path.GetFileName(path)}”"); } catch { }
-        }
+            foreach (var path in LyricsWriter.SidecarsOnDisk(track.FilePath, ext))
+                found.Add($"“{Path.GetFileName(path)}”");
         return found;
     }
 

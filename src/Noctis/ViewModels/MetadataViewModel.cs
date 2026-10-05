@@ -1797,15 +1797,15 @@ public partial class MetadataViewModel : ViewModelBase
     private void TrashSidecarsAboveLrc(string trackPath)
     {
         foreach (var ext in new[] { ".lyricsfile", ".ttml", ".elrc" })
-        {
-            var path = Path.ChangeExtension(trackPath, ext);
-            try
+            foreach (var path in Services.Lyrics.LyricsWriter.SidecarsOnDisk(trackPath, ext))
             {
-                if (File.Exists(path) && TrashFile(path))
-                    AppWrittenSidecarRegistry.Default.Remove(path);
+                try
+                {
+                    if (TrashFile(path))
+                        AppWrittenSidecarRegistry.Default.Remove(path);
+                }
+                catch { /* best effort, as the .lrc write */ }
             }
-            catch { /* best effort, as the .lrc write */ }
-        }
     }
 
     /// <summary>True when the user cleared plain lyrics that were genuinely loaded.</summary>
