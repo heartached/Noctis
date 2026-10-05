@@ -20,7 +20,14 @@ public sealed record AlignedLine(
     TimeSpan End,
     IReadOnlyList<AlignedWord> Words,
     double Confidence,
-    bool Interpolated);
+    bool Interpolated)
+{
+    /// <summary>
+    /// Lines the source file kept at this line's timestamp — its romaji and translation
+    /// (GitHub #116). Not sung, so never aligned; written back at the line's start. Null when none.
+    /// </summary>
+    public IReadOnlyList<string>? Companions { get; init; }
+}
 
 /// <summary>
 /// Places known lyric lines onto the timeline of what the speech model heard: a monotonic

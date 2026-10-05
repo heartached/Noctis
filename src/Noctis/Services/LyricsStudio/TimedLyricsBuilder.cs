@@ -21,15 +21,30 @@ public static partial class TimedLyricsBuilder
     {
         var sb = new StringBuilder();
         foreach (var line in Ordered(lines))
+        {
             sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(line.Text).Append('\n');
+            AppendCompanions(sb, line);
+        }
         return sb.ToString().TrimEnd('\n');
+    }
+
+    /// <summary>A line's romaji / translation lines (GitHub #116), at its own timestamp, as plain text.</summary>
+    private static void AppendCompanions(StringBuilder sb, AlignedLine line)
+    {
+        if (line.Companions is not { Count: > 0 } companions) return;
+        foreach (var c in companions)
+            if (!string.IsNullOrWhiteSpace(c))
+                sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(c.Trim()).Append('\n');
     }
 
     public static string BuildElrc(IEnumerable<AlignedLine> lines)
     {
         var sb = new StringBuilder();
         foreach (var line in Ordered(lines))
+        {
             sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(BuildElrcBody(line)).Append('\n');
+            AppendCompanions(sb, line);
+        }
         return sb.ToString().TrimEnd('\n');
     }
 
@@ -122,7 +137,7 @@ public static partial class TimedLyricsBuilder
     }
 
     public static string BuildPlain(IEnumerable<AlignedLine> lines) =>
-        string.Join('\n', Ordered(lines).Select(l => l.Text));
+        string.Join('\n', Ordered(lines).SelectMany(l => (l.Companions ?? Array.Empty<string>()).Prepend(l.Text)));
 
     /// <summary>
     /// TTML in Apple Music's lyrics layout, for players that read TTML and LRC but not ELRC
@@ -177,6 +192,15 @@ public static partial class TimedLyricsBuilder
                 AppendWordSpans(sb, background);
                 sb.Append("</span>");
             }
+            // Romaji / translation lines (GitHub #116) as the inline layer spans TtmlParser reads.
+            if (line.Companions is { Count: > 0 } companions)
+            {
+                var (roman, translation) = LrcParser.MapCompanionLines(companions);
+                if (roman is not null)
+                    sb.Append("<span ttm:role=\"x-roman\">").Append(XmlText(roman)).Append("</span>");
+                if (translation is not null)
+                    sb.Append("<span ttm:role=\"x-translation\">").Append(XmlText(translation.Replace('\n', ' '))).Append("</span>");
+            }
             sb.Append("</p>\n");
         }
         return sb.Append("    </div>\n  </body>\n</tt>").ToString();
@@ -211,7 +235,7 @@ public static partial class TimedLyricsBuilder
     }
 
     /// <summary>"(…)" with no other parenthesis inside: the ELRC reader's background-line test.</summary>
-    private static bool IsFullyParenthesized(string text)
+    internal static bool IsFullyParenthesized(string text)
     {
         text = text.Trim();
         if (text.Length < 2 || text[0] is not ('(' or '（') || text[^1] is not (')' or '）')) return false;

@@ -867,6 +867,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         continue;
                     }
                     if (pasted is not null) result = result with { Source = LyricsStudioSource.PastedLyrics };
+                    // Timed from the song's own lyrics: their romaji / translation lines ride along.
+                    else if (item.Existing is { } source)
+                        result = result with { Lines = ExistingLyricsLoader.CarryCompanions(source.Lines, result.Lines) };
                     item.Result = result;
                     item.Status = StudioStatus.Ready;
                     _drafts?.Save(item.Track.Id, LyricsStudioDraft.From(result));
