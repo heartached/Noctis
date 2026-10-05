@@ -707,9 +707,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         Tracks.Move(fromIndex, toIndex);
 
         // Rebuild TrackIds to match new order
-        _playlist.TrackIds.Clear();
-        foreach (var t in Tracks)
-            _playlist.TrackIds.Add(t.Id);
+        ApplyDisplayedOrder(_playlist.TrackIds, Tracks);
         _playlist.ModifiedAt = DateTime.UtcNow;
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
@@ -740,9 +738,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             if (from > i) Tracks.Move(from, i);
         }
 
-        _playlist.TrackIds.Clear();
-        foreach (var t in Tracks)
-            _playlist.TrackIds.Add(t.Id);
+        ApplyDisplayedOrder(_playlist.TrackIds, Tracks);
         _playlist.ModifiedAt = DateTime.UtcNow;
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
@@ -751,6 +747,30 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Pure block move: <paramref name="moved"/> (in any order) is lifted out of
     /// <paramref name="list"/> and re-inserted, in its original relative order, where
     /// <paramref name="insertIndex"/> pointed before the lift.</summary>
+    /// <summary>
+    /// Writes the displayed order back into <paramref name="trackIds"/>, slot by slot: an id
+    /// that is not displayed (a track under a hidden library folder) keeps its place instead
+    /// of being dropped from the playlist by a reorder. Falls back to the displayed list when
+    /// the displayed rows don't map one-to-one onto the saved ids.
+    /// </summary>
+    internal static void ApplyDisplayedOrder(IList<Guid> trackIds, IReadOnlyList<Track> displayed)
+    {
+        var shown = new HashSet<Guid>(displayed.Select(t => t.Id));
+        var slots = trackIds.Count(shown.Contains);
+        if (slots != displayed.Count)
+        {
+            trackIds.Clear();
+            foreach (var t in displayed)
+                trackIds.Add(t.Id);
+            return;
+        }
+
+        var next = 0;
+        for (var i = 0; i < trackIds.Count; i++)
+            if (shown.Contains(trackIds[i]))
+                trackIds[i] = displayed[next++].Id;
+    }
+
     internal static List<Track> ReorderBlock(IReadOnlyList<Track> list, IReadOnlyList<Track> moved, int insertIndex)
     {
         var movedSet = new HashSet<Track>(moved);

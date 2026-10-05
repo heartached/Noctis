@@ -2009,6 +2009,25 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Persistent include/exclude scan rules.</summary>
     public ObservableCollection<FolderRule> FolderRules { get; } = new();
 
+    /// <summary>Folders hidden from the library from the Folders view (mirrors
+    /// <see cref="ILibraryService.HiddenFolders"/>), each with a Show button here.</summary>
+    public ObservableCollection<string> HiddenLibraryFolders { get; } = new();
+
+    public bool HasHiddenLibraryFolders => HiddenLibraryFolders.Count > 0;
+
+    private void SyncHiddenLibraryFolders()
+    {
+        var current = _library.HiddenFolders;
+        if (current.SequenceEqual(HiddenLibraryFolders)) return;
+        HiddenLibraryFolders.Clear();
+        foreach (var folder in current)
+            HiddenLibraryFolders.Add(folder);
+        OnPropertyChanged(nameof(HasHiddenLibraryFolders));
+    }
+
+    [RelayCommand]
+    private Task ShowHiddenFolder(string folder) => _library.SetFolderHiddenAsync(folder, hidden: false);
+
     /// <summary>Formatted display of the current media folder path.</summary>
     public string MediaFolderDisplay => MusicFolders.Count > 0
         ? string.Join(", ", MusicFolders.Select(FormatFolderDisplay))
@@ -2192,6 +2211,11 @@ public partial class SettingsViewModel : ViewModelBase
         // pressing Refresh to fix silent playback learned nothing. Remember the roots;
         // RunScanCoreAsync turns them into the status line once ScanAsync returns.
         _library.ScanAborted += (_, roots) => _scanAbortedRoots = roots;
+
+        // Hiding/showing a folder (Folders view) republishes the library; the list is in
+        // memory, so this is a cheap compare on every other LibraryUpdated.
+        SyncHiddenLibraryFolders();
+        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(SyncHiddenLibraryFolders);
 
         _library.MusicFoldersChanged += (_, folders) =>
         {

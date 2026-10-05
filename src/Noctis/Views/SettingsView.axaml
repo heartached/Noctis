@@ -3556,6 +3556,44 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            <!-- Folders hidden from the library in the Folders view (right-click a folder →
+                 Hide from Library). Only shown while there is at least one. -->
+            <Border Classes="setting-row" IsVisible="{Binding HasHiddenLibraryFolders}">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.HiddenFolders}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HiddenFoldersHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding HiddenLibraryFolders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Border Padding="14,8" Margin="0,2" CornerRadius="12"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding}"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1"
+                                                Classes="pill-action"
+                                                Padding="12,4"
+                                                CornerRadius="999"
+                                                Cursor="Hand"
+                                                Margin="12,0,0,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).ShowHiddenFolderCommand}"
+                                                CommandParameter="{Binding}">
+                                            <TextBlock Text="{loc:T Settings.ShowHiddenFolder}" FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
             <!-- GitHub #71: off = dropped files play / queue from where they are, nothing is
                  moved into Noctis Imports or added to the library. -->
             <Border Classes="setting-row">

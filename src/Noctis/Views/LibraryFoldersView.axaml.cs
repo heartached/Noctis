@@ -183,7 +183,8 @@ public partial class LibraryFoldersView : UserControl
             playNextCommand: vm.PlayNodeNextCommand,
             addToQueueCommand: vm.AddNodeToQueueCommand,
             addToPlaylistCommand: vm.AddNodeToNewPlaylistCommand,
-            showFolderCommand: vm.ShowNodeInExplorerCommand);
+            showFolderCommand: vm.ShowNodeInExplorerCommand,
+            toggleHiddenCommand: vm.ToggleNodeHiddenCommand);
 
         var menu = _folderMenuBuilder.Menu;
         if (menu.IsOpen)
