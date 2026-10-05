@@ -216,6 +216,20 @@ public class LyricsTtmlExportTests : IDisposable
         Assert.Contains("song.TTML", trashed);
     }
 
+    /// <summary>Editing one row rewrites the whole text: a stacked "[0:05][0:35]Chorus" lost its 0:35 repeat.</summary>
+    [AvaloniaFact]
+    public async Task EditInfo_EditingOneRow_KeepsAStackedChorusAtEveryTime()
+    {
+        var (vm, track, _) = NewMetadata("[00:05.00][00:35.00]Chorus\n[00:10.00]Verse");
+
+        vm.SyncedLyricLines.Single(l => l.Text == "Verse").TimestampText = "0:11.00";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        var times = LyricsViewModel.ParseLrcContent(track.SyncedLyrics).Where(l => l.Text == "Chorus").Select(l => l.Timestamp);
+        Assert.Equal(new TimeSpan?[] { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(35) }, times);
+        Assert.Contains("[00:11.00]Verse", track.SyncedLyrics);
+    }
+
     [AvaloniaFact]
     public async Task EditInfo_ChangedSyncedLyrics_ClearAnUpperCaseTtml()
     {

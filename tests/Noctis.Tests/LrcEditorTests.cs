@@ -26,13 +26,13 @@ public class LrcEditorTests
     }
 
     [Fact]
-    public void ParseLrc_SkipsMetadataTags_AndStacksOfTimestamps()
+    public void ParseLrc_SkipsMetadataTags_AndExpandsStacksOfTimestamps()
     {
         var lines = LrcEditorViewModel.ParseLrc("[ar:Artist]\n[ti:Title]\n[00:05.00][00:35.00]Chorus");
 
-        Assert.Single(lines);
-        Assert.Equal(TimeSpan.FromSeconds(5), lines[0].Time);
-        Assert.Equal("Chorus", lines[0].Text);
+        // One row per stacked tag: keeping only the first lost the repeat at 0:35 as soon as
+        // Edit Info rewrote the text from the rows.
+        Assert.Equal(new (TimeSpan?, string)[] { (TimeSpan.FromSeconds(5), "Chorus"), (TimeSpan.FromSeconds(35), "Chorus") }, lines);
     }
 
     [Fact]
