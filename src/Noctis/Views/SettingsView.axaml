@@ -5182,6 +5182,14 @@
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <!-- Self-hosted server in use (Koito, Maloja, …); hidden for the official one. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Margin="-2,0,0,0">
+                                <TextBlock Text="{loc:T Settings.ListenBrainzServer}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                            </StackPanel>
 
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect
@@ -5197,6 +5205,17 @@
                                          Watermark="{loc:T Settings.ListenBrainzUserToken}"
                                          Width="280"
                                          HorizontalAlignment="Left"/>
+                                <!-- GitHub #118: optional ListenBrainz-compatible server (blank = listenbrainz.org). -->
+                                <TextBox x:Name="ListenBrainzApiUrlBox"
+                                         Classes="metadata-info-field"
+                                         Text="{Binding ListenBrainzApiUrl}"
+                                         Watermark="{loc:T Settings.ListenBrainzApiUrl}"
+                                         Width="280"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="{loc:T Settings.ListenBrainzApiUrlHint}"
+                                           FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="420"
+                                           HorizontalAlignment="Left"
+                                           Margin="8,0,0,0"/>
                                 <!-- Inline validation error (e.g. "Token required"), semantically red. -->
                                 <TextBlock Text="{Binding ListenBrainzError}"
                                            IsVisible="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

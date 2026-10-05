@@ -424,6 +424,13 @@
   <data name="Settings.ListenBrainzScrobbling" xml:space="preserve"><value>ListenBrainz Scrobbling</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SendPlaysListenBrainz" xml:space="preserve"><value>Send plays to ListenBrainz.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ListenBrainzUserToken" xml:space="preserve"><value>ListenBrainz user token</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzApiUrl" xml:space="preserve"><value>API URL (optional)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzApiUrlHint" xml:space="preserve"><value>Leave blank for listenbrainz.org. For Koito, Maloja or another ListenBrainz-compatible server, enter its API URL, e.g. http://192.168.1.20:4110/apis/listenbrainz</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzServer" xml:space="preserve"><value>SERVER</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzUrlInvalid" xml:space="preserve"><value>Enter a valid http:// or https:// URL.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
+  <data name="Settings.ListenBrainzTokenRejected" xml:space="preserve"><value>The server rejected this token.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
+  <data name="Settings.ListenBrainzUnreachable" xml:space="preserve"><value>Couldn't reach the server. Check the URL and your connection.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
+  <data name="Settings.ListenBrainzNotCompatible" xml:space="preserve"><value>No ListenBrainz-compatible API at this URL.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
   <data name="Settings.MEDIASERVER" xml:space="preserve"><value>MEDIA SERVER</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MusicServer" xml:space="preserve"><value>Music Server</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StreamLibraryFromJellyfin" xml:space="preserve"><value>Stream from Jellyfin, Navidrome, Airsonic, Gonic or any Subsonic server.</value><comment>Text in SettingsView.axaml</comment></data>
