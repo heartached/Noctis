@@ -168,6 +168,42 @@ public static class ArtistCredit
 
     private static Regex? _displayRegex;
 
+    /// <summary>
+    /// Splits a credit into the separate values written back to a file's artist tag: on the
+    /// active SYMBOL separators only, with the same rule as <see cref="Display"/> (a tight
+    /// "/" stays inside a name like "AC/DC"). Word separators are not split: "A feat. B" is
+    /// one credit as tagged and must stay one frame for other players. GitHub #117: this used
+    /// to split on a hard-coded "," and ";", so saving "Earth, Wind &amp; Fire" wrote two
+    /// performers even with "," removed from the separators.
+    /// </summary>
+    public static string[] SplitForTag(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<string>();
+
+        Regex? regex;
+        lock (Gate) regex = _displayRegex ??= BuildDisplayRegex(_separators);
+
+        var parts = new List<string>();
+        var start = 0;
+        if (regex != null)
+        {
+            foreach (Match m in regex.Matches(value))
+            {
+                if (m.Value == "/") continue;
+                parts.Add(value[start..m.Index]);
+                start = m.Index + m.Length;
+            }
+        }
+        parts.Add(value[start..]);
+
+        return parts
+            .Select(v => v.Trim())
+            .Where(v => v.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     private static Regex? BuildDisplayRegex(IReadOnlyList<string> separators)
     {
         var symbols = separators.Where(s => !char.IsLetterOrDigit(s[0]) && !char.IsLetterOrDigit(s[^1])).ToArray();

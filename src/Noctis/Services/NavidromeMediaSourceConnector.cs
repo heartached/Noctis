@@ -188,7 +188,7 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
                     names.Add(name!);
             }
             if (names.Count > 0)
-                return string.Join(", ", names);
+                return string.Join(ArtistCredit.JoinText, names);
         }
 
         // Fall back to the singular "artist" field, then album artist

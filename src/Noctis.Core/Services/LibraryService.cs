@@ -729,6 +729,10 @@ public class LibraryService : ILibraryService
     private readonly object _mergeFeatApplyLock = new();
     private CancellationTokenSource? _mergeFeatApplyCts;
 
+    // Serializes artist-join re-read passes (startup + each separator edit): a queued pass
+    // starts from the join the previous one recorded, so none re-reads against a stale one.
+    private readonly SemaphoreSlim _artistJoinGate = new(1, 1);
+
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
         // Stop the background backfills too, not just the scan.
@@ -1853,6 +1857,11 @@ public class LibraryService : ILibraryService
                         await _sqliteIndex.UpsertTracksAsync(_tracks);
                         LibraryUpdated?.Invoke(this, EventArgs.Empty);
                     }
+
+                    // GitHub #117: credits stored with a join the separators no longer
+                    // split (", " with "," removed) are re-read once. A no-op while the
+                    // recorded join matches the active one.
+                    await ApplyArtistCreditJoinAsync();
 
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
@@ -3009,6 +3018,155 @@ public class LibraryService : ILibraryService
                 if (_mergeFeatApplyCts == cts)
                     _mergeFeatApplyCts = null;
                 cts.Dispose();
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _artistJoinGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+
+        try
+        {
+            AppSettings settings;
+            try { settings = await _persistence.LoadSettingsAsync(); }
+            catch { return 0; }
+
+            var join = ArtistCredit.JoinText;
+            if (string.Equals(settings.ArtistCreditJoin, join, StringComparison.Ordinal))
+                return 0;
+
+            // Any join an earlier build or an interrupted pass could have stored, not just the
+            // recorded one: a pass cut short by shutdown leaves some tracks on its join. A
+            // false positive ("Earth, Wind & Fire" as one tag value) costs one tag re-read
+            // that restores the same credit.
+            var stale = new[] { settings.ArtistCreditJoin, ", ", "; ", " / " }
+                .Where(j => !string.IsNullOrEmpty(j) && !string.Equals(j, join, StringComparison.Ordinal))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            bool HasStaleJoin(string? value) =>
+                !string.IsNullOrEmpty(value) && stale.Any(j => value.Contains(j, StringComparison.Ordinal));
+
+            var snapshot = _tracks.ToList();
+            var changed = new List<Track>();
+            var movedTracks = new List<(Guid TrackId, Guid From, Guid To)>();
+
+            // Same shape as the merge-featured un-merge pass: only Artist / AlbumArtist are
+            // taken from the re-read, so favorites, play counts, ratings and lyrics stay.
+            // Server-backed sources have no readable file; their next sync rebuilds them.
+            await Task.Run(() =>
+            {
+                var candidates = snapshot
+                    .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
+                                (HasStaleJoin(t.Artist) || HasStaleJoin(t.AlbumArtist)))
+                    .ToList();
+                if (candidates.Count == 0) return;
+
+                try
+                {
+                    Parallel.ForEach(
+                        candidates,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                            CancellationToken = token
+                        },
+                        track =>
+                        {
+                            try
+                            {
+                                var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                if (refreshed == null) return;
+                                var artistChanged = !string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal);
+                                var albumArtistChanged = !string.Equals(refreshed.AlbumArtist, track.AlbumArtist, StringComparison.Ordinal);
+                                if (!artistChanged && !albumArtistChanged) return;
+
+                                lock (changed)
+                                {
+                                    if (artistChanged)
+                                        track.Artist = refreshed.Artist;
+                                    if (albumArtistChanged)
+                                    {
+                                        var oldAlbumId = track.AlbumId;
+                                        track.AlbumArtist = refreshed.AlbumArtist;
+                                        track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);
+                                        if (track.AlbumId != oldAlbumId)
+                                            movedTracks.Add((track.Id, oldAlbumId, track.AlbumId));
+                                    }
+                                    changed.Add(track);
+                                }
+                            }
+                            catch
+                            {
+                                // Non-fatal: keep the stored credit for unreadable files.
+                            }
+                        });
+                }
+                catch (OperationCanceledException) { }
+            }, CancellationToken.None);
+
+            // The album artist is part of the album's key: carry its cached cover (and the
+            // animated ones) over, as the metadata editor does when an edit re-keys an album.
+            // Copied, not moved — tracks of the album that kept the old key still use it.
+            // Runs even when cancelled: the re-keyed tracks are no longer candidates.
+            foreach (var (trackId, from, to) in movedTracks)
+            {
+                if (to == Track.UnknownAlbumBucketId) continue;
+                CopyIfMissing(_persistence.GetArtworkPath(from), _persistence.GetArtworkPath(to));
+                foreach (var ext in new[] { ".mp4", ".webm" })
+                {
+                    CopyIfMissing(_persistence.GetAnimatedCoverPath(from, null, ext), _persistence.GetAnimatedCoverPath(to, null, ext));
+                    CopyIfMissing(_persistence.GetAnimatedCoverPath(from, trackId, ext), _persistence.GetAnimatedCoverPath(to, trackId, ext));
+                }
+            }
+
+            // Superseded by shutdown: skip persistence like the merge-featured pass; the
+            // exit flush saves the JSON, and the join stays unrecorded so the next start
+            // finishes the pass.
+            if (token.IsCancellationRequested)
+                return changed.Count;
+
+            if (changed.Count > 0)
+            {
+                await RebuildIndexesAsync();
+                await SaveAsync();
+                try { await _sqliteIndex.UpsertTracksAsync(changed); }
+                catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+
+            try
+            {
+                var fresh = await _persistence.LoadSettingsAsync();
+                fresh.ArtistCreditJoin = join;
+                await _persistence.SaveSettingsAsync(fresh);
+            }
+            catch
+            {
+                // Non-fatal: the next start repeats the (idempotent) pass.
+            }
+
+            return changed.Count;
+        }
+        finally
+        {
+            _artistJoinGate.Release();
+        }
+
+        static void CopyIfMissing(string from, string to)
+        {
+            try
+            {
+                if (File.Exists(from) && !File.Exists(to))
+                    File.Copy(from, to);
+            }
+            catch
+            {
+                // Non-fatal: the missing-artwork heal re-extracts the cover.
             }
         }
     }
