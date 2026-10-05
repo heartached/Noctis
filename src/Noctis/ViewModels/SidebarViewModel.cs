@@ -262,6 +262,7 @@ public partial class SidebarViewModel : ViewModelBase
             existing.Label = desired[i].Label;
             existing.IsExpanded = desired[i].IsExpanded;
             existing.TrackCount = desired[i].TrackCount;
+            existing.GroupPosition = desired[i].GroupPosition;
             desired[i] = existing;
         }
 
@@ -287,8 +288,8 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder
-    /// on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
+    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder and
+    /// GroupPosition on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
     /// maps folders the user dragged into place to their position (see FolderOrders).
     /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
     /// "playlist:id") the user placed among each other to their position (see
@@ -305,6 +306,7 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var item in all.Where(i => i.IsPinned))
         {
             item.IsInFolder = false;
+            item.GroupPosition = SidebarGroupPosition.None;
             rows.Add(item);
         }
 
@@ -329,6 +331,7 @@ public partial class SidebarViewModel : ViewModelBase
             if (folder == null)
             {
                 members[0].IsInFolder = false;
+                members[0].GroupPosition = SidebarGroupPosition.None;
                 rows.Add(members[0]);
                 continue;
             }
@@ -341,13 +344,19 @@ public partial class SidebarViewModel : ViewModelBase
                 IsFolder = true,
                 IsExpanded = expanded,
                 TrackCount = members.Count,
+                GroupPosition = expanded ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
             });
 
-            if (!expanded) continue;
-            foreach (var item in members)
+            if (!expanded)
             {
-                item.IsInFolder = true;
-                rows.Add(item);
+                foreach (var item in members) item.GroupPosition = SidebarGroupPosition.None;
+                continue;
+            }
+            for (var m = 0; m < members.Count; m++)
+            {
+                members[m].IsInFolder = true;
+                members[m].GroupPosition = m == members.Count - 1 ? SidebarGroupPosition.Last : SidebarGroupPosition.Member;
+                rows.Add(members[m]);
             }
         }
 
