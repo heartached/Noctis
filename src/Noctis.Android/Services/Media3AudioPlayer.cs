@@ -123,7 +123,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             .SetConnectTimeoutMs(StreamConnectTimeoutMs)
             .SetReadTimeoutMs(StreamReadTimeoutMs);
         var httpSources = new ResolvingDataSource.Factory(http, new StreamAuthResolver(this));
-        _player = new ExoPlayerBuilder(context)
+        // ExtensionRendererModeOn: the bundled FFmpeg renderer is tried only after the phone's
+        // own decoders, so it is used for ALAC (no MediaCodec on most phones) and nothing else.
+        var renderers = new DefaultRenderersFactory(context)
+            .SetExtensionRendererMode(DefaultRenderersFactory.ExtensionRendererModeOn);
+        _player = new ExoPlayerBuilder(context, renderers)
             .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources))
                 .SetLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy(StreamLoadRetries)))
             .SetAudioAttributes(attributes, true)     // true = Media3 handles audio focus (pause on loss, duck on transient)
@@ -384,12 +388,34 @@ public sealed class Media3AudioPlayer : IAudioPlayer
                 .Where(i => !i.IsEncoder && i.GetSupportedTypes().Any(t => string.Equals(t, mime, StringComparison.OrdinalIgnoreCase)))
                 .Select(i => i.Name)
                 .ToList();
-            DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}");
-            return names.Count > 0;
+            var ffmpeg = FfmpegSupports(mime);
+            DebugLog.Write("Audio", $"Decoders for {mime}: {(names.Count == 0 ? "none" : string.Join(", ", names))}; bundled FFmpeg: {(ffmpeg ? "yes" : "no")}");
+            return names.Count > 0 || ffmpeg;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Audio", $"Decoder list unavailable: {ex.GetType().Name}");
+            return FfmpegSupports(mime);
+        }
+    }
+
+    /// <summary>
+    /// Whether the bundled Media3 FFmpeg extension (Libs/media3-decoder-ffmpeg-*.aar, unbound)
+    /// loaded its native library and was built with a decoder for <paramref name="mime"/>.
+    /// Static Java call through JNI: FfmpegLibrary.supportsFormat(String).
+    /// </summary>
+    private static bool FfmpegSupports(string mime)
+    {
+        try
+        {
+            using var cls = Java.Lang.Class.ForName("androidx.media3.decoder.ffmpeg.FfmpegLibrary");
+            var method = JNIEnv.GetStaticMethodID(cls.Handle, "supportsFormat", "(Ljava/lang/String;)Z");
+            using var jmime = new Java.Lang.String(mime);
+            return JNIEnv.CallStaticBooleanMethod(cls.Handle, method, new JValue(jmime));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Audio", $"Bundled FFmpeg unavailable: {ex.GetType().Name}");
             return false;
         }
     }

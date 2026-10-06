@@ -72,6 +72,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // the reset callback exists for the desktop's disk mirror and has no analogue here.
         // Redacted on the way out: logcat is readable over adb, and account errors can carry
         // a device key or password text (LogRedactor). The crash hooks log through here too.
+        // The header's default names the entry assembly, which Android does not have ("Noctis ?").
+        DebugLog.DescribeBuild = () => DescribeVersion(context);
         DebugLog.AttachSink(line => ALog.Info(LogTag, LogRedactor.Redact(line)), static () => { });
         HookUnhandledExceptions();
 
@@ -173,7 +175,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 stateRecorder: stateRecorder)
             {
                 LibraryReady = libraryReady,
-                // No ALAC decoder (Pixels, the emulator): the desktop sends its ALAC songs as FLAC.
+                // No ALAC decoder, neither the phone's nor the bundled FFmpeg (a build without
+                // Libs/media3-decoder-ffmpeg): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
             };
         }

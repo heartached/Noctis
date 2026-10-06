@@ -1,0 +1,45 @@
+media3-decoder-ffmpeg-1.11.0.aar - third-party notice
+=====================================================
+
+This AAR contains two separately licensed components.
+
+1. Media3 FFmpeg decoder extension (Java classes + JNI wrapper ffmpeg_jni.cc)
+   License: Apache License 2.0
+   Source:  https://github.com/androidx/media  (module libraries/decoder_ffmpeg)
+   Tag:     1.11.0  (commit 2bc207851df311340767e913931ca7b28cab1794)
+
+2. FFmpeg (libavcodec, libavutil, libswresample), statically linked into
+   jni/<abi>/libffmpegJNI.so
+   License: GNU Lesser General Public License, version 2.1 or later
+            (LGPL-2.1-or-later). configure reported:
+            "License: LGPL version 2.1 or later"; config.h has
+            CONFIG_GPL 0, CONFIG_NONFREE 0, CONFIG_GPLV3 0.
+            Built WITHOUT --enable-gpl, --enable-nonfree, --enable-version3,
+            and with no external libraries.
+   Source:  https://git.ffmpeg.org/ffmpeg.git
+            branch release/6.0 (the branch the Media3 1.11.0 README recommends)
+            commit b4a62c32549b8295691a8e0ff2c9b82188923159
+            (RELEASE file: 6.0.2; libavcodec 60.3.100; FFMPEG_VERSION "b4a62c3")
+            Source archive: https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/b4a62c32549b8295691a8e0ff2c9b82188923159.tar.gz
+   Enabled decoders: alac (only)
+   Unmodified FFmpeg source; no patches applied.
+
+Toolchain: Android NDK r28c (28.2.13676358), API level 23 (Media3 minSdk),
+host linux-x86_64. JNI wrapper linked by AGP 9.0.1 / CMake 3.22.1 with the same
+NDK; 64-bit LOAD segments are 16 KB aligned (Align 0x4000).
+
+Exact configure lines ($TC = <NDK>/toolchains/llvm/prebuilt/linux-x86_64/bin):
+
+arm64-v8a:
+./configure --libdir=android-libs/arm64-v8a --arch=aarch64 --cpu=armv8-a --cross-prefix=$TC/aarch64-linux-android23- --nm=$TC/llvm-nm --ar=$TC/llvm-ar --ranlib=$TC/llvm-ranlib --strip=$TC/llvm-strip --target-os=android --enable-static --disable-shared --disable-doc --disable-programs --disable-everything --disable-avdevice --disable-avformat --disable-swscale --disable-postproc --disable-avfilter --disable-symver --enable-swresample --extra-ldexeflags=-pie --disable-v4l2-m2m --disable-vulkan --enable-decoder=alac
+
+x86_64:
+./configure --libdir=android-libs/x86_64 --arch=x86_64 --cpu=x86-64 --cross-prefix=$TC/x86_64-linux-android23- --disable-asm --nm=$TC/llvm-nm --ar=$TC/llvm-ar --ranlib=$TC/llvm-ranlib --strip=$TC/llvm-strip --target-os=android --enable-static --disable-shared --disable-doc --disable-programs --disable-everything --disable-avdevice --disable-avformat --disable-swscale --disable-postproc --disable-avfilter --disable-symver --enable-swresample --extra-ldexeflags=-pie --disable-v4l2-m2m --disable-vulkan --enable-decoder=alac
+
+Reproduce (inside WSL Ubuntu): scripts/android/build-ffmpeg-decoder.sh
+
+LGPL obligations when distributing the app: ship this notice and the LGPL-2.1
+text, state that the app uses FFmpeg under LGPL-2.1-or-later, and offer the
+FFmpeg source (the commit above) and the means to relink: libffmpegJNI.so is a
+separate shared library inside the APK that users may replace with their own
+build of the same sources via the script above.
