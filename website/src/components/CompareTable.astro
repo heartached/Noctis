@@ -111,7 +111,7 @@ const { caption, columns, groups, id } = Astro.props;
 <style>
   /* --- Frame ---------------------------------------------------------------
      The whole table sits on one raised card. --surface is re-pointed at the
-     card's own fill so the sticky head and pinned row labels paint the same
+     card's own fill so the head and pinned row labels paint the same
      colour as the card instead of the page black behind it. */
 
   .cmp__frame {
@@ -162,9 +162,6 @@ const { caption, columns, groups, id } = Astro.props;
   /* --- Head --------------------------------------------------------------- */
 
   .cmp thead th {
-    position: sticky;
-    top: var(--header-h);
-    z-index: 2;
     background: var(--surface);
     padding: var(--s-5) var(--s-3) var(--s-4);
     vertical-align: bottom;
