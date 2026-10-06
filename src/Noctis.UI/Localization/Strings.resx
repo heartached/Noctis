@@ -2084,4 +2084,11 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.Group.Library" xml:space="preserve"><value>Library</value><comment>Settings rail</comment></data>
   <data name="Settings.Group.Connect" xml:space="preserve"><value>Connect</value><comment>Settings rail</comment></data>
   <data name="Settings.Group.More" xml:space="preserve"><value>More</value><comment>Settings rail</comment></data>
+  <data name="Scrobble.DontSong" xml:space="preserve"><value>Don't Scrobble This Song</value><comment>Song menu: keep this song off Last.fm / ListenBrainz</comment></data>
+  <data name="Scrobble.DontAlbum" xml:space="preserve"><value>Don't Scrobble This Album</value><comment>Album menu: keep this album off Last.fm / ListenBrainz</comment></data>
+  <data name="Scrobble.DontArtist" xml:space="preserve"><value>Don't Scrobble This Artist</value><comment>Artist menu: keep this artist off Last.fm / ListenBrainz</comment></data>
+  <data name="Scrobble.ResumeSong" xml:space="preserve"><value>Scrobble This Song Again</value><comment>Song menu: undo Don't Scrobble</comment></data>
+  <data name="Scrobble.ResumeAlbum" xml:space="preserve"><value>Scrobble This Album Again</value><comment>Album menu: undo Don't Scrobble</comment></data>
+  <data name="Scrobble.ResumeArtist" xml:space="preserve"><value>Scrobble This Artist Again</value><comment>Artist menu: undo Don't Scrobble</comment></data>
+  <data name="Scrobble.OffByAlbumOrArtist" xml:space="preserve"><value>Not Scrobbled (Album or Artist)</value><comment>Song menu, disabled: the song's album or artist is set to not scrobble</comment></data>
 </root>

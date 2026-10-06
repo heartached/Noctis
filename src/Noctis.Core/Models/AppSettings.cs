@@ -704,6 +704,11 @@ public class AppSettings
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
     public bool ListenBrainzScrobblingEnabled { get; set; } = false;
 
+    /// <summary>Songs, albums and artists never sent to Last.fm or ListenBrainz (nor to plugins'
+    /// scrobble hook): "track:{id}", "album:{id}", "artist:{name}"; see
+    /// Helpers.ScrobbleExclusionKeys. Plays still count in Noctis itself.</summary>
+    public List<string>? ScrobbleExcludedKeys { get; set; }
+
     /// <summary>ListenBrainz user token (single-string credential pasted by the user from listenbrainz.org/profile/).</summary>
     public string ListenBrainzToken { get; set; } = "";
 

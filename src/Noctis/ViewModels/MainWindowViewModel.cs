@@ -105,7 +105,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // ── Scrobble tracking ──
-    private DateTime _trackStartedAt;
+    private readonly ScrobblePlayClock _scrobbleClock = new();
     private Track? _scrobbleTrack;
     private readonly SemaphoreSlim _dropImportLock = new(1, 1);
 
@@ -3082,7 +3082,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Record new track start for scrobble tracking
         _scrobbleTrack = track;
-        _trackStartedAt = DateTime.UtcNow;
+        _scrobbleClock.Start(DateTime.UtcNow);
 
         // Update Discord presence
         if (_discord.IsConnected)
@@ -3090,12 +3090,15 @@ public partial class MainWindowViewModel : ViewModelBase
             _ = UpdateDiscordPresenceAsync(track, TimeSpan.Zero, true);
         }
 
+        // A song, album or artist set to not scrobble doesn't show as Now Playing either.
+        var excluded = Settings.IsScrobbleExcluded(track);
+
         // Update Last.fm Now Playing
-        if (_lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled)
+        if (!excluded && _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled)
             _ = _lastFm.UpdateNowPlayingAsync(track);
 
         // Update ListenBrainz Now Playing (independent of Last.fm)
-        if (_listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled)
+        if (!excluded && _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled)
             _ = _listenBrainz.UpdateNowPlayingAsync(track);
 
         // Queue play-state sync for enabled server-backed connections.
@@ -3120,6 +3123,12 @@ public partial class MainWindowViewModel : ViewModelBase
                     _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, Player.Position, true);
                 }
             }
+
+            // Paused time is not listening time for the scrobble rule.
+            if (Player.State == PlaybackState.Paused)
+                _scrobbleClock.Pause(DateTime.UtcNow);
+            else if (Player.State == PlaybackState.Playing)
+                _scrobbleClock.Resume(DateTime.UtcNow);
 
             // If stopped, try to scrobble the track that just ended
             if (Player.State == PlaybackState.Stopped)
@@ -3200,18 +3209,21 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var elapsed = DateTime.UtcNow - _trackStartedAt;
-        var duration = _scrobbleTrack.Duration;
+        // Re-read here, not only at track start: "don't scrobble" picked mid-song still applies.
+        if (Settings.IsScrobbleExcluded(_scrobbleTrack))
+        {
+            _scrobbleTrack = null;
+            return;
+        }
 
-        // Last.fm scrobble rules: played > 50% of duration OR > 4 minutes.
-        // ListenBrainz mirrors the same threshold for consistency.
-        bool shouldScrobble = duration.TotalSeconds > 0
-            && (elapsed.TotalSeconds > duration.TotalSeconds * 0.5 || elapsed.TotalMinutes > 4);
+        // Last.fm scrobble rules (ListenBrainz mirrors them), on time actually played.
+        bool shouldScrobble = ScrobblePlayClock.ShouldScrobble(
+            _scrobbleTrack.Duration, _scrobbleClock.Played(DateTime.UtcNow));
 
         if (shouldScrobble)
         {
             var track = _scrobbleTrack;
-            var startedAt = _trackStartedAt;
+            var startedAt = _scrobbleClock.StartedAt;
             var pending = new List<Task>(2);
             if (lastFmActive)
                 pending.Add(_lastFm.ScrobbleAsync(track, startedAt));

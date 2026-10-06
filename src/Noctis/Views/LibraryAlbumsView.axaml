@@ -296,6 +296,8 @@
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
                                                 </MenuItem>
+                                                <!-- Don't Scrobble This Album: binds itself on open (ScrobbleMenu.Entry) -->
+                                                <MenuItem helpers:ScrobbleMenu.Entry="album" />
                                                 <MenuItem Header="{loc:T LibraryAlbums.ShowFolder}"
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShowInExplorerCommand}"
                                                           CommandParameter="{Binding}">

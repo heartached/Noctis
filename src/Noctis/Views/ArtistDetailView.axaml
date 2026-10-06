@@ -421,6 +421,8 @@
                         <MenuItem Header="{loc:T ArtistDetail.Metadata}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.OpenMetadataCommand}"
                                   CommandParameter="{Binding}" />
+                        <!-- Don't Scrobble This Album: binds itself on open (ScrobbleMenu.Entry) -->
+                        <MenuItem helpers:ScrobbleMenu.Entry="album" />
                         <MenuItem Header="{loc:T ArtistDetail.ShowFolder}"
                                   Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ShowInExplorerCommand}"
                                   CommandParameter="{Binding}" />
@@ -866,6 +868,8 @@
                                         <MenuItem Header="{loc:T ArtistDetail.ShufflePopular}" Command="{Binding ShufflePopularCommand}" />
                                         <MenuItem Header="{loc:T ArtistDetail.ShuffleFavorites}" Command="{Binding ShuffleFavoritesCommand}"
                                                   IsVisible="{Binding HasFavorites}" />
+                                        <!-- Don't Scrobble This Artist: binds itself on open (ScrobbleMenu.Entry) -->
+                                        <MenuItem helpers:ScrobbleMenu.Entry="artist" />
                                         <Separator />
                                         <MenuItem Header="{loc:T ArtistDetail.ChoosePictureFromFile}" Click="OnChangePictureClick" />
                                         <MenuItem Header="{loc:T ArtistDetail.FindPictureOnline}" Click="OnSearchPictureClick" />

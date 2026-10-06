@@ -66,6 +66,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
+    public MenuItem DontScrobble { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     public MenuItem OpenWith { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
@@ -217,6 +218,10 @@ public sealed class TrackContextMenuBuilder
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
 
+        // Don't Scrobble This Song (static command; header and visibility set per Bind).
+        DontScrobble = new MenuItem { IsVisible = false };
+        items.Add(DontScrobble);
+
         // Send to Folder (MusicBee's Send To → Folder): copies the selection to a drive/folder.
         SendToFolder = new MenuItem { Header = "Send to Folder…", IsVisible = false };
         SendToFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
@@ -357,6 +362,8 @@ public sealed class TrackContextMenuBuilder
         LyricsBackgroundChoose.CommandParameter = track;
         LyricsBackgroundClear.CommandParameter = track;
         LyricsBackgroundClear.IsVisible = LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForTrack(track));
+
+        ScrobbleMenu.BindTrack(DontScrobble, track);
 
         // Play
         Play.Header = "Play";

@@ -18,6 +18,7 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
+    public MenuItem DontScrobble { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;
     public MenuItem PlayNext { get; private set; } = null!;
     public MenuItem AddToQueue { get; private set; } = null!;
@@ -111,6 +112,10 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
 
+        // Don't Scrobble This Album (static command; header and visibility set per Bind).
+        DontScrobble = new MenuItem { IsVisible = false };
+        items.Add(DontScrobble);
+
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
@@ -151,6 +156,8 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundChoose.CommandParameter = album;
         LyricsBackgroundClear.CommandParameter = album;
         LyricsBackgroundClear.IsVisible = LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForAlbum(album));
+
+        ScrobbleMenu.BindAlbum(DontScrobble, album);
 
         Play.Command = playCommand;
         Play.CommandParameter = album;

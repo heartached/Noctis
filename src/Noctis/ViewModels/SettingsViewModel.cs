@@ -870,6 +870,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Per-song / per-album clips ("track:{id}" / "album:{id}" → copied file); see
     /// Helpers.LyricsBackgroundOverrides for the menus that fill it.</summary>
     private Dictionary<string, string> _lyricsBackgroundOverrides = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>"Don't scrobble" keys (Helpers.ScrobbleExclusionKeys); see AppSettings.ScrobbleExcludedKeys.</summary>
+    private HashSet<string> _scrobbleExclusions = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Freeze the lyrics background video while playback is paused.</summary>
     [ObservableProperty] private bool _lyricsBackgroundPausesWithPlayback;
 
@@ -2526,6 +2528,9 @@ public partial class SettingsViewModel : ViewModelBase
             _lyricsBackgroundOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (key, path) in _settings.LyricsBackgroundMediaOverrides ?? new Dictionary<string, string>())
                 if (!string.IsNullOrEmpty(path) && File.Exists(path)) _lyricsBackgroundOverrides[key] = path;
+            _scrobbleExclusions = new HashSet<string>(
+                (_settings.ScrobbleExcludedKeys ?? new List<string>()).Where(k => !string.IsNullOrWhiteSpace(k)),
+                StringComparer.OrdinalIgnoreCase);
             LyricsBackgroundPausesWithPlayback = _settings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = _settings.MusicVideosEnabled;
             MusicVideoRoundedCorners = _settings.MusicVideoRoundedCorners;
@@ -2990,6 +2995,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsBackgroundMediaOverrides = new Dictionary<string, string>(_lyricsBackgroundOverrides);
+        _settings.ScrobbleExcludedKeys = _scrobbleExclusions.Count > 0 ? _scrobbleExclusions.ToList() : null;
         _settings.LyricsBackgroundPausesWithPlayback = LyricsBackgroundPausesWithPlayback;
         _settings.MusicVideosEnabled = MusicVideosEnabled;
         _settings.MusicVideoRoundedCorners = MusicVideoRoundedCorners;
@@ -4424,6 +4430,22 @@ public partial class SettingsViewModel : ViewModelBase
         _ = Task.Run(() => { try { File.Delete(path); } catch { } });
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>True when Last.fm or ListenBrainz scrobbling is on; the "don't scrobble"
+    /// menu entries only show then.</summary>
+    public bool IsAnyScrobblingEnabled => LastFmScrobblingEnabled || ListenBrainzScrobblingEnabled;
+
+    public bool IsScrobbleExcluded(string key) => _scrobbleExclusions.Contains(key);
+
+    /// <summary>True when the track, its album or one of its artists is set to not scrobble.</summary>
+    public bool IsScrobbleExcluded(Track track) => ScrobbleExclusionKeys.IsExcluded(_scrobbleExclusions, track);
+
+    public void SetScrobbleExcluded(string key, bool excluded)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        var changed = excluded ? _scrobbleExclusions.Add(key) : _scrobbleExclusions.Remove(key);
+        if (changed && _settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnNowPlayingArtworkStyleChanged(string value)
