@@ -388,6 +388,38 @@ public sealed partial class ShellViewModel : ObservableObject
         return false;
     }
 
+    /// <summary>How long after a Back key the activity's BackRequested counts as that same press.</summary>
+    internal const long BackKeyEchoMs = 1000;
+
+    private long? _backKeyHandledAt;
+
+    /// <summary>
+    /// Back that arrived as an Escape KeyDown (3-button navigation, a hardware Back key). On the
+    /// S23 the same press then also raises the activity's BackRequested, Escape handled or not,
+    /// so one press closed two layers (Lyrics and Now Playing). <see cref="TryHandleSystemBack"/>
+    /// skips that echo.
+    /// </summary>
+    public bool TryHandleBackKey()
+    {
+        if (!TryHandleBack()) return false;
+        _backKeyHandledAt = TickSource();
+        return true;
+    }
+
+    /// <summary>
+    /// Back from the activity (gesture navigation, or the echo of a Back key that
+    /// <see cref="TryHandleBackKey"/> already acted on, which is consumed without acting again).
+    /// </summary>
+    public bool TryHandleSystemBack()
+    {
+        if (_backKeyHandledAt is { } at)
+        {
+            _backKeyHandledAt = null;
+            if (TickSource() - at < BackKeyEchoMs) return true;
+        }
+        return TryHandleBack();
+    }
+
     /// <summary>Tap on a song row: play the song list from that row.</summary>
     [RelayCommand]
     private void PlaySong(Track? track)

@@ -116,6 +116,51 @@ public class MobileNavigationTests : IDisposable
         Assert.False(shell.TryHandleBack());               // Library root: the system finishes the activity
     }
 
+    /// <summary>S23 2026-10-05: a 3-button-nav Back is an Escape key AND the activity's
+    /// BackRequested; one press closed Lyrics and Now Playing together.</summary>
+    [Fact]
+    public void BackKey_ThenItsSystemEcho_ClosesOnlyOneLayer()
+    {
+        var shell = MakeShell();
+        long now = 10_000;
+        shell.TickSource = () => now;
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+
+        Assert.True(shell.TryHandleBackKey());
+        Assert.True(shell.TryHandleSystemBack());          // the same press: consumed, nothing more closes
+        Assert.False(shell.IsLyricsOpen);
+        Assert.True(shell.IsNowPlayingOpen);
+
+        now += 50;
+        Assert.True(shell.TryHandleBackKey());             // the next press
+        Assert.True(shell.TryHandleSystemBack());
+        Assert.False(shell.IsNowPlayingOpen);
+    }
+
+    [Fact]
+    public void SystemBack_WithoutABackKey_OrLongAfterOne_ActsNormally()
+    {
+        var shell = MakeShell();
+        long now = 10_000;
+        shell.TickSource = () => now;
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+
+        Assert.True(shell.TryHandleSystemBack());          // gesture navigation: no key first
+        Assert.False(shell.IsLyricsOpen);
+
+        Assert.True(shell.TryHandleBackKey());             // a key with no echo (e.g. a keyboard Escape)...
+        Assert.False(shell.IsNowPlayingOpen);
+        shell.Navigate(new NavTestPage("Pushed"));
+        now += ShellViewModel.BackKeyEchoMs;
+        Assert.True(shell.TryHandleSystemBack());          // ...does not swallow a later gesture
+        Assert.Null(shell.CurrentPage);
+
+        Assert.False(shell.TryHandleBackKey());            // Library root: the key is left to the system,
+        Assert.False(shell.TryHandleSystemBack());         // and so is its echo, which finishes the activity
+    }
+
     [Fact]
     public void TryHandleBack_InLibraryEditMode_FinishesEditing_BeforeLeavingTheApp()
     {

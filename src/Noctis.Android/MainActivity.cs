@@ -57,7 +57,7 @@ public class MainActivity : AvaloniaMainActivity
     /// </summary>
     private void OnBackRequested(object? sender, AndroidBackRequestedEventArgs e)
     {
-        if (AndroidApp.Current?.TryHandleBack() == true) e.Handled = true;
+        if (AndroidApp.Current?.TryHandleSystemBack() == true) e.Handled = true;
     }
 
     /// <summary>

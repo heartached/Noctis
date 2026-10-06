@@ -280,8 +280,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     }
 
     /// <summary>Activity Back: give the shell first refusal so a full-screen overlay closes
-    /// instead of the activity finishing. See <see cref="ShellViewModel.TryHandleBack"/>.</summary>
-    public bool TryHandleBack() => _shell?.TryHandleBack() ?? false;
+    /// instead of the activity finishing. See <see cref="ShellViewModel.TryHandleSystemBack"/>.</summary>
+    public bool TryHandleSystemBack() => _shell?.TryHandleSystemBack() ?? false;
 
     /// <summary>The system font size changed (MainActivity.OnConfigurationChanged).</summary>
     public void ApplyFontScale(float scale)
