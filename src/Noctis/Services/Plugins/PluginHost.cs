@@ -112,6 +112,13 @@ public sealed partial class LoadedPlugin : ObservableObject
     public bool HasError => Error.Length > 0;
     /// <summary>Localized <see cref="Status"/>.</summary>
     public string StatusText => Status.Length == 0 ? "" : Loc.T("Plugins.Status." + Status);
+    /// <summary>Community plugins are off: the Settings row greys out instead of wearing a badge.</summary>
+    public bool IsRestricted => Status == PluginStatus.Restricted;
+    /// <summary>The status pill, only for a problem the row's switch can't show: Failed, Incompatible,
+    /// Invalid, Needs approval. On/off (Running, Active, Off) is the switch itself, and restricted
+    /// mode is the grey row.</summary>
+    public bool ShowStatusBadge => StatusText.Length > 0 && Status is not (PluginStatus.Running
+        or PluginStatus.Active or PluginStatus.Disabled or PluginStatus.Restricted);
     public bool HasAuthor => Author.Length > 0;
     public bool HasDescription => Description.Length > 0;
     public bool HasExtensions => Extensions.Length > 0;
@@ -141,10 +148,23 @@ public sealed partial class LoadedPlugin : ObservableObject
     public bool IsRunning => Instance is not null;
 
     partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
-    partial void OnStatusChanged(string value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsRestricted));
+        OnPropertyChanged(nameof(ShowStatusBadge));
+    }
     partial void OnAuthorChanged(string value) => OnPropertyChanged(nameof(HasAuthor));
     partial void OnDescriptionChanged(string value) => OnPropertyChanged(nameof(HasDescription));
-    partial void OnExtensionsChanged(string value) => OnPropertyChanged(nameof(HasExtensions));
+    partial void OnExtensionsChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasExtensions));
+        if (value.Length > 0) ShownExtensions = value;
+    }
+
+    /// <summary><see cref="Extensions"/>, except it keeps the last text when the plugin stops, so
+    /// the Settings line folds shut with its words instead of emptying first.</summary>
+    [ObservableProperty] private string _shownExtensions = "";
 
     /// <summary>Set by the host: a flip of <see cref="IsEnabled"/> from the UI starts/stops the plugin.</summary>
     internal Action<LoadedPlugin, bool>? EnabledChangedByUser;
@@ -172,6 +192,8 @@ public sealed partial class PluginSettingItem : ObservableObject
     public string Label => Definition.Label;
     public string? Description => Definition.Description;
     public bool HasDescription => !string.IsNullOrEmpty(Definition.Description);
+    /// <summary>Grey hint inside an empty text box (string settings only).</summary>
+    public string? Placeholder => Definition.Placeholder;
     public bool IsBool => Definition.Type == PluginSettingType.Bool;
     public bool IsString => Definition.Type == PluginSettingType.String;
     public bool IsNumber => Definition.Type == PluginSettingType.Number;

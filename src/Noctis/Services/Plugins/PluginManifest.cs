@@ -17,7 +17,8 @@ public sealed record PluginSettingDefinition(
     IReadOnlyList<string> Choices,
     string? Description,
     double? Min,
-    double? Max);
+    double? Max,
+    string? Placeholder = null);
 
 /// <summary>plugin.json could not be used; the message is shown in Settings → Plugins as is.</summary>
 public sealed class PluginManifestException : Exception
@@ -309,7 +310,8 @@ public sealed class PluginManifest
                     else throw new PluginManifestException($"Setting \"{key}\": default must be a string.");
                     break;
             }
-            list.Add(new PluginSettingDefinition(key, label, type, def, choices, OptionalString(s, "description")?.Trim(), min, max));
+            list.Add(new PluginSettingDefinition(key, label, type, def, choices, OptionalString(s, "description")?.Trim(), min, max,
+                type == PluginSettingType.String ? OptionalString(s, "placeholder")?.Trim() : null));
         }
         return list;
     }

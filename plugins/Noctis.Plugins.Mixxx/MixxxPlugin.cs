@@ -9,7 +9,7 @@ namespace Noctis.Plugins.Mixxx;
 public sealed class MixxxPlugin : INoctisPlugin
 {
     /// <summary>Track menu label.</summary>
-    public const string CommandLabel = "Import BPM and key from Mixxx";
+    public const string CommandLabel = "Import from Mixxx";
 
     // A down arrow into a tray, 24×24.
     private const string ImportIcon = "M11 4h2v8.17l3.59-3.58L18 10l-6 6-6-6 1.41-1.41L11 12.17zM5 18h14v2H5z";
@@ -21,7 +21,7 @@ public sealed class MixxxPlugin : INoctisPlugin
     public PluginInfo Info { get; } = new(
         Id: "dev.noctis.plugins.mixxx",
         Name: "Mixxx",
-        Version: "1.0.0",
+        Version: "1.0.1",
         Author: "Noctis",
         Description: "Imports the BPM and musical key Mixxx analysed for your tracks.");
 

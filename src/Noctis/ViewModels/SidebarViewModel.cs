@@ -915,12 +915,16 @@ public partial class SidebarViewModel : ViewModelBase
 
         // Only add tracks that aren't already in the playlist to prevent duplicates
         var existingIds = new HashSet<Guid>(playlist.TrackIds);
+        var now = DateTime.UtcNow;
         foreach (var track in tracks)
         {
             if (existingIds.Add(track.Id))
+            {
                 playlist.TrackIds.Add(track.Id);
+                playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+            }
         }
-        playlist.ModifiedAt = DateTime.UtcNow;
+        playlist.ModifiedAt = now;
 
         // Update the sidebar item's track count and artwork
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);

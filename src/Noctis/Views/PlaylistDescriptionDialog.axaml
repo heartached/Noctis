@@ -38,6 +38,26 @@
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
+        <!-- Close: the Settings sheet's round accent X (SettingsView Button.settings-close). -->
+        <Style Selector="Button.dialog-close">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.dialog-close /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Button.dialog-close:pointerover /template/ ContentPresenter, Button.dialog-close:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Button.dialog-close:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
     </Window.Styles>
 
     <!-- Fade/scale open-close animation: same pattern as the Create Playlist dialog
@@ -173,7 +193,7 @@
                      deliberately NOT repeated here — the left fact cards already carry them. -->
                 <Grid Grid.Column="1" Margin="26,20,26,0" RowDefinitions="Auto,*,Auto">
 
-                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0"
                                    Text="{Binding Name}"
                                    FontSize="34"
@@ -181,39 +201,16 @@
                                    TextWrapping="Wrap"
                                    Margin="0,0,14,0" />
 
+                        <!-- Round accent X, the Settings sheet's close (SettingsView Button.settings-close).
+                             No separate edit button: clicking the text below starts editing. -->
                         <Button Grid.Column="1"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Width="32"
-                                Height="32"
-                                Padding="0"
-                                Margin="0,0,4,0"
+                                Classes="dialog-close"
+                                ToolTip.Tip="{loc:T AlbumDescription.CloseTip}"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
-                                Cursor="Hand"
-                                ToolTip.Tip="{loc:T PlaylistDescription.EditDescriptionTip}"
-                                Command="{Binding StartDescriptionEditCommand}"
-                                IsVisible="{Binding !IsDescriptionEditing}">
-                            <PathIcon Data="{StaticResource EditIcon}"
-                                      Width="16" Height="16"
-                                      Opacity="0.75"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center" />
-                        </Button>
-
-                        <Button Grid.Column="2"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Width="32"
-                                Height="32"
-                                Padding="0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Cursor="Hand"
                                 Click="OnCloseClick">
                             <PathIcon Data="{StaticResource DismissIcon}"
-                                      Width="16" Height="16"
-                                      Opacity="0.75"
+                                      Width="12" Height="12"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center" />
                         </Button>
@@ -224,14 +221,30 @@
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <Grid>
-                            <TextBlock Text="{Binding PlaylistDescription}"
-                                       FontSize="15"
-                                       LineHeight="26"
-                                       Opacity="0.9"
-                                       Margin="0,0,14,0"
-                                       TextWrapping="Wrap"
-                                       IsVisible="{Binding !IsDescriptionEditing}" />
-                            <TextBox Text="{Binding DescriptionEditorText}"
+                            <!-- Click the text (or the empty-state line) to edit it in place. -->
+                            <Border Background="Transparent"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="{loc:T PlaylistDescription.EditDescriptionTip}"
+                                    PointerPressed="OnDescriptionPointerPressed"
+                                    IsVisible="{Binding !IsDescriptionEditing}">
+                                <Panel>
+                                    <TextBlock Text="{Binding PlaylistDescription}"
+                                               FontSize="15"
+                                               LineHeight="26"
+                                               Opacity="0.9"
+                                               Margin="0,0,14,0"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding HasDescription}" />
+                                    <TextBlock Text="{loc:T AlbumDescription.EmptyClickToAdd}"
+                                               FontSize="15"
+                                               LineHeight="26"
+                                               Opacity="0.5"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding !HasDescription}" />
+                                </Panel>
+                            </Border>
+                            <TextBox x:Name="DescriptionEditor"
+                                     Text="{Binding DescriptionEditorText}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalContentAlignment="Top"

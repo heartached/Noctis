@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 using Noctis.Views;
@@ -105,11 +106,13 @@ public class PlaylistBannerLayoutProbeTests
             var pt = p.TranslatePoint(new Point(0, 0), win)!.Value;
             _o.WriteLine($"glass pill top={pt.Y:0.##} height={p.Bounds.Height:0.##} width={p.Bounds.Width:0.##}");
         }
-        Assert.Equal(3, pills.Count);
+        Assert.Equal(2, pills.Count); // Sort + options (10-05: the star is a bare glyph now, like the artist page's)
         Assert.Single(pills.Select(p => Math.Round(p.Bounds.Height, 1)).Distinct());
         Assert.Single(pills.Select(p => Math.Round(p.TranslatePoint(new Point(0, 0), win)!.Value.Y, 1)).Distinct());
-        Assert.Equal(2, stars.Count);
-        Assert.Equal(1, stars.Count(s => s.IsVisible));
+        var starButton = Assert.Single(stars);
+        Assert.True(starButton.IsVisible);
+        Assert.Contains("header-icon-btn", starButton.Classes);
+        var starIcon = starButton.GetVisualDescendants().OfType<Noctis.Controls.HeartIcon>().Single();
 
         // Body: list column then the 292px rail on the right, holding Featured Artists + Suggested.
         var list = view.FindControl<ListBox>("TrackList")!;
@@ -125,8 +128,10 @@ public class PlaylistBannerLayoutProbeTests
         Assert.True(lp.X + list.Bounds.Width <= rp.X + 0.5, "list ends before the rail");
         Assert.Equal(2, itemsInRail); // Featured Artists + Suggested
 
-        // Star toggles the sidebar pin and swaps which pill shows.
-        var visibleStar = stars.First(s => s.IsVisible);
+        // Star toggles the sidebar pin; the one glyph fills (HeartIcon) and its tooltip flips.
+        var visibleStar = starButton;
+        Assert.False(starIcon.IsFavorite);
+        Assert.Equal(Loc.T("LibraryPlaylists.StarSidebar"), ToolTip.GetTip(starButton));
         var star = visibleStar.TranslatePoint(new Point(visibleStar.Bounds.Width / 2, visibleStar.Bounds.Height / 2), win)!.Value;
         Assert.False(vm.IsPinned);
         win.MouseMove(star); Pump(2);
@@ -135,8 +140,8 @@ public class PlaylistBannerLayoutProbeTests
         _o.WriteLine($"after star click: IsPinned={vm.IsPinned} playlist.IsPinned={playlist.IsPinned} visible={string.Join(",", stars.Select(s => s.IsVisible))}");
         Assert.True(playlist.IsPinned);
         Assert.True(vm.IsPinned);
-        Assert.False(visibleStar.IsVisible);
-        Assert.True(stars.First(s => !ReferenceEquals(s, visibleStar)).IsVisible);
+        Assert.True(starIcon.IsFavorite);
+        Assert.Equal(Loc.T("LibraryPlaylists.UnstarFromSidebar"), ToolTip.GetTip(starButton));
         win.Close();
     }
 }

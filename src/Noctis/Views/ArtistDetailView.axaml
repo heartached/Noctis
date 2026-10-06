@@ -41,8 +41,22 @@
         <Style Selector="Button.section-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
-        <Style Selector="Button.section-toggle PathIcon.section-chevron">
-            <Setter Property="Opacity" Value="0.4"/>
+        <!-- Section headers fold, they don't zoom: no app-wide hover / press scale (10-05). -->
+        <Style Selector="Button.section-toggle:pointerover, Button.section-toggle:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <!-- The chevron sits in the sidebar folder's grey rounded box (28px, radius 8, #22808080),
+             so every foldable section header reads like a playlist folder (user ask 10-05). -->
+        <Style Selector="Border.section-chevron-box">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="#22808080"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.section-toggle Path.section-chevron">
+            <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="Opacity" Value="0.8"/>
             <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
             <Setter Property="Transitions">
                 <Transitions>
@@ -55,11 +69,11 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.section-toggle.expanded PathIcon.section-chevron">
+        <Style Selector="Button.section-toggle.expanded Path.section-chevron">
             <Setter Property="RenderTransform" Value="rotate(0deg)"/>
         </Style>
-        <Style Selector="Button.section-toggle:pointerover PathIcon.section-chevron">
-            <Setter Property="Opacity" Value="0.85"/>
+        <Style Selector="Button.section-toggle:pointerover Path.section-chevron">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="TextBlock.fact-label">
             <Setter Property="FontSize" Value="10"/>
@@ -89,7 +103,18 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Opacity" Value="0.7" />
         </Style>
-        <!-- Text links ("See all", "Read more"). -->
+        <!-- "See all": a small accent pill like Play / Shuffle (user ask 10-05), with their hover zoom. -->
+        <Style Selector="Button.see-all-pill">
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <!-- Text links ("Read more", Shuffle). -->
         <Style Selector="Button.text-link">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -279,6 +304,11 @@
         </Style>
         <Style Selector="Button.grey-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
+        </Style>
+        <!-- Sort pills: keep the hover zoom but drop the press shrink (user ask 10-05); pressed holds
+             the hover size, so the click that opens the flyout does not pulse the pill. -->
+        <Style Selector="Button.sort-pill:pressed">
+            <Setter Property="RenderTransform" Value="scale(1.045)" />
         </Style>
         <!-- No hover zoom on covers and portraits: opt out of the global button scale. -->
         <Style Selector="Button.latest-cover:pointerover, Button.similar-tile:pointerover">
@@ -594,7 +624,7 @@
                             Cursor="Hand"
                             Click="OnRowMenuClick"
                             ToolTip.Tip="{loc:T ArtistDetail.OptionsTip}">
-                        <PathIcon Data="{StaticResource MoreDotsIcon}" Width="14" Height="14" Opacity="0.6" />
+                        <PathIcon Classes="row-dots-icon" Data="{StaticResource MoreDotsIcon}" Width="14" Height="14" />
                     </Button>
                 </Grid>
             </Button>
@@ -906,7 +936,7 @@
                     <StackPanel Grid.Column="0" Spacing="6">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
                             <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Popular}" Classes="section-title" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
+                            <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
                                     Command="{Binding SelectTabCommand}" CommandParameter="songs" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding PopularSongs}" ItemTemplate="{StaticResource SongPill}">
@@ -1077,7 +1107,7 @@
                                 IsVisible="{Binding HasOverviewAlbums}">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,2">
                             <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.Albums}" Classes="section-title" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
+                            <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
                                     Command="{Binding SelectTabCommand}" CommandParameter="albums" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding OverviewAlbums}" ItemTemplate="{StaticResource AlbumTile}">
@@ -1092,7 +1122,7 @@
                                 IsVisible="{Binding HasOverviewSingles}">
                         <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,2">
                             <TextBlock Grid.Column="0" Text="{loc:T ArtistDetail.SinglesEPs}" Classes="section-title" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
+                            <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
                                     Command="{Binding SelectTabCommand}" CommandParameter="singles" VerticalAlignment="Center" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding OverviewSingles}" ItemTemplate="{StaticResource AlbumTile}">
@@ -1118,11 +1148,15 @@
                                 ToolTip.Tip="{loc:T ArtistDetail.HideShowSectionTip}" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" Classes="section-title" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                         </Button>
-                        <Button Grid.Column="1" Classes="text-link" Content="{loc:T ArtistDetail.SeeAll}"
+                        <Button Grid.Column="1" Classes="accent-btn album-header-action see-all-pill" Content="{loc:T ArtistDetail.SeeAll}"
                                 Command="{Binding SelectTabCommand}" CommandParameter="similar" VerticalAlignment="Center" />
                     </Grid>
                     <ctrl:CollapsibleContent x:Name="SimilarSectionBody" IsOpen="{Binding IsOverviewSimilarExpanded}" Lift="10" Motion="Glide">
@@ -1156,7 +1190,7 @@
                     <TextBlock Text="{Binding AlbumCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
                     <!-- Sort (GitHub #100): one order shared with Singles & EPs and every artist;
                          a grey chip pill (no outline), the playlist Sort pill's size and flyout. -->
-                    <Button Classes="grey-pill"
+                    <Button Classes="grey-pill sort-pill"
                             Height="34"
                             Padding="12,0"
                             VerticalContentAlignment="Center"
@@ -1196,7 +1230,7 @@
                     <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" Classes="section-title" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding SingleCount}" FontSize="14" Opacity="0.45" VerticalAlignment="Center" Margin="0,3,0,0" />
                     <!-- Sort (GitHub #100): the same shared order as the Albums tab. -->
-                    <Button Classes="grey-pill"
+                    <Button Classes="grey-pill sort-pill"
                             Height="34"
                             Padding="12,0"
                             VerticalContentAlignment="Center"

@@ -213,16 +213,7 @@ public partial class SettingsViewModel : ViewModelBase
         _syncingCommunityPlugins = true;
         try { CommunityPluginsEnabled = Plugins?.CommunityPluginsEnabled ?? false; }
         finally { _syncingCommunityPlugins = false; }
-        OnPropertyChanged(nameof(ShowPluginsOffNotice));
     }
-
-    /// <summary>"Plugins are off" above the installed list: only while community plugins are off
-    /// and something they would run (a code plugin) is installed. Content packs work either way.</summary>
-    public bool ShowPluginsOffNotice => Plugins is { CommunityPluginsEnabled: false } host && host.Plugins.Any(p => p.IsCodePlugin);
-
-    /// <summary>The notice's Turn on button: the same as flipping the switch, confirmation included.</summary>
-    [RelayCommand]
-    private void TurnOnCommunityPlugins() => CommunityPluginsEnabled = true;
 
     /// <summary>The first-enable approval: what the plugin declares, and what that does and does not mean.</summary>
     internal async Task<bool> ConfirmEnablePluginAsync(LoadedPlugin plugin)
@@ -1037,6 +1028,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _foldersSortMode = "default";
     [ObservableProperty] private string _artistReleaseSortMode = "newest";
     [ObservableProperty] private bool _artistSimilarExpanded = true;
+    [ObservableProperty] private bool _albumOtherVersionsExpanded = true;
+    [ObservableProperty] private bool _albumMoreByExpanded = true;
 
     partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1050,6 +1043,8 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistReleaseSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistSimilarExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumOtherVersionsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumMoreByExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Home section collapse state ──
     //
@@ -1312,8 +1307,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Local-network web remote (phone control page). Off by default.</summary>
     [ObservableProperty] private bool _webRemoteEnabled;
 
-    /// <summary>Display URL for the running remote, or empty when off.</summary>
-    [ObservableProperty] private string _webRemoteUrl = string.Empty;
+    /// <summary>Display URL for the running remote. Kept (not cleared) after the remote is
+    /// turned off, so the card folds shut with its contents instead of emptying first;
+    /// <see cref="IsWebRemoteCardOpen"/> is what hides it.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWebRemoteCardOpen))]
+    private string _webRemoteUrl = string.Empty;
+
+    /// <summary>Drives the card's fold: on, and either running or showing why it failed.</summary>
+    public bool IsWebRemoteCardOpen => WebRemoteEnabled && WebRemoteUrl.Length > 0;
 
     /// <summary>QR code for <see cref="WebRemoteUrl"/>, or null when the remote is off
     /// or failed to start. Saves typing the address on the phone (Discord request).</summary>
@@ -1391,6 +1392,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_settingsLoaded) _ = SaveAsync();
         UpdateWebRemoteState();
+        OnPropertyChanged(nameof(IsWebRemoteCardOpen));
     }
 
     private void UpdateWebRemoteState()
@@ -1438,13 +1440,12 @@ public partial class SettingsViewModel : ViewModelBase
         }
         else
         {
+            // URL, display URL and QR stay as they were: the card is folding shut around
+            // them (IsWebRemoteCardOpen), and clearing them here emptied it before the
+            // fold could play. The next start overwrites all three.
             _webRemote?.Stop();
-            WebRemoteUrl = string.Empty;
-            WebRemoteDisplayUrl = string.Empty;
-            WebRemoteStartFailed = false;
             _webRemotePhoneSeenGeneration++; // cancel any pending quiet-window reset
             WebRemotePhoneSeen = false;
-            SetWebRemoteQr(null);
         }
     }
 
@@ -1473,7 +1474,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _localApiError = string.Empty;
 
     public bool LocalApiRunning => LocalApiBoundPort > 0;
-    public string LocalApiBaseUrl => LocalApiBoundPort > 0 ? $"http://127.0.0.1:{LocalApiBoundPort}/api/v1" : string.Empty;
+
+    /// <summary>Last port bound this session. The address keeps reading it after Stop, so the
+    /// card folds shut with its contents instead of the address line blanking first.</summary>
+    private int _localApiShownPort;
+    public string LocalApiBaseUrl => _localApiShownPort > 0 ? $"http://127.0.0.1:{_localApiShownPort}/api/v1" : string.Empty;
     /// <summary>Always-masked preview on the button row; Show glides the full token open
     /// below it, so the row (and its buttons) never re-flows.</summary>
     public string LocalApiTokenDisplay => LocalApiToken.Length < 8
@@ -1483,6 +1488,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnLocalApiBoundPortChanged(int value)
     {
+        if (value > 0) _localApiShownPort = value;
         OnPropertyChanged(nameof(LocalApiRunning));
         OnPropertyChanged(nameof(LocalApiBaseUrl));
     }
@@ -1515,6 +1521,7 @@ public partial class SettingsViewModel : ViewModelBase
                     catch (SocketException) { _localApi.Start(0, token); } // port taken: any free one, recorded in the file
                 }
                 LocalApiTokens.WriteState(token, _localApi.Port, running: true);
+                if (!LocalApiRunning) LocalApiTokenRevealed = false; // opens masked, every time
                 LocalApiToken = token;
                 LocalApiBoundPort = _localApi.Port;
                 LocalApiError = string.Empty;
@@ -1539,7 +1546,6 @@ public partial class SettingsViewModel : ViewModelBase
         var wasRunning = _localApi?.IsRunning == true;
         _localApi?.Stop();
         LocalApiBoundPort = 0;
-        LocalApiTokenRevealed = false;
         if (wasRunning && LocalApiToken.Length > 0)
         {
             try { LocalApiTokens.WriteState(LocalApiToken, port: null, running: false); }
@@ -2564,6 +2570,8 @@ public partial class SettingsViewModel : ViewModelBase
             FoldersSortMode = _settings.FoldersSortMode;
             ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
             ArtistSimilarExpanded = _settings.ArtistSimilarExpanded;
+            AlbumOtherVersionsExpanded = _settings.AlbumOtherVersionsExpanded;
+            AlbumMoreByExpanded = _settings.AlbumMoreByExpanded;
             HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
             HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
             HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
@@ -3023,6 +3031,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.FoldersSortMode = FoldersSortMode;
         _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
         _settings.ArtistSimilarExpanded = ArtistSimilarExpanded;
+        _settings.AlbumOtherVersionsExpanded = AlbumOtherVersionsExpanded;
+        _settings.AlbumMoreByExpanded = AlbumMoreByExpanded;
         _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
         _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
         _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;
@@ -4652,6 +4662,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        RefreshOfficialPluginStates();
         OnPropertyChanged(nameof(PluginsFolderTip));
     }
 

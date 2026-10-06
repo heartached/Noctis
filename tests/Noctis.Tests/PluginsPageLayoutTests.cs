@@ -15,9 +15,9 @@ using Xunit;
 namespace Noctis.Tests;
 
 /// <summary>
-/// Settings → Plugins layout: Get plugins, then Installed (Install from file plus folder and
-/// reload icon buttons, the folder path in a tooltip), then the Community plugins switch with
-/// one line. The "Plugins are off" notice shows only when it blocks an installed code plugin.
+/// Settings → Plugins layout: the Community plugins switch first, then Official Plugins, then
+/// Custom Category (Install from file plus folder and reload icon buttons, the folder path in a
+/// tooltip) holding what the user added. With the switch off, a code plugin's row greys out.
 /// </summary>
 public class PluginsPageLayoutTests : IDisposable
 {
@@ -59,44 +59,34 @@ public class PluginsPageLayoutTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void OffNotice_OnlyWhenCommunityPluginsAreOff_AndACodePluginIsInstalled()
-    {
-        var (vm, host, _, persistence) = Mount();
-        using var _p = persistence;
-        host.LoadAll(); // fresh: restricted, nothing installed
-        Assert.False(host.CommunityPluginsEnabled);
-        Assert.False(vm.ShowPluginsOffNotice);
-
-        AddContentPack(host); // data only: works with the switch off
-        Assert.False(vm.ShowPluginsOffNotice);
-
-        var changed = new List<string?>();
-        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-        AddCodePlugin(host);
-        Assert.True(vm.ShowPluginsOffNotice);
-        Assert.Contains(nameof(SettingsViewModel.ShowPluginsOffNotice), changed);
-
-        host.SetCommunityPluginsEnabled(true);
-        Assert.False(vm.ShowPluginsOffNotice);
-    }
-
-    [AvaloniaFact]
-    public void TurnOn_GoesThroughTheSwitchsConfirmation()
+    public void SwitchOff_GreysOutCodePlugins_WithoutARestrictedBadge_AndTurningItOnAsksFirst()
     {
         var (vm, host, dialogs, persistence) = Mount(confirm: true);
         using var _p = persistence;
+        AddContentPack(host); // data only: works with the switch off
         AddCodePlugin(host);
-        Assert.True(vm.ShowPluginsOffNotice);
+        Assert.False(host.CommunityPluginsEnabled);
 
-        vm.TurnOnCommunityPluginsCommand.Execute(null);
+        var code = host.FindById("dev.test.code")!;
+        Assert.True(code.IsRestricted);       // the row greys out (StackPanel.plugin-body.restricted)
+        Assert.False(code.ShowStatusBadge);   // instead of a "Restricted" pill
+        Assert.False(code.CanToggle);
+        Assert.False(host.Plugins.Single(p => p.IsContentPack).IsRestricted);
+
+        vm.CommunityPluginsEnabled = true;
 
         Assert.Equal(Loc.T("Plugins.TurnOnTitle"), Assert.Single(dialogs).Title);
         Assert.True(host.CommunityPluginsEnabled);
-        Assert.False(vm.ShowPluginsOffNotice);
+        code = host.FindById("dev.test.code")!; // the switch reloads every plugin (LoadAll)
+        Assert.False(code.IsRestricted);
+        Assert.False(code.ShowStatusBadge); // on/off is the switch, not a pill
+
+        code.Status = PluginStatus.Failed;  // a problem still gets one
+        Assert.True(code.ShowStatusBadge);
     }
 
     [AvaloniaFact]
-    public void Page_IsGetPlugins_ThenInstalled_ThenTheSwitch_WithEveryCommandWired()
+    public void Page_IsTheSwitch_ThenOfficial_ThenCustom_WithEveryCommandWired()
     {
         var (vm, host, _, persistence) = Mount();
         using var _p = persistence;
@@ -114,8 +104,11 @@ public class PluginsPageLayoutTests : IDisposable
             int IndexOf(string name) => panel.Children.IndexOf(view.FindControl<Control>(name)!);
             var official = panel.Children.IndexOf(view.FindControl<ItemsControl>("OfficialPluginsList")!.Parent as Control ?? throw new InvalidOperationException());
             Assert.True(official >= 0);
-            Assert.True(official < IndexOf("InstalledPluginsCard"));
-            Assert.True(IndexOf("InstalledPluginsCard") < IndexOf("CommunityPluginsCard"));
+            Assert.True(IndexOf("CommunityPluginsCard") < official);
+            Assert.True(official < IndexOf("CustomPluginsCard"));
+
+            // The hand-installed test plugin is not on the official list: it is a Custom row.
+            Assert.Equal("dev.test.code", Assert.Single(vm.CustomPlugins).Id);
 
             // The official list shows the built-in copy at once (no client = no fetch in tests).
             Assert.NotEmpty(vm.OfficialPlugins);
@@ -131,8 +124,6 @@ public class PluginsPageLayoutTests : IDisposable
             Assert.StartsWith(Loc.T("Plugins.OpenFolder"), tip);
             Assert.EndsWith(host.PluginsDirectory, tip);
 
-            Assert.True(view.FindControl<Border>("PluginsOffNotice")!.IsVisible);
-            Assert.Same(vm.TurnOnCommunityPluginsCommand, view.FindControl<Button>("TurnOnCommunityPluginsButton")!.Command);
             Assert.NotNull(view.FindControl<LottieToggle>("CommunityPluginsToggle"));
 
             // The path is no longer a line of its own on the page.

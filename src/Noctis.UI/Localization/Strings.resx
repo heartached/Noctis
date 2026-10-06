@@ -591,6 +591,9 @@
   <data name="AlbumDescription.LABEL" xml:space="preserve"><value>LABEL</value><comment>Text in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.EditDescriptionTip" xml:space="preserve"><value>Edit description</value><comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment></data>
+  <data name="AlbumDescription.CloseTip" xml:space="preserve"><value>Close</value><comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment></data>
+  <data name="AlbumDescription.EmptyClickToAdd" xml:space="preserve"><value>No description yet. Click here to add one.</value><comment>Text in AlbumDescriptionDialog.axaml</comment></data>
+  <data name="AlbumDetail.AddDescription" xml:space="preserve"><value>Add a description</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDescription.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.Save" xml:space="preserve"><value>Save</value><comment>Content in AlbumDescriptionDialog.axaml</comment></data>
 
@@ -1639,8 +1642,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.None" xml:space="preserve"><value>No plugins installed yet.</value></data>
   <data name="Plugins.CommunityTitle" xml:space="preserve"><value>Community plugins</value></data>
   <data name="Plugins.CommunityLine" xml:space="preserve"><value>Lets installed plugins run. They can do anything Noctis can, so only use ones you trust.</value></data>
-  <data name="Plugins.InstalledTitle" xml:space="preserve"><value>Installed</value></data>
-  <data name="Plugins.RestrictedNotice" xml:space="preserve"><value>Plugins are off. Turn on Community plugins to use them.</value></data>
+  <data name="Plugins.CustomTitle" xml:space="preserve"><value>Custom Category</value></data>
+  <data name="Plugins.CustomNone" xml:space="preserve"><value>Plugins you add from a file show up here.</value></data>
   <data name="Plugins.InstallFromFile" xml:space="preserve"><value>Install from file</value></data>
   <data name="Plugins.InstallPickerTitle" xml:space="preserve"><value>Install a Noctis plugin (.zip)</value></data>
   <data name="Plugins.OpenPluginFolder" xml:space="preserve"><value>Open folder</value></data>
@@ -1707,8 +1710,9 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Updated" xml:space="preserve"><value>Updated {0} to {1}.</value></data>
   <data name="Plugins.AlreadyInstalled" xml:space="preserve"><value>{0} {1} is already installed; this file has version {2}, which is not newer.</value></data>
   <data name="Plugins.InstallFailed" xml:space="preserve"><value>Could not install: {0}</value></data>
-  <data name="Plugins.Get.Title" xml:space="preserve"><value>Get plugins</value></data>
+  <data name="Plugins.Get.Title" xml:space="preserve"><value>Official Plugins</value></data>
   <data name="Plugins.Get.Refresh" xml:space="preserve"><value>Refresh list</value></data>
+  <data name="Plugins.Get.Refreshed" xml:space="preserve"><value>Official list is up to date.</value></data>
   <data name="Plugins.Get.Empty" xml:space="preserve"><value>No plugins to show right now.</value></data>
   <data name="Plugins.Get.Official" xml:space="preserve"><value>Official</value></data>
   <data name="Plugins.Get.Install" xml:space="preserve"><value>Install</value></data>

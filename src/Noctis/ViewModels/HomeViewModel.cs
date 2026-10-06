@@ -896,6 +896,16 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         else PlayTopSong(row.Track);
     }
 
+    /// <summary>The Play / Pause over a chart row's art (as on the artist page's Top Songs):
+    /// pauses or resumes the track that is already on, otherwise plays the row from its list.</summary>
+    [RelayCommand]
+    private void TogglePlayChartRow(TopSongRow? row)
+    {
+        if (row?.Track is not { } track) return;
+        if (track.IsNowPlaying) { _player.PlayPauseCommand.Execute(null); return; }
+        PlayChartRow(row);
+    }
+
     [RelayCommand]
     private void PlayLastPlayed(Track track) => PlayFromRow(LastPlayed, track);
 

@@ -65,6 +65,21 @@ public partial class PlaylistDescriptionDialog : Window
         catch { Close(); }
     }
 
+    /// <summary>Clicking the description (or the empty-state line) edits it in place: the
+    /// editor opens with the caret at the end, ready to type.</summary>
+    private void OnDescriptionPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is not PlaylistViewModel vm) return;
+        e.Handled = true;
+        vm.StartDescriptionEditCommand.Execute(null);
+        Dispatcher.UIThread.Post(() =>
+        {
+            DescriptionEditor.Focus();
+            DescriptionEditor.CaretIndex = DescriptionEditor.Text?.Length ?? 0;
+        }, DispatcherPriority.Loaded);
+    }
+
     private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         e.Handled = true;

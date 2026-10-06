@@ -40,6 +40,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
+
+    /// <summary>This load's copy of <see cref="Playlist.TrackAddedAt"/>: the rows' "Added" date and
+    /// NEW badge read it (PlaylistAddedConverter), falling back to the track's library date.</summary>
+    [ObservableProperty] private IReadOnlyDictionary<Guid, DateTime> _trackAddedAt = new Dictionary<Guid, DateTime>();
     [ObservableProperty] private bool _isSmartPlaylist;
     [ObservableProperty] private string? _playlistArtworkPath;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
@@ -151,7 +155,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         await _sidebar.TogglePinAsync(_playlist.Id);
         OnPropertyChanged(nameof(IsPinned));
+        OnPropertyChanged(nameof(StarTip));
     }
+
+    /// <summary>The hero star's tooltip: one button now (the artist page's zooming star), so its
+    /// text follows the state instead of two buttons swapping.</summary>
+    public string StarTip => Noctis.Localization.Loc.T(IsPinned ? "LibraryPlaylists.UnstarFromSidebar" : "LibraryPlaylists.StarSidebar");
 
     public string PlaylistColor => _playlist.Color;
 
@@ -268,7 +277,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
 
     /// <summary>Pure view-only sort for the displayed list. Manual preserves the playlist order.</summary>
-    public static IReadOnlyList<Track> SortTracks(IReadOnlyList<Track> tracks, PlaylistSortMode mode)
+    public static IReadOnlyList<Track> SortTracks(IReadOnlyList<Track> tracks, PlaylistSortMode mode,
+        IReadOnlyDictionary<Guid, DateTime>? addedAt = null)
     {
         if (tracks == null) return Array.Empty<Track>();
         return mode switch
@@ -279,7 +289,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             PlaylistSortMode.Album => tracks.OrderBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
                                             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             PlaylistSortMode.Duration => tracks.OrderBy(t => t.Duration).ToList(),
-            PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t => t.DateAdded).ToList(),
+            // When it joined this playlist (Playlist.TrackAddedAt), else its library date.
+            PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t =>
+                addedAt != null && addedAt.TryGetValue(t.Id, out var added) ? added : t.DateAdded).ToList(),
             PlaylistSortMode.Badge => tracks
                 .OrderBy(t => !t.HasBadge)
                 .ThenBy(t => t.Badge ?? string.Empty, StringComparer.OrdinalIgnoreCase)
@@ -347,6 +359,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             var playlist = _playlist;
             var isSmart = playlist.IsSmartPlaylist;
             var trackIds = isSmart ? null : playlist.TrackIds.ToList();
+            var addedAt = new Dictionary<Guid, DateTime>(playlist.TrackAddedAt);
             var filter = _currentFilter;
             var sortMode = SortMode;
             var library = _library;
@@ -365,11 +378,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                     ? all
                     : all.Where(Noctis.Helpers.SearchQuery.Parse(filter).Matches).ToList();
 
-                return (all, SortTracks(filtered, sortMode));
+                return (all, SortTracks(filtered, sortMode, addedAt));
             });
 
             if (generation != _loadGeneration) return;
 
+            TrackAddedAt = addedAt; // before the rows, so their Added / NEW read this load's dates
             Tracks.ReplaceAll(sorted);
 
             TrackCount = Tracks.Count;
@@ -676,6 +690,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             if (displayIdx >= 0)
                 Tracks.RemoveAt(displayIdx);
             _playlist.TrackIds.Remove(t.Id);
+            if (!_playlist.TrackIds.Contains(t.Id)) _playlist.TrackAddedAt.Remove(t.Id);
         }
         _playlist.ModifiedAt = DateTime.UtcNow;
         TrackCount = Tracks.Count;

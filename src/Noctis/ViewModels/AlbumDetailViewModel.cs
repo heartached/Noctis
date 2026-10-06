@@ -107,6 +107,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
+
+    /// <summary>What the description popup reads: the full text, else the short one (the
+    /// popup used to bind the full text only and showed nothing when just the short existed).</summary>
+    public string AlbumDescriptionDialogText =>
+        !string.IsNullOrWhiteSpace(AlbumDescriptionFull) ? AlbumDescriptionFull : AlbumDescription;
+    public bool HasAlbumDescriptionDialogText => !string.IsNullOrWhiteSpace(AlbumDescriptionDialogText);
     public bool HasAlbumDescriptionOverflow =>
         !string.IsNullOrWhiteSpace(AlbumDescription) &&
         (
@@ -136,6 +142,39 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     public bool HasOtherVersions => OtherVersions.Count > 0;
     public bool HasMoreByArtist => MoreByArtist.Count > 0;
+
+    /// <summary>"Other Versions" / "More By" fold state, shared by every album (Settings keeps it).</summary>
+    public bool IsOtherVersionsExpanded
+    {
+        get => _settings?.AlbumOtherVersionsExpanded ?? _otherVersionsExpanded;
+        set
+        {
+            if (value == IsOtherVersionsExpanded) return;
+            if (_settings != null) _settings.AlbumOtherVersionsExpanded = value;
+            else _otherVersionsExpanded = value;
+            OnPropertyChanged();
+        }
+    }
+    private bool _otherVersionsExpanded = true;
+
+    public bool IsMoreByExpanded
+    {
+        get => _settings?.AlbumMoreByExpanded ?? _moreByExpanded;
+        set
+        {
+            if (value == IsMoreByExpanded) return;
+            if (_settings != null) _settings.AlbumMoreByExpanded = value;
+            else _moreByExpanded = value;
+            OnPropertyChanged();
+        }
+    }
+    private bool _moreByExpanded = true;
+
+    [RelayCommand]
+    private void ToggleOtherVersionsSection() => IsOtherVersionsExpanded = !IsOtherVersionsExpanded;
+
+    [RelayCommand]
+    private void ToggleMoreBySection() => IsMoreByExpanded = !IsMoreByExpanded;
     public string MoreByArtistTitle => $"More By {Album?.Artist}";
 
     /// <summary>Tracks grouped by disc number for multi-disc display.</summary>
@@ -297,7 +336,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     partial void OnAlbumDescriptionChanged(string value)
     {
+        OnPropertyChanged(nameof(AlbumDescriptionDialogText));
+        OnPropertyChanged(nameof(HasAlbumDescriptionDialogText));
         OnPropertyChanged(nameof(HasAlbumDescription));
+        OnPropertyChanged(nameof(ShowAddAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
     }
@@ -305,6 +347,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     partial void OnAlbumDescriptionFullChanged(string value)
     {
         // Keep visibility binding stable even if only one payload variant is available.
+        OnPropertyChanged(nameof(AlbumDescriptionDialogText));
+        OnPropertyChanged(nameof(HasAlbumDescriptionDialogText));
         OnPropertyChanged(nameof(HasAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
@@ -343,7 +387,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         {
             // Fail silently by design.
         }
+        finally
+        {
+            IsAlbumDescriptionLoaded = true;
+        }
     }
+
+    /// <summary>The description lookup finished (found or not). "Add a description" waits for it,
+    /// so it never flashes on an album whose text is still on its way.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowAddAlbumDescription))]
+    private bool _isAlbumDescriptionLoaded;
+
+    public bool ShowAddAlbumDescription => IsAlbumDescriptionLoaded && !HasAlbumDescription;
 
     /// <summary>Resolves this album's animated cover from its first track (sidecar or managed cache).</summary>
     private string? ResolveAlbumAnimatedCover()

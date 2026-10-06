@@ -152,7 +152,7 @@ are case-insensitive.
 
 ```json
 "settings": [
-  { "key": "greeting",  "label": "Greeting",         "type": "string", "default": "Hi" },
+  { "key": "greeting",  "label": "Greeting",         "type": "string", "default": "Hi", "placeholder": "Say hi" },
   { "key": "loud",      "label": "Shout",            "type": "bool",   "default": false },
   { "key": "limit",     "label": "Results",          "type": "number", "default": 25, "min": 1, "max": 200 },
   { "key": "mode",      "label": "Mode",             "type": "choice", "choices": ["soft", "hard"], "default": "soft",
@@ -162,6 +162,7 @@ are case-insensitive.
 
 - `key`: letters, digits, `.`, `-`, `_` (max 64), unique.
 - `type`: `bool` (switch), `string` (text box), `number` (number box, clamped to `min`/`max`), `choice` (dropdown of `choices`).
+- `placeholder` (string settings only, optional): grey hint shown inside the empty text box.
 - Values are stored by Noctis (per plugin id) and survive updates. Read them with
   `host.Settings.GetString/GetBool/GetNumber(key)`; subscribe to `host.Settings.Changed` to react.
 

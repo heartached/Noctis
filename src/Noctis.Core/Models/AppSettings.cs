@@ -407,6 +407,11 @@ public class AppSettings
     /// the pre-feature layout.</summary>
     public bool ArtistSimilarExpanded { get; set; } = true;
 
+    /// <summary>Album page "Other Versions" / "More By {Artist}" fold state, one setting each
+    /// for every album (10-05); default expanded, the pre-feature layout.</summary>
+    public bool AlbumOtherVersionsExpanded { get; set; } = true;
+    public bool AlbumMoreByExpanded { get; set; } = true;
+
     /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
     /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
     public string FoldersSortMode { get; set; } = "default";

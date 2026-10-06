@@ -363,6 +363,15 @@ public partial class SettingsView : UserControl
                 Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;
 
+            // Web Remote / Local API turned on: their body glides open below the fold
+            // (Local API is the page's last card), so follow the card down as it grows.
+            case nameof(SettingsViewModel.IsWebRemoteCardOpen):
+                if (_trackedViewModel?.IsWebRemoteCardOpen == true) FollowReveal(WebRemoteCard, WebRemoteBody);
+                break;
+            case nameof(SettingsViewModel.LocalApiRunning):
+                if (_trackedViewModel?.LocalApiRunning == true) FollowReveal(LocalApiCard, LocalApiBody);
+                break;
+
             // Version-manager download started: bring the progress bar + Cancel
             // button into view (the release list can push them off-screen).
             case nameof(SettingsViewModel.IsDevDownloading):
@@ -371,6 +380,51 @@ public partial class SettingsView : UserControl
                         () => DevDownloadPanel.BringIntoView(),
                         DispatcherPriority.Loaded);
                 break;
+        }
+    }
+
+    private EventHandler? _followReveal;
+
+    /// <summary>
+    /// Keeps <paramref name="card"/>'s bottom edge on screen while <paramref name="body"/>
+    /// glides open: after every layout pass the scroller moves down by whatever the card
+    /// has grown past the viewport, so the page scrolls in step with the reveal instead of
+    /// jumping once (a single BringIntoView at the start sees the still-folded height).
+    /// Never scrolls the card's top out of view. Ends when the reveal lands or reverses.
+    /// </summary>
+    private void FollowReveal(Control card, Noctis.Controls.CollapsibleContent body)
+    {
+        var scroller = SettingsScrollViewer;
+        if (scroller is null || !card.IsEffectivelyVisible) return;
+
+        if (_followReveal is not null) scroller.LayoutUpdated -= _followReveal;
+        _followReveal = (_, _) =>
+        {
+            if (!body.IsOpen)
+            {
+                Stop();
+                return;
+            }
+            if (card.TranslatePoint(default, scroller) is { } top)
+            {
+                const double gap = 16;
+                var overflow = top.Y + card.Bounds.Height + gap - scroller.Viewport.Height;
+                overflow = Math.Min(overflow, top.Y - gap); // keep the card's header in view
+                if (overflow > 0.5)
+                {
+                    var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
+                    var y = Math.Min(scroller.Offset.Y + overflow, max);
+                    if (y > scroller.Offset.Y) scroller.Offset = new Vector(scroller.Offset.X, y);
+                }
+            }
+            if (body.Reveal >= 0.999) Stop();
+        };
+        scroller.LayoutUpdated += _followReveal;
+
+        void Stop()
+        {
+            if (_followReveal is not null) scroller.LayoutUpdated -= _followReveal;
+            _followReveal = null;
         }
     }
 

@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Services.Plugins;
 
@@ -27,6 +28,12 @@ public partial class SettingsViewModel
 
     public bool HasNoOfficialPlugins => !IsOfficialPluginsLoading && OfficialPlugins.Count == 0;
 
+    /// <summary>Installed plugins that are not on the official list (Install from file, or a folder
+    /// dropped in by hand): the page's Custom Category. Official ones are managed on their own row.</summary>
+    public ObservableCollection<LoadedPlugin> CustomPlugins { get; } = new();
+
+    public bool HasNoCustomPlugins => CustomPlugins.Count == 0;
+
     /// <summary>The live list loaded this session: opening the page again does not fetch it again.</summary>
     private bool _officialPluginsFetched;
 
@@ -37,7 +44,12 @@ public partial class SettingsViewModel
     }
 
     [RelayCommand]
-    private Task RefreshOfficialPlugins() => LoadOfficialPluginsAsync();
+    private async Task RefreshOfficialPlugins()
+    {
+        await LoadOfficialPluginsAsync();
+        // A refresh that changes nothing used to look like a dead button.
+        TransientStatus.Show(nameof(PluginsStatus), v => PluginsStatus = v, Loc.T("Plugins.Get.Refreshed"));
+    }
 
     /// <summary>Fetches the list (off the UI thread) and shows it; the built-in copy when that fails.</summary>
     internal async Task LoadOfficialPluginsAsync()
@@ -66,17 +78,40 @@ public partial class SettingsViewModel
     }
 
     private void OnInstalledPluginsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        RefreshOfficialPluginStates();
-        OnPropertyChanged(nameof(ShowPluginsOffNotice));
-    }
+        => RefreshOfficialPluginStates();
 
     private void RefreshOfficialPluginStates()
     {
         if (Plugins is null) return;
         foreach (var item in OfficialPlugins)
-            item.State = PluginCatalog.GetState(item.Entry, Plugins.FindById(item.Entry.Id)?.Version,
+        {
+            var installed = Plugins.FindById(item.Entry.Id);
+            item.Installed = installed;
+            item.State = PluginCatalog.GetState(item.Entry, installed?.Version,
                 Plugins.AppVersion, PluginManifest.CurrentPlatform);
+        }
+        SyncCustomPlugins();
+    }
+
+    /// <summary>Brings <see cref="CustomPlugins"/> in line with the host's list, in its order. Moves
+    /// and removals in place (no Clear), so an untouched row keeps its container and state.</summary>
+    private void SyncCustomPlugins()
+    {
+        var wanted = Plugins is null
+            ? new List<LoadedPlugin>()
+            : Plugins.Plugins.Where(p => !OfficialPlugins.Any(o =>
+                string.Equals(o.Entry.Id, p.Id, StringComparison.OrdinalIgnoreCase))).ToList();
+
+        for (var i = CustomPlugins.Count - 1; i >= 0; i--)
+            if (!wanted.Contains(CustomPlugins[i])) CustomPlugins.RemoveAt(i);
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var at = CustomPlugins.IndexOf(wanted[i]);
+            if (at == i) continue;
+            if (at < 0) CustomPlugins.Insert(i, wanted[i]);
+            else CustomPlugins.Move(at, i);
+        }
+        OnPropertyChanged(nameof(HasNoCustomPlugins));
     }
 
     /// <summary>The row's button: Install / Update, or Cancel while it downloads (hence concurrent:
@@ -147,14 +182,22 @@ public sealed partial class OfficialPluginItem : ObservableObject
 
     public PluginCatalogEntry Entry { get; }
     public string Name => Entry.Name;
-    public string Version => Entry.Version;
+    /// <summary>The installed copy's version once installed (a hand-installed newer build shows
+    /// as itself, not as the list's), else the list's.</summary>
+    public string Version => Installed?.Version ?? Entry.Version;
     public string Description => Entry.Description;
     public bool HasDescription => Description.Length > 0;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText), nameof(CanClick), nameof(IsPrimary))]
+    /// <summary>The installed copy, or null: its switch, settings and Remove show on this row.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsInstalled), nameof(ShowButton), nameof(Version))]
+    private LoadedPlugin? _installed;
+
+    public bool IsInstalled => Installed is not null;
+
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText), nameof(CanClick), nameof(IsPrimary), nameof(ShowButton))]
     private OfficialPluginState _state;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText), nameof(CanClick), nameof(IsPrimary))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText), nameof(CanClick), nameof(IsPrimary), nameof(ShowButton))]
     private bool _isBusy;
 
     /// <summary>0..1 while downloading.</summary>
@@ -179,6 +222,8 @@ public sealed partial class OfficialPluginItem : ObservableObject
     public bool CanClick => IsBusy || State is OfficialPluginState.Install or OfficialPluginState.Update;
     /// <summary>Install and Update are the accent button; everything else is a quiet one.</summary>
     public bool IsPrimary => !IsBusy && State is OfficialPluginState.Install or OfficialPluginState.Update;
+    /// <summary>A plain "Installed" label is dropped once the row has its own on/off switch.</summary>
+    public bool ShowButton => IsBusy || !(IsInstalled && State == OfficialPluginState.Installed);
 
     internal void BeginDownload(CancellationTokenSource cts)
     {

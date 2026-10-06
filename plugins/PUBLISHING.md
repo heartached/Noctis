@@ -31,12 +31,12 @@ zip; then use the new hash and size in step 3.
 dotnet build plugins/Noctis.Plugins.Mixxx/Noctis.Plugins.Mixxx.csproj -c Release
 ```
 
-Output: `plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip`
+Output: `plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.1.zip`
 
 ### 2. Check SHA-256 and size
 
 ```powershell
-$z = "plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip"
+$z = "plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.1.zip"
 "{0}  {1}" -f (Get-FileHash $z -Algorithm SHA256).Hash.ToLower(), (Get-Item $z).Length
 ```
 
@@ -44,7 +44,7 @@ Expected (what `index.json` says now):
 
 | Zip | sha256 | size |
 |---|---|---|
-| Noctis.Plugins.Mixxx-1.0.0.zip | `15aa84fa8683445815ec8da8fa1b381f787d67417b401dd17b4cecc82454f061` | 11758 |
+| Noctis.Plugins.Mixxx-1.0.1.zip | `0c87f61087cb3b0b21ba7ab4ca2e56b07344d6150f341dc7e89e8b8ef88d09ce` | 11781 |
 
 ### 3. Update `index.json` if anything differs
 
@@ -54,10 +54,10 @@ They must describe the exact file you upload, or Noctis refuses to install it.
 ### 4. Create the release
 
 ```powershell
-gh release create plugin-mixxx-v1.0.0 `
-  plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.0.zip `
+gh release create plugin-mixxx-v1.0.1 `
+  plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.1.zip `
   --repo heartached/Noctis --target main `
-  --title "Mixxx plugin 1.0.0" `
+  --title "Mixxx plugin 1.0.1" `
   --notes "Imports the BPM and musical key that Mixxx found for your tracks. Needs Noctis 1.5.9 or newer. Install it from Settings → Plugins → Get plugins." `
   --prerelease --latest=false
 ```
@@ -71,8 +71,8 @@ newest releases, so keep plugin releases few between app releases.)
 Then check what GitHub serves is the file you hashed:
 
 ```powershell
-gh release download plugin-mixxx-v1.0.0 --repo heartached/Noctis --pattern "*.zip" --dir "$env:TEMP\plugin-check"
-(Get-FileHash "$env:TEMP\plugin-check\Noctis.Plugins.Mixxx-1.0.0.zip" -Algorithm SHA256).Hash.ToLower()
+gh release download plugin-mixxx-v1.0.1 --repo heartached/Noctis --pattern "*.zip" --dir "$env:TEMP\plugin-check"
+(Get-FileHash "$env:TEMP\plugin-check\Noctis.Plugins.Mixxx-1.0.1.zip" -Algorithm SHA256).Hash.ToLower()
 ```
 
 ### 5. Push the list
@@ -99,7 +99,7 @@ Point Noctis at a local list instead of the live one:
 
 1. Make a folder, e.g. `D:\plugin-test`, copy `plugins/index.json` into it, and copy the zips from
    step 1 next to it.
-2. In that copy, set each `download` to the zip's file name (`"Noctis.Plugins.Mixxx-1.0.0.zip"`).
+2. In that copy, set each `download` to the zip's file name (`"Noctis.Plugins.Mixxx-1.0.1.zip"`).
    A local list may also use `http://` URLs (e.g. `python -m http.server` in that folder) or
    full file paths. Keep `sha256`/`size` as they are, or change one to see a mismatch refused.
 3. Start Noctis with the list (and, while the app is still 1.5.8, as 1.5.9 so Mixxx is offered):
