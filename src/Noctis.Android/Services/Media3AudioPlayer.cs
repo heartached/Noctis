@@ -329,6 +329,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         StopPositionPump();
         State = PlaybackState.Stopped;
+        if (CurrentMediaPath is { } path && !SafGrants.CanRead(_context, path))
+        {
+            PlaybackError?.Invoke(this, "Noctis lost access to this song's folder. Add the folder again in Settings → Library.");
+            return;
+        }
         // Redacted: the text reaches the log and the Now Playing error line.
         PlaybackError?.Invoke(this, LogRedactor.Redact($"{error.ErrorCodeName}: {error.Message}"));
     }

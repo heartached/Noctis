@@ -7,4 +7,6 @@ public sealed class AndroidFolderPicker : IFolderPicker
 {
     public Task<string?> PickFolderAsync()
         => MainActivity.Current?.PickFolderAsync() ?? Task.FromResult<string?>(null);
+
+    public bool HasAccess(string folder) => SafGrants.CanRead(global::Android.App.Application.Context, folder);
 }

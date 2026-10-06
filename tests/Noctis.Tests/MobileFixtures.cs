@@ -20,7 +20,10 @@ internal static class MobileFixtures
 {
     internal sealed class NoPicker : IFolderPicker
     {
+        /// <summary>Folders whose access is reported lost.</summary>
+        public HashSet<string> Lost { get; } = new();
         public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
+        public bool HasAccess(string folder) => !Lost.Contains(folder);
     }
 
     /// <summary>
@@ -81,7 +84,7 @@ internal static class MobileFixtures
 
     /// <summary>A shell over the fakes, with the library already initialised. <paramref name="seed"/>
     /// runs against the persistence root first (settings, playlists).</summary>
-    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null)
+    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null, NoPicker? picker = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -94,7 +97,7 @@ internal static class MobileFixtures
         var player = new FakeAudioPlayer();
         var nowPlaying = new NowPlayingViewModel(player, library, persistence, history, marshal: a => a());
         var shell = new ShellViewModel(
-            new LibraryViewModel(library, persistence, new NoPicker(), history, marshal: a => a()),
+            new LibraryViewModel(library, persistence, picker ?? new NoPicker(), history, marshal: a => a()),
             nowPlaying,
             new LyricsPageViewModel(player, nowPlaying, new FakeTrackFiles(), persistence, work => Task.FromResult(work())))
         {
