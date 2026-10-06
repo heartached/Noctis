@@ -378,7 +378,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         {
             NoctisSyncStage.Catalog => $"Getting your library…{counts}",
             NoctisSyncStage.Covers => $"Getting covers…{counts}",
-            NoctisSyncStage.State => "Syncing favourites and ratings…",
+            NoctisSyncStage.State => "Syncing favorites and ratings…",
             NoctisSyncStage.Playlists => "Syncing playlists…",
             NoctisSyncStage.Plays => "Sending plays…",
             _ => "Syncing…",
