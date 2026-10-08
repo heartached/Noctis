@@ -1883,9 +1883,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (t.Data.Audio.Channels > 0) channels = (int)t.Data.Audio.Channels;
                 break;
             }
-            // amem rejects rates above 384 kHz; the sink renders at most stereo
-            // (LibVLC downmixes to what we pin below).
-            rate = Math.Clamp(rate, 8000, 384000);
+            // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
+            // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
+            // The sink renders at most stereo (LibVLC downmixes to what we pin below).
+            rate = AmemRate.Fit(Math.Max(rate, 8000));
             channels = Math.Clamp(channels, 1, 2);
 
             string? notice = null;
