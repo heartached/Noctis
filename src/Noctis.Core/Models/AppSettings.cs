@@ -866,6 +866,10 @@ public class AppSettings
     /// <summary>Whether MusicBrainz is used as the fallback tag source.</summary>
     public bool MusicBrainzEnabled { get; set; } = true;
 
+    /// <summary>Whether the metadata editor's Search Metadata asks Apple Music (the keyless
+    /// iTunes Search API) — covers, copyright, explicit flags, track/disc counts.</summary>
+    public bool AppleMusicMetadataEnabled { get; set; } = true;
+
     // ── Audio Converter ──
 
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>

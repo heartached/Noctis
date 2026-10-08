@@ -1,0 +1,2123 @@
+{
+ "disambiguation": "",
+ "title": "Discovery",
+ "genres": [
+  {
+   "disambiguation": "",
+   "name": "boogie",
+   "count": 1,
+   "id": "10fd28e3-51aa-4110-a3dd-032d8a141f99"
+  },
+  {
+   "disambiguation": "",
+   "count": 1,
+   "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+   "name": "disco"
+  },
+  {
+   "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+   "count": 1,
+   "name": "electro",
+   "disambiguation": ""
+  },
+  {
+   "count": 1,
+   "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+   "name": "electronic",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "count": 1,
+   "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+   "name": "electronica"
+  },
+  {
+   "count": 1,
+   "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+   "name": "french house",
+   "disambiguation": ""
+  },
+  {
+   "count": 1,
+   "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+   "name": "house",
+   "disambiguation": ""
+  },
+  {
+   "disambiguation": "",
+   "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+   "count": 1,
+   "name": "progressive house"
+  }
+ ],
+ "media": [
+  {
+   "track-offset": 0,
+   "track-count": 14,
+   "title": "",
+   "position": 1,
+   "format": "Digital Media",
+   "tracks": [
+    {
+     "length": 320357,
+     "id": "4d2f6ed2-371e-4779-a4d5-295cd8e6807a",
+     "number": "1",
+     "artist-credit": [
+      {
+       "name": "Daft Punk",
+       "joinphrase": "",
+       "artist": {
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk",
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo"
+       }
+      }
+     ],
+     "position": 1,
+     "title": "One More Time",
+     "recording": {
+      "first-release-date": "2000",
+      "length": 320746,
+      "id": "60fa767a-d85d-4991-82bc-4294e0b11ae7",
+      "title": "One More Time",
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Daft Punk",
+        "artist": {
+         "sort-name": "Daft Punk",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type": "Group",
+         "name": "Daft Punk"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "isrcs": [
+       "GBAHT1305744",
+       "GBDUW0000053"
+      ],
+      "video": false,
+      "genres": [
+       {
+        "count": 1,
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "name": "big beat",
+        "disambiguation": ""
+       },
+       {
+        "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+        "count": 1,
+        "name": "club",
+        "disambiguation": ""
+       },
+       {
+        "name": "dance",
+        "count": 4,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 3,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "name": "disco"
+       },
+       {
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 1,
+        "name": "electro",
+        "disambiguation": ""
+       },
+       {
+        "name": "electronic",
+        "count": 7,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "disambiguation": ""
+       },
+       {
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "count": 2,
+        "name": "electronica",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 1,
+        "name": "euro house"
+       },
+       {
+        "name": "french house",
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 9,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "name": "pop rock",
+        "count": 1,
+        "id": "797e2e85-5ffd-495c-a757-8b4079052f0e",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "progressive house",
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4"
+       },
+       {
+        "count": 1,
+        "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+        "name": "rock",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "soft rock",
+        "id": "7d0c6a6b-5d56-4b1e-a8c7-e32194f246b9",
+        "count": 1
+       },
+       {
+        "disambiguation": "",
+        "name": "techno",
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "count": 2
+       }
+      ]
+     }
+    },
+    {
+     "number": "2",
+     "id": "f8a391e1-6fb7-4ca4-86de-eba99475992c",
+     "length": 212547,
+     "title": "Aerodynamic",
+     "recording": {
+      "first-release-date": "2001-02-26",
+      "length": 207626,
+      "id": "7c0e11a3-1c7a-4e6d-a14d-6e86d86dbaad",
+      "title": "Aerodynamic",
+      "artist-credit": [
+       {
+        "name": "Daft Punk",
+        "joinphrase": "",
+        "artist": {
+         "disambiguation": "French electronic duo",
+         "country": "FR",
+         "sort-name": "Daft Punk",
+         "type": "Group",
+         "name": "Daft Punk",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "isrcs": [
+       "GATIW0000057",
+       "GBDUW0000057"
+      ],
+      "video": false,
+      "genres": [
+       {
+        "count": 1,
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "name": "big beat",
+        "disambiguation": ""
+       },
+       {
+        "name": "breakbeat",
+        "count": 1,
+        "id": "3b8f3f65-6caa-47c8-b076-fa59dfb69c43",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 3,
+        "name": "dance"
+       },
+       {
+        "disambiguation": "",
+        "name": "disco",
+        "count": 2,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea"
+       },
+       {
+        "name": "electro",
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "cae57e98-c939-4b0e-ae49-8e0cb1bdc91d",
+        "name": "electroclash",
+        "disambiguation": ""
+       },
+       {
+        "name": "electronic",
+        "count": 6,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "electronica",
+        "count": 2,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5"
+       },
+       {
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 2,
+        "name": "euro house",
+        "disambiguation": ""
+       },
+       {
+        "name": "house",
+        "count": 9,
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "count": 2,
+        "name": "progressive house"
+       },
+       {
+        "disambiguation": "",
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "count": 2,
+        "name": "techno"
+       }
+      ]
+     },
+     "position": 2,
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk"
+       },
+       "joinphrase": "",
+       "name": "Daft Punk"
+      }
+     ]
+    },
+    {
+     "id": "102d06d7-e7ef-48b7-9db8-64f3e3ce53c6",
+     "length": 301373,
+     "number": "3",
+     "artist-credit": [
+      {
+       "artist": {
+        "name": "Daft Punk",
+        "type": "Group",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "sort-name": "Daft Punk"
+       },
+       "name": "Daft Punk",
+       "joinphrase": ""
+      }
+     ],
+     "recording": {
+      "genres": [],
+      "video": false,
+      "isrcs": [],
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Daft Punk",
+        "artist": {
+         "type": "Group",
+         "name": "Daft Punk",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk"
+        }
+       }
+      ],
+      "title": "Digital Love (album version)",
+      "id": "8c896057-b145-4076-8dea-89684a35ee11",
+      "length": 301360,
+      "first-release-date": "2001-05-29"
+     },
+     "title": "Digital Love",
+     "position": 3
+    },
+    {
+     "position": 4,
+     "recording": {
+      "genres": [
+       {
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "count": 1,
+        "name": "big beat",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "3b8f3f65-6caa-47c8-b076-fa59dfb69c43",
+        "count": 1,
+        "name": "breakbeat"
+       },
+       {
+        "disambiguation": "",
+        "name": "club",
+        "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+        "count": 1
+       },
+       {
+        "disambiguation": "",
+        "count": 3,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "name": "dance"
+       },
+       {
+        "disambiguation": "",
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 2,
+        "name": "disco"
+       },
+       {
+        "disambiguation": "",
+        "name": "edm",
+        "count": 1,
+        "id": "3976e9ba-16d0-461d-b732-99408a0374ba"
+       },
+       {
+        "disambiguation": "",
+        "name": "electro",
+        "count": 1,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4"
+       },
+       {
+        "disambiguation": "",
+        "name": "electronic",
+        "count": 7,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4"
+       },
+       {
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "count": 1,
+        "name": "electronica",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "euro house",
+        "count": 1,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60"
+       },
+       {
+        "name": "french house",
+        "count": 3,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "disambiguation": ""
+       },
+       {
+        "id": "62e4c7cb-a2b3-462b-8d96-1b0d66ee6cf3",
+        "count": 1,
+        "name": "funky house",
+        "disambiguation": ""
+       },
+       {
+        "name": "hip hop",
+        "count": 1,
+        "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 6,
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "name": "house"
+       },
+       {
+        "disambiguation": "",
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "count": 2,
+        "name": "progressive house"
+       },
+       {
+        "disambiguation": "",
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "count": 3,
+        "name": "techno"
+       }
+      ],
+      "video": false,
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Daft Punk",
+         "disambiguation": "French electronic duo",
+         "country": "FR",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "name": "Daft Punk",
+         "type": "Group"
+        },
+        "name": "Daft Punk",
+        "joinphrase": ""
+       }
+      ],
+      "isrcs": [
+       "GBDUW0000059",
+       "GBDUW0600059"
+      ],
+      "title": "Harder, Better, Faster, Stronger",
+      "length": 224293,
+      "id": "f1a6a40f-78f5-4918-968d-f64363bae94c",
+      "first-release-date": "2001-02-26"
+     },
+     "title": "Harder, Better, Faster, Stronger",
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "name": "Daft Punk",
+        "type": "Group"
+       },
+       "joinphrase": "",
+       "name": "Daft Punk"
+      }
+     ],
+     "length": 224693,
+     "id": "583d6c2d-0c0e-4764-a209-87d09c472831",
+     "number": "4"
+    },
+    {
+     "position": 5,
+     "recording": {
+      "artist-credit": [
+       {
+        "name": "Daft Punk",
+        "joinphrase": "",
+        "artist": {
+         "type": "Group",
+         "name": "Daft Punk",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "isrcs": [
+       "GBDUW0000060"
+      ],
+      "title": "Crescendolls",
+      "genres": [
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "name": "big beat"
+       },
+       {
+        "disambiguation": "",
+        "name": "dance",
+        "count": 2,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33"
+       },
+       {
+        "name": "disco",
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 1,
+        "name": "electro",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "electronic",
+        "count": 6,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4"
+       },
+       {
+        "count": 1,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "name": "electronica",
+        "disambiguation": ""
+       },
+       {
+        "name": "euro house",
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "name": "french house",
+        "disambiguation": ""
+       },
+       {
+        "id": "62e4c7cb-a2b3-462b-8d96-1b0d66ee6cf3",
+        "count": 1,
+        "name": "funky house",
+        "disambiguation": ""
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 8,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "name": "progressive house"
+       },
+       {
+        "name": "techno",
+        "count": 1,
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "disambiguation": ""
+       }
+      ],
+      "video": false,
+      "first-release-date": "2001-02-26",
+      "length": 211640,
+      "id": "d63ad586-1124-4df1-9a2b-c014d7b7cb02"
+     },
+     "title": "Crescendolls",
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Daft Punk",
+       "artist": {
+        "type": "Group",
+        "name": "Daft Punk",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "country": "FR",
+        "disambiguation": "French electronic duo",
+        "sort-name": "Daft Punk"
+       }
+      }
+     ],
+     "number": "5",
+     "length": 211640,
+     "id": "a3b97f6c-739e-48d7-99da-d2a2d1418df7"
+    },
+    {
+     "recording": {
+      "length": 104466,
+      "id": "712edd8d-b413-4e4e-aca4-9b91fce2e65c",
+      "first-release-date": "2001-02-26",
+      "genres": [
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "608b0471-7531-4854-a348-e698c69cb699",
+        "name": "ambient"
+       },
+       {
+        "name": "chillout",
+        "count": 1,
+        "id": "7232e5df-8466-421f-ad5a-ce2048e5522d",
+        "disambiguation": ""
+       },
+       {
+        "name": "dance",
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 1,
+        "name": "disco"
+       },
+       {
+        "disambiguation": "",
+        "id": "cc38aba3-48ed-439a-83b9-f81a34a66598",
+        "count": 1,
+        "name": "downtempo"
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "name": "electro"
+       },
+       {
+        "disambiguation": "",
+        "name": "electronic",
+        "count": 6,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4"
+       },
+       {
+        "name": "electronica",
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "name": "euro house",
+        "count": 2,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "house",
+        "count": 7,
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3"
+       },
+       {
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "count": 1,
+        "name": "progressive house",
+        "disambiguation": ""
+       }
+      ],
+      "video": false,
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type": "Group",
+         "name": "Daft Punk",
+         "sort-name": "Daft Punk",
+         "country": "FR",
+         "disambiguation": "French electronic duo"
+        },
+        "name": "Daft Punk",
+        "joinphrase": ""
+       }
+      ],
+      "disambiguation": "",
+      "isrcs": [
+       "GBDUW0000061"
+      ],
+      "title": "Nightvision"
+     },
+     "title": "Nightvision",
+     "position": 6,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Daft Punk",
+       "artist": {
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk",
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo"
+       }
+      }
+     ],
+     "id": "15da0dad-5407-4db9-b628-9e2b98f0a4c1",
+     "length": 104467,
+     "number": "6"
+    },
+    {
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Daft Punk",
+       "artist": {
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk",
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo"
+       }
+      }
+     ],
+     "position": 7,
+     "recording": {
+      "length": 237800,
+      "id": "8a98614f-0533-44ef-890a-639cab407a2d",
+      "first-release-date": "2001-02-26",
+      "video": false,
+      "genres": [
+       {
+        "disambiguation": "",
+        "name": "big beat",
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "count": 1
+       },
+       {
+        "disambiguation": "",
+        "id": "3b8f3f65-6caa-47c8-b076-fa59dfb69c43",
+        "count": 1,
+        "name": "breakbeat"
+       },
+       {
+        "name": "dance",
+        "count": 2,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "disco",
+        "count": 2,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea"
+       },
+       {
+        "count": 2,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "name": "electro",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 6,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "name": "electronic"
+       },
+       {
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "count": 1,
+        "name": "electronica",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "name": "euro house"
+       },
+       {
+        "disambiguation": "",
+        "name": "french house",
+        "count": 1,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15"
+       },
+       {
+        "name": "hi-nrg",
+        "count": 1,
+        "id": "61d50e81-17bb-4b8b-ab36-7ae1759bc589",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 9,
+        "name": "house"
+       },
+       {
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "name": "progressive house",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "name": "techno",
+        "disambiguation": ""
+       }
+      ],
+      "title": "Superheroes",
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "name": "Daft Punk",
+         "type": "Group",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk"
+        },
+        "name": "Daft Punk",
+        "joinphrase": ""
+       }
+      ],
+      "isrcs": [
+       "GBDUW0000062"
+      ]
+     },
+     "title": "Superheroes",
+     "number": "7",
+     "length": 237800,
+     "id": "45fbbc75-0d2c-4ce2-bc7f-6014d27c0137"
+    },
+    {
+     "id": "1ee0a9f6-7265-4910-9650-03fcc2d47f26",
+     "length": 201800,
+     "number": "8",
+     "title": "High Life",
+     "recording": {
+      "video": false,
+      "genres": [
+       {
+        "name": "club",
+        "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 3,
+        "name": "dance"
+       },
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "name": "disco"
+       },
+       {
+        "name": "electro",
+        "count": 2,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "disambiguation": ""
+       },
+       {
+        "count": 5,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "name": "electronic",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "name": "electronica",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "3f3388b4-e36a-4bf8-a0be-66b10d92aaa4",
+        "name": "electropop"
+       },
+       {
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 2,
+        "name": "euro house",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "e9a67960-9b49-4967-a1c9-c26360e9c612",
+        "name": "eurodance",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "name": "french house"
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 8,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "progressive house",
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4"
+       },
+       {
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "count": 1,
+        "name": "techno",
+        "disambiguation": ""
+       }
+      ],
+      "title": "High Life",
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Daft Punk",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "name": "Daft Punk",
+         "type": "Group"
+        },
+        "name": "Daft Punk",
+        "joinphrase": ""
+       }
+      ],
+      "disambiguation": "",
+      "isrcs": [
+       "GBDUW0000063"
+      ],
+      "length": 201800,
+      "id": "07b720fc-0d6f-4342-a6df-876d1749de0b",
+      "first-release-date": "2001-02-26"
+     },
+     "position": 8,
+     "artist-credit": [
+      {
+       "name": "Daft Punk",
+       "joinphrase": "",
+       "artist": {
+        "name": "Daft Punk",
+        "type": "Group",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "sort-name": "Daft Punk"
+       }
+      }
+     ]
+    },
+    {
+     "title": "Something About Us",
+     "recording": {
+      "first-release-date": "2001-02-26",
+      "length": 231066,
+      "id": "defbfcb2-7a5c-4456-be28-b7e5ccf92cc2",
+      "title": "Something About Us",
+      "disambiguation": "album version",
+      "artist-credit": [
+       {
+        "name": "Daft Punk",
+        "joinphrase": "",
+        "artist": {
+         "sort-name": "Daft Punk",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type": "Group",
+         "name": "Daft Punk"
+        }
+       }
+      ],
+      "isrcs": [
+       "GBDUW0000064",
+       "GBDUW0600064"
+      ],
+      "video": false,
+      "genres": [
+       {
+        "count": 1,
+        "id": "ceeaa283-5d7b-4202-8d1d-e25d116b2a18",
+        "name": "alternative rock",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "breakbeat",
+        "count": 1,
+        "id": "3b8f3f65-6caa-47c8-b076-fa59dfb69c43"
+       },
+       {
+        "count": 1,
+        "id": "63eddc75-dbad-4a05-a365-e30d1e87bca8",
+        "name": "breaks",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "7232e5df-8466-421f-ad5a-ce2048e5522d",
+        "name": "chillout"
+       },
+       {
+        "disambiguation": "",
+        "name": "dance",
+        "count": 2,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33"
+       },
+       {
+        "disambiguation": "",
+        "name": "disco",
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 2
+       },
+       {
+        "name": "downtempo",
+        "id": "cc38aba3-48ed-439a-83b9-f81a34a66598",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "edm",
+        "count": 1,
+        "id": "3976e9ba-16d0-461d-b732-99408a0374ba"
+       },
+       {
+        "disambiguation": "",
+        "name": "electro",
+        "count": 2,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4"
+       },
+       {
+        "name": "electronic",
+        "count": 5,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 1,
+        "name": "euro house"
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 9,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "progressive house",
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "count": 2
+       },
+       {
+        "name": "synth funk",
+        "id": "4dcf868a-cbcb-4969-beff-d75c91d0bd47",
+        "count": 1,
+        "disambiguation": ""
+       }
+      ]
+     },
+     "position": 9,
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Daft Punk",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk"
+       },
+       "name": "Daft Punk",
+       "joinphrase": ""
+      }
+     ],
+     "id": "5e718087-39bf-4fa3-a3d3-860bc159dc28",
+     "length": 232667,
+     "number": "9"
+    },
+    {
+     "id": "dc626016-5f44-4af8-b43c-2e02fa35c406",
+     "length": 227867,
+     "number": "10",
+     "artist-credit": [
+      {
+       "artist": {
+        "type": "Group",
+        "name": "Daft Punk",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "sort-name": "Daft Punk"
+       },
+       "joinphrase": "",
+       "name": "Daft Punk"
+      }
+     ],
+     "recording": {
+      "length": 227866,
+      "id": "e1fe1d12-dac2-4325-ae1b-25e0ef06b998",
+      "first-release-date": "2001-02-26",
+      "genres": [
+       {
+        "count": 1,
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "name": "big beat",
+        "disambiguation": ""
+       },
+       {
+        "name": "dance",
+        "count": 2,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "disambiguation": ""
+       },
+       {
+        "count": 2,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "name": "disco",
+        "disambiguation": ""
+       },
+       {
+        "name": "electro",
+        "count": 2,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 5,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "name": "electronic"
+       },
+       {
+        "name": "electronica",
+        "count": 1,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "disambiguation": ""
+       },
+       {
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "count": 2,
+        "name": "euro house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "french house",
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "count": 2
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 8,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "progressive house",
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4"
+       }
+      ],
+      "video": false,
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Daft Punk",
+        "artist": {
+         "type": "Group",
+         "name": "Daft Punk",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk"
+        }
+       }
+      ],
+      "isrcs": [
+       "GBDUW0000065"
+      ],
+      "title": "Voyager"
+     },
+     "title": "Voyager",
+     "position": 10
+    },
+    {
+     "id": "80a9da48-3030-4ef8-9ed2-cfff6b1c3a47",
+     "length": 345187,
+     "number": "11",
+     "title": "Veridis Quo",
+     "recording": {
+      "isrcs": [
+       "GBDUW0000066"
+      ],
+      "artist-credit": [
+       {
+        "artist": {
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk",
+         "type": "Group",
+         "name": "Daft Punk",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56"
+        },
+        "joinphrase": "",
+        "name": "Daft Punk"
+       }
+      ],
+      "disambiguation": "",
+      "title": "Veridis Quo",
+      "genres": [
+       {
+        "count": 1,
+        "id": "cc2327cf-88a3-476b-950c-296c382eabd9",
+        "name": "ambient house",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "name": "dance"
+       },
+       {
+        "disambiguation": "",
+        "name": "deep house",
+        "id": "7fa479e7-3d35-40d1-96f7-b619a5ca9d9f",
+        "count": 1
+       },
+       {
+        "disambiguation": "",
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 1,
+        "name": "disco"
+       },
+       {
+        "count": 1,
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "name": "electro",
+        "disambiguation": ""
+       },
+       {
+        "name": "electronic",
+        "count": 5,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "euro house",
+        "count": 1,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60"
+       },
+       {
+        "disambiguation": "",
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "count": 1,
+        "name": "french house"
+       },
+       {
+        "disambiguation": "",
+        "name": "house",
+        "count": 8,
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3"
+       },
+       {
+        "name": "nu disco",
+        "id": "351424dd-91a3-4cf2-9edb-5df647743ec0",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "2d069613-cd1b-4ce8-ad90-d0925e4ff9c9",
+        "count": 1,
+        "name": "progressive electronic"
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "0e0b8d87-7a4c-44d1-a279-1076782af19f",
+        "name": "space disco"
+       },
+       {
+        "disambiguation": "",
+        "name": "spacesynth",
+        "id": "4e45ed10-6896-4911-8b5d-366f38af0f40",
+        "count": 1
+       }
+      ],
+      "video": false,
+      "first-release-date": "2001-02-26",
+      "id": "2a220770-1150-4190-b0e0-57d89a0a7469",
+      "length": 344933
+     },
+     "position": 11,
+     "artist-credit": [
+      {
+       "artist": {
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type": "Group",
+        "name": "Daft Punk",
+        "sort-name": "Daft Punk",
+        "country": "FR",
+        "disambiguation": "French electronic duo"
+       },
+       "name": "Daft Punk",
+       "joinphrase": ""
+      }
+     ]
+    },
+    {
+     "number": "12",
+     "id": "4f9d28a9-0614-4087-b8b7-33189a762714",
+     "length": 206867,
+     "artist-credit": [
+      {
+       "artist": {
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "sort-name": "Daft Punk",
+        "name": "Daft Punk",
+        "type": "Group",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b"
+       },
+       "name": "Daft Punk",
+       "joinphrase": ""
+      }
+     ],
+     "recording": {
+      "first-release-date": "2001-02-26",
+      "id": "3f60ae01-43cc-4db9-86ec-97b79f83764f",
+      "length": 206866,
+      "isrcs": [
+       "GBDUW0000067"
+      ],
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "name": "Daft Punk",
+         "type": "Group",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "country": "FR",
+         "disambiguation": "French electronic duo",
+         "sort-name": "Daft Punk"
+        },
+        "joinphrase": "",
+        "name": "Daft Punk"
+       }
+      ],
+      "title": "Short Circuit",
+      "genres": [
+       {
+        "name": "big beat",
+        "count": 1,
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "dance",
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 2
+       },
+       {
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "count": 2,
+        "name": "disco",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "downtempo",
+        "id": "cc38aba3-48ed-439a-83b9-f81a34a66598",
+        "count": 1
+       },
+       {
+        "disambiguation": "",
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 4,
+        "name": "electro"
+       },
+       {
+        "count": 5,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "name": "electronic",
+        "disambiguation": ""
+       },
+       {
+        "name": "electronica",
+        "count": 2,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 3,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "name": "euro house"
+       },
+       {
+        "name": "french house",
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 10,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "name": "progressive house",
+        "count": 2,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "4dcf868a-cbcb-4969-beff-d75c91d0bd47",
+        "name": "synth funk",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "tech house",
+        "count": 1,
+        "id": "1f9c4b4a-c43d-40bd-b806-357153641fd0"
+       }
+      ],
+      "video": false
+     },
+     "title": "Short Circuit",
+     "position": 12
+    },
+    {
+     "position": 13,
+     "recording": {
+      "id": "59038571-03ea-4ca4-965c-a57eae2aa138",
+      "length": 240173,
+      "first-release-date": "2001-02-26",
+      "genres": [
+       {
+        "disambiguation": "",
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "count": 1,
+        "name": "big beat"
+       },
+       {
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 2,
+        "name": "dance",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "b739a895-85ed-4ad3-8717-4e9ef5387dd8",
+        "name": "dance-pop",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "cc38aba3-48ed-439a-83b9-f81a34a66598",
+        "name": "downtempo",
+        "disambiguation": ""
+       },
+       {
+        "name": "electro",
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 2,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "count": 6,
+        "name": "electronic"
+       },
+       {
+        "name": "electronica",
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "count": 1,
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "name": "euro house"
+       },
+       {
+        "disambiguation": "",
+        "name": "french house",
+        "count": 2,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15"
+       },
+       {
+        "disambiguation": "",
+        "count": 7,
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "name": "house"
+       },
+       {
+        "id": "351424dd-91a3-4cf2-9edb-5df647743ec0",
+        "count": 1,
+        "name": "nu disco",
+        "disambiguation": ""
+       },
+       {
+        "count": 1,
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "name": "progressive house",
+        "disambiguation": ""
+       },
+       {
+        "name": "techno",
+        "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+        "count": 1,
+        "disambiguation": ""
+       }
+      ],
+      "video": false,
+      "isrcs": [
+       "GBDUW0000068"
+      ],
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "name": "Daft Punk",
+         "type": "Group",
+         "sort-name": "Daft Punk",
+         "country": "FR",
+         "disambiguation": "French electronic duo"
+        },
+        "name": "Daft Punk",
+        "joinphrase": ""
+       }
+      ],
+      "title": "Face to Face"
+     },
+     "title": "Face to Face",
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Daft Punk",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "name": "Daft Punk",
+        "type": "Group"
+       },
+       "name": "Daft Punk",
+       "joinphrase": ""
+      }
+     ],
+     "length": 240173,
+     "id": "b8da8c51-0462-433f-a8ef-12d2f6820a66",
+     "number": "13"
+    },
+    {
+     "artist-credit": [
+      {
+       "name": "Daft Punk",
+       "joinphrase": "",
+       "artist": {
+        "name": "Daft Punk",
+        "type": "Group",
+        "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+        "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+        "disambiguation": "French electronic duo",
+        "country": "FR",
+        "sort-name": "Daft Punk"
+       }
+      }
+     ],
+     "position": 14,
+     "title": "Too Long",
+     "recording": {
+      "first-release-date": "2001-02-26",
+      "id": "1a915a2d-e2f4-4300-a230-96fc9c8a7b60",
+      "length": 600293,
+      "title": "Too Long",
+      "isrcs": [
+       "GBDUW0000069"
+      ],
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Daft Punk",
+        "artist": {
+         "sort-name": "Daft Punk",
+         "disambiguation": "French electronic duo",
+         "country": "FR",
+         "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+         "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+         "type": "Group",
+         "name": "Daft Punk"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "video": false,
+      "genres": [
+       {
+        "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+        "count": 1,
+        "name": "big beat",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 2,
+        "id": "3b8f3f65-6caa-47c8-b076-fa59dfb69c43",
+        "name": "breakbeat"
+       },
+       {
+        "disambiguation": "",
+        "name": "dance",
+        "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+        "count": 2
+       },
+       {
+        "disambiguation": "",
+        "name": "deep house",
+        "count": 1,
+        "id": "7fa479e7-3d35-40d1-96f7-b619a5ca9d9f"
+       },
+       {
+        "count": 1,
+        "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+        "name": "disco",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "electro",
+        "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+        "count": 1
+       },
+       {
+        "count": 7,
+        "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+        "name": "electronic",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+        "name": "electronica"
+       },
+       {
+        "name": "euro house",
+        "count": 2,
+        "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "count": 1,
+        "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+        "name": "french house"
+       },
+       {
+        "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+        "count": 10,
+        "name": "house",
+        "disambiguation": ""
+       },
+       {
+        "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+        "count": 1,
+        "name": "progressive house",
+        "disambiguation": ""
+       },
+       {
+        "id": "95c57cd7-7fb8-4405-ade1-775c2d27e54e",
+        "count": 1,
+        "name": "uk garage",
+        "disambiguation": ""
+       }
+      ]
+     },
+     "number": "14",
+     "length": 600293,
+     "id": "adcde42e-98c4-4931-9223-df3e1becdf57"
+    }
+   ],
+   "id": "c9d80beb-bc2e-3f16-a071-b8cb16d22be5",
+   "format-id": "907a28d9-b3b2-3ef6-89a8-7b18d91d4794"
+  }
+ ],
+ "label-info": [
+  {
+   "catalog-number": "724384960650",
+   "label": {
+    "type-id": "53ab8dcc-9946-3b62-966e-7634d78e5034",
+    "type": "Distributor",
+    "name": "ADA France",
+    "sort-name": "ADA France",
+    "disambiguation": "distributor",
+    "id": "3b0a155a-ce07-4e15-816b-2398cb4f0680",
+    "label-code": null
+   }
+  },
+  {
+   "catalog-number": "724384960650",
+   "label": {
+    "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+    "label-code": 3098,
+    "disambiguation": "worldwide imprint of Virgin Records Ltd. and all its subsidiaries",
+    "sort-name": "Virgin",
+    "type": "Imprint",
+    "name": "Virgin",
+    "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded"
+   }
+  }
+ ],
+ "barcode": "724384960650",
+ "quality": "normal",
+ "id": "6cd30d99-4923-4d5e-8e51-9d87506976f1",
+ "release-events": [
+  {
+   "date": "2005-01-24",
+   "area": {
+    "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+    "type-id": null,
+    "name": "[Worldwide]",
+    "type": null,
+    "sort-name": "[Worldwide]",
+    "iso-3166-1-codes": [
+     "XW"
+    ],
+    "disambiguation": ""
+   }
+  }
+ ],
+ "artist-credit": [
+  {
+   "name": "Daft Punk",
+   "joinphrase": "",
+   "artist": {
+    "sort-name": "Daft Punk",
+    "disambiguation": "French electronic duo",
+    "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+    "name": "Daft Punk",
+    "genres": [
+     {
+      "name": "club",
+      "count": 2,
+      "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+      "disambiguation": ""
+     },
+     {
+      "name": "dance",
+      "count": 6,
+      "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+      "count": 4,
+      "name": "disco"
+     },
+     {
+      "disambiguation": "",
+      "count": 1,
+      "id": "3976e9ba-16d0-461d-b732-99408a0374ba",
+      "name": "edm"
+     },
+     {
+      "disambiguation": "",
+      "count": 3,
+      "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+      "name": "electro"
+     },
+     {
+      "name": "electro house",
+      "id": "05247982-e44f-4c58-96f8-a5453be69f5f",
+      "count": 2,
+      "disambiguation": ""
+     },
+     {
+      "name": "electroclash",
+      "id": "cae57e98-c939-4b0e-ae49-8e0cb1bdc91d",
+      "count": 1,
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "name": "electronic",
+      "count": 42,
+      "id": "89255676-1f14-4dd8-bbad-fca839d6aff4"
+     },
+     {
+      "name": "electronic rock",
+      "id": "c4a69842-f891-4569-9506-1882aa5db433",
+      "count": 2,
+      "disambiguation": ""
+     },
+     {
+      "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+      "count": 3,
+      "name": "electronica",
+      "disambiguation": ""
+     },
+     {
+      "name": "french electro",
+      "id": "bb55e7aa-ec06-4605-b867-ee66938713e1",
+      "count": 2,
+      "disambiguation": ""
+     },
+     {
+      "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+      "count": 20,
+      "name": "french house",
+      "disambiguation": ""
+     },
+     {
+      "id": "fe4ba6a1-9873-4fd0-a12b-a70c81818514",
+      "count": 2,
+      "name": "funk",
+      "disambiguation": ""
+     },
+     {
+      "count": 22,
+      "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+      "name": "house",
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "name": "jackin house",
+      "count": 1,
+      "id": "d5c8b95a-fcf6-4c1d-b98c-a7cb4efb494f"
+     },
+     {
+      "disambiguation": "",
+      "count": 2,
+      "id": "351424dd-91a3-4cf2-9edb-5df647743ec0",
+      "name": "nu disco"
+     },
+     {
+      "name": "organic house",
+      "id": "640fb6e1-c2b9-40be-bbd0-4da3c4d4832c",
+      "count": 1,
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "name": "pop",
+      "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+      "count": 1
+     },
+     {
+      "disambiguation": "",
+      "name": "r&b",
+      "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+      "count": 1
+     },
+     {
+      "name": "synth-pop",
+      "id": "988e91a3-3341-416d-b7f8-7dbef6848dac",
+      "count": 2,
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "count": 2,
+      "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+      "name": "techno"
+     },
+     {
+      "name": "trap",
+      "id": "9a339aa8-a0e5-450c-95a7-b11517bb508f",
+      "count": 1,
+      "disambiguation": ""
+     }
+    ],
+    "type": "Group",
+    "country": "FR",
+    "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56"
+   }
+  }
+ ],
+ "date": "2005-01-24",
+ "text-representation": {
+  "language": "eng",
+  "script": "Latn"
+ },
+ "release-group": {
+  "id": "48117b90-a16e-34ca-a514-19c702df1158",
+  "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+  "secondary-type-ids": [],
+  "first-release-date": "2001-02-26",
+  "genres": [
+   {
+    "id": "10fd28e3-51aa-4110-a3dd-032d8a141f99",
+    "count": 1,
+    "name": "boogie",
+    "disambiguation": ""
+   },
+   {
+    "name": "club",
+    "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+    "count": 1,
+    "disambiguation": ""
+   },
+   {
+    "disambiguation": "",
+    "count": 3,
+    "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+    "name": "dance"
+   },
+   {
+    "name": "dance-pop",
+    "count": 2,
+    "id": "b739a895-85ed-4ad3-8717-4e9ef5387dd8",
+    "disambiguation": ""
+   },
+   {
+    "disambiguation": "",
+    "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+    "count": 1,
+    "name": "disco"
+   },
+   {
+    "disambiguation": "",
+    "id": "cc38aba3-48ed-439a-83b9-f81a34a66598",
+    "count": 1,
+    "name": "downtempo"
+   },
+   {
+    "name": "electro",
+    "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+    "count": 3,
+    "disambiguation": ""
+   },
+   {
+    "id": "05247982-e44f-4c58-96f8-a5453be69f5f",
+    "count": 1,
+    "name": "electro house",
+    "disambiguation": ""
+   },
+   {
+    "disambiguation": "",
+    "id": "f6cd97fb-7c7c-483e-9f98-e5c0abe1b1b2",
+    "count": 1,
+    "name": "electro-disco"
+   },
+   {
+    "count": 14,
+    "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+    "name": "electronic",
+    "disambiguation": ""
+   },
+   {
+    "name": "electronica",
+    "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+    "count": 2,
+    "disambiguation": ""
+   },
+   {
+    "disambiguation": "",
+    "name": "euro house",
+    "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60",
+    "count": 2
+   },
+   {
+    "count": 8,
+    "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+    "name": "french house",
+    "disambiguation": ""
+   },
+   {
+    "name": "funky house",
+    "id": "62e4c7cb-a2b3-462b-8d96-1b0d66ee6cf3",
+    "count": 2,
+    "disambiguation": ""
+   },
+   {
+    "disambiguation": "",
+    "count": 20,
+    "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+    "name": "house"
+   },
+   {
+    "disambiguation": "",
+    "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+    "count": 4,
+    "name": "progressive house"
+   },
+   {
+    "disambiguation": "",
+    "id": "4dcf868a-cbcb-4969-beff-d75c91d0bd47",
+    "count": 2,
+    "name": "synth funk"
+   },
+   {
+    "id": "1f9c4b4a-c43d-40bd-b806-357153641fd0",
+    "count": 1,
+    "name": "tech house",
+    "disambiguation": ""
+   }
+  ],
+  "title": "Discovery",
+  "primary-type": "Album",
+  "secondary-types": [],
+  "disambiguation": "",
+  "artist-credit": [
+   {
+    "name": "Daft Punk",
+    "joinphrase": "",
+    "artist": {
+     "sort-name": "Daft Punk",
+     "country": "FR",
+     "disambiguation": "French electronic duo",
+     "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+     "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+     "name": "Daft Punk",
+     "type": "Group"
+    }
+   }
+  ]
+ },
+ "asin": null,
+ "packaging": "None",
+ "packaging-id": "119eba76-b343-3e02-a292-f0f00644bb9b",
+ "country": "XW",
+ "status": "Official",
+ "cover-art-archive": {
+  "count": 1,
+  "darkened": false,
+  "front": true,
+  "artwork": true,
+  "back": false
+ },
+ "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+}

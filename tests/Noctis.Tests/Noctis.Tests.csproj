@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Recorded API responses (metadata search engine tests run without the network). -->
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Noctis\Noctis.csproj" />
     <ProjectReference Include="..\..\src\Noctis.Core\Noctis.Core.csproj" />
     <ProjectReference Include="..\..\src\Noctis.Core.Server\Noctis.Core.Server.csproj" />

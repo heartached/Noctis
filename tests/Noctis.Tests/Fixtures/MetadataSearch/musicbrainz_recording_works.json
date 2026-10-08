@@ -1,0 +1,503 @@
+{
+ "isrcs": [
+  "GBAHT1305744",
+  "GBDUW0000053"
+ ],
+ "relations": [
+  {
+   "source-credit": "",
+   "type": "producer",
+   "attribute-values": {},
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "artist": {
+    "type": "Person",
+    "disambiguation": "",
+    "country": "US",
+    "sort-name": "Bangalter, Thomas",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Thomas Bangalter",
+    "id": "122a2714-24f8-4046-a532-64064b5076d2"
+   },
+   "target-type": "artist",
+   "direction": "backward",
+   "attributes": [],
+   "end": null,
+   "attribute-ids": {},
+   "begin": null,
+   "target-credit": "",
+   "ended": false
+  },
+  {
+   "source-credit": "",
+   "type": "producer",
+   "target-type": "artist",
+   "attribute-values": {},
+   "artist": {
+    "id": "83886397-adf2-431a-b841-dc4af744a6cc",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Guy‐Manuel de Homem‐Christo",
+    "sort-name": "Homem‐Christo, Guy‐Manuel, de",
+    "country": "FR",
+    "disambiguation": "",
+    "type": "Person"
+   },
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "attribute-ids": {},
+   "target-credit": "",
+   "ended": false,
+   "begin": null,
+   "direction": "backward",
+   "end": null,
+   "attributes": []
+  },
+  {
+   "source-credit": "",
+   "type": "vocal",
+   "attribute-values": {},
+   "artist": {
+    "country": "US",
+    "disambiguation": "",
+    "type": "Person",
+    "id": "c2be8eb6-c2e6-4051-898a-7d111e1e5784",
+    "name": "Romanthony",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Romanthony"
+   },
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "target-type": "artist",
+   "direction": "backward",
+   "end": null,
+   "attributes": [],
+   "attribute-ids": {},
+   "ended": false,
+   "target-credit": "",
+   "begin": null
+  },
+  {
+   "type": "performance",
+   "source-credit": "",
+   "work": {
+    "title": "One More Time",
+    "languages": [
+     "eng"
+    ],
+    "disambiguation": "",
+    "language": "eng",
+    "attributes": [],
+    "type": "Song",
+    "iswcs": [
+     "T-071.020.439-9"
+    ],
+    "id": "4bb47ffc-9006-32cf-8aa9-e213334550dc",
+    "relations": [
+     {
+      "attribute-values": {},
+      "type-id": "d59d99ea-23d4-4a80-b066-edca32ee158f",
+      "artist": {
+       "id": "122a2714-24f8-4046-a532-64064b5076d2",
+       "sort-name": "Bangalter, Thomas",
+       "name": "Thomas Bangalter",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "disambiguation": "",
+       "country": "US",
+       "type": "Person"
+      },
+      "target-type": "artist",
+      "direction": "backward",
+      "attributes": [],
+      "end": null,
+      "attribute-ids": {},
+      "target-credit": "",
+      "ended": false,
+      "begin": null,
+      "source-credit": "",
+      "type": "composer"
+     },
+     {
+      "source-credit": "",
+      "type": "writer",
+      "target-type": "artist",
+      "attribute-values": {},
+      "artist": {
+       "type": "Person",
+       "country": "US",
+       "disambiguation": "",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "name": "Thomas Bangalter",
+       "sort-name": "Bangalter, Thomas",
+       "id": "122a2714-24f8-4046-a532-64064b5076d2"
+      },
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-ids": {},
+      "target-credit": "",
+      "begin": null,
+      "ended": false,
+      "direction": "backward",
+      "end": null,
+      "attributes": []
+     },
+     {
+      "attribute-values": {},
+      "artist": {
+       "type": "Person",
+       "disambiguation": "",
+       "country": "FR",
+       "sort-name": "Homem‐Christo, Guy‐Manuel, de",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "name": "Guy‐Manuel de Homem‐Christo",
+       "id": "83886397-adf2-431a-b841-dc4af744a6cc"
+      },
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "target-type": "artist",
+      "direction": "backward",
+      "end": null,
+      "attributes": [],
+      "attribute-ids": {},
+      "ended": false,
+      "target-credit": "",
+      "begin": null,
+      "source-credit": "",
+      "type": "writer"
+     },
+     {
+      "type": "writer",
+      "source-credit": "",
+      "ended": false,
+      "target-credit": "",
+      "begin": null,
+      "attribute-ids": {},
+      "end": null,
+      "attributes": [],
+      "direction": "backward",
+      "target-type": "artist",
+      "artist": {
+       "disambiguation": "",
+       "country": "US",
+       "type": "Person",
+       "id": "59f8e44c-5206-43f6-8b7b-87c8ea1f658d",
+       "sort-name": "Moore, Anthony Wayne",
+       "name": "Anthony Wayne Moore",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+      },
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-values": {}
+     },
+     {
+      "target-credit": "",
+      "ended": false,
+      "begin": null,
+      "attribute-ids": {},
+      "work": {
+       "id": "ee03f722-5e17-410c-a5b7-11486497df21",
+       "iswcs": [],
+       "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+       "disambiguation": "Pentatonix' \"remix\"",
+       "languages": [],
+       "title": "Daft Punk",
+       "type": "Song",
+       "attributes": [],
+       "language": null
+      },
+      "end": null,
+      "attributes": [],
+      "direction": "backward",
+      "target-type": "work",
+      "type-id": "c1dca2cd-194c-36dd-93f8-6a359167e992",
+      "attribute-values": {},
+      "type": "medley",
+      "source-credit": ""
+     },
+     {
+      "type": "other version",
+      "source-credit": "",
+      "direction": "forward",
+      "attributes": [
+       "parody",
+       "translated"
+      ],
+      "end": null,
+      "work": {
+       "attributes": [],
+       "type": "Song",
+       "language": null,
+       "title": "One more Keim",
+       "languages": [],
+       "disambiguation": "",
+       "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+       "iswcs": [],
+       "id": "e4f91d1d-3da6-41c5-8569-c7e9d9275268"
+      },
+      "attribute-ids": {
+       "translated": "ed11fcb1-5a18-4e1d-b12c-633ed19c8ee1",
+       "parody": "d73de9d3-934b-419c-8c83-2e48a5773b14"
+      },
+      "target-credit": "",
+      "ended": false,
+      "begin": null,
+      "attribute-values": {},
+      "type-id": "7440b539-19ab-4243-8c03-4f5942ca2218",
+      "target-type": "work"
+     }
+    ],
+    "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6"
+   },
+   "attribute-ids": {},
+   "begin": null,
+   "target-credit": "",
+   "ended": false,
+   "direction": "forward",
+   "end": null,
+   "attributes": [],
+   "target-type": "work",
+   "attribute-values": {},
+   "type-id": "a3005666-a872-32c3-ad06-98af558e99b0"
+  }
+ ],
+ "video": false,
+ "id": "60fa767a-d85d-4991-82bc-4294e0b11ae7",
+ "length": 320746,
+ "artist-credit": [
+  {
+   "name": "Daft Punk",
+   "artist": {
+    "country": "FR",
+    "genres": [
+     {
+      "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+      "disambiguation": "",
+      "count": 2,
+      "name": "club"
+     },
+     {
+      "count": 6,
+      "disambiguation": "",
+      "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+      "name": "dance"
+     },
+     {
+      "name": "disco",
+      "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea",
+      "disambiguation": "",
+      "count": 4
+     },
+     {
+      "disambiguation": "",
+      "id": "3976e9ba-16d0-461d-b732-99408a0374ba",
+      "count": 1,
+      "name": "edm"
+     },
+     {
+      "name": "electro",
+      "count": 3,
+      "disambiguation": "",
+      "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4"
+     },
+     {
+      "name": "electro house",
+      "count": 2,
+      "id": "05247982-e44f-4c58-96f8-a5453be69f5f",
+      "disambiguation": ""
+     },
+     {
+      "name": "electroclash",
+      "count": 1,
+      "id": "cae57e98-c939-4b0e-ae49-8e0cb1bdc91d",
+      "disambiguation": ""
+     },
+     {
+      "name": "electronic",
+      "count": 42,
+      "disambiguation": "",
+      "id": "89255676-1f14-4dd8-bbad-fca839d6aff4"
+     },
+     {
+      "disambiguation": "",
+      "id": "c4a69842-f891-4569-9506-1882aa5db433",
+      "count": 2,
+      "name": "electronic rock"
+     },
+     {
+      "name": "electronica",
+      "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+      "disambiguation": "",
+      "count": 3
+     },
+     {
+      "name": "french electro",
+      "count": 2,
+      "id": "bb55e7aa-ec06-4605-b867-ee66938713e1",
+      "disambiguation": ""
+     },
+     {
+      "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+      "disambiguation": "",
+      "count": 20,
+      "name": "french house"
+     },
+     {
+      "name": "funk",
+      "count": 2,
+      "id": "fe4ba6a1-9873-4fd0-a12b-a70c81818514",
+      "disambiguation": ""
+     },
+     {
+      "name": "house",
+      "disambiguation": "",
+      "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+      "count": 22
+     },
+     {
+      "count": 1,
+      "id": "d5c8b95a-fcf6-4c1d-b98c-a7cb4efb494f",
+      "disambiguation": "",
+      "name": "jackin house"
+     },
+     {
+      "name": "nu disco",
+      "disambiguation": "",
+      "id": "351424dd-91a3-4cf2-9edb-5df647743ec0",
+      "count": 2
+     },
+     {
+      "disambiguation": "",
+      "id": "640fb6e1-c2b9-40be-bbd0-4da3c4d4832c",
+      "count": 1,
+      "name": "organic house"
+     },
+     {
+      "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+      "disambiguation": "",
+      "count": 1,
+      "name": "pop"
+     },
+     {
+      "name": "r&b",
+      "disambiguation": "",
+      "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+      "count": 1
+     },
+     {
+      "count": 2,
+      "disambiguation": "",
+      "id": "988e91a3-3341-416d-b7f8-7dbef6848dac",
+      "name": "synth-pop"
+     },
+     {
+      "name": "techno",
+      "count": 2,
+      "disambiguation": "",
+      "id": "41fe3260-fcc1-450b-bd5a-803886c56912"
+     },
+     {
+      "name": "trap",
+      "disambiguation": "",
+      "id": "9a339aa8-a0e5-450c-95a7-b11517bb508f",
+      "count": 1
+     }
+    ],
+    "disambiguation": "French electronic duo",
+    "type": "Group",
+    "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+    "type-id": "e431f5f6-b5d2-343d-8b36-72607fffb74b",
+    "name": "Daft Punk",
+    "sort-name": "Daft Punk"
+   },
+   "joinphrase": ""
+  }
+ ],
+ "first-release-date": "2000",
+ "title": "One More Time",
+ "disambiguation": "",
+ "genres": [
+  {
+   "name": "big beat",
+   "id": "aac07ae0-8acf-4249-b5c0-2762b53947a2",
+   "disambiguation": "",
+   "count": 1
+  },
+  {
+   "name": "club",
+   "count": 1,
+   "id": "bab69b07-8bb9-4415-b666-c37609cef80b",
+   "disambiguation": ""
+  },
+  {
+   "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+   "disambiguation": "",
+   "count": 4,
+   "name": "dance"
+  },
+  {
+   "name": "disco",
+   "count": 3,
+   "disambiguation": "",
+   "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea"
+  },
+  {
+   "id": "60f00d05-df4d-496e-8f5a-c45c03a56ad4",
+   "disambiguation": "",
+   "count": 1,
+   "name": "electro"
+  },
+  {
+   "name": "electronic",
+   "disambiguation": "",
+   "id": "89255676-1f14-4dd8-bbad-fca839d6aff4",
+   "count": 7
+  },
+  {
+   "name": "electronica",
+   "disambiguation": "",
+   "id": "53a3cea3-17af-4421-a07a-5824b540aeb5",
+   "count": 2
+  },
+  {
+   "name": "euro house",
+   "count": 1,
+   "disambiguation": "",
+   "id": "8f8cbcde-3948-4be5-8bf0-8073f13e4b60"
+  },
+  {
+   "id": "5acda04e-995d-4f79-9a66-5fe6a977ce15",
+   "disambiguation": "",
+   "count": 2,
+   "name": "french house"
+  },
+  {
+   "disambiguation": "",
+   "id": "a2782cb6-1cd0-477c-a61d-b3f8b42dd1b3",
+   "count": 9,
+   "name": "house"
+  },
+  {
+   "name": "pop rock",
+   "count": 1,
+   "id": "797e2e85-5ffd-495c-a757-8b4079052f0e",
+   "disambiguation": ""
+  },
+  {
+   "id": "70adb285-e1f7-458a-823f-5cbda5e291c4",
+   "disambiguation": "",
+   "count": 1,
+   "name": "progressive house"
+  },
+  {
+   "disambiguation": "",
+   "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+   "count": 1,
+   "name": "rock"
+  },
+  {
+   "count": 1,
+   "id": "7d0c6a6b-5d56-4b1e-a8c7-e32194f246b9",
+   "disambiguation": "",
+   "name": "soft rock"
+  },
+  {
+   "disambiguation": "",
+   "id": "41fe3260-fcc1-450b-bd5a-803886c56912",
+   "count": 2,
+   "name": "techno"
+  }
+ ]
+}
