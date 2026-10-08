@@ -939,6 +939,27 @@ public class MetadataViewModelTests
         Assert.Equal(lrcWritten, File.GetLastWriteTimeUtc(dir.Side(".lrc")));
     }
 
+    [Fact]
+    public async Task AlbumScope_RespelledEqPreset_IsNotFannedOutOnAnUnrelatedSave()
+    {
+        // SetUserEqPresets points the selection at the listed spelling ("rock" -> "Rock").
+        // The album save compared that case-sensitively to the loaded value and stamped the
+        // first track's preset over every other track's own EQ on a Comment-only save.
+        var tracks = Album("A", "X", 2);
+        tracks[0].EqPreset = "rock";
+        tracks[1].EqPreset = "Jazz";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out _, out _);
+        vm.SetUserEqPresets(Array.Empty<string>());
+        await vm.InitializeAsync();
+        Assert.Equal("Rock", vm.SelectedEqPreset);
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Jazz", tracks[1].EqPreset);
+    }
+
     /// <summary>A song file plus sidecars in a throwaway folder.</summary>
     private sealed class TempSongDir : IDisposable
     {

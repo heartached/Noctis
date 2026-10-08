@@ -2566,7 +2566,9 @@ public partial class MetadataViewModel : ViewModelBase
             bool startChg = startMs != _loadedStartTimeMs;
             bool stopChg = stopMs != _loadedStopTimeMs;
             bool volumeChg = VolumeAdjust != _loadedVolumeAdjust;
-            bool eqChg = eqVal != _loadedEqPreset;
+            // Case-insensitive like preset lookup: SetUserEqPresets respells the selection to
+            // the listed name ("rock" -> "Rock"), which is not a change worth fanning out.
+            bool eqChg = !string.Equals(eqVal, _loadedEqPreset, StringComparison.OrdinalIgnoreCase);
 
             foreach (var t in _albumTracks)
             {
