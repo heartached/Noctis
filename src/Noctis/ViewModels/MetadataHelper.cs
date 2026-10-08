@@ -271,8 +271,34 @@ public static class MetadataHelper
             autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
         AddUserEqPresets(vm);
 
+        var edited = tracks.ToList();
+        vm.ChangesSaved += (_, _) =>
+        {
+            if (App.Services!.GetService<MainWindowViewModel>() is { } main)
+                LiveApplyPlayingOptions(main, edited);
+        };
+
         var window = new MetadataWindow(vm);
         await ShowThenLoad(window, vm);
+    }
+
+    /// <summary>
+    /// Live-applies volume adjust and EQ preset when one of the edited tracks is playing.
+    /// Only the exact track the dialog was opened from used to count: an album or
+    /// multi-select save fans Options out to every track, yet the playing one kept its old
+    /// volume and EQ until it was played again (the multi-select dialog had no hook at all).
+    /// </summary>
+    private static void LiveApplyPlayingOptions(MainWindowViewModel main, IReadOnlyCollection<Track> edited)
+    {
+        var playing = main.Player.CurrentTrack;
+        if (playing == null || !edited.Contains(playing)) return;
+        var audio = App.Services!.GetRequiredService<IAudioPlayer>();
+        // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
+        // volume machinery that a concurrent gapless handoff is contending with.
+        if (audio.VolumeAdjust != playing.VolumeAdjust)
+            audio.VolumeAdjust = playing.VolumeAdjust;
+        main.Settings.ApplyEqPresetByName(
+            string.IsNullOrEmpty(playing.EqPreset) ? null : playing.EqPreset);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
@@ -319,15 +345,7 @@ public static class MetadataHelper
             if (main.Player.CurrentTrack?.AlbumId == track.AlbumId)
                 main.Player.RefreshAnimatedCover();
 
-            // Live-apply volume adjust and EQ preset when the edited track is currently playing.
-            if (main.Player.CurrentTrack != track) return;
-            var audio = App.Services!.GetRequiredService<IAudioPlayer>();
-            // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
-            // volume machinery that a concurrent gapless handoff is contending with.
-            if (audio.VolumeAdjust != track.VolumeAdjust)
-                audio.VolumeAdjust = track.VolumeAdjust;
-            main.Settings.ApplyEqPresetByName(
-                string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
+            LiveApplyPlayingOptions(main, albumTracks ?? new List<Track> { track });
         };
 
         var window = new MetadataWindow(vm);
