@@ -26,6 +26,10 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
     public ObservableCollection<MetaRow> Rows { get; } = new();
 
+    /// <summary>False when nothing is poorly tagged: the dialog shows the status in place of
+    /// the list. The rows are fixed at construction.</summary>
+    public bool HasRows => Rows.Count > 0;
+
     public event EventHandler? Closed;
 
     public MetadataFinderViewModel(IReadOnlyList<Track> candidates, IMetadataFinderService finder,

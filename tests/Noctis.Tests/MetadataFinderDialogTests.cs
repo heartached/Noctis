@@ -14,6 +14,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -141,5 +142,201 @@ public class MetadataFinderDialogTests
         app.Resources["InterSemiBold"] = FontFamily.Default;
         app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
         app.Styles.Add(new StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
+    }
+
+    private static (MetadataFinderViewModel vm, MetadataFinderDialog win, PillDialogHost host) Open(
+        IMetadataFinderService? finder = null, int rows = 3, SearchPopupsShotsTests.OkTags? tags = null)
+    {
+        var tracks = Enumerable.Range(0, rows).Select(i => T($"Track {i:00}", "Unknown Artist", "Unknown Album")).ToArray();
+        var vm = new MetadataFinderViewModel(tracks, finder ?? new SyncFinder(), tags ?? new SearchPopupsShotsTests.OkTags(), new FakeLibraryService());
+        var win = new MetadataFinderDialog(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1100, Height = 820 };
+        win.Show();
+        var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+        return (vm, win, host);
+    }
+
+    private static bool CardSettledOpen(PillDialogHost host) =>
+        host.Card is { } card && card.Opacity > 0.999 && host.BackdropLayer!.Opacity > 0.999;
+
+    private static void Click(Window win, Control target)
+    {
+        var centre = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), win)!.Value;
+        win.MouseDown(centre, MouseButton.Left);
+        win.MouseUp(centre, MouseButton.Left);
+    }
+
+    /// <summary>The trigger starts the close: the card animates out while the window stays
+    /// up, then the window closes exactly once.</summary>
+    private void AssertAnimatedCloseOnce(MetadataFinderDialog win, PillDialogHost host, Action trigger)
+    {
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        Assert.True(PumpUntil(() => CardSettledOpen(host)), "open animation never settled");
+
+        var sw = Stopwatch.StartNew();
+        trigger();
+        Assert.True(host.IsClosing, "the close did not go through the host's animation");
+        Assert.False(host.Card!.IsHitTestVisible);
+        win.Close(); // a second request mid-animation rides along
+
+        Assert.True(PumpUntil(() => closed > 0, 2000), "window never closed");
+        _o.WriteLine($"closed after {sw.ElapsedMilliseconds} ms, card opacity {host.Card.Opacity:0.000}");
+        Assert.True(sw.ElapsedMilliseconds >= 150, $"closed after {sw.ElapsedMilliseconds} ms: the animation was skipped");
+        Assert.True(host.Card.Opacity < 0.1, $"card still at {host.Card.Opacity:0.00} when the window closed");
+        PumpUntil(() => false, 250);
+        Assert.Equal(1, closed);
+        Assert.False(win.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void Dialog_OpensInThePillHost_WithTheEditorsLook()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (vm, win, host) = Open(rows: 400);
+            try
+            {
+                Assert.True(PumpUntil(() => CardSettledOpen(host)), "open animation never settled");
+                Assert.True(host.IsOpenStarted);
+                Assert.Equal(new CornerRadius(30), host.CornerRadius);
+
+                var all = win.GetVisualDescendants().ToList();
+                // The editor's footer: quiet Cancel pill, accent Apply pill with its sheen.
+                var apply = all.OfType<Button>().Single(b => b.Command == vm.ApplySelectedCommand);
+                Assert.Contains("pill-primary", apply.Classes);
+                Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(apply.Background));
+                Assert.Contains(apply.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
+                var cancel = all.OfType<Button>().Single(b => b.Command == vm.CancelCommand);
+                Assert.Contains("pill-secondary", cancel.Classes);
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));
+                // The header action is the editor's "Find online" pill; no round X any more.
+                var identify = all.OfType<Button>().Single(b => b.Command == vm.IdentifyAllCommand);
+                Assert.Contains("pill-secondary", identify.Classes);
+                Assert.DoesNotContain(all.OfType<Button>(), b => b.Classes.Contains("dialog-close"));
+                // The sources line moved into the ⓘ tooltip.
+                var info = all.OfType<PathIcon>().Single(p => p.Name == "SourcesInfo");
+                Assert.Equal(vm.SourceHint, ToolTip.GetTip(info));
+
+                // Rows are filled pill wells, and still virtualized inside the card.
+                var list = all.OfType<ItemsControl>().First(ic => ReferenceEquals(ic.ItemsSource, vm.Rows));
+                var realized = list.GetRealizedContainers().Count();
+                _o.WriteLine($"realized rows: {realized} of {vm.Rows.Count}; card {host.Card!.Bounds}");
+                Assert.InRange(realized, 1, 59);
+                var row = list.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("mf-row"));
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(row.Background));
+                Assert.True(host.Card!.Bounds.Height <= 680.5, $"card {host.Card.Bounds.Height} tall");
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+        });
+    }
+
+    [AvaloniaFact]
+    public void Dialog_WithNothingToFix_ShowsTheStatusInPlaceOfTheList()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open(rows: 0);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            Assert.False(vm.HasRows);
+            Assert.Contains(win.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.Text == vm.StatusMessage && t.IsEffectivelyVisible && t.FontSize > 12.9);
+            Assert.DoesNotContain(win.GetVisualDescendants().OfType<ScrollViewer>(), s => s.IsEffectivelyVisible);
+            // The card hugs the short content instead of a tall empty box.
+            Assert.True(host.Card!.Bounds.Height < 400, $"card {host.Card.Bounds.Height} tall");
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public void CancelButton_AnimatesThenClosesOnce()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open();
+        var cancel = win.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.CancelCommand);
+        AssertAnimatedCloseOnce(win, host, () => Click(win, cancel));
+    }
+
+    [AvaloniaFact]
+    public void Escape_AnimatesThenClosesOnce()
+    {
+        EnsureAppStyles();
+        var (_, win, host) = Open();
+        AssertAnimatedCloseOnce(win, host, () => win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None));
+    }
+
+    [AvaloniaFact]
+    public void ViewModelClosed_AnimatesThenClosesOnce()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open();
+        AssertAnimatedCloseOnce(win, host, () => vm.CancelCommand.Execute(null));
+    }
+
+    [AvaloniaFact]
+    public void DirectClose_AnimatesThenClosesOnce()
+    {
+        EnsureAppStyles();
+        var (_, win, host) = Open();
+        // Window.Close() is what Alt+F4 comes down to.
+        AssertAnimatedCloseOnce(win, host, () => win.Close());
+    }
+
+    [AvaloniaFact]
+    public void ApplyButton_WritesTheTickedRows_AndTheDialogStaysOpen()
+    {
+        EnsureAppStyles();
+        var tags = new SearchPopupsShotsTests.OkTags();
+        var written = new List<string>();
+        tags.Write = t => { lock (written) written.Add(t.Title); return true; };
+        var (vm, win, host) = Open(tags: tags);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var identify = win.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.IdentifyAllCommand);
+            Click(win, identify);
+            Assert.True(PumpUntil(() => vm.HasSelection && !vm.IsBusy));
+            vm.Rows[1].Apply = false;
+            PumpUntil(() => false, 50);
+
+            var apply = win.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.ApplySelectedCommand);
+            Assert.True(apply.IsEffectivelyEnabled);
+            Click(win, apply);
+            Assert.True(PumpUntil(() => vm.Rows[0].Status == "Applied"), $"status {vm.Rows[0].Status}");
+            Assert.Equal(new[] { "Fixed Track 00", "Fixed Track 02" }, written);
+            Assert.Equal("Track 01", vm.Rows[1].Track.Title);
+            Assert.False(host.IsClosing);
+            Assert.True(win.IsVisible);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
+    public void Escape_WhileIdentifying_StopsTheRun_ThenASecondEscCloses()
+    {
+        EnsureAppStyles();
+        var finder = new HangingFinder();
+        var (vm, win, host) = Open(finder);
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var run = vm.IdentifyAllCommand.ExecuteAsync(null);
+            Assert.True(PumpUntil(() => vm.IsBusy && finder.Seen.CanBeCanceled));
+
+            win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Assert.True(finder.Seen.IsCancellationRequested);
+            Assert.False(host.IsClosing, "Esc closed the dialog instead of stopping the run");
+            Assert.True(PumpUntil(() => run.IsCompleted && !vm.IsBusy));
+            Assert.Equal("Cancelled.", vm.StatusMessage);
+
+            win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Assert.True(host.IsClosing);
+            Assert.True(PumpUntil(() => closed > 0, 2000));
+            Assert.Equal(1, closed);
+        }
+        finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
     }
 }

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.MetadataFinderDialog"
         x:DataType="vm:MetadataFinderViewModel"
         Title="{loc:T MetadataFinder.FindMetadata}"
@@ -13,140 +14,174 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Neutral pill buttons share the Settings pill outline (1.5px translucent mid-grey,
-             layout-rounded); the Fluent template swaps BorderBrush on hover/press, so pin it. -->
-        <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <!-- Header "Identify all" pill: the editor's header "Find online" pill (pill-secondary
+             with an accent search glyph). BorderThickness is set on the button itself, as
+             there: pill-secondary, loaded by the host and so nearer the button, sets it to 0. -->
+        <Style Selector="Button.mf-header-action">
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- Result rows: filled pill-well cards; a ticked row gets the accent ring, like the
+             picked result card in Find online. The 1.5px ring is always there (transparent
+             when unticked) so ticking only recolours it and nothing shifts. -->
+        <Style Selector="Border.mf-row">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="Border.mf-row.on">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
-        <!-- Round header X (same look as the Settings header close). -->
-        <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        <Style Selector="TextBlock.mf-label">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.45" />
         </Style>
-        <Style Selector="Button.dialog-close:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
-        <!-- Quiet secondary actions in the sticky bar: no fill, no border, dims until hovered.
-             The Fluent template paints a hover fill on the presenter, so pin it transparent. -->
-        <Style Selector="Button.text-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Opacity" Value="0.7" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="Button.text-btn:pointerover">
-            <Setter Property="Opacity" Value="1" />
-        </Style>
-        <Style Selector="Button.text-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Opacity" Value="1" />
+
+        <!-- Footer status, as the editor's change summary. -->
+        <Style Selector="TextBlock.mf-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="760"
-                MaxHeight="820"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header: centred title + one-line description (+ source line), round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
-                    <StackPanel Spacing="2" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T MetadataFinder.FindMetadata}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="{loc:T MetadataFinder.IdentifyPoorlyTaggedTracks}"
-                                   FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding SourceHint}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Classes="dialog-close" Command="{Binding CancelCommand}"
-                            ToolTip.Tip="{loc:T Common.Close}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
-                    </Button>
-                </Panel>
+    <!-- Owner 10-08: same UI + animation for search metadata. The same rounded pill pop-up as
+         the Metadata editor: PillDialogHost draws the blurred, dimmed app behind, the card
+         with its shadow, and plays the open/close animation (every close path — Cancel, Esc,
+         the view model's Closed, Alt+F4 — animates out once before the real close).
+         MaxHeight, not Height: the card shrinks with a short window (the main window's
+         MinHeight is 500) and with a short list, and stays bounded so the list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Sticky bar: status on the left, quiet Identify all, one primary on the right. -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
-                        Background="#09FFFFFF"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
-                                   FontSize="13" Opacity="0.8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="{loc:T MetadataFinder.IdentifyAll}" Command="{Binding IdentifyAllCommand}"
-                                IsEnabled="{Binding !IsBusy}" Classes="text-btn"
-                                VerticalAlignment="Center" Margin="12,0,8,0" />
-                        <Button Grid.Column="2" Content="{loc:T MetadataFinder.Apply}" Command="{Binding ApplySelectedCommand}"
-                                IsEnabled="{Binding HasSelection}"
-                                Padding="22,10"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
-                    </Grid>
+    <Grid Width="760" MaxHeight="680" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: title with the sources behind ⓘ, the one-line purpose under it, and
+             Identify all where the editor has Find online. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*,Auto">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource TagIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="24,4,24,8">
-                    <ItemsControl ItemsSource="{Binding Rows}">
-                        <!-- Virtualized: every poorly tagged track is a row, so a messy library
-                             built thousands of cards on open. -->
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VirtualizingStackPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:MetadataFinderViewModel+MetaRow">
-                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                    <Grid ColumnDefinitions="Auto,*">
-                                        <CheckBox Grid.Column="0" IsChecked="{Binding Apply}" IsEnabled="{Binding HasProposal}"
-                                                  VerticalAlignment="Top" Margin="0,0,10,0" />
-                                        <StackPanel Grid.Column="1" Spacing="6">
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Opacity="0.7" />
-                                                <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" FontSize="11" Opacity="0.6" />
-                                            </Grid>
-                                            <Grid ColumnDefinitions="*,16,*">
-                                                <StackPanel Grid.Column="0" Spacing="1">
-                                                    <TextBlock Text="{loc:T MetadataFinder.Current}" FontSize="10" Opacity="0.5" />
-                                                    <TextBlock Text="{Binding CurrentTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding CurrentArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding CurrentAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" Opacity="0.5" />
-                                                <StackPanel Grid.Column="2" Spacing="1">
-                                                    <TextBlock Text="{loc:T MetadataFinder.Proposed}" FontSize="10" Opacity="0.5" />
-                                                    <TextBlock Text="{Binding ProposedTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding ProposedArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding ProposedAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                            </Grid>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{loc:T MetadataFinder.FindMetadata}" FontSize="18" FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                        <PathIcon x:Name="SourcesInfo"
+                                  Data="{StaticResource InfoIcon}" Width="14" Height="14" Opacity="0.45"
+                                  Background="Transparent" VerticalAlignment="Center"
+                                  ToolTip.Tip="{Binding SourceHint}" />
+                    </StackPanel>
+                    <TextBlock Text="{loc:T MetadataFinder.IdentifyPoorlyTaggedTracks}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <Button Grid.Column="3"
+                        Classes="pill-secondary mf-header-action"
+                        BorderThickness="1.5"
+                        MinHeight="36"
+                        Padding="16,0"
+                        FontSize="12.5"
+                        VerticalAlignment="Center"
+                        Command="{Binding IdentifyAllCommand}"
+                        IsEnabled="{Binding !IsBusy}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"
+                                  Foreground="{DynamicResource AccentColorBrush}" />
+                        <TextBlock Text="{loc:T MetadataFinder.IdentifyAll}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Footer: status on the left, Cancel / Apply on the right (the editor's Cancel / Save). -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="mf-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <!-- Cancel stops a running identify; otherwise it closes. -->
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T Metadata.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T MetadataFinder.Apply}"
+                        Command="{Binding ApplySelectedCommand}"
+                        IsEnabled="{Binding HasSelection}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+
+        <!-- Nothing poorly tagged: say so where the list would be. -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding StatusMessage}"
+                   IsVisible="{Binding !HasRows}"
+                   FontSize="13" Opacity="0.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Margin="28,48" />
+
+        <!-- Right padding is the overlay scrollbar's lane, so it never sits on a row. -->
+        <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding HasRows}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Padding="28,16,28,8">
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <!-- Virtualized: every poorly tagged track is a row, so a messy library
+                     built thousands of cards on open. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MetadataFinderViewModel+MetaRow">
+                        <Border Classes="pill-well mf-row" Classes.on="{Binding Apply}"
+                                CornerRadius="18" Padding="14,12,18,14" Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox"
+                                          Padding="0" MinWidth="0" MinHeight="0"
+                                          IsChecked="{Binding Apply}" IsEnabled="{Binding HasProposal}"
+                                          VerticalAlignment="Top" Margin="0,0,10,0" />
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Status}" FontSize="12.5" FontWeight="SemiBold"
+                                                   Opacity="0.75" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" FontSize="11.5" Opacity="0.55"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,28,*">
+                                        <StackPanel Grid.Column="0" Spacing="1">
+                                            <TextBlock Classes="mf-label" Text="{loc:T MetadataFinder.Current}" />
+                                            <TextBlock Text="{Binding CurrentTitle}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding CurrentArtist}" FontSize="11.5" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding CurrentAlbum}" FontSize="11.5" Opacity="0.5" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="→" FontSize="13" Opacity="0.4"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <!-- The proposal carries the accent, as changed values do in Find online. -->
+                                        <StackPanel Grid.Column="2" Spacing="1">
+                                            <TextBlock Classes="mf-label" Text="{loc:T MetadataFinder.Proposed}" />
+                                            <TextBlock Text="{Binding ProposedTitle}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentColorBrush}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ProposedArtist}" FontSize="11.5" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ProposedAlbum}" FontSize="11.5" Opacity="0.5" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
                                     </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
-    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>
