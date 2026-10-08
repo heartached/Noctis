@@ -1095,6 +1095,23 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="MetadataFinder.Apply" xml:space="preserve"><value>Apply</value><comment>Content in MetadataFinderDialog.axaml</comment></data>
   <data name="MetadataFinder.Current" xml:space="preserve"><value>Current</value><comment>Text in MetadataFinderDialog.axaml</comment></data>
   <data name="MetadataFinder.Proposed" xml:space="preserve"><value>Proposed</value><comment>Text in MetadataFinderDialog.axaml</comment></data>
+  <data name="MetadataFinder.SourcesTip" xml:space="preserve"><value>Searches Deezer, then MusicBrainz, by the current tags. Change sources in Settings.</value><comment>Header ⓘ tooltip in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.NothingToFix" xml:space="preserve"><value>No poorly tagged tracks</value><comment>Find Metadata tool (MetadataFinderViewModel): nothing to fix</comment></data>
+  <data name="MetadataFinder.ToIdentifyOne" xml:space="preserve"><value>1 track to identify</value><comment>Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.ToIdentifyMany" xml:space="preserve"><value>{0} tracks to identify</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = track count</comment></data>
+  <data name="MetadataFinder.Identifying" xml:space="preserve"><value>Identifying…</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.Identified" xml:space="preserve"><value>Identified {0} of {1}</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = matched, {1} = total</comment></data>
+  <data name="MetadataFinder.Cancelled" xml:space="preserve"><value>Cancelled</value><comment>Find Metadata tool (MetadataFinderViewModel): Identify all stopped</comment></data>
+  <data name="MetadataFinder.Writing" xml:space="preserve"><value>Writing tags to {0}…</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = track count</comment></data>
+  <data name="MetadataFinder.AppliedOne" xml:space="preserve"><value>Applied 1 track</value><comment>Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.AppliedMany" xml:space="preserve"><value>Applied {0} tracks</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = track count</comment></data>
+  <data name="MetadataFinder.AppliedFailed" xml:space="preserve"><value>Applied {0}, {1} failed</value><comment>Find Metadata tool (MetadataFinderViewModel); {0} = written, {1} = failed</comment></data>
+  <data name="MetadataFinder.Pending" xml:space="preserve"><value>Pending</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.Matched" xml:space="preserve"><value>Matched</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): confident match, ticked</comment></data>
+  <data name="MetadataFinder.Review" xml:space="preserve"><value>Review</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): weak match, not ticked</comment></data>
+  <data name="MetadataFinder.NoMatch" xml:space="preserve"><value>No match</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.Applied" xml:space="preserve"><value>Applied</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel)</comment></data>
+  <data name="MetadataFinder.WriteFailed" xml:space="preserve"><value>Write failed</value><comment>Row status in the Find Metadata tool (MetadataFinderViewModel): the file could not be written</comment></data>
 
   <!-- MetadataWindow.axaml (auto-migrated) -->
   <data name="Metadata.Metadata" xml:space="preserve"><value>Metadata</value><comment>Title in MetadataWindow.axaml</comment></data>

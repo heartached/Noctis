@@ -130,7 +130,7 @@ public class MetadataFinderDialogTests
         Assert.Equal("", vm.Rows[1].Track.Artist);
         Assert.Equal("Write failed", vm.Rows[1].Status);
         Assert.Equal("c", vm.Rows[2].Track.Title);
-        Assert.Equal("Applied 1 track, 1 failed", vm.StatusMessage);
+        Assert.Equal("Applied 1, 1 failed", vm.StatusMessage);
     }
 
     // ── The pill dialog shell (owner 10-08: same UI + animation for search metadata) ──
@@ -330,7 +330,7 @@ public class MetadataFinderDialogTests
             Assert.True(finder.Seen.IsCancellationRequested);
             Assert.False(host.IsClosing, "Esc closed the dialog instead of stopping the run");
             Assert.True(PumpUntil(() => run.IsCompleted && !vm.IsBusy));
-            Assert.Equal("Cancelled.", vm.StatusMessage);
+            Assert.Equal("Cancelled", vm.StatusMessage);
 
             win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
             Assert.True(host.IsClosing);
