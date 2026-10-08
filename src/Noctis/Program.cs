@@ -364,6 +364,14 @@ internal class Program
                 sp.GetRequiredService<DeezerMetadataService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
+        // The metadata editor's Search Metadata engine (Deezer + Apple Music + MusicBrainz/CAA,
+        // owner 10-08 revamp). Singleton: its session caches and the shared request pacers
+        // must outlive any one editor window. Provider toggles are read per search.
+        services.AddSingleton<Services.MetadataSearch.IMetadataSearchService>(sp =>
+            new Services.MetadataSearch.MetadataSearchService(
+                sp.GetRequiredService<HttpClient>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.
