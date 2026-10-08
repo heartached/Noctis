@@ -643,11 +643,17 @@ public partial class CoverFlowView : UserControl
             return;
         }
 
+        var fullHeight = height + PageInsetTop + PageInsetBottom;
         var side = stacked
             ? Math.Max(200, Math.Min(width - 32, height * 0.6))
-            : Math.Max(200, Math.Min(height + PageInsetTop + PageInsetBottom, width * PileMaxWidthShare));
+            : Math.Max(200, Math.Min(fullHeight, width * PileMaxWidthShare));
         PileViewbox.Width = side;
         PileViewbox.Height = side;
+        // A full-height square beside the text has the page's own edges (the page clips the
+        // cards running off it), so the Viewbox's clip only cut the playing cover's shadow at
+        // its right edge — and while a layout switch scales the layer it showed as a hard box
+        // in mid-air. Smaller squares (stacked, or capped by width) keep their clip.
+        PileViewbox.ClipToBounds = stacked || side < fullHeight - 0.5;
     }
 
     private void OnThemeVariantChanged(object? sender, EventArgs e)
