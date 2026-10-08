@@ -264,8 +264,8 @@
         </Style>
 
         <!-- Chromeless presenter for the artwork/animated search popups: the card
-             inside draws all chrome, so the default flyout box must vanish.
-             Padding leaves room for the card's drop shadow. -->
+             inside (Border.pill-popover, PillDialog.axaml) draws all chrome, so the default
+             flyout box must vanish. Padding leaves room for the card's drop shadow. -->
         <Style Selector="FlyoutPresenter.search-pop">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -960,12 +960,9 @@
                                     FlyoutPresenterClasses="search-pop">
                                 <Panel>
                                     <!-- Searching / status card (shown while loading, before results exist) -->
-                                    <Border CornerRadius="16"
+                                    <Border Classes="pill-popover"
                                             Padding="26,20"
                                             MinWidth="220"
-                                            Background="{DynamicResource AppSidebarBackground}"
-                                            BorderBrush="#22FFFFFF" BorderThickness="1"
-                                            BoxShadow="0 10 30 0 #90000000"
                                             HorizontalAlignment="Center"
                                             IsVisible="{Binding !HasArtworkSearchResults}">
                                         <StackPanel Spacing="12">
@@ -986,11 +983,8 @@
                                     <!-- Full results card: hugs its content instead of a
                                          fixed width so a single result doesn't float in a
                                          huge empty box. -->
-                                    <Border Padding="20,16,20,18" CornerRadius="16" MaxWidth="580"
+                                    <Border Classes="pill-popover" Padding="22,18,22,20" MaxWidth="580"
                                             HorizontalAlignment="Center"
-                                            Background="{DynamicResource AppSidebarBackground}"
-                                            BorderBrush="#22FFFFFF" BorderThickness="1"
-                                            BoxShadow="0 10 30 0 #90000000"
                                             IsVisible="{Binding HasArtworkSearchResults}">
                                     <StackPanel Spacing="14">
                                         <StackPanel Spacing="1">
@@ -1031,29 +1025,21 @@
                                                             </StackPanel>
                                                             <Grid ColumnDefinitions="*,6,*">
                                                                 <Button Grid.Column="0"
+                                                                        Classes="pill-secondary"
                                                                         Content="{loc:T Metadata.Standard}"
-                                                                        Background="#1AFFFFFF"
                                                                         HorizontalAlignment="Stretch"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        Padding="0,4"
-                                                                        FontSize="10"
-                                                                        FontWeight="SemiBold"
-                                                                        CornerRadius="999"
-                                                                        Cursor="Hand"
+                                                                        MinHeight="0"
+                                                                        Padding="0,5"
+                                                                        FontSize="10.5"
                                                                         Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
                                                                         CommandParameter="{Binding}" />
                                                                 <Button Grid.Column="2"
+                                                                        Classes="pill-primary"
                                                                         Content="{loc:T Metadata.Max}"
                                                                         HorizontalAlignment="Stretch"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        Padding="0,4"
-                                                                        FontSize="10"
-                                                                        FontWeight="SemiBold"
-                                                                        CornerRadius="999"
-                                                                        Cursor="Hand"
-                                                                        Classes="accent-btn"
-                                                                        Background="{DynamicResource AccentButtonBackground}"
-                                                                        Foreground="{DynamicResource AccentForegroundBrush}"
+                                                                        MinHeight="0"
+                                                                        Padding="0,5"
+                                                                        FontSize="10.5"
                                                                         Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
                                                                         CommandParameter="{Binding}" />
                                                             </Grid>
@@ -1264,12 +1250,9 @@
                                     </Panel.Styles>
 
                                     <!-- Searching / status card (shown while loading, before results exist) -->
-                                    <Border CornerRadius="16"
+                                    <Border Classes="pill-popover"
                                             Padding="26,20"
                                             MinWidth="220"
-                                            Background="{DynamicResource AppSidebarBackground}"
-                                            BorderBrush="#22FFFFFF" BorderThickness="1"
-                                            BoxShadow="0 10 30 0 #90000000"
                                             HorizontalAlignment="Center"
                                             IsVisible="{Binding !HasAnimatedArtworkSearchResults}">
                                         <StackPanel Spacing="12">
@@ -1288,10 +1271,7 @@
                                     </Border>
 
                                     <!-- Full results card -->
-                                    <Border Padding="20,18" CornerRadius="18" Width="320"
-                                            Background="{DynamicResource AppSidebarBackground}"
-                                            BorderBrush="#22FFFFFF" BorderThickness="1"
-                                            BoxShadow="0 10 30 0 #90000000"
+                                    <Border Classes="pill-popover" Padding="22,20" Width="320"
                                             IsVisible="{Binding HasAnimatedArtworkSearchResults}">
                                         <StackPanel Spacing="12">
                                             <StackPanel Spacing="1">
@@ -1336,17 +1316,13 @@
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Button Classes="accent-btn anim-variant"
-                                                                Background="{DynamicResource AccentButtonBackground}"
-                                                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                                                CornerRadius="999"
+                                                        <Button Classes="pill-primary anim-variant"
+                                                                MinHeight="0"
                                                                 Padding="16,7"
-                                                                Cursor="Hand"
                                                                 Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectAnimatedArtworkResultCommand}"
                                                                 CommandParameter="{Binding}">
                                                             <TextBlock Text="{Binding Label}"
                                                                        FontSize="12"
-                                                                       FontWeight="SemiBold"
                                                                        HorizontalAlignment="Center"/>
                                                         </Button>
                                                     </DataTemplate>

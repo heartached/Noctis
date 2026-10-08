@@ -186,6 +186,44 @@ public class SearchPopupsShotsTests
         });
     }
 
+    /// <summary>The artwork search pop-up's card is the dialog card's material (fill, rim) via
+    /// the shared pill-popover class, and its Standard / Max are the dialog's pill buttons.</summary>
+    [AvaloniaFact]
+    public void ArtworkSearchPopup_UsesThePillPopoverCard()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var owner = new Window { Width = 1100, Height = 820, RequestedThemeVariant = ThemeVariant.Dark };
+            owner.Show();
+            var (vm, win) = OpenEditor(owner, new MetadataSearchPanelTests.FakeSearch());
+            try
+            {
+                var host = win.GetVisualDescendants().OfType<Noctis.Controls.PillDialogHost>().Single();
+                var tabs = win.GetVisualDescendants().OfType<TabControl>().Single();
+                tabs.SelectedItem = tabs.Items.OfType<TabItem>().First(t => Equals(t.Header, "Artwork"));
+                PumpUntil(() => false, 300);
+                vm.ArtworkSearchResults.Add(new ArtworkSearchResult(
+                    new ITunesArtworkService.ArtworkCandidate(1, "nadie sabe", "Bad Bunny", "", "", "", ""), null));
+                vm.HasArtworkSearchResults = true;
+                vm.IsArtworkSearchOpen = true;
+                PumpUntil(() => false, 300);
+
+                var cards = win.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("pill-popover")).ToList();
+                var card = cards.Single(b => b.IsEffectivelyVisible);
+                Assert.Equal(new CornerRadius(24), card.CornerRadius);
+                Assert.Equal(AccentTestHarness.ColorOf(host.Background), AccentTestHarness.ColorOf(card.Background));
+                Assert.NotNull(card.BorderBrush);
+                var buttons = card.GetVisualDescendants().OfType<Button>().ToList();
+                Assert.Contains(buttons, b => b.Classes.Contains("pill-secondary") && Equals(b.Content, "Standard"));
+                Assert.Contains(buttons, b => b.Classes.Contains("pill-primary") && Equals(b.Content, "Max"));
+                vm.IsArtworkSearchOpen = false;
+                PumpUntil(() => false, 100);
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); owner.Close(); }
+        });
+    }
+
     private static (MetadataViewModel vm, MetadataWindow win) OpenEditor(Window owner, MetadataSearchPanelTests.FakeSearch search)
     {
         var albumId = Guid.NewGuid();
