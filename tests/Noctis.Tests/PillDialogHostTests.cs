@@ -26,7 +26,7 @@ namespace Noctis.Tests;
 /// <summary>
 /// Owner 10-08 rounded pill pop-up, Metadata window first: PillDialogHost's template and
 /// pill classes resolve, the open animation settles, and every close path (VM
-/// CloseRequested, the Cancel button) animates out and then closes the window exactly
+/// CloseRequested, the Cancel button, Esc) animates out and then closes the window exactly
 /// once. Also the one-time backdrop blur and, under real Skia, a PNG of the result.
 /// </summary>
 public class PillDialogHostTests
@@ -191,6 +191,22 @@ public class PillDialogHostTests
         Assert.True(PumpUntil(() => closed > 0, 2000));
         Assert.True(sw.ElapsedMilliseconds >= 150, $"closed after {sw.ElapsedMilliseconds} ms — the animation was skipped");
         PumpUntil(() => false, 250);
+        Assert.Equal(1, closed);
+    }
+
+    [AvaloniaFact]
+    public void Escape_ClosesLikeCancel()
+    {
+        EnsureAppStyles();
+        var (_, win, host) = Open();
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+
+        win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        _o.WriteLine($"after esc: closing={host.IsClosing} closed={closed}");
+        Assert.True(host.IsClosing);
+        Assert.True(PumpUntil(() => closed > 0, 2000));
         Assert.Equal(1, closed);
     }
 
