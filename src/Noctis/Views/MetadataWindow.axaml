@@ -482,66 +482,38 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
-                        <!-- Find online (owner 10-08: Search metadata revamp). The button opens the
-                             full compare panel over the editor; after an apply, the banner says what
-                             came in and offers Undo until Save. Only the button hides for a
-                             multi-track selection; the Mixed hint beside it must not, since that is
-                             where most fields read "Mixed".
-                             Owner 10-08: animate artwork search + one Find online style. Same pill,
-                             label, icon and tooltip as the header's Find online (it was a red "Search
-                             metadata" pill opening the same panel); it opens rather than toggles,
-                             since the panel covers this tab while open. -->
-                        <StackPanel Spacing="10">
-                            <Grid ColumnDefinitions="Auto,*">
-                                <Button Grid.Column="0"
-                                        Classes="pill-secondary find-online"
-                                        Classes.on="{Binding SearchPanel.IsOpen}"
-                                        BorderThickness="1.5"
-                                        MinHeight="36"
-                                        Padding="16,0"
-                                        FontSize="12.5"
-                                        IsVisible="{Binding ShowSearchMetadata}"
-                                        Command="{Binding OpenSearchPanelCommand}"
-                                        HorizontalAlignment="Left"
-                                        ToolTip.Tip="{loc:T MetadataSearch.FindOnlineTip}">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"
-                                                  Foreground="{DynamicResource AccentColorBrush}" />
-                                        <TextBlock Text="{loc:T MetadataSearch.FindOnline}" VerticalAlignment="Center" />
-                                    </StackPanel>
+                        <!-- Owner 10-08: "remove the Find Online button inside of the Details tab".
+                             The header's Find online pill is the single entry point (one click from
+                             every tab). What stays here: the Mixed hint (multi-track selection, where
+                             most fields read "Mixed") and, after an apply, the banner saying what came
+                             in with Undo until Save. Both are direct children of this StackPanel so,
+                             while hidden, they add no spacing and the first field starts at the top. -->
+                        <TextBlock Text="{Binding MixedHint}"
+                                   IsVisible="{Binding ShowMixedHint}"
+                                   FontSize="11.5"
+                                   Opacity="0.45"
+                                   TextWrapping="Wrap" />
+                        <Border IsVisible="{Binding HasSearchApplied}"
+                                Classes="pill-well"
+                                CornerRadius="999"
+                                Padding="16,6,6,6">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                          Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding SearchAppliedText}" FontSize="12.5"
+                                           Margin="10,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <Button Grid.Column="2" Classes="pill-secondary" MinHeight="30" Padding="16,0"
+                                        FontSize="12"
+                                        Content="{loc:T MetadataSearch.Undo}"
+                                        IsVisible="{Binding CanUndoSearchApply}"
+                                        Command="{Binding UndoSearchApplyCommand}" />
+                                <Button Grid.Column="3" Classes="pill-secondary" MinHeight="30" Width="30" Padding="0"
+                                        Margin="6,0,0,0"
+                                        Command="{Binding DismissSearchAppliedCommand}">
+                                    <PathIcon Data="{StaticResource DismissIcon}" Width="9" Height="9" />
                                 </Button>
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding MixedHint}"
-                                           IsVisible="{Binding ShowMixedHint}"
-                                           FontSize="11.5"
-                                           Opacity="0.45"
-                                           TextWrapping="Wrap"
-                                           TextAlignment="Right"
-                                           VerticalAlignment="Center"
-                                           Margin="16,0,0,0" />
                             </Grid>
-                            <Border IsVisible="{Binding HasSearchApplied}"
-                                    Classes="pill-well"
-                                    CornerRadius="999"
-                                    Padding="16,6,6,6">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                    <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
-                                              Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{Binding SearchAppliedText}" FontSize="12.5"
-                                               Margin="10,0" VerticalAlignment="Center" TextWrapping="Wrap" />
-                                    <Button Grid.Column="2" Classes="pill-secondary" MinHeight="30" Padding="16,0"
-                                            FontSize="12"
-                                            Content="{loc:T MetadataSearch.Undo}"
-                                            IsVisible="{Binding CanUndoSearchApply}"
-                                            Command="{Binding UndoSearchApplyCommand}" />
-                                    <Button Grid.Column="3" Classes="pill-secondary" MinHeight="30" Width="30" Padding="0"
-                                            Margin="6,0,0,0"
-                                            Command="{Binding DismissSearchAppliedCommand}">
-                                        <PathIcon Data="{StaticResource DismissIcon}" Width="9" Height="9" />
-                                    </Button>
-                                </Grid>
-                            </Border>
-                        </StackPanel>
+                        </Border>
 
                         <!-- Title (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
