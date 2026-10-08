@@ -419,31 +419,50 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     private async Task LoadThumbnailsAsync(IReadOnlyList<CandidateItem> items, CancellationToken ct)
     {
         if (_thumbLoader == null) return;
+        var loader = _thumbLoader;
         using var gate = new SemaphoreSlim(4);
+        // One download per distinct URL: MusicBrainz rows of one album all point at the same
+        // release-group cover, and fetching it 6× at once left some rows blank (owner 10-08).
+        // Bytes are shared, each row decodes its own Bitmap (rows dispose their thumbnails).
+        var downloads = new Dictionary<Uri, Task<byte[]?>>();
+        async Task<byte[]?> DownloadOnce(Uri url)
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                var data = await loader(url, ct);
+                if (data is { Length: > 0 }) return data;
+                // CAA/archive.org occasionally refuses under load; one calm retry.
+                await Task.Delay(600, ct);
+                return await loader(url, ct);
+            }
+            finally { gate.Release(); }
+        }
         await Task.WhenAll(items.Select(async item =>
         {
             var url = item.Candidate.ArtworkThumbUrl ?? item.Candidate.ArtworkUrl;
             if (url == null) return;
             try
             {
-                await gate.WaitAsync(ct);
-                try
+                Task<byte[]?> download;
+                lock (downloads)
                 {
-                    var data = await _thumbLoader(url, ct);
-                    if (data is not { Length: > 0 } || ct.IsCancellationRequested) return;
-                    // Decoded small and off the UI thread: a list of 3000 px covers would
-                    // otherwise cost ~36 MB each and stall the scroll.
-                    var bmp = await Task.Run(() =>
-                    {
-                        try { using var ms = new MemoryStream(data); return Bitmap.DecodeToWidth(ms, 120); }
-                        catch { return null; }
-                    }, ct);
-                    if (bmp == null) return;
-                    if (ct.IsCancellationRequested) { bmp.Dispose(); return; }
-                    item.Thumbnail = bmp;
-                    if (item == SelectedCandidate && !_ownsNewArtwork) NewArtwork = bmp;
+                    if (!downloads.TryGetValue(url, out download!))
+                        downloads[url] = download = DownloadOnce(url);
                 }
-                finally { gate.Release(); }
+                var data = await download;
+                if (data is not { Length: > 0 } || ct.IsCancellationRequested) return;
+                // Decoded small and off the UI thread: a list of 3000 px covers would
+                // otherwise cost ~36 MB each and stall the scroll.
+                var bmp = await Task.Run(() =>
+                {
+                    try { using var ms = new MemoryStream(data); return Bitmap.DecodeToWidth(ms, 120); }
+                    catch { return null; }
+                }, ct);
+                if (bmp == null) return;
+                if (ct.IsCancellationRequested) { bmp.Dispose(); return; }
+                item.Thumbnail = bmp;
+                if (item == SelectedCandidate && !_ownsNewArtwork) NewArtwork = bmp;
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)

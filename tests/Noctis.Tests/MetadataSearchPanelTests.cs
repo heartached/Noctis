@@ -104,6 +104,41 @@ public class MetadataSearchPanelTests
     }
 
     [AvaloniaFact]
+    public async Task Thumbnails_SharedCoverUrl_DownloadsOnce_AndEveryRowGetsItsOwnBitmap()
+    {
+        // Owner 10-08: MusicBrainz rows of one album share the release-group cover URL; fetching
+        // it once per row at the same time left some rows blank.
+        var shared = new Uri("https://coverartarchive.org/release-group/g1/front-250");
+        var search = new FakeSearch
+        {
+            Result = new MetadataSearchResult
+            {
+                Candidates = new[] { 0.9, 0.8, 0.7 }
+                    .Select(c => Cand("MusicBrainz", c) with { ArtworkThumbUrl = shared }).ToArray(),
+            },
+        };
+        var vm = await SingleVm(search);
+        var calls = 0;
+        var panel = new MetadataSearchPanelViewModel(vm, search, (_, _) =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult<byte[]?>(Jpeg(40, 40));
+        });
+
+        panel.Open();
+        for (var i = 0; i < 200 && !(panel.Candidates.Count == 3 && panel.Candidates.All(c => c.HasThumbnail)); i++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            await Task.Delay(10);
+        }
+
+        Assert.Equal(3, panel.Candidates.Count);
+        Assert.All(panel.Candidates, c => Assert.True(c.HasThumbnail));
+        Assert.Equal(1, calls);
+        Assert.Equal(3, panel.Candidates.Select(c => c.Thumbnail).Distinct().Count()); // each row disposes its own
+    }
+
+    [AvaloniaFact]
     public async Task Query_CarriesTheUsersTrackAndDiscTotals_SoTheEngineCanMatchTheEdition()
     {
         // Owner 10-08: an ISRC match on the 15-track standard release proposed
