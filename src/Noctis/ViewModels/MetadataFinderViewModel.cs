@@ -160,6 +160,11 @@ public partial class MetadataFinderViewModel : ViewModelBase
             : $"Applied {written} track{(written == 1 ? string.Empty : "s")}";
     }
 
+    /// <summary>Stops a running identify. The dialog calls it when it closes: Alt+F4 or the
+    /// owner closing never go through Cancel, and the loop kept querying the sources for
+    /// every remaining row after the window was gone.</summary>
+    public void StopIdentify() => _cts?.Cancel();
+
     [RelayCommand]
     private void Cancel()
     {

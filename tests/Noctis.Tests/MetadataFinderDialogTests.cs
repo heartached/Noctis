@@ -339,4 +339,20 @@ public class MetadataFinderDialogTests
         }
         finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
     }
+
+    [AvaloniaFact]
+    public void ClosingTheWindow_StopsARunningIdentify()
+    {
+        EnsureAppStyles();
+        var finder = new HangingFinder();
+        var (vm, win, host) = Open(finder);
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+        var run = vm.IdentifyAllCommand.ExecuteAsync(null);
+        Assert.True(PumpUntil(() => vm.IsBusy && finder.Seen.CanBeCanceled));
+
+        win.Close();
+        Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+        Assert.True(finder.Seen.IsCancellationRequested, "the identify kept running after the window closed");
+        Assert.True(PumpUntil(() => run.IsCompleted));
+    }
 }

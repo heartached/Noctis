@@ -17,6 +17,7 @@ public partial class MetadataFinderDialog : Window
         // PillDialogHost turns this into the animated close; nothing is returned through
         // Close(result), so the deferred close loses nothing.
         vm.Closed += (_, _) => Close();
+        Closed += (_, _) => vm.StopIdentify();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
