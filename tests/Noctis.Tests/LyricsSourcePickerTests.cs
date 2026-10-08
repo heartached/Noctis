@@ -344,6 +344,66 @@ public class LyricsSourcePickerTests
 
     // ── Dialog ──
 
+    /// <summary>
+    /// Owner 10-08: Search Lyrics in the pill dialog. The pill host defers the real close until
+    /// its animation has played (a Close(result) would lose its result), so the end-to-end path
+    /// is checked: the lyrics page opens the real dialog, Use Lyrics is clicked, and the pick is
+    /// on the page once the dialog has closed.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SearchLyricsForTrack_RealDialog_UseLyricsPutsThePickOnThePage()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("DismissIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/"))
+            {
+                Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml")
+            });
+
+        var lrcLib = new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) };
+        var kugou = new StubSource { Impl = _ => Task.FromResult<LrcLibResult?>(Result(synced: Elrc)) };
+        var (vm, track, _) = Mount(lrcLib, kugou.As("Kugou", _ => true));
+        LyricsSearchDialog? dialog = null;
+        var dialogClosed = false;
+        vm.ShowLyricsSearchDialog = picker =>
+        {
+            var done = new TaskCompletionSource();
+            dialog = new LyricsSearchDialog(picker) { Width = 1000, Height = 800 };
+            dialog.Closed += (_, _) => { dialogClosed = true; done.TrySetResult(); };
+            dialog.Show();
+            return done.Task;
+        };
+        var lrcPath = Sidecar(track, ".lrc");
+
+        try
+        {
+            vm.SearchLyricsForTrack(track);
+            await PumpUntilAsync(() => vm.LyricsSourceName == "LRCLIB");
+            File.WriteAllText(lrcPath, "[00:05.00]my own timing");
+            vm.SearchLyricsForTrack(track);
+            await PumpUntilAsync(() => dialog?.DataContext is LyricsSearchViewModel { SelectedResult.Source: "Kugou" });
+            var picker = (LyricsSearchViewModel)dialog!.DataContext!;
+            Assert.Equal("Kugou", picker.SelectedResult?.Source);
+
+            var host = dialog.GetVisualDescendants().OfType<Noctis.Controls.PillDialogHost>().Single();
+            await PumpUntilAsync(() => host.IsOpenStarted);
+            dialog.GetVisualDescendants().OfType<Button>().Single(b => ReferenceEquals(b.Command, picker.ApplyCommand))
+                .Command!.Execute(null);
+            Assert.True(host.IsClosing);
+            Assert.False(dialogClosed);
+            await PumpUntilAsync(() => dialogClosed, 2000);
+
+            Assert.True(dialogClosed);
+            Assert.Equal("Kugou", vm.LyricsSourceName);
+            Assert.Contains(vm.LyricLines, l => l.Text == "word timed");
+        }
+        finally
+        {
+            if (dialog is { IsVisible: true }) dialog.Close();
+            Cleanup(track);
+        }
+    }
+
     [AvaloniaFact]
     public async Task Dialog_Mounts_WithThePickerTheResultsAndThePreview()
     {
@@ -384,19 +444,16 @@ public class LyricsSourcePickerTests
             Assert.Equal(vm.AutoLabel, picker.SelectedItem);
             Assert.Equal(1, searches); // binding the picker must not start a second search
 
-            // Opens like the Remove from Library dialog: overlay fades to 1, card scales to 1.
-            Dispatcher.UIThread.RunJobs();
-            var overlay = window.FindControl<Border>("DialogOverlay")!;
-            var card = window.FindControl<Border>("DialogCard")!;
-            // Base values: the transitions animate toward these.
-            Assert.Equal(1, overlay.GetBaseValue(Visual.OpacityProperty).Value);
-            Assert.Equal(1, card.GetBaseValue(Visual.RenderTransformProperty).Value!.Value.M11);
+            // Owner 10-08: Search Lyrics in the pill dialog. Opens on the pill host's animation.
+            var host = window.GetVisualDescendants().OfType<Noctis.Controls.PillDialogHost>().Single();
+            await PumpUntilAsync(() => host.IsOpenStarted);
+            Assert.True(host.IsOpenStarted);
 
             // Close animates out first, then the window closes.
             var closed = false;
             window.Closed += (_, _) => closed = true;
             vm.CloseCommand.Execute(null);
-            Assert.Equal(0, overlay.GetBaseValue(Visual.OpacityProperty).Value);
+            Assert.True(host.IsClosing);
             Assert.False(closed);
             await PumpUntilAsync(() => closed, 2000);
             Assert.True(closed);
