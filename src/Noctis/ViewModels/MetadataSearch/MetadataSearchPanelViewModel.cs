@@ -76,7 +76,8 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     // ── Search state ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearching), nameof(HasResults), nameof(IsEmpty), nameof(IsUnavailable),
-        nameof(IsWaitingForLoad), nameof(IsFailed), nameof(ShowMessage), nameof(MessageTitle), nameof(MessageBody))]
+        nameof(IsWaitingForLoad), nameof(IsFailed), nameof(ShowMessage), nameof(MessageTitle), nameof(MessageBody),
+        nameof(HasMessageBody), nameof(ShowProviderProblem))]
     private MetadataSearchState _state;
 
     public bool IsSearching => State == MetadataSearchState.Searching;
@@ -90,7 +91,7 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
         or MetadataSearchState.Failed or MetadataSearchState.WaitingForLoad or MetadataSearchState.Idle;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MessageBody))]
+    [NotifyPropertyChangedFor(nameof(MessageBody), nameof(HasMessageBody))]
     private string _errorText = string.Empty;
 
     public string MessageTitle => Localization.Loc.T(State switch
@@ -102,19 +103,30 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
         _ => "MetadataSearch.IdleTitle",
     });
 
+    // Owner 10-08: declutter Find online — the states say what happened in a few words;
+    // only "no matches" (what to try) and a failure (what went down) get a second line.
     public string MessageBody => State switch
     {
-        MetadataSearchState.Unavailable => Localization.Loc.T("MetadataSearch.UnavailableBody"),
         MetadataSearchState.Empty => Localization.Loc.T("MetadataSearch.EmptyBody"),
         MetadataSearchState.Failed => ErrorText,
-        MetadataSearchState.WaitingForLoad => Localization.Loc.T("MetadataSearch.WaitingBody"),
-        _ => Localization.Loc.T("MetadataSearch.IdleBody"),
+        _ => string.Empty,
     };
+
+    public bool HasMessageBody => MessageBody.Length > 0;
 
     /// <summary>Per-provider outcome of the last search: "Deezer 5 · MusicBrainz 3 · Apple Music offline".</summary>
     public ObservableCollection<ProviderStatusItem> ProviderStatuses { get; } = new();
     public bool HasProviderStatuses => ProviderStatuses.Count > 0;
     public string ProviderStatusLine => string.Join(" · ", ProviderStatuses.Select(s => s.Text));
+
+    // The per-source counts live in the Sources menu; only a source that let the user down
+    // surfaces under the search bar ("Apple Music offline"). A search where every source
+    // failed already says so in the middle of the panel.
+    public bool HasProviderProblem => ProviderStatuses.Any(s => s.IsProblem);
+    public bool ShowProviderProblem => HasProviderProblem && !IsFailed;
+    public string ProviderProblemText => string.Join(" · ", ProviderStatuses.Where(s => s.IsProblem).Select(s => s.Text));
+    public int SelectedSourceCount => Providers.Count(p => p.IsSelected);
+    public string SourcesTip => HasProviderStatuses ? ProviderStatusLine : Localization.Loc.T("MetadataSearch.Sources");
 
     public ObservableCollection<CandidateItem> Candidates { get; } = new();
 
@@ -134,13 +146,20 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     [ObservableProperty] private bool _onlyFillEmpty;
 
     public int ChangedFieldCount => Rows.Count(r => r.IsChanged);
-    public int UnchangedFieldCount => Rows.Count(r => !r.IsChanged);
-    public bool HasUnchangedFields => UnchangedFieldCount > 0;
-    public bool HasNoFieldChanges => SelectedCandidate != null && ChangedFieldCount == 0;
-    public string ShowUnchangedText => Localization.Loc.T("MetadataSearch.ShowUnchanged", UnchangedFieldCount);
-    public string FieldSummary => ChangedFieldCount == 0
-        ? Localization.Loc.T("MetadataSearch.NoFieldChanges")
-        : Localization.Loc.T("MetadataSearch.FieldsDiffer", ChangedFieldCount);
+    /// <summary>Changes this editor can actually take (a blocked row differs but can't be saved).</summary>
+    public int ChangeableFieldCount => Rows.Count(r => r.CanToggle);
+    /// <summary>What the fields pane offers: the storable field changes plus the cover — the
+    /// same set the master tick and Apply count from.</summary>
+    public int OfferedChangeCount => ChangeableFieldCount + (HasNewArtwork ? 1 : 0);
+    public string FieldSummary => OfferedChangeCount switch
+    {
+        0 => Localization.Loc.T("MetadataSearch.NoFieldChanges"),
+        1 => Localization.Loc.T("MetadataSearch.FieldsDifferOne"),
+        var n => Localization.Loc.T("MetadataSearch.FieldsDiffer", n),
+    };
+
+    /// <summary>An option in the ⋯ menu is on (its button carries the accent then).</summary>
+    public bool HasActiveOptions => OnlyFillEmpty || ShowUnchanged;
 
     // Artwork: the editor's current cover beside the candidate's.
     public Bitmap? CurrentArtwork => _owner.ArtworkPreview;
@@ -161,7 +180,6 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
 
     // Album scope: the release's tracks laid onto the local ones.
     public ObservableCollection<TrackMatchRow> TrackRows { get; } = new();
-    [ObservableProperty] private string _trackSummary = string.Empty;
     [ObservableProperty] private string _trackExtraNote = string.Empty;
 
     /// <summary>0 = album fields, 1 = tracks (album scope only).</summary>
@@ -186,8 +204,25 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             : Localization.Loc.T("MetadataSearch.ApplyMany", SelectedChangeCount);
 
     public string FooterText => SelectedCandidate == null
-        ? Localization.Loc.T("MetadataSearch.FooterIdle")
+        ? string.Empty
         : Localization.Loc.T("MetadataSearch.FooterSelected", SelectedCandidate.Provider);
+
+    /// <summary>The master tick: every storable change on (true), none (false), some (null).
+    /// Covers the album's tracks and the cover too, like the old All / None links did.</summary>
+    public bool? AllSelected
+    {
+        get
+        {
+            var ticks = Rows.Where(r => r.CanToggle).Select(r => r.IsChecked)
+                .Concat(TrackRows.Where(t => t.CanToggle).Select(t => t.IsIncluded))
+                .Concat(HasNewArtwork ? new[] { UseArtwork } : Array.Empty<bool>())
+                .ToList();
+            if (ticks.All(t => !t)) return false;
+            return ticks.All(t => t) ? true : null;
+        }
+    }
+
+    public bool HasSelectable => Rows.Any(r => r.CanToggle) || TrackRows.Any(t => t.CanToggle) || HasNewArtwork;
 
     // ── Open / close ──
 
@@ -305,6 +340,15 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             .ToList();
         foreach (var item in items) Candidates.Add(item);
 
+        // Every queried source down is not "no matches": the user should retry, not reword.
+        var queried = result.Providers.Where(p => p.Outcome != ProviderOutcome.Disabled).ToList();
+        if (items.Count == 0 && queried.Count > 0
+            && queried.All(p => p.Outcome is ProviderOutcome.Failed or ProviderOutcome.TimedOut))
+        {
+            ErrorText = ProviderStatusLine;
+            State = MetadataSearchState.Failed;
+            return;
+        }
         State = items.Count > 0 ? MetadataSearchState.Results : MetadataSearchState.Empty;
         SelectedCandidate = items.FirstOrDefault();
         _ = LoadThumbnailsAsync(items, cts.Token);
@@ -326,17 +370,32 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
 
     private static ProviderStatusItem StatusItem(ProviderStatus s) => s.Outcome switch
     {
-        ProviderOutcome.Ok => new($"{s.Provider} {s.ResultCount}", true, false),
-        ProviderOutcome.NoResults => new($"{s.Provider} 0", false, false),
-        ProviderOutcome.TimedOut => new(Localization.Loc.T("MetadataSearch.ProviderTimedOut", s.Provider), false, true),
-        ProviderOutcome.Disabled => new(Localization.Loc.T("MetadataSearch.ProviderOff", s.Provider), false, false),
-        _ => new(Localization.Loc.T("MetadataSearch.ProviderOffline", s.Provider), false, true),
+        ProviderOutcome.Ok => new(s.Provider, $"{s.Provider} {s.ResultCount}", s.ResultCount.ToString(), true, false),
+        ProviderOutcome.NoResults => new(s.Provider, $"{s.Provider} 0", "0", false, false),
+        ProviderOutcome.TimedOut => new(s.Provider, Localization.Loc.T("MetadataSearch.ProviderTimedOut", s.Provider),
+            Localization.Loc.T("MetadataSearch.StatusTimedOut"), false, true),
+        ProviderOutcome.Disabled => new(s.Provider, Localization.Loc.T("MetadataSearch.ProviderOff", s.Provider),
+            Localization.Loc.T("MetadataSearch.StatusOff"), false, false),
+        _ => new(s.Provider, Localization.Loc.T("MetadataSearch.ProviderOffline", s.Provider),
+            Localization.Loc.T("MetadataSearch.StatusOffline"), false, true),
     };
 
+    /// <summary>Copies the last outcome onto the Sources menu rows and raises the summaries.</summary>
     private void RaiseStatusLine()
     {
+        foreach (var chip in Providers)
+        {
+            var st = ProviderStatuses.FirstOrDefault(s => string.Equals(s.Provider, chip.Name, StringComparison.OrdinalIgnoreCase));
+            chip.StatusText = st?.Short ?? string.Empty;
+            chip.IsOk = st?.IsOk ?? false;
+            chip.IsProblem = st?.IsProblem ?? false;
+        }
         OnPropertyChanged(nameof(HasProviderStatuses));
         OnPropertyChanged(nameof(ProviderStatusLine));
+        OnPropertyChanged(nameof(HasProviderProblem));
+        OnPropertyChanged(nameof(ShowProviderProblem));
+        OnPropertyChanged(nameof(ProviderProblemText));
+        OnPropertyChanged(nameof(SourcesTip));
     }
 
     private void OnProviderChipChanged(object? sender, PropertyChangedEventArgs e)
@@ -349,8 +408,11 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             chip.IsSelected = true;
             return;
         }
-        // Re-run what's on screen with the new sources (the previous run is cancelled).
-        if (IsOpen && State is MetadataSearchState.Results or MetadataSearchState.Empty or MetadataSearchState.Failed)
+        OnPropertyChanged(nameof(SelectedSourceCount));
+        // Re-run what's on screen with the new sources (the previous run is cancelled) — a
+        // search still running too, or it would land results from the sources just turned off.
+        if (IsOpen && State is MetadataSearchState.Results or MetadataSearchState.Empty or MetadataSearchState.Failed
+                or MetadataSearchState.Searching)
             _ = SearchAsync();
     }
 
@@ -476,12 +538,33 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     {
         if (!row.CanToggle) return false;
         if (OnlyFillEmpty) return row.CurrentIsEmpty;
+        // Filling a gap is always welcome.
+        if (row.CurrentIsEmpty) return true;
         // An album's artist is per track: a release artist laid over "Mixed" would wipe every
         // featured artist on the album, so that one waits for an explicit tick.
         if (AlbumScope && row.Field == MetadataSearchField.Artist && _owner.IsSearchFieldMixed(row.Field))
             return false;
-        return true;
+        return IsSafeOverwrite(row.Field, AlbumScope);
     }
+
+    /// <summary>
+    /// Whether replacing a value the file already has starts ticked (owner 10-08: declutter
+    /// Find online, "fix both": a single-track match pre-ticked Track count 17 → 15 from the
+    /// standard edition of a deluxe album, and Composer swapped full legal names for
+    /// MusicBrainz credit names). Only facts about the recording itself — the same on every
+    /// release it appears on — overwrite by default. Everything that depends on WHICH release
+    /// matched (album, dates, numbering, counts, label, copyright, barcode), on how a source
+    /// formats credits (composer) or on the user's own taxonomy (genre) waits for a tick.
+    /// The album editor is the exception for album / album artist: it renames every track
+    /// at once, so nothing is split off; one track renamed alone would leave its album.
+    /// </summary>
+    internal static bool IsSafeOverwrite(MetadataSearchField field, bool albumScope) => field switch
+    {
+        MetadataSearchField.Title or MetadataSearchField.Artist or MetadataSearchField.Isrc
+            or MetadataSearchField.Explicit or MetadataSearchField.Bpm => true,
+        MetadataSearchField.Album or MetadataSearchField.AlbumArtist => albumScope,
+        _ => false,
+    };
 
     private void BuildTrackRows(MetadataCandidate c)
     {
@@ -498,9 +581,6 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             TrackRows.Add(row);
         }
 
-        var matched = TrackRows.Count(r => r.IsMatched);
-        var changing = TrackRows.Count(r => r.CanToggle);
-        TrackSummary = Localization.Loc.T("MetadataSearch.TrackSummary", matched, TrackRows.Count, changing);
         var extra = remote.Count - matches.Count;
         TrackExtraNote = extra > 0 ? Localization.Loc.T("MetadataSearch.TracksNotInLibrary", extra) : string.Empty;
         OnPropertyChanged(nameof(TracksTabText));
@@ -558,14 +638,21 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     private void RebuildVisibleRows()
     {
         VisibleRows.Clear();
+        // Owner 10-08: declutter Find online — by default only what can change shows; rows
+        // that already match or can't be saved here wait behind "Show all fields".
         foreach (var r in Rows)
-            if (r.IsChanged || ShowUnchanged) VisibleRows.Add(r);
+            if (r.CanToggle || ShowUnchanged) VisibleRows.Add(r);
     }
 
-    partial void OnShowUnchangedChanged(bool value) => RebuildVisibleRows();
+    partial void OnShowUnchangedChanged(bool value)
+    {
+        RebuildVisibleRows();
+        OnPropertyChanged(nameof(HasActiveOptions));
+    }
 
     partial void OnOnlyFillEmptyChanged(bool value)
     {
+        OnPropertyChanged(nameof(HasActiveOptions));
         foreach (var r in Rows) r.IsChecked = DefaultChecked(r);
         // The cover follows the same rule: filled only when there is none.
         if (value && HasCurrentArtwork) UseArtwork = false;
@@ -586,6 +673,16 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
         foreach (var r in Rows) r.IsChecked = false;
         foreach (var t in TrackRows) t.IsIncluded = false;
         UseArtwork = false;
+    }
+
+    /// <summary>The master tick: all on unless they already are (a partial pick goes to all).</summary>
+    [RelayCommand]
+    private void ToggleAll()
+    {
+        if (AllSelected == true) SelectNone();
+        else SelectAll();
+        // The box toggled itself on click; put it back in step even when nothing changed.
+        OnPropertyChanged(nameof(AllSelected));
     }
 
     [RelayCommand]
@@ -728,11 +825,10 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     private void RaiseCounts()
     {
         OnPropertyChanged(nameof(ChangedFieldCount));
-        OnPropertyChanged(nameof(UnchangedFieldCount));
-        OnPropertyChanged(nameof(HasUnchangedFields));
-        OnPropertyChanged(nameof(HasNoFieldChanges));
-        OnPropertyChanged(nameof(ShowUnchangedText));
+        OnPropertyChanged(nameof(ChangeableFieldCount));
+        OnPropertyChanged(nameof(OfferedChangeCount));
         OnPropertyChanged(nameof(FieldSummary));
+        OnPropertyChanged(nameof(HasSelectable));
         OnPropertyChanged(nameof(TracksTabText));
         RaiseSelectionCounts();
     }
@@ -740,6 +836,7 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     private void RaiseSelectionCounts()
     {
         OnPropertyChanged(nameof(SelectedChangeCount));
+        OnPropertyChanged(nameof(AllSelected));
         OnPropertyChanged(nameof(ApplyText));
         OnPropertyChanged(nameof(CanApply));
         ApplyCommand.NotifyCanExecuteChanged();

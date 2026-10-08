@@ -36,7 +36,8 @@ public class MetadataSearchPanelShotsTests
     private readonly ITestOutputHelper _o;
     public MetadataSearchPanelShotsTests(ITestOutputHelper o) => _o = o;
 
-    private const string ShotsDir = @"D:\NoctisLyricsLab\metadata-search\shots";
+    // Owner 10-08: declutter Find online — v2 shots, plus no matches, every source down and the two menus.
+    private const string ShotsDir = @"D:\NoctisLyricsLab\metadata-search\shots-v2";
 
     private static void EnsureAppStyles()
     {
@@ -240,10 +241,14 @@ public class MetadataSearchPanelShotsTests
                 PumpUntil(() => false, 400);
                 Save(win, "01-track-compare.png");
 
+                var view = win.GetVisualDescendants().OfType<MetadataSearchPanel>().Single();
+                SaveFlyout(win, view.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "SourcesButton"), "08-sources-menu.png");
+                SaveFlyout(win, view.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("ms-icon")), "09-options-menu.png");
+
                 vm.SearchPanel.ShowUnchanged = true;
                 vm.SearchPanel.OnlyFillEmpty = true;
                 PumpUntil(() => false, 300);
-                Save(win, "02-track-only-fill-empty-show-unchanged.png");
+                Save(win, "02-track-only-fill-empty-show-all.png");
 
                 vm.SearchPanel.ShowUnchanged = false;
                 vm.SearchPanel.OnlyFillEmpty = false;
@@ -310,7 +315,48 @@ public class MetadataSearchPanelShotsTests
                 Save(win, "07-unavailable.png");
             }
             finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+
+            // 4. No matches, then every source down.
+            var empty = new MetadataSearchPanelTests.FakeSearch
+            {
+                Result = new MetadataSearchResult { Providers = new[] { new ProviderStatus("Deezer", ProviderOutcome.NoResults, 0) } },
+            };
+            (vm, win) = OpenWindow(empty, album: false, currentCover: null);
+            try
+            {
+                vm.OpenSearchPanelCommand.Execute(null);
+                PumpUntil(() => false, 400);
+                Save(win, "10-no-matches.png");
+
+                empty.Result = new MetadataSearchResult
+                {
+                    Providers = new[]
+                    {
+                        new ProviderStatus("Deezer", ProviderOutcome.Failed, 0), new ProviderStatus("MusicBrainz", ProviderOutcome.TimedOut, 0),
+                        new ProviderStatus("Apple Music", ProviderOutcome.Failed, 0),
+                    },
+                };
+                vm.SearchPanel.SearchCommand.Execute(null);
+                PumpUntil(() => false, 400);
+                Save(win, "11-sources-down.png");
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); }
         });
+    }
+
+    /// <summary>Opens the button's flyout and saves the window with the menu showing (headless
+    /// popups draw in the window's overlay layer, so the window's frame has them).</summary>
+    private void SaveFlyout(Window win, Button button, string name)
+    {
+        var flyout = button.Flyout!;
+        flyout.ShowAt(button);
+        PumpUntil(() => false, 400);
+        try { Save(win, name); }
+        finally
+        {
+            flyout.Hide();
+            PumpUntil(() => false, 200);
+        }
     }
 
     private void Save(Window win, string name)

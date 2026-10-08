@@ -28,16 +28,26 @@ public readonly record struct SearchFieldState(string Raw, string Display, bool 
     public static SearchFieldState Blocked(string reason) => new(string.Empty, "—", true, reason, true);
 }
 
-/// <summary>A provider filter chip ("Deezer", "MusicBrainz", …).</summary>
+/// <summary>A source in the Sources menu ("Deezer", "MusicBrainz", …) with what it returned
+/// last time: a count, or why it didn't answer.</summary>
 public sealed partial class ProviderChip : ObservableObject
 {
     public ProviderChip(string name) => Name = name;
     public string Name { get; }
     [ObservableProperty] private bool _isSelected = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    private string _statusText = string.Empty;
+
+    [ObservableProperty] private bool _isOk;
+    [ObservableProperty] private bool _isProblem;
+    public bool HasStatus => StatusText.Length > 0;
 }
 
-/// <summary>One provider's outcome under the search bar: "Deezer 5", "Apple Music offline".</summary>
-public sealed record ProviderStatusItem(string Text, bool IsOk, bool IsProblem);
+/// <summary>One provider's outcome of the last search: "Deezer 5", "Apple Music offline".
+/// <c>Short</c> is what the Sources menu shows beside the name ("5", "offline").</summary>
+public sealed record ProviderStatusItem(string Provider, string Text, string Short, bool IsOk, bool IsProblem);
 
 /// <summary>A result card in the left list.</summary>
 public sealed partial class CandidateItem : ObservableObject, IDisposable
@@ -70,6 +80,10 @@ public sealed partial class CandidateItem : ObservableObject, IDisposable
             _ => "MetadataSearch.Weak",
         });
         NotesText = string.Join(" · ", candidate.MatchNotes);
+        // Owner 10-08: declutter Find online — the card shows title, artist · album, the
+        // score and the year; where it came from and why it ranked there wait in the tooltip.
+        Tip = string.Join("\n", new[] { Subtitle, $"{ConfidenceLabel} {ConfidenceText} · {Provider}", NotesText }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
     }
 
     public MetadataCandidate Candidate { get; }
@@ -86,6 +100,8 @@ public sealed partial class CandidateItem : ObservableObject, IDisposable
     public bool IsWeak => ConfidenceLevel == 0;
     public string NotesText { get; }
     public bool HasNotes => NotesText.Length > 0;
+    /// <summary>The full artist · album, "Strong 94% · Deezer" and the match notes, for the card's tooltip.</summary>
+    public string Tip { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasThumbnail))]
@@ -156,7 +172,9 @@ public sealed partial class TrackMatchRow : ObservableObject
             if (match.Duration is { } md && local.Duration > TimeSpan.Zero)
             {
                 var delta = (int)Math.Round((md - local.Duration).TotalSeconds);
-                DeltaText = delta == 0 ? "±0 s" : (delta > 0 ? $"+{delta} s" : $"−{-delta} s");
+                // Owner 10-08: declutter Find online — a matching length is the norm, so only
+                // a difference gets a chip.
+                DeltaText = delta == 0 ? string.Empty : (delta > 0 ? $"+{delta} s" : $"−{-delta} s");
                 // Past a few seconds it is likely another version (radio edit, remaster, live).
                 DeltaIsLarge = Math.Abs(delta) > 5;
             }
@@ -187,6 +205,9 @@ public sealed partial class TrackMatchRow : ObservableObject
     public bool CanToggle => IsMatched && IsChanged;
     public string StatusText => Localization.Loc.T(!IsMatched ? "MetadataSearch.NoMatch"
         : IsChanged ? "MetadataSearch.WillChange" : "MetadataSearch.Same");
+    /// <summary>The two lengths, for the row's tooltip ("4:27 → 4:28").</summary>
+    public string DurationTip => IsMatched && NewDuration.Length > 0 && LocalDuration.Length > 0
+        ? $"{LocalDuration} → {NewDuration}" : LocalDuration;
 
     [ObservableProperty] private bool _isIncluded;
 
