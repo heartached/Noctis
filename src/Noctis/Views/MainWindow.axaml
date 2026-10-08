@@ -115,6 +115,10 @@
 
 
     <Panel Background="Transparent">
+    <!-- Everything the Settings sheet sits over. Its own layer so SettingsScrim can snapshot
+         it (BlurredBackdrop.Target) without catching the scrim or the sheet, also while the
+         sheet is up. Every child keeps its ZIndex order inside it, all under the scrim (99). -->
+    <Panel x:Name="AppContentLayer">
     <!-- Liquid Glass backdrop (Appearance toggle). Hidden by default so rendering is
          untouched while the setting is off. When active, code-behind (ApplyLiquidGlass)
          shows it, sets the window's TransparencyLevelHint and re-tints the material to
@@ -1434,6 +1438,8 @@
         </controls:GlassPanel>
     </Border>
 
+    </Panel>
+
     <!-- Settings modal overlay (dark backdrop + centered popup card).
          Visibility and the fade/scale open-close animation are driven from
          code-behind (IsSettingsModalOpen handler) so the close can play before
@@ -1445,13 +1451,16 @@
          blur and the frosted card flashed brighter than its surroundings during the fade
          (the "transparent box" on close). Code-behind mirrors the overlay's Opacity /
          IsVisible onto this scrim. -->
-    <Border Name="SettingsScrim"
+    <!-- Owner 10-08 "make the background blur just like the metadata pop up": the scrim
+         holds a blurred snapshot of AppContentLayer (taken once per open, freed on close)
+         under the dim, the PillDialogHost look. Dim alone until the snapshot lands, or where
+         the backend can't take one. -->
+    <controls:BlurredBackdrop Name="SettingsScrim"
             IsVisible="False"
             Opacity="0"
-            Background="#A6000000"
-            IsHitTestVisible="False"
+            Dim="#A6000000"
             ZIndex="99">
-        <Border.Transitions>
+        <controls:BlurredBackdrop.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.14">
                     <DoubleTransition.Easing>
@@ -1459,8 +1468,8 @@
                     </DoubleTransition.Easing>
                 </DoubleTransition>
             </Transitions>
-        </Border.Transitions>
-    </Border>
+        </controls:BlurredBackdrop.Transitions>
+    </controls:BlurredBackdrop>
     <!-- The overlay itself never fades (Opacity stays 1). Its opacity used to drive the
          open/close animation, but the GPU backend does not apply an ancestor's opacity
          layer to the GlassPanel's custom Skia draw: the frost stayed at full strength while
