@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Linq;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
@@ -27,6 +26,10 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
     public ObservableCollection<MetaRow> Rows { get; } = new();
 
+    /// <summary>False when nothing is poorly tagged: the dialog shows the status in place of
+    /// the list. The rows are fixed at construction.</summary>
+    public bool HasRows => Rows.Count > 0;
+
     public event EventHandler? Closed;
 
     public MetadataFinderViewModel(IReadOnlyList<Track> candidates, IMetadataFinderService finder,
@@ -39,11 +42,13 @@ public partial class MetadataFinderViewModel : ViewModelBase
         foreach (var t in candidates)
             Rows.Add(new MetaRow(t, RecomputeSelection));
 
-        SourceHint = "Identifying by current tags via Deezer, then MusicBrainz. Toggle sources in Settings.";
+        // Owner 10-08: same UI + animation for search metadata — the editor's short, localized
+        // wording; the sources line is the header's ⓘ tooltip now.
+        SourceHint = L("MetadataFinder.SourcesTip");
 
         StatusMessage = Rows.Count == 0
-            ? "No poorly-tagged tracks found."
-            : $"{Rows.Count} track{(Rows.Count == 1 ? string.Empty : "s")} to identify";
+            ? L("MetadataFinder.NothingToFix")
+            : Rows.Count == 1 ? L("MetadataFinder.ToIdentifyOne") : L("MetadataFinder.ToIdentifyMany", Rows.Count);
     }
 
     [RelayCommand]
@@ -57,30 +62,31 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
         try
         {
+            // Rows are updated in place: the command runs on the UI thread and every await
+            // resumes there. Posting each result instead queued it behind the summary below,
+            // so "Identified N of M" missed the last match — and every match when the finder
+            // answered without yielding (a cached lookup): "Identified 0 of 4".
             foreach (var row in Rows.ToList())
             {
                 ct.ThrowIfCancellationRequested();
-                Dispatcher.UIThread.Post(() => row.Status = "Identifying…");
+                row.Status = L("MetadataFinder.Identifying");
 
                 var hits = await _finder.IdentifyAsync(row.Track, ct);
                 var best = hits.FirstOrDefault();
 
-                Dispatcher.UIThread.Post(() =>
+                if (best is null)
                 {
-                    if (best is null)
-                    {
-                        row.Status = "No match";
-                        return;
-                    }
-                    row.ApplyProposal(best);
-                    identified++;
-                });
+                    row.Status = L("MetadataFinder.NoMatch");
+                    continue;
+                }
+                row.ApplyProposal(best);
+                identified++;
             }
-            StatusMessage = $"Identified {identified} of {Rows.Count}";
+            StatusMessage = L("MetadataFinder.Identified", identified, Rows.Count);
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Cancelled.";
+            StatusMessage = L("MetadataFinder.Cancelled");
         }
         finally
         {
@@ -100,7 +106,7 @@ public partial class MetadataFinderViewModel : ViewModelBase
         if (toApply.Count == 0) return;
 
         IsBusy = true;
-        StatusMessage = $"Writing tags to {toApply.Count}…";
+        StatusMessage = L("MetadataFinder.Writing", toApply.Count);
 
         // Rows whose tag write failed. The in-memory Track fields were mutated *before*
         // the write and every row was marked "Applied" unconditionally, so a locked or
@@ -147,14 +153,22 @@ public partial class MetadataFinderViewModel : ViewModelBase
         _library.NotifyMetadataChanged();
 
         foreach (var row in toApply)
-            row.Status = failed.Contains(row) ? "Write failed" : "Applied";
+            row.Status = failed.Contains(row) ? L("MetadataFinder.WriteFailed") : L("MetadataFinder.Applied");
 
         IsBusy = false;
         RecomputeSelection();
         StatusMessage = failed.Count > 0
-            ? $"Applied {written} track{(written == 1 ? string.Empty : "s")}, {failed.Count} failed"
-            : $"Applied {written} track{(written == 1 ? string.Empty : "s")}";
+            ? L("MetadataFinder.AppliedFailed", written, failed.Count)
+            : written == 1 ? L("MetadataFinder.AppliedOne") : L("MetadataFinder.AppliedMany", written);
     }
+
+    /// <summary>Stops a running identify. The dialog calls it when it closes: Alt+F4 or the
+    /// owner closing never go through Cancel, and the loop kept querying the sources for
+    /// every remaining row after the window was gone.</summary>
+    public void StopIdentify() => _cts?.Cancel();
+
+    private static string L(string key) => Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
 
     [RelayCommand]
     private void Cancel()
@@ -185,7 +199,7 @@ public partial class MetadataFinderViewModel : ViewModelBase
         [ObservableProperty] private string _proposedTitle = string.Empty;
         [ObservableProperty] private string _proposedArtist = string.Empty;
         [ObservableProperty] private string _proposedAlbum = string.Empty;
-        [ObservableProperty] private string _status = "Pending";
+        [ObservableProperty] private string _status = L("MetadataFinder.Pending");
         [ObservableProperty] private bool _hasProposal;
         [ObservableProperty] private string _confidenceText = string.Empty;
         [ObservableProperty] private bool _apply;
@@ -205,7 +219,7 @@ public partial class MetadataFinderViewModel : ViewModelBase
             HasProposal = !string.IsNullOrWhiteSpace(s.Title) || !string.IsNullOrWhiteSpace(s.Artist);
             ConfidenceText = $"{s.Source} · {s.Confidence * 100:0}%";
             Apply = HasProposal && s.Confidence >= AutoApplyConfidence;
-            Status = !HasProposal ? "No match" : Apply ? "Matched" : "Review";
+            Status = L(!HasProposal ? "MetadataFinder.NoMatch" : Apply ? "MetadataFinder.Matched" : "MetadataFinder.Review");
         }
 
         partial void OnApplyChanged(bool value) => _onChanged();

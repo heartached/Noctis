@@ -12,6 +12,7 @@
           TextBox.pill-area                                  the same, for multi-line boxes
           Button.pill-primary                                accent fill with a light sheen
           Button.pill-secondary                              quiet filled pill (Cancel)
+          Border.pill-popover                                a small card over the dialog (search pop-ups)
     -->
 
     <Styles.Resources>
@@ -98,6 +99,18 @@
     <Style Selector="Border.pill-well">
         <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         <Setter Property="CornerRadius" Value="20" />
+    </Style>
+
+    <!-- ── Pop-over card: a search pop-up floating over the dialog (the editor's artwork and
+         animated artwork search). The dialog card's own fill and rim, a tighter radius for its
+         size, and a shadow that fits the flyout's padding (owner 10-08: same UI + animation
+         for search metadata). ── -->
+    <Style Selector="Border.pill-popover">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PillDialogRimBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="BoxShadow" Value="0 10 30 0 #90000000" />
     </Style>
 
     <!-- ── Filled pill text fields ── -->

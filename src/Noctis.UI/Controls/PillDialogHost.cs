@@ -83,8 +83,10 @@ public class PillDialogHost : ContentControl
 
     // Our own bezier, not Avalonia.SplineEasing (see CubicBezierEase). Same pair the
     // ComboBox drop-down animator uses: a long ease-out in, a short accelerate out.
-    private static readonly Easing OpenEase = new CubicBezierEase(0.16, 1.0, 0.3, 1.0);
-    private static readonly Easing CloseEase = new CubicBezierEase(0.4, 0.0, 1.0, 1.0);
+    // Internal so the Find online panel inside the editor moves on the same curves
+    // (owner 10-08: same UI + animation for search metadata).
+    internal static readonly Easing OpenEase = new CubicBezierEase(0.16, 1.0, 0.3, 1.0);
+    internal static readonly Easing CloseEase = new CubicBezierEase(0.4, 0.0, 1.0, 1.0);
 
     public static readonly StyledProperty<bool> BlurBackdropProperty =
         AvaloniaProperty.Register<PillDialogHost, bool>(nameof(BlurBackdrop), true);
