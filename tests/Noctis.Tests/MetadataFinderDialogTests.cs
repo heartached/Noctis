@@ -202,11 +202,9 @@ public class MetadataFinderDialogTests
                 Assert.Equal(new CornerRadius(30), host.CornerRadius);
 
                 var all = win.GetVisualDescendants().ToList();
-                // The editor's footer: quiet Cancel pill, accent Apply pill with its sheen.
+                // The editor's footer: quiet Cancel pill, solid accent Apply pill (owner 10-08).
                 var apply = all.OfType<Button>().Single(b => b.Command == vm.ApplySelectedCommand);
-                Assert.Contains("pill-primary", apply.Classes);
-                Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(apply.Background));
-                Assert.Contains(apply.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
+                PillDialogHostTests.AssertSolidAccent(apply);
                 var cancel = all.OfType<Button>().Single(b => b.Command == vm.CancelCommand);
                 Assert.Contains("pill-secondary", cancel.Classes);
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));

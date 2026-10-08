@@ -10,7 +10,7 @@
         Opt-in classes (nothing here restyles a control that doesn't carry one):
           TextBox / ComboBox / AutoCompleteBox .pill-field   filled pill input, accent ring on focus
           TextBox.pill-area                                  the same, for multi-line boxes
-          Button.pill-primary                                accent fill with a light sheen
+          Button.pill-primary                                solid accent fill
           Button.pill-secondary                              quiet filled pill (Cancel)
           Border.pill-popover                                a small card over the dialog (search pop-ups)
     -->
@@ -41,13 +41,6 @@
             <!-- Dim over the blurred app: light, the blur does most of the separating.
                  Same strength as the plain overlay the other pop-ups use. -->
             <SolidColorBrush x:Key="PillDialogScrimBrush" Color="#50000000" />
-            <!-- Primary button sheen over the accent fill: lighter top-left fading into the
-                 plain accent, so the gradient follows whatever accent the user picked. -->
-            <LinearGradientBrush x:Key="PillPrimarySheenBrush" StartPoint="0%,0%" EndPoint="100%,100%">
-                <GradientStop Offset="0" Color="#47FFFFFF" />
-                <GradientStop Offset="0.6" Color="#00FFFFFF" />
-                <GradientStop Offset="1" Color="#14000000" />
-            </LinearGradientBrush>
         </ResourceDictionary>
     </Styles.Resources>
 
@@ -239,12 +232,17 @@
         <Setter Property="CornerRadius" Value="18" />
     </Style>
 
-    <!-- ── Primary pill button: accent fill + light sheen ── -->
-    <!-- Own template so the sheen can sit between the fill and the label. The fill stays
-         AccentButtonBackground (Liquid Glass frosts that key) and the label
-         AccentForegroundBrush (black on pale accents such as the Dark theme's silver). -->
+    <!-- ── Primary pill button: solid accent fill ── -->
+    <!-- Owner 10-08: "make sure the save button matches the accent color bro not gradient".
+         The fill is the accent itself (AccentColorBrush, DynamicResource so a new accent pick
+         repaints it), no sheen or gradient on top; the label stays AccentForegroundBrush
+         (black on pale accents such as the Dark theme's silver) and the border
+         AccentBorderBrush (visible only for a white accent on the Light theme). Hover/press
+         darken to AccentColorBrushDark1 like the Settings pop-ups' accent buttons, and the
+         app-wide Button:pressed scale(0.96) adds the press. Own template: just the fill and
+         the label, so Fluent's state chrome has nothing to paint over. -->
     <Style Selector="Button.pill-primary">
-        <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -257,37 +255,32 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Background="{TemplateBinding Background}"
+                <Border x:Name="PillFill"
+                        Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="{TemplateBinding CornerRadius}"
                         ClipToBounds="True">
-                    <Panel>
-                        <Border x:Name="PillSheen"
-                                Background="{DynamicResource PillPrimarySheenBrush}"
-                                Opacity="0.75"
-                                IsHitTestVisible="False">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
-                                </Transitions>
-                            </Border.Transitions>
-                        </Border>
-                        <ContentPresenter x:Name="PART_ContentPresenter"
-                                          Background="Transparent"
-                                          Content="{TemplateBinding Content}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          Foreground="{TemplateBinding Foreground}"
-                                          Padding="{TemplateBinding Padding}"
-                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                    </Panel>
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Background="Transparent"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
                 </Border>
             </ControlTemplate>
         </Setter>
     </Style>
-    <!-- Fluent's hover/press states paint PART_ContentPresenter; keep it clear so the
-         accent fill and sheen show, and let the sheen carry the feedback. -->
+    <Style Selector="Button.pill-primary:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+    </Style>
+    <Style Selector="Button.pill-primary:pressed">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+    </Style>
+    <!-- Fluent's hover/press/disabled states paint PART_ContentPresenter; keep it clear so
+         only the fill above shows. -->
     <Style Selector="Button.pill-primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
@@ -302,12 +295,6 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
-    </Style>
-    <Style Selector="Button.pill-primary:pointerover /template/ Border#PillSheen">
-        <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="Button.pill-primary:pressed /template/ Border#PillSheen">
-        <Setter Property="Opacity" Value="0.35" />
     </Style>
     <Style Selector="Button.pill-primary:disabled">
         <Setter Property="Opacity" Value="0.5" />

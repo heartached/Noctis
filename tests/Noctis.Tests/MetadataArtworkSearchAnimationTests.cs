@@ -287,41 +287,37 @@ public class MetadataArtworkSearchAnimationTests
         finally { win.Close(); PumpUntil(() => !win.IsVisible); }
     }
 
-    /// <summary>One Find online style: the Details tab's entry (once a red "Search metadata"
-    /// pill) is the header pill's twin — classes, size, label, icon, tooltip — and opens the
+    /// <summary>Owner 10-08: "remove the Find Online button inside of the Details tab". The
+    /// header pill is the single entry point: the Details tab has no Find online button and
+    /// no leftover gap above its first field, and clicking the header pill opens the
     /// panel.</summary>
     [AvaloniaFact]
-    public void DetailsFindOnline_MatchesTheHeaderPill_AndOpensThePanel()
+    public void DetailsTab_HasNoFindOnline_HeaderPillOpensThePanel()
     {
         var (vm, win) = Editor("Details");
         try
         {
-            var buttons = win.GetVisualDescendants().OfType<Button>().ToList();
-            var header = buttons.Single(b => b.Command == vm.ToggleSearchPanelCommand);
-            var details = buttons.Single(b => b.Command == vm.OpenSearchPanelCommand);
-            Assert.True(header.IsEffectivelyVisible && details.IsEffectivelyVisible);
+            var tabs = win.GetVisualDescendants().OfType<TabControl>().Single();
+            var detailsRoot = (Control)tabs.Items.OfType<TabItem>().First(t => Equals(t.Header, "Details")).Content!;
+            static string? Label(Button b) => b.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault()?.Text;
+            var detailsButtons = detailsRoot.GetVisualDescendants().OfType<Button>().ToList();
+            Assert.DoesNotContain(detailsButtons, b => b.Classes.Contains("find-online"));
+            Assert.DoesNotContain(detailsButtons, b => b.Command == vm.OpenSearchPanelCommand);
+            Assert.DoesNotContain(detailsButtons, b => Label(b) == "Find online");
 
-            static string Label(Button b) => b.GetVisualDescendants().OfType<TextBlock>().Single().Text!;
-            static PathIcon Icon(Button b) => b.GetVisualDescendants().OfType<PathIcon>().Single();
+            // No leftover gap: with no Mixed hint and no applied banner, the first field (Title)
+            // sits at the very top of the tab's stack.
+            var stack = detailsRoot.GetVisualDescendants().OfType<StackPanel>().First(s => s.Spacing == 16);
+            var first = stack.Children.First(c => c.IsVisible);
+            Assert.Equal(0, first.Bounds.Y, 1);
+            Assert.Contains(first.GetVisualDescendants().OfType<TextBox>(), t => t.Text == "monaco");
+
+            var header = win.GetVisualDescendants().OfType<Button>()
+                .Single(b => b.Command == vm.ToggleSearchPanelCommand);
+            Assert.True(header.IsEffectivelyVisible);
             Assert.Equal("Find online", Label(header));
-            Assert.Equal(Label(header), Label(details));
-            Assert.Equal(header.Classes.OrderBy(c => c), details.Classes.OrderBy(c => c));
-            Assert.Contains("pill-secondary", details.Classes);
-            Assert.Contains("find-online", details.Classes);
-            Assert.DoesNotContain("accent-pill", details.Classes);
-            Assert.Equal(ToolTip.GetTip(header), ToolTip.GetTip(details));
-            Assert.Equal(header.MinHeight, details.MinHeight);
-            Assert.Equal(header.Padding, details.Padding);
-            Assert.Equal(header.FontSize, details.FontSize);
-            Assert.Equal(header.BorderThickness, details.BorderThickness);
-            Assert.Equal(header.Bounds.Height, details.Bounds.Height, 1);
-            Assert.Equal(header.Bounds.Width, details.Bounds.Width, 1);
-            Assert.Same(Icon(header).Data, Icon(details).Data);
-            Assert.Equal(Icon(header).Width, Icon(details).Width);
-            Assert.Equal(Icon(header).Foreground, Icon(details).Foreground);
-            Assert.Equal(header.Background, details.Background);
-
-            var centre = details.TranslatePoint(new Point(details.Bounds.Width / 2, details.Bounds.Height / 2), win)!.Value;
+            Assert.Contains("find-online", header.Classes);
+            var centre = header.TranslatePoint(new Point(header.Bounds.Width / 2, header.Bounds.Height / 2), win)!.Value;
             win.MouseDown(centre, MouseButton.Left);
             win.MouseUp(centre, MouseButton.Left);
             Assert.True(vm.SearchPanel.IsOpen);
