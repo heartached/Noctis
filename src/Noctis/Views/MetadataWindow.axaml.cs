@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 using Noctis.ViewModels.MetadataSearch;
@@ -49,7 +50,14 @@ public partial class MetadataWindow : Window
         // Animate only user-driven tab switches — the initial SelectedIndex
         // binding settles before the window opens (the dialog has its own
         // entrance animation).
-        Opened += (_, _) => _tabSwitchAnimationReady = true;
+        Opened += (_, _) =>
+        {
+            _tabSwitchAnimationReady = true;
+            _searchPanelReady = true;
+            // Opened straight into Find online: the query box takes the caret as it would
+            // after the header pill.
+            if (SearchPanelView.IsVisible) SearchPanelView.FocusQuery();
+        };
     }
 
     // ── Tab-switch entrance animation (mirrors the Settings modal tab glide) ──
@@ -115,6 +123,9 @@ public partial class MetadataWindow : Window
             if (e.PropertyName == nameof(MetadataSearchPanelViewModel.IsOpen))
                 OnSearchPanelOpenChanged(viewModel.SearchPanel.IsOpen);
         };
+        // A panel opened before this window existed never raised the change above: show it.
+        if (viewModel.SearchPanel.IsOpen)
+            OnSearchPanelOpenChanged(true);
         Closed += (_, _) => viewModel.DisposeSearch();
 
         // Both search flyouts are AttachedFlyouts anchored on the preview borders
@@ -140,31 +151,40 @@ public partial class MetadataWindow : Window
     }
 
     // ── Find online panel entrance / exit ──
-    // Opacity + a short rise, through transitions (keyframe animations can't drive
-    // RenderTransform here). Pinned with transitions detached, released next frame, as the
-    // tab glide above does. Close fades out, then collapses so the tabs take input again.
-    private static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelOffset =
-        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(14px)");
-    private static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelRest =
-        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px)");
+    // Owner 10-08: same UI + animation for search metadata. The panel moves like the pill
+    // dialog it sits in: PillDialogHost's eases and timings, a fade with a short rise and a
+    // slight grow (0.97 → 1: the card's 0.94 toned down for a step inside the card), and the
+    // reverse on every way out (Cancel, Esc, Apply, the header pill). Through transitions —
+    // keyframe animations can't drive RenderTransform — with the hidden pose pinned while
+    // they are detached and released next frame. The exit collapses the panel once it has
+    // played, so the tabs take input again.
+    internal static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelHidden =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(10px) scale(0.97)");
+    internal static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelShown =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px) scale(1)");
+    private Avalonia.Animation.DoubleTransition? _searchPanelFade;
+    private Avalonia.Animation.TransformOperationsTransition? _searchPanelMove;
     private Avalonia.Animation.Transitions? _searchPanelTransitions;
     private int _searchPanelAnimation;
+    private bool _searchPanelReady;
 
-    private Avalonia.Animation.Transitions SearchPanelTransitions => _searchPanelTransitions ??= new()
+    /// <summary>True from the moment the exit starts until the panel has collapsed (tests).</summary>
+    internal bool IsSearchPanelClosing { get; private set; }
+
+    /// <summary>The panel's transitions, retimed in place for the direction (as PillDialogHost
+    /// does: swapping the collection mid-flight would snap a reversing panel to its target).</summary>
+    private Avalonia.Animation.Transitions SearchPanelTransitions(bool opening)
     {
-        new Avalonia.Animation.DoubleTransition
-        {
-            Property = OpacityProperty,
-            Duration = TimeSpan.FromMilliseconds(220),
-            Easing = new CubicBezierEase(0.22, 1, 0.36, 1),
-        },
-        new Avalonia.Animation.TransformOperationsTransition
-        {
-            Property = RenderTransformProperty,
-            Duration = TimeSpan.FromMilliseconds(260),
-            Easing = new CubicBezierEase(0.22, 1, 0.36, 1),
-        },
-    };
+        _searchPanelFade ??= new Avalonia.Animation.DoubleTransition { Property = OpacityProperty };
+        _searchPanelMove ??= new Avalonia.Animation.TransformOperationsTransition { Property = RenderTransformProperty };
+        _searchPanelTransitions ??= new() { _searchPanelFade, _searchPanelMove };
+        var ease = opening ? PillDialogHost.OpenEase : PillDialogHost.CloseEase;
+        _searchPanelFade.Duration = opening ? PillDialogHost.OpenFadeDuration : PillDialogHost.CloseDuration;
+        _searchPanelMove.Duration = opening ? PillDialogHost.OpenMoveDuration : PillDialogHost.CloseDuration;
+        _searchPanelFade.Easing = ease;
+        _searchPanelMove.Easing = ease;
+        return _searchPanelTransitions;
+    }
 
     private void OnSearchPanelOpenChanged(bool open)
     {
@@ -172,31 +192,57 @@ public partial class MetadataWindow : Window
         var run = ++_searchPanelAnimation;
         if (open)
         {
-            panel.Transitions = null;
-            panel.Opacity = 0;
-            panel.RenderTransform = SearchPanelOffset;
-            panel.IsVisible = true;
+            IsSearchPanelClosing = false;
+            if (!_searchPanelReady)
+            {
+                // Opened straight into the panel (before the window is up): the card's own
+                // entrance carries it. A second fade/rise inside the rising card would read
+                // as the panel lagging behind the editor.
+                panel.Transitions = null;
+                panel.Opacity = 1;
+                panel.RenderTransform = SearchPanelShown;
+                panel.IsVisible = true;
+                return;
+            }
+            // From hidden: pin the hidden pose instantly, then animate to the shown one. From a
+            // panel still playing its exit: reverse from where it is.
+            if (!panel.IsVisible)
+            {
+                panel.Transitions = null;
+                panel.Opacity = 0;
+                panel.RenderTransform = SearchPanelHidden;
+                panel.IsVisible = true;
+            }
             Dispatcher.UIThread.Post(() =>
             {
                 if (run != _searchPanelAnimation) return;
-                panel.Transitions = SearchPanelTransitions;
+                panel.Transitions = SearchPanelTransitions(opening: true);
                 panel.Opacity = 1;
-                panel.RenderTransform = SearchPanelRest;
+                panel.RenderTransform = SearchPanelShown;
                 panel.FocusQuery();
             }, DispatcherPriority.Render);
         }
         else
         {
-            panel.Transitions = SearchPanelTransitions;
+            IsSearchPanelClosing = true;
+            panel.Transitions = SearchPanelTransitions(opening: false);
             panel.Opacity = 0;
-            panel.RenderTransform = SearchPanelOffset;
+            panel.RenderTransform = SearchPanelHidden;
             // Back to the editor: hand focus to the tabs so Esc/typing lands there.
             MetaTabControl.Focus();
-            DispatcherTimer.RunOnce(() =>
-            {
-                if (run == _searchPanelAnimation) panel.IsVisible = false;
-            }, TimeSpan.FromMilliseconds(230));
+            _ = CollapseSearchPanelAfterExitAsync(run);
         }
+    }
+
+    /// <summary>Collapses the panel once its exit has played. Task.Delay (resumed on the UI
+    /// thread) like PillDialogHost's close, rather than a DispatcherTimer, whose ~15.6 ms tick
+    /// grid stretches a short wait.</summary>
+    private async Task CollapseSearchPanelAfterExitAsync(int run)
+    {
+        await Task.Delay(PillDialogHost.CloseDuration + TimeSpan.FromMilliseconds(10));
+        if (run != _searchPanelAnimation) return;
+        SearchPanelView.IsVisible = false;
+        IsSearchPanelClosing = false;
     }
 
     private Avalonia.Controls.Flyout? _artworkSearchFlyout;
