@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -283,6 +284,36 @@ public class PillDialogHostTests
         Assert.True(host.IsClosing);
         Assert.True(PumpUntil(() => closed > 0, 2000));
         Assert.Equal(1, closed);
+    }
+
+    [AvaloniaFact]
+    public void ContentReady_HoldsTheOpen_UntilReady_OrTheBudgetRunsOut()
+    {
+        EnsureAppStyles();
+        // Ready late but within the budget: the card starts to show once it is.
+        var pending = new TaskCompletionSource();
+        var host = new PillDialogHost { ContentReady = pending.Task, Content = new TextBlock { Text = "x" } };
+        var win = new Window { Width = 400, Height = 300, Content = host };
+        try
+        {
+            win.Show();
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 60) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(5); }
+            Assert.False(host.IsOpenStarted, "the card started to show before its content was ready");
+            pending.SetResult();
+            Assert.True(PumpUntil(() => host.IsOpenStarted, 1000));
+        }
+        finally { win.Close(); }
+
+        // Never ready: the open goes ahead after the snapshot budget (150 ms) all the same.
+        var never = new PillDialogHost { ContentReady = new TaskCompletionSource().Task, Content = new TextBlock { Text = "y" } };
+        var win2 = new Window { Width = 400, Height = 300, Content = never };
+        try
+        {
+            win2.Show();
+            Assert.True(PumpUntil(() => never.IsOpenStarted, 2000), "a content that never got ready kept the dialog hidden");
+        }
+        finally { win2.Close(); }
     }
 
     [AvaloniaFact]

@@ -283,7 +283,7 @@
          rounded card with its shadow, and plays the open/close animation (every close
          path, including the VM's CloseRequested, animates once before the real close).
          It also swallows clicks/wheel on the dim area like the old overlay Border. -->
-    <controls:PillDialogHost>
+    <controls:PillDialogHost x:Name="DialogHost">
 
     <Grid Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
 
@@ -313,7 +313,8 @@
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"
                                   IsVisible="{Binding IsMultiSelect}" />
-                        <Image Source="{Binding ArtworkPreview}"
+                        <Image x:Name="HeaderArtwork"
+                               Source="{Binding ArtworkPreview}"
                                Stretch="UniformToFill"
                                IsVisible="{Binding HasArtwork}" />
                     </Panel>

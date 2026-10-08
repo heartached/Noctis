@@ -115,6 +115,8 @@ public partial class MetadataWindow : Window
     {
         DataContext = viewModel;
         viewModel.CloseRequested += (_, _) => Close();
+        // The card fades in with the cover already in its well, not over an empty one.
+        DialogHost.ContentReady = viewModel.CoverShown;
 
         // Find online panel: slide/fade it over the editor when it opens or closes, and stop
         // its network work with the window.
