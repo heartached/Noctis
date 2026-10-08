@@ -1150,7 +1150,6 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.Save" xml:space="preserve"><value>Save</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Saving" xml:space="preserve"><value>Saving</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Details" xml:space="preserve"><value>Details</value><comment>Header in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve"><value>Search metadata</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Found metadata</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Apply</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>title</value><comment>Text in MetadataWindow.axaml</comment></data>

@@ -287,6 +287,48 @@ public class MetadataArtworkSearchAnimationTests
         finally { win.Close(); PumpUntil(() => !win.IsVisible); }
     }
 
+    /// <summary>One Find online style: the Details tab's entry (once a red "Search metadata"
+    /// pill) is the header pill's twin — classes, size, label, icon, tooltip — and opens the
+    /// panel.</summary>
+    [AvaloniaFact]
+    public void DetailsFindOnline_MatchesTheHeaderPill_AndOpensThePanel()
+    {
+        var (vm, win) = Editor("Details");
+        try
+        {
+            var buttons = win.GetVisualDescendants().OfType<Button>().ToList();
+            var header = buttons.Single(b => b.Command == vm.ToggleSearchPanelCommand);
+            var details = buttons.Single(b => b.Command == vm.OpenSearchPanelCommand);
+            Assert.True(header.IsEffectivelyVisible && details.IsEffectivelyVisible);
+
+            static string Label(Button b) => b.GetVisualDescendants().OfType<TextBlock>().Single().Text!;
+            static PathIcon Icon(Button b) => b.GetVisualDescendants().OfType<PathIcon>().Single();
+            Assert.Equal("Find online", Label(header));
+            Assert.Equal(Label(header), Label(details));
+            Assert.Equal(header.Classes.OrderBy(c => c), details.Classes.OrderBy(c => c));
+            Assert.Contains("pill-secondary", details.Classes);
+            Assert.Contains("find-online", details.Classes);
+            Assert.DoesNotContain("accent-pill", details.Classes);
+            Assert.Equal(ToolTip.GetTip(header), ToolTip.GetTip(details));
+            Assert.Equal(header.MinHeight, details.MinHeight);
+            Assert.Equal(header.Padding, details.Padding);
+            Assert.Equal(header.FontSize, details.FontSize);
+            Assert.Equal(header.BorderThickness, details.BorderThickness);
+            Assert.Equal(header.Bounds.Height, details.Bounds.Height, 1);
+            Assert.Equal(header.Bounds.Width, details.Bounds.Width, 1);
+            Assert.Same(Icon(header).Data, Icon(details).Data);
+            Assert.Equal(Icon(header).Width, Icon(details).Width);
+            Assert.Equal(Icon(header).Foreground, Icon(details).Foreground);
+            Assert.Equal(header.Background, details.Background);
+
+            var centre = details.TranslatePoint(new Point(details.Bounds.Width / 2, details.Bounds.Height / 2), win)!.Value;
+            win.MouseDown(centre, MouseButton.Left);
+            win.MouseUp(centre, MouseButton.Left);
+            Assert.True(vm.SearchPanel.IsOpen);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
     [AvaloniaFact]
     public void AnimatedArtworkSearch_OpensAndClosesTheSameWay()
     {
