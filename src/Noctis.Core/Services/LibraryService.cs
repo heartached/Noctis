@@ -2512,10 +2512,14 @@ public class LibraryService : ILibraryService
         var stamp = _labelBackfillPending ? LabelSchemaVersion - 1 : CurrentMetadataSchemaVersion;
         if (settings.MetadataSchemaVersion < stamp)
         {
-            settings.MetadataSchemaVersion = stamp;
             try
             {
-                await _persistence.SaveSettingsAsync(settings);
+                // Re-load rather than save the snapshot taken before the backfills: they can
+                // run for minutes, and writing that snapshot back reverted every setting saved
+                // meanwhile (a removed track's exclusion — the next scan re-imported it).
+                var fresh = await _persistence.LoadSettingsAsync();
+                fresh.MetadataSchemaVersion = Math.Max(fresh.MetadataSchemaVersion, stamp);
+                await _persistence.SaveSettingsAsync(fresh);
             }
             catch
             {
