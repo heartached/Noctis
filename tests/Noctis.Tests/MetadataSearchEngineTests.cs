@@ -541,6 +541,20 @@ public class MetadataSearchEngineTests
         Assert.Equal(string.Join(ArtistCredit.JoinText, "Legal Name", "Other"), full.Composer);
     }
 
+    // ── Apple album size (live 10-08: song rows keep a stale trackCount) ──
+
+    [Fact]
+    public void AppleMusic_ApplyCollection_TakesTheAlbumsTrackCount_NotTheStaleSongRow()
+    {
+        var rows = AppleMusicProvider.ParseSongs(Fixture("itunes_search_song_harlow.json"));
+        var onDeluxe = rows.Single(s => s.ProviderId == "1618136805");
+        Assert.Equal(15, onDeluxe.TrackCount); // Apple's row, although that album has 17
+
+        Assert.Equal(17, AppleMusicProvider.ApplyCollection(onDeluxe, Fixture("itunes_lookup_1618136433.json")).TrackCount);
+        var onClean = rows.Single(s => s.ProviderId == "1622624422");
+        Assert.Equal(15, AppleMusicProvider.ApplyCollection(onClean, Fixture("itunes_lookup_1622624421.json")).TrackCount);
+    }
+
     // ── Helpers ──
 
     private static ProviderStatus Status(MetadataSearchResult r, string name) => r.Providers.Single(p => p.Provider == name);

@@ -219,13 +219,16 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
         };
     }
 
-    /// <summary>Adds the album record's copyright, date and album artist to a song candidate.</summary>
+    /// <summary>Adds the album record's copyright, date, album artist and real track/disc
+    /// counts to a song candidate.</summary>
     public static MetadataCandidate ApplyCollection(MetadataCandidate song, string lookupJson)
     {
         var album = ParseAlbumLookup(lookupJson);
         if (album is null) return song;
         return song with
         {
+            TrackCount = DiscTrackCount(lookupJson, song.DiscNumber ?? 1) ?? song.TrackCount,
+            DiscCount = album.DiscCount ?? song.DiscCount,
             Copyright = album.Copyright,
             // A song's own releaseDate is when it first came out (often its single); the album
             // date is what an album track is tagged with.
@@ -233,6 +236,27 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
             Year = album.Year ?? song.Year,
             AlbumArtist = album.AlbumArtist.Length > 0 ? album.AlbumArtist : song.AlbumArtist,
         };
+    }
+
+    /// <summary>
+    /// The real size of one disc of a looked-up album. A song row's trackCount is the album's
+    /// size when that song was added, not now: verified live 10-08 on the 17-track "Come Home
+    /// The Kids Miss You" (1618136433) — the 15 song rows say 15, the two items added after
+    /// them (music videos, tracks 16-17) say 17, and so does the collection. Every track row
+    /// counts, videos included, as Apple's (and the downloaded files') numbering does.
+    /// </summary>
+    internal static int? DiscTrackCount(string lookupJson, int disc)
+    {
+        using var doc = JsonDocument.Parse(lookupJson);
+        var rows = Json.Arr(doc.RootElement, "results").ToList();
+        var onDisc = rows.Where(r => Json.Str(r, "wrapperType") == "track" && (Json.Int(r, "discNumber") ?? 1) == disc).ToList();
+        if (onDisc.Count == 0) return null;
+        var count = Math.Max(onDisc.Count, onDisc.Max(r => Math.Max(Json.Int(r, "trackCount") ?? 0, Json.Int(r, "trackNumber") ?? 0)));
+        // A one-disc album's collection count is that disc's count.
+        var collection = rows.FirstOrDefault(r => Json.Str(r, "wrapperType") == "collection");
+        var discs = onDisc.Max(r => Json.Int(r, "discCount") ?? 1);
+        if (discs <= 1 && Json.Int(collection, "trackCount") is > 0 and var total) count = Math.Max(count, total);
+        return count;
     }
 
     private static bool? Explicitness(string value) => value switch
