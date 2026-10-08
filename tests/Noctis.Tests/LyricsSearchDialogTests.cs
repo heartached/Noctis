@@ -334,6 +334,26 @@ public class LyricsSearchDialogTests
         Assert.True(token.IsCancellationRequested);
     }
 
+    /// <summary>The footer's searching bar is a short 48 px dash before the status. Fluent gives
+    /// a horizontal ProgressBar MinWidth 200, which beat the Width, so a 200 px bar pushed
+    /// "Searching…" far to the right (real-Skia shots, lyrics-before/02-searching.png).</summary>
+    [AvaloniaFact]
+    public void SearchingBar_StaysAShortDash_BeforeTheStatus()
+    {
+        EnsureAppStyles();
+        var vm = Vm(async (_, _, _, ct) => { await Task.Delay(Timeout.Infinite, ct); return Hits(); });
+        var (_, win, host) = Open(vm);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host) && vm.IsSearching));
+            var bar = win.GetVisualDescendants().OfType<ProgressBar>().Single();
+            Assert.True(bar.IsEffectivelyVisible);
+            _o.WriteLine($"bar {bar.Bounds}");
+            Assert.InRange(bar.Bounds.Width, 47.5, 48.5);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
     // ── Real-Skia shots ──
 
     private static string ShotsDir => Path.Combine(@"D:\NoctisLyricsLab\search-popups",

@@ -184,7 +184,9 @@
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                             Margin="0,0,16,0">
-                    <ProgressBar IsIndeterminate="True" Width="48" Height="4" CornerRadius="2"
+                    <!-- MinWidth 0: Fluent's horizontal ProgressBar has MinWidth 200, which beat
+                         Width and pushed the status 200 px right. -->
+                    <ProgressBar IsIndeterminate="True" Width="48" MinWidth="0" Height="4" CornerRadius="2"
                                  IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
                     <TextBlock Classes="ls-status" Text="{Binding StatusText}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
