@@ -35,7 +35,7 @@ public partial class MetadataViewModel
     internal IReadOnlyList<Track> SearchAlbumTracks => IsAlbumScopeForSearch ? _albumTracks! : Array.Empty<Track>();
 
     /// <summary>Real pixel side of the cover the editor shows, when known.</summary>
-    internal int? CurrentArtworkSide => HasArtwork && ArtworkPreview is { } bmp ? (_artworkSourceSize ?? bmp.PixelSize).Width : null;
+    internal int? CurrentArtworkSide => HasArtwork && ShownArtworkSize is { } s ? s.Width : null;
 
     [RelayCommand]
     private void OpenSearchPanel()
@@ -262,11 +262,11 @@ public partial class MetadataViewModel
             ShowsOwnTrackArtwork = undo.ShowedOwnArtwork;
             ArtworkPreview = undo.Preview;
             HasArtwork = undo.HadArtwork;
-            if (!ReferenceEquals(applied, undo.Preview)) applied?.Dispose();
+            if (!ReferenceEquals(applied, undo.Preview)) DisposePreview(applied);
         }
         else if (undo.Preview != null && !ReferenceEquals(undo.Preview, ArtworkPreview))
         {
-            undo.Preview.Dispose();
+            DisposePreview(undo.Preview);
         }
 
         _stagedTrackChanges = undo.StagedBefore;
@@ -282,7 +282,7 @@ public partial class MetadataViewModel
     private void DiscardSearchUndo()
     {
         if (_searchUndo is { Preview: { } old } && !ReferenceEquals(old, ArtworkPreview))
-            old.Dispose();
+            DisposePreview(old);
         _searchUndo = null;
     }
 
@@ -323,5 +323,8 @@ public partial class MetadataViewModel
     {
         _searchPanel?.Dispose();
         DiscardSearchUndo();
+        // Closed before the cover load replaced the library's thumbnail: hand it back, or the
+        // cache could never dispose it after an eviction (this is the window's Closed hook).
+        ReleaseSharedPreview();
     }
 }
