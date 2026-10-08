@@ -40,7 +40,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         var releaseIds = new Dictionary<string, string>();
         void AddAll(string? json)
         {
-            foreach (var (c, releaseId) in ParseRecordings(json, q.Album, q.Isrc))
+            foreach (var (c, releaseId) in ParseRecordings(json, q))
             {
                 if (found.Any(f => f.ProviderId == c.ProviderId)) continue;
                 found.Add(c);
@@ -148,13 +148,18 @@ public sealed class MusicBrainzProvider : IMetadataProvider
 
     // ── Parsing (pure; tested against recorded responses) ──
 
+    internal static IReadOnlyList<(MetadataCandidate Candidate, string ReleaseId)> ParseRecordings(string? json, string queryAlbum, string queryIsrc)
+        => ParseRecordings(json, new MetadataQuery { Album = queryAlbum, Isrc = queryIsrc });
+
     /// <summary>
     /// Parses a recording search into one candidate per recording, each placed on its most
-    /// plausible release: the one matching the query's album, official, a plain album (not a
-    /// compilation/bootleg), earliest. Returns the chosen release id alongside.
+    /// plausible release: the user's edition (same track count, disc, position), the one
+    /// matching the query's album, official, a plain album (not a compilation/bootleg),
+    /// earliest. Returns the chosen release id alongside.
     /// </summary>
-    internal static IReadOnlyList<(MetadataCandidate Candidate, string ReleaseId)> ParseRecordings(string? json, string queryAlbum, string queryIsrc)
+    internal static IReadOnlyList<(MetadataCandidate Candidate, string ReleaseId)> ParseRecordings(string? json, MetadataQuery q)
     {
+        var queryIsrc = q.Isrc;
         var list = new List<(MetadataCandidate, string)>();
         if (string.IsNullOrWhiteSpace(json)) return list;
         using var doc = JsonDocument.Parse(json);
@@ -180,7 +185,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
                 Year = year,
             };
 
-            var release = ChooseRelease(Json.Arr(rec, "releases"), queryAlbum);
+            var release = ChooseRelease(Json.Arr(rec, "releases"), q);
             var releaseId = string.Empty;
             if (release.ValueKind == JsonValueKind.Object)
             {
@@ -200,6 +205,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
                     TrackNumber = ParseTrackNumber(track),
                     DiscNumber = Json.Int(medium, "position") is > 0 and var dn ? dn : null,
                     TrackCount = Json.Int(medium, "track-count") is > 0 and var tc ? tc : null,
+                    Edition = Json.Str(release, "disambiguation"),
                 };
             }
             list.Add((c, releaseId));
@@ -207,15 +213,47 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         return list;
     }
 
-    private static JsonElement ChooseRelease(IEnumerable<JsonElement> releases, string queryAlbum)
+    // One recording sits on every edition: owner 10-08, "Talk of the Town" (ISRC USAT22203492)
+    // is on six official "Come Home the Kids Miss You" releases — five with 15 tracks and one
+    // explicit with 17. Picking the earliest put the user's 17-track copy on a 15-track clean
+    // release (and its 2022-05-05 date). The user's edition shape outweighs everything else:
+    // track count (+4 same / −2 different), then edition words of the album title (+1), then
+    // the same disc and track position (+0.5 each).
+    private static JsonElement ChooseRelease(IEnumerable<JsonElement> releases, MetadataQuery q)
     {
         JsonElement best = default;
         var bestScore = double.MinValue;
         var bestDate = string.Empty;
+        var queryAlbum = q.Album;
+        var queryWords = EditionMatch.Words(queryAlbum);
         foreach (var r in releases)
         {
             var score = 0.0;
             if (queryAlbum.Length > 0) score += 3 * MatchText.AlbumSimilarity(queryAlbum, Json.Str(r, "title"));
+            var medium = Json.Arr(r, "media").FirstOrDefault();
+            var placed = new MetadataCandidate
+            {
+                TrackCount = Json.Int(medium, "track-count") is > 0 and var tc ? tc : null,
+                DiscNumber = Json.Int(medium, "position") is > 0 and var dn ? dn : null,
+            };
+            score += EditionMatch.Compare(q, placed).Verdict switch
+            {
+                EditionMatch.Verdict.Same => 4.0,
+                EditionMatch.Verdict.Different => -2.0,
+                _ => 0.0,
+            };
+            if (queryWords.Count > 0)
+            {
+                // MusicBrainz keeps "Deluxe" in the disambiguation more often than in the title.
+                var words = EditionMatch.Words(Json.Str(r, "title") + " (" + Json.Str(r, "disambiguation") + ")");
+                if (queryWords.SetEquals(words)) score += 1.0;
+            }
+            // Otherwise equal, the plain release over its marked variants ("clean", "Walmart
+            // exclusive; ultra clear vinyl"): the earliest of the six above was a clean one dated
+            // a day before the rest.
+            if (Json.Str(r, "disambiguation").Length == 0) score += 0.25;
+            if (q.DiscNumber is > 0 && placed.DiscNumber == q.DiscNumber) score += 0.5;
+            if (q.TrackNumber is > 0 && ParseTrackNumber(Json.Arr(medium, "track").FirstOrDefault()) == q.TrackNumber) score += 0.5;
             score += Json.Str(r, "status") switch
             {
                 "Official" => 1.0,
@@ -277,6 +315,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             DiscCount = full.DiscCount,
             ArtworkUrl = full.ArtworkUrl,
             ArtworkThumbUrl = full.ArtworkThumbUrl,
+            Edition = full.Edition,
         };
     }
 
@@ -365,6 +404,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
                 TrackCount = Json.Int(r, "track-count") is > 0 and var tc ? tc : null,
                 // Number of media = discs. (The search's "disc-count" is the number of disc IDs.)
                 DiscCount = media.Count > 0 ? media.Count : null,
+                Edition = Json.Str(r, "disambiguation"),
             }, Json.Str(r, "status")));
         }
         var hasOfficial = list.Any(x => x.Status == "Official");
@@ -402,10 +442,15 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         }
 
         // The release group's first release date is the album's original date; a 2005 reissue
-        // of a 2001 album should still tag as 2001.
+        // of a 2001 album should still tag as 2001. Within the same year the edition's own date
+        // wins: the group date is just whichever edition is dated earliest (owner 10-08: a
+        // 15-track clean release dated 2022-05-05 turned the 17-track edition's 2022-05-06
+        // into 05-05), and a same-year edition is not a reissue.
         var rg = Json.Obj(r, "release-group");
-        var (date, year) = MatchText.ParseDate(Json.Str(rg, "first-release-date"));
-        if (date.Length == 0) (date, year) = MatchText.ParseDate(Json.Str(r, "date"));
+        var (orig, origYear) = MatchText.ParseDate(Json.Str(rg, "first-release-date"));
+        var (own, ownYear) = MatchText.ParseDate(Json.Str(r, "date"));
+        // (A bare-year own date doesn't beat a full original date of that year.)
+        var (date, year) = orig.Length == 0 || (own.Length >= orig.Length && ownYear == origYear) ? (own, ownYear) : (orig, origYear);
         var credit2 = Credit(r);
         var caa = Json.Obj(r, "cover-art-archive");
         var hasFront = Json.Bool(caa, "front") == true;
@@ -431,6 +476,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             // Only offered when the release says it has a front image.
             ArtworkUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-1200") : null,
             ArtworkThumbUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-250") : null,
+            Edition = Json.Str(r, "disambiguation"),
             Tracks = tracks,
         };
     }

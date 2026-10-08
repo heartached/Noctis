@@ -11,7 +11,8 @@ namespace Noctis.Services.MetadataSearch;
 /// with counts, a single curated genre, and the largest covers (the artwork CDN serves any
 /// requested size up to the master — 3000 px is asked for). No ISRC, label or composer, and
 /// no ISRC lookup (verified 2026-10-08: <c>lookup?isrc=</c> returns 0 results for a valid code).
-/// Apple asks for ~20 calls/minute, so at most two requests per search.
+/// Apple asks for ~20 calls/minute, so at most two requests per search (three when a track
+/// search knows the user's edition and the song sits on two albums).
 /// </summary>
 public sealed partial class AppleMusicProvider : IMetadataProvider
 {
@@ -39,23 +40,46 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
         var rows = ParseSongRows(json);
         var songs = rows.Select(r => r.Candidate).ToList();
 
-        // Only the album record carries the copyright line and the album's own date; fetch it
-        // for the best hit (by our score).
-        var best = songs.Select(c => CandidateScorer.ScoreTrack(q, c)).OrderByDescending(c => c.Confidence).FirstOrDefault();
-        var collectionId = best is null ? null : rows.First(r => r.Candidate.ProviderId == best.ProviderId).CollectionId;
-        if (best is null || string.IsNullOrEmpty(collectionId)) return songs;
-        try
+        // Only the album record carries the copyright line, the album's own date and its real
+        // track count; fetch it for the best hit (by our score). When the user's edition is
+        // known, also for the best hit's twin on another collection: Apple lists the same song
+        // on its explicit and clean albums, and the song rows can't tell them apart (live
+        // 10-08: "Talk Of The Town" sits on a 17-track explicit and a 15-track clean album, and
+        // both rows say trackCount 15).
+        var ranked = songs.Select(c => CandidateScorer.ScoreTrack(q, c)).OrderByDescending(c => c.Confidence).ToList();
+        if (ranked.Count == 0) return songs;
+        var best = ranked[0];
+        var picks = ranked
+            .Where(c => c.ProviderId == best.ProviderId || (EditionMatch.HasContext(q) && SameRecording(c, best)))
+            .Select(c => (c.ProviderId, CollectionId: rows.First(r => r.Candidate.ProviderId == c.ProviderId).CollectionId))
+            .Where(p => p.CollectionId.Length > 0)
+            .DistinctBy(p => p.CollectionId)
+            .Take(EditionMatch.HasContext(q) ? AlbumLookupTop : 1)
+            .ToList();
+        foreach (var (songId, collectionId) in picks)
         {
-            var lookup = await _http.GetStringAsync(LookupUrl(collectionId), ct).ConfigureAwait(false);
-            if (lookup is not null)
+            try
             {
-                var i = songs.FindIndex(s => s.ProviderId == best.ProviderId);
-                songs[i] = ApplyCollection(songs[i], lookup);
+                var lookup = await _http.GetStringAsync(LookupUrl(collectionId), ct).ConfigureAwait(false);
+                if (lookup is not null)
+                {
+                    var i = songs.FindIndex(s => s.ProviderId == songId);
+                    songs[i] = ApplyCollection(songs[i], lookup);
+                }
             }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { /* keep the search hit */ }
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception) { /* keep the search hit */ }
         return songs;
+    }
+
+    // Same title (with version markers) and length: the same song on another album.
+    private static bool SameRecording(MetadataCandidate a, MetadataCandidate b)
+    {
+        var x = MatchText.AnalyzeTitle(a.Title);
+        var y = MatchText.AnalyzeTitle(b.Title);
+        return x.Base == y.Base && x.Markers.SetEquals(y.Markers)
+               && a.Duration is { } da && b.Duration is { } db && Math.Abs((da - db).TotalSeconds) <= 3;
     }
 
     private async Task<IReadOnlyList<MetadataCandidate>> SearchAlbumsAsync(MetadataQuery q, CancellationToken ct)

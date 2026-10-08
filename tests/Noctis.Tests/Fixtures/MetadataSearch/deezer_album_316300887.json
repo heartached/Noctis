@@ -1,0 +1,530 @@
+{
+ "id": 316300887,
+ "title": "Come Home The Kids Miss You",
+ "upc": "075679748669",
+ "link": "https://www.deezer.com/album/316300887",
+ "cover": "https://api.deezer.com/album/316300887/image",
+ "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+ "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+ "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+ "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+ "genre_id": 116,
+ "genres": {
+  "data": [
+   {
+    "id": 116,
+    "name": "Rap/Hip Hop",
+    "picture": "https://api.deezer.com/genre/116/image",
+    "type": "genre"
+   }
+  ]
+ },
+ "label": "Generation Now/Atlantic",
+ "nb_tracks": 15,
+ "duration": 2696,
+ "fans": 23141,
+ "release_date": "2022-05-06",
+ "record_type": "album",
+ "available": true,
+ "tracklist": "https://api.deezer.com/album/316300887/tracks",
+ "explicit_lyrics": true,
+ "explicit_content_lyrics": 4,
+ "explicit_content_cover": 2,
+ "contributors": [
+  {
+   "id": 9093938,
+   "name": "Jack Harlow",
+   "link": "https://www.deezer.com/artist/9093938",
+   "picture": "https://api.deezer.com/artist/9093938/image",
+   "picture_small": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/56x56-000000-80-0-0.jpg",
+   "picture_medium": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/250x250-000000-80-0-0.jpg",
+   "picture_big": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/500x500-000000-80-0-0.jpg",
+   "picture_xl": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/1000x1000-000000-80-0-0.jpg",
+   "radio": true,
+   "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+   "type": "artist",
+   "role": "Main"
+  }
+ ],
+ "artist": {
+  "id": 9093938,
+  "name": "Jack Harlow",
+  "picture": "https://api.deezer.com/artist/9093938/image",
+  "picture_small": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/56x56-000000-80-0-0.jpg",
+  "picture_medium": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/250x250-000000-80-0-0.jpg",
+  "picture_big": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/500x500-000000-80-0-0.jpg",
+  "picture_xl": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/1000x1000-000000-80-0-0.jpg",
+  "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+  "type": "artist"
+ },
+ "type": "album",
+ "tracks": {
+  "data": [
+   {
+    "id": 1742097167,
+    "readable": true,
+    "title": "Talk Of The Town",
+    "title_short": "Talk Of The Town",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097167",
+    "duration": 82,
+    "rank": 167636,
+    "explicit_lyrics": false,
+    "explicit_content_lyrics": 0,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097177,
+    "readable": true,
+    "title": "Young Harleezy",
+    "title_short": "Young Harleezy",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097177",
+    "duration": 224,
+    "rank": 238364,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097187,
+    "readable": true,
+    "title": "I’d Do Anything To Make You Smile",
+    "title_short": "I’d Do Anything To Make You Smile",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097187",
+    "duration": 193,
+    "rank": 306231,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097197,
+    "readable": true,
+    "title": "First Class",
+    "title_short": "First Class",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097197",
+    "duration": 173,
+    "rank": 288431,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097207,
+    "readable": true,
+    "title": "Dua Lipa",
+    "title_short": "Dua Lipa",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097207",
+    "duration": 135,
+    "rank": 362884,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097217,
+    "readable": true,
+    "title": "Side Piece",
+    "title_short": "Side Piece",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097217",
+    "duration": 234,
+    "rank": 289469,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097227,
+    "readable": true,
+    "title": "Movie Star (feat. Pharrell Williams)",
+    "title_short": "Movie Star (feat. Pharrell Williams)",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097227",
+    "duration": 142,
+    "rank": 234245,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097237,
+    "readable": true,
+    "title": "Lil Secret",
+    "title_short": "Lil Secret",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097237",
+    "duration": 129,
+    "rank": 271236,
+    "explicit_lyrics": false,
+    "explicit_content_lyrics": 0,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097247,
+    "readable": true,
+    "title": "I Got A Shot",
+    "title_short": "I Got A Shot",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097247",
+    "duration": 138,
+    "rank": 260083,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097257,
+    "readable": true,
+    "title": "Churchill Downs (feat. Drake)",
+    "title_short": "Churchill Downs (feat. Drake)",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097257",
+    "duration": 309,
+    "rank": 506237,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097277,
+    "readable": true,
+    "title": "Like A Blade Of Grass",
+    "title_short": "Like A Blade Of Grass",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097277",
+    "duration": 126,
+    "rank": 338222,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097287,
+    "readable": true,
+    "title": "Parent Trap (feat. Justin Timberlake)",
+    "title_short": "Parent Trap (feat. Justin Timberlake)",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097287",
+    "duration": 189,
+    "rank": 323306,
+    "explicit_lyrics": false,
+    "explicit_content_lyrics": 0,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097297,
+    "readable": true,
+    "title": "Poison (feat. Lil Wayne)",
+    "title_short": "Poison (feat. Lil Wayne)",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097297",
+    "duration": 222,
+    "rank": 268642,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097307,
+    "readable": true,
+    "title": "Nail Tech",
+    "title_short": "Nail Tech",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097307",
+    "duration": 206,
+    "rank": 229327,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   },
+   {
+    "id": 1742097317,
+    "readable": true,
+    "title": "State Fair",
+    "title_short": "State Fair",
+    "title_version": "",
+    "link": "https://www.deezer.com/track/1742097317",
+    "duration": 194,
+    "rank": 236008,
+    "explicit_lyrics": true,
+    "explicit_content_lyrics": 1,
+    "explicit_content_cover": 2,
+    "artist": {
+     "id": 9093938,
+     "name": "Jack Harlow",
+     "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+     "type": "artist"
+    },
+    "album": {
+     "id": 316300887,
+     "title": "Come Home The Kids Miss You",
+     "cover": "https://api.deezer.com/album/316300887/image",
+     "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+     "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+     "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/album/316300887/tracks",
+     "type": "album"
+    },
+    "type": "track"
+   }
+  ]
+ }
+}

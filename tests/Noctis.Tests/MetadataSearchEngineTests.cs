@@ -555,6 +555,167 @@ public class MetadataSearchEngineTests
         Assert.Equal(15, AppleMusicProvider.ApplyCollection(onClean, Fixture("itunes_lookup_1622624421.json")).TrackCount);
     }
 
+    // ── Editions (owner 10-08: deluxe track count 17→15) ──
+    // Jack Harlow "Talk Of The Town" (ISRC USAT22203492), recorded live 2026-10-08: Apple has it
+    // on a 17-track explicit album (1618136433) and a 15-track clean one (1622624421); Deezer only
+    // on the 15-track album; MusicBrainz on six official releases, one of them the 17-track
+    // explicit 9de56b7f (dated 2022-05-06) and the earliest a 15-track clean 648981fb (2022-05-05).
+
+    private static readonly TimeSpan TalkOfTheTown = TimeSpan.FromSeconds(83);
+
+    private static MetadataQuery HarlowTrackQuery(int? trackCount) => new()
+    {
+        Title = "Talk Of The Town", Artist = "Jack Harlow", Album = "Come Home The Kids Miss You", AlbumArtist = "Jack Harlow",
+        Duration = TalkOfTheTown, TrackNumber = 1, DiscNumber = 1, TrackCount = trackCount, DiscCount = trackCount is null ? null : 1,
+        Isrc = "USAT22203492", Year = 2022,
+    };
+
+    [Fact]
+    public void MusicBrainz_ParseRecordings_PlacesRecordingOnTheUsersEdition()
+    {
+        var json = Fixture("musicbrainz_recording_search_isrc_harlow.json");
+
+        var (deluxe, deluxeId) = MusicBrainzProvider.ParseRecordings(json, HarlowTrackQuery(17)).Single();
+        Assert.Equal("9de56b7f-171f-41bc-bdda-ff9b2acef8d9", deluxeId);
+        Assert.Equal(17, deluxe.TrackCount);
+        Assert.Equal("explicit", deluxe.Edition);
+
+        // No local edition known: the earliest plain official album — not the "clean" variant
+        // 648981fb, dated a day before the rest (2022-05-05).
+        var (plain, plainId) = MusicBrainzProvider.ParseRecordings(json, HarlowTrackQuery(null)).Single();
+        Assert.Equal("39879ea7-7e4d-4432-8bd4-27bb9966823b", plainId);
+        Assert.Equal(15, plain.TrackCount);
+        Assert.Equal("2022-05-06", plain.ReleaseDate);
+    }
+
+    [Fact]
+    public void MusicBrainz_ParseRelease_SameYearEditionKeepsItsOwnDate()
+    {
+        // Release group first date 2022-05-05 (the clean edition); this edition's own 2022-05-06.
+        var r = MusicBrainzProvider.ParseRelease(Fixture("musicbrainz_release_9de56b7f.json"))!;
+        Assert.Equal("2022-05-06", r.ReleaseDate);
+        Assert.Equal(17, r.TrackCount);
+        Assert.Equal("075679759252", r.Barcode);
+        // A reissue in a later year still tags the original date (Discovery 2005 → 2001).
+        Assert.Equal("2001-02-26", MusicBrainzProvider.ParseRelease(Fixture("musicbrainz_release_6cd30d99.json"))!.ReleaseDate);
+    }
+
+    [Fact]
+    public void Group_SameIsrcOnDifferentEditions_IsNotMerged()
+    {
+        var apple17 = new MetadataCandidate { Provider = ProviderNames.AppleMusic, ProviderId = "a", Title = "Talk Of The Town", Artist = "Jack Harlow", Album = "Come Home The Kids Miss You", Duration = TalkOfTheTown, TrackCount = 17, DiscCount = 1, Confidence = 1 };
+        var mb17 = apple17 with { Provider = ProviderNames.MusicBrainz, ProviderId = "m", Isrc = "USAT22203492", Barcode = "075679759252", ReleaseDate = "2022-05-06" };
+        var deezer15 = apple17 with { Provider = ProviderNames.Deezer, ProviderId = "d", Isrc = "USAT22203492", TrackCount = 15, DiscCount = null, Barcode = "075679748669", ReleaseDate = "2022-05-06", Confidence = 0.84 };
+
+        var groups = CandidateMerger.Group(new[] { apple17, mb17, deezer15 }, albumScope: false);
+
+        Assert.Equal(2, groups.Count);
+        var merged = CandidateMerger.Merge(groups[0]);
+        Assert.Equal("Apple Music + MusicBrainz", merged.Provider);
+        Assert.Equal(17, merged.TrackCount);
+        Assert.Equal("075679759252", merged.Barcode); // never the 15-track release's
+        Assert.Equal("Deezer", Assert.Single(groups[1]).Provider);
+    }
+
+    [Fact]
+    public void Group_MultiDiscTotals_StillMerge()
+    {
+        // Deezer counts the whole album, Apple/MusicBrainz the disc: 30 vs 15 on disc 2 is one edition.
+        var apple = new MetadataCandidate { Provider = ProviderNames.AppleMusic, ProviderId = "a", Title = "Song", Artist = "X", Isrc = "USAAA0000001", TrackCount = 15, DiscNumber = 2, DiscCount = 2 };
+        var deezer = apple with { Provider = ProviderNames.Deezer, ProviderId = "d", TrackCount = 30, DiscCount = null };
+        Assert.Single(CandidateMerger.Group(new[] { apple, deezer }, albumScope: false));
+    }
+
+    [Fact]
+    public async Task Search_Track_IsrcMatch_TakesReleaseFieldsFromTheUsersEdition()
+    {
+        var svc = Engine(HarlowFixtures());
+
+        var result = await svc.SearchAsync(HarlowTrackQuery(17));
+
+        var top = result.Candidates[0];
+        Assert.Equal(17, top.TrackCount);
+        Assert.Equal("2022-05-06", top.ReleaseDate);
+        Assert.Equal("USAT22203492", top.Isrc);
+        Assert.Contains("Apple Music", top.Provider);
+        Assert.Contains("MusicBrainz", top.Provider);
+        Assert.DoesNotContain("Deezer", top.Provider); // Deezer only has the 15-track album
+        Assert.Contains("Same edition (17 tracks)", top.MatchNotes);
+        Assert.True(top.Confidence >= 0.85, $"confidence {top.Confidence}");
+
+        // The 15-track edition is still offered, flagged, and never reads as Strong.
+        var standard = result.Candidates.First(c => c.TrackCount == 15 && c.Provider.Contains("Deezer", StringComparison.Ordinal));
+        Assert.Contains("Different edition (15 vs 17 tracks)", standard.MatchNotes);
+        Assert.True(standard.Confidence < 0.85, $"confidence {standard.Confidence}");
+        Assert.All(result.Candidates.Where(c => c.Confidence >= 0.85), c => Assert.Equal(17, c.TrackCount));
+    }
+
+    [Fact]
+    public async Task Search_Track_NoLocalEdition_NeverMixesEditionsInOneResult()
+    {
+        var svc = Engine(HarlowFixtures());
+
+        var result = await svc.SearchAsync(HarlowTrackQuery(null));
+
+        // Whatever wins, a 17-track count never travels with a 15-track release's barcode.
+        Assert.DoesNotContain(result.Candidates, c => c.TrackCount == 17 && c.Barcode is "075679748669" or "075679745118");
+        Assert.DoesNotContain(result.Candidates, c => c.TrackCount == 15 && c.Barcode == "075679759252");
+    }
+
+    [Fact]
+    public async Task Search_Album_SeventeenLocalTracks_PrefersTheSeventeenTrackRelease()
+    {
+        var local = MusicBrainzProvider.ParseRelease(Fixture("musicbrainz_release_9de56b7f.json"))!.Tracks
+            .Select(t => new Track { Title = t.Title, Artist = "Jack Harlow", Album = "Come Home The Kids Miss You", TrackNumber = t.TrackNumber ?? 0, DiscNumber = 1, Duration = t.Duration ?? TimeSpan.Zero })
+            .ToList();
+        Assert.Equal(17, local.Count);
+        var svc = Engine(HarlowFixtures());
+
+        var result = await svc.SearchAsync(new MetadataQuery
+        {
+            AlbumScope = true, Album = "Come Home The Kids Miss You", AlbumArtist = "Jack Harlow", AlbumTracks = local,
+        });
+
+        var top = result.Candidates[0];
+        Assert.Equal(17, top.TrackCount);
+        Assert.Equal(17, top.Tracks.Count);
+        Assert.Contains("17/17 tracks matched", top.MatchNotes);
+        Assert.Contains("Explicit · 17 tracks", top.MatchNotes);
+        var standard = result.Candidates.First(c => c.TrackCount == 15);
+        Assert.True(standard.Confidence < top.Confidence);
+    }
+
+    [Theory]
+    [InlineData("Album (Deluxe Edition)", "Deluxe Edition")]
+    [InlineData("Album (2011 Remaster)", "")]
+    [InlineData("Album", "")]
+    public void EditionLabel_ComesFromTitleEditionWords(string album, string expected)
+        => Assert.Equal(expected, EditionMatch.Label(new MetadataCandidate { Album = album }));
+
+    /// <summary>The Jack Harlow responses, routed like the live services answer them.</summary>
+    private static RoutedHandler HarlowFixtures()
+    {
+        var h = new RoutedHandler();
+        string Q(Uri u) => Uri.UnescapeDataString(u.Query);
+        h.Route(u => u.Host == "api.deezer.com" && u.AbsolutePath == "/search", _ => Json(Fixture("deezer_search_track_harlow.json")));
+        h.Route(u => u.Host == "api.deezer.com" && u.AbsolutePath == "/search/album", _ => Json(Fixture("deezer_search_album_harlow.json")));
+        h.Route(u => u.Host == "api.deezer.com" && u.AbsolutePath is "/track/isrc:USAT22203492" or "/track/1742097167", _ => Json(Fixture("deezer_track_isrc_usat22203492.json")));
+        h.Route(u => u.Host == "api.deezer.com" && u.AbsolutePath == "/album/316300887/tracks", _ => Json(Fixture("deezer_album_316300887_tracks.json")));
+        h.Route(u => u.Host == "api.deezer.com" && u.AbsolutePath == "/album/316300887", _ => Json(Fixture("deezer_album_316300887.json")));
+        h.Route(u => u.Host == "api.deezer.com", _ => Json(Fixture("deezer_isrc_nodata.json")));
+        h.Route(u => u.Host == "itunes.apple.com" && u.AbsolutePath == "/search" && Q(u).Contains("entity=song", StringComparison.Ordinal), _ => Json(Fixture("itunes_search_song_harlow.json")));
+        h.Route(u => u.Host == "itunes.apple.com" && u.AbsolutePath == "/search" && Q(u).Contains("entity=album", StringComparison.Ordinal), _ => Json(Fixture("itunes_search_album_harlow.json")));
+        h.Route(u => u.Host == "itunes.apple.com" && u.AbsolutePath == "/lookup" && Q(u).Contains("id=1618136433", StringComparison.Ordinal), _ => Json(Fixture("itunes_lookup_1618136433.json")));
+        h.Route(u => u.Host == "itunes.apple.com" && u.AbsolutePath == "/lookup" && Q(u).Contains("id=1622624421", StringComparison.Ordinal), _ => Json(Fixture("itunes_lookup_1622624421.json")));
+        h.Route(u => u.Host == "itunes.apple.com", _ => Json("""{"resultCount":0,"results":[]}"""));
+        h.Route(u => u.Host == "musicbrainz.org" && u.AbsolutePath == "/ws/2/recording", _ => Json(Fixture("musicbrainz_recording_search_isrc_harlow.json")));
+        h.Route(u => u.Host == "musicbrainz.org" && u.AbsolutePath == "/ws/2/recording/2a79bef3-70f8-41a2-b385-c5ca29e819cd", _ => Json(Fixture("musicbrainz_recording_2a79bef3.json")));
+        h.Route(u => u.Host == "musicbrainz.org" && u.AbsolutePath == "/ws/2/release", _ => Json(Fixture("musicbrainz_release_search_harlow.json")));
+        h.Route(u => u.Host == "musicbrainz.org" && u.AbsolutePath == "/ws/2/release/9de56b7f-171f-41bc-bdda-ff9b2acef8d9", _ => Json(Fixture("musicbrainz_release_9de56b7f.json")));
+        h.Route(u => u.Host == "musicbrainz.org" && u.AbsolutePath == "/ws/2/release/648981fb-1575-45d3-b3f1-d44f1b59a784", _ => Json(Fixture("musicbrainz_release_648981fb.json")));
+        return h;
+    }
+
     // ── Helpers ──
 
     private static ProviderStatus Status(MetadataSearchResult r, string name) => r.Providers.Single(p => p.Provider == name);

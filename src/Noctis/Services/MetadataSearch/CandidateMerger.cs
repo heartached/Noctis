@@ -6,7 +6,10 @@ namespace Noctis.Services.MetadataSearch;
 /// three near-identical ones).
 ///
 /// Same entity (members always from different providers):
-///   track — same ISRC, or same base title + primary artist + album and durations within 3 s;
+///   track — same ISRC, or same base title + primary artist + album and durations within 3 s —
+///     and never two different editions (track/disc totals disagree): an ISRC names the
+///     recording, so "Apple 17-track deluxe + Deezer 15-track standard" would mix one edition's
+///     counts with the other's date, label and cover (owner 10-08: deluxe track count 17→15);
 ///   album — same barcode, or same album + artist with equal track count and year.
 ///
 /// Field precedence (first source that has a value wins):
@@ -18,7 +21,8 @@ namespace Noctis.Services.MetadataSearch;
 ///   ISRC: Deezer → MusicBrainz (Deezer's is per-release; MB lists several per recording);
 ///   composer: MusicBrainz; copyright: Apple; BPM: Deezer;
 ///   artwork: Apple (3000 px) → Cover Art Archive original → Deezer (1000 px), thumb with it;
-///   track list: Apple → Deezer → MusicBrainz (first non-empty).
+///   track list: Apple → Deezer → MusicBrainz (first non-empty);
+///   edition text: MusicBrainz (the only source naming explicit/clean/vinyl editions).
 /// </summary>
 public static class CandidateMerger
 {
@@ -37,7 +41,9 @@ public static class CandidateMerger
             // Several editions can look alike by text; join the group sharing an ISRC/barcode
             // with it if any, else the one most sources already agree on.
             var home = groups
-                .Where(g => g.All(m => m.Provider != c.Provider) && g.Any(m => SameEntity(m, c, albumScope)))
+                .Where(g => g.All(m => m.Provider != c.Provider) && g.Any(m => SameEntity(m, c, albumScope))
+                            // A member without counts can't vouch for one of another edition.
+                            && (albumScope || g.All(m => !EditionMatch.Conflict(m, c))))
                 .OrderByDescending(g => g.Any(m => SameCode(m, c, albumScope)))
                 .ThenByDescending(g => g.Count)
                 .FirstOrDefault();
@@ -58,6 +64,7 @@ public static class CandidateMerger
                                                               b.AlbumArtist.Length > 0 ? b.AlbumArtist : b.Artist);
         }
 
+        if (EditionMatch.Conflict(a, b)) return false;
         if (MatchText.SameIsrc(a.Isrc, b.Isrc)) return true;
         if (a.Duration is { } da && b.Duration is { } db && Math.Abs((da - db).TotalSeconds) > 3) return false;
         var ta2 = MatchText.AnalyzeTitle(a.Title);
@@ -118,6 +125,7 @@ public static class CandidateMerger
             ArtworkUrl = art?.ArtworkUrl,
             ArtworkThumbUrl = art?.ArtworkThumbUrl ?? group.Select(m => m.ArtworkThumbUrl).FirstOrDefault(u => u is not null),
             ArtworkSize = art?.ArtworkSize,
+            Edition = Text(group, CatalogOrder, m => m.Edition),
             Tracks = Ordered(group, PresentationOrder).Select(m => m.Tracks).FirstOrDefault(t => t.Count > 0)
                      ?? Array.Empty<CandidateTrack>(),
         };

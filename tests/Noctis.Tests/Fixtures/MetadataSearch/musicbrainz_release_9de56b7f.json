@@ -1,0 +1,1431 @@
+{
+ "genres": [],
+ "label-info": [
+  {
+   "label": {
+    "disambiguation": "Warner Music imprint",
+    "sort-name": "Atlantic",
+    "genres": [
+     {
+      "name": "dance",
+      "count": 1,
+      "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+      "disambiguation": ""
+     },
+     {
+      "id": "445dc48f-5233-4b4f-987f-867ff9ade836",
+      "count": 2,
+      "name": "folk rock",
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "name": "free jazz",
+      "count": 2,
+      "id": "3c31635b-a5a7-44eb-ab9d-4bbde11da2d4"
+     },
+     {
+      "disambiguation": "",
+      "id": "51cb9f91-e6a2-41bf-891f-e78e3f1e52ab",
+      "count": 2,
+      "name": "hard rock"
+     },
+     {
+      "disambiguation": "",
+      "name": "hip hop",
+      "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+      "count": 2
+     },
+     {
+      "disambiguation": "",
+      "count": 2,
+      "id": "a715278f-1580-409f-8078-4ffbc800e08b",
+      "name": "jazz"
+     },
+     {
+      "name": "latin",
+      "id": "7369bb8b-3399-4180-8cb2-4e37e0e7b0e7",
+      "count": 1,
+      "disambiguation": ""
+     },
+     {
+      "name": "pop",
+      "count": 1,
+      "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+      "disambiguation": ""
+     },
+     {
+      "name": "r&b",
+      "count": 1,
+      "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+      "disambiguation": ""
+     },
+     {
+      "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+      "count": 3,
+      "name": "rock",
+      "disambiguation": ""
+     },
+     {
+      "id": "2afc2320-384f-43a4-a71e-1b763c485045",
+      "count": 1,
+      "name": "trance",
+      "disambiguation": ""
+     }
+    ],
+    "name": "Atlantic",
+    "type": "Imprint",
+    "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+    "label-code": 121,
+    "id": "50c384a2-0b44-401b-b893-8181173339c7"
+   },
+   "catalog-number": null
+  },
+  {
+   "catalog-number": null,
+   "label": {
+    "disambiguation": "",
+    "sort-name": "Generation Now",
+    "name": "Generation Now",
+    "genres": [],
+    "type": "Imprint",
+    "type-id": "b6285b2a-3514-3d43-80df-fcf528824ded",
+    "label-code": null,
+    "id": "01d57d07-185d-4aae-89b0-6a1161cac1d9"
+   }
+  }
+ ],
+ "media": [
+  {
+   "track-count": 17,
+   "track-offset": 0,
+   "position": 1,
+   "title": "",
+   "id": "ef8846c7-b9c3-33fe-9259-7c558d7c9f1c",
+   "format-id": "907a28d9-b3b2-3ef6-89a8-7b18d91d4794",
+   "format": "Digital Media",
+   "tracks": [
+    {
+     "id": "bb87af38-2af4-400b-8be7-4795dea82551",
+     "length": 82927,
+     "number": "1",
+     "title": "Talk of the Town",
+     "recording": {
+      "first-release-date": "2022-05-05",
+      "id": "2a79bef3-70f8-41a2-b385-c5ca29e819cd",
+      "length": 82927,
+      "isrcs": [
+       "USAT22203479",
+       "USAT22203492"
+      ],
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Harlow, Jack",
+         "disambiguation": "",
+         "country": "US",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type": "Person",
+         "name": "Jack Harlow"
+        },
+        "name": "Jack Harlow",
+        "joinphrase": ""
+       }
+      ],
+      "title": "Talk of the Town",
+      "genres": [],
+      "video": false
+     },
+     "position": 1,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Jack Harlow",
+       "artist": {
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack"
+       }
+      }
+     ]
+    },
+    {
+     "id": "f1569832-89db-40e5-84e6-aee473863149",
+     "length": 224842,
+     "number": "2",
+     "title": "Young Harleezy",
+     "recording": {
+      "genres": [],
+      "video": false,
+      "isrcs": [
+       "USAT22203480",
+       "USAT22203493"
+      ],
+      "disambiguation": "explicit",
+      "artist-credit": [
+       {
+        "artist": {
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "name": "Jack Harlow",
+         "type": "Person",
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": ""
+        },
+        "joinphrase": "",
+        "name": "Jack Harlow"
+       }
+      ],
+      "title": "Young Harleezy",
+      "id": "a9e33f21-8ad7-4af8-a94b-8ecbafa7152f",
+      "length": 224841,
+      "first-release-date": "2022-05-06"
+     },
+     "position": 2,
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type": "Person",
+        "name": "Jack Harlow"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ]
+    },
+    {
+     "position": 3,
+     "title": "I’d Do Anything to Make You Smile",
+     "recording": {
+      "video": false,
+      "genres": [],
+      "title": "I’d Do Anything to Make You Smile",
+      "isrcs": [
+       "USAT22203481",
+       "USAT22203494"
+      ],
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": "",
+        "artist": {
+         "country": "US",
+         "disambiguation": "",
+         "sort-name": "Harlow, Jack",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+        }
+       }
+      ],
+      "disambiguation": "explicit",
+      "id": "09ce3391-950d-4909-8241-16db7c31c45e",
+      "length": 193765,
+      "first-release-date": "2022-05-06"
+     },
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Jack Harlow",
+       "artist": {
+        "name": "Jack Harlow",
+        "type": "Person",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack"
+       }
+      }
+     ],
+     "length": 193765,
+     "id": "efbb016d-9117-4e90-99cb-0a5719267c9e",
+     "number": "3"
+    },
+    {
+     "position": 4,
+     "title": "First Class",
+     "recording": {
+      "first-release-date": "2022-04-08",
+      "length": 173947,
+      "id": "402681c9-426a-4edc-b8bc-d6bcc4ff6701",
+      "title": "First Class",
+      "artist-credit": [
+       {
+        "joinphrase": "",
+        "name": "Jack Harlow",
+        "artist": {
+         "disambiguation": "",
+         "country": "US",
+         "sort-name": "Harlow, Jack",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+        }
+       }
+      ],
+      "disambiguation": "explicit",
+      "isrcs": [
+       "USAT22203024"
+      ],
+      "video": false,
+      "genres": [
+       {
+        "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+        "count": 1,
+        "name": "hip hop",
+        "disambiguation": ""
+       },
+       {
+        "name": "pop",
+        "count": 1,
+        "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+        "disambiguation": ""
+       },
+       {
+        "disambiguation": "",
+        "name": "pop rap",
+        "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+        "count": 2
+       }
+      ]
+     },
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Jack Harlow",
+        "type": "Person"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ],
+     "number": "4",
+     "length": 173948,
+     "id": "2b5cfadd-6a2e-405c-8c41-a6264aeff60f"
+    },
+    {
+     "id": "12c3f09e-3f05-4f91-b929-181e48d2a227",
+     "length": 135053,
+     "number": "5",
+     "artist-credit": [
+      {
+       "artist": {
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type": "Person",
+        "name": "Jack Harlow",
+        "sort-name": "Harlow, Jack",
+        "country": "US",
+        "disambiguation": ""
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ],
+     "title": "Dua Lipa",
+     "recording": {
+      "genres": [],
+      "video": false,
+      "isrcs": [
+       "USAT22203482",
+       "USAT22203495"
+      ],
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": "",
+        "artist": {
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": "",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "name": "Jack Harlow",
+         "type": "Person"
+        }
+       }
+      ],
+      "disambiguation": "explicit",
+      "title": "Dua Lipa",
+      "id": "91de1288-1022-44cd-adf3-2009735b3a0f",
+      "length": 135053,
+      "first-release-date": "2022-05-06"
+     },
+     "position": 5
+    },
+    {
+     "artist-credit": [
+      {
+       "artist": {
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Jack Harlow",
+        "type": "Person",
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ],
+     "position": 6,
+     "title": "Side Piece",
+     "recording": {
+      "first-release-date": "2022-05-06",
+      "length": 234117,
+      "id": "56500396-19ef-4fb8-97ae-28c6040e73da",
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": "",
+        "artist": {
+         "name": "Jack Harlow",
+         "type": "Person",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "country": "US",
+         "disambiguation": "",
+         "sort-name": "Harlow, Jack"
+        }
+       }
+      ],
+      "disambiguation": "explicit",
+      "isrcs": [
+       "USAT22203483",
+       "USAT22203496"
+      ],
+      "title": "Side Piece",
+      "genres": [],
+      "video": false
+     },
+     "length": 234118,
+     "id": "72635806-2658-405a-b3ad-e6041f4a3246",
+     "number": "6"
+    },
+    {
+     "length": 142590,
+     "id": "f49c4482-fce6-4e67-931f-231e21f6c33f",
+     "number": "7",
+     "position": 7,
+     "title": "Movie Star",
+     "recording": {
+      "genres": [],
+      "video": false,
+      "disambiguation": "explicit",
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": " feat. ",
+        "artist": {
+         "disambiguation": "",
+         "country": "US",
+         "sort-name": "Harlow, Jack",
+         "name": "Jack Harlow",
+         "type": "Person",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+        }
+       },
+       {
+        "name": "Pharrell Williams",
+        "joinphrase": "",
+        "artist": {
+         "name": "Pharrell Williams",
+         "type": "Person",
+         "id": "149f91ef-1287-46da-9a8e-87fee02f1471",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "disambiguation": "",
+         "country": "US",
+         "sort-name": "Williams, Pharrell"
+        }
+       }
+      ],
+      "isrcs": [
+       "USAT22203484",
+       "USAT22203497"
+      ],
+      "title": "Movie Star",
+      "length": 142590,
+      "id": "300df9ee-b111-4d4b-a190-85ffc1d43d23",
+      "first-release-date": "2022-05-06"
+     },
+     "artist-credit": [
+      {
+       "artist": {
+        "disambiguation": "",
+        "country": "US",
+        "sort-name": "Harlow, Jack",
+        "name": "Jack Harlow",
+        "type": "Person",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": " feat. "
+      },
+      {
+       "name": "Pharrell Williams",
+       "joinphrase": "",
+       "artist": {
+        "country": "US",
+        "id": "149f91ef-1287-46da-9a8e-87fee02f1471",
+        "sort-name": "Williams, Pharrell",
+        "disambiguation": "",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "type": "Person",
+        "name": "Pharrell Williams",
+        "genres": [
+         {
+          "count": 5,
+          "id": "4bb4043a-0ee5-4b84-93fa-6ba4567a6ba0",
+          "name": "contemporary r&b",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "funk",
+          "id": "fe4ba6a1-9873-4fd0-a12b-a70c81818514",
+          "count": 1
+         },
+         {
+          "name": "hip hop",
+          "count": 5,
+          "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+          "disambiguation": ""
+         },
+         {
+          "name": "pop",
+          "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+          "count": 5,
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "pop rap",
+          "count": 4,
+          "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237"
+         },
+         {
+          "name": "pop soul",
+          "count": 2,
+          "id": "64e0bd76-822f-4549-a6fe-9858561282d1",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "r&b",
+          "count": 2,
+          "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3"
+         },
+         {
+          "disambiguation": "",
+          "name": "soul",
+          "id": "1b5e7b16-336b-473e-a364-5120413a9827",
+          "count": 2
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "title": "Lil Secret",
+     "recording": {
+      "first-release-date": "2022-05-05",
+      "id": "1566e57e-b0d2-4fe4-baa9-d42c614ff252",
+      "length": 129565,
+      "title": "Lil Secret",
+      "isrcs": [
+       "USAT22203485",
+       "USAT22203498"
+      ],
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": "",
+        "artist": {
+         "disambiguation": "",
+         "country": "US",
+         "sort-name": "Harlow, Jack",
+         "name": "Jack Harlow",
+         "type": "Person",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+        }
+       }
+      ],
+      "disambiguation": "",
+      "video": false,
+      "genres": []
+     },
+     "position": 8,
+     "artist-credit": [
+      {
+       "artist": {
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack"
+       },
+       "joinphrase": "",
+       "name": "Jack Harlow"
+      }
+     ],
+     "id": "ffceed29-93eb-4b8e-9bff-154bcb03e07b",
+     "length": 129565,
+     "number": "8"
+    },
+    {
+     "id": "128e8e9e-e9ea-4289-8a9a-6f1090d334ef",
+     "length": 138781,
+     "number": "9",
+     "artist-credit": [
+      {
+       "artist": {
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack"
+       },
+       "joinphrase": "",
+       "name": "Jack Harlow"
+      }
+     ],
+     "recording": {
+      "id": "fc3c2c30-1d0f-4aa7-9dc5-9ad47e92d709",
+      "length": 138781,
+      "first-release-date": "2022-05-06",
+      "video": false,
+      "genres": [],
+      "title": "I Got a Shot",
+      "isrcs": [
+       "USAT22203486",
+       "USAT22203499"
+      ],
+      "artist-credit": [
+       {
+        "artist": {
+         "country": "US",
+         "disambiguation": "",
+         "sort-name": "Harlow, Jack",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+        },
+        "name": "Jack Harlow",
+        "joinphrase": ""
+       }
+      ],
+      "disambiguation": "explicit"
+     },
+     "title": "I Got a Shot",
+     "position": 9
+    },
+    {
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Harlow, Jack",
+        "country": "US",
+        "disambiguation": "",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type": "Person",
+        "name": "Jack Harlow"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": " feat. "
+      },
+      {
+       "joinphrase": "",
+       "name": "Drake",
+       "artist": {
+        "id": "9fff2f8a-21e6-47de-a2b8-7f449929d43f",
+        "country": "CA",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Drake",
+        "genres": [
+         {
+          "disambiguation": "",
+          "id": "4e03fb35-d571-4111-824d-88c9f8a3d0c9",
+          "count": 6,
+          "name": "alternative r&b"
+         },
+         {
+          "name": "contemporary r&b",
+          "id": "4bb4043a-0ee5-4b84-93fa-6ba4567a6ba0",
+          "count": 7,
+          "disambiguation": ""
+         },
+         {
+          "id": "12b013ff-cf03-4fa0-8e1b-c9b7f5d27f90",
+          "count": 1,
+          "name": "hardcore hip hop",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "count": 20,
+          "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+          "name": "hip hop"
+         },
+         {
+          "count": 4,
+          "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+          "name": "pop",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+          "count": 7,
+          "name": "pop rap"
+         },
+         {
+          "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+          "count": 9,
+          "name": "r&b",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "count": 1,
+          "id": "7abbbbea-21ea-4167-bcea-48147bf642b8",
+          "name": "southern hip hop"
+         },
+         {
+          "id": "9a339aa8-a0e5-450c-95a7-b11517bb508f",
+          "count": 3,
+          "name": "trap",
+          "disambiguation": ""
+         }
+        ],
+        "type": "Person",
+        "sort-name": "Drake",
+        "disambiguation": "Canadian rapper"
+       }
+      }
+     ],
+     "recording": {
+      "title": "Churchill Downs",
+      "isrcs": [
+       "USAT22203487",
+       "USAT22203500"
+      ],
+      "disambiguation": "explicit",
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": ""
+        },
+        "joinphrase": " feat. ",
+        "name": "Jack Harlow"
+       },
+       {
+        "name": "Drake",
+        "joinphrase": "",
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "9fff2f8a-21e6-47de-a2b8-7f449929d43f",
+         "type": "Person",
+         "name": "Drake",
+         "sort-name": "Drake",
+         "disambiguation": "Canadian rapper",
+         "country": "CA"
+        }
+       }
+      ],
+      "video": false,
+      "genres": [],
+      "first-release-date": "2022-05-06",
+      "id": "9973396c-6154-4e85-9016-bf5424aea466",
+      "length": 309327
+     },
+     "title": "Churchill Downs",
+     "position": 10,
+     "id": "f192bbbf-352d-4dbd-a2f3-9e24604fb1b9",
+     "length": 309327,
+     "number": "10"
+    },
+    {
+     "number": "11",
+     "id": "cede9b53-d16f-4606-b6d4-349098b47596",
+     "length": 126218,
+     "artist-credit": [
+      {
+       "artist": {
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "disambiguation": "",
+        "country": "US",
+        "sort-name": "Harlow, Jack"
+       },
+       "joinphrase": "",
+       "name": "Jack Harlow"
+      }
+     ],
+     "title": "Like a Blade of Grass",
+     "recording": {
+      "video": false,
+      "genres": [],
+      "title": "Like a Blade of Grass",
+      "disambiguation": "explicit",
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": "",
+        "artist": {
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "name": "Jack Harlow",
+         "type": "Person",
+         "sort-name": "Harlow, Jack",
+         "disambiguation": "",
+         "country": "US"
+        }
+       }
+      ],
+      "isrcs": [
+       "USAT22203488",
+       "USAT22203501"
+      ],
+      "length": 126217,
+      "id": "ed8c1e83-7569-4b70-a1b2-9e14edb42062",
+      "first-release-date": "2022-05-06"
+     },
+     "position": 11
+    },
+    {
+     "id": "10168371-7ebe-4dcf-8a02-28ea1618defc",
+     "length": 189876,
+     "number": "12",
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type": "Person",
+        "name": "Jack Harlow"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": " feat. "
+      },
+      {
+       "artist": {
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "type": "Person",
+        "name": "Justin Timberlake",
+        "genres": [
+         {
+          "disambiguation": "",
+          "count": 1,
+          "id": "10fd28e3-51aa-4110-a3dd-032d8a141f99",
+          "name": "boogie"
+         },
+         {
+          "disambiguation": "",
+          "name": "contemporary r&b",
+          "count": 3,
+          "id": "4bb4043a-0ee5-4b84-93fa-6ba4567a6ba0"
+         },
+         {
+          "count": 2,
+          "id": "e5bba957-8c91-496a-a675-c6d0c6b51c33",
+          "name": "dance",
+          "disambiguation": ""
+         },
+         {
+          "name": "dance-pop",
+          "count": 4,
+          "id": "b739a895-85ed-4ad3-8717-4e9ef5387dd8",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "disco",
+          "count": 3,
+          "id": "a04d680b-b5c5-4f6a-87a3-f9f1ff98e3ea"
+         },
+         {
+          "disambiguation": "",
+          "id": "3f3388b4-e36a-4bf8-a0be-66b10d92aaa4",
+          "count": 1,
+          "name": "electropop"
+         },
+         {
+          "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+          "count": 2,
+          "name": "hip hop",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "latin",
+          "count": 1,
+          "id": "7369bb8b-3399-4180-8cb2-4e37e0e7b0e7"
+         },
+         {
+          "id": "286f9168-9c46-4e41-94a1-1aa4aeb93b8c",
+          "count": 1,
+          "name": "neo soul",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+          "count": 8,
+          "name": "pop"
+         },
+         {
+          "name": "r&b",
+          "count": 5,
+          "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "name": "soul",
+          "count": 1,
+          "id": "1b5e7b16-336b-473e-a364-5120413a9827"
+         },
+         {
+          "name": "synth funk",
+          "count": 1,
+          "id": "4dcf868a-cbcb-4969-beff-d75c91d0bd47",
+          "disambiguation": ""
+         },
+         {
+          "id": "4b7c8e31-462b-4e06-acfd-fa508ad26e0c",
+          "count": 1,
+          "name": "teen pop",
+          "disambiguation": ""
+         }
+        ],
+        "sort-name": "Timberlake, Justin",
+        "disambiguation": "",
+        "id": "596ffa74-3d08-44ef-b113-765d43d12738",
+        "country": "US"
+       },
+       "joinphrase": "",
+       "name": "Justin Timberlake"
+      }
+     ],
+     "recording": {
+      "genres": [],
+      "video": false,
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": "",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "name": "Jack Harlow",
+         "type": "Person"
+        },
+        "joinphrase": " feat. ",
+        "name": "Jack Harlow"
+       },
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "596ffa74-3d08-44ef-b113-765d43d12738",
+         "type": "Person",
+         "name": "Justin Timberlake",
+         "sort-name": "Timberlake, Justin",
+         "country": "US",
+         "disambiguation": ""
+        },
+        "joinphrase": "",
+        "name": "Justin Timberlake"
+       }
+      ],
+      "isrcs": [
+       "USAT22203489",
+       "USAT22203502"
+      ],
+      "title": "Parent Trap",
+      "length": 189876,
+      "id": "93bd110c-8db8-4d31-8bda-aa734a4b3588",
+      "first-release-date": "2022-05-05"
+     },
+     "title": "Parent Trap",
+     "position": 12
+    },
+    {
+     "title": "Poison",
+     "recording": {
+      "video": false,
+      "genres": [],
+      "title": "Poison",
+      "artist-credit": [
+       {
+        "name": "Jack Harlow",
+        "joinphrase": " feat. ",
+        "artist": {
+         "disambiguation": "",
+         "country": "US",
+         "sort-name": "Harlow, Jack",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+        }
+       },
+       {
+        "joinphrase": "",
+        "name": "Lil Wayne",
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "ac9a487a-d9d2-4f27-bb23-0f4686488345",
+         "type": "Person",
+         "name": "Lil Wayne",
+         "sort-name": "Lil Wayne",
+         "country": "US",
+         "disambiguation": ""
+        }
+       }
+      ],
+      "disambiguation": "explicit",
+      "isrcs": [
+       "USAT22203490",
+       "USAT22203503"
+      ],
+      "length": 222642,
+      "id": "1e47b44e-904a-4795-9f91-0b77b0b01ff2",
+      "first-release-date": "2022-05-06"
+     },
+     "position": 13,
+     "artist-credit": [
+      {
+       "artist": {
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Jack Harlow",
+        "type": "Person"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": " feat. "
+      },
+      {
+       "joinphrase": "",
+       "name": "Lil Wayne",
+       "artist": {
+        "country": "US",
+        "id": "ac9a487a-d9d2-4f27-bb23-0f4686488345",
+        "disambiguation": "",
+        "sort-name": "Lil Wayne",
+        "type": "Person",
+        "genres": [
+         {
+          "name": "gangsta rap",
+          "id": "bc8c2f79-dcea-43f3-962b-f0663868d42c",
+          "count": 8,
+          "disambiguation": ""
+         },
+         {
+          "disambiguation": "",
+          "count": 9,
+          "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+          "name": "hip hop"
+         },
+         {
+          "disambiguation": "",
+          "count": 2,
+          "id": "911c7bbb-172d-4df8-9478-dbff4296e791",
+          "name": "pop"
+         },
+         {
+          "disambiguation": "",
+          "count": 4,
+          "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+          "name": "pop rap"
+         },
+         {
+          "disambiguation": "",
+          "name": "r&b",
+          "id": "31be54b2-4d0c-42df-aa44-c496c7b4c3c3",
+          "count": 4
+         },
+         {
+          "disambiguation": "",
+          "name": "rap rock",
+          "count": 4,
+          "id": "b4b184b7-6224-478e-a273-f9da9ee30136"
+         },
+         {
+          "disambiguation": "",
+          "id": "0e3fc579-2d24-4f20-9dae-736e1ec78798",
+          "count": 1,
+          "name": "rock"
+         },
+         {
+          "name": "southern hip hop",
+          "id": "7abbbbea-21ea-4167-bcea-48147bf642b8",
+          "count": 9,
+          "disambiguation": ""
+         },
+         {
+          "id": "9a339aa8-a0e5-450c-95a7-b11517bb508f",
+          "count": 2,
+          "name": "trap",
+          "disambiguation": ""
+         },
+         {
+          "id": "03a8749c-93e6-4b71-8204-b33de116d8fd",
+          "count": 1,
+          "name": "underground hip hop",
+          "disambiguation": ""
+         }
+        ],
+        "name": "Lil Wayne",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       }
+      }
+     ],
+     "id": "e63e570e-05f5-459b-9bc5-c5768544ec08",
+     "length": 222643,
+     "number": "13"
+    },
+    {
+     "number": "14",
+     "id": "0c798ac0-3de0-4527-9f99-885488d9e262",
+     "length": 206385,
+     "artist-credit": [
+      {
+       "artist": {
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack",
+        "name": "Jack Harlow",
+        "type": "Person",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ],
+     "recording": {
+      "video": false,
+      "genres": [],
+      "title": "Nail Tech",
+      "isrcs": [
+       "USAT22200223"
+      ],
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": ""
+        },
+        "joinphrase": "",
+        "name": "Jack Harlow"
+       }
+      ],
+      "disambiguation": "explicit",
+      "id": "e381a564-0c5f-4f57-bf7a-834990268be8",
+      "length": 206385,
+      "first-release-date": "2022-02-18"
+     },
+     "title": "Nail Tech",
+     "position": 14
+    },
+    {
+     "artist-credit": [
+      {
+       "name": "Jack Harlow",
+       "joinphrase": "",
+       "artist": {
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "name": "Jack Harlow",
+        "type": "Person",
+        "sort-name": "Harlow, Jack",
+        "disambiguation": "",
+        "country": "US"
+       }
+      }
+     ],
+     "recording": {
+      "first-release-date": "2022-05-06",
+      "id": "c30a8a8d-f5fe-4c6f-8b06-e90fc99938e0",
+      "length": 194526,
+      "isrcs": [
+       "USAT22203491",
+       "USAT22203504"
+      ],
+      "disambiguation": "explicit",
+      "artist-credit": [
+       {
+        "artist": {
+         "type": "Person",
+         "name": "Jack Harlow",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "country": "US",
+         "disambiguation": "",
+         "sort-name": "Harlow, Jack"
+        },
+        "name": "Jack Harlow",
+        "joinphrase": ""
+       }
+      ],
+      "title": "State Fair",
+      "genres": [],
+      "video": false
+     },
+     "title": "State Fair",
+     "position": 15,
+     "number": "15",
+     "id": "643ea7e6-80db-4d73-bdbd-bccbaf588bad",
+     "length": 194526
+    },
+    {
+     "id": "f12f88fb-b1d8-4ac0-84c0-c5b12559b920",
+     "length": 208000,
+     "number": "16",
+     "artist-credit": [
+      {
+       "artist": {
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack",
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+       },
+       "name": "Jack Harlow",
+       "joinphrase": ""
+      }
+     ],
+     "title": "Nail Tech",
+     "recording": {
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "sort-name": "Harlow, Jack",
+         "disambiguation": "",
+         "country": "US",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "name": "Jack Harlow",
+         "type": "Person"
+        },
+        "joinphrase": "",
+        "name": "Jack Harlow"
+       }
+      ],
+      "isrcs": [
+       "USATV2200744"
+      ],
+      "title": "Nail Tech",
+      "genres": [],
+      "video": true,
+      "first-release-date": "2022-05-06",
+      "length": 208000,
+      "id": "a01e1c72-536a-4bf2-898c-1325a4457bd6"
+     },
+     "position": 16
+    },
+    {
+     "title": "First Class",
+     "recording": {
+      "video": true,
+      "genres": [],
+      "title": "First Class",
+      "disambiguation": "",
+      "artist-credit": [
+       {
+        "artist": {
+         "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+         "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+         "type": "Person",
+         "name": "Jack Harlow",
+         "sort-name": "Harlow, Jack",
+         "country": "US",
+         "disambiguation": ""
+        },
+        "joinphrase": "",
+        "name": "Jack Harlow"
+       }
+      ],
+      "isrcs": [
+       "USATV2201513"
+      ],
+      "length": 156000,
+      "id": "95c9e30e-4702-43f2-a18f-6002c8570548",
+      "first-release-date": "2022-05-06"
+     },
+     "position": 17,
+     "artist-credit": [
+      {
+       "joinphrase": "",
+       "name": "Jack Harlow",
+       "artist": {
+        "type": "Person",
+        "name": "Jack Harlow",
+        "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+        "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+        "country": "US",
+        "disambiguation": "",
+        "sort-name": "Harlow, Jack"
+       }
+      }
+     ],
+     "number": "17",
+     "id": "21d49475-31a6-4bdf-82cd-9130beb80dfd",
+     "length": 156000
+    }
+   ]
+  }
+ ],
+ "disambiguation": "explicit",
+ "title": "Come Home the Kids Miss You",
+ "quality": "normal",
+ "id": "9de56b7f-171f-41bc-bdda-ff9b2acef8d9",
+ "release-events": [
+  {
+   "date": "2022-05-06",
+   "area": null
+  }
+ ],
+ "barcode": "075679759252",
+ "text-representation": {
+  "script": "Latn",
+  "language": "eng"
+ },
+ "release-group": {
+  "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+  "id": "d0c823fc-ad7c-434d-8555-ad8e7592c33c",
+  "first-release-date": "2022-05-05",
+  "secondary-type-ids": [],
+  "genres": [
+   {
+    "count": 1,
+    "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+    "name": "hip hop",
+    "disambiguation": ""
+   },
+   {
+    "name": "pop rap",
+    "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+    "count": 2,
+    "disambiguation": ""
+   }
+  ],
+  "disambiguation": "",
+  "artist-credit": [
+   {
+    "joinphrase": "",
+    "name": "Jack Harlow",
+    "artist": {
+     "country": "US",
+     "disambiguation": "",
+     "sort-name": "Harlow, Jack",
+     "type": "Person",
+     "name": "Jack Harlow",
+     "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+     "id": "134cb0bc-06fa-42f7-8078-b0c858349975"
+    }
+   }
+  ],
+  "secondary-types": [],
+  "primary-type": "Album",
+  "title": "Come Home the Kids Miss You"
+ },
+ "asin": null,
+ "artist-credit": [
+  {
+   "artist": {
+    "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+    "country": "US",
+    "type": "Person",
+    "genres": [
+     {
+      "name": "hip hop",
+      "count": 2,
+      "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+      "count": 1,
+      "name": "pop rap"
+     }
+    ],
+    "name": "Jack Harlow",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "disambiguation": "",
+    "sort-name": "Harlow, Jack"
+   },
+   "name": "Jack Harlow",
+   "joinphrase": ""
+  }
+ ],
+ "date": "2022-05-06",
+ "packaging": "None",
+ "packaging-id": "119eba76-b343-3e02-a292-f0f00644bb9b",
+ "country": null,
+ "status": "Official",
+ "cover-art-archive": {
+  "back": false,
+  "artwork": true,
+  "front": true,
+  "darkened": false,
+  "count": 1
+ },
+ "status-id": "4e304316-386d-3409-af2e-78857eec5cfe"
+}
