@@ -447,11 +447,14 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
-                        <!-- Search metadata: find & review tag changes -->
-                        <StackPanel Spacing="10" IsVisible="{Binding ShowSearchMetadata}">
+                        <!-- Search metadata: find & review tag changes. Only the button hides for a
+                             multi-track selection; the Mixed hint beside it must not, since that is
+                             where most fields read "Mixed". -->
+                        <StackPanel Spacing="10">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Button Grid.Column="0"
                                         Classes="accent-pill"
+                                        IsVisible="{Binding ShowSearchMetadata}"
                                         Command="{Binding SearchMetadataCommand}"
                                         HorizontalAlignment="Left"
                                         Padding="11,5"
