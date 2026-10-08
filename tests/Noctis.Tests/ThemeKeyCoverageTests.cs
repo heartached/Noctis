@@ -46,6 +46,7 @@ public class ThemeKeyCoverageTests
         var files = new[] { Path.Combine(src, "Views"), Path.Combine(src, "Controls"), Path.Combine(ui, "Controls") }
             .SelectMany(d => Directory.EnumerateFiles(d, "*.axaml", SearchOption.AllDirectories))
             .Append(Path.Combine(ui, "Assets", "Styles.axaml"))
+            .Append(Path.Combine(ui, "Assets", "PillDialog.axaml")) // pill pop-up styles (PillDialogHost)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
 
         var result = new Dictionary<string, IReadOnlyList<string>>();

@@ -36,88 +36,9 @@
             </Style.Animations>
         </Style>
 
-        <Style Selector="TextBox.metadata-info-field">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-        </Style>
-
-        <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <Style Selector="TextBox.metadata-info-field:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <!-- Greyed out when disabled (e.g. start/stop time whose checkbox is unticked) -->
-        <Style Selector="TextBox.metadata-info-field:disabled">
-            <Setter Property="Opacity" Value="0.4" />
-        </Style>
-
-        <Style Selector="AutoCompleteBox.metadata-info-field">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-        </Style>
-
-        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
-        </Style>
-
-        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <Style Selector="AutoCompleteBox.metadata-info-field:focus-within /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-
-        <Style Selector="ComboBox.metadata-info-field">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-        </Style>
-
-        <Style Selector="ComboBox.metadata-info-field /template/ Border#Background">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBox.metadata-info-field /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
+        <!-- Fields and the footer buttons use the pill classes (pill-field, pill-area,
+             pill-primary, pill-secondary) that PillDialogHost brings with it
+             (Noctis.UI/Assets/PillDialog.axaml). -->
 
         <!-- Pill-shaped hover/selection highlight for dropdown items, matching the
              rounded menu highlight used elsewhere. Inset via margin so the pill
@@ -341,34 +262,28 @@
 
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay that captures all input -->
-    <Border Background="#50000000"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
+    <!-- Rounded pill pop-up (owner 10-08: rounded pill design from their reference,
+         metadata window first): the host draws the blurred, dimmed app behind, the big
+         rounded card with its shadow, and plays the open/close animation (every close
+         path, including the VM's CloseRequested, animates once before the real close).
+         It also swallows clicks/wheel on the dim area like the old overlay Border. -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                CornerRadius="16"
-                ClipToBounds="True"
-                Width="852" Height="740"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+    <Grid Margin="0" Width="852" Height="740" RowDefinitions="Auto,*,Auto">
 
-    <Grid Margin="0" RowDefinitions="Auto,*,Auto">
-
-        <!-- Header: artwork + track title, artist, album -->
+        <!-- Header: artwork + track title, artist, album. No band of its own: the card is
+             one surface, split only by soft hairlines. -->
         <Border Grid.Row="0" DockPanel.Dock="Top"
-                Padding="24,20,24,16"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                Padding="28,22,28,16"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="104,16,*,Auto">
+            <Grid ColumnDefinitions="104,18,*,Auto">
+                <!-- Filled like the fields: with the header band gone, the theme's BaseLow
+                     (#000 on Dark) would vanish into the card when there is no art. -->
                 <Border Grid.Column="0"
                         Width="104" Height="104"
-                        CornerRadius="8"
                         ClipToBounds="True"
-                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        Classes="pill-well">
                     <Panel>
                         <TextBlock Text="{loc:T Metadata.Album}"
                                    FontSize="11"
@@ -460,7 +375,7 @@
 
         <!-- Bottom: Cancel / Save buttons -->
         <Border Grid.Row="2" DockPanel.Dock="Bottom"
-                Padding="24,12"
+                Padding="28,14"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="*,Auto,Auto">
@@ -486,26 +401,15 @@
                                IsVisible="{Binding !HasSaveError}" />
                 </StackPanel>
                 <Button Grid.Column="1"
+                        Classes="pill-secondary"
                         Content="{loc:T Metadata.Cancel}"
                         Command="{Binding CancelCommand}"
-                        Width="100"
-                        Padding="0,10"
-                        FontWeight="Bold"
-                        HorizontalContentAlignment="Center"
-                        CornerRadius="999"
-                        Margin="0,0,8,0"
-                        Cursor="Hand" />
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
                 <Button Grid.Column="2"
+                        Classes="pill-primary"
                         Command="{Binding SaveCommand}"
-                        Width="100"
-                        Padding="0,10"
-                        Classes="accent-btn accent-pill"
-                        Background="{DynamicResource AccentButtonBackground}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        FontWeight="Bold"
-                        HorizontalContentAlignment="Center"
-                        CornerRadius="999"
-                        Cursor="Hand">
+                        MinWidth="108">
                     <Panel>
                         <TextBlock Text="{loc:T Metadata.Save}"
                                    HorizontalAlignment="Center"
@@ -615,7 +519,7 @@
                         <!-- Title (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="{loc:T Metadata.Title}" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Classes="pill-field" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Use Work & Movement: the fields glide open under the toggle (same
@@ -630,22 +534,22 @@
                                     <!-- Work Name -->
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{loc:T Metadata.WorkName}" FontSize="12" Opacity="0.5" />
-                                        <TextBox Classes="metadata-info-field" Text="{Binding WorkName, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Classes="pill-field" Text="{Binding WorkName, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
 
                                     <!-- Movement index + count + title -->
                                     <Grid ColumnDefinitions="Auto,8,Auto,16,*">
                                         <StackPanel Grid.Column="0" Spacing="4">
                                             <TextBlock Text="{loc:T Metadata.Movement}" FontSize="12" Opacity="0.5" />
-                                            <TextBox Classes="metadata-info-field" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                                            <TextBox Classes="pill-field" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Spacing="4">
                                             <TextBlock Text="of" FontSize="12" Opacity="0.5" />
-                                            <TextBox Classes="metadata-info-field" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                                            <TextBox Classes="pill-field" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4" Spacing="4">
                                             <TextBlock Text="{loc:T Metadata.Title}" FontSize="12" Opacity="0.5" />
-                                            <TextBox Classes="metadata-info-field" Text="{Binding MovementName, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Classes="pill-field" Text="{Binding MovementName, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -655,7 +559,7 @@
                         <!-- Album -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="{loc:T Metadata.Album2}" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Album, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumWatermark}" />
+                            <TextBox Classes="pill-field" Text="{Binding Album, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumWatermark}" />
                         </StackPanel>
 
                         <!-- Flags in one row: compilation / explicit / show composer -->
@@ -680,28 +584,28 @@
                             <!-- Album Artist | Artist -->
                             <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.AlbumArtist}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumArtistWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding AlbumArtist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumArtistWatermark}" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Artist}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Artist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ArtistWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding Artist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ArtistWatermark}" />
                             </StackPanel>
 
                             <!-- Composer | Grouping -->
                             <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Composer}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Composer, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ComposerWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding Composer, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ComposerWatermark}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Grouping}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Grouping, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding GroupingWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding Grouping, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding GroupingWatermark}" />
                             </StackPanel>
 
                             <!-- Genre | Year -->
                             <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Genre}" FontSize="12" Opacity="0.5" />
                                 <ComboBox x:Name="GenreCombo"
-                                          Classes="metadata-info-field"
+                                          Classes="pill-field"
                                           FontWeight="Normal"
                                           ItemsSource="{Binding GenreOptions}"
                                           SelectedItem="{Binding Genre}"
@@ -710,31 +614,31 @@
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Year}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding YearWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding YearWatermark}" />
                             </StackPanel>
 
                             <!-- Track x of y | Disc x of y -->
                             <StackPanel Grid.Row="3" Grid.Column="0" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Track}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
-                                    <TextBox Grid.Column="0" Classes="metadata-info-field" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" />
+                                    <TextBox Grid.Column="0" Classes="pill-field" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" />
                                     <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
-                                    <TextBox Grid.Column="2" Classes="metadata-info-field" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" />
+                                    <TextBox Grid.Column="2" Classes="pill-field" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" />
                                 </Grid>
                             </StackPanel>
                             <StackPanel Grid.Row="3" Grid.Column="2" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Disc}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
-                                    <TextBox Grid.Column="0" Classes="metadata-info-field" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" />
+                                    <TextBox Grid.Column="0" Classes="pill-field" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" />
                                     <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
-                                    <TextBox Grid.Column="2" Classes="metadata-info-field" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" />
+                                    <TextBox Grid.Column="2" Classes="pill-field" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" />
                                 </Grid>
                             </StackPanel>
 
                             <!-- BPM | Play count -->
                             <StackPanel Grid.Row="4" Grid.Column="0" Spacing="4">
                                 <TextBlock Text="{loc:T Metadata.Bpm}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Bpm, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding BpmWatermark}" />
+                                <TextBox Classes="pill-field" Text="{Binding Bpm, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding BpmWatermark}" />
                             </StackPanel>
                             <StackPanel Grid.Row="4" Grid.Column="2" Spacing="4">
                                 <TextBlock Text="{loc:T Metadata.PlayCount}" FontSize="12" Opacity="0.5" />
@@ -755,7 +659,7 @@
                         <Grid ColumnDefinitions="*,20,*" IsVisible="{Binding ShowTrackFields}">
                             <StackPanel Grid.Column="0" Spacing="4">
                                 <TextBlock Text="{loc:T Metadata.Performer}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Performer, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Classes="pill-field" Text="{Binding Performer, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="6">
                                 <TextBlock Text="{loc:T Metadata.Rating}" FontSize="12" Opacity="0.5" />
@@ -778,7 +682,7 @@
                         <!-- Song comment -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="{loc:T Metadata.Comment}" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field"
+                            <TextBox Classes="pill-field"
                                      Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding CommentWatermark}" />
                         </StackPanel>
                     </StackPanel>
@@ -799,23 +703,23 @@
                         <Grid ColumnDefinitions="*,20,*" RowDefinitions="Auto,Auto,Auto">
                             <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.TitleSort}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding TitleSort}" />
+                                <TextBox Classes="pill-field" Text="{Binding TitleSort}" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.ArtistSort}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding ArtistSort}" />
+                                <TextBox Classes="pill-field" Text="{Binding ArtistSort}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.AlbumSort}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding AlbumSort}" />
+                                <TextBox Classes="pill-field" Text="{Binding AlbumSort}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.AlbumArtistSort}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtistSort}" />
+                                <TextBox Classes="pill-field" Text="{Binding AlbumArtistSort}" />
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4">
                                 <TextBlock Text="{loc:T Metadata.ComposerSort}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding ComposerSort}" />
+                                <TextBox Classes="pill-field" Text="{Binding ComposerSort}" />
                             </StackPanel>
                         </Grid>
 
@@ -826,19 +730,19 @@
                         <Grid ColumnDefinitions="*,20,*" RowDefinitions="Auto,Auto">
                             <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.Conductor}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Conductor}" />
+                                <TextBox Classes="pill-field" Text="{Binding Conductor}" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.Lyricist}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Lyricist}" />
+                                <TextBox Classes="pill-field" Text="{Binding Lyricist}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4" Margin="0,0,0,0">
                                 <TextBlock Text="{loc:T Metadata.PublisherLabel}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Publisher}" />
+                                <TextBox Classes="pill-field" Text="{Binding Publisher}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4" Margin="0,0,0,0">
                                 <TextBlock Text="{loc:T Metadata.EncodedBy}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding EncodedBy}" />
+                                <TextBox Classes="pill-field" Text="{Binding EncodedBy}" />
                             </StackPanel>
                         </Grid>
 
@@ -849,15 +753,15 @@
                         <Grid ColumnDefinitions="*,16,*,16,*">
                             <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,0,0">
                                 <TextBlock Text="{loc:T Metadata.ISRC}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Isrc}" />
+                                <TextBox Classes="pill-field" Text="{Binding Isrc}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4" Margin="0,0,0,0">
                                 <TextBlock Text="{loc:T Metadata.CatalogNumber}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding CatalogNumber}" />
+                                <TextBox Classes="pill-field" Text="{Binding CatalogNumber}" />
                             </StackPanel>
                             <StackPanel Grid.Column="4" Spacing="4" Margin="0,0,0,0">
                                 <TextBlock Text="{loc:T Metadata.BarcodeUPC}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Barcode}" />
+                                <TextBox Classes="pill-field" Text="{Binding Barcode}" />
                             </StackPanel>
                         </Grid>
 
@@ -868,7 +772,7 @@
                         <Grid ColumnDefinitions="*,20,*" RowDefinitions="Auto,Auto,Auto,Auto">
                             <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.ITunesAdvisory}" FontSize="12" Opacity="0.5" />
-                                <ComboBox Classes="metadata-info-field"
+                                <ComboBox Classes="pill-field"
                                           ItemsSource="{x:Static vm:MetadataViewModel.AdvisoryOptions}"
                                           SelectedItem="{Binding SelectedAdvisory}"
                                           HorizontalAlignment="Stretch">
@@ -889,23 +793,23 @@
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.Language}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Language}" />
+                                <TextBox Classes="pill-field" Text="{Binding Language}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.Mood}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Mood}" />
+                                <TextBox Classes="pill-field" Text="{Binding Mood}" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.ReleaseDate}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding AdvReleaseDate}" />
+                                <TextBox Classes="pill-field" Text="{Binding AdvReleaseDate}" />
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4" Margin="0,0,0,14">
                                 <TextBlock Text="{loc:T Metadata.Description}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding AdvDescription}" />
+                                <TextBox Classes="pill-field" Text="{Binding AdvDescription}" />
                             </StackPanel>
                             <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Spacing="4">
                                 <TextBlock Text="{loc:T Metadata.Copyright}" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding Copyright}" />
+                                <TextBox Classes="pill-field" Text="{Binding Copyright}" />
                             </StackPanel>
                         </Grid>
 
@@ -948,11 +852,11 @@
                                 <DataTemplate x:DataType="vm:CustomTagItem">
                                     <Grid ColumnDefinitions="*,8,2*,8,Auto" Margin="0,0,0,8">
                                         <TextBox Grid.Column="0"
-                                                 Classes="metadata-info-field"
+                                                 Classes="pill-field"
                                                  Text="{Binding Key}"
                                                  Watermark="{loc:T Metadata.Key}" />
                                         <TextBox Grid.Column="2"
-                                                 Classes="metadata-info-field"
+                                                 Classes="pill-field"
                                                  Text="{Binding Value}"
                                                  Watermark="{loc:T Metadata.Value}" />
                                         <Button Grid.Column="4"
@@ -1206,7 +1110,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Width="400" Height="400"
-                            CornerRadius="8"
+                            CornerRadius="24"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <Panel>
@@ -1270,7 +1174,7 @@
 
                         <!-- Type an album name to search for, or paste a link to skip search -->
                         <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
-                            <TextBox Classes="metadata-info-field"
+                            <TextBox Classes="pill-field"
                                      Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
                                      Watermark="{loc:T Metadata.AlbumNameAppleMusic}"
                                      FontSize="12">
@@ -1319,7 +1223,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Width="400" Height="400"
-                            CornerRadius="8"
+                            CornerRadius="24"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <!-- Search popup: opened from code-behind, centered over the
@@ -1538,14 +1442,11 @@
                                 Cursor="Hand" />
                     </StackPanel>
 
-                    <TextBox Text="{Binding Lyrics}"
+                    <TextBox Classes="pill-area"
+                             Text="{Binding Lyrics}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
-                             VerticalContentAlignment="Top"
                              MinHeight="300"
-                             BorderBrush="#44E04060"
-                             BorderThickness="1"
-                             CornerRadius="10"
                              IsEnabled="{Binding HasCustomLyrics}" />
                 </DockPanel>
             </TabItem>
@@ -1675,10 +1576,8 @@
                          Formatted view parses lines into timestamp pills + clean text;
                          the Raw toggle swaps in the untouched LRC text. -->
                     <Border x:Name="SyncedPreviewCard"
-                            BorderBrush="#44E04060"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Background="#18000000"
+                            ClipToBounds="True"
+                            Classes="pill-well"
                             Padding="0,10"
                             IsEnabled="{Binding HasCustomSyncedLyrics}">
                         <!-- The formatted preview is plain TextBlocks, which have no
@@ -1821,7 +1720,7 @@
                                     Padding="12,4" CornerRadius="999" Cursor="Hand"
                                     FontWeight="SemiBold" FontSize="12"/>
                             <TextBox Text="{Binding ShiftAllSeconds, Mode=TwoWay}"
-                                     Classes="pill-input"
+                                     Classes="pill-field"
                                      FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
                                      Width="64" MinHeight="0" Padding="10,6,10,4"
                                      FontSize="12"
@@ -1837,10 +1736,8 @@
                                     FontWeight="SemiBold" FontSize="12"/>
                         </StackPanel>
 
-                        <Border BorderBrush="#44E04060"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Background="#18000000">
+                        <Border ClipToBounds="True"
+                                Classes="pill-well">
                             <Panel MinHeight="300">
                                 <TextBlock Text="{loc:T Metadata.NoSyncedLyricsYet2}"
                                            IsVisible="{Binding !HasSyncedLines}"
@@ -1891,7 +1788,7 @@
                                                                  Width="92"
                                                                  Margin="11,0,0,0"
                                                                  Padding="10,6,10,4"
-                                                                 Classes="pill-input"
+                                                                 Classes="pill-field"
                                                                  VerticalAlignment="Center"
                                                                  VerticalContentAlignment="Center"
                                                                  HorizontalContentAlignment="Center"
@@ -1953,7 +1850,7 @@
                         <!-- Media Kind (Music, Podcast, Audiobook, ...) -->
                         <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="{loc:T Metadata.MediaKind}" FontSize="12" Opacity="0.5" />
-                            <ComboBox Classes="metadata-info-field"
+                            <ComboBox Classes="pill-field"
                                       ItemsSource="{x:Static vm:MetadataViewModel.AvailableMediaKinds}"
                                       SelectedItem="{Binding MediaKind}"
                                       HorizontalAlignment="Stretch" />
@@ -1961,7 +1858,7 @@
                         <!-- Release type override (Auto, Album, Single, EP, ...) -->
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="{loc:T Metadata.ReleaseType}" FontSize="12" Opacity="0.5" />
-                            <ComboBox Classes="metadata-info-field"
+                            <ComboBox Classes="pill-field"
                                       ItemsSource="{x:Static vm:MetadataViewModel.AvailableReleaseTypes}"
                                       SelectedItem="{Binding ReleaseTypeOverride}"
                                       HorizontalAlignment="Stretch" />
@@ -1981,7 +1878,7 @@
                                           IsChecked="{Binding HasStartTime}"
                                           Padding="0" Margin="0,0,8,0" MinWidth="0"
                                           VerticalAlignment="Center" />
-                                <TextBox Classes="metadata-info-field"
+                                <TextBox Classes="pill-field"
                                          Grid.Column="1"
                                          Text="{Binding StartTime}"
                                          IsEnabled="{Binding HasStartTime}"
@@ -1996,7 +1893,7 @@
                                           IsChecked="{Binding HasStopTime}"
                                           Padding="0" Margin="0,0,8,0" MinWidth="0"
                                           VerticalAlignment="Center" />
-                                <TextBox Classes="metadata-info-field"
+                                <TextBox Classes="pill-field"
                                          Grid.Column="1"
                                          Text="{Binding StopTime}"
                                          IsEnabled="{Binding HasStopTime}"
@@ -2070,7 +1967,7 @@
                         <!-- Equalizer Preset -->
                         <StackPanel Grid.Column="2" Spacing="4">
                             <TextBlock Text="{loc:T Metadata.Equalizer}" FontSize="12" Opacity="0.5" />
-                            <ComboBox Classes="metadata-info-field"
+                            <ComboBox Classes="pill-field"
                                       ItemsSource="{Binding EqPresetOptions}"
                                       SelectedItem="{Binding SelectedEqPreset}"
                                       HorizontalAlignment="Stretch" />
@@ -2085,7 +1982,7 @@
                                   IsChecked="{Binding ApplyRename}" />
                         <TextBlock Text="{loc:T Metadata.TokensArtistAlbumartistAlbum}"
                                    FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
-                        <TextBox Classes="metadata-info-field"
+                        <TextBox Classes="pill-field"
                                  Text="{Binding RenamePattern}"
                                  IsEnabled="{Binding ApplyRename}" />
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10"
@@ -2199,6 +2096,5 @@
             </TabItem>
         </TabControl>
     </Grid>
-        </Border>
-    </Border>
+    </controls:PillDialogHost>
 </Window>

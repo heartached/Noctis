@@ -169,14 +169,21 @@ public partial class MetadataWindow : Window
             vm.IsAnimatedArtworkSearchOpen = false;
     }
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    /// <summary>
+    /// Esc closes like Cancel (the host animates it out), the same as the other tool
+    /// dialogs. Not mid-save, and not when a focused control used Esc itself (an open
+    /// drop-down, a text box reverting).
+    /// </summary>
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        e.Handled = true;
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && !e.Handled
+            && DataContext is MetadataViewModel { IsSaving: false } vm)
+        {
+            e.Handled = true;
+            vm.CancelCommand.Execute(null);
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     private void OnVolumeAdjustSliderDoubleTapped(object? sender, TappedEventArgs e)
