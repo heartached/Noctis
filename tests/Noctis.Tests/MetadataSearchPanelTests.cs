@@ -261,12 +261,80 @@ public class MetadataSearchPanelTests
         Assert.False(rows[MetadataSearchField.Copyright].IsBlocked);
         Assert.True(rows[MetadataSearchField.Copyright].IsChecked);
 
-        // Unchanged rows hide until asked for.
+        // Unchanged rows and rows this editor can't store hide until "Show all fields";
+        // the summary counts only what can change.
         var panel = vm.SearchPanel;
         Assert.DoesNotContain(panel.VisibleRows, r => r.Field == MetadataSearchField.Artist);
+        Assert.DoesNotContain(panel.VisibleRows, r => r.Field == MetadataSearchField.Label);
+        Assert.All(panel.VisibleRows, r => Assert.True(r.CanToggle));
+        Assert.Equal($"{panel.ChangeableFieldCount + 1} changes", panel.FieldSummary); // + the cover
+        Assert.True(panel.ChangeableFieldCount < panel.ChangedFieldCount);
+        Assert.False(panel.HasActiveOptions);
         panel.ShowUnchanged = true;
+        Assert.True(panel.HasActiveOptions);
         Assert.Contains(panel.VisibleRows, r => r.Field == MetadataSearchField.Artist);
+        Assert.Contains(panel.VisibleRows, r => r.Field == MetadataSearchField.Label);
         Assert.Equal(panel.Rows.Count, panel.VisibleRows.Count);
+    }
+
+    [AvaloniaFact]
+    public async Task MasterTick_ReadsAllSomeNone_AndTogglesEverything()
+    {
+        var search = new FakeSearch { Result = One(Cand("Deezer", 0.9)), Artwork = Jpeg(600, 600) };
+        var vm = await SingleVm(search);
+        var panel = vm.SearchPanel;
+        panel.Open();
+        Assert.True(panel.HasSelectable);
+        // Conservative defaults: some ticked, some not.
+        Assert.Null(panel.AllSelected);
+
+        // Partial → all (fields and the cover).
+        panel.ToggleAllCommand.Execute(null);
+        Assert.True(panel.AllSelected);
+        Assert.All(panel.Rows.Where(r => r.CanToggle), r => Assert.True(r.IsChecked));
+        Assert.True(panel.UseArtwork);
+
+        // All → none.
+        panel.ToggleAllCommand.Execute(null);
+        Assert.False(panel.AllSelected);
+        Assert.Equal(0, panel.SelectedChangeCount);
+        Assert.Equal("Apply", panel.ApplyText);
+
+        panel.Rows.First(r => r.CanToggle).IsChecked = true;
+        Assert.Null(panel.AllSelected);
+        Assert.Equal("Apply 1", panel.ApplyText);
+    }
+
+    [AvaloniaFact]
+    public async Task SourcesMenu_ShowsEachSourcesOutcome_AndOnlyProblemsSurface()
+    {
+        var search = new FakeSearch
+        {
+            Result = new MetadataSearchResult
+            {
+                Candidates = new[] { Cand("Deezer", 0.9) },
+                Providers = new[]
+                {
+                    new ProviderStatus("Deezer", ProviderOutcome.Ok, 2),
+                    new ProviderStatus("MusicBrainz", ProviderOutcome.NoResults, 0),
+                    new ProviderStatus("Apple Music", ProviderOutcome.Failed, 0, "offline"),
+                },
+            },
+        };
+        var vm = await SingleVm(search);
+        var panel = vm.SearchPanel;
+        panel.Open();
+
+        Assert.Equal(new[] { "2", "0", "offline" }, panel.Providers.Select(p => p.StatusText));
+        Assert.True(panel.Providers[0].IsOk);
+        Assert.True(panel.Providers[2].IsProblem);
+        Assert.True(panel.ShowProviderProblem);
+        Assert.Equal("Apple Music offline", panel.ProviderProblemText);
+        Assert.Equal("Source: Deezer", panel.FooterText);
+        Assert.Equal(3, panel.SelectedSourceCount);
+
+        panel.Providers[1].IsSelected = false;
+        Assert.Equal(2, panel.SelectedSourceCount);
     }
 
     [AvaloniaFact]
@@ -370,7 +438,7 @@ public class MetadataSearchPanelTests
         foreach (var f in new[] { MetadataSearchField.Title, MetadataSearchField.Composer, MetadataSearchField.Copyright })
             panel.Rows.Single(r => r.Field == f).IsChecked = true;
         Assert.Equal(3, panel.SelectedChangeCount);
-        Assert.Equal("Apply 3 changes", panel.ApplyText);
+        Assert.Equal("Apply 3", panel.ApplyText);
         panel.ApplyCommand.Execute(null);
 
         Assert.False(panel.IsOpen);
@@ -383,7 +451,7 @@ public class MetadataSearchPanelTests
         Assert.Equal("monaco", track.Title);             // nothing saved
         Assert.True(vm.HasSearchApplied);
         Assert.True(vm.CanUndoSearchApply);
-        Assert.Contains("Deezer", vm.SearchAppliedText);
+        Assert.Equal("Applied 3 changes", vm.SearchAppliedText);
 
         // A field edited again after the apply keeps the newer edit through Undo.
         vm.Composer = "Bad Bunny";
@@ -441,7 +509,7 @@ public class MetadataSearchPanelTests
         var vm = await SingleVm(search);
         vm.SearchPanel.Open();
         Assert.False(vm.SearchPanel.UseArtwork);
-        Assert.Equal("Couldn't download this cover.", vm.SearchPanel.ArtworkNote);
+        Assert.Equal("Download failed", vm.SearchPanel.ArtworkNote);
     }
 
     [AvaloniaFact]
@@ -484,7 +552,7 @@ public class MetadataSearchPanelTests
         Assert.True(tr[1].TitleChanges);              // monaco → MONACO
         Assert.True(tr[2].NumberChanges);             // 3 → 4
         Assert.True(tr[1].IsIncluded);
-        Assert.Contains("1 more", panel.TrackExtraNote);
+        Assert.Equal("+1 not in your library", panel.TrackExtraNote);
 
         tr[2].IsIncluded = false;
         // (The explicit flag is written per file by Save, which the fake files can't take.)

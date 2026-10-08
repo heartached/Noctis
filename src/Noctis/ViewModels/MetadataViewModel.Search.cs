@@ -174,7 +174,7 @@ public partial class MetadataViewModel
 
     private SearchUndo? _searchUndo;
 
-    /// <summary>"Applied 6 changes from Deezer" — the Details banner after an apply.</summary>
+    /// <summary>"Applied 6 changes" — the Details banner after an apply.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSearchApplied))]
     private string _searchAppliedText = string.Empty;
@@ -226,9 +226,11 @@ public partial class MetadataViewModel
         DiscardSearchUndo();
         _searchUndo = undo;
         OnPropertyChanged(nameof(CanUndoSearchApply));
+        // Owner 10-08: declutter Find online — "Applied 5 changes" beside Undo; the editor's
+        // own footer already says there is something to save.
         SearchAppliedText = plan.Count == 1
-            ? Localization.Loc.T("MetadataSearch.AppliedOne", plan.Provider)
-            : Localization.Loc.T("MetadataSearch.AppliedMany", plan.Count, plan.Provider);
+            ? Localization.Loc.T("MetadataSearch.AppliedOne")
+            : Localization.Loc.T("MetadataSearch.AppliedMany", plan.Count);
         RecomputeChanges();
         DebugLogger.Info(DebugLogger.Category.UI, "MetadataSearch.Apply",
             $"fields={plan.Fields.Count} art={plan.Artwork != null} tracks={plan.Tracks.Count} from={plan.Provider}");
