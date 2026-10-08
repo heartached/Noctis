@@ -249,6 +249,111 @@ public class PillDialogHostTests
         Assert.Equal(0, px[at + 1]); // channel 1 untouched
     }
 
+    /// <summary>
+    /// Owner 10-08: white specks on the pill backdrop. Wherever the owner snapshot has alpha
+    /// below 255 the blurred backdrop is see-through, and the dialog is a transparent window:
+    /// the real, sharp owner behind it shows through the blur. Flattening onto an opaque base
+    /// before the blur closes every hole: no transparent or half-transparent pixel is left,
+    /// fully opaque ones keep their colour, and a translucent one is laid over the base.
+    /// </summary>
+    [Fact]
+    public void FlattenOpaque_LeavesNoSeeThroughPixel()
+    {
+        // BGRA premultiplied: opaque grey, fully transparent, half-transparent white.
+        var px = new byte[]
+        {
+            40, 50, 60, 255,
+            0, 0, 0, 0,
+            128, 128, 128, 128,
+        };
+        var baseColor = Color.FromRgb(0x30, 0x20, 0x10);
+        PillDialogHost.FlattenOpaque(px, baseColor, rgba: false, premultiplied: true);
+        Assert.Equal(new byte[] { 40, 50, 60, 255 }, px[0..4]);
+        Assert.Equal(new byte[] { 0x10, 0x20, 0x30, 255 }, px[4..8]);   // the base, in BGRA order
+        // White at 50% over the base: 128 + base·(127/255).
+        Assert.Equal(new byte[] { 128 + 8, 128 + 16, 128 + 24, 255 }, px[8..12]);
+
+        // RGBA order, unpremultiplied source: the base lands in R first; an unpremultiplied
+        // half-transparent white mixes 50/50.
+        var rgba = new byte[] { 0, 0, 0, 0, 255, 255, 255, 128 };
+        PillDialogHost.FlattenOpaque(rgba, baseColor, rgba: true, premultiplied: false);
+        Assert.Equal(new byte[] { 0x30, 0x20, 0x10, 255 }, rgba[0..4]);
+        Assert.Equal(new byte[] { 152, 144, 136, 255 }, rgba[4..8]);
+
+        // And the blur keeps it opaque: every alpha byte is still 255 afterwards.
+        const int w = 24, h = 12;
+        var holes = new byte[w * h * 4];
+        for (var i = 0; i < w * h; i += 3) { holes[i * 4] = 200; holes[i * 4 + 3] = 255; }
+        PillDialogHost.FlattenOpaque(holes, baseColor, rgba: false, premultiplied: true);
+        PillDialogHost.BoxBlur(holes, w, h, 4, 3);
+        for (var i = 0; i < w * h; i++) Assert.Equal(255, holes[i * 4 + 3]);
+    }
+
+    private static byte[] Pixels(Bitmap bitmap)
+    {
+        int w = bitmap.PixelSize.Width, h = bitmap.PixelSize.Height;
+        var px = new byte[w * h * 4];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try { bitmap.CopyPixels(new PixelRect(0, 0, w, h), handle.AddrOfPinnedObject(), px.Length, w * 4); }
+        finally { handle.Free(); }
+        return px;
+    }
+
+    /// <summary>
+    /// Real Skia only (owner 10-08: white specks on the pill backdrop). An owner whose surface
+    /// is translucent (Liquid Glass paints AppWindowBackgroundBrush at 35%) with sharp white
+    /// icons on it: once the dialog has settled, every pixel of its frame must be opaque, or
+    /// the sharp owner shows through the blur on screen.
+    /// </summary>
+    [AvaloniaFact]
+    public void TranslucentOwner_SettledBackdropIsFullyOpaque()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        var rail = new StackPanel { Spacing = 24, Margin = new Thickness(28, 60, 0, 0) };
+        for (var i = 0; i < 6; i++)
+            rail.Children.Add(new PathIcon
+            {
+                Width = 20, Height = 20, Foreground = Brushes.White, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                Data = Geometry.Parse("M0,0 L20,20 M20,0 L0,20 M10,0 L10,20 M0,10 L20,10"),
+            });
+        rail.Children.Add(new TextBlock { Text = "Library ~~~", FontSize = 16, Foreground = Brushes.White });
+        var owner = new Window
+        {
+            Width = 1100, Height = 820, RequestedThemeVariant = ThemeVariant.Dark,
+            Background = new SolidColorBrush(Color.Parse("#0F0F0F"), 0.35),
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+            Content = rail,
+        };
+        owner.Show();
+        PumpUntil(() => false, 100);
+
+        var (_, win, host) = Open(owner);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host) && host.BackdropBitmap != null, 3000));
+            PumpUntil(() => false, 150);
+
+            var backdrop = Pixels(host.BackdropBitmap!);
+            var holes = 0;
+            for (var i = 3; i < backdrop.Length; i += 4) if (backdrop[i] < 255) holes++;
+            var frame = win.CaptureRenderedFrame()!;
+            var px = Pixels(frame);
+            int see = 0, minA = 255;
+            for (var i = 3; i < px.Length; i += 4)
+                if (px[i] < 255) { see++; minA = Math.Min(minA, px[i]); }
+            _o.WriteLine($"backdrop {host.BackdropBitmap!.PixelSize} alpha<255: {holes}; dialog frame {frame.PixelSize} alpha<255: {see} (min {minA})");
+            Assert.Equal(0, holes);
+            Assert.Equal(0, see);
+        }
+        finally
+        {
+            if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+            owner.Close();
+        }
+    }
+
     /// <summary>Real Skia only: the dialog over a busy owner, snapshot blurred behind it.</summary>
     [AvaloniaFact]
     public void Probe_SavesThePillDialogOverItsOwner()
