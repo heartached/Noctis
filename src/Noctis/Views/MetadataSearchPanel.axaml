@@ -16,10 +16,13 @@
          options behind ⋯, explanations in tooltips. 8 px grid; 13 px body, 11.5 px secondary. -->
     <UserControl.Styles>
         <!-- Result cards: soft rounded rows; the picked one gets the accent ring. -->
+        <!-- Right padding = the scrollbar's lane (Styles.axaml ScrollBar:vertical 14 + 2 margin):
+             the bar overlays the scroll content, so without it the bar sat on top of the cards
+             and cut through the selected card's accent ring (owner 10-08). -->
         <Style Selector="ListBox.ms-results">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Padding" Value="0,0,16,0" />
         </Style>
         <Style Selector="ListBox.ms-results ListBoxItem">
             <Setter Property="Padding" Value="8" />
@@ -49,7 +52,7 @@
         <Style Selector="ListBox.ms-tracks">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Padding" Value="0,0,16,0" /> <!-- scrollbar lane, as ms-results -->
         </Style>
         <Style Selector="ListBox.ms-tracks ListBoxItem">
             <Setter Property="Padding" Value="6,4" />
@@ -425,11 +428,13 @@
                                            Opacity="0.6" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" />
                                 <Border Grid.Column="4" Grid.Row="0" Classes="ms-conf"
                                         Classes.strong="{Binding IsStrong}" Classes.weak="{Binding IsWeak}"
-                                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,2">
+                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2">
                                     <TextBlock Text="{Binding ConfidenceText}" FontSize="10.5" FontWeight="Bold" />
                                 </Border>
+                                <!-- Score centred over the year (owner 10-08: right-aligned they sat
+                                     off-centre, the badge being wider than the year). -->
                                 <TextBlock Grid.Column="4" Grid.Row="1" Text="{Binding YearText}" FontSize="11.5"
-                                           Opacity="0.45" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                           Opacity="0.45" HorizontalAlignment="Center" VerticalAlignment="Top" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -554,7 +559,7 @@
                     <!-- Cover + fields: one tick column, one label column, now → new. -->
                     <ScrollViewer Grid.Row="1" IsVisible="{Binding IsFieldsPane}"
                                   HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="2">
+                        <StackPanel Spacing="2" Margin="0,0,16,0"> <!-- scrollbar lane, as ms-results -->
                             <Border Classes="ms-row" IsVisible="{Binding HasNewArtwork}">
                                 <Grid ColumnDefinitions="30,96,*,24,*">
                                     <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox ms-tick"
