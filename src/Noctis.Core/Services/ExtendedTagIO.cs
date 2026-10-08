@@ -105,6 +105,113 @@ internal static class ExtendedTagIO
         }
     }
 
+    // TagLib#'s XiphComment.Publisher field.
+    private const string XiphOrganizationKey = "ORGANIZATION";
+
+    /// <summary>
+    /// <see cref="ReadLabel"/> for a plain FLAC, reading only the VORBIS_COMMENT block. Owner
+    /// 10-08: TagLib#'s FLAC reader loads every metadata block's bytes whatever the ReadStyle —
+    /// PICTURE included, 11–15 MB per hi-res file — so the v11 label pass still streamed the
+    /// covers. This walks the block headers and seeks past everything else. Same answer as
+    /// ReadLabel for the Xiph case (LABEL, then ORGANIZATION — the Xiph publisher — then
+    /// PUBLISHER; keys case-insensitive; first value only). False means "ask TagLib": no
+    /// 'fLaC' at offset 0 (an ID3v2 prefix, garbage), a malformed or repeated comment block,
+    /// or a tag at the end of the file (APEv2/ID3v2 footer), whose fields ReadLabel also reads.
+    /// </summary>
+    internal static bool TryReadFlacLabel(Stream stream, out string label)
+    {
+        label = string.Empty;
+        try
+        {
+            var length = stream.Length;
+            var header = new byte[4];
+            if (length < 8 || stream.Read(header, 0, 4) != 4 || header[0] != 'f' || header[1] != 'L' || header[2] != 'a' || header[3] != 'C')
+                return false;
+
+            // Any trailing tag: APEv2 ("APETAGEX" footer, possibly before an ID3v1 "TAG") or an
+            // appended ID3v2 ("3DI" footer). A stray match in audio data only costs a TagLib read.
+            var tailLength = (int)Math.Min(length, 32 + 128 + 10);
+            var tail = new byte[tailLength];
+            stream.Seek(length - tailLength, SeekOrigin.Begin);
+            if (!ReadExactly(stream, tail)) return false;
+            if (tail.AsSpan().IndexOf("APETAGEX"u8) >= 0 || tail.AsSpan().IndexOf("3DI"u8) >= 0)
+                return false;
+
+            byte[]? comment = null;
+            long position = 4;
+            while (true)
+            {
+                stream.Seek(position, SeekOrigin.Begin);
+                if (!ReadExactly(stream, header)) return false;
+                var isLast = (header[0] & 0x80) != 0;
+                var type = header[0] & 0x7F;
+                var blockLength = (header[1] << 16) | (header[2] << 8) | header[3];
+                if (type == 127 || position + 4 + blockLength > length) return false;
+                if (type == 4)
+                {
+                    if (comment != null) return false;
+                    comment = new byte[blockLength];
+                    if (!ReadExactly(stream, comment)) return false;
+                }
+                position += 4 + blockLength;
+                if (isLast) break;
+            }
+            if (comment == null) return true;   // no Vorbis comment: TagLib finds no label either
+
+            // vendor_length, vendor, count, then count × (length, "KEY=value") — lengths LE.
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var offset = 0;
+            if (!TryReadUInt32(comment, ref offset, out var vendorLength) || vendorLength > comment.Length - offset)
+                return false;
+            offset += (int)vendorLength;
+            if (!TryReadUInt32(comment, ref offset, out var count)) return false;
+            for (uint i = 0; i < count; i++)
+            {
+                if (!TryReadUInt32(comment, ref offset, out var entryLength) || entryLength > comment.Length - offset)
+                    return false;
+                var entry = System.Text.Encoding.UTF8.GetString(comment, offset, (int)entryLength);
+                offset += (int)entryLength;
+                var eq = entry.IndexOf('=');
+                if (eq < 0) continue;
+                // TagLib# drops blank values (a "LABEL=" before "LABEL=X" yields X) and keeps
+                // keys untrimmed; the first remaining value is GetField(key)[0].
+                var value = entry[(eq + 1)..];
+                if (string.IsNullOrWhiteSpace(value)) continue;
+                fields.TryAdd(entry[..eq], value);
+            }
+
+            string? First(string key) => fields.TryGetValue(key, out var v) ? v : null;
+            label = (First(LabelKey) ?? First(XiphOrganizationKey) ?? First(PublisherKey) ?? string.Empty).Trim();
+            return true;
+        }
+        catch
+        {
+            label = string.Empty;
+            return false;
+        }
+
+        static bool ReadExactly(Stream s, byte[] buffer)
+        {
+            var read = 0;
+            while (read < buffer.Length)
+            {
+                var n = s.Read(buffer, read, buffer.Length - read);
+                if (n <= 0) return false;
+                read += n;
+            }
+            return true;
+        }
+
+        static bool TryReadUInt32(byte[] data, ref int offset, out uint value)
+        {
+            value = 0;
+            if (offset > data.Length - 4) return false;
+            value = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(offset, 4));
+            offset += 4;
+            return true;
+        }
+    }
+
     // ── Work name ──
 
     public static string ReadWorkName(TagFile file)

@@ -1811,6 +1811,10 @@ public class LibraryService : ILibraryService
     /// persisted settings, so tests await it before restoring them. Internal for tests.</summary>
     internal Task BackgroundInit { get; private set; } = Task.CompletedTask;
 
+    /// <summary>The v11 label pass (<see cref="RunLabelBackfillAsync"/>), started at the end of
+    /// <see cref="BackgroundInit"/> when it is pending. Internal for tests.</summary>
+    internal Task LabelBackfill { get; private set; } = Task.CompletedTask;
+
     public async Task LoadAsync()
     {
         // Startup calls this from the UI thread. The persistence layer awaits without
@@ -1869,6 +1873,11 @@ public class LibraryService : ILibraryService
                     // good — rescans skip unchanged files by mtime and never retry.
                     // Cheap when every album already has art (one probe per album).
                     await BackfillMissingArtworkAsync(_shutdownCts.Token);
+
+                    // Last and on its own task: the v11 label pass can take many minutes on a
+                    // hard disk and nothing above should wait for it.
+                    if (_labelBackfillPending)
+                        LabelBackfill = Task.Run(RunLabelBackfillAsync);
                 }
                 catch (Exception ex)
                 {
@@ -2488,10 +2497,10 @@ public class LibraryService : ILibraryService
         if (settings.MetadataSchemaVersion < 10)
             didBackfillMetadata |= await BackfillTrackArtworkAsync(_tracks);
 
-        // v11: the record label (Track.Label, the phone album page's footer) is read by the
-        // scan now. A rescan skips unchanged files, so existing libraries would never get it.
-        if (settings.MetadataSchemaVersion < 11)
-            didBackfillMetadata |= await BackfillLabelAsync(_tracks);
+        // v11 (the record label) is not run here: it opens most of the library, so it runs
+        // last, on its own, resumably — see RunLabelBackfillAsync. Owner 10-08: inline, it
+        // held the cover heal and the artist-join pass behind a pass that never finished.
+        _labelBackfillPending = settings.MetadataSchemaVersion < LabelSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -2499,15 +2508,23 @@ public class LibraryService : ILibraryService
         if (_shutdownCts.IsCancellationRequested)
             return didBackfillMetadata;
 
-        settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
-
-        try
+        // Everything up to the label pass is done; that pass stamps v11 itself once it ends.
+        var stamp = _labelBackfillPending ? LabelSchemaVersion - 1 : CurrentMetadataSchemaVersion;
+        if (settings.MetadataSchemaVersion < stamp)
         {
-            await _persistence.SaveSettingsAsync(settings);
-        }
-        catch
-        {
-            // Non-fatal: explicit backfill still applies for this session.
+            try
+            {
+                // Re-load rather than save the snapshot taken before the backfills: they can
+                // run for minutes, and writing that snapshot back reverted every setting saved
+                // meanwhile (a removed track's exclusion — the next scan re-imported it).
+                var fresh = await _persistence.LoadSettingsAsync();
+                fresh.MetadataSchemaVersion = Math.Max(fresh.MetadataSchemaVersion, stamp);
+                await _persistence.SaveSettingsAsync(fresh);
+            }
+            catch
+            {
+                // Non-fatal: explicit backfill still applies for this session.
+            }
         }
 
         if (didBackfillMetadata)
@@ -2804,57 +2821,236 @@ public class LibraryService : ILibraryService
         return changedCount > 0;
     }
 
+    // The schema version the label pass stamps once it has checked every file.
+    private const int LabelSchemaVersion = 11;
+    // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the pass last.
+    private bool _labelBackfillPending;
+    // A progress line in the session log every this many files.
+    private const int LabelBackfillLogInterval = 250;
+
+    /// <summary>
+    /// Pause between files in the label pass, so a foreground read queued behind it (playback,
+    /// the metadata window, lyrics) gets the disk instead of waiting out a long run of reads.
+    /// Internal for tests.
+    /// </summary>
+    internal static TimeSpan LabelBackfillPause = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>
+    /// The label pass's resume log in the data folder, append-only so a checkpoint is one short
+    /// write and a hard kill loses at most the line being written:
+    /// <c>L\t{track id}\t{label}\t$</c> for each label found, <c>C\t{path}\t$</c> for the last
+    /// file checked (files are walked in ordinal path order). Text fields are URI-escaped,
+    /// which also escapes '\t' and '$'; a line without its closing '$' was torn and is ignored.
+    /// Deleted once the pass completes.
+    /// </summary>
+    private string LabelBackfillProgressPath => Path.Combine(_persistence.DataDirectory, "label-backfill.progress");
+
     /// <summary>
     /// One-time v11 migration: the record label for tracks indexed before it was read. Local
-    /// files are re-read in place (like <see cref="BackfillReleaseDateAndCopyrightAsync"/>).
+    /// files are re-read in place, but only for the label (<see cref="IMetadataService.ReadLabel"/>),
+    /// one file at a time with a pause between them, on its own background task after the rest
+    /// of startup. Owner 10-08: v11 label backfill kept the music HDD busy at 50–75 MB/s every
+    /// launch and never finished — a full tag + cover read of nearly every file (most files
+    /// simply have no label) in parallel, which seek-thrashed the disk and queued every other
+    /// read behind it, and was all-or-nothing, so quitting started it over from zero next
+    /// launch. Progress now survives a restart (<see cref="LabelBackfillProgressPath"/>): a file
+    /// that turned out to have no label counts as checked too and is never read again.
     /// The phone's files live behind Android's document tree (content://), which only a scan
     /// through its file source can open, so those are marked instead: clearing the stored
     /// modification stamp makes the next scan treat them as changed and re-read them once,
     /// keeping their user state like any re-tagged file. Streamed desktop songs and tracks
-    /// that already have a label are left alone.
+    /// that already have a label are left alone. Stamps v11 only once every file is checked.
     /// </summary>
-    private async Task<bool> BackfillLabelAsync(List<Track> tracks)
+    private async Task RunLabelBackfillAsync()
     {
-        var unlabelled = tracks.Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)).ToList();
-        if (unlabelled.Count == 0) return false;
-
-        var changedCount = 0;
-        foreach (var track in unlabelled.Where(t => t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)))
+        var token = _shutdownCts.Token;
+        var progressPath = LabelBackfillProgressPath;
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var snapshot = _tracks;
+        StreamWriter? progress = null;
+        try
         {
-            track.LastModified = default;
-            changedCount++;
-        }
+            var byId = new Dictionary<Guid, Track>(snapshot.Count);
+            foreach (var t in snapshot) byId.TryAdd(t.Id, t);
 
-        var local = unlabelled.Where(t => File.Exists(t.FilePath)).ToList();
-        if (local.Count > 0)
-        {
-            await Task.Run(() =>
+            // Labels found by an interrupted pass, and where it stopped.
+            var found = new Dictionary<Guid, string>();
+            string? resumeAfter = null;
+            try
             {
-                Parallel.ForEach(
-                    local,
-                    new ParallelOptions
+                if (File.Exists(progressPath))
+                {
+                    foreach (var line in File.ReadLines(progressPath))
                     {
-                        MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
-                        CancellationToken = _shutdownCts.Token
-                    },
-                    track =>
+                        var parts = line.Split('\t');
+                        if (parts[^1] != "$") continue;
+                        if (parts.Length == 3 && parts[0] == "C")
+                            resumeAfter = Uri.UnescapeDataString(parts[1]);
+                        else if (parts.Length == 4 && parts[0] == "L" && Guid.TryParse(parts[1], out var id))
+                            found[id] = Uri.UnescapeDataString(parts[2]);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Unreadable log: start over — a re-read is only slower, never wrong.
+                DebugLog.Write("Library", $"label backfill: progress file unreadable, starting over: {ex.Message}");
+                found.Clear();
+                resumeAfter = null;
+            }
+
+            var resumed = 0;
+            foreach (var (id, label) in found)
+            {
+                if (byId.TryGetValue(id, out var t) && string.IsNullOrWhiteSpace(t.Label))
+                {
+                    t.Label = label;
+                    resumed++;
+                }
+            }
+
+            var pending = snapshot
+                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
+                            && !t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)
+                            && (resumeAfter == null || string.CompareOrdinal(t.FilePath, resumeAfter) > 0))
+                .OrderBy(t => t.FilePath, StringComparer.Ordinal)
+                .ToList();
+
+            DebugLog.Write("Library",
+                $"label backfill: start — {pending.Count:N0} file(s) to check" +
+                (resumeAfter != null ? $", resumed ({found.Count:N0} label(s) from the last run, {resumed:N0} applied)" : ""));
+
+            try
+            {
+                progress = new StreamWriter(new FileStream(progressPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                { AutoFlush = true, NewLine = "\n" };
+            }
+            catch (Exception ex)
+            {
+                // No resume log (read-only profile): the pass still runs, it just can't resume.
+                DebugLog.Write("Library", $"label backfill: progress file unavailable: {ex.Message}");
+            }
+
+            var checkedCount = 0;
+            var labelled = 0;
+            string? lastChecked = null;
+            try
+            {
+                foreach (var track in pending)
+                {
+                    if (token.IsCancellationRequested) break;
+
+                    if (File.Exists(track.FilePath))
                     {
-                        try
+                        var label = _metadata.ReadLabel(track.FilePath);
+                        if (!string.IsNullOrWhiteSpace(label))
                         {
-                            var label = _metadata.ReadTrackMetadata(track.FilePath)?.Label;
-                            if (string.IsNullOrWhiteSpace(label)) return;
                             track.Label = label;
-                            Interlocked.Increment(ref changedCount);
+                            found[track.Id] = label;
+                            labelled++;
+                            WriteProgress("L", track.Id.ToString(), label);
                         }
-                        catch
-                        {
-                            // Non-fatal: skip tracks that can't be read.
-                        }
-                    });
-            });
+                    }
+
+                    checkedCount++;
+                    lastChecked = track.FilePath;
+                    if (checkedCount % LabelBackfillLogInterval == 0)
+                    {
+                        WriteProgress("C", lastChecked);
+                        DebugLog.Write("Library",
+                            $"label backfill: {checkedCount:N0}/{pending.Count:N0} checked, {labelled:N0} label(s) found");
+                    }
+
+                    try { await Task.Delay(LabelBackfillPause, token); }
+                    catch (OperationCanceledException) { break; }
+                }
+
+                if (token.IsCancellationRequested)
+                {
+                    // Labels already found are in the log (written as found); the next launch
+                    // re-applies them and continues after the last file checked.
+                    if (lastChecked != null)
+                        WriteProgress("C", lastChecked);
+                    DebugLog.Write("Library",
+                        $"label backfill: cancelled at shutdown after {checkedCount:N0}/{pending.Count:N0} " +
+                        $"({labelled:N0} label(s) found); resumes next launch");
+                    return;
+                }
+            }
+            finally
+            {
+                progress?.Dispose();
+            }
+
+            // A scan during the pass may have swapped in fresh Track instances; put every label
+            // found on the live ones before saving.
+            foreach (var t in _tracks)
+            {
+                if (string.IsNullOrWhiteSpace(t.Label) && found.TryGetValue(t.Id, out var label))
+                    t.Label = label;
+            }
+
+            var phone = _tracks
+                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
+                            && t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var t in phone) t.LastModified = default;
+
+            if (found.Count > 0 || phone.Count > 0)
+            {
+                await SaveAsync();
+                if (phone.Count > 0)
+                {
+                    try { await _sqliteIndex.UpsertTracksAsync(phone); }
+                    catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+                }
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+
+            try
+            {
+                var fresh = await _persistence.LoadSettingsAsync();
+                if (fresh.MetadataSchemaVersion < LabelSchemaVersion)
+                {
+                    fresh.MetadataSchemaVersion = LabelSchemaVersion;
+                    await _persistence.SaveSettingsAsync(fresh);
+                }
+                File.Delete(progressPath);
+            }
+            catch (Exception ex)
+            {
+                // Next launch repeats the pass from the log; already-labelled tracks are skipped.
+                DebugLog.Write("Library", $"label backfill: could not record completion: {ex.Message}");
+            }
+
+            DebugLog.Write("Library",
+                $"label backfill: done — {checkedCount:N0} file(s) checked, {labelled:N0} label(s) found" +
+                (resumed > 0 ? $" (+{resumed:N0} from the last run)" : "") +
+                (phone.Count > 0 ? $", {phone.Count:N0} phone track(s) marked for re-scan" : "") +
+                $", {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds:0.0} s");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"label backfill failed: {ex.Message}");
         }
 
-        return changedCount > 0;
+        // Appends one log line. After a failed write nothing more is logged: a later cursor
+        // line must never skip past a label that didn't make it to the file.
+        void WriteProgress(string kind, string field, string? label = null)
+        {
+            if (progress == null) return;
+            try
+            {
+                progress.WriteLine(label == null
+                    ? $"{kind}\t{Uri.EscapeDataString(field)}\t$"
+                    : $"{kind}\t{field}\t{Uri.EscapeDataString(label)}\t$");
+            }
+            catch
+            {
+                try { progress.Dispose(); } catch { }
+                progress = null;
+            }
+        }
     }
 
     /// <summary>
