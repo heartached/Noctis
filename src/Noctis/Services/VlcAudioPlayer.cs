@@ -174,6 +174,8 @@ public class VlcAudioPlayer : IAudioPlayer
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    private long _enginePtsGapCount;   // every PtsGap this session (the log line is rate-limited)
+    private long _lastPtsGapLogTick;   // Environment.TickCount64 of the last PtsGap line
     // VLC clock date (µs) of the slot's pause callback; 0 = not paused. A pause moves
     // VLC's input clock on by its length, so blocks after the resume are stamped that
     // much later — not a hole (EngineResume carries the expected pts across it).
@@ -4237,8 +4239,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (expectedPts > 0 && Math.Abs(pts - expectedPts) > 20_000)
                 {
                     var gapMs = (pts - expectedPts) / 1000.0;
-                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PtsGap",
-                        $"slot={slot}, gapMs={gapMs:0.#}, frames={count}");
+                    // Rate-limited like Underrun (one line per 250 ms carrying the running
+                    // count): a gap on every block logged ~10 lines a second (Discord, Ardhito
+                    // 10-08), enough to push everything else out of the 500-line session log.
+                    var gaps = Interlocked.Increment(ref _enginePtsGapCount);
+                    var now = Environment.TickCount64;
+                    if (now - Interlocked.Read(ref _lastPtsGapLogTick) >= 250)
+                    {
+                        Interlocked.Exchange(ref _lastPtsGapLogTick, now);
+                        DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PtsGap",
+                            $"slot={slot}, gapMs={gapMs:0.#}, frames={count}, count={gaps}");
+                    }
                     // A forward hole is VLC having dropped late audio because the input
                     // stalled longer than the read-ahead window; widen it for what follows.
                     NoteInputGap(gapMs);
