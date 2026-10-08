@@ -21,7 +21,12 @@ public static class LibraryRemovalHelper
     {
         if (library == null || tracks == null || tracks.Count == 0) return false;
 
+        // Each step goes to the session log: Discord, Andre 10-07 found Remove from Library
+        // greyed out, which only happens while an earlier removal is still running, and the
+        // log had no line saying which step it was waiting on.
+        DebugLog.Write("Library", $"remove: asking ({tracks.Count} tracks)");
         var choice = await RemoveFromLibraryDialog.ShowAsync(tracks.Count);
+        DebugLog.Write("Library", $"remove: choice={choice}");
         if (choice == RemoveFromLibraryChoice.Cancel) return false;
 
         // Snapshot protected roots BEFORE removal: RemoveTracksAsync drops now-empty
@@ -37,9 +42,15 @@ public static class LibraryRemovalHelper
         // to recycle a file opened without delete sharing (ERROR_SHARING_VIOLATION) —
         // the file silently stayed on disk while the track vanished from the library.
         await library.RemoveTracksAsync(tracks.Select(t => t.Id));
+        DebugLog.Write("Library", "remove: removed from library");
 
         if (choice == RemoveFromLibraryChoice.Trash)
+        {
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
             await TrashLocalFilesAsync(tracks, protectedRoots);
+            DebugLog.Write("Library",
+                $"remove: trash done in {(long)System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds} ms");
+        }
 
         return true;
     }
@@ -195,7 +206,10 @@ public static class LibraryRemovalHelper
             if (pending.Count == 0) return done;
         }
         foreach (var p in pending)
+        {
             DebugLogger.Error(DebugLogger.Category.Error, "Library.TrashFailed", p);
+            DebugLog.Write("Library", $"trash failed: {p}"); // DebugLogger's Error lines never reach the session log
+        }
         return done;
     }
 
@@ -290,7 +304,10 @@ public static class LibraryRemovalHelper
         // Only a folder that qualified but wouldn't move is worth reporting — a folder
         // with real content in it was correctly left alone.
         if (qualified)
+        {
             DebugLogger.Error(DebugLogger.Category.Error, "Library.FolderTrashFailed", dir);
+            DebugLog.Write("Library", $"folder trash failed: {dir}");
+        }
         return false;
     }
 
