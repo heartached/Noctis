@@ -424,29 +424,59 @@ public partial class MetadataViewModel : ViewModelBase
         FullFilePath = _track.FilePath;
         FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
         Copyright = _track.Copyright;
-        LoadAnimatedCover();
+        // The animated cover, the lyric sidecars and the rename-preview conflict checks all
+        // probe the track's folder; InitializeAsync does them off the UI thread (owner 10-08:
+        // metadata window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag
+        // reads before showing). The ctor only copies in-memory Track state.
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
-
-        if (_multiSelect)
-            RebuildRenamePreview();
 
         CaptureLoadedTagSignatures();
         CaptureChangeBaseline();
     }
 
     /// <summary>
+    /// True from construction until <see cref="InitializeAsync"/> has applied the
+    /// file-backed state (sidecar lyrics, advanced tags, artwork, animated cover, File
+    /// tab), on success or failure. The window is shown while this is true, so Save is
+    /// disabled: it would otherwise write lyrics/advanced state that was never loaded.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isLoading = true;
+
+    // Fields the user edited after the window opened but before InitializeAsync landed;
+    // non-null only while the loaded values are being applied. Those fields keep the edit
+    // instead of being overwritten under the user's cursor.
+    private HashSet<string>? _editedWhileLoading;
+
+    private bool KeepsEdit(string name) => _editedWhileLoading?.Contains(name) == true;
+
+    /// <summary>
     /// Loads everything that opens or decodes files — two TagLib parses (file info,
-    /// advanced tags) and the cached-cover read + decode — off the UI thread. Awaited
-    /// before the window is shown so artwork and tag fields are already populated on
-    /// open; the ctor only sets in-memory state. Every file read inside is individually
-    /// guarded (ReadFileInfo catches internally, the rest are try/catch'd here), so
-    /// this never throws into the open path.
+    /// advanced tags), the cached-cover read + decode, the .lrc/.txt lyric sidecars, the
+    /// animated-cover probe and the rename-preview conflict checks — off the UI thread.
+    /// Started right before the window is shown, not awaited first (owner 10-08: metadata
+    /// window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag reads
+    /// before showing), so the window opens with the in-memory Track fields and the
+    /// file-backed ones fill in when this lands. Every file read inside is individually
+    /// guarded, and <see cref="IsLoading"/> always ends false, even if something throws.
     /// </summary>
     public async Task InitializeAsync()
     {
-        var (info, artwork, artworkSize, advanced) = await Task.Run(() =>
+        IsLoading = true;
+        // What the window shows as the load starts (after AddUserEqPresets has respelled the
+        // preset). Anything that differs when the load lands was typed by the user meanwhile.
+        CaptureChangeBaseline();
+        HashSet<string>? edited = null;
+        string? loadedCustomTagsBaseline = null;
+        var trackSynced = _track.SyncedLyrics;
+        var trackPlain = _track.Lyrics;
+        var renamePattern = RenamePattern;
+        // Task.Run never throws synchronously: a failing read faults `load`, and the finally
+        // below still ends IsLoading.
+        var load = Task.Run(() =>
         {
             var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
 
@@ -486,6 +516,9 @@ public partial class MetadataViewModel : ViewModelBase
                 }
             }
 
+            var ownArtwork = artworkBitmap != null && !_albumScoped && !_multiSelect
+                && File.Exists(_persistence.GetTrackArtworkPath(_track.Id));
+
             AdvancedTagIO.AdvancedFields? advancedFields = null;
             if (!_albumScoped)
             {
@@ -493,19 +526,94 @@ public partial class MetadataViewModel : ViewModelBase
                 catch { /* Non-fatal — advanced fields are best-effort */ }
             }
 
-            return (fileInfo, artworkBitmap, artworkSize, advancedFields);
+            var lrc = ReadLyricSidecar(_track.FilePath, ".lrc", string.IsNullOrWhiteSpace(trackSynced));
+            var txt = ReadLyricSidecar(_track.FilePath, ".txt", string.IsNullOrWhiteSpace(trackPlain));
+
+            string? animated = null;
+            try { animated = _animatedCovers.Resolve(_track); }
+            catch { /* best effort, like the other probes */ }
+
+            List<RenamePreview>? renamePreviews = null;
+            if (_multiSelect)
+            {
+                try { renamePreviews = BuildRenamePreviews(renamePattern); }
+                catch { }
+            }
+
+            return (fileInfo, artworkBitmap, artworkSize, ownArtwork, advancedFields, lrc, txt, animated, renamePreviews);
         });
+        try
+        {
+            var loaded = await load;
 
-        ApplyFileInfo(info);
-        ApplyArtwork(artwork, artworkSize);
-        ShowsOwnTrackArtwork = artwork != null && !_albumScoped && !_multiSelect
-            && File.Exists(_persistence.GetTrackArtworkPath(_track.Id));
-        if (advanced != null)
-            ApplyAdvancedFields(advanced);
+            edited = TrackedFields.Select(f => f.Name)
+                .Where(name => !Equals(ReadTracked(name), _changeBaseline.GetValueOrDefault(name)))
+                .ToHashSet();
+            var customTagsEdited = CustomTagsSignature() != _customTagsBaseline;
+            _editedWhileLoading = edited;
 
-        // The advanced tags and artwork above are the last loaded state; anything the
-        // user types from here on is a change worth showing in the rail and footer.
-        CaptureChangeBaseline();
+            ApplyFileInfo(loaded.fileInfo);
+            ApplyArtwork(loaded.artworkBitmap, loaded.artworkSize);
+            // ApplyArtwork skips a cover the user replaced or removed meanwhile; so does this.
+            if (_newArtworkData == null && !_artworkRemoved)
+                ShowsOwnTrackArtwork = loaded.ownArtwork;
+            if (loaded.advancedFields != null)
+            {
+                ApplyAdvancedFields(loaded.advancedFields, mergeCustomTags: customTagsEdited);
+                if (customTagsEdited)
+                    loadedCustomTagsBaseline = CustomTagsSignature(
+                        loaded.advancedFields.CustomTags.Select(kv => (kv.Key, kv.Value)));
+            }
+
+            var (synced, plain) = ResolveLyrics(trackSynced, loaded.lrc.Text, trackPlain, loaded.txt.Text);
+            ApplyLyrics(synced, plain, loaded.lrc.Unreadable, loaded.txt.Unreadable);
+
+            // A cover the user picked or removed while this was in flight wins.
+            if (_newAnimatedCoverSource == null && !_animatedCoverRemoved)
+            {
+                AnimatedCoverPath = loaded.animated;
+                HasAnimatedCover = !string.IsNullOrEmpty(AnimatedCoverPath);
+            }
+
+            // A pattern typed meanwhile already rebuilt the preview for itself.
+            if (loaded.renamePreviews != null && RenamePattern == renamePattern)
+            {
+                RenamePreviews.Clear();
+                foreach (var p in loaded.renamePreviews) RenamePreviews.Add(p);
+            }
+        }
+        finally
+        {
+            _editedWhileLoading = null;
+            // The loaded state is the baseline; a field the user typed into before it landed
+            // keeps its pre-load baseline, so the edit still counts in the footer.
+            CaptureChangeBaseline(keep: edited);
+            if (loadedCustomTagsBaseline != null)
+            {
+                _customTagsBaseline = loadedCustomTagsBaseline;
+                RecomputeChanges();
+            }
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reads a lyric sidecar beside the audio file, only when the Track field it backs is
+    /// empty (<paramref name="needed"/>). <c>Unreadable</c> reports a read that THREW, which
+    /// Save treats as "never delete this sidecar".
+    /// </summary>
+    private static (string? Text, bool Unreadable) ReadLyricSidecar(string audioPath, string extension, bool needed)
+    {
+        if (!needed) return (null, false);
+        try
+        {
+            var path = Path.ChangeExtension(audioPath, extension);
+            return (File.Exists(path) ? File.ReadAllText(path) : null, false);
+        }
+        catch
+        {
+            return (null, true);
+        }
     }
 
     // ── Change tracking (rail dots + footer summary) ─────────────────────────
@@ -590,10 +698,12 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    private void CaptureChangeBaseline()
+    /// <param name="keep">Fields whose existing baseline stays (edited before the load landed).</param>
+    private void CaptureChangeBaseline(IReadOnlySet<string>? keep = null)
     {
         foreach (var (name, _) in TrackedFields)
-            _changeBaseline[name] = ReadTracked(name);
+            if (keep == null || !keep.Contains(name) || !_changeBaseline.ContainsKey(name))
+                _changeBaseline[name] = ReadTracked(name);
         _customTagsBaseline = CustomTagsSignature();
         if (!_customTagsHooked)
         {
@@ -611,8 +721,10 @@ public partial class MetadataViewModel : ViewModelBase
 
     private object? ReadTracked(string name) => GetType().GetProperty(name)!.GetValue(this);
 
-    private string CustomTagsSignature() =>
-        string.Join("", CustomTags.Select(t => t.Key + "" + t.Value));
+    private string CustomTagsSignature() => CustomTagsSignature(CustomTags.Select(t => (t.Key, t.Value)));
+
+    private static string CustomTagsSignature(IEnumerable<(string Key, string Value)> tags) =>
+        string.Join("", tags.Select(t => t.Key + "" + t.Value));
 
     private void OnCustomTagsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -1054,18 +1166,30 @@ public partial class MetadataViewModel : ViewModelBase
     private void RebuildRenamePreview()
     {
         RenamePreviews.Clear();
-        if (!_multiSelect || _albumTracks == null) return;
+        foreach (var preview in BuildRenamePreviews(RenamePattern))
+            RenamePreviews.Add(preview);
+    }
+
+    /// <summary>
+    /// The first rows of the rename preview. Touches the disk (a File.Exists per row for
+    /// the conflict flag), so the initial build runs in InitializeAsync's background load.
+    /// </summary>
+    private List<RenamePreview> BuildRenamePreviews(string pattern)
+    {
+        var previews = new List<RenamePreview>();
+        if (!_multiSelect || _albumTracks == null) return previews;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in _albumTracks.Take(8))
         {
-            var newPath = ComputeRenamedPath(t, out var conflict, seen);
-            RenamePreviews.Add(new RenamePreview
+            var newPath = ComputeRenamedPath(t, out var conflict, seen, pattern);
+            previews.Add(new RenamePreview
             {
                 OriginalName = Path.GetFileName(t.FilePath),
                 NewName = newPath != null ? Path.GetFileName(newPath) : "(empty pattern)",
                 Conflict = conflict,
             });
         }
+        return previews;
     }
 
     private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null,
@@ -1178,10 +1302,72 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _isSearchingSyncedLyrics;
     [ObservableProperty] private string _syncedLyricsSearchStatus = string.Empty;
 
-    private void LoadAnimatedCover()
+    /// <summary>
+    /// Picks what the Plain and Timestamp tabs show from the Track fields and the sidecar
+    /// texts (null = not read / absent). A sidecar only fills a Track field that is empty.
+    /// Plain must NEVER contain timestamps; if a legacy track stored synced text in Lyrics,
+    /// it moves to synced and plain is derived from it.
+    /// </summary>
+    private static (string Synced, string Plain) ResolveLyrics(string? trackSynced, string? lrcText, string? trackPlain, string? txtText)
     {
-        AnimatedCoverPath = _animatedCovers.Resolve(_track);
-        HasAnimatedCover = !string.IsNullOrEmpty(AnimatedCoverPath);
+        var syncedFromTrack = string.IsNullOrWhiteSpace(trackSynced) && lrcText != null ? lrcText : trackSynced;
+        var plainFromTrack = string.IsNullOrWhiteSpace(trackPlain) && txtText != null ? txtText : trackPlain;
+
+        // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
+        // and derive plain from it.
+        if (LyricsTextHelper.ContainsTimestamps(plainFromTrack))
+        {
+            if (string.IsNullOrWhiteSpace(syncedFromTrack))
+                syncedFromTrack = plainFromTrack;
+            plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
+        }
+
+        // Synced lyrics must actually contain timestamps. Some legacy/sidecar data
+        // can put plain text into SyncedLyrics or .lrc; keep that out of the synced tab.
+        if (!LyricsTextHelper.ContainsTimestamps(syncedFromTrack))
+        {
+            if (string.IsNullOrWhiteSpace(plainFromTrack))
+                plainFromTrack = syncedFromTrack;
+            syncedFromTrack = string.Empty;
+        }
+
+        return (syncedFromTrack ?? string.Empty, plainFromTrack ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Sets the lyric fields and what Save compares them against. A sidecar we failed to
+    /// READ must never be deleted on save. Previously any transient failure (file locked,
+    /// AV scan, permission blip, network share hiccup) left the field empty, and the save
+    /// path read that emptiness as "the user cleared the lyrics" and hard-deleted a
+    /// hand-timed .lrc the app cannot regenerate — triggered by something as innocuous as
+    /// fixing a typo in the Year.
+    /// Called again when InitializeAsync lands: a lyric field the user already edited while
+    /// the load was in flight (KeepsEdit) stays as typed, while the loaded text still becomes
+    /// the "loaded" reference, so Save sees the edit as a change against what is on disk.
+    /// Only the edited field is kept: switching Custom Lyrics on before the .txt arrived
+    /// must still show (and on Save keep) that .txt, not save an empty tab that trashes it.
+    /// </summary>
+    private void ApplyLyrics(string synced, string plain, bool syncedUnreadable, bool plainUnreadable)
+    {
+        _syncedSidecarUnreadable = syncedUnreadable;
+        _plainSidecarUnreadable = plainUnreadable;
+
+        var keepSynced = KeepsEdit(nameof(SyncedLyrics));
+        if (!keepSynced)
+        {
+            SyncedLyrics = synced;
+            // "Remove" on a synced tab that was still empty removed nothing; the loaded .lrc
+            // is not the user's to have removed.
+            _syncedLyricsRemovedByUser = false;
+        }
+        if (!KeepsEdit(nameof(Lyrics))) Lyrics = plain;
+        // A Custom Lyrics switch the user flipped stays flipped (on: the loaded text shows
+        // in the now-enabled box; off: the lyrics are being removed on purpose).
+        if (!KeepsEdit(nameof(HasCustomLyrics))) HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
+        if (!KeepsEdit(nameof(HasCustomSyncedLyrics))) HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
+        _loadedSyncedLyrics = synced;
+        _loadedPlainLyrics = plain;
+        if (!keepSynced) RebuildSyncedLinesFromText();
     }
 
     private void LoadFromTrack()
@@ -1221,71 +1407,14 @@ public partial class MetadataViewModel : ViewModelBase
         IsDisliked = _track.IsDisliked;
 
         // Lyrics — synced from Track.SyncedLyrics or .lrc sidecar; plain from Track.Lyrics or .txt sidecar.
-        // Plain tab must NEVER contain timestamps; if a legacy track stored synced text in Lyrics, strip it.
-        // A sidecar we failed to READ must never be deleted on save. Previously any
-        // transient failure here (file locked, AV scan, permission blip, network share
-        // hiccup) left the field empty, and the save path read that emptiness as "the
-        // user cleared the lyrics" and hard-deleted a hand-timed .lrc the app cannot
-        // regenerate — triggered by something as innocuous as fixing a typo in the Year.
-        _syncedSidecarUnreadable = false;
-        _plainSidecarUnreadable = false;
-
-        var syncedFromTrack = _track.SyncedLyrics;
-        if (string.IsNullOrWhiteSpace(syncedFromTrack))
-        {
-            try
-            {
-                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-                if (File.Exists(lrcPath))
-                    syncedFromTrack = File.ReadAllText(lrcPath);
-            }
-            catch
-            {
-                _syncedSidecarUnreadable = true;
-            }
-        }
-
-        var plainFromTrack = _track.Lyrics;
-        if (string.IsNullOrWhiteSpace(plainFromTrack))
-        {
-            try
-            {
-                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-                if (File.Exists(txtPath))
-                    plainFromTrack = File.ReadAllText(txtPath);
-            }
-            catch
-            {
-                _plainSidecarUnreadable = true;
-            }
-        }
-
-        // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
-        // and derive plain from it.
-        if (LyricsTextHelper.ContainsTimestamps(plainFromTrack))
-        {
-            if (string.IsNullOrWhiteSpace(syncedFromTrack))
-                syncedFromTrack = plainFromTrack;
-            plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
-        }
-
-        // Synced lyrics must actually contain timestamps. Some legacy/sidecar data
-        // can put plain text into SyncedLyrics or .lrc; keep that out of the synced tab.
-        if (!LyricsTextHelper.ContainsTimestamps(syncedFromTrack))
-        {
-            if (string.IsNullOrWhiteSpace(plainFromTrack))
-                plainFromTrack = syncedFromTrack;
-            syncedFromTrack = string.Empty;
-        }
-
-        SyncedLyrics = syncedFromTrack ?? string.Empty;
-        Lyrics = plainFromTrack ?? string.Empty;
-        HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
-        HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
-        _loadedSyncedLyrics = SyncedLyrics;
-        _loadedPlainLyrics = Lyrics;
-        _syncedLyricsRemovedByUser = false;
-        RebuildSyncedLinesFromText();
+        // Only the in-memory Track fields here: the sidecars sit next to the audio (often on a
+        // spinning disk) and InitializeAsync reads them off the UI thread. Until it has, a
+        // sidecar this dialog would consult counts as unreadable, so nothing can trash one it
+        // never saw (Save is disabled while loading anyway; this holds even if load fails).
+        var (synced, plain) = ResolveLyrics(_track.SyncedLyrics, null, _track.Lyrics, null);
+        ApplyLyrics(synced, plain,
+            syncedUnreadable: string.IsNullOrWhiteSpace(_track.SyncedLyrics),
+            plainUnreadable: string.IsNullOrWhiteSpace(_track.Lyrics));
 
         // Options
         SkipWhenShuffling = _track.SkipWhenShuffling;
@@ -2312,9 +2441,16 @@ public partial class MetadataViewModel : ViewModelBase
         return (".jpg", new FilePickerFileType("JPEG Image") { Patterns = new[] { "*.jpg", "*.jpeg" } });
     }
 
-    [RelayCommand]
+    private bool CanSave() => !IsLoading;
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
+        // ExecuteAsync and key bindings skip CanExecute. Saving before InitializeAsync has
+        // applied the sidecar lyrics and advanced tags would write state that was never
+        // loaded (an empty plain field read as "the user cleared the lyrics").
+        if (IsLoading) return;
+
         // Surface a "Saving…" state on the button while the (potentially slow) file
         // writes run; the work itself lives in SaveInternalAsync. try/finally so the
         // spinner always clears even if a write throws.
@@ -2865,33 +3001,38 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── Advanced Details ──
 
-    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields)
+    /// <param name="mergeCustomTags">The user added custom tags while the load was in
+    /// flight: keep them and put the file's tags in front, instead of replacing the list.</param>
+    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields, bool mergeCustomTags = false)
     {
         try
         {
             _originalAdvancedFields = fields;
 
-            TitleSort = fields.TitleSort;
-            ArtistSort = fields.ArtistSort;
-            AlbumSort = fields.AlbumSort;
-            AlbumArtistSort = fields.AlbumArtistSort;
-            ComposerSort = fields.ComposerSort;
+            // Editable fields the user already typed into while loading keep the edit
+            // (KeepsEdit is only ever true during InitializeAsync's apply).
+            if (!KeepsEdit(nameof(TitleSort))) TitleSort = fields.TitleSort;
+            if (!KeepsEdit(nameof(ArtistSort))) ArtistSort = fields.ArtistSort;
+            if (!KeepsEdit(nameof(AlbumSort))) AlbumSort = fields.AlbumSort;
+            if (!KeepsEdit(nameof(AlbumArtistSort))) AlbumArtistSort = fields.AlbumArtistSort;
+            if (!KeepsEdit(nameof(ComposerSort))) ComposerSort = fields.ComposerSort;
 
-            Performer = fields.Performer;
-            Conductor = fields.Conductor;
-            Lyricist = fields.Lyricist;
-            Publisher = fields.Publisher;
-            EncodedBy = fields.EncodedBy;
+            if (!KeepsEdit(nameof(Performer))) Performer = fields.Performer;
+            if (!KeepsEdit(nameof(Conductor))) Conductor = fields.Conductor;
+            if (!KeepsEdit(nameof(Lyricist))) Lyricist = fields.Lyricist;
+            if (!KeepsEdit(nameof(Publisher))) Publisher = fields.Publisher;
+            if (!KeepsEdit(nameof(EncodedBy))) EncodedBy = fields.EncodedBy;
 
-            Isrc = fields.Isrc;
-            CatalogNumber = fields.CatalogNumber;
-            Barcode = fields.Barcode;
+            if (!KeepsEdit(nameof(Isrc))) Isrc = fields.Isrc;
+            if (!KeepsEdit(nameof(CatalogNumber))) CatalogNumber = fields.CatalogNumber;
+            if (!KeepsEdit(nameof(Barcode))) Barcode = fields.Barcode;
 
-            SelectedAdvisory = fields.ItunesAdvisory switch { 1 => "Explicit", 2 => "Clean", _ => "None" };
-            Language = fields.Language;
-            Mood = fields.Mood;
-            AdvDescription = fields.Description;
-            AdvReleaseDate = fields.ReleaseDate;
+            if (!KeepsEdit(nameof(SelectedAdvisory)))
+                SelectedAdvisory = fields.ItunesAdvisory switch { 1 => "Explicit", 2 => "Clean", _ => "None" };
+            if (!KeepsEdit(nameof(Language))) Language = fields.Language;
+            if (!KeepsEdit(nameof(Mood))) Mood = fields.Mood;
+            if (!KeepsEdit(nameof(AdvDescription))) AdvDescription = fields.Description;
+            if (!KeepsEdit(nameof(AdvReleaseDate))) AdvReleaseDate = fields.ReleaseDate;
 
             Encoder = fields.Encoder;
             ReplayGainTrackGain = fields.ReplayGainTrackGain;
@@ -2899,9 +3040,15 @@ public partial class MetadataViewModel : ViewModelBase
             ReplayGainAlbumGain = fields.ReplayGainAlbumGain;
             ReplayGainAlbumPeak = fields.ReplayGainAlbumPeak;
 
-            CustomTags.Clear();
+            if (!mergeCustomTags) CustomTags.Clear();
+            var at = 0;
             foreach (var kv in fields.CustomTags)
-                CustomTags.Add(new CustomTagItem { Key = kv.Key, Value = kv.Value });
+            {
+                // A key the user already added while loading keeps the user's value.
+                if (mergeCustomTags && CustomTags.Skip(at).Any(t => string.Equals(t.Key, kv.Key, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                CustomTags.Insert(at++, new CustomTagItem { Key = kv.Key, Value = kv.Value });
+            }
         }
         catch { /* Non-fatal — advanced fields are best-effort */ }
     }

@@ -233,6 +233,27 @@ public static class MetadataHelper
             vm.SetUserEqPresets(main.Settings.UserEqPresetNames);
     }
 
+    /// <summary>
+    /// Shows the metadata window straight away and loads its file-backed state behind it.
+    /// It used to await InitializeAsync first, so the window appeared only after two TagLib
+    /// parses and a cover decode (owner 10-08: metadata window froze 230–880 ms on lyric
+    /// sidecar reads and waited 1–2 s for tag reads before showing). InitializeAsync runs up
+    /// to its first await synchronously (IsLoading, baseline), then the dialog opens with
+    /// the in-memory fields filled; Save stays disabled until the load lands.
+    /// </summary>
+    private static async Task ShowThenLoad(MetadataWindow window, MetadataViewModel vm)
+    {
+        var load = vm.InitializeAsync();
+        await ShowDialogOwned(window);
+        try { await load; }
+        catch (Exception ex)
+        {
+            // Every read inside is guarded; should anything still throw, IsLoading has
+            // already ended false (its finally), and logging keeps the fault observed.
+            DebugLogger.Warn(DebugLogger.Category.UI, "Metadata.Load", ex.Message);
+        }
+    }
+
     public static async Task OpenMultiTrackMetadataWindow(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -251,8 +272,7 @@ public static class MetadataHelper
         AddUserEqPresets(vm);
 
         var window = new MetadataWindow(vm);
-        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
-        await ShowDialogOwned(window);
+        await ShowThenLoad(window, vm);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
@@ -311,7 +331,6 @@ public static class MetadataHelper
         };
 
         var window = new MetadataWindow(vm);
-        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
-        await ShowDialogOwned(window);
+        await ShowThenLoad(window, vm);
     }
 }

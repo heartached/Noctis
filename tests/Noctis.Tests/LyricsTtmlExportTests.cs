@@ -220,7 +220,7 @@ public class LyricsTtmlExportTests : IDisposable
     [AvaloniaFact]
     public async Task EditInfo_EditingOneRow_KeepsAStackedChorusAtEveryTime()
     {
-        var (vm, track, _) = NewMetadata("[00:05.00][00:35.00]Chorus\n[00:10.00]Verse");
+        var (vm, track, _) = await NewMetadata("[00:05.00][00:35.00]Chorus\n[00:10.00]Verse");
 
         vm.SyncedLyricLines.Single(l => l.Text == "Verse").TimestampText = "0:11.00";
         await vm.SaveCommand.ExecuteAsync(null);
@@ -233,7 +233,7 @@ public class LyricsTtmlExportTests : IDisposable
     [AvaloniaFact]
     public async Task EditInfo_ChangedSyncedLyrics_ClearAnUpperCaseTtml()
     {
-        var (vm, _, trashed) = NewMetadata("[00:01.00]old");
+        var (vm, _, trashed) = await NewMetadata("[00:01.00]old");
         File.WriteAllText(Side(".TTML"), "<tt/>");
 
         vm.ImportLyricsText("[00:03.00]new line", "new.lrc");
@@ -277,7 +277,7 @@ public class LyricsTtmlExportTests : IDisposable
 
     // ── Edit Info (MetadataViewModel) ────────────────────────────────────────
 
-    private (MetadataViewModel Vm, Track Track, List<string> Trashed) NewMetadata(string? synced)
+    private async Task<(MetadataViewModel Vm, Track Track, List<string> Trashed)> NewMetadata(string? synced)
     {
         var audio = Path.Combine(_dir, "song.flac");
         File.WriteAllText(audio, "x");
@@ -288,6 +288,7 @@ public class LyricsTtmlExportTests : IDisposable
         {
             TrashFile = p => { trashed.Add(Path.GetFileName(p)); File.Delete(p); return true; },
         };
+        await vm.InitializeAsync(); // as the window does; Save is disabled until it lands
         return (vm, track, trashed);
     }
 
@@ -301,7 +302,7 @@ public class LyricsTtmlExportTests : IDisposable
     [AvaloniaFact]
     public async Task EditInfo_ChangedSyncedLyrics_ClearTheElrcAndTtmlThatWouldHideThem()
     {
-        var (vm, _, trashed) = NewMetadata("[00:01.00]<00:01.00>old <00:01.50>words<00:02.00>");
+        var (vm, _, trashed) = await NewMetadata("[00:01.00]<00:01.00>old <00:01.50>words<00:02.00>");
         File.WriteAllText(Side(".elrc"), "[00:01.00]<00:01.00>old <00:01.50>words<00:02.00>");
         File.WriteAllText(Side(".ttml"), "<tt/>");
 
@@ -318,7 +319,7 @@ public class LyricsTtmlExportTests : IDisposable
     public async Task EditInfo_UnrelatedEdit_KeepsTheWordTimingFiles()
     {
         const string Elrc = "[00:01.00]<00:01.00>old <00:01.50>words<00:02.00>";
-        var (vm, _, trashed) = NewMetadata(Elrc);
+        var (vm, _, trashed) = await NewMetadata(Elrc);
         File.WriteAllText(Side(".elrc"), Elrc);
         File.WriteAllText(Side(".ttml"), "<tt/>");
 
@@ -334,7 +335,7 @@ public class LyricsTtmlExportTests : IDisposable
     public async Task EditInfo_RemovedSyncedLyrics_AlsoClearTheElrc()
     {
         const string Elrc = "[00:01.00]<00:01.00>old <00:01.50>words<00:02.00>";
-        var (vm, _, trashed) = NewMetadata(Elrc);
+        var (vm, _, trashed) = await NewMetadata(Elrc);
         File.WriteAllText(Side(".elrc"), Elrc);
         File.WriteAllText(Side(".lrc"), "[00:01.00]old words");
 
