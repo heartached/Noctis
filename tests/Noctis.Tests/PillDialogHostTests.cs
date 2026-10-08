@@ -86,6 +86,81 @@ public class PillDialogHostTests
     private static bool CardSettledOpen(PillDialogHost host) =>
         host.Card is { } card && card.Opacity > 0.999 && host.BackdropLayer!.Opacity > 0.999;
 
+    /// <summary>Owner 10-08 "matches the accent color, not gradient": a pill-primary button's
+    /// fill is a SolidColorBrush of exactly the AccentColorBrush resource, and nothing inside
+    /// the template paints a gradient (or any other fill) over it.</summary>
+    internal static void AssertSolidAccent(Button b)
+    {
+        Assert.Contains("pill-primary", b.Classes);
+        Assert.IsAssignableFrom<ISolidColorBrush>(b.Background);
+        Assert.Equal(AccentTestHarness.ResourceColor("AccentColorBrush"), AccentTestHarness.ColorOf(b.Background));
+        foreach (var border in b.GetVisualDescendants().OfType<Border>())
+            Assert.True(border.Name == "PillFill" || border.Background is null
+                        || border.Background is ISolidColorBrush { Color.A: 0 },
+                $"'{border.Name}' paints {border.Background} over the accent fill");
+        Assert.DoesNotContain(b.GetVisualDescendants().OfType<Border>(), x => x.Background is IGradientBrush);
+    }
+
+    /// <summary>Owner 10-08: Save follows the user's accent as a solid fill — also after the
+    /// accent changes at runtime (the fill is a DynamicResource) — darkens to
+    /// AccentColorBrushDark1 on hover, and fades when disabled.</summary>
+    [AvaloniaFact]
+    public void SaveButton_IsSolidAccent_FollowsAccentChange_AndHoverDarkens()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (vm, win, host) = Open();
+            try
+            {
+                Assert.True(PumpUntil(() => CardSettledOpen(host)), "open animation never settled");
+                var save = win.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.SaveCommand);
+                AssertSolidAccent(save);
+                Assert.Equal(Color.Parse("#E74856"), AccentTestHarness.ColorOf(save.Background));
+
+                // Hover: the darker accent shade, still solid; back to the accent on leave.
+                // (Pseudo-class set directly, as ArtistDetailViewMountTests does: headless pointer
+                // moves over the animated card don't reliably raise :pointerover.)
+                var pseudo = (IPseudoClasses)save.Classes;
+                pseudo.Set(":pointerover", true);
+                var dark1 = AccentTestHarness.ResourceColor("AccentColorBrushDark1");
+                Assert.NotEqual(Color.Parse("#E74856"), dark1);
+                Assert.True(PumpUntil(() => save.Background is ISolidColorBrush s && s.Color == dark1),
+                    $"hover fill {save.Background}, expected {dark1}");
+                pseudo.Set(":pointerover", false);
+                Assert.True(PumpUntil(() => save.Background is ISolidColorBrush s && s.Color == Color.Parse("#E74856")));
+
+                // Disabled stays clearly disabled.
+                save.IsEnabled = false;
+                PumpUntil(() => false, 50);
+                Assert.Equal(0.5, save.Opacity, 3);
+                save.IsEnabled = true;
+
+                // Runtime accent change, the way App.SetAccent does it (drop the old overlay,
+                // merge the new one): the fill follows.
+                var app = Application.Current!;
+                app.Resources.MergedDictionaries.Remove(app.Resources.MergedDictionaries[^1]);
+                AccentTestHarness.WithAccent("#3B82F6", ThemeVariant.Dark, () =>
+                {
+                    // The style value (what the app-wide 60 ms Background tween heads to) is the new
+                    // accent exactly; the painted brush lands on it (headless back-to-back tweens can
+                    // park a few units short, so that one is checked with a small tolerance).
+                    var blue = Color.Parse("#3B82F6");
+                    Assert.True(PumpUntil(() => save.GetBaseValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty) is { HasValue: true } v
+                                                && v.Value is ISolidColorBrush s && s.Color == blue),
+                        $"style fill stayed {save.GetBaseValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty)}");
+                    static bool Near(Color a, Color b) =>
+                        Math.Abs(a.R - b.R) <= 12 && Math.Abs(a.G - b.G) <= 12 && Math.Abs(a.B - b.B) <= 12;
+                    Assert.True(PumpUntil(() => save.Background is ISolidColorBrush s && Near(s.Color, blue)),
+                        $"painted fill stayed {save.Background}");
+                    Assert.IsAssignableFrom<ISolidColorBrush>(save.Background);
+                    Assert.DoesNotContain(save.GetVisualDescendants().OfType<Border>(), x => x.Background is IGradientBrush);
+                });
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+        });
+    }
+
     [AvaloniaFact]
     public void MetadataWindow_OpensInPillHost_WithResolvedStyles()
     {
@@ -120,11 +195,10 @@ public class PillDialogHostTests
                 var combo = all.OfType<ComboBox>().First(c => c.Classes.Contains("pill-field") && c.IsEffectivelyVisible);
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(combo.Background));
 
-                // Footer: Save is the accent pill with its sheen layer; Cancel the quiet pill.
-                // (By command: the Find online pill and panel buttons share the classes.)
+                // Footer: Save is the solid accent pill (owner 10-08: no gradient); Cancel the
+                // quiet pill. (By command: the Find online pill and panel buttons share the classes.)
                 var save = all.OfType<Button>().Single(b => b.Classes.Contains("pill-primary") && b.Command == vm.SaveCommand);
-                Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(save.Background));
-                Assert.Contains(save.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
+                AssertSolidAccent(save);
                 var cancel = all.OfType<Button>().Single(b => b.Classes.Contains("pill-secondary") && b.Command == vm.CancelCommand);
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));
             }

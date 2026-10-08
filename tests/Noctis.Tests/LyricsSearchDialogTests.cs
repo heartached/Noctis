@@ -149,11 +149,9 @@ public class LyricsSearchDialogTests
                 Assert.Equal(new CornerRadius(30), host.CornerRadius);
 
                 var all = win.GetVisualDescendants().ToList();
-                // The editor's footer: quiet Cancel pill, accent Use Lyrics pill with its sheen.
+                // The editor's footer: quiet Cancel pill, solid accent Use Lyrics pill (owner 10-08).
                 var use = ButtonFor(win, vm.ApplyCommand);
-                Assert.Contains("pill-primary", use.Classes);
-                Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(use.Background));
-                Assert.Contains(use.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
+                PillDialogHostTests.AssertSolidAccent(use);
                 var cancel = ButtonFor(win, vm.CloseCommand);
                 Assert.Contains("pill-secondary", cancel.Classes);
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));
