@@ -291,14 +291,19 @@ public static class MetadataHelper
     private static void LiveApplyPlayingOptions(MainWindowViewModel main, IReadOnlyCollection<Track> edited)
     {
         var playing = main.Player.CurrentTrack;
-        if (playing == null || !edited.Contains(playing)) return;
+        if (playing == null) return;
+        // By id, and the values from the edited instance: the queue can hold a pre-reload
+        // Track object for the same song (see SyncQueueFavoritesFromLibrary), which neither
+        // equals the edited one nor carries the values the save just wrote.
+        var saved = edited.FirstOrDefault(t => t.Id == playing.Id);
+        if (saved == null) return;
         var audio = App.Services!.GetRequiredService<IAudioPlayer>();
         // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
         // volume machinery that a concurrent gapless handoff is contending with.
-        if (audio.VolumeAdjust != playing.VolumeAdjust)
-            audio.VolumeAdjust = playing.VolumeAdjust;
+        if (audio.VolumeAdjust != saved.VolumeAdjust)
+            audio.VolumeAdjust = saved.VolumeAdjust;
         main.Settings.ApplyEqPresetByName(
-            string.IsNullOrEmpty(playing.EqPreset) ? null : playing.EqPreset);
+            string.IsNullOrEmpty(saved.EqPreset) ? null : saved.EqPreset);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
