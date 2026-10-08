@@ -430,6 +430,7 @@ public partial class MetadataViewModel : ViewModelBase
         // probe the track's folder; InitializeAsync does them off the UI thread (owner 10-08:
         // metadata window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag
         // reads before showing). The ctor only copies in-memory Track state.
+        SeedArtworkFromLibrary();
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
@@ -476,50 +477,15 @@ public partial class MetadataViewModel : ViewModelBase
         var trackSynced = _track.SyncedLyrics;
         var trackPlain = _track.Lyrics;
         var renamePattern = RenamePattern;
+        // The cover first, in its own task (owner 10-08: cover shows late in the metadata
+        // window). It comes from the app's cover cache, but it used to wait behind the TagLib
+        // parse of the audio file below, which takes 1–2 s on a busy or cold hard disk.
+        var cover = Task.Run(LoadCachedCover);
         // Task.Run never throws synchronously: a failing read faults `load`, and the finally
         // below still ends IsLoading.
         var load = Task.Run(() =>
         {
             var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
-
-            // Multi-select can span albums; don't show one album's art as if shared.
-            Bitmap? artworkBitmap = null;
-            Avalonia.PixelSize? artworkSize = null;
-            if (!_multiSelect)
-            {
-                var artPath = DisplayedArtworkPath();
-
-                // The persisted cache file is the source of truth for "does this album
-                // have a cover in Noctis." If the user removed it, cachedData is null
-                // on purpose. We must not silently fall back to extracting from the
-                // audio file's embedded tag here — every track in the album still has
-                // its own embedded copy, and WriteAlbumArt() during Remove can fail
-                // silently for any one of them (file locked, AV, etc.), causing the
-                // removed cover to come right back. Library scans/imports handle
-                // initial extraction-to-cache; the dialog must not re-do that work.
-                byte[]? cachedData = null;
-                if (File.Exists(artPath))
-                {
-                    try { cachedData = File.ReadAllBytes(artPath); } catch { }
-                }
-
-                if (cachedData != null && cachedData.Length > 0)
-                {
-                    try
-                    {
-                        // Decode at display size — the preview renders at ~240px; a
-                        // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
-                        using var ms = new MemoryStream(cachedData);
-                        artworkBitmap = Bitmap.DecodeToWidth(ms, 512);
-                        // The chip reports the real cover, not this 512-wide preview.
-                        artworkSize = SkiaArtworkDecoder.ReadPixelSize(cachedData);
-                    }
-                    catch { }
-                }
-            }
-
-            var ownArtwork = artworkBitmap != null && !_albumScoped && !_multiSelect
-                && File.Exists(_persistence.GetTrackArtworkPath(_track.Id));
 
             AdvancedTagIO.AdvancedFields? advancedFields = null;
             if (!_albumScoped)
@@ -543,10 +509,18 @@ public partial class MetadataViewModel : ViewModelBase
                 catch { }
             }
 
-            return (fileInfo, artworkBitmap, artworkSize, ownArtwork, advancedFields, lrc, txt, animated, renamePreviews);
+            return (fileInfo, advancedFields, lrc, txt, animated, renamePreviews);
         });
+        var coverApplied = false;
         try
         {
+            // The cover lands as soon as it is decoded, usually long before the tag read.
+            // Both are applied here, one after the other, never from two threads at once.
+            if (await Task.WhenAny(cover, load) == cover)
+            {
+                ApplyLoadedCover(await cover);
+                coverApplied = true;
+            }
             var loaded = await load;
 
             edited = TrackedFields.Select(f => f.Name)
@@ -556,10 +530,6 @@ public partial class MetadataViewModel : ViewModelBase
             _editedWhileLoading = edited;
 
             ApplyFileInfo(loaded.fileInfo);
-            ApplyArtwork(loaded.artworkBitmap, loaded.artworkSize);
-            // ApplyArtwork skips a cover the user replaced or removed meanwhile; so does this.
-            if (_newArtworkData == null && !_artworkRemoved)
-                ShowsOwnTrackArtwork = loaded.ownArtwork;
             if (loaded.advancedFields != null)
             {
                 ApplyAdvancedFields(loaded.advancedFields, mergeCustomTags: customTagsEdited);
@@ -588,6 +558,9 @@ public partial class MetadataViewModel : ViewModelBase
         finally
         {
             _editedWhileLoading = null;
+            // Slower than the tag read, or the tag read failed: the cover still lands.
+            // LoadCachedCover never throws.
+            if (!coverApplied) ApplyLoadedCover(await cover);
             // The loaded state is the baseline; a field the user typed into before it landed
             // keeps its pre-load baseline, so the edit still counts in the footer.
             CaptureChangeBaseline(keep: edited);
@@ -618,6 +591,130 @@ public partial class MetadataViewModel : ViewModelBase
             return (null, true);
         }
     }
+
+    // ── Cover at open (owner 10-08: cover shows late in the metadata window) ────────
+    // The window opens at once with the library's own decoded thumbnail of this cover when
+    // there is one (no I/O); LoadCachedCover then decodes the cached cover file at 512 px in
+    // its own task and replaces it, without waiting on the audio file's tag reads.
+
+    /// <summary>What <see cref="LoadCachedCover"/> read: the 512-wide preview, the cover's real
+    /// size, and whether it is this track's own cover rather than its album's.</summary>
+    private readonly record struct LoadedCover(Bitmap? Bitmap, Avalonia.PixelSize? Size, bool OwnArtwork);
+
+    /// <summary>The library's thumbnail the preview is showing, borrowed from
+    /// <see cref="ArtworkCache"/>: the grid draws the same bitmap, so this editor releases it
+    /// (<see cref="DisposePreview"/>) and never disposes it.</summary>
+    private Bitmap? _sharedPreview;
+    private bool _sharedPreviewHeld;
+
+    /// <summary>Reads and decodes the cached cover file. Runs on a pool thread; never throws.</summary>
+    private LoadedCover LoadCachedCover()
+    {
+        // Multi-select can span albums; don't show one album's art as if shared.
+        if (_multiSelect) return default;
+        try
+        {
+            var artPath = DisplayedArtworkPath();
+
+            // The persisted cache file is the source of truth for "does this album
+            // have a cover in Noctis." If the user removed it, cachedData is null
+            // on purpose. We must not silently fall back to extracting from the
+            // audio file's embedded tag here — every track in the album still has
+            // its own embedded copy, and WriteAlbumArt() during Remove can fail
+            // silently for any one of them (file locked, AV, etc.), causing the
+            // removed cover to come right back. Library scans/imports handle
+            // initial extraction-to-cache; the dialog must not re-do that work.
+            byte[]? cachedData = null;
+            if (File.Exists(artPath))
+            {
+                try { cachedData = File.ReadAllBytes(artPath); } catch { }
+            }
+            if (cachedData == null || cachedData.Length == 0) return default;
+
+            // Decode at display size — the preview renders at ~240px; a
+            // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
+            using var ms = new MemoryStream(cachedData);
+            var bitmap = Bitmap.DecodeToWidth(ms, 512);
+            // The chip reports the real cover, not this 512-wide preview.
+            var size = SkiaArtworkDecoder.ReadPixelSize(cachedData);
+            // DisplayedArtworkPath picks the track's own cover only when it exists.
+            var own = !_albumScoped && artPath == _persistence.GetTrackArtworkPath(_track.Id);
+            return new LoadedCover(bitmap, size, own);
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    /// <summary>Shows the cover <see cref="LoadCachedCover"/> read. A cover the user picked or
+    /// removed while it loaded wins; no cover file means no cover, even over a seeded thumbnail.</summary>
+    private void ApplyLoadedCover(LoadedCover cover)
+    {
+        if (_newArtworkData != null || _artworkRemoved)
+        {
+            cover.Bitmap?.Dispose();
+            return;
+        }
+        var old = ArtworkPreview;
+        ShowsOwnTrackArtwork = cover.Bitmap != null && cover.OwnArtwork;
+        _artworkSourceSize = cover.Size;
+        ArtworkPreview = cover.Bitmap;
+        HasArtwork = cover.Bitmap != null;
+        if (!ReferenceEquals(old, cover.Bitmap)) DisposePreview(old);
+    }
+
+    /// <summary>
+    /// Shows the library's already-decoded thumbnail of this cover, if <see cref="ArtworkCache"/>
+    /// holds one, so the window opens with its cover instead of a placeholder. Memory only:
+    /// <see cref="Track.AlbumArtworkPath"/> is the path the library views draw for this track
+    /// (its own cover, or its album's); the album editor shows the album's. Not a change:
+    /// the change count reads the staged artwork, not the preview.
+    /// </summary>
+    private void SeedArtworkFromLibrary()
+    {
+        if (_multiSelect) return;
+        var path = _albumScoped ? _persistence.GetArtworkPath(_track.AlbumId) : _track.AlbumArtworkPath;
+        if (string.IsNullOrEmpty(path)) return;
+        // TryGetAnyWidth skips the requested bucket itself, so ask for that first.
+        var bmp = ArtworkCache.TryGet(path, 512) ?? ArtworkCache.TryGetAnyWidth(path, 512);
+        if (bmp == null) return;
+        // Held while shown, so an eviction from the cache can't dispose it under the window.
+        ArtworkCache.Acquire(bmp);
+        _sharedPreview = bmp;
+        _sharedPreviewHeld = true;
+        ShowsOwnTrackArtwork = !_albumScoped && path == _persistence.GetTrackArtworkPath(_track.Id);
+        ArtworkPreview = bmp;
+        HasArtwork = true;
+    }
+
+    /// <summary>Frees a preview this editor no longer shows: the borrowed library thumbnail
+    /// goes back to the cache (which disposes it once nothing else draws it), anything else
+    /// this editor decoded is disposed.</summary>
+    private void DisposePreview(Bitmap? bitmap)
+    {
+        if (bitmap == null) return;
+        if (ReferenceEquals(bitmap, _sharedPreview))
+        {
+            ReleaseSharedPreview();
+            return;
+        }
+        bitmap.Dispose();
+    }
+
+    private void ReleaseSharedPreview()
+    {
+        if (!_sharedPreviewHeld) return;
+        _sharedPreviewHeld = false;
+        ArtworkCache.Release(_sharedPreview);
+    }
+
+    /// <summary>The cover's real size: the decoded source's, or the bitmap's own when it was
+    /// decoded full size. Unknown (null) while the borrowed thumbnail stands in — its size is
+    /// a grid decode width, not the cover's.</summary>
+    private Avalonia.PixelSize? ShownArtworkSize => ArtworkPreview is { } bmp
+        ? _artworkSourceSize ?? (ReferenceEquals(bmp, _sharedPreview) ? null : bmp.PixelSize)
+        : null;
 
     // ── Change tracking (rail dots + footer summary) ─────────────────────────
     // A snapshot of every editable field is taken once the dialog is fully loaded;
@@ -985,7 +1082,7 @@ public partial class MetadataViewModel : ViewModelBase
     public bool ShowMixedHint => _albumTracks is { Count: > 1 };
 
     /// <summary>"3000 × 3000" chip on the Artwork tab; empty while there is no cover.</summary>
-    public string ArtworkDimensions => ArtworkPreview is { } bmp && (_artworkSourceSize ?? bmp.PixelSize) is var s
+    public string ArtworkDimensions => ShownArtworkSize is { } s
         ? $"{s.Width} × {s.Height}"
         : string.Empty;
 
@@ -1311,16 +1408,6 @@ public partial class MetadataViewModel : ViewModelBase
             : normalized;
     }
 
-    private void ApplyArtwork(Bitmap? artwork, Avalonia.PixelSize? sourceSize)
-    {
-        if (artwork == null) return;
-        // Don't clobber an artwork add/remove the user made while the load was in flight.
-        if (_newArtworkData != null || _artworkRemoved) return;
-        _artworkSourceSize = sourceSize;
-        ArtworkPreview = artwork;
-        HasArtwork = true;
-    }
-
     private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
     {
         var hasCached = cachedData != null && cachedData.Length > 0;
@@ -1368,7 +1455,7 @@ public partial class MetadataViewModel : ViewModelBase
             _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
             ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
-            oldArt?.Dispose();
+            DisposePreview(oldArt);
             HasArtwork = true;
         }
         catch { }
@@ -1538,7 +1625,7 @@ public partial class MetadataViewModel : ViewModelBase
             _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
             ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
-            oldArt?.Dispose();
+            DisposePreview(oldArt);
             HasArtwork = true;
             ArtworkSearchStatus = "Applied. Click Save to keep.";
             IsArtworkSearchOpen = false;
@@ -2180,7 +2267,7 @@ public partial class MetadataViewModel : ViewModelBase
         var oldArt = ArtworkPreview;
         _artworkSourceSize = null;
         ArtworkPreview = null;
-        oldArt?.Dispose();
+        DisposePreview(oldArt);
         HasArtwork = false;
         _newArtworkData = null;
         _artworkRemoved = true;

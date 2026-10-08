@@ -23,6 +23,9 @@ namespace Noctis.Tests;
 /// </summary>
 public class MetadataSearchPanelTests
 {
+    // Thumbnails are remembered for the session; each test starts without any.
+    public MetadataSearchPanelTests() => MetadataSearchPanelViewModel.ForgetThumbnailsForTests();
+
     // ── Fixtures ──
 
     private static Track T(string title, int n, Guid albumId, int seconds = 200) => new()
@@ -514,6 +517,61 @@ public class MetadataSearchPanelTests
         Assert.Equal(1, vm.ChangeCount);
         Assert.False(vm.HasSearchApplied);
         Assert.False(vm.CanUndoSearchApply);
+    }
+
+    [AvaloniaFact]
+    public async Task Thumbnails_SeenBefore_AreOnTheRowsBeforeTheyShow_AndNotFetchedAgain()
+    {
+        // Owner 10-08: "when I open the find online pop up, the artwork on the first track goes
+        // blank and then appears" — every search started its thumbnails empty and downloaded
+        // them again, so results seen moments before blinked empty until the network answered.
+        var search = new FakeSearch
+        {
+            Result = new MetadataSearchResult
+            {
+                Candidates = new[]
+                {
+                    Cand("Deezer", 0.9) with { ArtworkThumbUrl = new Uri("https://example.test/t1.jpg") },
+                    Cand("Apple Music", 0.8) with { ArtworkThumbUrl = new Uri("https://example.test/t2.jpg") },
+                },
+            },
+        };
+        var vm = await SingleVm(search);
+        var calls = 0;
+        var panel = new MetadataSearchPanelViewModel(vm, search, (_, _) =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult<byte[]?>(Jpeg(40, 40));
+        });
+        panel.Open();
+        for (var i = 0; i < 200 && !(panel.Candidates.Count == 2 && panel.Candidates.All(c => c.HasThumbnail)); i++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            await Task.Delay(10);
+        }
+        Assert.Equal(2, calls);
+
+        // The same results again (a re-search, or the next editor window for this track).
+        var emptyOnArrival = 0;
+        panel.Candidates.CollectionChanged += (_, e) =>
+        {
+            foreach (CandidateItem item in e.NewItems ?? Array.Empty<CandidateItem>())
+                if (!item.HasThumbnail) emptyOnArrival++;
+        };
+        var blankNewCover = false;
+        panel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MetadataSearchPanelViewModel.SelectedCandidate) && panel.SelectedCandidate != null)
+                blankNewCover |= !panel.HasNewArtworkPreview;
+        };
+        await panel.SearchAsync();
+
+        Assert.Equal(2, panel.Candidates.Count);
+        Assert.Equal(0, emptyOnArrival);
+        Assert.False(blankNewCover);
+        Assert.True(panel.HasNewArtworkPreview);
+        Assert.Equal(2, calls); // nothing downloaded twice
+        Assert.NotSame(panel.Candidates[0].Thumbnail, panel.Candidates[1].Thumbnail); // rows own their bitmaps
     }
 
     [AvaloniaFact]

@@ -338,6 +338,13 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             .OrderByDescending(c => c.Confidence)
             .Select(c => new CandidateItem(c, AlbumScope))
             .ToList();
+        // A thumbnail fetched earlier this session is on the row before it shows.
+        await DecodeKnownThumbnailsAsync(items);
+        if (_searchCts != cts || cts.IsCancellationRequested)
+        {
+            foreach (var item in items) item.Dispose();
+            return;
+        }
         foreach (var item in items) Candidates.Add(item);
 
         // Every queried source down is not "no matches": the user should retry, not reword.
@@ -351,7 +358,7 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
         }
         State = items.Count > 0 ? MetadataSearchState.Results : MetadataSearchState.Empty;
         SelectedCandidate = items.FirstOrDefault();
-        _ = LoadThumbnailsAsync(items, cts.Token);
+        _ = LoadThumbnailsAsync(items.Where(i => !i.HasThumbnail).ToList(), cts.Token);
     }
 
     private MetadataQuery BuildQuery()
@@ -427,20 +434,25 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
         var downloads = new Dictionary<Uri, Task<byte[]?>>();
         async Task<byte[]?> DownloadOnce(Uri url)
         {
+            if (KnownThumbnail(url) is { } known) return known;
             await gate.WaitAsync(ct);
             try
             {
                 var data = await loader(url, ct);
-                if (data is { Length: > 0 }) return data;
-                // CAA/archive.org occasionally refuses under load; one calm retry.
-                await Task.Delay(600, ct);
-                return await loader(url, ct);
+                if (data is not { Length: > 0 })
+                {
+                    // CAA/archive.org occasionally refuses under load; one calm retry.
+                    await Task.Delay(600, ct);
+                    data = await loader(url, ct);
+                }
+                if (data is { Length: > 0 }) RememberThumbnail(url, data);
+                return data;
             }
             finally { gate.Release(); }
         }
         await Task.WhenAll(items.Select(async item =>
         {
-            var url = item.Candidate.ArtworkThumbUrl ?? item.Candidate.ArtworkUrl;
+            var url = ThumbnailUrl(item);
             if (url == null) return;
             try
             {
@@ -452,13 +464,7 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
                 }
                 var data = await download;
                 if (data is not { Length: > 0 } || ct.IsCancellationRequested) return;
-                // Decoded small and off the UI thread: a list of 3000 px covers would
-                // otherwise cost ~36 MB each and stall the scroll.
-                var bmp = await Task.Run(() =>
-                {
-                    try { using var ms = new MemoryStream(data); return Bitmap.DecodeToWidth(ms, 120); }
-                    catch { return null; }
-                }, ct);
+                var bmp = await Task.Run(() => DecodeThumbnail(data), ct);
                 if (bmp == null) return;
                 if (ct.IsCancellationRequested) { bmp.Dispose(); return; }
                 item.Thumbnail = bmp;
@@ -470,6 +476,82 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
                 DebugLogger.Info(DebugLogger.Category.UI, "MetadataSearch.ThumbFailed", ex.Message);
             }
         }));
+    }
+
+    // ── Thumbnails seen this session (owner 10-08: "when I open the find online pop up, the
+    // artwork on the first track goes blank and then appears") ──
+    // Every search started each result's thumbnail empty and downloaded it again, even one
+    // fetched moments before: re-running the search, reopening a search the close had
+    // cancelled, or the next editor window for the same track showed blank tiles — and a blank
+    // "new" cover for the selected first result — until the network answered. The bytes of
+    // the last few dozen thumbnails (≈300 px JPEGs, a few KB to tens of KB each) are kept,
+    // and a search decodes the known ones before its rows appear. Bytes, not bitmaps: each
+    // row owns and disposes its own bitmap.
+    private const int MaxKnownThumbnails = 64;
+    private const int MaxKnownThumbnailBytes = 512 * 1024;
+    private static readonly object s_thumbGate = new();
+    private static readonly Dictionary<Uri, LinkedListNode<(Uri Url, byte[] Data)>> s_thumbs = new();
+    private static readonly LinkedList<(Uri Url, byte[] Data)> s_thumbOrder = new();
+
+    private static Uri? ThumbnailUrl(CandidateItem item) => item.Candidate.ArtworkThumbUrl ?? item.Candidate.ArtworkUrl;
+
+    private static byte[]? KnownThumbnail(Uri url)
+    {
+        lock (s_thumbGate)
+        {
+            if (!s_thumbs.TryGetValue(url, out var node)) return null;
+            s_thumbOrder.Remove(node);
+            s_thumbOrder.AddFirst(node);
+            return node.Value.Data;
+        }
+    }
+
+    private static void RememberThumbnail(Uri url, byte[] data)
+    {
+        if (data.Length > MaxKnownThumbnailBytes) return;
+        lock (s_thumbGate)
+        {
+            if (s_thumbs.TryGetValue(url, out var old)) s_thumbOrder.Remove(old);
+            s_thumbs[url] = s_thumbOrder.AddFirst((url, data));
+            while (s_thumbOrder.Count > MaxKnownThumbnails)
+            {
+                var last = s_thumbOrder.Last!;
+                s_thumbOrder.RemoveLast();
+                s_thumbs.Remove(last.Value.Url);
+            }
+        }
+    }
+
+    /// <summary>Test seam: forgets every remembered thumbnail.</summary>
+    internal static void ForgetThumbnailsForTests()
+    {
+        lock (s_thumbGate)
+        {
+            s_thumbs.Clear();
+            s_thumbOrder.Clear();
+        }
+    }
+
+    // Decoded small and off the UI thread: a list of 3000 px covers would
+    // otherwise cost ~36 MB each and stall the scroll.
+    private static Bitmap? DecodeThumbnail(byte[] data)
+    {
+        try { using var ms = new MemoryStream(data); return Bitmap.DecodeToWidth(ms, 120); }
+        catch { return null; }
+    }
+
+    /// <summary>Gives the rows whose thumbnail was downloaded before their bitmap now, so they
+    /// (and the selected result's "new" cover) never show empty first. No await when none is known.</summary>
+    private static async Task DecodeKnownThumbnailsAsync(IReadOnlyList<CandidateItem> items)
+    {
+        var known = new List<(CandidateItem Item, byte[] Data)>();
+        foreach (var item in items)
+            if (ThumbnailUrl(item) is { } url && KnownThumbnail(url) is { } data)
+                known.Add((item, data));
+        if (known.Count == 0) return;
+        var decoded = await Task.Run(() => known.Select(k => (k.Item, Bitmap: DecodeThumbnail(k.Data))).ToList());
+        foreach (var (item, bmp) in decoded)
+            if (bmp != null) item.Thumbnail = bmp;
     }
 
     private void ClearCandidates()
