@@ -1266,6 +1266,88 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.DateModified" xml:space="preserve"><value>date modified</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.DateAdded" xml:space="preserve"><value>date added</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.FolderName" xml:space="preserve"><value>folder name</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="MetadataSearch.FindOnline" xml:space="preserve"><value>Find online</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FindOnlineTip" xml:space="preserve"><value>Look this up online and compare every field and the cover before anything changes</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.QueryTitle" xml:space="preserve"><value>Title</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.QueryArtist" xml:space="preserve"><value>Artist</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.QueryAlbum" xml:space="preserve"><value>Album</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.QueryAlbumArtist" xml:space="preserve"><value>Album artist</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Search" xml:space="preserve"><value>Search</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.TrackCountShort" xml:space="preserve"><value>{0} tracks</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Strong" xml:space="preserve"><value>Strong</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Good" xml:space="preserve"><value>Good</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Weak" xml:space="preserve"><value>Weak</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.NoMatch" xml:space="preserve"><value>No match</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.WillChange" xml:space="preserve"><value>Changes</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Same" xml:space="preserve"><value>Same</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.UnavailableTitle" xml:space="preserve"><value>Search unavailable</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.UnavailableBody" xml:space="preserve"><value>Online metadata search isn't available in this build. Your tags are untouched.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.EmptyTitle" xml:space="preserve"><value>No matches</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.EmptyBody" xml:space="preserve"><value>Try fewer words, fix a typo, or turn on another source.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FailedTitle" xml:space="preserve"><value>Search failed</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.WaitingTitle" xml:space="preserve"><value>Reading tags…</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.WaitingBody" xml:space="preserve"><value>The search starts as soon as this file's tags have loaded.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.IdleTitle" xml:space="preserve"><value>Find metadata online</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.IdleBody" xml:space="preserve"><value>Edit the search above and press Enter.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ShowUnchanged" xml:space="preserve"><value>Show {0} unchanged</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.NoFieldChanges" xml:space="preserve"><value>Every field already matches</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FieldsDiffer" xml:space="preserve"><value>{0} different</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.NoCover" xml:space="preserve"><value>No cover</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FieldsTab" xml:space="preserve"><value>Album fields</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.TracksTab" xml:space="preserve"><value>Tracks {0}/{1}</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ApplyNone" xml:space="preserve"><value>Nothing selected</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ApplyOne" xml:space="preserve"><value>Apply 1 change</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ApplyMany" xml:space="preserve"><value>Apply {0} changes</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FooterIdle" xml:space="preserve"><value>Pick a result to compare it with your tags.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.FooterSelected" xml:space="preserve"><value>From {0} · goes into the editor, nothing is saved until you press Save</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ProviderTimedOut" xml:space="preserve"><value>{0} timed out</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ProviderOff" xml:space="preserve"><value>{0} off</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.ProviderOffline" xml:space="preserve"><value>{0} offline</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.TrackSummary" xml:space="preserve"><value>{0} of {1} tracks matched · {2} will change</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.TracksNotInLibrary" xml:space="preserve"><value>{0} more on this release aren't in your library</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.DownloadingCover" xml:space="preserve"><value>Downloading cover…</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverFailed" xml:space="preserve"><value>Couldn't download this cover.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverAdds" xml:space="preserve"><value>Adds a cover</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverSharper" xml:space="preserve"><value>Sharper than your cover</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverSmaller" xml:space="preserve"><value>Smaller than your cover</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverSameSize" xml:space="preserve"><value>About the same size</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.UseCover" xml:space="preserve"><value>Use this cover</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Now" xml:space="preserve"><value>Now</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.After" xml:space="preserve"><value>After</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Current" xml:space="preserve"><value>Current</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.New" xml:space="preserve"><value>New</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.OnlyFillEmpty" xml:space="preserve"><value>Only fill empty</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.SelectAll" xml:space="preserve"><value>All</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.SelectNone" xml:space="preserve"><value>None</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Explicit" xml:space="preserve"><value>Explicit</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.NotExplicit" xml:space="preserve"><value>Not explicit</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Clean" xml:space="preserve"><value>Clean</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Mixed" xml:space="preserve"><value>Mixed</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.BlockedAlbum" xml:space="preserve"><value>Saved per track: open a single track to set this.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.BlockedUnreadable" xml:space="preserve"><value>This file's extended tags couldn't be read, so this can't be saved.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.AppliedOne" xml:space="preserve"><value>Applied 1 change from {0}. Review it, then Save.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.AppliedMany" xml:space="preserve"><value>Applied {0} changes from {1}. Review them, then Save.</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Undo" xml:space="preserve"><value>Undo</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Back" xml:space="preserve"><value>Back to editor</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.Searching" xml:space="preserve"><value>Searching…</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Title" xml:space="preserve"><value>Title</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Artist" xml:space="preserve"><value>Artist</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Album" xml:space="preserve"><value>Album</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.AlbumArtist" xml:space="preserve"><value>Album artist</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Year" xml:space="preserve"><value>Year</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.ReleaseDate" xml:space="preserve"><value>Release date</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Genre" xml:space="preserve"><value>Genre</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.TrackNumber" xml:space="preserve"><value>Track #</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.TrackCount" xml:space="preserve"><value>Track count</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.DiscNumber" xml:space="preserve"><value>Disc #</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.DiscCount" xml:space="preserve"><value>Disc count</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Composer" xml:space="preserve"><value>Composer</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Label" xml:space="preserve"><value>Label</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Copyright" xml:space="preserve"><value>Copyright</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Isrc" xml:space="preserve"><value>ISRC</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Barcode" xml:space="preserve"><value>Barcode / UPC</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Explicit" xml:space="preserve"><value>Explicit</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.F.Bpm" xml:space="preserve"><value>BPM</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
 
   <!-- MiniPlayerWindow.axaml (auto-migrated) -->
   <data name="MiniPlayer.NoctisMiniPlayer" xml:space="preserve"><value>Noctis Mini Player</value><comment>Title in MiniPlayerWindow.axaml</comment></data>

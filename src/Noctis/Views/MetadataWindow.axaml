@@ -4,6 +4,7 @@
         xmlns:presenters="using:Avalonia.Controls.Presenters"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:controls="using:Noctis.Controls"
+        xmlns:views="using:Noctis.Views"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
         Title="{loc:T Metadata.Metadata}"
@@ -105,6 +106,19 @@
                     </StackPanel>
                 </ControlTemplate>
             </Setter>
+        </Style>
+
+        <!-- Header "Find online" pill: an accent ring while its panel is open (it toggles). -->
+        <!-- (BorderThickness is set on the button itself: pill-secondary, loaded by the host
+             and so nearer the button than these, sets it to 0.) -->
+        <Style Selector="Button.find-online">
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.find-online.on">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Button.find-online.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
 
         <Style Selector="TextBlock.change-summary">
@@ -365,11 +379,30 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Favorite indicator -->
-                <controls:HeartIcon Grid.Column="3" Size="20" ShowWhenOff="False"
-                                VerticalAlignment="Center" HorizontalAlignment="Right"
-                                IsFavorite="{Binding HeaderIsFavorite}"
-                                ToolTip.Tip="{loc:T Metadata.FavoritedTip}" />
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <!-- Find online (owner 10-08: Search metadata revamp): the entry point lives in
+                         the header so it is one click from every tab, not only Details. -->
+                    <Button Classes="pill-secondary find-online"
+                            Classes.on="{Binding SearchPanel.IsOpen}"
+                            BorderThickness="1.5"
+                            MinHeight="36"
+                            Padding="16,0"
+                            FontSize="12.5"
+                            IsVisible="{Binding ShowSearchMetadata}"
+                            Command="{Binding ToggleSearchPanelCommand}"
+                            ToolTip.Tip="{loc:T MetadataSearch.FindOnlineTip}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"
+                                      Foreground="{DynamicResource AccentColorBrush}" />
+                            <TextBlock Text="{loc:T MetadataSearch.FindOnline}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Favorite indicator -->
+                    <controls:HeartIcon Size="20" ShowWhenOff="False"
+                                    VerticalAlignment="Center" HorizontalAlignment="Right"
+                                    IsFavorite="{Binding HeaderIsFavorite}"
+                                    ToolTip.Tip="{loc:T Metadata.FavoritedTip}" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -447,19 +480,30 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
-                        <!-- Search metadata: find & review tag changes -->
-                        <StackPanel Spacing="10" IsVisible="{Binding ShowSearchMetadata}">
+                        <!-- Find online (owner 10-08: Search metadata revamp). The button opens the
+                             full compare panel over the editor; after an apply, the banner says what
+                             came in and offers Undo until Save. Only the button hides for a
+                             multi-track selection; the Mixed hint beside it must not, since that is
+                             where most fields read "Mixed". -->
+                        <StackPanel Spacing="10">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Button Grid.Column="0"
                                         Classes="accent-pill"
-                                        Command="{Binding SearchMetadataCommand}"
+                                        IsVisible="{Binding ShowSearchMetadata}"
+                                        Command="{Binding OpenSearchPanelCommand}"
                                         HorizontalAlignment="Left"
-                                        Padding="11,5"
+                                        Padding="12,5"
                                         FontSize="12"
                                         CornerRadius="999"
                                         FontWeight="SemiBold"
                                         Cursor="Hand"
-                                        Content="{loc:T Metadata.SearchMetadata}" />
+                                        ToolTip.Tip="{loc:T MetadataSearch.FindOnlineTip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource SearchIcon}" Width="11" Height="11"
+                                                  Foreground="{DynamicResource AccentForegroundBrush}" />
+                                        <TextBlock Text="{loc:T Metadata.SearchMetadata}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding MixedHint}"
                                            IsVisible="{Binding ShowMixedHint}"
@@ -470,49 +514,26 @@
                                            VerticalAlignment="Center"
                                            Margin="16,0,0,0" />
                             </Grid>
-                            <StackPanel Orientation="Horizontal" Spacing="8"
-                                        IsVisible="{Binding ShowSearchMetadataStatusRow}"
-                                        VerticalAlignment="Center">
-                                <Ellipse Classes="loading-spinner"
-                                         IsVisible="{Binding IsSearchingMetadata}"
-                                         VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding SearchMetadataStatus}"
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <Border IsVisible="{Binding IsSearchMetadataOpen}"
-                                    Background="#14FFFFFF"
-                                    BorderBrush="#2E808080" BorderThickness="1"
-                                    CornerRadius="12" Padding="18,14,18,14">
-                                <StackPanel Spacing="12">
-                                    <StackPanel Spacing="1">
-                                        <TextBlock Text="{loc:T Metadata.FoundMetadata}"
-                                                   FontWeight="Bold" FontSize="13.5" />
-                                        <TextBlock Text="{Binding SearchMetadataStatus}"
-                                                   FontSize="11.5" Opacity="0.55" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                    <ItemsControl ItemsSource="{Binding MetadataChanges}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:MetadataChangeRow">
-                                                <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding Apply}" Margin="0,3">
-                                                    <StackPanel Spacing="1">
-                                                        <TextBlock Text="{Binding Field}" FontSize="10.5" Opacity="0.45" />
-                                                        <TextBlock TextWrapping="Wrap" FontSize="13"><Run Text="{Binding OldDisplay}" Foreground="#8CFFFFFF"/><Run Text="  →  " Foreground="#59FFFFFF"/><Run Text="{Binding NewValue}" FontWeight="SemiBold"/></TextBlock>
-                                                    </StackPanel>
-                                                </CheckBox>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                        <Button Content="{loc:T Metadata.Cancel}" Command="{Binding CloseSearchMetadataCommand}"
-                                                Padding="12,4" FontSize="12" CornerRadius="999"
-                                                FontWeight="Bold" Cursor="Hand" />
-                                        <Button Content="{loc:T Metadata.Apply}" Command="{Binding ApplySearchMetadataCommand}"
-                                                Classes="accent-pill"
-                                                Padding="12,4" FontSize="12" CornerRadius="999"
-                                                FontWeight="Bold" Cursor="Hand" />
-                                    </StackPanel>
-                                </StackPanel>
+                            <Border IsVisible="{Binding HasSearchApplied}"
+                                    Classes="pill-well"
+                                    CornerRadius="999"
+                                    Padding="16,6,6,6">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <PathIcon Grid.Column="0" Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                              Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding SearchAppliedText}" FontSize="12.5"
+                                               Margin="10,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <Button Grid.Column="2" Classes="pill-secondary" MinHeight="30" Padding="16,0"
+                                            FontSize="12"
+                                            Content="{loc:T MetadataSearch.Undo}"
+                                            IsVisible="{Binding CanUndoSearchApply}"
+                                            Command="{Binding UndoSearchApplyCommand}" />
+                                    <Button Grid.Column="3" Classes="pill-secondary" MinHeight="30" Width="30" Padding="0"
+                                            Margin="6,0,0,0"
+                                            Command="{Binding DismissSearchAppliedCommand}">
+                                        <PathIcon Data="{StaticResource DismissIcon}" Width="9" Height="9" />
+                                    </Button>
+                                </Grid>
                             </Border>
                         </StackPanel>
 
@@ -2095,6 +2116,14 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
+
+        <!-- Find online panel: covers the tabs and the footer (it brings its own Back /
+             Apply), leaving the header so the track being matched stays in view. Shown and
+             animated from code-behind (OnSearchPanelOpenChanged). -->
+        <views:MetadataSearchPanel x:Name="SearchPanelView"
+                                   Grid.Row="1" Grid.RowSpan="2"
+                                   DataContext="{Binding SearchPanel}"
+                                   IsVisible="False" />
     </Grid>
     </controls:PillDialogHost>
 </Window>

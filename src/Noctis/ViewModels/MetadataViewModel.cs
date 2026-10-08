@@ -401,7 +401,7 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false, AutoMatchCoordinator? autoMatch = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false, Services.MetadataSearch.IMetadataSearchService? metadataSearch = null)
     {
         _track = track;
         _metadata = metadata;
@@ -410,7 +410,9 @@ public partial class MetadataViewModel : ViewModelBase
         _animatedCovers = animatedCovers;
         _itunes = itunes;
         _lrcLib = lrcLib;
-        _autoMatch = autoMatch;
+        // Null-safe: until the search engine is registered (or in a build without it) the
+        // panel shows "Search unavailable" instead of the old silent no-op.
+        _metadataSearch = metadataSearch ?? App.Services?.GetService<Services.MetadataSearch.IMetadataSearchService>();
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
         _multiSelect = multiSelect;
@@ -756,6 +758,8 @@ public partial class MetadataViewModel : ViewModelBase
                 perSection[(int)section]++;
         }
         if (_resetPlayCountPending) perSection[(int)MetadataSection.Details]++;
+        // Per-track values staged by a Find online apply (album editor): one change per track.
+        perSection[(int)MetadataSection.Details] += _stagedTrackChanges.Count;
         if (CustomTagsSignature() != _customTagsBaseline) perSection[(int)MetadataSection.Advanced]++;
         if (_newArtworkData != null || _artworkRemoved) perSection[(int)MetadataSection.Artwork]++;
         if (_newAnimatedCoverSource != null || _animatedCoverRemoved) perSection[(int)MetadataSection.AnimatedArtwork]++;
@@ -846,158 +850,8 @@ public partial class MetadataViewModel : ViewModelBase
         t.Rating, t.IsDisliked,
         t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty);
 
-    // ── Search metadata (tag lookup → before/after review) ──────────────────
-    // One button matches the track (or every track of an album) via
-    // AutoMatchCoordinator, then shows a per-field "old → new" review. Applying
-    // ticked rows writes into the live edit fields; nothing persists until Save.
-    private readonly AutoMatchCoordinator? _autoMatch;
-
-    [ObservableProperty] private bool _isSearchingMetadata;
-    [ObservableProperty] private bool _isSearchMetadataOpen;
-    [ObservableProperty] private string _searchMetadataStatus = string.Empty;
-
-    /// <summary>Reviewable field changes from the last search (one row per differing field).</summary>
-    public ObservableCollection<MetadataChangeRow> MetadataChanges { get; } = new();
-
-    // Album-scoped per-track matches, staged until the user applies + saves.
-    private readonly Dictionary<Track, TagSuggestion> _albumMatches = new();
-    private bool _albumPerTrackApproved;
-
-    public bool HasSearchMetadataStatus => !string.IsNullOrWhiteSpace(SearchMetadataStatus);
-
-    /// <summary>The standalone status line hides while the review panel is open (the panel shows the status as its subtitle).</summary>
-    public bool ShowSearchMetadataStatusRow => HasSearchMetadataStatus && !IsSearchMetadataOpen;
-
-    partial void OnSearchMetadataStatusChanged(string value)
-    {
-        OnPropertyChanged(nameof(HasSearchMetadataStatus));
-        OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
-    }
-
-    partial void OnIsSearchMetadataOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
-
-    /// <summary>Search button shows for single tracks and whole albums, but not arbitrary multi-select.</summary>
-    public bool ShowSearchMetadata => !_multiSelect;
-
-    [RelayCommand]
-    private async Task SearchMetadata()
-    {
-        if (_autoMatch == null) { SearchMetadataStatus = "Search metadata unavailable."; return; }
-        if (IsSearchingMetadata) return;
-
-        IsSearchingMetadata = true;
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = "Searching";
-        MetadataChanges.Clear();
-        _albumMatches.Clear();
-        _albumPerTrackApproved = false;
-
-        try
-        {
-            if (_albumScoped && _albumTracks is { Count: > 0 })
-                await SearchAlbumMetadataAsync();
-            else
-                await SearchSingleTrackMetadataAsync();
-        }
-        catch (Exception ex)
-        {
-            SearchMetadataStatus = $"Search failed: {ex.Message}";
-        }
-        finally
-        {
-            IsSearchingMetadata = false;
-        }
-    }
-
-    private async Task SearchSingleTrackMetadataAsync()
-    {
-        var hit = await _autoMatch!.MatchAsync(_track);
-        if (hit is null) { SearchMetadataStatus = "No metadata found online for this track."; return; }
-
-        AddRow("title", Title, hit.Title, v => Title = v);
-        AddRow("artist", Artist, hit.Artist, v => Artist = v);
-        AddRow("album", Album, hit.Album, v => Album = v);
-        AddRow("album artist", AlbumArtist, hit.AlbumArtist, v => AlbumArtist = v);
-        AddRow("year", Year, hit.Year?.ToString(), v => Year = v);
-        AddRow("genre", Genre, hit.Genre, v => Genre = v);
-        AddRow("track #", TrackNumber, hit.TrackNumber?.ToString(), v => TrackNumber = v);
-        AddRow("track count", TrackCount, hit.TrackCount?.ToString(), v => TrackCount = v);
-        AddRow("disc #", DiscNumber, hit.DiscNumber?.ToString(), v => DiscNumber = v);
-        AddRow("bpm", Bpm, hit.Bpm?.ToString(), v => Bpm = v);
-        AddRow("isrc", Isrc, hit.Isrc, v => Isrc = v);
-
-        if (MetadataChanges.Count > 0)
-        {
-            IsSearchMetadataOpen = true;
-            SearchMetadataStatus = MetadataChanges.Count == 1
-                ? "Found 1 change — untick anything you don't want."
-                : $"Found {MetadataChanges.Count} changes — untick anything you don't want.";
-        }
-        else
-        {
-            // A match was found, but every field already agrees with it.
-            SearchMetadataStatus = "Tags already match the online data — nothing to update.";
-        }
-    }
-
-    private async Task SearchAlbumMetadataAsync()
-    {
-        TagSuggestion? representative = null;
-        int matched = 0;
-
-        // Match each track individually so per-track titles/numbers are correct.
-        foreach (var t in _albumTracks!)
-        {
-            var hit = await _autoMatch!.MatchAsync(t);
-            if (hit is null) continue;
-            _albumMatches[t] = hit;
-            representative ??= hit;
-            matched++;
-        }
-
-        if (matched == 0) { SearchMetadataStatus = "No metadata found online for this album."; return; }
-
-        // Shared (album-wide) fields are reviewed as rows and fanned out on Save.
-        AddRow("album", Album, representative!.Album, v => Album = v);
-        AddRow("album artist", AlbumArtist, representative.AlbumArtist, v => AlbumArtist = v);
-        AddRow("year", Year, representative.Year?.ToString(), v => Year = v);
-        AddRow("genre", Genre, representative.Genre, v => Genre = v);
-
-        var sharedCount = MetadataChanges.Count;
-        IsSearchMetadataOpen = true;
-        SearchMetadataStatus =
-            $"Matched {matched} of {_albumTracks!.Count} tracks. " +
-            (sharedCount > 0 ? "Review album fields below." : "Apply to update per-track titles & numbers.");
-    }
-
-    private void AddRow(string field, string? oldValue, string? newValue, Action<string> setter)
-    {
-        var row = MetadataChangeRow.TryCreate(field, oldValue, newValue, () => setter(newValue!.Trim()));
-        if (row != null) MetadataChanges.Add(row);
-    }
-
-    [RelayCommand]
-    private void ApplySearchMetadata()
-    {
-        foreach (var row in MetadataChanges)
-            row.ApplyIfChecked();
-
-        // Album per-track matches are applied to each Track during Save.
-        _albumPerTrackApproved = _albumScoped;
-
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = "Applied. Click Save to keep.";
-    }
-
-    [RelayCommand]
-    private void CloseSearchMetadata()
-    {
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = string.Empty;
-        MetadataChanges.Clear();
-        _albumMatches.Clear();
-        _albumPerTrackApproved = false;
-    }
+    // ── Search metadata ── lives in MetadataViewModel.Search.cs (owner 10-08: Search
+    // metadata revamp): the Find online panel, its field mapping, apply and undo.
 
     // Opens the Spotify-style share card for the current lyrics (plain, else synced
     // with timestamps stripped). Reuses the existing LyricShareDialog.
@@ -1277,24 +1131,6 @@ public partial class MetadataViewModel : ViewModelBase
             if (ratingChg) t.Rating = ratingVal;
             if (dislikedChg) t.IsDisliked = IsDisliked;
             if (albumChg || albumArtistChg) t.AlbumId = Track.ComputeAlbumId(t.AlbumArtist, t.Album);
-        }
-    }
-
-    /// <summary>
-    /// Writes each track's staged per-track match (title, track #, disc #, bpm) onto that Track,
-    /// so the album Save loop persists them. Only runs when the user applied a "Search metadata"
-    /// album result. Shared fields (album/artist/year/genre) are handled by ApplyAlbumScopedDetails.
-    /// </summary>
-    private void ApplyAlbumPerTrackMatches()
-    {
-        if (!_albumPerTrackApproved || _albumMatches.Count == 0) return;
-
-        foreach (var (t, hit) in _albumMatches)
-        {
-            if (!string.IsNullOrWhiteSpace(hit.Title)) t.Title = hit.Title;
-            if (hit.TrackNumber is > 0) t.TrackNumber = hit.TrackNumber.Value;
-            if (hit.DiscNumber is > 0) t.DiscNumber = hit.DiscNumber.Value;
-            if (hit.Bpm is > 0) t.Bpm = hit.Bpm.Value;
         }
     }
 
@@ -2507,7 +2343,7 @@ public partial class MetadataViewModel : ViewModelBase
             // Album-scoped: fan out only the Details fields the user actually
             // changed to every album track (per-track values are preserved).
             ApplyAlbumScopedDetails();
-            ApplyAlbumPerTrackMatches();
+            ApplyStagedTrackChanges();
         }
 
         // Apply a staged play-count reset (kept pending so Cancel discards it).
