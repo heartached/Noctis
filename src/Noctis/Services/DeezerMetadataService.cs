@@ -61,8 +61,15 @@ public sealed class DeezerMetadataService
     /// following the search hit through <c>/track/{id}</c> and <c>/album/{id}</c> to fill genre,
     /// track #, disc #, bpm, isrc, track count, album artist and year. Null on miss/failure.
     /// </summary>
-    public async Task<TagSuggestion?> EnrichAsync(
+    public Task<TagSuggestion?> EnrichAsync(
         string artist, string title, string album, CancellationToken ct = default)
+        => EnrichAsync(artist, title, album, null, ct);
+
+    /// <inheritdoc cref="EnrichAsync(string, string, string, CancellationToken)"/>
+    /// <param name="duration">The track's length, when known: picks the matching edit among
+    /// same-titled hits (album version vs radio edit vs extended mix).</param>
+    public async Task<TagSuggestion?> EnrichAsync(
+        string artist, string title, string album, TimeSpan? duration, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(artist))
             return null;
@@ -70,10 +77,11 @@ public sealed class DeezerMetadataService
         try
         {
             // 1. Find the best matching track id via search (album hint normalized, with a
-            //    drop-album retry so deluxe/anniversary editions still resolve).
+            //    drop-album retry so deluxe/anniversary editions still resolve) — the hit that
+            //    best matches title/artist/duration, not Deezer's first (most popular) one.
             var searchJson = await SearchJsonWithAlbumFallbackAsync(artist, title, album, ct).ConfigureAwait(false);
             if (searchJson is null) return null;
-            var bestId = DeezerApi.FirstTrackId(searchJson);
+            var bestId = DeezerApi.BestTrackId(searchJson, artist, title, duration);
             if (bestId is null) return null;
 
             // 2. Pull the full track record.
@@ -115,6 +123,8 @@ public sealed class DeezerMetadataService
         // Deezer localises genre names (and album/genre labels) from Accept-Language and falls back
         // to IP geolocation when none is sent, so a Spanish user got "Alternativo" while the genre
         // picker lists "Alternative". Pin English so suggestions match the picker's fixed list.
+        // Same pacer as the Search Metadata engine: Deezer's quota is per IP, not per caller.
+        await Noctis.Services.MetadataSearch.RequestPacer.Deezer.WaitAsync(ct).ConfigureAwait(false);
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.AcceptLanguage.ParseAdd("en");
         using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);

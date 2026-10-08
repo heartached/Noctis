@@ -32,6 +32,24 @@ public class DeezerApiTests
         Assert.Empty(DeezerApi.ParseSearch("{\"error\":{\"code\":4}}"));
     }
 
+    // Deezer orders by popularity: the first hit for "One More Time" can be a remix or a cover,
+    // and enrichment used to take it — ISRC/track #/BPM then belonged to another recording.
+    [Fact]
+    public void BestTrackId_PrefersTitleArtistAndDurationOverDeezerOrder()
+    {
+        var json = """
+        {"data":[
+          {"id":1,"title":"One More Time (As Made Famous By Daft Punk)","duration":469,"artist":{"name":"The Backing Tracks"}},
+          {"id":2,"title":"One More Time (Short Radio Edit)","duration":235,"artist":{"name":"Daft Punk"}},
+          {"id":3,"title":"One More Time","duration":320,"artist":{"name":"Daft Punk"}}
+        ]}
+        """;
+
+        Assert.Equal(3, DeezerApi.BestTrackId(json, "Daft Punk", "One More Time"));
+        Assert.Equal(3, DeezerApi.BestTrackId(json, "Daft Punk", "One More Time", TimeSpan.FromSeconds(321)));
+        Assert.Null(DeezerApi.BestTrackId("{\"data\":[]}", "Daft Punk", "One More Time"));
+    }
+
     [Fact]
     public void BuildSearchUrl_EncodesArtistAndTitle()
     {

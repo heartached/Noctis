@@ -51,6 +51,35 @@ public static class DeezerApi
         catch (JsonException) { return null; }
     }
 
+    /// <summary>
+    /// Returns the id of the search hit that best matches (artist, title) — and the duration when
+    /// known — or null for an empty payload. Deezer's own order is popularity, not similarity:
+    /// taking its first hit let a remix or a cover supply the ISRC/track #/BPM.
+    /// </summary>
+    public static long? BestTrackId(string json, string artist, string title, TimeSpan? duration = null)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                return null;
+            long? best = null;
+            var bestScore = double.MinValue;
+            foreach (var item in data.EnumerateArray())
+            {
+                if (!item.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number) continue;
+                var hitArtist = item.TryGetProperty("artist", out var a) ? GetString(a, "name") : "";
+                var score = FuzzyTrackMatcher.TagSimilarity(title, artist, GetString(item, "title"), hitArtist);
+                if (duration is { } d && d > TimeSpan.Zero && GetInt(item, "duration") is > 0 and var secs)
+                    score += 0.25 * Noctis.Services.MetadataSearch.MatchText.DurationScore(d, TimeSpan.FromSeconds(secs));
+                if (score > bestScore) { bestScore = score; best = idEl.GetInt64(); } // ties keep Deezer's order
+            }
+            return best;
+        }
+        catch (JsonException) { return null; }
+    }
+
     /// <summary>Per-track fields parsed from a Deezer <c>/track/{id}</c> payload.</summary>
     public sealed record DeezerTrack(
         long AlbumId, string Title, string Artist, string? AlbumArtist,
