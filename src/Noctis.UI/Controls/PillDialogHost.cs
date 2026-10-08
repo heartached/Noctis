@@ -11,6 +11,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
 using Avalonia.Platform;
@@ -358,7 +359,21 @@ public class PillDialogHost : ContentControl
                 finally { handle.Free(); }
             }
 
-            await Task.Run(() => BoxBlur(pixels, w, h, BlurRadius, BlurPasses));
+            // Owner 10-08: white specks on the pill backdrop. This window is transparent and
+            // sits over the real owner, so any snapshot pixel below alpha 255 (a translucent
+            // owner surface — Liquid Glass paints the window root at 35% — or whatever a GPU
+            // pass leaves half-covered) stayed see-through after the blur, and the sharp owner
+            // showed through it: crisp white icon and text fragments over the blur. Laid over
+            // the owner's own opaque background first, the blurred copy is opaque everywhere
+            // (a blur of alpha-255 pixels stays 255) and nothing behind it can show.
+            var baseColor = OpaqueBaseColor(owner);
+            var rgba = format == PixelFormat.Rgba8888;
+            var premultiplied = alpha != AlphaFormat.Unpremul;
+            await Task.Run(() =>
+            {
+                FlattenOpaque(pixels, baseColor, rgba, premultiplied);
+                BoxBlur(pixels, w, h, BlurRadius, BlurPasses);
+            });
 
             if (_closed || _backdrop is null) return;
             var bitmap = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), format, alpha);
@@ -388,6 +403,59 @@ public class PillDialogHost : ContentControl
         {
             // Some backends can't snapshot or read back; the dim alone is a fine backdrop.
             DebugLogger.Warn(DebugLogger.Category.UI, "PillDialog.Backdrop", ex.Message);
+        }
+    }
+
+    /// <summary>The colour the snapshot is flattened onto: the owner's own background made
+    /// opaque (with Liquid Glass on it is the theme surface at 35%, so its colour is the
+    /// surface the glass tints toward), else black/white by theme.</summary>
+    private static Color OpaqueBaseColor(TopLevel owner)
+    {
+        switch (owner.Background)
+        {
+            case ISolidColorBrush solid:
+                return Color.FromRgb(solid.Color.R, solid.Color.G, solid.Color.B);
+            case IGradientBrush { GradientStops.Count: > 0 } gradient:
+                // Some themes paint the window root with a gradient (Smoke): its average.
+                int r = 0, g = 0, b = 0, n = gradient.GradientStops.Count;
+                foreach (var stop in gradient.GradientStops) { r += stop.Color.R; g += stop.Color.G; b += stop.Color.B; }
+                return Color.FromRgb((byte)(r / n), (byte)(g / n), (byte)(b / n));
+            default:
+                return owner.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light ? Colors.White : Colors.Black;
+        }
+    }
+
+    /// <summary>
+    /// Lays every pixel over the opaque <paramref name="baseColor"/>, in place, so the result
+    /// has alpha 255 everywhere and no part of the backdrop is see-through (owner 10-08:
+    /// white specks on the pill backdrop — the dialog is a transparent window over the real
+    /// owner, so a snapshot pixel below 255 lets the sharp owner show through the blur).
+    /// Fully opaque pixels are untouched. <paramref name="rgba"/> picks the channel order
+    /// (else BGRA); <paramref name="premultiplied"/> says how the colour bytes are stored.
+    /// </summary>
+    internal static void FlattenOpaque(byte[] pixels, Color baseColor, bool rgba, bool premultiplied)
+    {
+        int c0 = rgba ? baseColor.R : baseColor.B, c1 = baseColor.G, c2 = rgba ? baseColor.B : baseColor.R;
+        for (var i = 0; i + 3 < pixels.Length; i += 4)
+        {
+            int a = pixels[i + 3];
+            if (a == 255) continue;
+            var rest = 255 - a;
+            if (premultiplied)
+            {
+                // src-over onto an opaque base: c + base·(1 − a). Clamped, as a bad premultiplied
+                // pixel (colour above its alpha) would otherwise wrap.
+                pixels[i] = (byte)Math.Min(255, pixels[i] + (c0 * rest + 127) / 255);
+                pixels[i + 1] = (byte)Math.Min(255, pixels[i + 1] + (c1 * rest + 127) / 255);
+                pixels[i + 2] = (byte)Math.Min(255, pixels[i + 2] + (c2 * rest + 127) / 255);
+            }
+            else
+            {
+                pixels[i] = (byte)((pixels[i] * a + c0 * rest + 127) / 255);
+                pixels[i + 1] = (byte)((pixels[i + 1] * a + c1 * rest + 127) / 255);
+                pixels[i + 2] = (byte)((pixels[i + 2] * a + c2 * rest + 127) / 255);
+            }
+            pixels[i + 3] = 255;
         }
     }
 
