@@ -335,6 +335,14 @@ public partial class MetadataWindow : Window
             _transitions = new() { _fade, _move };
             _flyout.Closing += OnClosing;
             _flyout.Closed += OnClosed;
+            // Esc with the caret inside the pop-up (a native popup window has its own key
+            // routing): close it here; the editor's OnKeyDown covers focus left in the window.
+            Content?.AddHandler(KeyDownEvent, (_, e) =>
+            {
+                if (e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || e.Handled) return;
+                e.Handled = true;
+                Hide();
+            });
         }
 
         internal Avalonia.Controls.Flyout Flyout => _flyout;
@@ -440,6 +448,19 @@ public partial class MetadataWindow : Window
             && DataContext is MetadataViewModel { IsSaving: false } vm)
         {
             e.Handled = true;
+            // An artwork search pop-up is the innermost step: Esc closes it, not the editor
+            // under it (it used to Cancel the whole editor). While it plays its exit, a second
+            // Esc rides along rather than closing the editor too.
+            if (_artworkSearchMotion is { IsOpen: true } artworkSearch)
+            {
+                artworkSearch.Hide();
+                return;
+            }
+            if (_animatedSearchMotion is { IsOpen: true } animatedSearch)
+            {
+                animatedSearch.Hide();
+                return;
+            }
             // The Find online panel is a step inside the editor: Esc backs out of it first.
             if (vm.SearchPanel.IsOpen)
             {

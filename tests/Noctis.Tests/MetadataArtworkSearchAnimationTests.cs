@@ -212,6 +212,37 @@ public class MetadataArtworkSearchAnimationTests
     }
 
     [AvaloniaFact]
+    public void ArtworkSearch_Escape_ReversesThePopup_AndLeavesTheEditorOpen()
+    {
+        var (vm, win, motion, content) = OpenArtworkSearch();
+        var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+        try
+        {
+            AssertAnimatedClose(win, motion, content, () => vm.IsArtworkSearchOpen,
+                () => win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None));
+            Assert.False(host.IsClosing, "Esc closed the editor under the pop-up");
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    /// <summary>Esc with the caret inside the pop-up (on the desktop it is its own native
+    /// window, so the key may never reach the editor's OnKeyDown).</summary>
+    [AvaloniaFact]
+    public void ArtworkSearch_EscapeInsideThePopup_ReversesIt()
+    {
+        var (vm, win, motion, content) = OpenArtworkSearch();
+        var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+        try
+        {
+            var inner = content.GetLogicalDescendants().OfType<TextBlock>().First(t => t.IsEffectivelyVisible);
+            AssertAnimatedClose(win, motion, content, () => vm.IsArtworkSearchOpen, () =>
+                inner.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape, Source = inner }));
+            Assert.False(host.IsClosing);
+        }
+        finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+    }
+
+    [AvaloniaFact]
     public void ArtworkSearch_ClosingTheEditor_TakesThePopupWithIt()
     {
         var (vm, win, motion, content) = OpenArtworkSearch();
