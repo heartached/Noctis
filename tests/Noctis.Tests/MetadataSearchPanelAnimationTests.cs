@@ -134,6 +134,54 @@ public class MetadataSearchPanelAnimationTests
     }
 
     [AvaloniaFact]
+    public void HoveredAndPressedTicks_GrowWithoutBeingClipped()
+    {
+        // Owner 10-08 (after 5919ca88): the master tick still looked clipped on hover / click.
+        // A CheckBox clips to its own bounds (ClipToBounds defaults to true on templated
+        // controls), and ms-tick drops the theme's 32 px MinHeight, so the box is exactly the
+        // circle's 22 px tall; the hover grow (scale 1.06 → 23.3 px) was cut flat top and bottom.
+        var (_, win, _, view) = OpenPanel();
+        try
+        {
+            var ticks = view.GetVisualDescendants().OfType<CheckBox>()
+                .Where(c => c.Classes.Contains("ms-tick") && c.IsEffectivelyVisible).ToList();
+            Assert.Contains(ticks, t => t.Name == "MasterTick");
+            foreach (var tick in ticks)
+            {
+                var circle = tick.GetVisualDescendants().OfType<Border>().First(b => b.Name == "IndicatorBorder");
+                var centre = circle.TranslatePoint(new Point(circle.Bounds.Width / 2, circle.Bounds.Height / 2), win)!.Value;
+                win.MouseMove(centre);
+                Assert.True(PumpUntil(() => ScaleOf(circle) > 1.059), $"{tick.Name ?? "row tick"} never grew on hover");
+                AssertDrawnInsideClips(circle, tick, "hover");
+                win.MouseDown(centre, MouseButton.Left);
+                Assert.True(PumpUntil(() => ScaleOf(circle) < 0.901), $"{tick.Name ?? "row tick"} never shrank on press");
+                AssertDrawnInsideClips(circle, tick, "pressed");
+                // Release off the tick so nothing toggles; the next tick starts clean.
+                win.MouseMove(new Point(2, 2));
+                win.MouseUp(new Point(2, 2), MouseButton.Left);
+            }
+        }
+        finally { win.Close(); }
+    }
+
+    private static double ScaleOf(Visual v) => v.RenderTransform is TransformOperations t ? t.Value.M11 : 1;
+
+    /// <summary>The circle as drawn (render transform included) fits inside every ancestor
+    /// that clips, the tick itself first.</summary>
+    private static void AssertDrawnInsideClips(Border circle, CheckBox tick, string state)
+    {
+        for (Visual? v = circle.GetVisualParent(); v != null; v = v.GetVisualParent())
+        {
+            if (!v.ClipToBounds) continue;
+            var m = circle.TransformToVisual(v)!.Value;
+            var drawn = new Rect(circle.Bounds.Size).TransformToAABB(m);
+            var clip = new Rect(v.Bounds.Size);
+            Assert.True(clip.Contains(drawn),
+                $"{tick.Name ?? "row tick"} ({state}): circle drawn at {drawn} is clipped by {v.GetType().Name} {(v as Control)?.Name} {clip}");
+        }
+    }
+
+    [AvaloniaFact]
     public void Open_FadesRisesAndGrows_OnTheDialogsCurve()
     {
         EnsureAppStyles();
