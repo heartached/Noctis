@@ -196,6 +196,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         RestoreMiniPlayerPlacement(_miniPlayer, miniVm, vm.Settings.GetSettings());
 
         _miniPlayer.Show();
+        // Avalonia's Win32 Show() re-shows in the state code last SET, not the current one: a
+        // maximize done by Windows (snap, caption double-click, Win+Up) arrives through WM_SIZE
+        // and never updates it, so closing the mini player brought the window back un-maximized
+        // (Discord, Andre 10-07). Setting the current state records it before Hide().
+        WindowState = WindowState;
         Hide();
     }
 
