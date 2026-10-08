@@ -111,6 +111,29 @@ public class MetadataSearchPanelAnimationTests
     }
 
     [AvaloniaFact]
+    public void Ticks_SitInsideTheirColumn_SoTheCircleIsNotClipped()
+    {
+        // Owner 10-08: the checked master tick's circle was cut off on the left. The round
+        // checkbox wants 38 px (28 circle + 10 label gap); centred in the 30 px tick column it
+        // landed at x = -4 and its slot clipped the circle.
+        var (_, win, _, view) = OpenPanel();
+        try
+        {
+            var ticks = view.GetVisualDescendants().OfType<CheckBox>()
+                .Where(c => c.Classes.Contains("ms-tick") && c.IsEffectivelyVisible).ToList();
+            Assert.Contains(ticks, t => t.Name == "MasterTick");
+            foreach (var tick in ticks)
+            {
+                Assert.True(tick.Bounds.X >= 0, $"{tick.Name ?? "row tick"} starts at x={tick.Bounds.X}");
+                var circle = tick.GetVisualDescendants().OfType<Border>().First(b => b.Name == "IndicatorBorder");
+                var left = circle.TranslatePoint(new Point(0, 0), (Visual)tick.GetVisualParent()!)!.Value.X;
+                Assert.True(left >= 0, $"circle starts at x={left} in its column");
+            }
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Open_FadesRisesAndGrows_OnTheDialogsCurve()
     {
         EnsureAppStyles();

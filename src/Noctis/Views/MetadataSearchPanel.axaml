@@ -118,7 +118,12 @@
         </Style>
 
         <!-- Row ticks: the editor's round checkbox without its label gap. -->
+        <!-- Exactly the circle's 28 px, left-aligned: the template always reserves a 10 px label
+             gap (38 px wanted), and centred in the 30 px tick column that pushed the circle 4 px
+             left of its slot, which clipped its left edge (owner 10-08). -->
         <Style Selector="CheckBox.ms-tick">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="MinWidth" Value="0" />
             <Setter Property="MinHeight" Value="0" />
