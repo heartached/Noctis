@@ -79,6 +79,11 @@ public partial class MetadataViewModel
             Duration = !album && _track.Duration > TimeSpan.Zero ? _track.Duration : null,
             TrackNumber = !album && int.TryParse(TrackNumber, out var tn) && tn > 0 ? tn : null,
             DiscNumber = !album && int.TryParse(DiscNumber, out var dn) && dn > 0 ? dn : null,
+            // The user's edition (owner 10-08: an ISRC match on the 15-track standard release
+            // proposed "Track count 17 → 15" for the 17-track copy); the engine picks the release
+            // whose totals match. A "Mixed" album field doesn't parse and is left out.
+            TrackCount = int.TryParse(TrackCount, out var tc) && tc > 0 ? tc : null,
+            DiscCount = int.TryParse(DiscCount, out var dc) && dc > 0 ? dc : null,
             Isrc = album ? string.Empty : Isrc.Trim(),
             Year = int.TryParse(Year, out var y) && y > 0 ? y : null,
             AlbumScope = album,

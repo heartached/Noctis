@@ -104,6 +104,23 @@ public class MetadataSearchPanelTests
     }
 
     [AvaloniaFact]
+    public async Task Query_CarriesTheUsersTrackAndDiscTotals_SoTheEngineCanMatchTheEdition()
+    {
+        // Owner 10-08: an ISRC match on the 15-track standard release proposed
+        // "Track count 17 → 15" for a 17-track copy; the engine needs the local totals.
+        var search = new FakeSearch();
+        var vm = await SingleVm(search);
+        vm.TrackCount = "17";
+        vm.DiscCount = "1";
+
+        vm.OpenSearchPanelCommand.Execute(null);
+
+        var q = Assert.Single(search.Queries);
+        Assert.Equal(17, q.TrackCount);
+        Assert.Equal(1, q.DiscCount);
+    }
+
+    [AvaloniaFact]
     public async Task AlbumScope_PrefillsAlbumAndAlbumArtist_AndSendsTheLocalTracks()
     {
         var search = new FakeSearch();
