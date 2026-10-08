@@ -1430,12 +1430,12 @@ public partial class MetadataViewModel : ViewModelBase
         MediaKind = string.IsNullOrEmpty(_track.MediaKind) ? "Music" : _track.MediaKind;
         HasStartTime = _track.StartTimeMs > 0;
         StartTime = _track.StartTimeMs > 0
-            ? TimeSpan.FromMilliseconds(_track.StartTimeMs).ToString(@"m\:ss\.fff")
+            ? FormatTime(TimeSpan.FromMilliseconds(_track.StartTimeMs))
             : "0:00.000";
         HasStopTime = _track.StopTimeMs > 0;
         StopTime = _track.StopTimeMs > 0
-            ? TimeSpan.FromMilliseconds(_track.StopTimeMs).ToString(@"m\:ss\.fff")
-            : _track.Duration.ToString(@"m\:ss\.fff");
+            ? FormatTime(TimeSpan.FromMilliseconds(_track.StopTimeMs))
+            : FormatTime(_track.Duration);
         VolumeAdjust = _track.VolumeAdjust;
         SelectedEqPreset = string.IsNullOrEmpty(_track.EqPreset) ? "None" : _track.EqPreset;
     }
@@ -2982,6 +2982,13 @@ public partial class MetadataViewModel : ViewModelBase
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Start/stop time text. m:ss.fff alone drops the hours (TimeSpan's "m" is the minutes
+    /// component), so a 1:05:00 stop time showed as "5:00.000" and any save cut it to 5 min.
+    /// </summary>
+    private static string FormatTime(TimeSpan time) =>
+        time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss\.fff") : time.ToString(@"m\:ss\.fff");
 
     /// <summary>Parses a time string like "1:23.456", "12:34.567", or "1:02:03.456" to milliseconds.</summary>
     private static long ParseTimeToMs(string time)

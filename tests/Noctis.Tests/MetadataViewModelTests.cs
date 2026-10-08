@@ -404,6 +404,45 @@ public class MetadataViewModelTests
         Assert.Equal(45_000, album[0].StartTimeMs);
     }
 
+    [Fact]
+    public async Task TrackScope_StopTimePastAnHour_SurvivesAnUnrelatedSave()
+    {
+        // Start/stop times were shown as m:ss.fff, which drops the hours: a 1:05:00 stop
+        // time loaded as "5:00.000", and saving any other field cut it to 5 minutes.
+        var album = Album("A", "X", 1);
+        album[0].Duration = TimeSpan.FromMinutes(70);
+        album[0].StopTimeMs = 3_900_000;
+        album[0].StartTimeMs = 3_660_000;
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(3_900_000, album[0].StopTimeMs);
+        Assert.Equal(3_660_000, album[0].StartTimeMs);
+    }
+
+    [Fact]
+    public async Task TrackScope_EnablingStopTime_DefaultsToTheFullLengthOfALongTrack()
+    {
+        var album = Album("A", "X", 1);
+        album[0].Duration = TimeSpan.FromMinutes(65);
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
+
+        vm.HasStopTime = true;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(3_900_000, album[0].StopTimeMs);
+    }
+
     /// <summary>GitHub #95: user EQ presets join the Options dropdown. Names match
     /// case-insensitively, so a tag spelled "BASS" selects the listed "Bass" once.</summary>
     [Fact]
