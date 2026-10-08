@@ -1392,6 +1392,20 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(tracks, startIndex, unshuffled: null);
 
     /// <summary>
+    /// A song row double-clicked in a list. With Shuffle on it plays that song, then the rest of
+    /// the list shuffled, and Shuffle stays on. ReplaceQueueAndPlay queued only the rows below and
+    /// turned Shuffle off, so the last row left Next with nothing to play (Discord, Andre 10-07:
+    /// last song in Songs, "but it's on Shuffle"). With Shuffle off it plays the list in order.
+    /// </summary>
+    public void PlayFromRow(IList<Track> tracks, int index)
+    {
+        if (IsShuffleEnabled && index >= 0 && index < tracks.Count)
+            PlayShuffled(tracks, first: tracks[index], avoidRecentlyPlayed: true);
+        else
+            ReplaceQueueAndPlay(tracks, index);
+    }
+
+    /// <summary>
     /// Plays <paramref name="track"/> as the whole queue, opened at <paramref name="start"/>: the
     /// engine opens the file there (the one-shot start a restored session resumes with) instead
     /// of being seeked once playing. A <see cref="SeekTo"/> sent right after a start reaches

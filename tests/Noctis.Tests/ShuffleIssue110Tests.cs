@@ -253,4 +253,32 @@ public class ShuffleIssue110Tests : IDisposable
 
         Assert.Equal(Ids(album.Skip(3)), Ids(after.UpNext));
     }
+
+    [Fact]
+    public void PlayFromRow_WithShuffleOn_LastRowStillQueuesTheRestShuffled()
+    {
+        var vm = CreateVm();
+        var list = Album(10);
+        vm.PlayShuffled(list); // Shuffle on
+
+        vm.PlayFromRow(list, 9); // the last row (Discord, Andre 10-07)
+
+        Assert.True(vm.IsShuffleEnabled);
+        Assert.Equal(list[9].Id, vm.CurrentTrack!.Id);
+        Assert.Equal(Ids(list.Take(9)).OrderBy(g => g), Ids(vm.UpNext).OrderBy(g => g));
+        Assert.True(vm.NextCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void PlayFromRow_WithShuffleOff_PlaysTheListInOrderFromTheRow()
+    {
+        var vm = CreateVm();
+        var list = Album(10);
+
+        vm.PlayFromRow(list, 4);
+
+        Assert.False(vm.IsShuffleEnabled);
+        Assert.Equal(list[4].Id, vm.CurrentTrack!.Id);
+        Assert.Equal(Ids(list.Skip(5)), Ids(vm.UpNext));
+    }
 }
