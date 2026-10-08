@@ -12,20 +12,23 @@ namespace Noctis.Services;
 public static class DeezerApi
 {
     /// <summary>
-    /// Builds a Deezer track-search URL scoped by artist + title (+ album when present),
-    /// using Deezer's advanced query syntax (<c>artist:"…" track:"…" album:"…"</c>).
+    /// Builds a Deezer track-search URL from artist + title (+ album when present) as plain free
+    /// text, which Deezer AND-matches across fields. Not the advanced <c>artist:"…" track:"…"</c>
+    /// syntax this used: verified live on 2026-10-08, any query with an <c>artist:</c> filter
+    /// returns <c>{"data":[],"total":0}</c>, so Deezer — the primary source — matched nothing and
+    /// every lookup fell through to MusicBrainz (owner 10-08: Search metadata "is not good").
     /// </summary>
     public static string BuildSearchUrl(string artist, string title, string album)
     {
         var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(artist)) parts.Add($"artist:\"{Sanitize(artist)}\"");
-        if (!string.IsNullOrWhiteSpace(title)) parts.Add($"track:\"{Sanitize(title)}\"");
-        if (!string.IsNullOrWhiteSpace(album)) parts.Add($"album:\"{Sanitize(album)}\"");
+        if (!string.IsNullOrWhiteSpace(artist)) parts.Add(Sanitize(artist));
+        if (!string.IsNullOrWhiteSpace(title)) parts.Add(Sanitize(title));
+        if (!string.IsNullOrWhiteSpace(album)) parts.Add(Sanitize(album));
         var query = string.Join(" ", parts);
-        return $"https://api.deezer.com/search?q={Uri.EscapeDataString(query)}&limit=5";
+        return $"https://api.deezer.com/search?q={Uri.EscapeDataString(query)}&limit=10";
     }
 
-    // Quotes delimit Deezer's field filters, so strip embedded quotes from the term.
+    // Quotes would read as phrase/field syntax; strip them from the term.
     private static string Sanitize(string s) => s.Replace("\"", " ").Trim();
 
     public static string BuildTrackUrl(long trackId) => $"https://api.deezer.com/track/{trackId}";

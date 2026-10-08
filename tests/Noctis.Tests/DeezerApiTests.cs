@@ -39,8 +39,10 @@ public class DeezerApiTests
 
         Assert.StartsWith("https://api.deezer.com/search?q=", url);
         var decoded = Uri.UnescapeDataString(url);
-        Assert.Contains("artist:", decoded);
         Assert.Contains("Lucid Dreams", decoded);
         Assert.Contains("Juice WRLD", decoded);
+        // Free text: Deezer's artist:"…" filter returns zero results (verified live 2026-10-08).
+        Assert.DoesNotContain("artist:", decoded);
+        Assert.DoesNotContain("track:", decoded);
     }
 }
