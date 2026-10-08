@@ -185,6 +185,22 @@ public class MetadataSearchPanelTests
     }
 
     [AvaloniaFact]
+    public async Task ProviderChip_ChangedMidSearch_RestartsWithTheNewSources()
+    {
+        // The running search used to finish with the old sources while the chips showed new ones.
+        var search = new FakeSearch { Gate = true };
+        var vm = await SingleVm(search);
+        var panel = vm.SearchPanel;
+        panel.Open();
+        Assert.True(panel.IsSearching);
+
+        panel.Providers[0].IsSelected = false;
+        Assert.Equal(2, search.Queries.Count);
+        Assert.True(search.Tokens[0].IsCancellationRequested);
+        Assert.Equal(new[] { "MusicBrainz", "Apple Music" }, search.Queries[1].Providers);
+    }
+
+    [AvaloniaFact]
     public async Task Selecting_BuildsChangedUnchangedAndBlockedRows()
     {
         var search = new FakeSearch { Result = One(Cand("Deezer", 0.9)) };

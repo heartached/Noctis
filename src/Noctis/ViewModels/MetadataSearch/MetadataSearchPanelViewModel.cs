@@ -349,8 +349,10 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             chip.IsSelected = true;
             return;
         }
-        // Re-run what's on screen with the new sources (the previous run is cancelled).
-        if (IsOpen && State is MetadataSearchState.Results or MetadataSearchState.Empty or MetadataSearchState.Failed)
+        // Re-run what's on screen with the new sources (the previous run is cancelled) — a
+        // search still running too, or it would land results from the sources just turned off.
+        if (IsOpen && State is MetadataSearchState.Results or MetadataSearchState.Empty or MetadataSearchState.Failed
+                or MetadataSearchState.Searching)
             _ = SearchAsync();
     }
 
