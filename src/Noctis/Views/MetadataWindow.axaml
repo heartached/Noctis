@@ -486,24 +486,28 @@
                              full compare panel over the editor; after an apply, the banner says what
                              came in and offers Undo until Save. Only the button hides for a
                              multi-track selection; the Mixed hint beside it must not, since that is
-                             where most fields read "Mixed". -->
+                             where most fields read "Mixed".
+                             Owner 10-08: animate artwork search + one Find online style. Same pill,
+                             label, icon and tooltip as the header's Find online (it was a red "Search
+                             metadata" pill opening the same panel); it opens rather than toggles,
+                             since the panel covers this tab while open. -->
                         <StackPanel Spacing="10">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Button Grid.Column="0"
-                                        Classes="accent-pill"
+                                        Classes="pill-secondary find-online"
+                                        Classes.on="{Binding SearchPanel.IsOpen}"
+                                        BorderThickness="1.5"
+                                        MinHeight="36"
+                                        Padding="16,0"
+                                        FontSize="12.5"
                                         IsVisible="{Binding ShowSearchMetadata}"
                                         Command="{Binding OpenSearchPanelCommand}"
                                         HorizontalAlignment="Left"
-                                        Padding="12,5"
-                                        FontSize="12"
-                                        CornerRadius="999"
-                                        FontWeight="SemiBold"
-                                        Cursor="Hand"
                                         ToolTip.Tip="{loc:T MetadataSearch.FindOnlineTip}">
-                                    <StackPanel Orientation="Horizontal" Spacing="7">
-                                        <PathIcon Data="{StaticResource SearchIcon}" Width="11" Height="11"
-                                                  Foreground="{DynamicResource AccentForegroundBrush}" />
-                                        <TextBlock Text="{loc:T Metadata.SearchMetadata}" VerticalAlignment="Center" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource SearchIcon}" Width="12" Height="12"
+                                                  Foreground="{DynamicResource AccentColorBrush}" />
+                                        <TextBlock Text="{loc:T MetadataSearch.FindOnline}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <TextBlock Grid.Column="1"

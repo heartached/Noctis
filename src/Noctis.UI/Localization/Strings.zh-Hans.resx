@@ -3532,10 +3532,6 @@
     <value>详细信息</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve">
-    <value>搜索元数据</value>
-    <comment>Content in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.FoundMetadata" xml:space="preserve">
     <value>找到的元数据</value>
     <comment>Text in MetadataWindow.axaml</comment>

@@ -963,7 +963,6 @@
   <data name="Metadata.Save" xml:space="preserve"><value>Kaydet</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Saving" xml:space="preserve"><value>Kaydediliyor</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Details" xml:space="preserve"><value>Ayrıntılar</value><comment>Header in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.SearchMetadata" xml:space="preserve"><value>Meta veri ara</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Meta veri bulundu</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Uygula</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>başlık</value><comment>Text in MetadataWindow.axaml</comment></data>
