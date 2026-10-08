@@ -71,7 +71,9 @@ public class MetadataService : IMetadataService
     /// everything else that read does. Owner 10-08: the v11 label backfill used the full read
     /// and kept the music HDD busy at 50–75 MB/s every launch — audio properties, the ffprobe
     /// fallback and the embedded cover bytes (11–15 MB per hi-res FLAC) for one text frame.
-    /// ReadStyle.None skips the audio properties and PictureLazy leaves pictures unread.
+    /// A plain FLAC is read block-header by block-header (<see cref="ExtendedTagIO.TryReadFlacLabel"/>):
+    /// TagLib# loads every FLAC metadata block, covers included, whatever the ReadStyle. Other
+    /// formats open with ReadStyle.None (no audio properties) | PictureLazy.
     /// Empty when the file has no label or can't be read.
     /// </summary>
     public string ReadLabel(string filePath)
@@ -81,6 +83,21 @@ public class MetadataService : IMetadataService
         // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a label either.
         if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
             return string.Empty;
+        // FLAC: TagLib# reads every metadata block (covers included) whatever the ReadStyle,
+        // so read just the comment block; anything unusual falls through to TagLib below.
+        if (Path.GetExtension(filePath).Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacLabel(stream, out var flacLabel))
+                    return flacLabel;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide, as before.
+            }
+        }
         try
         {
             using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
