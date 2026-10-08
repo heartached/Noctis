@@ -120,6 +120,10 @@ public sealed class MetadataSearchService : IMetadataSearchService
         var rescored = CandidateScorer.Score(q, CandidateMerger.Merge(group));
         var confidence = Math.Max(rescored.Confidence, group.Max(m => m.Confidence));
         confidence = Math.Min(1.0, confidence + AgreementBonus * (group.Count - 1));
+        // Sources agreeing on another edition still don't make it the user's: keep the
+        // mismatch below Strong (owner 10-08: deluxe track count 17→15).
+        if (!q.AlbumScope && EditionMatch.Compare(q, rescored).Verdict == EditionMatch.Verdict.Different)
+            confidence = Math.Min(confidence, CandidateScorer.EditionMismatchFactor);
         return rescored with
         {
             Confidence = confidence,
@@ -197,7 +201,9 @@ public sealed class MetadataSearchService : IMetadataSearchService
           .Append(q.AlbumArtist.Trim().ToLowerInvariant()).Append('|')
           .Append(MatchText.NormalizeCode(q.Isrc)).Append('|')
           .Append(q.Duration is { } d ? ((int)d.TotalSeconds).ToString(CultureInfo.InvariantCulture) : "").Append('|')
-          .Append(q.Year).Append('|').Append(q.TrackNumber).Append('|').Append(q.DiscNumber).Append('|');
+          .Append(q.Year).Append('|').Append(q.TrackNumber).Append('|').Append(q.DiscNumber).Append('|')
+          // The local edition's shape picks which release a recording is placed on.
+          .Append(q.TrackCount).Append('|').Append(q.DiscCount).Append('|');
         foreach (var t in q.AlbumTracks)
             sb.Append(t.DiscNumber).Append('.').Append(t.TrackNumber).Append(':')
               .Append((int)t.Duration.TotalSeconds).Append(';');

@@ -1,0 +1,43 @@
+{
+ "data": [
+  {
+   "id": 1742097167,
+   "readable": true,
+   "title": "Talk Of The Town",
+   "title_short": "Talk Of The Town",
+   "title_version": "",
+   "isrc": "USAT22203492",
+   "link": "https://www.deezer.com/track/1742097167",
+   "duration": 82,
+   "rank": 167636,
+   "explicit_lyrics": false,
+   "explicit_content_lyrics": 0,
+   "explicit_content_cover": 2,
+   "artist": {
+    "id": 9093938,
+    "name": "Jack Harlow",
+    "link": "https://www.deezer.com/artist/9093938",
+    "picture": "https://api.deezer.com/artist/9093938/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/acf97ceb30d48a97e47afd1c3f9b68ce/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/9093938/top?limit=50",
+    "type": "artist"
+   },
+   "album": {
+    "id": 316300887,
+    "title": "Come Home The Kids Miss You",
+    "cover": "https://api.deezer.com/album/316300887/image",
+    "cover_small": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/56x56-000000-80-0-0.jpg",
+    "cover_medium": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/250x250-000000-80-0-0.jpg",
+    "cover_big": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/500x500-000000-80-0-0.jpg",
+    "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8aa3f894894c7c7dfcce5df9eccababd/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/album/316300887/tracks",
+    "type": "album"
+   },
+   "type": "track"
+  }
+ ],
+ "total": 1
+}

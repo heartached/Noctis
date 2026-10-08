@@ -19,6 +19,12 @@ public sealed record MetadataQuery
     public TimeSpan? Duration { get; init; }
     public int? TrackNumber { get; init; }
     public int? DiscNumber { get; init; }
+    /// <summary>The edited track's track total (TRCK "n/total") — its edition's shape. An ISRC
+    /// match names the recording, not the release (owner 10-08: deluxe track count 17→15), so
+    /// this picks which standard/deluxe/explicit release supplies album, count, date, label…</summary>
+    public int? TrackCount { get; init; }
+    /// <summary>The edited track's disc total; same purpose as <see cref="TrackCount"/>.</summary>
+    public int? DiscCount { get; init; }
     public string Isrc { get; init; } = string.Empty;
     public int? Year { get; init; }
     /// <summary>True for the album editor: candidates are releases (with their track lists)
@@ -80,6 +86,10 @@ public sealed record MetadataCandidate
     public bool? Explicit { get; init; }
     public int? Bpm { get; init; }
     public TimeSpan? Duration { get; init; }
+    /// <summary>The source's own words for which edition this release is, when it names one
+    /// (MusicBrainz disambiguation: "explicit", "clean", "Walmart exclusive; ultra clear vinyl").
+    /// Display-only, never a tag value; the scorer puts it in <see cref="MatchNotes"/>.</summary>
+    public string Edition { get; init; } = string.Empty;
 
     /// <summary>Best (largest) cover the provider offers.</summary>
     public Uri? ArtworkUrl { get; init; }

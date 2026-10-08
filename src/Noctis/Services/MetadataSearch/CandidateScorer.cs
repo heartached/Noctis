@@ -9,11 +9,13 @@ namespace Noctis.Services.MetadataSearch;
 ///
 /// Track scope — weighted mean over the signals both sides have:
 ///   title 0.40 · artist 0.25 · album 0.10 · duration 0.20 · year 0.05 · track/disc # 0.05
+///   · same edition as the user's copy (track/disc totals, <see cref="EditionMatch"/>) 0.05
 /// then ×0.8 when the candidate is a different version (live/remix/edit…) than the query
 /// (×0.95 when its duration matches within 2 s),
 /// ×0.5 when the base titles barely agree (&lt; 0.5), and an ISRC match lifts it to
 /// 0.96 + 0.04×score (decisive: the same master recording). A various-artists compilation
-/// placement costs ×0.95 unless the query is one.
+/// placement costs ×0.95 unless the query is one. Last, ×0.84 when the candidate sits on a
+/// different edition than the user's copy (an ISRC names the recording, not the release).
 ///
 /// Album scope — album title 0.30 · album artist 0.25 · track count 0.15 · local tracks
 /// matched 0.20 · matched durations 0.05 · year 0.05.
@@ -21,6 +23,9 @@ namespace Noctis.Services.MetadataSearch;
 public static class CandidateScorer
 {
     public const double IsrcFloor = 0.96;
+    /// <summary>Track scope, candidate on another edition than the user's copy: ×0.84 keeps even
+    /// an exact ISRC match under the panel's Strong line (0.85).</summary>
+    public const double EditionMismatchFactor = 0.84;
 
     public static MetadataCandidate Score(MetadataQuery q, MetadataCandidate c)
         => q.AlbumScope ? ScoreAlbum(q, c) : ScoreTrack(q, c);
@@ -78,6 +83,10 @@ public static class CandidateScorer
             if (same) notes.Add($"Track {c.TrackNumber}");
         }
 
+        var (edition, editionNote) = EditionMatch.Compare(q, c);
+        if (edition == EditionMatch.Verdict.Same) Add(0.05, 1.0);
+        if (editionNote is not null) notes.Add(editionNote);
+
         var score = weights > 0 ? sum / weights : 0;
 
         // A different take of the song is a different recording, even with identical text.
@@ -104,6 +113,12 @@ public static class CandidateScorer
             score = IsrcFloor + (1 - IsrcFloor) * score;
             notes.Insert(0, "ISRC match");
         }
+
+        // Right recording, wrong edition: its album, counts, date, label, barcode and cover
+        // belong to another release than the user's (owner 10-08: deluxe track count 17→15 from
+        // a "Strong 100% · ISRC match"). Applied after the ISRC lift so it never reads Strong,
+        // and the same recording on the user's edition outranks it.
+        if (edition == EditionMatch.Verdict.Different) score *= EditionMismatchFactor;
 
         return c with { Confidence = Math.Clamp(score, 0, 1), MatchNotes = notes };
     }
@@ -138,6 +153,11 @@ public static class CandidateScorer
             Add(0.15, d == 0 ? 1.0 : d <= 2 ? 0.6 : Math.Max(0, 1.0 - (double)d / local.Count) * 0.5);
             notes.Add(d == 0 ? $"Same track count ({local.Count})" : $"{candCount} tracks vs {local.Count} local");
         }
+        // Name the edition when the source does, so look-alike rows (standard, deluxe,
+        // explicit, clean, vinyl) can be told apart: "Deluxe Edition · 17 tracks".
+        var edition = EditionMatch.Label(c);
+        if (edition.Length > 0)
+            notes.Add(candCount is > 0 ? $"{edition} · {candCount} tracks" : edition);
 
         var tracks = c.Tracks;
         if (local.Count > 0 && c.Tracks.Count > 0)

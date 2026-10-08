@@ -11,7 +11,8 @@ namespace Noctis.Services.MetadataSearch;
 /// with counts, a single curated genre, and the largest covers (the artwork CDN serves any
 /// requested size up to the master — 3000 px is asked for). No ISRC, label or composer, and
 /// no ISRC lookup (verified 2026-10-08: <c>lookup?isrc=</c> returns 0 results for a valid code).
-/// Apple asks for ~20 calls/minute, so at most two requests per search.
+/// Apple asks for ~20 calls/minute, so at most two requests per search (three when a track
+/// search knows the user's edition and the song sits on two albums).
 /// </summary>
 public sealed partial class AppleMusicProvider : IMetadataProvider
 {
@@ -39,23 +40,46 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
         var rows = ParseSongRows(json);
         var songs = rows.Select(r => r.Candidate).ToList();
 
-        // Only the album record carries the copyright line and the album's own date; fetch it
-        // for the best hit (by our score).
-        var best = songs.Select(c => CandidateScorer.ScoreTrack(q, c)).OrderByDescending(c => c.Confidence).FirstOrDefault();
-        var collectionId = best is null ? null : rows.First(r => r.Candidate.ProviderId == best.ProviderId).CollectionId;
-        if (best is null || string.IsNullOrEmpty(collectionId)) return songs;
-        try
+        // Only the album record carries the copyright line, the album's own date and its real
+        // track count; fetch it for the best hit (by our score). When the user's edition is
+        // known, also for the best hit's twin on another collection: Apple lists the same song
+        // on its explicit and clean albums, and the song rows can't tell them apart (live
+        // 10-08: "Talk Of The Town" sits on a 17-track explicit and a 15-track clean album, and
+        // both rows say trackCount 15).
+        var ranked = songs.Select(c => CandidateScorer.ScoreTrack(q, c)).OrderByDescending(c => c.Confidence).ToList();
+        if (ranked.Count == 0) return songs;
+        var best = ranked[0];
+        var picks = ranked
+            .Where(c => c.ProviderId == best.ProviderId || (EditionMatch.HasContext(q) && SameRecording(c, best)))
+            .Select(c => (c.ProviderId, CollectionId: rows.First(r => r.Candidate.ProviderId == c.ProviderId).CollectionId))
+            .Where(p => p.CollectionId.Length > 0)
+            .DistinctBy(p => p.CollectionId)
+            .Take(EditionMatch.HasContext(q) ? AlbumLookupTop : 1)
+            .ToList();
+        foreach (var (songId, collectionId) in picks)
         {
-            var lookup = await _http.GetStringAsync(LookupUrl(collectionId), ct).ConfigureAwait(false);
-            if (lookup is not null)
+            try
             {
-                var i = songs.FindIndex(s => s.ProviderId == best.ProviderId);
-                songs[i] = ApplyCollection(songs[i], lookup);
+                var lookup = await _http.GetStringAsync(LookupUrl(collectionId), ct).ConfigureAwait(false);
+                if (lookup is not null)
+                {
+                    var i = songs.FindIndex(s => s.ProviderId == songId);
+                    songs[i] = ApplyCollection(songs[i], lookup);
+                }
             }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { /* keep the search hit */ }
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception) { /* keep the search hit */ }
         return songs;
+    }
+
+    // Same title (with version markers) and length: the same song on another album.
+    private static bool SameRecording(MetadataCandidate a, MetadataCandidate b)
+    {
+        var x = MatchText.AnalyzeTitle(a.Title);
+        var y = MatchText.AnalyzeTitle(b.Title);
+        return x.Base == y.Base && x.Markers.SetEquals(y.Markers)
+               && a.Duration is { } da && b.Duration is { } db && Math.Abs((da - db).TotalSeconds) <= 3;
     }
 
     private async Task<IReadOnlyList<MetadataCandidate>> SearchAlbumsAsync(MetadataQuery q, CancellationToken ct)
@@ -219,13 +243,16 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
         };
     }
 
-    /// <summary>Adds the album record's copyright, date and album artist to a song candidate.</summary>
+    /// <summary>Adds the album record's copyright, date, album artist and real track/disc
+    /// counts to a song candidate.</summary>
     public static MetadataCandidate ApplyCollection(MetadataCandidate song, string lookupJson)
     {
         var album = ParseAlbumLookup(lookupJson);
         if (album is null) return song;
         return song with
         {
+            TrackCount = DiscTrackCount(lookupJson, song.DiscNumber ?? 1) ?? song.TrackCount,
+            DiscCount = album.DiscCount ?? song.DiscCount,
             Copyright = album.Copyright,
             // A song's own releaseDate is when it first came out (often its single); the album
             // date is what an album track is tagged with.
@@ -233,6 +260,27 @@ public sealed partial class AppleMusicProvider : IMetadataProvider
             Year = album.Year ?? song.Year,
             AlbumArtist = album.AlbumArtist.Length > 0 ? album.AlbumArtist : song.AlbumArtist,
         };
+    }
+
+    /// <summary>
+    /// The real size of one disc of a looked-up album. A song row's trackCount is the album's
+    /// size when that song was added, not now: verified live 10-08 on the 17-track "Come Home
+    /// The Kids Miss You" (1618136433) — the 15 song rows say 15, the two items added after
+    /// them (music videos, tracks 16-17) say 17, and so does the collection. Every track row
+    /// counts, videos included, as Apple's (and the downloaded files') numbering does.
+    /// </summary>
+    internal static int? DiscTrackCount(string lookupJson, int disc)
+    {
+        using var doc = JsonDocument.Parse(lookupJson);
+        var rows = Json.Arr(doc.RootElement, "results").ToList();
+        var onDisc = rows.Where(r => Json.Str(r, "wrapperType") == "track" && (Json.Int(r, "discNumber") ?? 1) == disc).ToList();
+        if (onDisc.Count == 0) return null;
+        var count = Math.Max(onDisc.Count, onDisc.Max(r => Math.Max(Json.Int(r, "trackCount") ?? 0, Json.Int(r, "trackNumber") ?? 0)));
+        // A one-disc album's collection count is that disc's count.
+        var collection = rows.FirstOrDefault(r => Json.Str(r, "wrapperType") == "collection");
+        var discs = onDisc.Max(r => Json.Int(r, "discCount") ?? 1);
+        if (discs <= 1 && Json.Int(collection, "trackCount") is > 0 and var total) count = Math.Max(count, total);
+        return count;
     }
 
     private static bool? Explicitness(string value) => value switch
