@@ -224,6 +224,34 @@ public class SearchPopupsShotsTests
         });
     }
 
+    /// <summary>The empty artwork preview the search pop-up opens over was painted in the
+    /// theme's BaseLow, the card's own colour on Dark (#252525 on #252525): no visible box.</summary>
+    [AvaloniaFact]
+    public void EmptyArtworkPreview_StandsOutFromTheCard()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var owner = new Window { Width = 1100, Height = 820, RequestedThemeVariant = ThemeVariant.Dark };
+            owner.Show();
+            var (vm, win) = OpenEditor(owner, new MetadataSearchPanelTests.FakeSearch());
+            try
+            {
+                var host = win.GetVisualDescendants().OfType<Noctis.Controls.PillDialogHost>().Single();
+                var tabs = win.GetVisualDescendants().OfType<TabControl>().Single();
+                tabs.SelectedItem = tabs.Items.OfType<TabItem>().First(t => Equals(t.Header, "Artwork"));
+                PumpUntil(() => false, 300);
+                Assert.False(vm.HasArtwork);
+                var preview = win.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ArtworkPreviewAnchor");
+                _o.WriteLine($"card {AccentTestHarness.ColorOf(host.Background)} preview {AccentTestHarness.ColorOf(preview.Background)}");
+                Assert.NotEqual(AccentTestHarness.ColorOf(host.Background), AccentTestHarness.ColorOf(preview.Background));
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(preview.Background));
+                Assert.Equal(new CornerRadius(24), preview.CornerRadius);
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); owner.Close(); }
+        });
+    }
+
     private static (MetadataViewModel vm, MetadataWindow win) OpenEditor(Window owner, MetadataSearchPanelTests.FakeSearch search)
     {
         var albumId = Guid.NewGuid();

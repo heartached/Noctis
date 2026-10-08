@@ -1112,14 +1112,16 @@
                     </StackPanel>
 
                     <!-- Artwork preview centered in the space left of the action stack.
-                         Also the anchor the search popup opens centered over. -->
+                         Also the anchor the search popup opens centered over. Filled like the
+                         fields (pill-well): the theme's BaseLow is the card's own colour on
+                         Dark, so an empty preview vanished into the card. -->
                     <Border x:Name="ArtworkPreviewAnchor"
+                            Classes="pill-well"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Width="400" Height="400"
                             CornerRadius="24"
-                            ClipToBounds="True"
-                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            ClipToBounds="True">
                         <Panel>
                             <TextBlock Text="{loc:T Metadata.NoArtwork}"
                                        FontSize="18"
@@ -1226,13 +1228,14 @@
                                 FontSize="12" />
                     </StackPanel>
 
+                    <!-- pill-well, as the Artwork tab's preview: BaseLow vanished into the card. -->
                     <Border x:Name="AnimatedCoverPreviewAnchor"
+                            Classes="pill-well"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Width="400" Height="400"
                             CornerRadius="24"
-                            ClipToBounds="True"
-                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            ClipToBounds="True">
                         <!-- Search popup: opened from code-behind, centered over the
                              preview so it reads as part of the tab. -->
                         <FlyoutBase.AttachedFlyout>
@@ -1281,10 +1284,9 @@
                                                            FontSize="11" Opacity="0.5"/>
                                             </StackPanel>
 
-                                            <Border CornerRadius="10" ClipToBounds="True"
+                                            <Border Classes="pill-well" CornerRadius="16" ClipToBounds="True"
                                                     HorizontalAlignment="Center"
-                                                    Width="240" Height="240"
-                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                                    Width="240" Height="240">
                                                 <Panel>
                                                     <Image Source="{Binding ArtworkPreview}"
                                                            Stretch="UniformToFill"/>
