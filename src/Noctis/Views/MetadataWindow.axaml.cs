@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using Avalonia.Threading;
 using Noctis.Helpers;
 using Noctis.ViewModels;
+using Noctis.ViewModels.MetadataSearch;
 
 namespace Noctis.Views;
 
@@ -107,6 +108,15 @@ public partial class MetadataWindow : Window
         DataContext = viewModel;
         viewModel.CloseRequested += (_, _) => Close();
 
+        // Find online panel: slide/fade it over the editor when it opens or closes, and stop
+        // its network work with the window.
+        viewModel.SearchPanel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MetadataSearchPanelViewModel.IsOpen))
+                OnSearchPanelOpenChanged(viewModel.SearchPanel.IsOpen);
+        };
+        Closed += (_, _) => viewModel.DisposeSearch();
+
         // Both search flyouts are AttachedFlyouts anchored on the preview borders
         // (so they open centered over the artwork, not at the Search buttons) and
         // AttachedFlyout has no IsOpen binding — drive open/close from the VM here.
@@ -127,6 +137,66 @@ public partial class MetadataWindow : Window
                     _artworkSearchFlyout?.Hide();
             }
         };
+    }
+
+    // ── Find online panel entrance / exit ──
+    // Opacity + a short rise, through transitions (keyframe animations can't drive
+    // RenderTransform here). Pinned with transitions detached, released next frame, as the
+    // tab glide above does. Close fades out, then collapses so the tabs take input again.
+    private static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelOffset =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(14px)");
+    private static readonly Avalonia.Media.Transformation.TransformOperations SearchPanelRest =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px)");
+    private Avalonia.Animation.Transitions? _searchPanelTransitions;
+    private int _searchPanelAnimation;
+
+    private Avalonia.Animation.Transitions SearchPanelTransitions => _searchPanelTransitions ??= new()
+    {
+        new Avalonia.Animation.DoubleTransition
+        {
+            Property = OpacityProperty,
+            Duration = TimeSpan.FromMilliseconds(220),
+            Easing = new CubicBezierEase(0.22, 1, 0.36, 1),
+        },
+        new Avalonia.Animation.TransformOperationsTransition
+        {
+            Property = RenderTransformProperty,
+            Duration = TimeSpan.FromMilliseconds(260),
+            Easing = new CubicBezierEase(0.22, 1, 0.36, 1),
+        },
+    };
+
+    private void OnSearchPanelOpenChanged(bool open)
+    {
+        var panel = SearchPanelView;
+        var run = ++_searchPanelAnimation;
+        if (open)
+        {
+            panel.Transitions = null;
+            panel.Opacity = 0;
+            panel.RenderTransform = SearchPanelOffset;
+            panel.IsVisible = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (run != _searchPanelAnimation) return;
+                panel.Transitions = SearchPanelTransitions;
+                panel.Opacity = 1;
+                panel.RenderTransform = SearchPanelRest;
+                panel.FocusQuery();
+            }, DispatcherPriority.Render);
+        }
+        else
+        {
+            panel.Transitions = SearchPanelTransitions;
+            panel.Opacity = 0;
+            panel.RenderTransform = SearchPanelOffset;
+            // Back to the editor: hand focus to the tabs so Esc/typing lands there.
+            MetaTabControl.Focus();
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (run == _searchPanelAnimation) panel.IsVisible = false;
+            }, TimeSpan.FromMilliseconds(230));
+        }
     }
 
     private Avalonia.Controls.Flyout? _artworkSearchFlyout;
@@ -180,6 +250,12 @@ public partial class MetadataWindow : Window
             && DataContext is MetadataViewModel { IsSaving: false } vm)
         {
             e.Handled = true;
+            // The Find online panel is a step inside the editor: Esc backs out of it first.
+            if (vm.SearchPanel.IsOpen)
+            {
+                vm.SearchPanel.CloseCommand.Execute(null);
+                return;
+            }
             vm.CancelCommand.Execute(null);
             return;
         }

@@ -92,7 +92,7 @@ public class PillDialogHostTests
         EnsureAppStyles();
         AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
         {
-            var (_, win, host) = Open();
+            var (vm, win, host) = Open();
             try
             {
                 Assert.NotNull(host.Card);
@@ -121,10 +121,11 @@ public class PillDialogHostTests
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(combo.Background));
 
                 // Footer: Save is the accent pill with its sheen layer; Cancel the quiet pill.
-                var save = all.OfType<Button>().Single(b => b.Classes.Contains("pill-primary"));
+                // (By command: the Find online pill and panel buttons share the classes.)
+                var save = all.OfType<Button>().Single(b => b.Classes.Contains("pill-primary") && b.Command == vm.SaveCommand);
                 Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(save.Background));
                 Assert.Contains(save.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
-                var cancel = all.OfType<Button>().Single(b => b.Classes.Contains("pill-secondary"));
+                var cancel = all.OfType<Button>().Single(b => b.Classes.Contains("pill-secondary") && b.Command == vm.CancelCommand);
                 Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));
             }
             finally { win.Close(); PumpUntil(() => !win.IsVisible); }
@@ -173,12 +174,12 @@ public class PillDialogHostTests
     public void CancelButton_AnimatesThenCloses()
     {
         EnsureAppStyles();
-        var (_, win, host) = Open();
+        var (vm, win, host) = Open();
         var closed = 0;
         win.Closed += (_, _) => closed++;
         Assert.True(PumpUntil(() => CardSettledOpen(host)));
 
-        var cancel = win.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("pill-secondary"));
+        var cancel = win.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("pill-secondary") && b.Command == vm.CancelCommand);
         // A real click (press + release over it), so the button runs its Command.
         var centre = cancel.TranslatePoint(new Point(cancel.Bounds.Width / 2, cancel.Bounds.Height / 2), win)!.Value;
         var sw = Stopwatch.StartNew();
