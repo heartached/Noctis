@@ -265,11 +265,13 @@
 
         <!-- Chromeless presenter for the artwork/animated search popups: the card
              inside (Border.pill-popover, PillDialog.axaml) draws all chrome, so the default
-             flyout box must vanish. Padding leaves room for the card's drop shadow. -->
+             flyout box must vanish. Padding leaves room for the card's drop shadow
+             (0 10 30: ~20 px above, ~30 at the sides, ~40 below); a uniform 14 cut it off in
+             a straight line under the card. -->
         <Style Selector="FlyoutPresenter.search-pop">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Padding" Value="32,24,32,40"/>
             <Setter Property="MaxWidth" Value="680"/>
             <Setter Property="MaxHeight" Value="680"/>
         </Style>
