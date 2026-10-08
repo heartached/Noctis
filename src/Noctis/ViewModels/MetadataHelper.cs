@@ -233,6 +233,27 @@ public static class MetadataHelper
             vm.SetUserEqPresets(main.Settings.UserEqPresetNames);
     }
 
+    /// <summary>
+    /// Shows the metadata window straight away and loads its file-backed state behind it.
+    /// It used to await InitializeAsync first, so the window appeared only after two TagLib
+    /// parses and a cover decode (owner 10-08: metadata window froze 230–880 ms on lyric
+    /// sidecar reads and waited 1–2 s for tag reads before showing). InitializeAsync runs up
+    /// to its first await synchronously (IsLoading, baseline), then the dialog opens with
+    /// the in-memory fields filled; Save stays disabled until the load lands.
+    /// </summary>
+    private static async Task ShowThenLoad(MetadataWindow window, MetadataViewModel vm)
+    {
+        var load = vm.InitializeAsync();
+        await ShowDialogOwned(window);
+        try { await load; }
+        catch (Exception ex)
+        {
+            // Every read inside is guarded; should anything still throw, IsLoading has
+            // already ended false (its finally), and logging keeps the fault observed.
+            DebugLogger.Warn(DebugLogger.Category.UI, "Metadata.Load", ex.Message);
+        }
+    }
+
     public static async Task OpenMultiTrackMetadataWindow(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -250,9 +271,34 @@ public static class MetadataHelper
             autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
         AddUserEqPresets(vm);
 
+        var edited = tracks.ToList();
+        vm.ChangesSaved += (_, _) =>
+        {
+            if (App.Services!.GetService<MainWindowViewModel>() is { } main)
+                LiveApplyPlayingOptions(main, edited);
+        };
+
         var window = new MetadataWindow(vm);
-        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
-        await ShowDialogOwned(window);
+        await ShowThenLoad(window, vm);
+    }
+
+    /// <summary>
+    /// Live-applies volume adjust and EQ preset when one of the edited tracks is playing.
+    /// Only the exact track the dialog was opened from used to count: an album or
+    /// multi-select save fans Options out to every track, yet the playing one kept its old
+    /// volume and EQ until it was played again (the multi-select dialog had no hook at all).
+    /// </summary>
+    private static void LiveApplyPlayingOptions(MainWindowViewModel main, IReadOnlyCollection<Track> edited)
+    {
+        var playing = main.Player.CurrentTrack;
+        if (playing == null || !edited.Contains(playing)) return;
+        var audio = App.Services!.GetRequiredService<IAudioPlayer>();
+        // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
+        // volume machinery that a concurrent gapless handoff is contending with.
+        if (audio.VolumeAdjust != playing.VolumeAdjust)
+            audio.VolumeAdjust = playing.VolumeAdjust;
+        main.Settings.ApplyEqPresetByName(
+            string.IsNullOrEmpty(playing.EqPreset) ? null : playing.EqPreset);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
@@ -299,19 +345,10 @@ public static class MetadataHelper
             if (main.Player.CurrentTrack?.AlbumId == track.AlbumId)
                 main.Player.RefreshAnimatedCover();
 
-            // Live-apply volume adjust and EQ preset when the edited track is currently playing.
-            if (main.Player.CurrentTrack != track) return;
-            var audio = App.Services!.GetRequiredService<IAudioPlayer>();
-            // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
-            // volume machinery that a concurrent gapless handoff is contending with.
-            if (audio.VolumeAdjust != track.VolumeAdjust)
-                audio.VolumeAdjust = track.VolumeAdjust;
-            main.Settings.ApplyEqPresetByName(
-                string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
+            LiveApplyPlayingOptions(main, albumTracks ?? new List<Track> { track });
         };
 
         var window = new MetadataWindow(vm);
-        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
-        await ShowDialogOwned(window);
+        await ShowThenLoad(window, vm);
     }
 }
