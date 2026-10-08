@@ -311,14 +311,14 @@ public class PillDialogHostTests
     {
         const int w = 32, h = 16;
         var flat = Enumerable.Repeat((byte)200, w * h * 4).ToArray();
-        PillDialogHost.BoxBlur(flat, w, h, 4, 3);
+        BackdropSnapshot.BoxBlur(flat, w, h, 4, 3);
         Assert.All(flat, b => Assert.Equal(200, b));
 
         // One bright pixel spreads into its neighbours and loses its peak; channels stay apart.
         var px = new byte[w * h * 4];
         var at = (8 * w + 16) * 4;
         px[at] = 255;           // channel 0 only
-        PillDialogHost.BoxBlur(px, w, h, 2, 3);
+        BackdropSnapshot.BoxBlur(px, w, h, 2, 3);
         Assert.True(px[at] < 255 && px[at] > 0);
         Assert.True(px[at + 4] > 0, "neighbour got nothing");
         Assert.Equal(0, px[at + 1]); // channel 1 untouched
@@ -342,7 +342,7 @@ public class PillDialogHostTests
             128, 128, 128, 128,
         };
         var baseColor = Color.FromRgb(0x30, 0x20, 0x10);
-        PillDialogHost.FlattenOpaque(px, baseColor, rgba: false, premultiplied: true);
+        BackdropSnapshot.FlattenOpaque(px, baseColor, rgba: false, premultiplied: true);
         Assert.Equal(new byte[] { 40, 50, 60, 255 }, px[0..4]);
         Assert.Equal(new byte[] { 0x10, 0x20, 0x30, 255 }, px[4..8]);   // the base, in BGRA order
         // White at 50% over the base: 128 + base·(127/255).
@@ -351,7 +351,7 @@ public class PillDialogHostTests
         // RGBA order, unpremultiplied source: the base lands in R first; an unpremultiplied
         // half-transparent white mixes 50/50.
         var rgba = new byte[] { 0, 0, 0, 0, 255, 255, 255, 128 };
-        PillDialogHost.FlattenOpaque(rgba, baseColor, rgba: true, premultiplied: false);
+        BackdropSnapshot.FlattenOpaque(rgba, baseColor, rgba: true, premultiplied: false);
         Assert.Equal(new byte[] { 0x30, 0x20, 0x10, 255 }, rgba[0..4]);
         Assert.Equal(new byte[] { 152, 144, 136, 255 }, rgba[4..8]);
 
@@ -359,8 +359,8 @@ public class PillDialogHostTests
         const int w = 24, h = 12;
         var holes = new byte[w * h * 4];
         for (var i = 0; i < w * h; i += 3) { holes[i * 4] = 200; holes[i * 4 + 3] = 255; }
-        PillDialogHost.FlattenOpaque(holes, baseColor, rgba: false, premultiplied: true);
-        PillDialogHost.BoxBlur(holes, w, h, 4, 3);
+        BackdropSnapshot.FlattenOpaque(holes, baseColor, rgba: false, premultiplied: true);
+        BackdropSnapshot.BoxBlur(holes, w, h, 4, 3);
         for (var i = 0; i < w * h; i++) Assert.Equal(255, holes[i * 4 + 3]);
     }
 

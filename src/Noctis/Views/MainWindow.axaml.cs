@@ -150,6 +150,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private EventHandler<string>? _accentChangedHandler;
     private EventHandler<bool>? _liquidGlassChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _settingsBackdropRefreshHandler;
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
     private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
@@ -164,7 +165,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
     private Border? _settingsOverlay;
-    private Border? _settingsScrim;
+    private Controls.BlurredBackdrop? _settingsScrim;
+    /// <summary>Bumped on every Settings open/close, so a reveal still waiting for the
+    /// backdrop snapshot knows when it has been overtaken.</summary>
+    private int _settingsSheetEpoch;
     private Controls.GlassPanel? _settingsGlass;
     private Border? _settingsCard;
     private Border? _queuePopupPanel;
@@ -442,6 +446,29 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
     }
 
+    /// <summary>
+    /// Settings open, after the overlay went visible (card, frost and scrim still at 0): waits
+    /// for the scrim's blurred snapshot of the app (BlurredBackdrop.PrepareAsync — at most its
+    /// budget, normally a frame or two), then fades the scrim (unless it is already up) and
+    /// plays the sheet's entrance. The snapshot is of AppContentLayer only, so the sheet being
+    /// in the tree meanwhile can't end up in it. A close (or another open) in the meantime
+    /// wins: this one then does nothing.
+    /// </summary>
+    private async void RevealSettingsSheet(bool fadeScrim)
+    {
+        var epoch = ++_settingsSheetEpoch;
+        if (_settingsScrim is { HasSnapshot: false } scrim)
+            await scrim.PrepareAsync();
+        else
+            // Reopened during the close fade, the snapshot still up: one frame at 0 first
+            // so the transitions animate the settle (as the open always did).
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Render);
+        if (epoch != _settingsSheetEpoch || DataContext is not MainWindowViewModel { IsSettingsModalOpen: true })
+            return;
+        if (fadeScrim) SetSettingsScrim(visible: null, opacity: 1);
+        SetSettingsSheet(shown: true);
+    }
+
     /// <summary>Mirrors the Settings overlay's visibility/opacity onto the sibling scrim
     /// (see SettingsScrim in the XAML for why it is not the overlay's Background).</summary>
     private void SetSettingsScrim(bool? visible, double? opacity)
@@ -506,6 +533,17 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
 
+                // A setting changed from the open sheet (theme, Liquid Glass, accent,
+                // language…) repaints the app under it: retake the blurred backdrop once
+                // things settle. No-op while Settings is closed (no snapshot up). Progress
+                // streams (scan, downloads) change nothing visible under the blur.
+                _settingsBackdropRefreshHandler = (_, e) =>
+                {
+                    if (e.PropertyName?.EndsWith("Progress", StringComparison.Ordinal) != true)
+                        _settingsScrim?.ScheduleRefresh();
+                };
+                vm.Settings.PropertyChanged += _settingsBackdropRefreshHandler;
+
                 // The 'System' theme tile resolved the OS light/dark mode once and
                 // never tracked later switches. The VM no-ops unless System is the
                 // active theme; Post guards against a non-UI-thread raise (SetTheme
@@ -537,7 +575,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
                 _rootPanel = this.FindControl<DockPanel>("RootPanel");
                 _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
-                _settingsScrim = this.FindControl<Border>("SettingsScrim");
+                _settingsScrim = this.FindControl<Controls.BlurredBackdrop>("SettingsScrim");
+                if (_settingsScrim != null)
+                    _settingsScrim.Target = this.FindControl<Panel>("AppContentLayer");
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
@@ -671,35 +711,36 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                                     {
                                         if (_settingsScrim != null) _settingsScrim.Transitions = scrimTransitions;
-                                        SetSettingsSheet(shown: true);
                                     }, Avalonia.Threading.DispatcherPriority.Render);
+                                    // The blur cross-fades in under the dim when it lands.
+                                    RevealSettingsSheet(fadeScrim: false);
                                 }
                                 else
                                 {
-                                    // Backdrop fades in while the card scales up; the settle
-                                    // happens on the next frame so the transitions animate it.
+                                    // Backdrop fades in while the card scales up, once the
+                                    // blurred snapshot is ready (see RevealSettingsSheet).
                                     _settingsOverlay.IsVisible = true;
                                     SetSettingsScrim(visible: true, opacity: null);
-                                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                                    {
-                                        SetSettingsScrim(visible: null, opacity: 1);
-                                        SetSettingsSheet(shown: true);
-                                    }, Avalonia.Threading.DispatcherPriority.Render);
+                                    RevealSettingsSheet(fadeScrim: true);
                                 }
                             }
                             else
                             {
                                 // Mirror of the open animation, then drop the overlay out
                                 // of the tree once the 140ms transitions have played.
+                                var closeEpoch = ++_settingsSheetEpoch;
                                 SetSettingsScrim(visible: null, opacity: 0);
                                 SetSettingsSheet(shown: false);
                                 Avalonia.Threading.DispatcherTimer.RunOnce(() =>
                                 {
-                                    if (_settingsOverlay != null &&
+                                    // Not when reopened (and maybe closed again) since: the
+                                    // latest close hides it, with its own snapshot still up.
+                                    if (_settingsOverlay != null && closeEpoch == _settingsSheetEpoch &&
                                         DataContext is MainWindowViewModel m && !m.IsSettingsModalOpen)
                                     {
                                         _settingsOverlay.IsVisible = false;
                                         SetSettingsScrim(visible: false, opacity: null);
+                                        _settingsScrim?.Release();
                                     }
                                 }, TimeSpan.FromMilliseconds(150));
                             }
@@ -1304,6 +1345,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
+            if (_settingsBackdropRefreshHandler != null)
+                vm.Settings.PropertyChanged -= _settingsBackdropRefreshHandler;
 
             if (_sidebarAlwaysExpandedHandler != null)
                 vm.Settings.SidebarAlwaysExpandedChanged -= _sidebarAlwaysExpandedHandler;
@@ -2550,7 +2593,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel, handledEventsToo: true);
 
-        var rootPanel = this.FindControl<Panel>("RootPanel")?.Parent as Panel;
+        // The window's root Panel (RootPanel now sits one level down, in AppContentLayer).
+        var rootPanel = Content as Panel;
         if (rootPanel != null)
         {
             DragDrop.SetAllowDrop(rootPanel, true);
