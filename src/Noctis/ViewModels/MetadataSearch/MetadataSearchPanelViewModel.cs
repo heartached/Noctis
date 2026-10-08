@@ -305,6 +305,15 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
             .ToList();
         foreach (var item in items) Candidates.Add(item);
 
+        // Every queried source down is not "no matches": the user should retry, not reword.
+        var queried = result.Providers.Where(p => p.Outcome != ProviderOutcome.Disabled).ToList();
+        if (items.Count == 0 && queried.Count > 0
+            && queried.All(p => p.Outcome is ProviderOutcome.Failed or ProviderOutcome.TimedOut))
+        {
+            ErrorText = ProviderStatusLine;
+            State = MetadataSearchState.Failed;
+            return;
+        }
         State = items.Count > 0 ? MetadataSearchState.Results : MetadataSearchState.Empty;
         SelectedCandidate = items.FirstOrDefault();
         _ = LoadThumbnailsAsync(items, cts.Token);

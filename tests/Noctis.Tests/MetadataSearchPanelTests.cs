@@ -168,6 +168,39 @@ public class MetadataSearchPanelTests
     }
 
     [AvaloniaFact]
+    public async Task EverySourceDown_ReadsAsFailed_NotAsNoMatches()
+    {
+        var search = new FakeSearch
+        {
+            Result = new MetadataSearchResult
+            {
+                Providers = new[]
+                {
+                    new ProviderStatus("Deezer", ProviderOutcome.Failed, 0, "offline"),
+                    new ProviderStatus("MusicBrainz", ProviderOutcome.TimedOut, 0),
+                    new ProviderStatus("Apple Music", ProviderOutcome.Disabled, 0),
+                },
+            },
+        };
+        var vm = await SingleVm(search);
+        vm.SearchPanel.Open();
+        Assert.True(vm.SearchPanel.IsFailed);
+        Assert.True(vm.SearchPanel.ShowMessage);
+
+        // One source answering with nothing is a real "no matches".
+        search.Result = new MetadataSearchResult
+        {
+            Providers = new[]
+            {
+                new ProviderStatus("Deezer", ProviderOutcome.Failed, 0, "offline"),
+                new ProviderStatus("MusicBrainz", ProviderOutcome.NoResults, 0),
+            },
+        };
+        await vm.SearchPanel.SearchAsync();
+        Assert.True(vm.SearchPanel.IsEmpty);
+    }
+
+    [AvaloniaFact]
     public async Task ProviderChips_FilterTheQuery_AndTheLastOneStaysOn()
     {
         var search = new FakeSearch();
