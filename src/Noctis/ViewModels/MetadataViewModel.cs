@@ -2939,11 +2939,15 @@ public partial class MetadataViewModel : ViewModelBase
 
     partial void OnSaveErrorMessageChanged(string value) => OnPropertyChanged(nameof(HasSaveError));
 
-    /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.ttml/.txt) with it —
-    /// lyrics resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
+    // Every lyric sidecar the lyrics page and Lyrics Studio find by the song's basename;
+    // .elrc and .lyricsfile (word timings) were missing, so a rename left them behind.
+    private static readonly string[] RenamedSidecarExtensions = { ".lrc", ".elrc", ".lyricsfile", ".ttml", ".txt" };
+
+    /// <summary>Moves a renamed track's same-basename lyric sidecars with it — lyrics
+    /// resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
     private static void MoveLyricSidecars(string oldPath, string newPath)
     {
-        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        foreach (var ext in RenamedSidecarExtensions)
         {
             try
             {
@@ -2963,7 +2967,7 @@ public partial class MetadataViewModel : ViewModelBase
     {
         if (watcher == null) return;
         var paths = new List<string> { oldPath, newPath };
-        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        foreach (var ext in RenamedSidecarExtensions)
         {
             paths.Add(Path.ChangeExtension(oldPath, ext));
             paths.Add(Path.ChangeExtension(newPath, ext));

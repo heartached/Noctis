@@ -523,6 +523,40 @@ public class MetadataViewModelTests
     }
 
     [Fact]
+    public async Task MultiSelectRename_MovesWordTimedSidecarsWithFile()
+    {
+        // The lyrics page reads .lyricsfile and .elrc (Lyrics Studio word timings) by the
+        // song's basename too; a rename that left them behind detached them from the song.
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Album("A", "X", 2);
+            tracks[0].FilePath = Path.Combine(dir, "a.flac");
+            tracks[1].FilePath = Path.Combine(dir, "b.flac");
+            File.WriteAllText(tracks[0].FilePath, "audio");
+            File.WriteAllText(tracks[1].FilePath, "audio");
+            File.WriteAllText(Path.Combine(dir, "a.elrc"), "[00:01.00]<00:01.00>hi");
+            File.WriteAllText(Path.Combine(dir, "a.lyricsfile"), "lines: []");
+
+            using var p = new TestPersistenceService();
+            var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
+                albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+            await vm.InitializeAsync();
+
+            vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.elrc")));
+            Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.lyricsfile")));
+            Assert.False(File.Exists(Path.Combine(dir, "a.elrc")));
+            Assert.False(File.Exists(Path.Combine(dir, "a.lyricsfile")));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task MultiSelectRename_RelocatesRenamedTracksInLibrary()
     {
         // A track's id is the hash of its path. Only reassigning FilePath kept the old
