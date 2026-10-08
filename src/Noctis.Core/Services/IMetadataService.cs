@@ -49,6 +49,13 @@ public interface IMetadataService
     byte[]? ExtractEmbeddedArt(string filePath) => null;
 
     /// <summary>
+    /// Just the record label (<see cref="Track.Label"/>), without the rest of a full read —
+    /// for the v11 label backfill, which opens most of the library. Empty when none is set.
+    /// The default falls back to the full read so test stubs keep compiling.
+    /// </summary>
+    string ReadLabel(string filePath) => ReadTrackMetadata(filePath)?.Label ?? string.Empty;
+
+    /// <summary>
     /// Writes metadata tags back to the audio file.
     /// </summary>
     bool WriteTrackMetadata(Track track);

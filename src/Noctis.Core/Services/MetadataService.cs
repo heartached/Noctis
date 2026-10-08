@@ -65,6 +65,33 @@ public class MetadataService : IMetadataService
 
     public Track? ReadTrackMetadata(string filePath) => ReadTrackMetadata(filePath, out _);
 
+    /// <summary>
+    /// The record label alone — the same <see cref="ExtendedTagIO.ReadLabel"/> lookup
+    /// <see cref="ReadTrackMetadata(string)"/> fills <see cref="Track.Label"/> with, minus
+    /// everything else that read does. Owner 10-08: the v11 label backfill used the full read
+    /// and kept the music HDD busy at 50–75 MB/s every launch — audio properties, the ffprobe
+    /// fallback and the embedded cover bytes (11–15 MB per hi-res FLAC) for one text frame.
+    /// ReadStyle.None skips the audio properties and PictureLazy leaves pictures unread.
+    /// Empty when the file has no label or can't be read.
+    /// </summary>
+    public string ReadLabel(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a label either.
+        if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return ExtendedTagIO.ReadLabel(file);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;

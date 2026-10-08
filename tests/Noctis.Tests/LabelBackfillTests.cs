@@ -97,6 +97,137 @@ public class LabelBackfillTests : IDisposable
         Assert.Equal(stamp, streamed.LastModified);    // the desktop's song: never folder-scanned
     }
 
+    // Counts the label-only reads the pass makes, and can quit the app (cancel the pass)
+    // from inside the Nth one — the owner closing Noctis halfway through.
+    private sealed class CountingMetadata : MetadataService, IMetadataService
+    {
+        public readonly List<string> LabelReads = new();
+        public int CancelOnRead;
+        public LibraryService? Library;
+
+        string IMetadataService.ReadLabel(string filePath)
+        {
+            LabelReads.Add(Path.GetFileName(filePath));
+            if (LabelReads.Count == CancelOnRead)
+                _ = Library!.PauseActiveScanForShutdownAsync(TimeSpan.Zero); // cancels synchronously
+            return ReadLabel(filePath);
+        }
+    }
+
+    private string Flac(string name, string? label)
+    {
+        var path = Path.Combine(_dir, name);
+        File.Move(CreateFlac(_dir), path);
+        if (label != null)
+        {
+            using var f = TagLib.File.Create(path);
+            ((TagLib.Ogg.XiphComment)f.GetTag(TagLib.TagTypes.Xiph, true)).SetField("LABEL", label);
+            f.Save();
+        }
+        return path;
+    }
+
+    private async Task<(LibraryService Library, CountingMetadata Metadata)> LaunchAsync(int cancelOnRead = 0)
+    {
+        var metadata = new CountingMetadata { CancelOnRead = cancelOnRead };
+        var library = new LibraryService(metadata, _persistence, new SqliteLibraryIndexService(_persistence),
+            new FolderMetadataBackfillTests.FakeAuditTrail());
+        metadata.Library = library;
+        await library.LoadAsync();
+        await library.BackgroundInit;
+        await library.LabelBackfill;
+        return (library, metadata);
+    }
+
+    [Fact]
+    public void ReadLabel_MatchesTheFullRead()
+    {
+        var vorbisLabel = Flac("label.flac", "Def Jam");
+
+        var organization = Flac("org.flac", null);
+        using (var f = TagLib.File.Create(organization))
+        {
+            ((TagLib.Ogg.XiphComment)f.GetTag(TagLib.TagTypes.Xiph, true)).SetField("ORGANIZATION", "Warp");
+            f.Save();
+        }
+
+        var mp3 = Path.Combine(_dir, "tpub.mp3");
+        File.Move(CreateMp3WithId3v2Only(_dir), mp3);
+        using (var f = TagLib.File.Create(mp3))
+        {
+            f.Tag.Publisher = "XL Recordings";
+            f.Save();
+        }
+
+        var unlabelled = Flac("none.flac", null);
+
+        var metadata = new MetadataService();
+        var expected = new Dictionary<string, string>
+        {
+            [vorbisLabel] = "Def Jam",
+            [organization] = "Warp",
+            [mp3] = "XL Recordings",
+            [unlabelled] = "",
+        };
+        foreach (var (path, label) in expected)
+        {
+            Assert.Equal(label, metadata.ReadLabel(path));
+            Assert.Equal(metadata.ReadTrackMetadata(path)!.Label, metadata.ReadLabel(path));
+        }
+        Assert.Equal("", metadata.ReadLabel(Path.Combine(_dir, "missing.flac")));
+    }
+
+    [Fact]
+    public async Task Shutdown_MidPass_NextLaunchContinuesWithoutRereadingCheckedFiles()
+    {
+        var tracks = new[]
+        {
+            Indexed(Flac("a0.flac", null), DateTime.UtcNow),
+            Indexed(Flac("a1.flac", "Def Jam"), DateTime.UtcNow),
+            Indexed(Flac("a2.flac", null), DateTime.UtcNow),
+            Indexed(Flac("a3.flac", null), DateTime.UtcNow),
+            Indexed(Flac("a4.flac", "XL Recordings"), DateTime.UtcNow),
+            Indexed(Flac("a5.flac", null), DateTime.UtcNow),
+        };
+        _persistence.LibraryTracks.AddRange(tracks);
+        _persistence.Settings.MetadataSchemaVersion = 10;
+
+        // Quit while the third file is being read.
+        var (_, first) = await LaunchAsync(cancelOnRead: 3);
+        Assert.Equal(new[] { "a0.flac", "a1.flac", "a2.flac" }, first.LabelReads);
+        Assert.Equal(10, _persistence.Settings.MetadataSchemaVersion);   // not done: not stamped
+
+        // The label found before the quit never reached library.json (this fake never saves):
+        // the progress log has to bring it back.
+        tracks[1].Label = string.Empty;
+
+        var (_, second) = await LaunchAsync();
+        // a0 and a2 had no label — they count as checked and are not opened again.
+        Assert.Equal(new[] { "a3.flac", "a4.flac", "a5.flac" }, second.LabelReads);
+        Assert.Equal("Def Jam", tracks[1].Label);
+        Assert.Equal("XL Recordings", tracks[4].Label);
+        Assert.Equal(11, _persistence.Settings.MetadataSchemaVersion);
+        Assert.False(File.Exists(Path.Combine(_persistence.DataDirectory, "label-backfill.progress")));
+
+        var (_, third) = await LaunchAsync();
+        Assert.Empty(third.LabelReads);
+    }
+
+    [Fact]
+    public async Task CompletedPass_FilesWithoutALabel_AreNotReadAgain()
+    {
+        _persistence.LibraryTracks.Add(Indexed(Flac("b0.flac", null), DateTime.UtcNow));
+        _persistence.LibraryTracks.Add(Indexed(Flac("b1.flac", null), DateTime.UtcNow));
+        _persistence.Settings.MetadataSchemaVersion = 10;
+
+        var (_, first) = await LaunchAsync();
+        Assert.Equal(2, first.LabelReads.Count);
+        Assert.Equal(11, _persistence.Settings.MetadataSchemaVersion);
+
+        var (_, second) = await LaunchAsync();
+        Assert.Empty(second.LabelReads);
+    }
+
     [Fact]
     public async Task Load_UpToDateSchema_LeavesLabelsAndStampsAlone()
     {
