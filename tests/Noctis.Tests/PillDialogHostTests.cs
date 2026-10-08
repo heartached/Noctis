@@ -1,0 +1,299 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Styling;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Noctis.Controls;
+using Noctis.Models;
+using Noctis.Services;
+using Noctis.ViewModels;
+using Noctis.Views;
+using Xunit;
+
+namespace Noctis.Tests;
+
+/// <summary>
+/// Owner 10-08 rounded pill pop-up, Metadata window first: PillDialogHost's template and
+/// pill classes resolve, the open animation settles, and every close path (VM
+/// CloseRequested, the Cancel button) animates out and then closes the window exactly
+/// once. Also the one-time backdrop blur and, under real Skia, a PNG of the result.
+/// </summary>
+public class PillDialogHostTests
+{
+    private readonly ITestOutputHelper _o;
+    public PillDialogHostTests(ITestOutputHelper o) => _o = o;
+
+    private const string ShotsDir = @"D:\NoctisLyricsLab\pill-dialog\shots";
+
+    private static void EnsureAppStyles()
+    {
+        var app = Application.Current!;
+        if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
+        app.Resources["InterSemiBold"] = FontFamily.Default;
+        app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
+        app.Styles.Add(new StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
+    }
+
+    /// <summary>Runs jobs and render ticks in real time: the transitions run on the render
+    /// clock and the deferred close on a DispatcherTimer.</summary>
+    private static bool PumpUntil(Func<bool> condition, int budgetMs = 3000)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < budgetMs)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            if (condition()) return true;
+            Thread.Sleep(5);
+        }
+        Dispatcher.UIThread.RunJobs();
+        return condition();
+    }
+
+    private static Track T(string title, int n, Guid albumId) => new()
+    {
+        Id = Guid.NewGuid(), Title = title, Artist = "Bad Bunny", AlbumArtist = "Bad Bunny",
+        Album = "nadie sabe lo que va a pasar mañana", AlbumId = albumId, TrackNumber = n, TrackCount = 3,
+        Genre = "Latin", Year = 2023, Duration = TimeSpan.FromSeconds(200), FilePath = "C:/m/" + title + ".flac",
+    };
+
+    private static (MetadataViewModel vm, MetadataWindow win, PillDialogHost host) Open(Window? owner = null)
+    {
+        var albumId = Guid.NewGuid();
+        var tracks = new[] { T("NADIE SABE", 1, albumId), T("MONACO", 2, albumId), T("FINA", 3, albumId) }.ToList();
+        var lib = new FakeLibraryService();
+        lib.TrackList.AddRange(tracks);
+        var vm = new MetadataViewModel(tracks[0], new NullMetadataService(), lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks);
+        var win = new MetadataWindow(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1100, Height = 820 };
+        if (owner is null) win.Show();
+        else _ = win.ShowDialog(owner);
+        var host = win.GetVisualDescendants().OfType<PillDialogHost>().Single();
+        return (vm, win, host);
+    }
+
+    private static bool CardSettledOpen(PillDialogHost host) =>
+        host.Card is { } card && card.Opacity > 0.999 && host.BackdropLayer!.Opacity > 0.999;
+
+    [AvaloniaFact]
+    public void MetadataWindow_OpensInPillHost_WithResolvedStyles()
+    {
+        EnsureAppStyles();
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var (_, win, host) = Open();
+            try
+            {
+                Assert.NotNull(host.Card);
+                Assert.NotNull(host.BackdropLayer);
+                // Starts hidden, then the open animation brings card and backdrop in.
+                Assert.True(PumpUntil(() => CardSettledOpen(host)), "open animation never settled");
+                Assert.True(host.IsOpenStarted);
+                Assert.Equal(new CornerRadius(30), host.CornerRadius);
+
+                // The card's content (the whole editor) is inside the template and laid out.
+                var tabs = win.GetVisualDescendants().OfType<TabControl>().Single();
+                Assert.True(tabs.Bounds.Width > 500, $"tab control width {tabs.Bounds.Width}");
+
+                // Filled pill fields: no stale outlined class, the filled tone and the pill
+                // radius come from PillDialog.axaml's resources (so they resolved).
+                var all = win.GetVisualDescendants().ToList();
+                Assert.DoesNotContain(all.OfType<TextBox>(), b => b.Classes.Contains("metadata-info-field"));
+                var field = all.OfType<TextBox>().First(b => b.Classes.Contains("pill-field") && b.IsEffectivelyVisible);
+                var chrome = field.GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_BorderElement");
+                _o.WriteLine($"field chrome bg={AccentTestHarness.ColorOf(chrome.Background)} border={chrome.BorderBrush} r={chrome.CornerRadius}");
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(chrome.Background));
+                Assert.Equal(new CornerRadius(999), chrome.CornerRadius);
+                Assert.Equal(Colors.Transparent, AccentTestHarness.ColorOf(chrome.BorderBrush));
+
+                var combo = all.OfType<ComboBox>().First(c => c.Classes.Contains("pill-field") && c.IsEffectivelyVisible);
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(combo.Background));
+
+                // Footer: Save is the accent pill with its sheen layer; Cancel the quiet pill.
+                var save = all.OfType<Button>().Single(b => b.Classes.Contains("pill-primary"));
+                Assert.Equal(AccentTestHarness.ResourceColor("AccentButtonBackground"), AccentTestHarness.ColorOf(save.Background));
+                Assert.Contains(save.GetVisualDescendants().OfType<Border>(), b => b.Name == "PillSheen");
+                var cancel = all.OfType<Button>().Single(b => b.Classes.Contains("pill-secondary"));
+                Assert.Equal(Color.Parse("#1CFFFFFF"), AccentTestHarness.ColorOf(cancel.Background));
+            }
+            finally { win.Close(); PumpUntil(() => !win.IsVisible); }
+        });
+    }
+
+    [AvaloniaFact]
+    public void CloseRequested_AnimatesThenClosesExactlyOnce()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open();
+        var closing = 0;
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+
+        var sw = Stopwatch.StartNew();
+        vm.CancelCommand.Execute(null);   // VM CloseRequested → window.Close()
+        win.Closing += (_, _) => closing++;
+        vm.CancelCommand.Execute(null);   // a second request mid-animation rides along
+        win.Close();                      // and so does a direct Close()
+
+        // Still up and animating out, not closed yet.
+        Assert.True(win.IsVisible);
+        Assert.True(host.IsClosing);
+        Assert.Equal(0, closed);
+        // The fading card no longer takes clicks: a second Save there would write the tags twice.
+        Assert.False(host.Card!.IsHitTestVisible);
+
+        var ok = PumpUntil(() => closed > 0, 2000);
+        _o.WriteLine($"after pump: visible={win.IsVisible} closing={host.IsClosing} closed={closed}");
+        Assert.True(ok, "window never closed");
+        sw.Stop();
+        _o.WriteLine($"closed after {sw.ElapsedMilliseconds} ms; closing events after the first: {closing}");
+        Assert.True(sw.ElapsedMilliseconds >= 150, $"closed after {sw.ElapsedMilliseconds} ms — the animation was skipped");
+        _o.WriteLine($"card opacity at close: {host.Card!.Opacity:0.000}");
+        Assert.True(host.Card.Opacity < 0.1, $"card still at {host.Card.Opacity:0.00} when the window closed");
+
+        // Nothing else closes it again.
+        PumpUntil(() => false, 300);
+        Assert.Equal(1, closed);
+        Assert.False(win.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void CancelButton_AnimatesThenCloses()
+    {
+        EnsureAppStyles();
+        var (_, win, host) = Open();
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+
+        var cancel = win.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("pill-secondary"));
+        // A real click (press + release over it), so the button runs its Command.
+        var centre = cancel.TranslatePoint(new Point(cancel.Bounds.Width / 2, cancel.Bounds.Height / 2), win)!.Value;
+        var sw = Stopwatch.StartNew();
+        win.MouseDown(centre, MouseButton.Left);
+        win.MouseUp(centre, MouseButton.Left);
+        Assert.True(host.IsClosing);
+        // (Under real Skia the two input frames can outlast the animation, so the close is
+        // checked by elapsed time rather than by "not closed yet".)
+
+        Assert.True(PumpUntil(() => closed > 0, 2000));
+        Assert.True(sw.ElapsedMilliseconds >= 150, $"closed after {sw.ElapsedMilliseconds} ms — the animation was skipped");
+        PumpUntil(() => false, 250);
+        Assert.Equal(1, closed);
+    }
+
+    [AvaloniaFact]
+    public void VetoedClose_ComesBackOpen()
+    {
+        EnsureAppStyles();
+        var (vm, win, host) = Open();
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+        // A later Closing handler that refuses the real close (e.g. an unsaved-changes guard).
+        var veto = true;
+        win.Closing += (_, e) => { if (veto) e.Cancel = true; };
+
+        vm.CancelCommand.Execute(null);
+        Assert.True(host.IsClosing);
+        Assert.True(PumpUntil(() => !host.IsClosing && CardSettledOpen(host), 2000), "card stayed hidden after a vetoed close");
+        Assert.True(host.Card!.IsHitTestVisible, "card stayed click-through after a vetoed close");
+        Assert.True(win.IsVisible);
+
+        veto = false;
+        vm.CancelCommand.Execute(null);
+        Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+    }
+
+    [Fact]
+    public void BoxBlur_KeepsFlatAreas_SpreadsDetail_AndClampsEdges()
+    {
+        const int w = 32, h = 16;
+        var flat = Enumerable.Repeat((byte)200, w * h * 4).ToArray();
+        PillDialogHost.BoxBlur(flat, w, h, 4, 3);
+        Assert.All(flat, b => Assert.Equal(200, b));
+
+        // One bright pixel spreads into its neighbours and loses its peak; channels stay apart.
+        var px = new byte[w * h * 4];
+        var at = (8 * w + 16) * 4;
+        px[at] = 255;           // channel 0 only
+        PillDialogHost.BoxBlur(px, w, h, 2, 3);
+        Assert.True(px[at] < 255 && px[at] > 0);
+        Assert.True(px[at + 4] > 0, "neighbour got nothing");
+        Assert.Equal(0, px[at + 1]); // channel 1 untouched
+    }
+
+    /// <summary>Real Skia only: the dialog over a busy owner, snapshot blurred behind it.</summary>
+    [AvaloniaFact]
+    public void Probe_SavesThePillDialogOverItsOwner()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        Directory.CreateDirectory(ShotsDir);
+        DebugLogger.IsEnabled = true;
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var stripes = new StackPanel();
+            var colors = new[] { "#E74856", "#2D7DD2", "#F4D35E", "#3BB273", "#7B2CBF", "#FF8C42" };
+            for (var i = 0; i < 18; i++)
+                stripes.Children.Add(new Border
+                {
+                    Height = 50,
+                    Background = new SolidColorBrush(Color.Parse(colors[i % colors.Length])),
+                    Child = new TextBlock { Text = $"Library row {i}", FontSize = 22, Margin = new Thickness(24, 8), Foreground = Brushes.White },
+                });
+            var owner = new Window { Width = 1100, Height = 820, Content = stripes, RequestedThemeVariant = ThemeVariant.Dark };
+            owner.Show();
+            PumpUntil(() => false, 100);
+
+            var (_, win, host) = Open(owner);
+            try
+            {
+                var ready = PumpUntil(() => CardSettledOpen(host) && host.BackdropBitmap != null, 3000);
+                foreach (var entry in DebugLogger.GetEntries(DebugLogger.Category.UI))
+                    _o.WriteLine($"log: {entry.Action} {entry.Metadata}");
+                Assert.True(ready, $"open={CardSettledOpen(host)} backdrop={host.BackdropBitmap != null}");
+                PumpUntil(() => false, 150);
+                _o.WriteLine($"backdrop {host.BackdropBitmap!.PixelSize}");
+                win.CaptureRenderedFrame()!.Save(Path.Combine(ShotsDir, "01-metadata-pill-dialog.png"), PngBitmapEncoderOptions.Default);
+                var tabs = win.GetVisualDescendants().OfType<TabControl>().Single();
+                tabs.SelectedItem = tabs.Items.OfType<TabItem>().First(t => Equals(t.Header, "Options"));
+                PumpUntil(() => false, 400);
+                win.CaptureRenderedFrame()!.Save(Path.Combine(ShotsDir, "02-options-tab.png"), PngBitmapEncoderOptions.Default);
+
+                // The snapshot is freed with the window.
+                win.Close();
+                Assert.True(PumpUntil(() => !win.IsVisible && host.BackdropBitmap == null, 2000), "backdrop snapshot outlived the window");
+            }
+            finally
+            {
+                if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+                owner.Close();
+            }
+        });
+    }
+
+    private sealed class NullMetadataService : IMetadataService
+    {
+        public Track? ReadTrackMetadata(string filePath) => null;
+        public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt) { embeddedArt = null; return null; }
+        public byte[]? ExtractAlbumArt(string filePath) => null;
+        public bool WriteTrackMetadata(Track track) => true;
+        public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null) => true;
+        public bool WriteRating(string filePath, int rating, bool isDisliked) => true;
+        bool IMetadataService.WriteAdvancedFields(string filePath, AdvancedTagIO.AdvancedFields fields, AdvancedTagIO.AdvancedFields original) => true;
+        public AudioFileInfo? ReadFileInfo(string filePath) => null;
+        public bool WriteAlbumArt(string filePath, byte[]? imageData) => true;
+    }
+}

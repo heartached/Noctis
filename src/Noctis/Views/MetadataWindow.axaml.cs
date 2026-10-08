@@ -169,16 +169,6 @@ public partial class MetadataWindow : Window
             vm.IsAnimatedArtworkSearchOpen = false;
     }
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        e.Handled = true;
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
-    }
-
     private void OnVolumeAdjustSliderDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is MetadataViewModel vm)
