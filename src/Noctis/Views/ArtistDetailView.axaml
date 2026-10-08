@@ -690,13 +690,14 @@
         </DataTemplate>
     </UserControl.Resources>
 
+    <!-- Tile sizing measures the scroll viewer itself minus a fixed scrollbar gutter, not its
+         content: the content narrows when the bar appears, which shrank the tiles, which hid
+         the bar, which grew them back — the tiles bounced (Discord, veil 10-07). -->
     <ScrollViewer x:Name="PageScrollViewer"
                   HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
-        <!-- Tile sizing measures THIS panel (the scroll viewer's content), not the page:
-             the page width ignores the vertical scrollbar, so tiles came out ~18px too
-             wide for their cells and the covers were clipped (09-14; Home's row does the same). -->
-        <StackPanel x:Name="PageContent" Margin="0,0,0,115" SizeChanged="OnPageContentSizeChanged">
+                  VerticalScrollBarVisibility="Auto"
+                  SizeChanged="OnPageScrollViewerSizeChanged">
+        <StackPanel x:Name="PageContent" Margin="0,0,0,115">
 
             <!-- ── Hero ─────────────────────────────────────────────── -->
             <Grid x:Name="Hero" Height="400" ClipToBounds="True">

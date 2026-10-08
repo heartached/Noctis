@@ -64,6 +64,8 @@ public partial class ArtistDetailView : UserControl
         if (_trackedVm != null && !ReferenceEquals(_trackedVm, DataContext))
             _trackedVm.SavedScrollOffset = PageScrollViewer.Offset.Y;
         TrackViewModel(DataContext as ArtistDetailViewModel);
+        // The viewer's width doesn't change with the artist, so size the new VM's tiles here.
+        UpdateWidthLayout(PageScrollViewer.Bounds.Width);
         if (this.IsAttachedToVisualTree())
             TryRestoreScroll();
     }
@@ -130,19 +132,31 @@ public partial class ArtistDetailView : UserControl
     /// <summary>Page width under which the Overview's About card stacks below (see above).</summary>
     internal const double OverviewStackBelow = 64 + 380 + 24 + 24 + 340 + 340;
 
-    private void OnPageContentSizeChanged(object? sender, SizeChangedEventArgs e)
+    /// <summary>The vertical scrollbar's gutter (Styles.axaml ScrollBar:vertical, measured
+    /// 18px), always held back so the page width doesn't depend on whether the bar shows.</summary>
+    internal const double ScrollBarGutter = 18;
+
+    private void OnPageScrollViewerSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (e.NewSize.Width <= 0) return;
+        if (e.WidthChanged) UpdateWidthLayout(e.NewSize.Width);
+    }
+
+    private void UpdateWidthLayout(double viewerWidth)
+    {
+        if (viewerWidth <= 0) return;
+        // The viewer's width less the gutter, whether or not the bar is showing. Measuring
+        // the content instead fed the bar back into the tile size: the bar appearing
+        // shrank the tiles enough to hide it again, and they bounced (Discord, veil 10-07).
+        var width = viewerWidth - ScrollBarGutter;
         // Popular needs ~340px beside Latest Release (380) and About (340) + gaps (48) +
         // margins (64); below that About drops under them (OverviewTopRow.stacked).
-        OverviewTopRow.Classes.Set("stacked", e.NewSize.Width < OverviewStackBelow);
+        OverviewTopRow.Classes.Set("stacked", width < OverviewStackBelow);
         if (DataContext is not ArtistDetailViewModel vm) return;
 
         // Tiles at the size Home and the Albums grid use (AlbumGridMetrics: five across in
         // Auto, else the cover-size setting) over the section width (margins 32+32, 2px
-        // slack for layout rounding, as Home's row does). The width is the scroll
-        // viewer's content, so the vertical scrollbar is already excluded.
-        var usable = e.NewSize.Width - 64 - 2;
+        // slack for layout rounding, as Home's row does).
+        var usable = width - 64 - 2;
         var columns = AlbumGridMetrics.ComputeColumns(usable, vm.AlbumTileSizeAuto, vm.AlbumTileTargetSize);
         var newSize = AlbumGridMetrics.ComputeTileSize(usable, columns);
         if (columns == vm.GridColumns && Math.Abs(newSize - vm.TileArtworkSize) < 0.5) return;
