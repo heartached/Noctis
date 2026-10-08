@@ -431,6 +431,8 @@ public partial class MetadataViewModel : ViewModelBase
         // metadata window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag
         // reads before showing). The ctor only copies in-memory Track state.
         SeedArtworkFromLibrary();
+        // Seeded, or multi-select (never shows a cover): the window has its cover already.
+        if (_multiSelect || ArtworkPreview != null) _coverShown.TrySetResult();
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
@@ -607,6 +609,17 @@ public partial class MetadataViewModel : ViewModelBase
     private Bitmap? _sharedPreview;
     private bool _sharedPreviewHeld;
 
+    private readonly TaskCompletionSource _coverShown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// Completes once the editor shows the cover it opens with: at construction when the
+    /// library's thumbnail was seeded (or for multi-select, which shows none), otherwise when
+    /// <see cref="LoadCachedCover"/> has landed (a cover, or none). The window's
+    /// <c>PillDialogHost</c> holds its fade-in on this (owner 10-08: with no thumbnail to seed
+    /// from, the card faded in over an empty cover well, then the 85–145 ms decode popped in).
+    /// </summary>
+    internal Task CoverShown => _coverShown.Task;
+
     /// <summary>Reads and decodes the cached cover file. Runs on a pool thread; never throws.</summary>
     private LoadedCover LoadCachedCover()
     {
@@ -651,17 +664,24 @@ public partial class MetadataViewModel : ViewModelBase
     /// removed while it loaded wins; no cover file means no cover, even over a seeded thumbnail.</summary>
     private void ApplyLoadedCover(LoadedCover cover)
     {
-        if (_newArtworkData != null || _artworkRemoved)
+        try
         {
-            cover.Bitmap?.Dispose();
-            return;
+            if (_newArtworkData != null || _artworkRemoved)
+            {
+                cover.Bitmap?.Dispose();
+                return;
+            }
+            var old = ArtworkPreview;
+            ShowsOwnTrackArtwork = cover.Bitmap != null && cover.OwnArtwork;
+            _artworkSourceSize = cover.Size;
+            ArtworkPreview = cover.Bitmap;
+            HasArtwork = cover.Bitmap != null;
+            if (!ReferenceEquals(old, cover.Bitmap)) DisposePreview(old);
         }
-        var old = ArtworkPreview;
-        ShowsOwnTrackArtwork = cover.Bitmap != null && cover.OwnArtwork;
-        _artworkSourceSize = cover.Size;
-        ArtworkPreview = cover.Bitmap;
-        HasArtwork = cover.Bitmap != null;
-        if (!ReferenceEquals(old, cover.Bitmap)) DisposePreview(old);
+        finally
+        {
+            _coverShown.TrySetResult();
+        }
     }
 
     /// <summary>

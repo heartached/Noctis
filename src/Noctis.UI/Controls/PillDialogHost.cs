@@ -87,6 +87,14 @@ public class PillDialogHost : ContentControl
         set => SetValue(BlurBackdropProperty, value);
     }
 
+    /// <summary>
+    /// Optional: something the content shows from its first frame but loads in the background
+    /// (the metadata editor's cover decode). The open waits for it together with the backdrop
+    /// snapshot, within the same budget, so the card does not fade in over a blank that then
+    /// pops in. Null, or already complete, changes nothing.
+    /// </summary>
+    public Task? ContentReady { get; set; }
+
     private Panel? _backdropLayer;
     private Image? _backdrop;
     private Control? _card;
@@ -203,9 +211,11 @@ public class PillDialogHost : ContentControl
         _openRequested = true;
 
         // Give the snapshot a moment so the blur fades in together with the dim. It never
-        // throws (failures leave the dim-only backdrop).
+        // throws (failures leave the dim-only backdrop). The content's own ready signal shares
+        // the budget: a late one fades in where it is, as a late snapshot does.
         var capture = CaptureBackdropAsync(window);
-        await Task.WhenAny(capture, Task.Delay(SnapshotWaitBudget));
+        var ready = ContentReady is { IsCompleted: false } content ? Task.WhenAll(capture, content) : capture;
+        await Task.WhenAny(ready, Task.Delay(SnapshotWaitBudget));
         PlayOpen();
     }
 
