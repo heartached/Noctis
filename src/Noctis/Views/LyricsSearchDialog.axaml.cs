@@ -26,6 +26,9 @@ public partial class LyricsSearchDialog : Window
         // lose it): Use Lyrics hands the pick to the lyrics page through the view model's
         // apply callback before it raises Closed.
         vm.Closed += (_, _) => Close();
+        // Alt+F4 closes the window without the view model's Close: stop the search anyway,
+        // so it doesn't keep asking every source after the dialog is gone.
+        Closed += (_, _) => vm.StopSearch();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

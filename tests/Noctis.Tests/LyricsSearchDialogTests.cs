@@ -334,6 +334,27 @@ public class LyricsSearchDialogTests
         Assert.True(token.IsCancellationRequested);
     }
 
+    /// <summary>Alt+F4 (Window.Close) skipped the view model's Close, so a running search kept
+    /// asking every source after the dialog was gone. Any close now stops it.</summary>
+    [AvaloniaFact]
+    public void DirectClose_WhileSearching_CancelsTheSearch()
+    {
+        EnsureAppStyles();
+        var token = CancellationToken.None;
+        var vm = Vm(async (_, _, _, ct) =>
+        {
+            token = ct;
+            await Task.Delay(Timeout.Infinite, ct);
+            return Hits();
+        });
+        var (_, win, host) = Open(vm);
+        Assert.True(PumpUntil(() => CardSettledOpen(host) && token.CanBeCanceled));
+        win.Close();
+        Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+        Assert.True(token.IsCancellationRequested, "the search kept running after the window closed");
+        Assert.True(PumpUntil(() => !vm.IsSearching));
+    }
+
     /// <summary>The footer's searching bar is a short 48 px dash before the status. Fluent gives
     /// a horizontal ProgressBar MinWidth 200, which beat the Width, so a 200 px bar pushed
     /// "Searching…" far to the right (real-Skia shots, lyrics-before/02-searching.png).</summary>
