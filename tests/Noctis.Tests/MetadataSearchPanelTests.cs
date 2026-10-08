@@ -221,6 +221,69 @@ public class MetadataSearchPanelTests
     }
 
     [AvaloniaFact]
+    public async Task DefaultTicks_FillEmpty_ButOverwriteOnlyRecordingFacts()
+    {
+        // Owner 10-08 "fix both": a different edition pre-ticked Track count 17 → 15, and
+        // MusicBrainz credit names replaced full composer names.
+        var track = T("monaco", 2, Guid.NewGuid());
+        track.TrackCount = 17;
+        track.DiscCount = 2;
+        track.Composer = "Benito Antonio Martínez Ocasio";
+        var search = new FakeSearch { Result = One(Cand("MusicBrainz", 0.95) with { TrackCount = 15, DiscCount = 1, Bpm = 136, Genre = "Música Urbana" }) };
+        var vm = await SingleVm(search, track);
+        var panel = vm.SearchPanel;
+        panel.Open();
+        var rows = panel.Rows.ToDictionary(r => r.Field);
+
+        // Overwrites of edition-, credit- or taste-dependent values start unticked…
+        foreach (var f in new[]
+                 {
+                     MetadataSearchField.TrackCount, MetadataSearchField.DiscCount, MetadataSearchField.Composer,
+                     MetadataSearchField.Album, MetadataSearchField.Genre,
+                 })
+        {
+            Assert.True(rows[f].CanToggle, f.ToString());
+            Assert.False(rows[f].IsChecked, f.ToString());
+        }
+        // …a fix to the recording itself stays ticked, and so does filling a gap.
+        Assert.True(rows[MetadataSearchField.Title].IsChecked);   // monaco → MONACO
+        Assert.True(rows[MetadataSearchField.Bpm].IsFill);
+        Assert.True(rows[MetadataSearchField.Bpm].IsChecked);
+        Assert.True(rows[MetadataSearchField.Copyright].IsChecked);
+
+        // The master tick and "Only fill empty" still reach them; turning the latter off
+        // goes back to the conservative defaults.
+        panel.SelectAllCommand.Execute(null);
+        Assert.True(rows[MetadataSearchField.TrackCount].IsChecked);
+        panel.OnlyFillEmpty = true;
+        Assert.False(rows[MetadataSearchField.Title].IsChecked);
+        Assert.True(rows[MetadataSearchField.Bpm].IsChecked);
+        panel.OnlyFillEmpty = false;
+        Assert.True(rows[MetadataSearchField.Title].IsChecked);
+        Assert.False(rows[MetadataSearchField.Composer].IsChecked);
+        Assert.False(rows[MetadataSearchField.TrackCount].IsChecked);
+    }
+
+    [Fact]
+    public void SafeOverwrite_AlbumNamesOnlyInTheAlbumEditor()
+    {
+        Assert.False(MetadataSearchPanelViewModel.IsSafeOverwrite(MetadataSearchField.Album, albumScope: false));
+        Assert.True(MetadataSearchPanelViewModel.IsSafeOverwrite(MetadataSearchField.Album, albumScope: true));
+        Assert.True(MetadataSearchPanelViewModel.IsSafeOverwrite(MetadataSearchField.AlbumArtist, albumScope: true));
+        foreach (var f in new[]
+                 {
+                     MetadataSearchField.Year, MetadataSearchField.ReleaseDate, MetadataSearchField.TrackNumber,
+                     MetadataSearchField.TrackCount, MetadataSearchField.DiscNumber, MetadataSearchField.DiscCount,
+                     MetadataSearchField.Composer, MetadataSearchField.Label, MetadataSearchField.Copyright,
+                     MetadataSearchField.Barcode, MetadataSearchField.Genre,
+                 })
+        {
+            Assert.False(MetadataSearchPanelViewModel.IsSafeOverwrite(f, albumScope: false), f.ToString());
+            Assert.False(MetadataSearchPanelViewModel.IsSafeOverwrite(f, albumScope: true), f.ToString());
+        }
+    }
+
+    [AvaloniaFact]
     public async Task OnlyFillEmpty_TicksJustTheEmptyFields_AndSelectNoneAll()
     {
         var search = new FakeSearch { Result = One(Cand("Deezer", 0.9)) };

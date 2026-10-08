@@ -476,12 +476,33 @@ public sealed partial class MetadataSearchPanelViewModel : ObservableObject, IDi
     {
         if (!row.CanToggle) return false;
         if (OnlyFillEmpty) return row.CurrentIsEmpty;
+        // Filling a gap is always welcome.
+        if (row.CurrentIsEmpty) return true;
         // An album's artist is per track: a release artist laid over "Mixed" would wipe every
         // featured artist on the album, so that one waits for an explicit tick.
         if (AlbumScope && row.Field == MetadataSearchField.Artist && _owner.IsSearchFieldMixed(row.Field))
             return false;
-        return true;
+        return IsSafeOverwrite(row.Field, AlbumScope);
     }
+
+    /// <summary>
+    /// Whether replacing a value the file already has starts ticked (owner 10-08: declutter
+    /// Find online, "fix both": a single-track match pre-ticked Track count 17 → 15 from the
+    /// standard edition of a deluxe album, and Composer swapped full legal names for
+    /// MusicBrainz credit names). Only facts about the recording itself — the same on every
+    /// release it appears on — overwrite by default. Everything that depends on WHICH release
+    /// matched (album, dates, numbering, counts, label, copyright, barcode), on how a source
+    /// formats credits (composer) or on the user's own taxonomy (genre) waits for a tick.
+    /// The album editor is the exception for album / album artist: it renames every track
+    /// at once, so nothing is split off; one track renamed alone would leave its album.
+    /// </summary>
+    internal static bool IsSafeOverwrite(MetadataSearchField field, bool albumScope) => field switch
+    {
+        MetadataSearchField.Title or MetadataSearchField.Artist or MetadataSearchField.Isrc
+            or MetadataSearchField.Explicit or MetadataSearchField.Bpm => true,
+        MetadataSearchField.Album or MetadataSearchField.AlbumArtist => albumScope,
+        _ => false,
+    };
 
     private void BuildTrackRows(MetadataCandidate c)
     {
