@@ -879,6 +879,32 @@ public class MetadataViewModelTests
         Assert.Equal("[00:01.00]hand timed", File.ReadAllText(dir.Side(".lrc")));
     }
 
+    [Fact]
+    public async Task AlbumScope_OptionsOnlySave_LeavesTheFirstTracksLyricsAndTagsAlone()
+    {
+        // The album dialog has no lyric tabs, yet Save copied the first track's .txt sidecar
+        // into its Lyrics and so rewrote that file's tags (and both sidecars) on a save that
+        // needed no tag write at all — the playing file then failed with "Couldn't write tags".
+        using var dir = new TempSongDir();
+        var tracks = Album("A", "X", 2);
+        tracks[0].FilePath = dir.Side(".flac");
+        tracks[1].FilePath = Path.Combine(dir.Dir, "other.flac");
+        File.WriteAllText(dir.Side(".txt"), "disk words");
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hi");
+        var lrcWritten = File.GetLastWriteTimeUtc(dir.Side(".lrc"));
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
+
+        vm.SkipWhenShuffling = !vm.SkipWhenShuffling;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(meta.WrittenTagPaths);
+        Assert.Equal(string.Empty, tracks[0].Lyrics);
+        Assert.Equal(string.Empty, tracks[0].SyncedLyrics);
+        Assert.Equal(lrcWritten, File.GetLastWriteTimeUtc(dir.Side(".lrc")));
+    }
+
     /// <summary>A song file plus sidecars in a throwaway folder.</summary>
     private sealed class TempSongDir : IDisposable
     {

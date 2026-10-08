@@ -526,8 +526,9 @@ public partial class MetadataViewModel : ViewModelBase
                 catch { /* Non-fatal — advanced fields are best-effort */ }
             }
 
-            var lrc = ReadLyricSidecar(_track.FilePath, ".lrc", string.IsNullOrWhiteSpace(trackSynced));
-            var txt = ReadLyricSidecar(_track.FilePath, ".txt", string.IsNullOrWhiteSpace(trackPlain));
+            // The album/multi-select dialog shows no lyrics and saves none: skip the reads.
+            var lrc = ReadLyricSidecar(_track.FilePath, ".lrc", !_albumScoped && string.IsNullOrWhiteSpace(trackSynced));
+            var txt = ReadLyricSidecar(_track.FilePath, ".txt", !_albumScoped && string.IsNullOrWhiteSpace(trackPlain));
 
             string? animated = null;
             try { animated = _animatedCovers.Resolve(_track); }
@@ -2519,15 +2520,21 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
-        // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
-        var plainToWrite = HasCustomLyrics
-            ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
-            : string.Empty;
-        var syncedToWrite = HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics)
-            ? SyncedLyrics
-            : string.Empty;
-        _track.Lyrics = plainToWrite;
-        _track.SyncedLyrics = syncedToWrite;
+        // Apply Lyrics (plain + synced) — defensively strip timestamps from plain.
+        // Single-track only: the album/multi-select dialog has no lyric tabs, and applying
+        // the first track's sidecar text here changed its Lyrics, so an Options-only album
+        // save rewrote that file's tags and sidecars (failing outright on the playing file).
+        if (!_albumScoped)
+        {
+            var plainToWrite = HasCustomLyrics
+                ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
+                : string.Empty;
+            var syncedToWrite = HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics)
+                ? SyncedLyrics
+                : string.Empty;
+            _track.Lyrics = plainToWrite;
+            _track.SyncedLyrics = syncedToWrite;
+        }
 
         // Apply Options
         _track.SkipWhenShuffling = SkipWhenShuffling;
@@ -2661,42 +2668,48 @@ public partial class MetadataViewModel : ViewModelBase
             _track.IsExplicit = advFields.ItunesAdvisory == 1;
         }
 
-        // Write synced lyrics to sidecar .lrc file.
+        // Write synced lyrics to sidecar .lrc file (single-track only, as above).
         // Deletion is gated on an explicit user removal and never happens when the
         // sidecar failed to load — and it goes to the trash, not File.Delete, so a
         // mistake is recoverable.
-        try
+        if (!_albumScoped)
         {
-            var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-            if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
+            try
             {
-                await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
-                if (SyncedLyricsWereChanged)
+                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
+                if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
+                {
+                    await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
+                    if (SyncedLyricsWereChanged)
+                        await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+                }
+                else if (SyncedLyricsWereRemoved)
+                {
+                    if (File.Exists(lrcPath))
+                        await Task.Run(() => TrashFile(lrcPath));
                     await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+                }
             }
-            else if (SyncedLyricsWereRemoved)
-            {
-                if (File.Exists(lrcPath))
-                    await Task.Run(() => TrashFile(lrcPath));
-                await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
-            }
+            catch { /* Best effort — sidecar write is non-fatal */ }
         }
-        catch { /* Best effort — sidecar write is non-fatal */ }
 
         // Write plain lyrics to sidecar .txt file.
         // Only write when the plain text actually changed: LoadFromTrack fills this
         // field from the *embedded* tag when no .txt exists, so an unconditional write
         // created a new file in the user's music folder after editing an unrelated field.
-        try
+        if (!_albumScoped)
         {
-            var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-            var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal);
-            if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
-                await File.WriteAllTextAsync(txtPath, _track.Lyrics);
-            else if (PlainLyricsWereRemoved && File.Exists(txtPath))
-                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
+            try
+            {
+                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
+                var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal);
+                if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
+                    await File.WriteAllTextAsync(txtPath, _track.Lyrics);
+                else if (PlainLyricsWereRemoved && File.Exists(txtPath))
+                    await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
+            }
+            catch { /* Best effort — sidecar write is non-fatal */ }
         }
-        catch { /* Best effort — sidecar write is non-fatal */ }
 
         // Handle artwork changes. Artwork is per-album in Noctis (the persisted
         // PNG is keyed by AlbumId and every track carries its own embedded copy),
