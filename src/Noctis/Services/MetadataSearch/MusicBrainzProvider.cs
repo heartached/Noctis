@@ -454,6 +454,12 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         var credit2 = Credit(r);
         var caa = Json.Obj(r, "cover-art-archive");
         var hasFront = Json.Bool(caa, "front") == true;
+        // Release SEARCH results carry no cover-art-archive block at all, so every searched
+        // release came back without a cover (owner 10-08: blank thumbnails on MusicBrainz rows,
+        // though CAA had art for them). Fall back to the release group's front, which CAA
+        // serves whenever any edition of the album has one (404 otherwise — no thumbnail).
+        var groupId = Json.Str(rg, "id");
+        var groupArt = !hasFront && groupId.Length > 0;
         var genre = TopGenre(rg);
         return new MetadataCandidate
         {
@@ -474,8 +480,10 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             // thumbnail. Not the bare /front: originals are raw uploads (a 12 MB scan came back
             // in testing) — DownloadArtworkAsync falls back to it when no 1200 exists.
             // Only offered when the release says it has a front image.
-            ArtworkUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-1200") : null,
-            ArtworkThumbUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-250") : null,
+            ArtworkUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-1200")
+                : groupArt ? Json.Url($"{Caa}/release-group/{groupId}/front-1200") : null,
+            ArtworkThumbUrl = hasFront ? Json.Url($"{Caa}/release/{id}/front-250")
+                : groupArt ? Json.Url($"{Caa}/release-group/{groupId}/front-250") : null,
             Edition = Json.Str(r, "disambiguation"),
             Tracks = tracks,
         };

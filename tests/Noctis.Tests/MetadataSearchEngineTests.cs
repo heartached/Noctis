@@ -685,6 +685,27 @@ public class MetadataSearchEngineTests
         Assert.True(standard.Confidence < top.Confidence);
     }
 
+    [Fact]
+    public void ParseRelease_SearchResultWithoutCoverFlag_UsesTheReleaseGroupCover()
+    {
+        // Owner 10-08: MusicBrainz rows showed no thumbnail. Release SEARCH results carry no
+        // cover-art-archive block (checked live), so the release-own cover was never offered;
+        // CAA's release-group front exists whenever any edition has one.
+        var c = MusicBrainzProvider.ParseRelease("""{"id":"r1","title":"Album","release-group":{"id":"g1"},"media":[]}""")!;
+
+        Assert.Equal("https://coverartarchive.org/release-group/g1/front-250", c.ArtworkThumbUrl?.AbsoluteUri);
+        Assert.Equal("https://coverartarchive.org/release-group/g1/front-1200", c.ArtworkUrl?.AbsoluteUri);
+    }
+
+    [Fact]
+    public void ParseRelease_WithOwnFrontCover_KeepsTheReleaseCover()
+    {
+        var c = MusicBrainzProvider.ParseRelease(
+            """{"id":"r1","title":"Album","release-group":{"id":"g1"},"cover-art-archive":{"front":true},"media":[]}""")!;
+
+        Assert.Equal("https://coverartarchive.org/release/r1/front-250", c.ArtworkThumbUrl?.AbsoluteUri);
+    }
+
     [Theory]
     [InlineData("Album (Deluxe Edition)", "Deluxe Edition")]
     [InlineData("Album (2011 Remaster)", "")]
