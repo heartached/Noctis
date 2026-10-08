@@ -389,6 +389,10 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             var (date, year) = MatchText.ParseDate(Json.Str(r, "date"));
             var credit = Credit(r);
             var media = Json.Arr(r, "media").ToList();
+            // Hits that don't get a full lookup (outside AlbumLookupTop) had no artwork at all
+            // (owner 10-08: blank thumbnails under the first few rows). Search results carry no
+            // cover-art-archive block, so offer the release group's front (CAA 404s if none).
+            var groupId = Json.Str(Json.Obj(r, "release-group"), "id");
             list.Add((new MetadataCandidate
             {
                 Provider = ProviderNames.MusicBrainz,
@@ -405,6 +409,8 @@ public sealed class MusicBrainzProvider : IMetadataProvider
                 // Number of media = discs. (The search's "disc-count" is the number of disc IDs.)
                 DiscCount = media.Count > 0 ? media.Count : null,
                 Edition = Json.Str(r, "disambiguation"),
+                ArtworkUrl = groupId.Length > 0 ? Json.Url($"{Caa}/release-group/{groupId}/front-1200") : null,
+                ArtworkThumbUrl = groupId.Length > 0 ? Json.Url($"{Caa}/release-group/{groupId}/front-250") : null,
             }, Json.Str(r, "status")));
         }
         var hasOfficial = list.Any(x => x.Status == "Official");

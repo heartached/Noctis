@@ -698,6 +698,17 @@ public class MetadataSearchEngineTests
     }
 
     [Fact]
+    public void ParseReleaseSearch_EveryHitGetsTheReleaseGroupCover()
+    {
+        // Hits outside the top few never get a full lookup, so the search parse itself must
+        // offer a cover (owner 10-08: blank thumbnails under the first rows).
+        var hits = MusicBrainzProvider.ParseReleaseSearch(Fixture("musicbrainz_release_search_harlow.json"));
+
+        Assert.NotEmpty(hits);
+        Assert.All(hits, h => Assert.StartsWith("https://coverartarchive.org/release-group/", h.ArtworkThumbUrl?.AbsoluteUri));
+    }
+
+    [Fact]
     public void ParseRelease_WithOwnFrontCover_KeepsTheReleaseCover()
     {
         var c = MusicBrainzProvider.ParseRelease(
