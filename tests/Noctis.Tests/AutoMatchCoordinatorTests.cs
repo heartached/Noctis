@@ -78,6 +78,51 @@ public class AutoMatchCoordinatorTests
         Assert.Equal("USUM71808193", merged.Isrc);
     }
 
+    // Owner 10-08 (Search metadata revamp): a weak identify hit is another song, not a match.
+    [Fact]
+    public async Task MatchAsync_WeakIdentify_IsNotAMatch()
+    {
+        var finder = new FakeFinder(new TagSuggestion("Something Else", "Other", "X", 2001, 0.3, "MusicBrainz"));
+
+        var coord = new AutoMatchCoordinator(finder, NoNetworkDeezer(), DeezerOff);
+
+        Assert.Null(await coord.MatchAsync(SampleTrack()));
+    }
+
+    // Enrichment that lands on a different song must not lend it its ISRC/track #/genre.
+    [Fact]
+    public async Task MatchAsync_EnrichForAnotherSong_IsDiscarded()
+    {
+        var finder = new FakeFinder(new TagSuggestion(
+            "Lucid Dreams", "Juice WRLD", "Goodbye & Good Riddance", 2018, 0.95, "MusicBrainz"));
+        var deezer = new DeezerMetadataService(new HttpClient(new OtherSongHandler()));
+
+        var coord = new AutoMatchCoordinator(finder, deezer, () => new AppSettings());
+        var hit = await coord.MatchAsync(SampleTrack());
+
+        Assert.NotNull(hit);
+        Assert.Equal("MusicBrainz", hit!.Source);
+        Assert.Null(hit.Isrc);
+        Assert.Null(hit.Genre);
+    }
+
+    private sealed class OtherSongHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            var body = path.StartsWith("/search")
+                ? """{"data":[{"id":5,"title":"Robbery","artist":{"name":"Juice WRLD"}}]}"""
+                : path.StartsWith("/track/")
+                    ? """{"id":5,"title":"Robbery","isrc":"USUG11900176","artist":{"name":"Juice WRLD"},"album":{"id":9,"title":"Death Race for Love"}}"""
+                    : """{"id":9,"title":"Death Race for Love","genres":{"data":[{"name":"Rap/Hip Hop"}]}}""";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
+            });
+        }
+    }
+
     [Fact]
     public void Merge_NullIdentify_ReturnsEnrich()
     {

@@ -1,0 +1,653 @@
+{
+ "created": "2026-10-08T16:29:45.643Z",
+ "count": 31,
+ "offset": 0,
+ "releases": [
+  {
+   "id": "488477d8-10b4-47fe-a482-549f011406a5",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2021",
+   "country": "XE",
+   "release-events": [
+    {
+     "date": "2021",
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "barcode": "0190296610424",
+   "asin": "B09CKCQ149",
+   "label-info": [
+    {
+     "catalog-number": "0190296610424",
+     "label": {
+      "id": "3b0a155a-ce07-4e15-816b-2398cb4f0680",
+      "name": "ADA France"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "ff08afc5-9784-314c-b9e8-a6a18417ad41",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 14
+    }
+   ]
+  },
+  {
+   "id": "d073287b-d1bd-4f11-a933-a4386f8cf701",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2001-02-26",
+   "country": "FR",
+   "release-events": [
+    {
+     "date": "2001-02-26",
+     "area": {
+      "id": "08310658-51eb-3801-80de-5a0739207115",
+      "name": "France",
+      "sort-name": "France",
+      "iso-3166-1-codes": [
+       "FR"
+      ]
+     }
+    },
+    {
+     "date": "2001-03-12",
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "barcode": "724384960629",
+   "asin": "B000059MEK",
+   "label-info": [
+    {
+     "catalog-number": "8496062",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "ada31254-2a88-3a59-ad24-147cb4381468",
+     "format": "CD",
+     "disc-count": 15,
+     "track-count": 14
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "electronic"
+    },
+    {
+     "count": 1,
+     "name": "house"
+    },
+    {
+     "count": 0,
+     "name": "electronic music"
+    }
+   ]
+  },
+  {
+   "id": "44e85a85-77d7-3e2e-8416-65a27d2aef68",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2001-03-12",
+   "country": "GB",
+   "release-events": [
+    {
+     "date": "2001-03-12",
+     "area": {
+      "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+      "name": "United Kingdom",
+      "sort-name": "United Kingdom",
+      "iso-3166-1-codes": [
+       "GB"
+      ]
+     }
+    }
+   ],
+   "barcode": "724381008829",
+   "asin": "B00005A9ZC",
+   "label-info": [
+    {
+     "catalog-number": "8100882",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    },
+    {
+     "catalog-number": "CDVX2940",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "7685b425-3330-3474-8d03-ba479b7b74c2",
+     "format": "CD",
+     "disc-count": 10,
+     "track-count": 14
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "electronic"
+    },
+    {
+     "count": 1,
+     "name": "pop"
+    },
+    {
+     "count": 1,
+     "name": "dance"
+    },
+    {
+     "count": 1,
+     "name": "house"
+    },
+    {
+     "count": 1,
+     "name": "techno"
+    },
+    {
+     "count": 1,
+     "name": "disco"
+    }
+   ]
+  },
+  {
+   "id": "bd3bb36e-16c8-438f-850e-dfbf4d1478f0",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Jewel Case",
+   "text-representation": {
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2001-02-26",
+   "country": "AU",
+   "release-events": [
+    {
+     "date": "2001-02-26",
+     "area": {
+      "id": "106e0bec-b638-3b37-b731-f53d507dc00e",
+      "name": "Australia",
+      "sort-name": "Australia",
+      "iso-3166-1-codes": [
+       "AU"
+      ]
+     }
+    }
+   ],
+   "barcode": "934065017098",
+   "label-info": [
+    {
+     "catalog-number": "8100172",
+     "label": {
+      "id": "df7d1c7f-ef95-425f-8eef-445b3d7bcbd9",
+      "name": "Parlophone"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "24de8e70-a07c-350e-9036-be54eb4abe6c",
+     "format": "CD",
+     "disc-count": 0,
+     "track-count": 14
+    }
+   ]
+  },
+  {
+   "id": "b078d70c-d2eb-489a-a8f8-e322af35dedf",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 2,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Gatefold Cover",
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2021-12-17",
+   "country": "XE",
+   "release-events": [
+    {
+     "date": "2021-12-17",
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "barcode": "0190296617164",
+   "label-info": [
+    {
+     "catalog-number": "0190296617164",
+     "label": {
+      "id": "43defeac-9c81-4efa-b1db-a99e6fe40c9b",
+      "name": "Alternative Distribution Alliance"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "16b575e1-8524-391d-ac37-b680102b17cc",
+     "format": "12\" Vinyl",
+     "disc-count": 0,
+     "track-count": 7
+    },
+    {
+     "id": "74e221ab-bb68-3b71-8ba9-b33f93f34123",
+     "format": "12\" Vinyl",
+     "disc-count": 0,
+     "track-count": 7
+    }
+   ]
+  },
+  {
+   "id": "4375a6b0-cd50-4f59-be32-13161c0fc448",
+   "score": 100,
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2001-03-12",
+   "country": "XE",
+   "release-events": [
+    {
+     "date": "2001-03-12",
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "barcode": "724384960629",
+   "label-info": [
+    {
+     "catalog-number": "7243 8496062 9",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    },
+    {
+     "catalog-number": "8496062",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "4449b526-78a8-45ab-9149-9f00026af14f",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 14
+    }
+   ]
+  },
+  {
+   "id": "5125fa48-f5dc-4fe4-9e4e-8c0cb719ce03",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "e724a489-a7e8-30a1-a17c-30dfd6831202",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 2,
+   "title": "Discovery",
+   "status": "Official",
+   "packaging": "Gatefold Cover",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2023",
+   "country": "XE",
+   "release-events": [
+    {
+     "date": "2023",
+     "area": {
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "name": "Europe",
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ]
+     }
+    }
+   ],
+   "barcode": "0190296617164",
+   "label-info": [
+    {
+     "catalog-number": "0190296617164",
+     "label": {
+      "id": "43defeac-9c81-4efa-b1db-a99e6fe40c9b",
+      "name": "Alternative Distribution Alliance"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "16230e3a-de00-4a5b-8c0f-abc345bb69a9",
+     "format": "12\" Vinyl",
+     "disc-count": 0,
+     "track-count": 7
+    },
+    {
+     "id": "a24ff651-42d9-449c-9de2-d1e622a11b4b",
+     "format": "12\" Vinyl",
+     "disc-count": 0,
+     "track-count": 7
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "electronic"
+    },
+    {
+     "count": 1,
+     "name": "house"
+    },
+    {
+     "count": 1,
+     "name": "electro"
+    },
+    {
+     "count": 1,
+     "name": "electronica"
+    },
+    {
+     "count": 1,
+     "name": "disco"
+    },
+    {
+     "count": 1,
+     "name": "boogie"
+    },
+    {
+     "count": 1,
+     "name": "progressive house"
+    },
+    {
+     "count": 1,
+     "name": "french house"
+    },
+    {
+     "count": 1,
+     "name": "dance music"
+    },
+    {
+     "count": 1,
+     "name": "house music"
+    },
+    {
+     "count": 1,
+     "name": "leftfield house"
+    }
+   ]
+  },
+  {
+   "id": "ab5ca495-8983-41b9-86b4-46a981d173be",
+   "score": 100,
+   "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "artist-credit-id": "2ad79928-9236-33a3-830c-cc909d38f0c7",
+   "count": 1,
+   "title": "Discovery",
+   "status": "Official",
+   "disambiguation": "1st pressing",
+   "packaging": "Jewel Case",
+   "artist-credit": [
+    {
+     "name": "Daft Punk",
+     "artist": {
+      "id": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "sort-name": "Daft Punk",
+      "disambiguation": "French electronic duo"
+     }
+    }
+   ],
+   "release-group": {
+    "id": "48117b90-a16e-34ca-a514-19c702df1158",
+    "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+    "title": "Discovery",
+    "primary-type": "Album"
+   },
+   "date": "2001-03-10",
+   "country": "JP",
+   "release-events": [
+    {
+     "date": "2001-03-10",
+     "area": {
+      "id": "2db42837-c832-3c27-b4a3-08198f75693c",
+      "name": "Japan",
+      "sort-name": "Japan",
+      "iso-3166-1-codes": [
+       "JP"
+      ]
+     }
+    }
+   ],
+   "barcode": "4988006788367",
+   "label-info": [
+    {
+     "catalog-number": "VJCP-68283",
+     "label": {
+      "id": "49b58bdb-3d74-40c6-956a-4c4b46115c9c",
+      "name": "Virgin"
+     }
+    }
+   ],
+   "track-count": 14,
+   "media": [
+    {
+     "id": "26a35611-f5d6-3bb1-ba88-ec3e6a86c842",
+     "format": "CD",
+     "disc-count": 1,
+     "track-count": 14
+    }
+   ]
+  }
+ ]
+}

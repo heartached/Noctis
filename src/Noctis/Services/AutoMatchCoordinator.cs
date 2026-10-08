@@ -15,6 +15,14 @@ namespace Noctis.Services;
 /// </summary>
 public sealed class AutoMatchCoordinator
 {
+    /// <summary>Below this title+artist similarity to the track's own tags an identify hit is a
+    /// different song, not a match; the old path applied whatever came first.</summary>
+    public const double MinIdentifyConfidence = 0.6;
+
+    /// <summary>Enrichment must describe the same song as the identify result (or the track),
+    /// else its ISRC/track #/BPM would be another recording's.</summary>
+    public const double MinEnrichSimilarity = 0.75;
+
     private readonly IMetadataFinderService _finder;
     private readonly DeezerMetadataService _deezer;
     private readonly Func<AppSettings> _settings;
@@ -35,6 +43,7 @@ public sealed class AutoMatchCoordinator
         var settings = _settings();
 
         var identify = await TryIdentifyAsync(track, ct).ConfigureAwait(false);
+        if (identify is not null && identify.Confidence < MinIdentifyConfidence) identify = null;
 
         TagSuggestion? enrich = null;
         if (settings.DeezerEnabled)
@@ -42,7 +51,11 @@ public sealed class AutoMatchCoordinator
             var artist = identify?.Artist is { Length: > 0 } a ? a : track.PrimaryArtist;
             var title = identify?.Title is { Length: > 0 } t ? t : track.Title;
             var album = identify?.Album is { Length: > 0 } al ? al : track.Album;
-            enrich = await TryEnrichAsync(artist, title, album, ct).ConfigureAwait(false);
+            var duration = track.Duration > TimeSpan.Zero ? track.Duration : (TimeSpan?)null;
+            enrich = await TryEnrichAsync(artist, title, album, duration, ct).ConfigureAwait(false);
+            if (enrich is not null &&
+                FuzzyTrackMatcher.TagSimilarity(title, artist, enrich.Title, enrich.Artist) < MinEnrichSimilarity)
+                enrich = null;
         }
 
         return Merge(identify, enrich);
@@ -81,9 +94,9 @@ public sealed class AutoMatchCoordinator
         catch { return null; }
     }
 
-    private async Task<TagSuggestion?> TryEnrichAsync(string artist, string title, string album, CancellationToken ct)
+    private async Task<TagSuggestion?> TryEnrichAsync(string artist, string title, string album, TimeSpan? duration, CancellationToken ct)
     {
-        try { return await _deezer.EnrichAsync(artist, title, album, ct).ConfigureAwait(false); }
+        try { return await _deezer.EnrichAsync(artist, title, album, duration, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { throw; }
         catch { return null; }
     }

@@ -149,7 +149,7 @@ public static class FuzzyTrackMatcher
         return 1.0 - (double)dist / maxLen;
     }
 
-    private static int Levenshtein(string a, string b)
+    internal static int Levenshtein(string a, string b)
     {
         var n = a.Length;
         var m = b.Length;
