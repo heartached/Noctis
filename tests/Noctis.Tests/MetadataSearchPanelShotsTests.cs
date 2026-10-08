@@ -114,7 +114,7 @@ public class MetadataSearchPanelShotsTests
         Explicit = true, ArtworkUrl = new Uri("https://example.test/a.jpg"), ArtworkSize = 3000, Tracks = tracks,
     };
 
-    private static MetadataSearchResult TrackResults() => new()
+    internal static MetadataSearchResult TrackResults() => new()
     {
         Candidates = new[]
         {

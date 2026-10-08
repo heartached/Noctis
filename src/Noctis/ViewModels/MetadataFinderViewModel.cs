@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Linq;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
@@ -57,24 +56,25 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
         try
         {
+            // Rows are updated in place: the command runs on the UI thread and every await
+            // resumes there. Posting each result instead queued it behind the summary below,
+            // so "Identified N of M" missed the last match — and every match when the finder
+            // answered without yielding (a cached lookup): "Identified 0 of 4".
             foreach (var row in Rows.ToList())
             {
                 ct.ThrowIfCancellationRequested();
-                Dispatcher.UIThread.Post(() => row.Status = "Identifying…");
+                row.Status = "Identifying…";
 
                 var hits = await _finder.IdentifyAsync(row.Track, ct);
                 var best = hits.FirstOrDefault();
 
-                Dispatcher.UIThread.Post(() =>
+                if (best is null)
                 {
-                    if (best is null)
-                    {
-                        row.Status = "No match";
-                        return;
-                    }
-                    row.ApplyProposal(best);
-                    identified++;
-                });
+                    row.Status = "No match";
+                    continue;
+                }
+                row.ApplyProposal(best);
+                identified++;
             }
             StatusMessage = $"Identified {identified} of {Rows.Count}";
         }
