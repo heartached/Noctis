@@ -511,6 +511,36 @@ public class MetadataSearchEngineTests
         Assert.Null(await svc.DownloadArtworkAsync(new MetadataCandidate { ArtworkUrl = new Uri("https://coverartarchive.org/release/x/front-1200") }));
     }
 
+    // ── Composer (owner 10-08: "2forwOyNE" among the writers) ──
+
+    [Fact]
+    public void MusicBrainz_Composer_UsesTheSongwritingCredit_NotTheProducerAlias()
+    {
+        var c = new MetadataCandidate { Provider = ProviderNames.MusicBrainz, ProviderId = "2a79bef3-70f8-41a2-b385-c5ca29e819cd" };
+        var full = MusicBrainzProvider.ApplyRecordingDetails(c, Fixture("musicbrainz_recording_2a79bef3.json"));
+        var names = full.Composer.Split(ArtistCredit.JoinText);
+
+        Assert.Contains("Dawoyne Lawson", names);  // credited as; artist name "2forwOyNE"
+        Assert.Contains("Douglas Ford", names);    // credited as; artist name "Dougie F"
+        Assert.Contains("Jack Harlow", names);     // no credit: the artist name
+        Assert.DoesNotContain("2forwOyNE", names);
+        Assert.Equal(names.Length, names.Distinct().Count());
+    }
+
+    [Fact]
+    public void MusicBrainz_Composer_SamePersonTwice_KeepsOneEntryWithTheCreditedName()
+    {
+        const string json = """
+        {"id":"r","relations":[{"type":"performance","target-type":"work","work":{"relations":[
+          {"type":"composer","artist":{"id":"a1","name":"Alias"}},
+          {"type":"writer","target-credit":"Legal Name","artist":{"id":"a1","name":"Alias"}},
+          {"type":"writer","artist":{"id":"a2","name":"Other"}}
+        ]}}]}
+        """;
+        var full = MusicBrainzProvider.ApplyRecordingDetails(new MetadataCandidate { ProviderId = "r" }, json);
+        Assert.Equal(string.Join(ArtistCredit.JoinText, "Legal Name", "Other"), full.Composer);
+    }
+
     // ── Helpers ──
 
     private static ProviderStatus Status(MetadataSearchResult r, string name) => r.Providers.Single(p => p.Provider == name);

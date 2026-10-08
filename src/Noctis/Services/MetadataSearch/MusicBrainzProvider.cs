@@ -286,7 +286,8 @@ public sealed class MusicBrainzProvider : IMetadataProvider
     {
         using var doc = JsonDocument.Parse(recordingJson);
         var rec = doc.RootElement;
-        var people = new List<string>();
+        // One entry per songwriter (by MusicBrainz artist id, else name), in credit order.
+        var people = new List<(string Key, string Name)>();
         foreach (var rel in Json.Arr(rec, "relations"))
         {
             // Only the work this recording performs: "samples material" relations point at OTHER
@@ -294,23 +295,44 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             if (Json.Str(rel, "target-type") != "work" || Json.Str(rel, "type") != "performance") continue;
             foreach (var wr in Json.Arr(Json.Obj(rel, "work"), "relations"))
             {
-                var name = Json.Str(Json.Obj(wr, "artist"), "name");
-                if (name.Length == 0) continue;
                 // The Composer tag conventionally holds every songwriter: MusicBrainz splits the
                 // credit into composer/writer/lyricist ("Lucid Dreams": composer Sting via the
                 // interpolation, writers Juice WRLD, Nick Mira, Dominic Miller).
-                if (Json.Str(wr, "type") is "composer" or "writer" or "lyricist" && !people.Contains(name))
-                    people.Add(name);
+                if (Json.Str(wr, "type") is not ("composer" or "writer" or "lyricist")) continue;
+                var name = SongwriterName(wr);
+                if (name.Length == 0) continue;
+                var artist = Json.Obj(wr, "artist");
+                var key = Json.Str(artist, "id") is { Length: > 0 } id ? id : name;
+                var at = people.FindIndex(p => p.Key == key);
+                if (at < 0) people.Add((key, name));
+                // The same person credited twice (composer + writer): a credited name beats the
+                // plain artist name on the other relation.
+                else if (Json.Str(wr, "target-credit").Length > 0 && people[at].Name == Json.Str(artist, "name"))
+                    people[at] = (key, name);
             }
         }
         var isrc = c.Isrc.Length > 0 ? c.Isrc
             : Json.Arr(rec, "isrcs").Select(e => e.ValueKind == JsonValueKind.String ? e.GetString() ?? "" : "").FirstOrDefault(s => s.Length > 0) ?? "";
         return c with
         {
-            Composer = people.Count > 0 ? string.Join(ArtistCredit.JoinText, people) : c.Composer,
+            Composer = people.Count > 0 ? string.Join(ArtistCredit.JoinText, people.Select(p => p.Name)) : c.Composer,
             Isrc = isrc,
             Genre = c.Genre.Length > 0 ? c.Genre : TopGenre(rec),
         };
+    }
+
+    /// <summary>
+    /// A songwriter as credited on this songwriting relationship ("target-credit"), else the
+    /// artist's MusicBrainz name. Owner 10-08: "Talk of the Town" listed producer alias
+    /// "2forwOyNE" among the writers; MusicBrainz's writer relation credits him as "Dawoyne
+    /// Lawson" (likewise "Dougie F" → "Douglas Ford"), the name printed in songwriting credits.
+    /// The work relation carries no legal-name alias, and the sort-name is just the alias
+    /// again ("2forwOyNE"), so the relationship credit is the one consistent source.
+    /// </summary>
+    private static string SongwriterName(JsonElement workRelation)
+    {
+        var credited = Json.Str(workRelation, "target-credit");
+        return credited.Length > 0 ? credited : Json.Str(Json.Obj(workRelation, "artist"), "name");
     }
 
     /// <summary>Parses a release search into light release candidates (no track list). Bootlegs
