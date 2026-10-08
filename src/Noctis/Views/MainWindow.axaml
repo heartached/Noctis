@@ -689,7 +689,8 @@
                             </ToolTip.Tip>
                             <PathIcon Data="{StaticResource LayoutIcon}"/>
                             <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Main.Carousel}" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Carousel"/>
                                     <MenuItem Header="{loc:T Main.Cascade}" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Cascade"/>
                                     <MenuItem Header="{loc:T Main.Collage}" Command="{Binding SetCoverFlowLayoutCommand}" CommandParameter="Collage"/>
