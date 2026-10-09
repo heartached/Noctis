@@ -576,7 +576,9 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
-        SearchWatermark = $"Search in {value}";
+        // Localized, like every other watermark path: this one built "Search in Songs" in
+        // English from the identifier, and it survived on paths that skip the shell's refresh.
+        SearchWatermark = Loc.T("TopBar.SearchIn", CurrentTabTitle);
         UpdatePageTitleVisibility();
     }
 

@@ -121,6 +121,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
     public void NudgeVolume(int notches)
     {
         if (notches == 0) return;
+        // As the bar: adjusting while muted unmutes (it changed the level silently, 10-08).
+        Player.UnmuteForAdjust();
         Player.Volume = Math.Clamp(Player.Volume + notches * 5, 0, 100);
     }
 

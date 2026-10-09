@@ -44,6 +44,7 @@ public partial class SidebarView : UserControl
         PlaylistList.ContainerPrepared += OnPlaylistContainerPrepared;
         PlaylistList.LayoutUpdated += UpdateGroupTrays;
         DataContextChanged += OnDataContextChanged;
+        SearchPopupContent.AddHandler(KeyDownEvent, OnSearchCapsuleKeyDown, RoutingStrategies.Tunnel);
         DetachedFromVisualTree += (_, _) =>
         {
             UnsubscribeFromViewModel();
@@ -90,12 +91,15 @@ public partial class SidebarView : UserControl
         {
             _topBarVm.SearchOpenRequested -= OnSearchOpenRequested;
             _topBarVm.SearchCloseRequested -= OnSearchCloseRequested;
+            _topBarVm.PropertyChanged -= OnTopBarPropertyChanged;
         }
         _topBarVm = topBar;
         if (_topBarVm != null)
         {
             _topBarVm.SearchOpenRequested += OnSearchOpenRequested;
             _topBarVm.SearchCloseRequested += OnSearchCloseRequested;
+            _topBarVm.PropertyChanged += OnTopBarPropertyChanged;
+            if (_topBarVm.IsSearchOpen) SyncSearchPopupToViewModel();
         }
     }
 
@@ -667,6 +671,18 @@ public partial class SidebarView : UserControl
         if (source.SelectedItem is not NavItem selected)
             return;
 
+        // Settings opens as a sheet over the current page (owner 10-08): its row must not take
+        // the selection even for this click, or the highlight jumps to it and the sheet's
+        // blurred backdrop — snapshotted inside this same click — shows it there until a
+        // retake moves it back. Put the lists back on the current section first, then ask
+        // for the sheet; the view model's selection never changes.
+        if (SidebarViewModel.OpensSheet(selected))
+        {
+            SyncSelectionFromViewModel();
+            _vm.RequestNavigation(selected);
+            return;
+        }
+
         _isSyncingSelection = true;
         try
         {
@@ -721,33 +737,36 @@ public partial class SidebarView : UserControl
 
     private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PlaylistList };
 
-    // ── Rail search capsule morph animation ──
-    // Same mechanism as MenuOpenAnimation (per-instance transitions, settle on the
-    // next frame, animate-then-close); scoped here because that helper is
-    // specialized to ContextMenu/MenuFlyout. The capsule is anchored pixel-exact
-    // over the search button's icon circle (see the Popup comment in XAML), so
-    // hiding the button while the popup is open and growing the capsule rightward
-    // from the bare 32px circle reads as the button morphing into the pill. The
-    // pill is a non-light-dismiss Popup so it stays open while the user interacts
-    // with the filtered page beneath it — except when it is EMPTY, where a click
-    // anywhere else dismisses it (see OnHostPointerPressed).
+    // ── Rail search capsule ──
+    // A non-light-dismiss overlay Popup (it stays open while the user works with the
+    // filtered page, except when EMPTY: see OnHostPointerPressed), pinned exactly over the
+    // rail button, so hiding the button and growing the capsule out of its 48px hover disc
+    // reads as the button turning into the pill. Popup.IsOpen follows TopBar.IsSearchOpen
+    // through SyncSearchPopupToViewModel instead of a binding, so EVERY close (Esc, the
+    // cap, Ctrl+F, a click outside, a navigation, search being disabled) plays the same
+    // collapse, and an open landing mid-collapse turns it around from where it is.
+    //
+    // Motion: per-instance Transitions with CubicBezierEase (SplineEasing is broken here),
+    // staggered so the field never fights the shape. Open: the shape leads with a long
+    // ease-out, surface + shadow fade in as it leaves the rail, the text follows once there
+    // is room. Close is quicker: the text goes first, the shape shrinks back to the disc,
+    // and the surface dissolves into the rail just before the hand-off to the button.
 
-    private const double SearchOpenMs = 320;
-    private const double SearchCloseMs = 240;      // total, including the lead below
-    private const double SearchCloseLeadMs = 50;   // field starts fading before the width moves
-    // The capsule sits a lip's width left of the icon (Border Padding.Left in XAML),
-    // so the magnifier lands INSIDE the rounded cap instead of on its curve while
-    // staying exactly over the (hidden) rail button's glyph.
-    private const double SearchCapsuleLip = 8;
-    private const double SearchCapsuleClosedWidth = 32 + SearchCapsuleLip;   // rail circle + left lip
-    private const double SearchCapsuleOpenWidth = 225 + SearchCapsuleLip;    // + 1.5px borders, 30 icon cap, 180 field, 12 right pad
-    // Both settled rail states put SearchIconHost at x=16 (expanded: 6 panel margin +
-    // 10 padding; collapsed: centered to the same spot — see the rail-action styles).
-    // X must be this CONSTANT, not a live measurement: the hover collapse animates the
-    // icon through ~80px, and an open landing inside that window used to pin the
-    // capsule wherever the slide happened to be. 16 − 2 circle overhang − lip.
-    private const double SearchCapsuleX = 16 - 2 - SearchCapsuleLip;
-    private bool _searchCloseAnimating;
+    internal const double SearchOpenMs = 380;
+    internal const double SearchCloseMs = 240;     // total, including the lead below
+    private const double SearchCloseLeadMs = 40;   // field starts fading before the shape moves
+    internal const double SearchCapsuleClosedSize = 48;  // the rail button's own disc (nav-row size)
+    internal const double SearchCapsuleOpenHeight = 40;  // PillDialog's pill-field height
+    internal const double SearchCapsuleOpenWidth = 250;  // 48 cap - 6 + 196 field + 12 right pad
+    // The rail button's left edge in both settled rail states (RailActions' 6px margin; its
+    // icon grid sits 10px in, at x=16, either way). A CONSTANT, not a live measurement:
+    // the hover collapse animates the icon through ~80px, and an open landing inside that
+    // window used to pin the capsule wherever the slide happened to be.
+    internal const double SearchCapsuleX = 6;
+    private const double SearchGlyphOpenOpacity = 0.75;
+    private bool _searchCollapsing;
+    private bool _searchLandOnHover;
+    private DispatcherTimer? _searchCloseTimer;
 
     private void OnSearchButtonClick(object? sender, RoutedEventArgs e)
     {
@@ -755,41 +774,70 @@ public partial class SidebarView : UserControl
         if (topBar == null) return;
 
         if (topBar.IsSearchOpen)
-            CloseSearchPopup(topBar);
+            // From the cap the pointer sits on the disc the capsule lands on, which the
+            // restored button paints with its hover fill: land tinted.
+            CloseSearchPopup(landOnHover: ReferenceEquals(sender, SearchCapButton));
         else
             topBar.OpenSearchCommand.Execute(null);
     }
 
-    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    // Tunnels on the whole capsule: Esc used to work only from the text box, so with focus
+    // on the cap or the Clear button it fell through to the window, which wiped the query
+    // and left the (now empty) pill on screen.
+    private void OnSearchCapsuleKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape) return;
         e.Handled = true;
-        var topBar = _vm?.TopBar;
-        if (topBar != null) CloseSearchPopup(topBar);
+        CloseSearchPopup();
+    }
+
+    private void OnSearchClearClick(object? sender, RoutedEventArgs e)
+    {
+        // Clear empties the query, which hides this button while it holds focus (a click
+        // focuses it), so focus fell out of the pill and the next query typed went nowhere.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (SearchPopup.IsOpen && !_searchCollapsing) SearchBox.Focus();
+        }, DispatcherPriority.Input);
+    }
+
+    private void OnTopBarPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TopBarViewModel.IsSearchOpen))
+            SyncSearchPopupToViewModel();
+    }
+
+    private void SyncSearchPopupToViewModel()
+    {
+        if (_topBarVm is not { } topBar) return;
+        if (!topBar.IsSearchOpen)
+            CollapseSearchCapsule();
+        else if (!SearchPopup.IsOpen)
+            SearchPopup.IsOpen = true;           // OnSearchPopupOpened runs the morph
+        else if (_searchCollapsing)
+            ReopenSearchCapsule();
     }
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
     {
         EnsureSearchPopupPinned();
+        StopSearchCloseTimer();
+        _searchCollapsing = false;
 
-        // Morph out of the button: hide the real button (the capsule's left cap is
-        // a pixel-exact copy of its icon circle), snap to the bare circle without
-        // animating (transitions left over from a prior open would tween the reset
-        // itself), then grow rightward while the field fades/slides in on the next
-        // frame so the transitions animate the change.
-        _searchCloseAnimating = false;
+        // Snap (no transitions: leftovers from a prior open would tween the reset itself)
+        // to the button's own disc, tinted when the pointer is on it (a click) so the
+        // hand-off is pixel-identical, then grow on the next frame so the transitions
+        // animate the change.
+        var hovered = SearchButton.IsPointerOver;
         SearchButton.Opacity = 0;
-        SearchPopupContent.Transitions = null;
-        SearchFieldArea.Transitions = null;
-        SearchPopupContent.Width = SearchCapsuleClosedWidth;
-        SearchFieldArea.Opacity = 0;
-        SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(-6px)");
-        EnsureSearchTransitions(opening: true);
+        SetSearchTransitions(null);
+        ApplySearchCapsulePose(open: false, tinted: hovered);
         Dispatcher.UIThread.Post(() =>
         {
-            SearchPopupContent.Width = SearchCapsuleOpenWidth;
-            SearchFieldArea.Opacity = 1;
-            SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(0px)");
+            // Closed again before the first frame (a double click, Ctrl+F twice).
+            if (_searchCollapsing || !SearchPopup.IsOpen) return;
+            SetSearchTransitions(opening: true);
+            ApplySearchCapsulePose(open: true, tinted: true);
             SearchBox.Focus();
         }, DispatcherPriority.Render);
     }
@@ -798,48 +846,119 @@ public partial class SidebarView : UserControl
     /// Pins the capsule against the stationary sidebar root (the popup's anchor).
     /// X is the settled-rail constant — see SearchCapsuleX. Y is measured live: the
     /// vertical stack never animates, so that read cannot catch a transition
-    /// mid-slide (-2: the capsule overhangs the 28px icon grid by 2px per side).
+    /// mid-slide (-10: the button's padding around the icon grid; the 48px capsule
+    /// host covers the button row exactly).
     /// Called at attach (so the FIRST open of the run doesn't spend a frame at the
     /// Popup's default 0,0 offsets before Opened runs) and again on every open.
     /// </summary>
     private void EnsureSearchPopupPinned()
     {
-        SearchPopup.HorizontalOffset = SearchCapsuleX;
-        if (SearchIconHost.TranslatePoint(new Point(0, -2), this) is { } capsuleOrigin)
-            SearchPopup.VerticalOffset = capsuleOrigin.Y;
+        // The shadow room's padding sits around the capsule inside the popup.
+        var room = SearchShadowRoom.Padding;
+        SearchPopup.HorizontalOffset = SearchCapsuleX - room.Left;
+        if (SearchIconHost.TranslatePoint(new Point(0, -10), this) is { } capsuleOrigin)
+            SearchPopup.VerticalOffset = capsuleOrigin.Y - room.Top;
     }
 
-    private void CloseSearchPopup(TopBarViewModel topBar)
+    /// <summary>Every UI-side close: flips the view model, whose change plays the collapse
+    /// (see SyncSearchPopupToViewModel). Without a view model, collapses directly.</summary>
+    private void CloseSearchPopup(bool landOnHover = false)
     {
-        if (_searchCloseAnimating) return;
-
-        // Mirror of the open animation: collapse back to the icon circle, then
-        // close the popup (its Closed handler restores the real button, so the
-        // hand-off happens while both are pixel-identical circles).
-        _searchCloseAnimating = true;
-        EnsureSearchTransitions(opening: false);
-        SearchPopupContent.Width = SearchCapsuleClosedWidth;
-        SearchFieldArea.Opacity = 0;
-        SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(-6px)");
-
-        // +1 frame so the width lands on the closed circle before the popup goes.
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SearchCloseMs + 16) };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            _searchCloseAnimating = false;
+        _searchLandOnHover = landOnHover;
+        if (_topBarVm is { IsSearchOpen: true } topBar)
             topBar.IsSearchOpen = false;
-        };
-        timer.Start();
+        else
+            CollapseSearchCapsule();
+        _searchLandOnHover = false;
+    }
+
+    private void CollapseSearchCapsule()
+    {
+        if (!SearchPopup.IsOpen || _searchCollapsing) return;
+
+        // Mirror of the open: back to the button's disc, then close the popup (its Closed
+        // handler restores the real button, so the hand-off happens while both are
+        // pixel-identical discs).
+        _searchCollapsing = true;
+        PinSearchCapsuleWhereItIs();   // Esc / a second click during the open
+        SetSearchTransitions(opening: false);
+        ApplySearchCapsulePose(open: false, tinted: _searchLandOnHover);
+
+        // A one-shot hand-off, not motion: the DispatcherTimer grid only decides when the
+        // popup goes, +1 frame after the shrink has landed. One timer, stopped by any
+        // reopen: a stale tick used to close a pill reopened in the meantime.
+        StopSearchCloseTimer();
+        _searchCloseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SearchCloseMs + 16) };
+        _searchCloseTimer.Tick += OnSearchCloseTimerTick;
+        _searchCloseTimer.Start();
+    }
+
+    private void OnSearchCloseTimerTick(object? sender, EventArgs e)
+    {
+        StopSearchCloseTimer();
+        _searchCollapsing = false;
+        SearchPopup.IsOpen = false;
+    }
+
+    /// <summary>An open request landing mid-collapse (a fast second click, Ctrl+F again):
+    /// turn around from wherever the shape is instead of being dropped.</summary>
+    private void ReopenSearchCapsule()
+    {
+        StopSearchCloseTimer();
+        _searchCollapsing = false;
+        PinSearchCapsuleWhereItIs();
+        SetSearchTransitions(opening: true);
+        ApplySearchCapsulePose(open: true, tinted: true);
+        SearchBox.Focus();
+    }
+
+    /// <summary>
+    /// Re-targeting a running transition restarts it from the property's BASE (local)
+    /// value, not from where it is on screen (probed: a reopen at 243px snapped to the 48px
+    /// disc and regrew; an Esc during the open jumped to full width before shrinking). So
+    /// every reversal first pins each animated value where it currently is: GetValue
+    /// returns the animated value, and dropping the transitions then writing it back as the
+    /// local value changes nothing visible.
+    /// </summary>
+    private void PinSearchCapsuleWhereItIs()
+    {
+        var width = SearchPopupContent.Width;
+        var height = SearchPopupContent.Height;
+        var surface = SearchCapsuleSurface.Opacity;
+        var tint = SearchCapsuleTint.Opacity;
+        var ring = SearchCapsuleRing.Opacity;
+        var glyph = SearchCapsuleGlyph.Opacity;
+        var field = SearchFieldArea.Opacity;
+        var slide = SearchFieldArea.RenderTransform;
+        SetSearchTransitions(null);
+        SearchPopupContent.Width = width;
+        SearchPopupContent.Height = height;
+        SearchCapsuleSurface.Opacity = surface;
+        SearchCapsuleTint.Opacity = tint;
+        SearchCapsuleRing.Opacity = ring;
+        SearchCapsuleGlyph.Opacity = glyph;
+        SearchFieldArea.Opacity = field;
+        SearchFieldArea.RenderTransform = slide;
+    }
+
+    private void StopSearchCloseTimer()
+    {
+        if (_searchCloseTimer == null) return;
+        _searchCloseTimer.Stop();
+        _searchCloseTimer.Tick -= OnSearchCloseTimerTick;
+        _searchCloseTimer = null;
     }
 
     private void OnSearchPopupClosed(object? sender, EventArgs e)
     {
-        // Restore the real button whenever the popup actually closes — including
-        // orphan closes where a view model flips IsSearchOpen without the collapse
-        // animation running. Clear (not set) so the :disabled style opacity still
-        // applies.
+        // Restore the real button whenever the popup actually closes, including closes
+        // that skipped the collapse (the view detaching). Clear (not set) so the
+        // :disabled style opacity still applies.
+        StopSearchCloseTimer();
+        _searchCollapsing = false;
         SearchButton.ClearValue(OpacityProperty);
+        if (_topBarVm is { IsSearchOpen: true } topBar)
+            topBar.IsSearchOpen = false;
     }
 
     private void OnSearchOpenRequested(object? sender, EventArgs e)
@@ -848,15 +967,14 @@ public partial class SidebarView : UserControl
         // box (a fresh open is focused by OnSearchPopupOpened instead).
         Dispatcher.UIThread.Post(() =>
         {
-            if (SearchPopup.IsOpen) SearchBox.Focus();
+            if (SearchPopup.IsOpen && !_searchCollapsing) SearchBox.Focus();
         }, DispatcherPriority.Render);
     }
 
     private void OnSearchCloseRequested(object? sender, EventArgs e)
     {
         // Ctrl+F toggling an open pill shut: same collapse path as Esc.
-        var topBar = _vm?.TopBar;
-        if (topBar != null) CloseSearchPopup(topBar);
+        CloseSearchPopup();
     }
 
     // The pill stays up while the user works with the page it is filtering — but
@@ -888,7 +1006,7 @@ public partial class SidebarView : UserControl
             return;
         // Not marked handled: dismissal must not eat the click the user aimed at
         // the page (a nav item, a play button) — it lands normally.
-        CloseSearchPopup(topBar);
+        CloseSearchPopup();
     }
 
     private bool IsInsideSearchCapsule(Visual node)
@@ -898,36 +1016,78 @@ public partial class SidebarView : UserControl
         return false;
     }
 
-    private void EnsureSearchTransitions(bool opening)
+    private void ApplySearchCapsulePose(bool open, bool tinted)
     {
-        // CubicBezierEase, not SplineEasing (mis-stores Y1 and can freeze after frame 1).
-        // Staggered so the field never fights the width: on open the capsule leads and
-        // the text follows once there is room; on close the text is gone before the
-        // shrinking edge reaches it, so nothing is visibly clipped mid-collapse.
-        if (opening)
+        SearchPopupContent.Width = open ? SearchCapsuleOpenWidth : SearchCapsuleClosedSize;
+        SearchPopupContent.Height = open ? SearchCapsuleOpenHeight : SearchCapsuleClosedSize;
+        SearchCapsuleSurface.Opacity = open ? 1 : 0;
+        SearchCapsuleTint.Opacity = open || tinted ? 1 : 0;
+        SearchCapsuleRing.Opacity = open ? 1 : 0;
+        SearchCapsuleGlyph.Opacity = open ? SearchGlyphOpenOpacity : 1;
+        SearchFieldArea.Opacity = open ? 1 : 0;
+        SearchFieldArea.RenderTransform = TransformOperations.Parse(open ? "translateX(0px)" : "translateX(-8px)");
+    }
+
+    /// <summary>null clears every capsule transition (the snap to the start pose).</summary>
+    private void SetSearchTransitions(bool? opening)
+    {
+        if (opening is not { } isOpening)
         {
-            var grow = new CubicBezierEase(0.32, 0.72, 0, 1);   // long, soft settle
+            SearchPopupContent.Transitions = null;
+            SearchCapsuleSurface.Transitions = null;
+            SearchCapsuleTint.Transitions = null;
+            SearchCapsuleRing.Transitions = null;
+            SearchCapsuleGlyph.Transitions = null;
+            SearchFieldArea.Transitions = null;
+            return;
+        }
+
+        static DoubleTransition Fade(AvaloniaProperty property, double ms, Avalonia.Animation.Easings.Easing ease, double delayMs = 0) => new()
+        {
+            Property = property,
+            Duration = TimeSpan.FromMilliseconds(ms),
+            Delay = TimeSpan.FromMilliseconds(delayMs),
+            Easing = ease,
+        };
+
+        if (isOpening)
+        {
+            var grow = new CubicBezierEase(0.32, 0.72, 0, 1);    // long, soft settle
+            var soft = new CubicBezierEase(0.25, 0.1, 0.25, 1);  // CSS "ease"
             SearchPopupContent.Transitions = new Transitions
             {
-                new DoubleTransition { Property = WidthProperty, Duration = TimeSpan.FromMilliseconds(SearchOpenMs), Easing = grow },
+                Fade(WidthProperty, SearchOpenMs, grow),
+                Fade(HeightProperty, SearchOpenMs, grow),
             };
+            SearchCapsuleSurface.Transitions = new Transitions { Fade(Visual.OpacityProperty, 120, soft) };
+            SearchCapsuleTint.Transitions = new Transitions { Fade(Visual.OpacityProperty, 120, soft) };
+            SearchCapsuleRing.Transitions = new Transitions { Fade(Visual.OpacityProperty, 160, soft, 60) };
+            SearchCapsuleGlyph.Transitions = new Transitions { Fade(Visual.OpacityProperty, 260, grow) };
             SearchFieldArea.Transitions = new Transitions
             {
-                new DoubleTransition { Property = Visual.OpacityProperty, Duration = TimeSpan.FromMilliseconds(200), Delay = TimeSpan.FromMilliseconds(70), Easing = grow },
-                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(280), Delay = TimeSpan.FromMilliseconds(40), Easing = grow },
+                Fade(Visual.OpacityProperty, 220, grow, 90),
+                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(320), Delay = TimeSpan.FromMilliseconds(60), Easing = grow },
             };
         }
         else
         {
-            var shrink = new CubicBezierEase(0.4, 0, 0.2, 1);   // standard ease-in-out
+            var shrink = new CubicBezierEase(0.4, 0, 0.2, 1);    // standard ease-in-out
+            var shapeMs = SearchCloseMs - SearchCloseLeadMs;
             SearchPopupContent.Transitions = new Transitions
             {
-                new DoubleTransition { Property = WidthProperty, Duration = TimeSpan.FromMilliseconds(SearchCloseMs - SearchCloseLeadMs), Delay = TimeSpan.FromMilliseconds(SearchCloseLeadMs), Easing = shrink },
+                Fade(WidthProperty, shapeMs, shrink, SearchCloseLeadMs),
+                Fade(HeightProperty, shapeMs, shrink, SearchCloseLeadMs),
             };
+            // The surface and the shadow dissolve into the rail over the last frames, as
+            // the disc settles over the button (bare unless it lands on the pointer).
+            SearchCapsuleSurface.Transitions = new Transitions { Fade(Visual.OpacityProperty, 90, shrink, SearchCloseMs - 90) };
+            SearchCapsuleTint.Transitions = new Transitions { Fade(Visual.OpacityProperty, 90, shrink, SearchCloseMs - 90) };
+            SearchCapsuleRing.Transitions = new Transitions { Fade(Visual.OpacityProperty, 120, shrink) };
+            SearchCapsuleGlyph.Transitions = new Transitions { Fade(Visual.OpacityProperty, 160, shrink) };
             SearchFieldArea.Transitions = new Transitions
             {
-                new DoubleTransition { Property = Visual.OpacityProperty, Duration = TimeSpan.FromMilliseconds(110), Easing = shrink },
-                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(160), Easing = shrink },
+                Fade(Visual.OpacityProperty, 100, shrink),
+                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(150), Easing = shrink },
             };
         }
     }

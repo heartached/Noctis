@@ -24,7 +24,7 @@ namespace Noctis.Tests;
 /// </summary>
 public class SearchPillGeometryTests
 {
-    // SearchCapsuleX (6) + lip (8) + circle overhang (2).
+    // SearchCapsuleX (6, the button's left edge) + the button's 10px padding.
     private const double ExpectedIconX = 16;
 
     private static (SidebarView Sidebar, Window Window) Mount(bool expanded)

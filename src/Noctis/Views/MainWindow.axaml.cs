@@ -1834,10 +1834,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             case ShortcutAction.PreviousTrack:
                 vm.Player.PreviousCommand.Execute(null);
                 return true;
+            // Adjusting while muted means "let me hear it", as the bar's wheel/drag do: a
+            // shortcut step used to change the level silently under the mute (10-08).
             case ShortcutAction.VolumeUp:
+                vm.Player.UnmuteForAdjust();
                 vm.Player.Volume = Math.Min(100, vm.Player.Volume + 5);
                 return true;
             case ShortcutAction.VolumeDown:
+                vm.Player.UnmuteForAdjust();
                 vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
                 return true;
             case ShortcutAction.ToggleFavorite:

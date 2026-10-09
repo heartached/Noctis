@@ -126,6 +126,29 @@ public class MiniPlayerFrostSettingTests : IDisposable
         Assert.Same(MiniPlayerWindow.TransparencyLevels(true), MiniPlayerWindow.TransparencyLevels(true));
     }
 
+    /// <summary>10-08: the wheel over a mini player design changed the level silently while
+    /// muted; adjusting now unmutes, as the playback bar's wheel/drag always did.</summary>
+    [AvaloniaFact]
+    public void DesignWheelVolume_UnmutesLikeTheBar()
+    {
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+
+        player.Volume = 40;
+        player.IsMuted = true;
+        vm.NudgeVolume(1);
+        Assert.False(player.IsMuted);
+        Assert.Equal(45, player.Volume);
+
+        vm.NudgeVolume(0); // a fraction that hasn't reached a notch: nothing changes
+        Assert.Equal(45, player.Volume);
+    }
+
     [AvaloniaFact]
     public void ReattachingTheViewModel_DoesNotChangeTheHintInstance()
     {

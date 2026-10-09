@@ -216,6 +216,24 @@
                     <Style Selector="Button.rail-action:disabled">
                         <Setter Property="Opacity" Value="0.3"/>
                     </Style>
+                    <!-- Rail buttons (Back, Search): no global hover zoom (rail rows don't zoom,
+                         and the search capsule takes over from this exact 48px disc), and the
+                         press keeps the hover fill instead of Fluent's grey pressed box. Back
+                         had both the zoom and the grey disabled disc until 10-08. -->
+                    <Style Selector="Button.rail-action:pointerover">
+                        <Setter Property="RenderTransform" Value="scale(1)"/>
+                    </Style>
+                    <Style Selector="Button.rail-action:pressed">
+                        <Setter Property="RenderTransform" Value="scale(0.96)"/>
+                    </Style>
+                    <Style Selector="Button.rail-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                    </Style>
+                    <!-- Disabled (Back with nowhere to go; Search on Home/Settings): just dimmed,
+                         not Fluent's grey disabled disc. -->
+                    <Style Selector="Button.rail-action:disabled /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent"/>
+                    </Style>
                 </StackPanel.Styles>
 
                 <Button Classes="rail-action"
@@ -285,15 +303,25 @@
                      transition resizes it, so a target inside the rail drags the
                      capsule sideways mid-morph. The root's origin never moves; the
                      horizontal offset is a CONSTANT (both settled rail states put the
-                     icon grid at the same x — measuring it live caught the collapse
+                     button at the same x; measuring it live caught the collapse
                      animation mid-slide and pinned the capsule askew), the vertical
-                     offset is measured per open in OnSearchPopupOpened (the vertical
-                     stack never animates, so that read is timing-safe). The Border's
-                     left padding is the lip that keeps the magnifier INSIDE the
-                     rounded cap instead of riding its curve; the capsule sits that
-                     much left of the icon so the glyph itself never moves. The button
-                     hides while the popup is open and the capsule appears to morph
-                     out of it. Open/close animation lives in code-behind. -->
+                     offset is measured per open (the vertical stack never animates, so
+                     that read is timing-safe).
+                     IsOpen is driven from code-behind (SyncSearchPopupToViewModel), not
+                     bound: a view model close (navigation, search disabled) must play
+                     the collapse too, and a binding would snap the popup shut first.
+
+                     Look (owner 10-08, the filled-pill language): no outline. The capsule
+                     starts as the rail button's own 48px hover disc, exactly over it,
+                     and grows into a 40px filled pill: the island surface with a soft
+                     shadow (it floats over the page), the rail's hover tint as the field
+                     fill, and a 1.5px ring that is transparent at rest and turns accent
+                     while the field has focus (PillDialog's pill-field). The magnifier
+                     never moves: 24px from the left edge = the disc's centre, which on
+                     the pill is the field's 16px inset. The 48px host keeps the shrinking
+                     height centred on the button; SearchShadowRoom's padding is room for the shadow (the
+                     overlay host clips to its content's bounds; no room on the left, where
+                     the rail ends). Motion lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
                        PlacementTarget="{Binding #SidebarRoot}"
                        Placement="AnchorAndGravity"
@@ -302,60 +330,119 @@
                        IsLightDismissEnabled="False"
                        ShouldUseOverlayLayer="True"
                        WindowManagerAddShadowHint="False"
-                       IsOpen="{Binding TopBar.IsSearchOpen, Mode=TwoWay}"
                        Opened="OnSearchPopupOpened"
                        Closed="OnSearchPopupClosed">
-                    <Border x:Name="SearchPopupContent"
-                            Background="{DynamicResource IslandBackground}"
-                            BorderBrush="{DynamicResource TextControlBorderBrush}"
-                            BorderThickness="1.5"
-                            CornerRadius="999"
-                            Width="40" Height="32"
-                            Padding="7,0,0,0"
-                            ClipToBounds="True">
-                        <Grid ColumnDefinitions="30,Auto" HorizontalAlignment="Left">
-                            <!-- Left cap: same 16px magnifier as the (hidden) rail button
-                                 beneath, doubling as the close toggle. -->
-                            <Button Grid.Column="0"
-                                    Click="OnSearchButtonClick"
-                                    Background="Transparent" BorderThickness="0"
-                                    Padding="0" Cursor="Hand" CornerRadius="999"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"
-                                    VerticalContentAlignment="Center">
-                                <Button.Styles>
-                                    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                                        <Setter Property="Background" Value="#22FFFFFF"/>
-                                    </Style>
-                                </Button.Styles>
-                                <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
-                                          Foreground="{DynamicResource IslandForeground}"/>
-                            </Button>
-                            <Grid x:Name="SearchFieldArea"
-                                  Grid.Column="1"
-                                  ColumnDefinitions="*,Auto" Width="180" Margin="0,0,12,0">
-                                <TextBox x:Name="SearchBox"
-                                         Grid.Column="0"
-                                         Classes="search-box"
-                                         Text="{Binding TopBar.SearchText, Mode=TwoWay}"
-                                         Watermark="{Binding TopBar.SearchWatermark}"
-                                         ToolTip.Tip="{loc:T Sidebar.SearchSyntaxTip}"
-                                         ToolTip.Placement="Bottom"
-                                         ToolTip.ShowDelay="700"
-                                         KeyDown="OnSearchBoxKeyDown"
-                                         Background="Transparent" BorderThickness="0"
-                                         FontSize="12" Padding="4,2"
-                                         VerticalAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Command="{Binding TopBar.ClearSearchCommand}"
-                                        IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
-                                        Background="Transparent" BorderThickness="0"
-                                        Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T Sidebar.Text}" FontSize="11" Opacity="0.5"/>
-                                </Button>
-                            </Grid>
-                        </Grid>
+                    <Border x:Name="SearchShadowRoom" Padding="6,10,20,24" HorizontalAlignment="Left">
+                    <Panel x:Name="SearchCapsuleHost" Height="48" HorizontalAlignment="Left">
+                        <Border x:Name="SearchPopupContent"
+                                Background="Transparent"
+                                CornerRadius="999"
+                                Width="48" Height="48"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                            <Border.Styles>
+                                <!-- Focus ring: always the accent, faded in and out (a brush tween
+                                     from Transparent passes through a grey outline). Its parent's
+                                     opacity follows the open/close motion in code-behind. -->
+                                <Style Selector="Border#SearchCapsuleRingStroke">
+                                    <Setter Property="Opacity" Value="0"/>
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.16"/>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Border#SearchPopupContent:focus-within Border#SearchCapsuleRingStroke">
+                                    <Setter Property="Opacity" Value="1"/>
+                                </Style>
+                                <!-- The island is dark in every theme: Fluent's Light placeholder
+                                     and text colours were dark-on-dark here. -->
+                                <!-- The cap is a plain round target inside the pill: no global
+                                     hover zoom (it would carry the anchored magnifier with it). -->
+                                <Style Selector="Button#SearchCapButton:pointerover">
+                                    <Setter Property="RenderTransform" Value="scale(1)"/>
+                                </Style>
+                                <Style Selector="Button#SearchCapButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                                </Style>
+                                <Style Selector="Button#SearchCapButton:pressed">
+                                    <Setter Property="RenderTransform" Value="scale(0.92)"/>
+                                </Style>
+                                <Style Selector="Button#SearchCapButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                                </Style>
+                            </Border.Styles>
+                            <Panel>
+                                <!-- Surface + shadow on their own layer so the shadow fades in as
+                                     the pill leaves the rail (on the rail it would ring the disc). -->
+                                <Border x:Name="SearchCapsuleSurface"
+                                        Background="{DynamicResource IslandBackground}"
+                                        CornerRadius="999"
+                                        BoxShadow="0 8 24 0 #59000000, 0 1 3 0 #33000000"
+                                        Opacity="0"
+                                        IsHitTestVisible="False"/>
+                                <Border x:Name="SearchCapsuleTint"
+                                        Background="{DynamicResource SidebarHoverBrush}"
+                                        CornerRadius="999"
+                                        Opacity="0"
+                                        IsHitTestVisible="False"/>
+                                <Border CornerRadius="999" ClipToBounds="True">
+                                    <Grid ColumnDefinitions="48,Auto" HorizontalAlignment="Left">
+                                        <!-- Left cap: the same 16px magnifier as the (hidden) rail
+                                             button beneath, doubling as the close toggle. -->
+                                        <Button x:Name="SearchCapButton"
+                                                Grid.Column="0"
+                                                Click="OnSearchButtonClick"
+                                                Width="32" Height="32"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="0" Cursor="Hand" CornerRadius="999"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center">
+                                            <PathIcon x:Name="SearchCapsuleGlyph"
+                                                      Data="{StaticResource SearchIcon}" Width="16" Height="16"
+                                                      Foreground="{DynamicResource IslandForeground}"/>
+                                        </Button>
+                                        <Grid x:Name="SearchFieldArea"
+                                              Grid.Column="1"
+                                              ColumnDefinitions="*,Auto" Width="196" Margin="-6,0,12,0">
+                                            <TextBox x:Name="SearchBox"
+                                                     Grid.Column="0"
+                                                     Classes="search-box"
+                                                     Text="{Binding TopBar.SearchText, Mode=TwoWay}"
+                                                     Watermark="{Binding TopBar.SearchWatermark}"
+                                                     ToolTip.Tip="{loc:T Sidebar.SearchSyntaxTip}"
+                                                     ToolTip.Placement="Bottom"
+                                                     ToolTip.ShowDelay="700"
+                                                     Background="Transparent" BorderThickness="0"
+                                                     Foreground="{DynamicResource IslandForeground}"
+                                                     CaretBrush="{DynamicResource IslandForeground}"
+                                                     PlaceholderForeground="{DynamicResource IslandForegroundSecondary}"
+                                                     FontSize="13" Padding="0,2,4,2"
+                                                     VerticalAlignment="Center"/>
+                                            <Button x:Name="SearchClearButton"
+                                                    Grid.Column="1"
+                                                    Command="{Binding TopBar.ClearSearchCommand}"
+                                                    Click="OnSearchClearClick"
+                                                    IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Foreground="{DynamicResource IslandForeground}"
+                                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:T Sidebar.Text}" FontSize="11" Opacity="0.5"/>
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                                <Panel x:Name="SearchCapsuleRing" IsHitTestVisible="False">
+                                    <Border x:Name="SearchCapsuleRingStroke"
+                                            CornerRadius="999"
+                                            BorderThickness="1.5"
+                                            BorderBrush="{DynamicResource AccentColorBrush}"/>
+                                </Panel>
+                            </Panel>
+                        </Border>
+                    </Panel>
                     </Border>
                 </Popup>
             </StackPanel>

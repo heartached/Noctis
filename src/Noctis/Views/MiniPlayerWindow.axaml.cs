@@ -1126,11 +1126,16 @@ public partial class MiniPlayerWindow : Window
 
     // Wheel over a design card: volume, 5 per notch (the classic forms have their own bar
     // or the Volume drawer; the designs' only volume affordance is the drawer item).
+    // Touchpads and hi-res wheels report fractions at a high rate: "any delta = one notch" made
+    // a small swipe jump 0→100 (10-08). The playback bar's accumulator turns them into notches.
+    private readonly PlaybackBarView.VolumeWheelAccumulator _volumeWheel = new();
+
     private void OnDesignVolumeWheel(object? sender, PointerWheelEventArgs e)
     {
         if (Vm == null || e.Delta.Y == 0) return;
-        Vm.NudgeVolume(e.Delta.Y > 0 ? 1 : -1);
         e.Handled = true;
+        var notches = _volumeWheel.Add(e.Delta.Y, e.Timestamp);
+        if (notches != 0) Vm.NudgeVolume(notches);
     }
 
     private IBrush? _classicRootFill;
