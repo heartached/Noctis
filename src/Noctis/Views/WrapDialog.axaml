@@ -35,6 +35,16 @@
             <Setter Property="CornerRadius" Value="18" />
             <Setter Property="Padding" Value="16,12" />
         </Style>
+        <!-- Centred in the tile, both ways (owner 10-09: the text sat up and to the left).
+             Tiles in a row share a height, so a tile without a detail line centres its two. -->
+        <Style Selector="Border.wr-tile > StackPanel">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.wr-tile TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
         <Style Selector="TextBlock.wr-value">
             <Setter Property="FontSize" Value="22" />
             <Setter Property="FontWeight" Value="Bold" />
