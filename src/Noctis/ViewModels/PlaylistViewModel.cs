@@ -248,6 +248,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             _library.LibraryUpdated += OnLibraryUpdated;
 
         _sidebar.PlaylistTracksChanged += OnPlaylistTracksChanged;
+        _sidebar.PlaylistEdited += OnPlaylistEdited;
     }
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
@@ -259,6 +260,29 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (playlistId == _playlist.Id)
             Dispatcher.UIThread.Post(() => LoadTracks());
+    }
+
+    /// <summary>Header values the Edit Playlist dialog can change, read from the playlist.</summary>
+    private static readonly string[] EditedHeaderProperties =
+    {
+        nameof(PlaylistColor), nameof(PlaylistCoverArtPath), nameof(HasCustomArt), nameof(HasCollageArt),
+        nameof(HasSingleArt), nameof(ShowFallbackIcon), nameof(BackdropArtPath), nameof(IsPinned),
+        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue),
+    };
+
+    /// <summary>
+    /// The Edit Playlist dialog saved this playlist, from this page or from the sidebar's menu
+    /// while the page is open. The page used to refresh only after its own Edit button, and
+    /// then not the star, the cover's visibility flags or the Updated date: a removed cover
+    /// left a blank square, a new one stayed hidden until the page was reopened.
+    /// </summary>
+    private void OnPlaylistEdited(object? sender, Guid playlistId)
+    {
+        if (playlistId != _playlist.Id) return;
+        Name = _playlist.Name;
+        PlaylistDescription = _playlist.Description ?? string.Empty;
+        foreach (var property in EditedHeaderProperties)
+            OnPropertyChanged(property);
     }
 
     /// <summary>
@@ -1045,13 +1069,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task EditPlaylist()
     {
+        // The header refreshes from the sidebar's PlaylistEdited (OnPlaylistEdited).
         await _sidebar.EditPlaylistAsync(_playlist);
-        // Refresh after edit
-        Name = _playlist.Name;
-        PlaylistDescription = _playlist.Description ?? string.Empty;
-        OnPropertyChanged(nameof(PlaylistColor));
-        OnPropertyChanged(nameof(PlaylistCoverArtPath));
-        OnPropertyChanged(nameof(BackdropArtPath));
     }
 
     [RelayCommand]
@@ -1073,6 +1092,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _sidebar.PlaylistTracksChanged -= OnPlaylistTracksChanged;
+        _sidebar.PlaylistEdited -= OnPlaylistEdited;
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }

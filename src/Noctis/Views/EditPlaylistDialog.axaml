@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
         xmlns:ctrl="using:Noctis.Controls"
@@ -16,235 +16,344 @@
 
     <Window.Resources>
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
-        <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </Window.Resources>
 
     <Window.Styles>
-        <!-- Folder field: rounded pill AutoCompleteBox matching the other inputs -->
-        <Style Selector="AutoCompleteBox.folder-input">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <!-- Small muted label above a field, as Create Playlist's and the Metadata editor's. -->
+        <Style Selector="TextBlock.ep-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="16,0,0,0" />
         </Style>
-        <Style Selector="AutoCompleteBox.folder-input /template/ TextBox#PART_TextBox">
+        <Style Selector="TextBlock.ep-hint">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.45" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Remove custom cover: a quiet text action beside Change cover, not a second pill
+             (Album Description's Clear). -->
+        <Style Selector="Button.ep-quiet">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="AutoCompleteBox.folder-input /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
+        <Style Selector="Button.ep-quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         </Style>
-        <Style Selector="AutoCompleteBox.folder-input:pointerover /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="White" />
-        </Style>
-        <Style Selector="AutoCompleteBox.folder-input:focus-within /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-        <!-- Suggestion dropdown: give it an opaque background so dialog content
-             behind the transparent window doesn't bleed through the popup. -->
-        <Style Selector="AutoCompleteBox.folder-input /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource AppMainBackground}" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+
+        <!-- Folder field: the pill-field AutoCompleteBox (PillDialog.axaml), plus its suggestion
+             list as a rounded card in the dialog's own fill with inset pill rows, like the pill
+             ComboBoxes' drop-downs. Opaque: the window behind is transparent. -->
+        <Style Selector="AutoCompleteBox.ep-folder /template/ Border#PART_SuggestionsContainer">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="4" />
         </Style>
-        <Style Selector="AutoCompleteBox.folder-input /template/ ListBox#PART_SelectingItemsControl">
-            <Setter Property="Background" Value="{DynamicResource AppMainBackground}" />
+        <Style Selector="AutoCompleteBox.ep-folder ListBoxItem">
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="AutoCompleteBox.ep-folder ListBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <!-- The chevron inside the folder pill: lists every folder (the box only suggests
+             while typing). -->
+        <Style Selector="Button.ep-chevron">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.ep-chevron:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- Star: one filled row in the fields' tone, the whole row toggles; the round check on
+             the right is the pickers' selection circle. Own template, so Fluent's checked
+             ToggleButton fill never paints the row. -->
+        <Style Selector="ToggleButton.ep-toggle-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Padding" Value="16,0,14,0" />
+            <Setter Property="MinHeight" Value="48" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="RowFill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.ep-toggle-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+        <Style Selector="ToggleButton.ep-toggle-row:pressed">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+        </Style>
+        <Style Selector="ToggleButton.ep-toggle-row PathIcon.ep-star">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="ToggleButton.ep-toggle-row:checked PathIcon.ep-star">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- Selection circle: the Add Songs / Lyrics Studio picker recipe (brushes in styles so
+             .selected wins over the resting look). -->
+        <Style Selector="Border.selection-circle">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        <Style Selector="Border.selection-circle.selected">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
     </Window.Styles>
 
-<!-- Full-window dimmed overlay that captures all input.
-     Fade/scale open-close animation: same pattern as the Create Playlist dialog. -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-09: the rounded pill pop-up of Create Playlist and the Metadata editor, with the
+         blurred app behind. PillDialogHost draws the blurred, dimmed owner and the card, and
+         plays the open/close animation (every close path — Cancel, Save, Esc, Alt+F4 — animates
+         out once). The edit reaches the caller through the view model's PlaylistSaved event,
+         never through Close(result), so the deferred close loses nothing. -->
+    <ctrl:PillDialogHost>
 
-    <!-- Centered dialog card: art rail on the left, fields on the right -->
-    <Border x:Name="DialogCard"
-            CornerRadius="24"
-            ClipToBounds="True"
-            Background="{DynamicResource AppMainBackground}"
-            Width="600"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            RenderTransformOrigin="50%,50%"
-            RenderTransform="scale(0.96)"
-            BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-        <Border.Transitions>
-            <Transitions>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                    <TransformOperationsTransition.Easing>
-                        <CubicEaseOut/>
-                    </TransformOperationsTransition.Easing>
-                </TransformOperationsTransition>
-            </Transitions>
-        </Border.Transitions>
-        <DockPanel>
+    <Grid Width="560" RowDefinitions="Auto,Auto,Auto">
 
-            <!-- Header -->
-            <TextBlock DockPanel.Dock="Top"
-                       Text="{loc:T EditPlaylist.EditPlaylist}"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       Margin="24,20,24,0" />
+        <!-- Header: the cover as it will look (custom picture, album collage or the playlist's
+             colour) with its two actions, the title and the playlist's size. -->
+        <Border Grid.Row="0"
+                Padding="28,24,28,18"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="104,20,*">
+                <Border x:Name="CoverTile"
+                        Grid.Column="0"
+                        Width="104" Height="104"
+                        CornerRadius="20"
+                        ClipToBounds="True"
+                        VerticalAlignment="Top"
+                        Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}">
+                    <Panel>
+                        <!-- No art yet: the playlist glyph on the playlist's colour. -->
+                        <Border Width="34" Height="34" Opacity="0.35"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Background="White"
+                                RenderOptions.BitmapInterpolationMode="HighQuality"
+                                IsVisible="{Binding ShowFallbackIcon}">
+                            <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
+                        </Border>
 
-            <!-- Bottom: Cancel / Save buttons -->
-            <Border DockPanel.Dock="Bottom"
-                    Padding="24,12,24,16">
-                <Grid ColumnDefinitions="*,Auto,Auto">
-                    <Button Grid.Column="1"
-                            Content="{loc:T EditPlaylist.Cancel}"
-                            Command="{Binding CancelCommand}"
-                            Width="100"
-                            Padding="0,8"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="2"
-                            Content="{loc:T EditPlaylist.Save}"
-                            Command="{Binding SaveCommand}"
-                            Width="100"
-                            Padding="0,8"
-                            Classes="accent-btn"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Cursor="Hand" />
-                </Grid>
-            </Border>
+                        <!-- Single album art -->
+                        <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                          DecodeWidth="256"
+                                          Stretch="UniformToFill"
+                                          IsVisible="{Binding HasSingleArt}" />
 
-            <!-- Content: cover rail | fields -->
-            <Grid ColumnDefinitions="170,24,*" Margin="24,18,24,10">
+                        <!-- 2x2 collage -->
+                        <Grid RowDefinitions="*,*"
+                              ColumnDefinitions="*,*"
+                              IsVisible="{Binding HasCollageArt}">
+                            <ctrl:CachedImage Grid.Row="0" Grid.Column="0" SourcePath="{Binding Art1}" DecodeWidth="128" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="0" Grid.Column="1" SourcePath="{Binding Art2}" DecodeWidth="128" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="1" Grid.Column="0" SourcePath="{Binding Art3}" DecodeWidth="128" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="1" Grid.Column="1" SourcePath="{Binding Art4}" DecodeWidth="128" Stretch="UniformToFill" />
+                        </Grid>
 
-                <!-- Left rail: cover art + art actions -->
-                <StackPanel Grid.Column="0" Spacing="10">
-                    <Border Width="170" Height="170"
-                            CornerRadius="12"
-                            ClipToBounds="True"
-                            BoxShadow="0 6 18 0 #40000000"
-                            Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}">
-                        <Panel>
-                            <!-- Fallback icon -->
-                            <TextBlock Text="{loc:T EditPlaylist.Text}"
-                                       FontSize="48"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="White"
-                                       Opacity="0.25"
-                                       IsVisible="{Binding ShowFallbackIcon}" />
+                        <!-- Custom cover (wins over the collage) -->
+                        <ctrl:CachedImage x:Name="CustomCover"
+                                          SourcePath="{Binding CoverArtPath}"
+                                          DecodeWidth="256"
+                                          Stretch="UniformToFill"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                          IsVisible="{Binding HasCustomArt}" />
+                    </Panel>
+                </Border>
 
-                            <!-- Single album art -->
-                            <ctrl:CachedImage SourcePath="{Binding Art1}"
-                                              Stretch="UniformToFill"
-                                              IsVisible="{Binding HasSingleArt}" />
-
-                            <!-- 2x2 collage -->
-                            <Grid RowDefinitions="*,*"
-                                  ColumnDefinitions="*,*"
-                                  IsVisible="{Binding HasCollageArt}">
-                                <ctrl:CachedImage Grid.Row="0" Grid.Column="0" SourcePath="{Binding Art1}" Stretch="UniformToFill" />
-                                <ctrl:CachedImage Grid.Row="0" Grid.Column="1" SourcePath="{Binding Art2}" Stretch="UniformToFill" />
-                                <ctrl:CachedImage Grid.Row="1" Grid.Column="0" SourcePath="{Binding Art3}" Stretch="UniformToFill" />
-                                <ctrl:CachedImage Grid.Row="1" Grid.Column="1" SourcePath="{Binding Art4}" Stretch="UniformToFill" />
-                            </Grid>
-
-                            <!-- Custom cover art (highest priority) -->
-                            <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
-                                              Stretch="UniformToFill"
-                                              RenderOptions.BitmapInterpolationMode="HighQuality"
-                                              IsVisible="{Binding HasCustomArt}" />
-                        </Panel>
-                    </Border>
-                    <Button Content="{loc:T EditPlaylist.SetCoverArt}"
-                            Command="{Binding SetCoverArtCommand}"
-                            CommandParameter="{Binding $parent[Window]}"
-                            Padding="0,6"
-                            FontSize="11.5"
-                            FontWeight="SemiBold"
-                            CornerRadius="999"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            Classes="accent-btn"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            Cursor="Hand" />
-                    <Button Content="{loc:T EditPlaylist.RemoveCoverArt}"
-                            Command="{Binding RemoveCoverArtCommand}"
-                            Padding="0,6"
-                            FontSize="11.5"
-                            FontWeight="SemiBold"
-                            CornerRadius="999"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            IsVisible="{Binding CoverArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                </StackPanel>
-
-                <!-- Right rail: fields -->
-                <StackPanel Grid.Column="2" Spacing="14">
-
-                    <!-- Playlist Name -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T EditPlaylist.Name}" FontSize="13" FontWeight="SemiBold" />
-                        <TextBox Text="{Binding PlaylistName}"
-                                 Classes="crisp-input"
-                                 Watermark="{loc:T EditPlaylist.EnterPlaylistName}"
-                                 CornerRadius="999"
-                                 x:Name="NameTextBox" />
-                        <TextBlock Text="{loc:T EditPlaylist.NameRequired}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource AccentColorBrush}"
-                                   IsVisible="{Binding ShowNameRequiredError}" />
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T EditPlaylist.EditPlaylist}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{Binding MetaText}"
+                               IsVisible="{Binding HasMetaText}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,12,0,0">
+                        <Button x:Name="ChangeCoverButton"
+                                Classes="pill-secondary"
+                                MinHeight="32"
+                                Padding="16,0"
+                                FontSize="12.5"
+                                FontWeight="SemiBold"
+                                Content="{loc:T EditPlaylist.SetCoverArt}"
+                                Command="{Binding SetCoverArtCommand}"
+                                CommandParameter="{Binding $parent[Window]}" />
+                        <!-- Only a custom picture can be removed; the collage is automatic. -->
+                        <Button x:Name="RemoveCoverButton"
+                                Classes="ep-quiet"
+                                Content="{loc:T EditPlaylist.RemoveCoverArt}"
+                                Command="{Binding RemoveCoverArtCommand}"
+                                IsVisible="{Binding HasCustomArt}" />
                     </StackPanel>
-
-                    <!-- Playlist Description -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T EditPlaylist.Description}" FontSize="13" FontWeight="SemiBold" />
-                        <TextBox Text="{Binding PlaylistDescription}"
-                                 Classes="crisp-input"
-                                 Watermark="{loc:T EditPlaylist.EnterPlaylistDescription}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 MinHeight="88" />
-                    </StackPanel>
-
-                    <!-- Sidebar folder -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T EditPlaylist.SidebarFolder}" FontSize="13" FontWeight="SemiBold" />
-                        <AutoCompleteBox Text="{Binding PlaylistFolder, Mode=TwoWay}"
-                                         ItemsSource="{Binding ExistingFolders}"
-                                         Classes="folder-input"
-                                         Watermark="{loc:T EditPlaylist.NoFolder}"
-                                         FilterMode="ContainsOrdinal"
-                                         MinimumPrefixLength="0" />
-                        <TextBlock Text="{loc:T EditPlaylist.PickExistingFolderType}"
-                                   FontSize="10" Opacity="0.5"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <!-- Star -->
-                    <CheckBox Classes="metadata-pill-checkbox"
-                              Content="{loc:T EditPlaylist.StarKeepAtTop}"
-                              IsChecked="{Binding IsPinned}"
-                              HorizontalAlignment="Left" />
                 </StackPanel>
             </Grid>
-        </DockPanel>
-    </Border>
-    </Border>
+        </Border>
+
+        <!-- Fields: name (Enter saves), description, sidebar folder, star. -->
+        <StackPanel Grid.Row="1" Margin="28,20,28,24" Spacing="16">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="ep-label" Text="{loc:T EditPlaylist.Name}" />
+                <TextBox x:Name="NameTextBox"
+                         Classes="pill-field"
+                         Text="{Binding PlaylistName}"
+                         Watermark="{loc:T EditPlaylist.EnterPlaylistName}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding SaveCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <TextBlock x:Name="NameRequiredText"
+                           Text="{loc:T EditPlaylist.NameRequired}"
+                           FontSize="12"
+                           Margin="16,0,0,0"
+                           Foreground="{DynamicResource AccentColorBrush}"
+                           IsVisible="{Binding ShowNameRequiredError}" />
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+                <TextBlock Classes="ep-label" Text="{loc:T EditPlaylist.Description}" />
+                <TextBox x:Name="DescriptionTextBox"
+                         Classes="pill-area"
+                         Text="{Binding PlaylistDescription}"
+                         Watermark="{loc:T EditPlaylist.EnterPlaylistDescription}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="96" />
+            </StackPanel>
+
+            <!-- Pick an existing folder (suggested while typing, or all of them from the
+                 chevron) or type a new name; empty = no folder. -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="ep-label" Text="{loc:T EditPlaylist.SidebarFolder}" />
+                <AutoCompleteBox x:Name="FolderBox"
+                                 Classes="pill-field ep-folder"
+                                 Text="{Binding PlaylistFolder, Mode=TwoWay}"
+                                 ItemsSource="{Binding ExistingFolders}"
+                                 Watermark="{loc:T EditPlaylist.NoFolder}"
+                                 FilterMode="ContainsOrdinal"
+                                 MinimumPrefixLength="0"
+                                 MaxDropDownHeight="220">
+                    <AutoCompleteBox.InnerRightContent>
+                        <Button x:Name="ShowFoldersButton"
+                                Classes="ep-chevron"
+                                IsVisible="{Binding HasExistingFolders}"
+                                ToolTip.Tip="{loc:T EditPlaylist.ShowFolders}"
+                                Click="OnShowFoldersClick">
+                            <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11" Opacity="0.6" />
+                        </Button>
+                    </AutoCompleteBox.InnerRightContent>
+                </AutoCompleteBox>
+                <TextBlock Classes="ep-hint" Text="{loc:T EditPlaylist.PickExistingFolderType}" />
+            </StackPanel>
+
+            <ToggleButton x:Name="StarToggle"
+                          Classes="ep-toggle-row"
+                          IsChecked="{Binding IsPinned}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <PathIcon Grid.Column="0"
+                              Classes="ep-star"
+                              Data="{StaticResource StarIcon}"
+                              Width="16" Height="16"
+                              VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{loc:T EditPlaylist.StarKeepAtTop}"
+                               Margin="12,0"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="2"
+                            Classes="selection-circle"
+                            Classes.selected="{Binding IsPinned}"
+                            Width="22" Height="22"
+                            CornerRadius="11"
+                            BorderThickness="1.5"
+                            UseLayoutRounding="True"
+                            VerticalAlignment="Center">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.18">
+                                    <BrushTransition.Easing>
+                                        <CubicEaseOut />
+                                    </BrushTransition.Easing>
+                                </BrushTransition>
+                                <BrushTransition Property="BorderBrush" Duration="0:0:0.18">
+                                    <BrushTransition.Easing>
+                                        <CubicEaseOut />
+                                    </BrushTransition.Easing>
+                                </BrushTransition>
+                            </Transitions>
+                        </Border.Transitions>
+                        <Path Data="M 0 3.5 L 3 7 L 9 0"
+                              Stroke="{DynamicResource AccentForegroundBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineCap="Round"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding IsPinned}" />
+                    </Border>
+                </Grid>
+            </ToggleButton>
+        </StackPanel>
+
+        <!-- Footer: Cancel / Save on the right. Save stays greyed out until something changed
+             and the name is not blank (SaveCommand's CanExecute). -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button x:Name="CancelButton"
+                        Classes="pill-secondary"
+                        Content="{loc:T EditPlaylist.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108" />
+                <Button x:Name="SaveButton"
+                        Classes="pill-primary"
+                        Content="{loc:T EditPlaylist.Save}"
+                        Command="{Binding SaveCommand}"
+                        MinWidth="108" />
+            </StackPanel>
+        </Border>
+    </Grid>
+    </ctrl:PillDialogHost>
 </Window>

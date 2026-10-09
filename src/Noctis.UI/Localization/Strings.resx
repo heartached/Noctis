@@ -610,11 +610,24 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AddSongs.Shuffle" xml:space="preserve"><value>Shuffle</value><comment>Text in AddSongsDialog.axaml</comment></data>
   <data name="AddSongs.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in AddSongsDialog.axaml</comment></data>
   <data name="AddSongs.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in AddSongsDialog.axaml</comment></data>
-  <data name="AddSongs.Added" xml:space="preserve"><value>Added</value><comment>Text in AddSongsDialog.axaml</comment></data>
+  <data name="AddSongs.Added" xml:space="preserve"><value>In playlist</value><comment>Tag on a song row that is already in the playlist (AddSongsDialog.axaml)</comment></data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve"><value>Nothing left to add</value><comment>Text in AddSongsDialog.axaml</comment></data>
   <data name="AddSongs.EverySongLibraryAlready" xml:space="preserve"><value>Every song in your library is already in this playlist</value><comment>Text in AddSongsDialog.axaml</comment></data>
   <data name="AddSongs.NoMatches" xml:space="preserve"><value>No matches</value><comment>Text in AddSongsDialog.axaml</comment></data>
   <data name="AddSongs.NothingLibraryMatchesSearch" xml:space="preserve"><value>Nothing in your library matches that search</value><comment>Text in AddSongsDialog.axaml</comment></data>
+  <data name="AddSongs.TitleFor" xml:space="preserve"><value>Add songs to {0}</value><comment>Add Songs title ({0} = playlist name)</comment></data>
+  <data name="AddSongs.PlaylistEmpty" xml:space="preserve"><value>This playlist is empty</value><comment>Add Songs subtitle when the playlist has no songs</comment></data>
+  <data name="AddSongs.PlaylistOneSong" xml:space="preserve"><value>1 song in this playlist</value><comment>Add Songs subtitle</comment></data>
+  <data name="AddSongs.PlaylistSongCount" xml:space="preserve"><value>{0:N0} songs in this playlist</value><comment>Add Songs subtitle ({0} = count)</comment></data>
+  <data name="AddSongs.SelectedCount" xml:space="preserve"><value>{0:N0} selected</value><comment>Add Songs footer: how many songs are ticked ({0} = count)</comment></data>
+  <data name="AddSongs.Add" xml:space="preserve"><value>Add</value><comment>Add Songs confirm button, nothing ticked</comment></data>
+  <data name="AddSongs.AddCount" xml:space="preserve"><value>Add ({0:N0})</value><comment>Add Songs confirm button ({0} = ticked songs)</comment></data>
+  <data name="AddSongs.SelectAll" xml:space="preserve"><value>Select all</value><comment>Add Songs footer</comment></data>
+  <data name="AddSongs.SelectAllCount" xml:space="preserve"><value>Select all {0:N0}</value><comment>Add Songs footer when more songs match than the list shows ({0} = every match)</comment></data>
+  <data name="AddSongs.Clear" xml:space="preserve"><value>Clear</value><comment>Add Songs footer: Select all once every match is ticked (unticks them)</comment></data>
+  <data name="AddSongs.Showing" xml:space="preserve"><value>Showing {0:N0} of {1:N0} matches</value><comment>Add Songs: over a capped result list</comment></data>
+  <data name="AddSongs.LibraryEmpty" xml:space="preserve"><value>Your library is empty</value><comment>Add Songs empty state</comment></data>
+  <data name="AddSongs.LibraryEmptyBody" xml:space="preserve"><value>Songs you add to your library show up here.</value><comment>Add Songs empty state</comment></data>
 
   <!-- AddToPlaylistDialog.axaml (auto-migrated) -->
   <data name="AddToPlaylist.AddPlaylist" xml:space="preserve"><value>Add to Playlist</value><comment>Title in AddToPlaylistDialog.axaml</comment></data>
@@ -885,8 +898,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="EditPlaylist.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in EditPlaylistDialog.axaml</comment></data>
   <data name="EditPlaylist.Save" xml:space="preserve"><value>Save</value><comment>Content in EditPlaylistDialog.axaml</comment></data>
   <data name="EditPlaylist.Text" xml:space="preserve"><value>&#x266B;</value><comment>Text in EditPlaylistDialog.axaml</comment></data>
-  <data name="EditPlaylist.SetCoverArt" xml:space="preserve"><value>Set Cover Art</value><comment>Content in EditPlaylistDialog.axaml</comment></data>
-  <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve"><value>Remove Cover Art</value><comment>Content in EditPlaylistDialog.axaml</comment></data>
+  <data name="EditPlaylist.SetCoverArt" xml:space="preserve"><value>Change cover</value><comment>Content in EditPlaylistDialog.axaml</comment></data>
+  <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve"><value>Remove custom cover</value><comment>Content in EditPlaylistDialog.axaml: back to the automatic album collage</comment></data>
+  <data name="EditPlaylist.ChooseCover" xml:space="preserve"><value>Choose a cover image</value><comment>Title of the file picker opened by Change cover</comment></data>
+  <data name="EditPlaylist.ShowFolders" xml:space="preserve"><value>Show folders</value><comment>Tooltip on the chevron that lists the existing sidebar folders</comment></data>
   <data name="EditPlaylist.Name" xml:space="preserve"><value>Name</value><comment>Text in EditPlaylistDialog.axaml</comment></data>
   <data name="EditPlaylist.EnterPlaylistName" xml:space="preserve"><value>Enter playlist name...</value><comment>Watermark in EditPlaylistDialog.axaml</comment></data>
   <data name="EditPlaylist.NameRequired" xml:space="preserve"><value>Name is required</value><comment>Text in EditPlaylistDialog.axaml</comment></data>
@@ -1886,6 +1901,54 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Statistics.RecentPlays" xml:space="preserve"><value>Recent Plays</value><comment>Text in StatisticsView.axaml</comment></data>
   <data name="Statistics.NoPlaysRecordedYet" xml:space="preserve"><value>No plays recorded yet — playback history is logged from now on</value><comment>Text in StatisticsView.axaml</comment></data>
   <data name="Statistics.Skipped" xml:space="preserve"><value>Skipped</value><comment>Text in StatisticsView.axaml</comment></data>
+  <data name="Stats.Period7Days" xml:space="preserve"><value>7 Days</value><comment>Statistics period pill</comment></data>
+  <data name="Stats.Period30Days" xml:space="preserve"><value>30 Days</value><comment>Statistics period pill</comment></data>
+  <data name="Stats.PeriodYear" xml:space="preserve"><value>This Year</value><comment>Statistics period pill</comment></data>
+  <data name="Stats.PeriodAll" xml:space="preserve"><value>All Time</value><comment>Statistics period pill</comment></data>
+  <data name="Stats.RangeLast7Days" xml:space="preserve"><value>Last 7 days</value><comment>Caption naming the period a statistic covers</comment></data>
+  <data name="Stats.RangeLast30Days" xml:space="preserve"><value>Last 30 days</value><comment>Caption naming the period a statistic covers</comment></data>
+  <data name="Stats.RangeThisYear" xml:space="preserve"><value>{0} so far</value><comment>Caption naming the period a statistic covers; {0} = year</comment></data>
+  <data name="Stats.RangeAllTime" xml:space="preserve"><value>All time</value><comment>Caption naming the period a statistic covers</comment></data>
+  <data name="Stats.RangeAllTimeSince" xml:space="preserve"><value>All time · since {0}</value><comment>Caption naming the period a statistic covers; {0} = date of the oldest logged play</comment></data>
+  <data name="Stats.LogCoverage" xml:space="preserve"><value>Play log since {0} · {1}</value><comment>Statistics header note; {0} = date of the oldest logged play, {1} = e.g. 8,470 plays</comment></data>
+  <data name="Stats.LogCoverageShort" xml:space="preserve"><value>Play log since {0} · {1}, {2} under 30 s not counted</value><comment>Statistics header note; {0} = date of the oldest logged play, {1} = e.g. 8,470 plays, {2} = number of plays cut off within 30 seconds</comment></data>
+  <data name="Stats.PlaysTip" xml:space="preserve"><value>Plays that ran at least 30 seconds before the next one started. {0} shorter in this period are not counted.</value><comment>Tooltip of the Plays tile; {0} = number</comment></data>
+  <data name="Stats.PlaysLabel" xml:space="preserve"><value>Plays</value><comment>Statistics summary tile title</comment></data>
+  <data name="Stats.ListeningTimeLabel" xml:space="preserve"><value>Listening time</value><comment>Statistics summary tile title</comment></data>
+  <data name="Stats.StreakLabel" xml:space="preserve"><value>Streak</value><comment>Statistics summary tile title</comment></data>
+  <data name="Stats.ArtistsLabel" xml:space="preserve"><value>Artists</value><comment>Statistics summary tile title: different artists played in the period</comment></data>
+  <data name="Stats.PlayCountOne" xml:space="preserve"><value>1 play</value><comment>Play count, singular</comment></data>
+  <data name="Stats.PlayCountMany" xml:space="preserve"><value>{0} plays</value><comment>Play count, plural; {0} = number</comment></data>
+  <data name="Stats.DayCountOne" xml:space="preserve"><value>1 day</value><comment>Streak length, singular</comment></data>
+  <data name="Stats.DayCountMany" xml:space="preserve"><value>{0} days</value><comment>Streak length, plural; {0} = number</comment></data>
+  <data name="Stats.LongestStreak" xml:space="preserve"><value>Longest: {0}</value><comment>Under the streak tile; {0} = e.g. 18 days</comment></data>
+  <data name="Stats.SongCountOne" xml:space="preserve"><value>1 song</value><comment>Under the artists tile, singular</comment></data>
+  <data name="Stats.SongCountMany" xml:space="preserve"><value>{0} different songs</value><comment>Under the artists tile; {0} = number</comment></data>
+  <data name="Stats.ListenedDetail" xml:space="preserve"><value>{0} full · {1} skipped</value><comment>Under the listening time tile; {0}/{1} = play counts</comment></data>
+  <data name="Stats.VsPrevious7Days" xml:space="preserve"><value>vs previous 7 days</value><comment>Beside the plays change chip</comment></data>
+  <data name="Stats.VsPrevious30Days" xml:space="preserve"><value>vs previous 30 days</value><comment>Beside the plays change chip</comment></data>
+  <data name="Stats.VsLastYear" xml:space="preserve"><value>vs same time last year</value><comment>Beside the plays change chip</comment></data>
+  <data name="Stats.DeltaNew" xml:space="preserve"><value>New</value><comment>Plays change chip when the comparison period had no plays</comment></data>
+  <data name="Stats.DeltaSame" xml:space="preserve"><value>Same</value><comment>Plays change chip when the two periods are equal</comment></data>
+  <data name="Stats.DeltaTip" xml:space="preserve"><value>{0} plays vs {1} in the comparison period</value><comment>Tooltip of the plays change chip; {0}/{1} = numbers</comment></data>
+  <data name="Stats.TopSongs" xml:space="preserve"><value>Top Songs</value><comment>Statistics section title</comment></data>
+  <data name="Stats.NoPlaysInPeriod" xml:space="preserve"><value>No plays in this period</value><comment>Empty state of a Statistics list</comment></data>
+  <data name="Stats.PeakHour" xml:space="preserve"><value>Most active around {0} · {1} of plays</value><comment>Listening by Hour callout; {0} = hour like 22:00, {1} = percentage</comment></data>
+  <data name="Stats.HourTip" xml:space="preserve"><value>{0}–{1} · {2}</value><comment>Listening by Hour bar tooltip; {0}/{1} = 22:00/22:59, {2} = e.g. 120 plays</comment></data>
+  <data name="Stats.SkipHint" xml:space="preserve"><value>Songs played 3+ times, by skip rate</value><comment>Most Skipped caption</comment></data>
+  <data name="Stats.SkipDetail" xml:space="preserve"><value>{0} of {1} skipped</value><comment>Most Skipped row; {0}/{1} = numbers</comment></data>
+  <data name="Stats.ForgottenHint" xml:space="preserve"><value>Loved or rated 4+ stars, not played in 6+ months</value><comment>Forgotten Favorites caption</comment></data>
+  <data name="Stats.NoForgottenFavorites" xml:space="preserve"><value>Every favorite was played in the last 6 months</value><comment>Forgotten Favorites empty state</comment></data>
+  <data name="Stats.NeverPlayed" xml:space="preserve"><value>Never played</value><comment>Forgotten Favorites row</comment></data>
+  <data name="Stats.LastPlayed" xml:space="preserve"><value>Last played {0}</value><comment>Forgotten Favorites row; {0} = e.g. 7 months ago</comment></data>
+  <data name="Stats.MonthAgo" xml:space="preserve"><value>1 month ago</value><comment>Age, singular</comment></data>
+  <data name="Stats.MonthsAgo" xml:space="preserve"><value>{0} months ago</value><comment>Age, plural</comment></data>
+  <data name="Stats.YearAgo" xml:space="preserve"><value>1 year ago</value><comment>Age, singular</comment></data>
+  <data name="Stats.YearsAgo" xml:space="preserve"><value>{0} years ago</value><comment>Age, plural</comment></data>
+  <data name="Stats.Today" xml:space="preserve"><value>Today</value><comment>Play History day heading</comment></data>
+  <data name="Stats.Yesterday" xml:space="preserve"><value>Yesterday</value><comment>Play History day heading</comment></data>
+  <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>No listening history yet</value><comment>Statistics empty state title</comment></data>
+  <data name="Stats.Formats" xml:space="preserve"><value>Formats</value><comment>Library section: format bars title</comment></data>
 
   <!-- TextPromptDialog.axaml (auto-migrated) -->
   <data name="TextPrompt.EnterName" xml:space="preserve"><value>Enter a name</value><comment>Title in TextPromptDialog.axaml</comment></data>
@@ -1940,6 +2003,35 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Wrap.NoDataPreview" xml:space="preserve"><value>No data to preview</value><comment>Text in WrapDialog.axaml</comment></data>
   <data name="Wrap.Copy" xml:space="preserve"><value>Copy</value><comment>Text in WrapDialog.axaml</comment></data>
   <data name="Wrap.Save" xml:space="preserve"><value>Save</value><comment>Text in WrapDialog.axaml</comment></data>
+  <data name="Wrap.OnePlay" xml:space="preserve"><value>1 play</value><comment>Play count on a Wrap row, singular</comment></data>
+  <data name="Wrap.PlaysCount" xml:space="preserve"><value>{0} plays</value><comment>Play count on a Wrap row; {0} = count</comment></data>
+  <data name="Wrap.NewCount" xml:space="preserve"><value>{0} new</value><comment>Under the Wrap artist count: artists first heard in this period; {0} = count</comment></data>
+  <data name="Wrap.RecordedSince" xml:space="preserve"><value>Recorded since {0}</value><comment>Wrap header when the play log starts inside the period; {0} = date</comment></data>
+  <data name="Wrap.ShortPlaysLeftOut" xml:space="preserve"><value>{0} plays cut off within 30 seconds not counted</value><comment>Wrap header: logged plays the next play followed within 30 s are left out; {0} = count</comment></data>
+  <data name="Wrap.OneShortPlayLeftOut" xml:space="preserve"><value>1 play cut off within 30 seconds not counted</value><comment>Wrap header, singular of Wrap.ShortPlaysLeftOut</comment></data>
+  <data name="Wrap.PartialYear" xml:space="preserve"><value>Partial year: the play log no longer reached back to January when this year was saved</value><comment>Wrap header for an archived year saved from a trimmed play log</comment></data>
+  <data name="Wrap.MinutesShort" xml:space="preserve"><value>{0} min</value><comment>Wrap minutes value; {0} = minutes</comment></data>
+  <data name="Wrap.ActiveDaysOf" xml:space="preserve"><value>{0} of {1}</value><comment>Wrap active days tile; {0} = days with plays, {1} = days in the period so far</comment></data>
+  <data name="Wrap.OneDay" xml:space="preserve"><value>1 day</value><comment>Wrap longest streak, singular</comment></data>
+  <data name="Wrap.DaysCount" xml:space="preserve"><value>{0} days</value><comment>Wrap longest streak; {0} = days</comment></data>
+  <data name="Wrap.PeakHour" xml:space="preserve"><value>Most plays around {0}</value><comment>Under the Wrap listening clock; {0} = hour of day</comment></data>
+  <data name="Wrap.PlaysPerDay" xml:space="preserve"><value>PLAYS PER DAY</value><comment>Wrap timeline heading for a month</comment></data>
+  <data name="Wrap.PlaysPerMonth" xml:space="preserve"><value>PLAYS PER MONTH</value><comment>Wrap timeline heading for a year</comment></data>
+  <data name="Wrap.SameAs" xml:space="preserve"><value>Same as {0}</value><comment>Wrap change chip when nothing changed; {0} = previous period</comment></data>
+  <data name="Wrap.DeltaVs" xml:space="preserve"><value>{0} vs {1}</value><comment>Wrap change chip; {0} = change such as +12%, {1} = previous period</comment></data>
+  <data name="Wrap.Close" xml:space="preserve"><value>Close</value><comment>Close button tooltip in WrapDialog.axaml</comment></data>
+  <data name="Wrap.Building" xml:space="preserve"><value>Building your Wrap…</value><comment>Shown while the Wrap is computed</comment></data>
+  <data name="Wrap.NoPlaysYet" xml:space="preserve"><value>No plays recorded for this period yet.</value><comment>Wrap empty state</comment></data>
+  <data name="Wrap.TopAlbum" xml:space="preserve"><value>TOP ALBUM</value><comment>Label over the Wrap's most-played album</comment></data>
+  <data name="Wrap.DailyAverage" xml:space="preserve"><value>Daily average</value><comment>Wrap stat tile: listening minutes per day</comment></data>
+  <data name="Wrap.ActiveDays" xml:space="preserve"><value>Active days</value><comment>Wrap stat tile: days with at least one play</comment></data>
+  <data name="Wrap.LongestStreak" xml:space="preserve"><value>Longest streak</value><comment>Wrap stat tile: most consecutive days with plays</comment></data>
+  <data name="Wrap.MostActiveDay" xml:space="preserve"><value>Most active day</value><comment>Wrap stat tile: the day with the most plays</comment></data>
+  <data name="Wrap.ListeningClock" xml:space="preserve"><value>LISTENING CLOCK</value><comment>Wrap chart heading: plays by hour of day</comment></data>
+  <data name="Wrap.SoundQuality" xml:space="preserve"><value>SOUND QUALITY</value><comment>Wrap heading over the lossless / Hi-Res shares</comment></data>
+  <data name="Wrap.ShareCard" xml:space="preserve"><value>SHARE CARD</value><comment>Wrap heading over the share card preview</comment></data>
+  <data name="Wrap.SaveFailed" xml:space="preserve"><value>Save failed.</value><comment>Wrap status after a failed save</comment></data>
+  <data name="Wrap.CopyFailed" xml:space="preserve"><value>Copy failed.</value><comment>Wrap status after a failed copy</comment></data>
 
   <!-- ShortcutKeyChip.axaml (auto-migrated) -->
   <data name="ShortcutKeyChip.ClickChangeTip" xml:space="preserve"><value>Click to change</value><comment>ToolTip.Tip in ShortcutKeyChip.axaml</comment></data>

@@ -92,6 +92,11 @@ public partial class SidebarViewModel : ViewModelBase
     public event EventHandler<string>? NavigationRequested;
     public event EventHandler<Guid>? PlaylistTracksChanged;
 
+    /// <summary>The Edit Playlist dialog saved this playlist (name, description, cover, star,
+    /// folder). An open playlist page refreshes its header from it, whichever menu opened the
+    /// dialog.</summary>
+    public event EventHandler<Guid>? PlaylistEdited;
+
     public SidebarViewModel(IPersistenceService persistence, ILibraryService library)
     {
         _persistence = persistence;
@@ -985,7 +990,7 @@ public partial class SidebarViewModel : ViewModelBase
     {
         if (playlist == null || playlist.IsSmartPlaylist) return;
 
-        var dialogVm = new AddSongsDialogViewModel(_library.Tracks.ToList(), playlist.TrackIds);
+        var dialogVm = new AddSongsDialogViewModel(_library.Tracks.ToList(), playlist.TrackIds, playlist.Name);
         var dialog = new AddSongsDialog { DataContext = dialogVm };
 
         IReadOnlyList<Track>? chosen = null;
@@ -1110,21 +1115,7 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task EditPlaylistAsync(Playlist playlist)
     {
         var currentNavItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
-        var dialogVm = new EditPlaylistDialogViewModel
-        {
-            PlaylistName = playlist.Name,
-            PlaylistDescription = playlist.Description,
-            PlaylistColor = playlist.Color,
-            CoverArtPath = playlist.CoverArtPath,
-            Art1 = currentNavItem?.Art1,
-            Art2 = currentNavItem?.Art2,
-            Art3 = currentNavItem?.Art3,
-            Art4 = currentNavItem?.Art4,
-            IsPinned = playlist.IsPinned,
-            PlaylistFolder = playlist.Folder,
-            ExistingFoldersHint = string.Join(", ", GetFolderNames()),
-            ExistingFolders = GetFolderNames(),
-        };
+        var dialogVm = EditPlaylistDialogViewModel.ForPlaylist(playlist, currentNavItem, GetFolderNames());
         var dialog = new EditPlaylistDialog { DataContext = dialogVm };
 
         bool saved = false;
@@ -1154,10 +1145,17 @@ public partial class SidebarViewModel : ViewModelBase
 
         if (!saved) return;
 
+        await ApplyPlaylistEditAsync(playlist, dialogVm, newName, newDescription);
+    }
+
+    /// <summary>Writes a saved Edit Playlist dialog back to the playlist, its sidebar row and
+    /// disk. Split from <see cref="EditPlaylistAsync"/> so it runs without a dialog (tests).</summary>
+    internal async Task ApplyPlaylistEditAsync(Playlist playlist, EditPlaylistDialogViewModel dialogVm, string newName, string newDescription)
+    {
         playlist.Name = newName;
         playlist.Description = newDescription;
         playlist.IsPinned = dialogVm.IsPinned;
-        FileIntoFolder(playlist, dialogVm.PlaylistFolder);
+        FileIntoFolder(playlist, dialogVm.ResolvedFolder);
         playlist.ModifiedAt = DateTime.UtcNow;
 
         // Handle cover art changes
@@ -1186,8 +1184,15 @@ public partial class SidebarViewModel : ViewModelBase
                     try { File.Delete(stale); } catch { }
             }
 
-            File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
+            // The picked file can be the cover already in place (the picker opened in
+            // playlist_covers): copying a file onto itself threw, and the rest of the edit
+            // (name, star, folder) was never saved.
+            if (!string.Equals(Path.GetFullPath(dialogVm.PendingCoverArtFile), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
             playlist.CoverArtPath = destPath;
+            // A new picture of the same type lands on the same path (<id>.jpg): drop the
+            // decode of the old one, or every CachedImage on that path keeps drawing it.
+            ArtworkCache.Invalidate(destPath);
         }
 
         // Rebuild the sidebar nav item with updated info
@@ -1209,6 +1214,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
     }
 
     /// <summary>Gets a playlist by its ID.</summary>

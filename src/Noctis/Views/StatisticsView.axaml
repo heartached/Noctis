@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
-             xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.StatisticsView"
              x:DataType="vm:StatisticsViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -13,401 +13,777 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
-        <!-- Tab strip (same pill look as the Settings tabs) -->
-        <Style Selector="Button.stats-tab">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="14,7"/>
-            <Setter Property="Cursor" Value="Hand"/>
+        <!-- ── Segmented pills (tabs, period): the pop-ups' recipe (SongsViewOptions vo-seg). A
+             filled well; the chosen segment is a brighter pill with full-strength text. ── -->
+        <Style Selector="Border.seg-well">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.stats-tab /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-            <Setter Property="CornerRadius" Value="999"/>
+        <Style Selector="RadioButton.stats-seg">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="Button.stats-tab.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        <Style Selector="RadioButton.stats-seg:pointerover">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="RadioButton.stats-seg:checked">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
-        <!-- Stat card -->
-        <Style Selector="Border.stat-card">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="20,16"/>
-            <Setter Property="Margin" Value="0,0,12,12"/>
+        <!-- Noctis Wrap: a filled pill beside the tab well. -->
+        <Style Selector="Button.stats-wrap">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.stats-wrap:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
-        <!-- Small fact pill (value + label) under the library numbers -->
-        <Style Selector="Border.stat-pill">
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="Height" Value="24"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <!-- One TextBlock (two Runs) per pill with a fixed 14px box: number and label share a
-                 baseline, and a label with descenders (Lossy, playlists) can't grow the box. -->
-            <Setter Property="Margin" Value="0,0,6,6"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <!-- ── Cards: the pill wells' fill and radius, one gap everywhere. ── -->
+        <Style Selector="Border.stats-card">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Padding" Value="20,18" />
+            <Setter Property="Margin" Value="7" />
+        </Style>
+        <Style Selector="TextBlock.tile-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="TextBlock.tile-value">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="MaxLines" Value="1" />
+        </Style>
+        <Style Selector="TextBlock.tile-foot">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="MaxLines" Value="1" />
+        </Style>
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.section-caption">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="TextBlock.empty-note">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
-        <!-- Section card -->
-        <Style Selector="Border.stats-section">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="20"/>
+        <!-- Change vs the previous period: green up, red down, neutral when equal. -->
+        <Style Selector="Border.delta">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
+        <Style Selector="Border.delta > TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Border.delta.up">
+            <Setter Property="Background" Value="#2633C26B" />
+        </Style>
+        <Style Selector="Border.delta.up > TextBlock">
+            <Setter Property="Foreground" Value="#2FB463" />
+        </Style>
+        <Style Selector="Border.delta.down">
+            <Setter Property="Background" Value="#26E74856" />
+        </Style>
+        <Style Selector="Border.delta.down > TextBlock">
+            <Setter Property="Foreground" Value="#E74856" />
+        </Style>
+
+        <!-- Small value chip (library quality facts). -->
+        <Style Selector="Border.fact-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+
+        <!-- Clickable rows/tiles: no Fluent grey box; a soft wash on hover only when the
+             row leads somewhere. -->
+        <Style Selector="Button.stats-item">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.stats-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.stats-item:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.stats-item.link">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.stats-item.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        </Style>
+        <Style Selector="Button.stats-item.link:pointerover Border.portrait-ring">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- Rank numerals: tabular, the podium in the accent colour. -->
+        <Style Selector="TextBlock.rank">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Opacity" Value="0.4" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.rank.podium">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+
+        <!-- Cover thumbnail with a note placeholder underneath. -->
+        <Style Selector="Border.thumb">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Placeholder glyph under a cover: a plain Path (PathIcon is a templated control,
+             and every row carries one). -->
+        <Style Selector="Path.ph">
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.28" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Thin bars (formats, skip rate). -->
+        <Style Selector="Border.bar-track">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+        <Style Selector="Border.bar-fill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- Listening by hour. -->
+        <Style Selector="Border.hour-track">
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+        <Style Selector="Border.hour-bar">
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+        <Style Selector="Border.hour-bar.peak">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <!-- Responsive columns: set by style, not locally, so the narrow query can win. -->
+        <Style Selector="UniformGrid.hero">
+            <Setter Property="Columns" Value="4" />
+        </Style>
+        <Style Selector="UniformGrid.artist-row">
+            <Setter Property="Columns" Value="6" />
+        </Style>
+        <!-- Two columns side by side (one row height), stacked when narrow. A Grid, not a
+             UniformGrid: stacked, a UniformGrid gives every row the tallest card's height. -->
+        <Style Selector="Grid.two-col > :is(Control).col2">
+            <Setter Property="Grid.Column" Value="1" />
+        </Style>
+        <Style Selector="Grid.two-col.inner > :is(Control).col1">
+            <Setter Property="Margin" Value="0,0,16,0" />
+        </Style>
+        <ContainerQuery Name="StatsOverview" Query="max-width:820">
+            <Style Selector="UniformGrid.hero">
+                <Setter Property="Columns" Value="2" />
+            </Style>
+            <Style Selector="UniformGrid.artist-row">
+                <Setter Property="Columns" Value="3" />
+            </Style>
+            <Style Selector="Grid.two-col > :is(Control).col1">
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+            </Style>
+            <Style Selector="Grid.two-col > :is(Control).col2">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.Row" Value="1" />
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+            </Style>
+            <Style Selector="Grid.two-col.inner > :is(Control).col1">
+                <Setter Property="Margin" Value="0,0,0,16" />
+            </Style>
+        </ContainerQuery>
+        <ContainerQuery Name="StatsHistory" Query="max-width:820">
+            <Style Selector="Grid.two-col > :is(Control).col1">
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+            </Style>
+            <Style Selector="Grid.two-col > :is(Control).col2">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.Row" Value="1" />
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+            </Style>
+        </ContainerQuery>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- Header: title + tab strip -->
-        <Grid Grid.Row="0" Margin="24,24,36,12" ColumnDefinitions="*,Auto">
+        <!-- ═══ Header: title, Wrap + tabs; period pill + what the log covers ═══ -->
+        <Grid Grid.Row="0" Margin="24,24,24,10" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="14">
             <TextBlock Grid.Column="0" Text="{loc:T Statistics.ListeningStatistics}"
-                       FontSize="28" FontWeight="Bold" VerticalAlignment="Center"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <Button Classes="stats-tab"
+                       FontSize="28" FontWeight="Bold" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Button Classes="stats-wrap"
                         Command="{Binding OpenWrapCommand}"
                         ToolTip.Tip="{loc:T Statistics.ListeningRecapTopTracksTip}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource CameraIcon}" Width="13" Height="13" VerticalAlignment="Center"/>
-                        <TextBlock Text="{loc:T Statistics.NoctisWrap}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <PathIcon Data="{StaticResource CameraIcon}" Width="13" Height="13" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T Statistics.NoctisWrap}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <Border Width="1" Height="18" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Center" Margin="2,0"/>
-                <Button Classes="stats-tab" Classes.active="{Binding IsOverviewTabSelected}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="Overview">
-                    <TextBlock Text="{loc:T Statistics.Overview}" FontSize="13" FontWeight="SemiBold"/>
-                </Button>
-                <Button Classes="stats-tab" Classes.active="{Binding IsHistoryTabSelected}"
-                        Command="{Binding SelectTabCommand}" CommandParameter="History">
-                    <TextBlock Text="{loc:T Statistics.PlayHistory}" FontSize="13" FontWeight="SemiBold"/>
-                </Button>
+                <Border Classes="seg-well">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton Classes="stats-seg" Content="{loc:T Statistics.Overview}"
+                                     IsChecked="{Binding IsOverviewTabSelected}" />
+                        <RadioButton Classes="stats-seg" Content="{loc:T Statistics.PlayHistory}"
+                                     IsChecked="{Binding IsHistoryTabSelected}" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
+
+            <Border Grid.Row="1" Grid.Column="0" Classes="seg-well" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period7Days}"
+                                 IsChecked="{Binding IsLast7DaysSelected}" />
+                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period30Days}"
+                                 IsChecked="{Binding IsLast30DaysSelected}" />
+                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodYear}"
+                                 IsChecked="{Binding IsThisYearSelected}" />
+                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodAll}"
+                                 IsChecked="{Binding IsAllTimeSelected}" />
+                </StackPanel>
+            </Border>
+            <TextBlock Grid.Row="1" Grid.Column="1" Classes="section-caption"
+                       Text="{Binding LogCoverageText}" Margin="12,0,0,0" HorizontalAlignment="Right" />
         </Grid>
 
+        <!-- ═══════════════ OVERVIEW ═══════════════ -->
         <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding IsOverviewTabSelected}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
-            <Panel Margin="24,4,24,115">
+            <StackPanel Margin="17,0,17,115" Spacing="14"
+                        Container.Name="StatsOverview" Container.Sizing="Width">
 
-                <!-- ═══════════════ OVERVIEW ═══════════════ -->
-                <StackPanel Spacing="16" IsVisible="{Binding IsOverviewTabSelected}">
+                <!-- Nothing logged yet: one compact note instead of a page of zeros. -->
+                <Border Classes="stats-card" IsVisible="{Binding !HasPlayHistory}">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{loc:T Stats.NoHistoryTitle}" FontSize="15" FontWeight="Bold" />
+                        <TextBlock Classes="empty-note" Text="{loc:T Statistics.NoPlaysRecordedYet}" />
+                    </StackPanel>
+                </Border>
 
-                    <!-- Listening, the numbers that change: one accent row. -->
-                    <UniformGrid Columns="4">
-                        <!-- Two-line tiles centre vertically; the streak tile keeps its
-                             "Longest:" sub-line and stays top-anchored so it can grow (user ask 09-07). -->
-                        <Border Classes="stat-card">
-                            <StackPanel Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding TotalPlays}" FontSize="26" FontWeight="Bold"
-                                           Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{loc:T Statistics.TotalPlays}" FontSize="12" Opacity="0.5"/>
+                <!-- Summary: what the period adds up to. -->
+                <UniformGrid Classes="hero" IsVisible="{Binding HasPlayHistory}">
+                    <Border Classes="stats-card" ToolTip.Tip="{Binding PlaysTip}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="tile-label" Text="{loc:T Stats.PlaysLabel}" />
+                            <TextBlock Classes="tile-value" Text="{Binding PlaysText}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Classes="delta" Classes.up="{Binding IsDeltaUp}" Classes.down="{Binding IsDeltaDown}"
+                                        IsVisible="{Binding HasDelta}" ToolTip.Tip="{Binding DeltaTip}">
+                                    <TextBlock Text="{Binding DeltaText}" />
+                                </Border>
+                                <TextBlock Classes="tile-foot" Text="{Binding DeltaCaption}" />
                             </StackPanel>
-                        </Border>
-                        <Border Classes="stat-card">
-                            <StackPanel Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ListeningTime}" FontSize="26" FontWeight="Bold"
-                                           Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{loc:T Statistics.ListeningTime}" FontSize="12" Opacity="0.5"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="stat-card">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding CurrentStreakText}" FontSize="26" FontWeight="Bold"
-                                           Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{loc:T Statistics.CurrentStreak}" FontSize="12" Opacity="0.5"/>
-                                <TextBlock Text="{Binding LongestStreakSubText}" FontSize="11" Opacity="0.35"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="stat-card">
-                            <StackPanel Spacing="4" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding PlaysThisWeekText}" FontSize="26" FontWeight="Bold"
-                                           Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{loc:T Statistics.PlaysWeek}" FontSize="12" Opacity="0.5"/>
-                                <TextBlock Text="{Binding WeekDeltaText}" FontSize="11" Opacity="0.35"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="stats-card">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="tile-label" Text="{loc:T Stats.ListeningTimeLabel}" />
+                            <TextBlock Classes="tile-value" Text="{Binding ListeningTimeText}" />
+                            <TextBlock Classes="tile-foot" Text="{Binding ListeningDetailText}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="stats-card">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="tile-label" Text="{loc:T Stats.StreakLabel}" />
+                            <TextBlock Classes="tile-value" Text="{Binding StreakText}" />
+                            <TextBlock Classes="tile-foot" Text="{Binding LongestStreakText}" />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="stats-card">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="tile-label" Text="{loc:T Stats.ArtistsLabel}" />
+                            <TextBlock Classes="tile-value" Text="{Binding UniqueArtistsText}" />
+                            <TextBlock Classes="tile-foot" Text="{Binding UniqueTracksText}" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
 
-                    <!-- Top Artists / Top Albums -->
-                    <Grid ColumnDefinitions="*,16,*">
-                        <Border Grid.Column="0" Classes="stats-section" VerticalAlignment="Top">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="{loc:T Statistics.TopArtists}" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="{loc:T Statistics.PlaySomeTracksSee}"
-                                           FontSize="13" Opacity="0.4"
-                                           IsVisible="{Binding !TopArtists.Count}"/>
-                                <ItemsControl ItemsSource="{Binding TopArtists}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="m:StatItem">
-                                            <Grid ColumnDefinitions="28,*,Auto" Margin="0,5">
-                                                <TextBlock Grid.Column="0" Text="{Binding Rank}"
-                                                           FontSize="13" FontWeight="SemiBold" Opacity="0.35"
-                                                           VerticalAlignment="Center"/>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                    <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
-                                                           FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource AccentTextBrush}"
-                                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="2" Classes="stats-section" VerticalAlignment="Top">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="{loc:T Statistics.TopAlbums}" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="{loc:T Statistics.PlaySomeTracksSee2}"
-                                           FontSize="13" Opacity="0.4"
-                                           IsVisible="{Binding !TopAlbums.Count}"/>
-                                <ItemsControl ItemsSource="{Binding TopAlbums}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="m:StatItem">
-                                            <Grid ColumnDefinitions="28,*,Auto" Margin="0,5">
-                                                <TextBlock Grid.Column="0" Text="{Binding Rank}"
-                                                           FontSize="13" FontWeight="SemiBold" Opacity="0.35"
-                                                           VerticalAlignment="Center"/>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                    <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
-                                                           FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource AccentTextBrush}"
-                                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <!-- Library: the static facts in one section — a quiet number row, the format
-                         bars, and the audio-quality averages as a pill strip (was 8 tiles + a card). -->
-                    <Border Classes="stats-section">
-                        <StackPanel Spacing="16">
-                            <TextBlock Text="{loc:T Statistics.Library}" FontSize="16" FontWeight="Bold"/>
-                            <UniformGrid Columns="4">
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding TotalTracks}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{loc:T Statistics.Tracks}" FontSize="12" Opacity="0.5"/>
-                                </StackPanel>
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding TotalAlbums}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{loc:T Statistics.Albums}" FontSize="12" Opacity="0.5"/>
-                                </StackPanel>
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding TotalArtists}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{loc:T Statistics.Artists}" FontSize="12" Opacity="0.5"/>
-                                </StackPanel>
-                                <StackPanel Spacing="2">
-                                    <TextBlock Text="{Binding TotalDuration}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{loc:T Statistics.TotalDuration}" FontSize="12" Opacity="0.5"/>
-                                </StackPanel>
-                            </UniformGrid>
-
-                            <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
-
-                            <TextBlock Text="{loc:T Statistics.FormatBreakdown}" FontSize="12" FontWeight="SemiBold" Opacity="0.55"/>
-                            <TextBlock Text="{loc:T Statistics.NoTracksLibrary}"
-                                       FontSize="13" Opacity="0.4"
-                                       IsVisible="{Binding !FormatBreakdown.Count}"/>
-                            <ItemsControl ItemsSource="{Binding FormatBreakdown}" Margin="0,-6,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="m:StatItem">
-                                        <Grid ColumnDefinitions="80,*,Auto" Margin="0,3" Height="24">
-                                            <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13"
-                                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <Border Grid.Column="1" VerticalAlignment="Center" Height="12"
-                                                    CornerRadius="999" ClipToBounds="True" Margin="8,0"
-                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
-                                                        HorizontalAlignment="Left">
-                                                    <Border.Width>
-                                                        <MultiBinding Converter="{StaticResource FractionOfWidth}">
-                                                            <Binding Path="Percentage"/>
-                                                            <Binding Path="$parent[Border].Bounds.Width"/>
-                                                        </MultiBinding>
-                                                    </Border.Width>
+                <!-- Top Artists: portraits from the artist image cache. -->
+                <Border Classes="stats-card" IsVisible="{Binding HasPlayHistory}">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="section-title" Text="{loc:T Statistics.TopArtists}" />
+                            <TextBlock Grid.Column="1" Classes="section-caption" Text="{Binding PeriodCaption}" />
+                        </Grid>
+                        <TextBlock Classes="empty-note" Text="{loc:T Stats.NoPlaysInPeriod}"
+                                   IsVisible="{Binding !TopArtists.Count}" />
+                        <ItemsControl ItemsSource="{Binding TopArtists}" IsVisible="{Binding TopArtists.Count}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Classes="artist-row" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StatsArtistTile">
+                                    <Button Classes="stats-item" Classes.link="{Binding CanOpen}" Padding="6,10"
+                                            Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenArtistCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                            <Panel Width="88" Height="88" HorizontalAlignment="Center">
+                                                <Border Width="88" Height="88" CornerRadius="44" ClipToBounds="True"
+                                                        Background="{DynamicResource PillFieldBackgroundPointerOver}">
+                                                    <Panel>
+                                                        <Path Classes="ph" Data="{StaticResource ArtistsIcon}" Width="36" Height="36" />
+                                                        <controls:CachedImage SourcePath="{Binding ImagePath}" IsVisible="{Binding HasImage}"
+                                                                              Stretch="UniformToFill" Width="88" Height="88" />
+                                                    </Panel>
                                                 </Border>
-                                            </Border>
-                                            <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
-                                                       FontSize="12" Opacity="0.6" VerticalAlignment="Center"
-                                                       MinWidth="110" TextAlignment="Right"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,-6">
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding LosslessPercentText}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.Lossless}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding HiResPercentText}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.HiResLossless}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding AvgSampleRateText}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.AvgSampleRate}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding AvgBitDepthText}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.AvgBitDepth}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding AvgTrackLength}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.AvgLength}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                                <Border Classes="stat-pill">
-                                    <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding LikedTracks}" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{loc:T Statistics.Liked}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/></TextBlock>
-                                </Border>
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- ═══════════════ PLAY HISTORY ═══════════════ -->
-                <StackPanel Spacing="16" IsVisible="{Binding IsHistoryTabSelected}">
-
-                    <!-- Hour-of-day heatmap -->
-                    <Border Classes="stats-section">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="{loc:T Statistics.ListeningByHour}" FontSize="16" FontWeight="Bold"/>
-                            <ItemsControl ItemsSource="{Binding HourlyHeatmap}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Columns="24" Rows="1"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="m:HourHeatCell">
-                                        <StackPanel Spacing="4" Margin="1,0">
-                                            <Border Height="44" CornerRadius="4"
-                                                    Background="{DynamicResource AccentColorBrush}"
-                                                    Opacity="{Binding Intensity}"
-                                                    ToolTip.Tip="{Binding Tooltip}"/>
-                                            <TextBlock Text="{Binding HourLabel}" FontSize="9" Opacity="0.4"
-                                                       HorizontalAlignment="Center"/>
+                                                <Border Classes="portrait-ring" Width="88" Height="88" CornerRadius="44"
+                                                        BorderThickness="2" BorderBrush="Transparent" IsHitTestVisible="False" />
+                                                <Border Width="24" Height="24" CornerRadius="12"
+                                                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-2,-2,0,0"
+                                                        Background="{DynamicResource AccentColorBrush}">
+                                                    <TextBlock Text="{Binding Rank}" FontSize="11.5" FontWeight="Bold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Panel>
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" TextAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                <TextBlock Text="{Binding PlaysText}" FontSize="11.5" Opacity="0.55"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
                                         </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Top Albums | Top Songs: ranked rows with covers. -->
+                <Grid Classes="two-col" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding HasPlayHistory}">
+                    <Border Classes="stats-card col1" Padding="14,18">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto" Margin="6,0">
+                                <TextBlock Classes="section-title" Text="{loc:T Statistics.TopAlbums}" />
+                                <TextBlock Grid.Column="1" Classes="section-caption" Text="{Binding PeriodCaption}" />
+                            </Grid>
+                            <TextBlock Classes="empty-note" Margin="6,0" Text="{loc:T Stats.NoPlaysInPeriod}"
+                                       IsVisible="{Binding !TopAlbums.Count}" />
+                            <ItemsControl ItemsSource="{Binding TopAlbums}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:StatsRankRow">
+                                        <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
+                                                Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
+                                                <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
+                                                <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">
+                                                    <Panel>
+                                                        <Path Classes="ph" Data="{StaticResource AlbumsIcon}" Width="18" Height="18" />
+                                                        <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
+                                                                              Stretch="UniformToFill" />
+                                                    </Panel>
+                                                </Border>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
+                                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.55"
+                                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="3" Text="{Binding PlaysText}" FontSize="12" FontWeight="SemiBold"
+                                                           Opacity="0.7" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
                     </Border>
+                    <Border Classes="stats-card col2" Padding="14,18">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto" Margin="6,0">
+                                <TextBlock Classes="section-title" Text="{loc:T Stats.TopSongs}" />
+                                <TextBlock Grid.Column="1" Classes="section-caption" Text="{Binding PeriodCaption}" />
+                            </Grid>
+                            <TextBlock Classes="empty-note" Margin="6,0" Text="{loc:T Stats.NoPlaysInPeriod}"
+                                       IsVisible="{Binding !TopTracks.Count}" />
+                            <ItemsControl ItemsSource="{Binding TopTracks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:StatsRankRow">
+                                        <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
+                                                Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
+                                                <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
+                                                <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">
+                                                    <Panel>
+                                                        <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="18" Height="18" />
+                                                        <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
+                                                                              Stretch="UniformToFill" />
+                                                    </Panel>
+                                                </Border>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
+                                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.55"
+                                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="3" Text="{Binding PlaysText}" FontSize="12" FontWeight="SemiBold"
+                                                           Opacity="0.7" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-                    <Grid ColumnDefinitions="*,16,*">
-                        <!-- Most skipped -->
-                        <Border Grid.Column="0" Classes="stats-section" VerticalAlignment="Top">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="{loc:T Statistics.MostSkipped}" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="{loc:T Statistics.NoSkipsRecordedYet}"
-                                           FontSize="13" Opacity="0.4"
-                                           IsVisible="{Binding !SkipRates.Count}"/>
-                                <ItemsControl ItemsSource="{Binding SkipRates}">
+                <!-- Library: what's on disk (not period-bound). Facts + quality chips on the
+                     left, the format bars on the right. -->
+                <Border Classes="stats-card">
+                    <StackPanel Spacing="14">
+                        <TextBlock Classes="section-title" Text="{loc:T Statistics.Library}" />
+                        <Grid Classes="two-col inner" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                            <StackPanel Classes="col1" Spacing="12">
+                                <UniformGrid Columns="3">
+                                    <StackPanel Spacing="1" Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding TotalTracksText}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.Tracks}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="1" Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding TotalAlbumsText}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.Albums}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="1" Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding TotalArtistsText}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.Artists}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="1">
+                                        <TextBlock Text="{Binding TotalDuration}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.TotalDuration}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="1">
+                                        <TextBlock Text="{Binding LikedText}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.LikedTracks}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="1">
+                                        <TextBlock Text="{Binding AvgTrackLength}" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{loc:T Statistics.AvgTrackLength}" FontSize="12" Opacity="0.55" />
+                                    </StackPanel>
+                                </UniformGrid>
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,-6">
+                                    <Border Classes="fact-chip">
+                                        <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding LosslessPercentText}" FontWeight="SemiBold" /><Run Text=" " /><Run Text="{loc:T Statistics.Lossless}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" /></TextBlock>
+                                    </Border>
+                                    <Border Classes="fact-chip">
+                                        <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding HiResPercentText}" FontWeight="SemiBold" /><Run Text=" " /><Run Text="{loc:T Statistics.HiResLossless}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" /></TextBlock>
+                                    </Border>
+                                    <Border Classes="fact-chip">
+                                        <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding AvgSampleRateText}" FontWeight="SemiBold" /><Run Text=" " /><Run Text="{loc:T Statistics.AvgSampleRate}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" /></TextBlock>
+                                    </Border>
+                                    <Border Classes="fact-chip">
+                                        <TextBlock FontSize="11.5" Height="14" LineHeight="14" VerticalAlignment="Center"><Run Text="{Binding AvgBitDepthText}" FontWeight="SemiBold" /><Run Text=" " /><Run Text="{loc:T Statistics.AvgBitDepth}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" /></TextBlock>
+                                    </Border>
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <StackPanel Classes="col2" Spacing="6">
+                                <TextBlock Text="{loc:T Stats.Formats}" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
+                                <TextBlock Classes="empty-note" Text="{loc:T Statistics.NoTracksLibrary}"
+                                           IsVisible="{Binding !FormatBreakdown.Count}" />
+                                <ItemsControl ItemsSource="{Binding FormatBreakdown}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="m:StatItem">
-                                            <StackPanel Margin="0,5" Spacing="4">
-                                                <Grid ColumnDefinitions="*,Auto">
-                                                    <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
-                                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                        <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
-                                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="1" Text="{Binding ValueLabel}"
-                                                               FontSize="11" Opacity="0.6"
-                                                               VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                                </Grid>
-                                                <Border Height="5" CornerRadius="999" ClipToBounds="True"
-                                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                    <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
-                                                            HorizontalAlignment="Left">
+                                        <DataTemplate x:DataType="vm:StatsFormatRow">
+                                            <Grid ColumnDefinitions="56,*,Auto" ColumnSpacing="10" Height="26">
+                                                <TextBlock Text="{Binding Label}" FontSize="12.5" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <Border Grid.Column="1" Classes="bar-track" Height="8">
+                                                    <Border Classes="bar-fill">
                                                         <Border.Width>
                                                             <MultiBinding Converter="{StaticResource FractionOfWidth}">
-                                                                <Binding Path="Percentage"/>
-                                                                <Binding Path="$parent[Border].Bounds.Width"/>
+                                                                <Binding Path="Fraction" />
+                                                                <Binding Path="$parent[Border].Bounds.Width" />
                                                             </MultiBinding>
                                                         </Border.Width>
                                                     </Border>
                                                 </Border>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Forgotten favorites -->
-                        <Border Grid.Column="2" Classes="stats-section" VerticalAlignment="Top">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="{loc:T Statistics.ForgottenFavorites}" FontSize="16" FontWeight="Bold"/>
-                                <TextBlock Text="{loc:T Statistics.LovedHighlyRatedTracks}"
-                                           FontSize="13" Opacity="0.4" TextWrapping="Wrap"
-                                           IsVisible="{Binding !ForgottenFavorites.Count}"/>
-                                <ItemsControl ItemsSource="{Binding ForgottenFavorites}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="m:StatItem">
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,5">
-                                                <StackPanel Grid.Column="0">
-                                                    <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                    <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
-                                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding ValueLabel}"
-                                                           FontSize="11" Opacity="0.6"
-                                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontSize="12" Opacity="0.6"
+                                                           VerticalAlignment="Center" MinWidth="96" TextAlignment="Right" />
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <!-- Chronological play log -->
-                    <Border Classes="stats-section">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="{loc:T Statistics.RecentPlays}" FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="{loc:T Statistics.NoPlaysRecordedYet}"
-                                       FontSize="13" Opacity="0.4"
-                                       IsVisible="{Binding !PlayLog.Count}"/>
-                            <ItemsControl ItemsSource="{Binding PlayLog}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="m:PlayLogItem">
-                                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4">
-                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                                <TextBlock Text="{Binding Title}" FontSize="13"
-                                                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                                <TextBlock Text="{Binding Artist}" FontSize="13" Opacity="0.5"
-                                                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                            </StackPanel>
-                                            <Border Grid.Column="1" CornerRadius="999" Padding="7,2"
-                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                                                    VerticalAlignment="Center" Margin="8,0"
-                                                    IsVisible="{Binding Skipped}">
-                                                <TextBlock Text="{loc:T Statistics.Skipped}" FontSize="10" Opacity="0.7"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="2" Text="{Binding TimeLabel}"
-                                                       FontSize="12" Opacity="0.5" VerticalAlignment="Center"
-                                                       MinWidth="110" TextAlignment="Right"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-            </Panel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </ScrollViewer>
+
+        <!-- ═══════════════ PLAY HISTORY ═══════════════
+             One virtualized list: the summary block, then day headings and play rows. -->
+        <ItemsControl Grid.Row="1" x:Name="HistoryList"
+                      IsVisible="{Binding IsHistoryTabSelected}"
+                      ItemsSource="{Binding HistoryFeed}"
+                      Container.Name="StatsHistory" Container.Sizing="Width">
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter x:Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                                        Margin="17,0,17,115" />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.DataTemplates>
+
+                <!-- Summary block -->
+                <DataTemplate DataType="{x:Type vm:StatsHistoryHeader}">
+                    <StackPanel Spacing="0">
+                        <!-- Listening by hour -->
+                        <Border Classes="stats-card">
+                            <StackPanel Spacing="14">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="section-title" Text="{loc:T Statistics.ListeningByHour}" />
+                                    <TextBlock Grid.Column="1" Classes="section-caption" Text="{Binding Owner.PeriodCaption}" />
+                                </Grid>
+                                <TextBlock Text="{Binding Owner.PeakHourText}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentTextBrush}"
+                                           IsVisible="{Binding Owner.HasPeriodPlays}" />
+                                <ItemsControl ItemsSource="{Binding Owner.HourBars}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="24" Rows="1" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:StatsHourBar">
+                                            <StackPanel Spacing="6" Margin="2,0" Background="Transparent"
+                                                        ToolTip.Tip="{Binding Tooltip}">
+                                                <Panel Height="96">
+                                                    <Border Classes="hour-track" />
+                                                    <Border Classes="hour-bar" Classes.peak="{Binding IsPeak}"
+                                                            Height="{Binding BarHeight}" />
+                                                </Panel>
+                                                <TextBlock Text="{Binding Label}" FontSize="11" Opacity="0.55" Height="14"
+                                                           HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Most Skipped | Forgotten Favorites: one row height, compact empty states. -->
+                        <Grid Classes="two-col" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                            <Border Classes="stats-card col1" Padding="14,18">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Margin="6,0" Spacing="2">
+                                        <TextBlock Classes="section-title" Text="{loc:T Statistics.MostSkipped}" />
+                                        <TextBlock Classes="section-caption" Text="{loc:T Stats.SkipHint}" />
+                                    </StackPanel>
+                                    <TextBlock Classes="empty-note" Margin="6,4" Text="{loc:T Statistics.NoSkipsRecordedYet}"
+                                               IsVisible="{Binding !Owner.MostSkipped.Count}" />
+                                    <ItemsControl ItemsSource="{Binding Owner.MostSkipped}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:StatsSkipRow">
+                                                <!-- Fixed rate column: every row's bar track gets the same width. -->
+                                                <Grid ColumnDefinitions="40,*,100" ColumnSpacing="12" Margin="6,5">
+                                                    <Border Classes="thumb" Width="40" Height="40">
+                                                        <Panel>
+                                                            <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="16" Height="16" />
+                                                            <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
+                                                                                  Stretch="UniformToFill" />
+                                                        </Panel>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.55"
+                                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                        </StackPanel>
+                                                        <Border Classes="bar-track" Height="4">
+                                                            <Border Classes="bar-fill">
+                                                                <Border.Width>
+                                                                    <MultiBinding Converter="{StaticResource FractionOfWidth}">
+                                                                        <Binding Path="Fraction" />
+                                                                        <Binding Path="$parent[Border].Bounds.Width" />
+                                                                    </MultiBinding>
+                                                                </Border.Width>
+                                                            </Border>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="{Binding RateText}" FontSize="13" FontWeight="Bold"
+                                                                   HorizontalAlignment="Right" />
+                                                        <TextBlock Text="{Binding DetailText}" FontSize="11" Opacity="0.55"
+                                                                   HorizontalAlignment="Right" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="stats-card col2" Padding="14,18">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Margin="6,0" Spacing="2">
+                                        <TextBlock Classes="section-title" Text="{loc:T Statistics.ForgottenFavorites}" />
+                                        <TextBlock Classes="section-caption" Text="{loc:T Stats.ForgottenHint}" />
+                                    </StackPanel>
+                                    <TextBlock Classes="empty-note" Margin="6,4" Text="{loc:T Stats.NoForgottenFavorites}"
+                                               IsVisible="{Binding !Owner.ForgottenFavorites.Count}" />
+                                    <ItemsControl ItemsSource="{Binding Owner.ForgottenFavorites}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:StatsRankRow">
+                                                <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
+                                                        Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="12">
+                                                        <Border Classes="thumb" Width="40" Height="40">
+                                                            <Panel>
+                                                                <Path Classes="ph" Data="{StaticResource FavoritesIcon}" Width="16" Height="16" />
+                                                                <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
+                                                                                      Stretch="UniformToFill" />
+                                                            </Panel>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.55"
+                                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2" Text="{Binding PlaysText}" FontSize="11.5" Opacity="0.6"
+                                                                   VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Recent Plays heading; the rows follow as feed items. -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="13,22,13,0">
+                            <TextBlock Classes="section-title" Text="{loc:T Statistics.RecentPlays}" />
+                            <TextBlock Grid.Column="1" Classes="section-caption" Text="{Binding Owner.PeriodCaption}" />
+                        </Grid>
+                    </StackPanel>
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type vm:StatsDayHeader}">
+                    <Grid ColumnDefinitions="*,Auto" Margin="13,16,13,4">
+                        <TextBlock Text="{Binding Text}" FontSize="13" FontWeight="Bold" Opacity="0.85" />
+                        <TextBlock Grid.Column="1" Text="{Binding CountText}" FontSize="12" Opacity="0.5" />
+                    </Grid>
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type vm:StatsPlayRow}">
+                    <!-- Album in its own column: on a wide window the row reads as a table, not a
+                         title stranded at one edge and the time at the other. -->
+                    <Grid ColumnDefinitions="36,3*,2*,Auto,Auto" ColumnSpacing="12" Height="48" Margin="13,0">
+                        <Border Classes="thumb" Width="36" Height="36" CornerRadius="6">
+                            <Panel>
+                                <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="14" Height="14" />
+                                <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
+                                                      Stretch="UniformToFill" />
+                            </Panel>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                            <TextBlock Text="{Binding Artist}" FontSize="11.5" Opacity="0.55"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding Album}" FontSize="12" Opacity="0.5"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        <Border Grid.Column="3" CornerRadius="999" Padding="8,2" VerticalAlignment="Center"
+                                Background="{DynamicResource PillFieldBackgroundPointerOver}"
+                                IsVisible="{Binding Skipped}">
+                            <TextBlock Text="{loc:T Statistics.Skipped}" FontSize="10.5" Opacity="0.75" />
+                        </Border>
+                        <TextBlock Grid.Column="4" Text="{Binding TimeText}" FontSize="12" Opacity="0.5"
+                                   VerticalAlignment="Center" MinWidth="64" TextAlignment="Right" />
+                    </Grid>
+                </DataTemplate>
+
+                <DataTemplate DataType="{x:Type vm:StatsFeedEmpty}">
+                    <TextBlock Classes="empty-note" Text="{Binding Text}" Margin="13,10" />
+                </DataTemplate>
+            </ItemsControl.DataTemplates>
+        </ItemsControl>
     </Grid>
 
 </UserControl>

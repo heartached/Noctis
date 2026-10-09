@@ -1,331 +1,554 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:svc="using:Noctis.Services"
+        xmlns:views="using:Noctis.Views"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.WrapDialog"
         x:DataType="vm:WrapViewModel"
         Title="{loc:T Wrap.NoctisWrap}"
         CanResize="False"
         WindowDecorations="None"
-        Background="Transparent"
         TransparencyLevelHint="Transparent"
-        ShowInTaskbar="False">
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Pill buttons. Background/CornerRadius are set on the templated
-             ContentPresenter (not the Button) so the rounded shape and the
-             accent colour survive :pointerover — matching the Statistics tabs. -->
-        <Style Selector="Button.share-pill">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="14,7"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
+        <!-- Section heading over a block of the report (TOP ARTISTS, TOP ALBUMS …). -->
+        <Style Selector="TextBlock.wr-section">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.1" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="2,0,0,10" />
         </Style>
-        <Style Selector="Button.share-pill /template/ ContentPresenter">
-            <Setter Property="Background" Value="#22FFFFFF"/>
-            <Setter Property="CornerRadius" Value="999"/>
+        <Style Selector="TextBlock.wr-label">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
-        <Style Selector="Button.share-pill:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#33FFFFFF"/>
+        <!-- Stat tiles: filled wells, the number big, the name under it. -->
+        <Style Selector="Border.wr-tile">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="16,12" />
         </Style>
-        <!-- Coloured pills: keep the accent on hover -->
-        <Style Selector="Button.share-pill.active /template/ ContentPresenter,
-                         Button.share-pill.accent /template/ ContentPresenter,
-                         Button.share-pill.active:pointerover /template/ ContentPresenter,
-                         Button.share-pill.accent:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        <Style Selector="TextBlock.wr-value">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <!-- A long value (a genre such as "Alternative/Indie") wraps instead of being cut. -->
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxLines" Value="2" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
-        <Style Selector="Button.share-pill.active, Button.share-pill.accent">
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        <Style Selector="TextBlock.wr-detail">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <!-- The change against the previous period: a small chip, accent when up. -->
+        <Style Selector="Border.wr-delta">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="9,3" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Border.wr-delta TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Border.wr-delta.down TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.7" />
         </Style>
 
-        <!-- Year picker: pill-shaped combo box with rounded item highlights,
-             matching the rounded menu rows in the Songs section. -->
-        <Style Selector="ComboBox">
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="Padding" Value="14,4"/>
+        <!-- Segmented pill, the recipe View Options and Smart Playlist use. -->
+        <Style Selector="RadioButton.wr-seg">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="SegFill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <!-- Round every border in the template so the outline hugs the pill on all edges -->
-        <Style Selector="ComboBox /template/ Border">
-            <Setter Property="CornerRadius" Value="999"/>
+        <Style Selector="RadioButton.wr-seg:pointerover">
+            <Setter Property="Opacity" Value="0.85" />
         </Style>
-        <Style Selector="ComboBoxItem">
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Margin" Value="3,1"/>
-            <Setter Property="Padding" Value="11,6"/>
-        </Style>
-        <Style Selector="ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999"/>
+        <Style Selector="RadioButton.wr-seg:checked">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
-        <Style Selector="TextBlock.wrap-stat-value">
-            <Setter Property="FontSize" Value="24"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Style Selector="Ellipse.loading-spinner">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="StrokeThickness" Value="2.5" />
+            <Setter Property="StrokeDashArray" Value="11,5" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
         </Style>
-        <Style Selector="TextBlock.wrap-stat-label">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Opacity" Value="0.55"/>
+        <!-- Keyed on [IsVisible=True] so a hidden spinner's INFINITE clock stops. -->
+        <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                    <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
-        <Style Selector="Border.wrap-stat-card">
-            <Setter Property="Background" Value="#18000000"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Margin" Value="0,0,8,8"/>
+
+        <!-- The report's scrollbar stays out of sight until the report is hovered. -->
+        <Style Selector="ScrollViewer.wr-report /template/ ScrollBar:vertical">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
         </Style>
-        <Style Selector="TextBlock.wrap-list-header">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Opacity" Value="0.55"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
+        <Style Selector="ScrollViewer.wr-report:pointerover /template/ ScrollBar:vertical">
+            <Setter Property="Opacity" Value="1" />
         </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay -->
-    <Border Background="#98000000" PointerPressed="OnOverlayPointerPressed">
+    <!-- Owner 10-09 "REVAMP THE NOCTIS WRAP": the rounded pill pop-up with the blurred app
+         behind (PillDialogHost: open/close animation; the X, Esc, a click on the backdrop and
+         Alt+F4 all animate out once), laid out like a Last.fm report — the top album as a
+         hero, covers and portraits, the listening clock and timeline, the share card beside.
+         Width/Height are fitted to the window in code (FitToWindow). -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border PointerPressed="OnCardPointerPressed"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Padding="22,18"
-                Width="960"
-                MaxHeight="720"
-                CornerRadius="12"
+    <Grid x:Name="WrapCard" Width="1080" Height="820" RowDefinitions="Auto,*,Auto">
+
+        <!-- ── Header: icon, title + period, what it covers; the period pickers; close ── -->
+        <Border Grid.Row="0"
+                Padding="28,20,20,16"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                BorderThickness="1"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
-            <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
-
-                <!-- Header -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="14">
-                    <TextBlock FontSize="22" FontWeight="Bold" VerticalAlignment="Center">
-                        <Run Text="{loc:T Wrap.NoctisWrap}"/>
-                        <Run Text="{Binding PeriodLabel}" Foreground="{DynamicResource AccentTextBrush}"/>
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*,Auto,10,Auto,14,Auto">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource StatisticsIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis">
+                        <Run Text="{loc:T Wrap.NoctisWrap}" />
+                        <Run Text="{Binding PeriodLabel}" Foreground="{DynamicResource AccentTextBrush}" />
                     </TextBlock>
+                    <TextBlock Text="{Binding CoverageText}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding CoverageText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
 
-                <Button Grid.Row="0" Grid.Column="1"
-                        Background="{DynamicResource SystemControlBackgroundListMediumBrush}"
-                        BorderThickness="0"
-                        Width="32" Height="32"
-                        CornerRadius="16"
-                        Padding="0"
-                        HorizontalAlignment="Right"
+                <ComboBox x:Name="YearBox"
+                          Grid.Column="3"
+                          Classes="pill-field"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          MinWidth="104"
+                          ItemsSource="{Binding AvailableYears}"
+                          SelectedItem="{Binding SelectedYear}"
+                          ToolTip.Tip="{loc:T Wrap.BrowseSavedWrapYearsTip}"
+                          AutomationProperties.Name="{loc:T Wrap.BrowseSavedWrapYearsTip}" />
+
+                <!-- Full year | This month (the live year only: saved years are whole years). -->
+                <Border Grid.Column="5" Classes="pill-well" CornerRadius="999" Padding="5"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding IsCurrentYear}">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton x:Name="FullYearSegment" Classes="wr-seg" GroupName="WrapPeriod"
+                                     Content="{loc:T Wrap.FullYear}"
+                                     IsChecked="{Binding IsYearMode}" />
+                        <RadioButton x:Name="MonthSegment" Classes="wr-seg" GroupName="WrapPeriod"
+                                     Content="{loc:T Wrap.Month}"
+                                     IsChecked="{Binding IsMonthMode}" />
+                    </StackPanel>
+                </Border>
+
+                <Button x:Name="CloseButton"
+                        Grid.Column="7"
+                        Classes="pill-secondary"
+                        Width="36" Height="36" MinHeight="36" Padding="0"
                         VerticalAlignment="Top"
-                        Cursor="Hand"
+                        ToolTip.Tip="{loc:T Wrap.Close}"
+                        AutomationProperties.Name="{loc:T Wrap.Close}"
                         Click="OnCloseClick">
-                    <PathIcon Data="{StaticResource DismissIcon}" Width="16" Height="16" Opacity="0.75"/>
+                    <PathIcon Data="{StaticResource DismissIcon}" Width="11" Height="11" />
                 </Button>
-
-                <!-- Body -->
-                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,16,Auto" Margin="0,14,0,0">
-
-                    <!-- Stats column -->
-                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Spacing="12">
-
-                            <!-- Year picker + (current-year-only) granularity toggle -->
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <ComboBox ItemsSource="{Binding AvailableYears}"
-                                          SelectedItem="{Binding SelectedYear}"
-                                          MinWidth="96"
-                                          CornerRadius="999" BorderThickness="1.5" BorderBrush="#99A0A0A8" UseLayoutRounding="True"
-                                          VerticalAlignment="Center"
-                                          ToolTip.Tip="{loc:T Wrap.BrowseSavedWrapYearsTip}"/>
-                                <Button Classes="share-pill" Classes.active="{Binding IsYearMode}"
-                                        Content="{loc:T Wrap.FullYear}" Command="{Binding SelectYearCommand}"
-                                        IsVisible="{Binding IsCurrentYear}"/>
-                                <Button Classes="share-pill" Classes.active="{Binding IsMonthMode}"
-                                        Content="{loc:T Wrap.Month}" Command="{Binding SelectMonthCommand}"
-                                        IsVisible="{Binding IsCurrentYear}"/>
-                            </StackPanel>
-
-                            <TextBlock Text="{loc:T Wrap.NoPlaysRecordedPeriod}"
-                                       FontSize="13" Opacity="0.6" TextWrapping="Wrap"
-                                       IsVisible="{Binding !HasData}"/>
-
-                            <!-- Big numbers -->
-                            <UniformGrid Columns="4" IsVisible="{Binding HasData}">
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding TotalMinutesText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.MinutesListened}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding TotalPlaysText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.TracksPlayed}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueArtistsText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.DifferentArtists}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueAlbumsText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.AlbumsExplored}"/>
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
-                            <UniformGrid Columns="4" IsVisible="{Binding HasData}">
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding UniqueTracksText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.UniqueTracks}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding LosslessText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.LosslessPlays}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding HiResText}"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.HiResPlays}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="wrap-stat-card">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Classes="wrap-stat-value" Text="{Binding TopGenreText}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Classes="wrap-stat-label" Text="{loc:T Wrap.TopGenre}"/>
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
-
-                            <!-- Top lists -->
-                            <Grid ColumnDefinitions="*,12,*" IsVisible="{Binding HasData}">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPARTISTS}"/>
-                                    <ItemsControl ItemsSource="{Binding TopArtists}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="svc:WrapEntry">
-                                                <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
-                                                    <TextBlock Grid.Column="0" Text="{Binding Rank}" FontWeight="Bold" Opacity="0.45" FontSize="13"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding PlaysLabel}" FontSize="11" Opacity="0.5" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPALBUMS}" Margin="0,10,0,6"/>
-                                    <ItemsControl ItemsSource="{Binding TopAlbums}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="svc:WrapEntry">
-                                                <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
-                                                    <TextBlock Grid.Column="0" Text="{Binding Rank}" FontWeight="Bold" Opacity="0.45" FontSize="13"/>
-                                                    <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"
-                                                                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="2" Text="{Binding PlaysLabel}" FontSize="11" Opacity="0.5" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" Spacing="2">
-                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPSONGS}"/>
-                                    <ItemsControl ItemsSource="{Binding TopTracks}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="svc:WrapEntry">
-                                                <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
-                                                    <TextBlock Grid.Column="0" Text="{Binding Rank}" FontWeight="Bold" Opacity="0.45" FontSize="13"/>
-                                                    <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"
-                                                                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="2" Text="{Binding PlaysLabel}" FontSize="11" Opacity="0.5" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <TextBlock Classes="wrap-list-header" Text="{loc:T Wrap.TOPGENRES}" Margin="0,10,0,6"/>
-                                    <ItemsControl ItemsSource="{Binding TopGenres}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="svc:WrapEntry">
-                                                <Grid ColumnDefinitions="24,*,Auto" Margin="0,3">
-                                                    <TextBlock Grid.Column="0" Text="{Binding Rank}" FontWeight="Bold" Opacity="0.45" FontSize="13"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding PlaysLabel}" FontSize="11" Opacity="0.5" VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <!-- Card preview -->
-                    <Border Grid.Column="2"
-                            Width="300" Height="450"
-                            Background="#18000000"
-                            CornerRadius="8">
-                        <Panel>
-                            <TextBlock Text="{loc:T Wrap.NoDataPreview}"
-                                       FontSize="13" Opacity="0.5"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding Preview, Converter={x:Static ObjectConverters.IsNull}}"/>
-                            <Image Source="{Binding Preview}"
-                                   Stretch="Uniform"
-                                   Margin="10"
-                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                        </Panel>
-                    </Border>
-                </Grid>
-
-                <!-- Footer: format toggle + actions -->
-                <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,16,0,0">
-                    <Button Grid.Column="0"
-                            Classes="share-pill"
-                            Classes.active="{Binding IsSquare}"
-                            Content="1:1"
-                            Command="{Binding SelectSquareCommand}"/>
-                    <Button Grid.Column="1"
-                            Classes="share-pill"
-                            Classes.active="{Binding IsStory}"
-                            Content="9:16"
-                            Margin="8,0,0,0"
-                            Command="{Binding SelectStoryCommand}"/>
-
-                    <TextBlock Grid.Column="2"
-                               Text="{Binding StatusText}"
-                               FontSize="12" Opacity="0.7"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"/>
-
-                    <Button Grid.Column="3"
-                            Classes="share-pill"
-                            Margin="0,0,8,0"
-                            Click="OnCopyClick"
-                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="{loc:T Wrap.Copy}" VerticalAlignment="Center"/>
-                    </Button>
-                    <Button Grid.Column="4"
-                            Classes="share-pill accent"
-                            Click="OnSaveClick"
-                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="{loc:T Wrap.Save}" VerticalAlignment="Center"/>
-                    </Button>
-                </Grid>
             </Grid>
         </Border>
-    </Border>
+
+        <!-- ── Body: the report (left, scrolls) and the share card (right) ── -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,340">
+
+            <Panel Grid.Column="0">
+                <StackPanel Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            IsVisible="{Binding ShowSpinner}">
+                    <Ellipse Classes="loading-spinner" HorizontalAlignment="Center"
+                             IsVisible="{Binding ShowSpinner}" />
+                    <TextBlock Text="{loc:T Wrap.Building}" FontSize="13" Opacity="0.6" />
+                </StackPanel>
+                <TextBlock Text="{loc:T Wrap.NoPlaysYet}"
+                           FontSize="14" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center"
+                           Margin="40" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding ShowEmpty}" />
+
+                <ScrollViewer x:Name="ReportScroll"
+                              Classes="wr-report"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              IsVisible="{Binding HasData}">
+                    <StackPanel Margin="28,22,20,28" Spacing="26">
+
+                        <!-- Hero: the top album's cover, its name, and the period's big numbers. -->
+                        <Border x:Name="Hero" Classes="pill-well" CornerRadius="26" Padding="18">
+                            <Grid ColumnDefinitions="176,22,*">
+                                <Border Width="176" Height="176" CornerRadius="16" ClipToBounds="True"
+                                        Background="{DynamicResource PillFieldBackgroundPointerOver}"
+                                        VerticalAlignment="Top">
+                                    <Panel>
+                                        <PathIcon Data="{StaticResource AlbumsIcon}" Width="48" Height="48" Opacity="0.25"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <controls:CachedImage x:Name="HeroCover"
+                                                              SourcePath="{Binding TopAlbum.ArtworkPath, FallbackValue={x:Null}}"
+                                                              Stretch="UniformToFill" Width="176" Height="176"
+                                                              RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                    </Panel>
+                                </Border>
+                                <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto">
+                                    <StackPanel Spacing="3" IsVisible="{Binding TopAlbum, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <TextBlock Classes="wr-section" Margin="0,0,0,2" Text="{loc:T Wrap.TopAlbum}" />
+                                        <TextBlock Text="{Binding TopAlbum.Name, FallbackValue=''}"
+                                                   FontSize="22" FontWeight="Bold"
+                                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding TopAlbum.Subtitle, FallbackValue=''}"
+                                                   FontSize="14" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding TopAlbum.PlaysLabel, FallbackValue=''}"
+                                                   FontSize="12.5" Opacity="0.55" />
+                                    </StackPanel>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,16,*" Margin="0,14,0,0">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{Binding TotalMinutesText}" FontSize="30" FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentTextBrush}" />
+                                            <TextBlock Classes="wr-label" Text="{loc:T Wrap.MinutesListened}" />
+                                            <Border Classes="wr-delta" Classes.down="{Binding IsMinutesDeltaDown}"
+                                                    IsVisible="{Binding MinutesDeltaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <TextBlock Text="{Binding MinutesDeltaText}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="4">
+                                            <TextBlock Text="{Binding TotalPlaysText}" FontSize="30" FontWeight="Bold" />
+                                            <TextBlock Classes="wr-label" Text="{loc:T Wrap.TracksPlayed}" />
+                                            <Border Classes="wr-delta" Classes.down="{Binding IsPlaysDeltaDown}"
+                                                    IsVisible="{Binding PlaysDeltaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <TextBlock Text="{Binding PlaysDeltaText}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- The numbers: what was played (three wide tiles), then when (four). -->
+                        <StackPanel x:Name="Tiles" Spacing="10">
+                            <Grid ColumnDefinitions="*,10,*,10,*">
+                                <Border Grid.Column="0" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding UniqueTracksText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.UniqueTracks}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding UniqueArtistsText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.DifferentArtists}" />
+                                        <TextBlock Classes="wr-detail" Text="{Binding NewArtistsText}"
+                                                   IsVisible="{Binding NewArtistsText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="4" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding UniqueAlbumsText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.AlbumsExplored}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,10,*,10,*,10,*">
+                                <Border Grid.Column="0" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding DailyAverageText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.DailyAverage}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding ActiveDaysText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.ActiveDays}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="4" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding LongestStreakText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.LongestStreak}" />
+                                        <TextBlock Classes="wr-detail" Text="{Binding LongestStreakRangeText}"
+                                                   IsVisible="{Binding LongestStreakRangeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="6" Classes="wr-tile">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding MostActiveDayText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.MostActiveDay}" />
+                                        <TextBlock Classes="wr-detail" Text="{Binding MostActiveDayDetailText}"
+                                                   IsVisible="{Binding MostActiveDayDetailText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Top artists, with the portraits the Artists page shows. -->
+                        <StackPanel IsVisible="{Binding !!TopArtists.Count}">
+                            <TextBlock Classes="wr-section" Text="{loc:T Wrap.TOPARTISTS}" />
+                            <ItemsControl x:Name="ArtistItems" ItemsSource="{Binding TopArtists}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="5" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="svc:WrapEntry">
+                                        <StackPanel Spacing="7" Margin="4,0" HorizontalAlignment="Stretch">
+                                            <Border Width="92" Height="92" CornerRadius="46" ClipToBounds="True"
+                                                    HorizontalAlignment="Center"
+                                                    Background="{DynamicResource PillFieldBackgroundPointerOver}">
+                                                <Panel>
+                                                    <TextBlock Text="{Binding Initial}" FontSize="30" FontWeight="Bold" Opacity="0.35"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                                          IsVisible="{Binding HasImage}"
+                                                                          Stretch="UniformToFill" Width="92" Height="92" />
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding PlaysLabel}" FontSize="11.5" Opacity="0.55"
+                                                       HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Top albums as a cover grid. -->
+                        <StackPanel IsVisible="{Binding !!TopAlbums.Count}">
+                            <TextBlock Classes="wr-section" Text="{loc:T Wrap.TOPALBUMS}" />
+                            <ItemsControl x:Name="AlbumItems" ItemsSource="{Binding TopAlbums}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="5" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="svc:WrapEntry">
+                                        <StackPanel Spacing="3" Margin="5,0">
+                                            <Border CornerRadius="12" ClipToBounds="True" Margin="0,0,0,5"
+                                                    Height="{Binding $self.Bounds.Width}"
+                                                    Background="{DynamicResource PillFieldBackgroundPointerOver}">
+                                                <Panel>
+                                                    <PathIcon Data="{StaticResource AlbumsIcon}" Width="30" Height="30" Opacity="0.25"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                          IsVisible="{Binding HasArtwork}"
+                                                                          Stretch="UniformToFill" DecodeWidth="256" />
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.6"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding PlaysLabel}" FontSize="11" Opacity="0.5" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Top songs with their covers. -->
+                        <StackPanel IsVisible="{Binding !!TopTracks.Count}">
+                            <TextBlock Classes="wr-section" Text="{loc:T Wrap.TOPSONGS}" />
+                            <ItemsControl x:Name="SongItems" ItemsSource="{Binding TopTracks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="svc:WrapEntry">
+                                        <Grid ColumnDefinitions="26,46,12,*,Auto" Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding Rank}" FontWeight="Bold" Opacity="0.45" FontSize="13"
+                                                       VerticalAlignment="Center" />
+                                            <Border Grid.Column="1" Width="46" Height="46" CornerRadius="9" ClipToBounds="True"
+                                                    Background="{DynamicResource PillFieldBackgroundPointerOver}">
+                                                <Panel>
+                                                    <PathIcon Data="{StaticResource SongsIcon}" Width="16" Height="16" Opacity="0.3"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                          IsVisible="{Binding HasArtwork}"
+                                                                          Stretch="UniformToFill" Width="46" Height="46" DecodeWidth="128" />
+                                                </Panel>
+                                            </Border>
+                                            <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="1">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="12" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="4" Text="{Binding PlaysLabel}" FontSize="12" Opacity="0.55"
+                                                       Margin="12,0,0,0" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- When: the listening clock and the timeline. -->
+                        <Grid ColumnDefinitions="*,12,1.5*" IsVisible="{Binding HasCharts}">
+                            <Border Classes="pill-well" CornerRadius="22" Padding="16,14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="wr-section" Margin="2,0,0,0" Text="{loc:T Wrap.ListeningClock}" />
+                                    <views:WrapClockChart x:Name="ClockChart" Height="190" Values="{Binding ClockValues}" />
+                                    <TextBlock Text="{Binding PeakHourText}" FontSize="12" Opacity="0.65"
+                                               HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Classes="pill-well" CornerRadius="22" Padding="16,14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="wr-section" Margin="2,0,0,0" Text="{Binding TimelineTitle}" />
+                                    <views:WrapColumnChart x:Name="TimelineChart" Height="212"
+                                                           Values="{Binding TimelineValues}"
+                                                           Labels="{Binding TimelineLabels}"
+                                                           Highlight="{Binding TimelineHighlight}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- How: genres as proportional bars, and the sound quality. -->
+                        <Grid ColumnDefinitions="1.5*,12,*">
+                            <Border Classes="pill-well" CornerRadius="22" Padding="16,14"
+                                    IsVisible="{Binding !!TopGenres.Count}">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="wr-section" Margin="2,0,0,0" Text="{loc:T Wrap.TOPGENRES}" />
+                                    <!-- The top genre, whole: in a four-wide tile "Hip-Hop/Rap" was cut to "Hip-Ho…". -->
+                                    <StackPanel Spacing="2" Margin="0,0,0,4">
+                                        <TextBlock x:Name="TopGenreValue" Classes="wr-value" FontSize="24"
+                                                   Text="{Binding TopGenreText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.TopGenre}" />
+                                    </StackPanel>
+                                    <ItemsControl x:Name="GenreItems" ItemsSource="{Binding TopGenres}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="svc:WrapEntry">
+                                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,6,Auto" Margin="0,0,0,10">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" FontSize="12" Opacity="0.55" Margin="10,0,0,0">
+                                                        <Run Text="{Binding ShareLabel}" />
+                                                        <Run Text=" · " />
+                                                        <Run Text="{Binding PlaysLabel}" />
+                                                    </TextBlock>
+                                                    <views:WrapBar Grid.Row="2" Grid.ColumnSpan="2" Height="8"
+                                                                   Fraction="{Binding BarFraction}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Classes="pill-well" CornerRadius="22" Padding="16,14">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Classes="wr-section" Margin="2,0,0,0" Text="{loc:T Wrap.SoundQuality}" />
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding LosslessText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.LosslessPlays}" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="wr-value" Text="{Binding HiResText}" />
+                                        <TextBlock Classes="wr-label" Text="{loc:T Wrap.HiResPlays}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
+
+            <!-- Share card: the preview in a well, its format underneath. -->
+            <Border Grid.Column="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="Auto,*,Auto" Margin="20,22,28,16">
+                    <TextBlock Classes="wr-section" Text="{loc:T Wrap.ShareCard}" />
+                    <Border x:Name="PreviewWell" Grid.Row="1" Classes="pill-well" CornerRadius="24">
+                        <Panel Margin="14">
+                            <TextBlock Text="{loc:T Wrap.NoDataPreview}"
+                                       FontSize="13" Opacity="0.5"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding Preview, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <Image x:Name="PreviewImage"
+                                   Source="{Binding Preview}"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
+                        </Panel>
+                    </Border>
+                    <Border Grid.Row="2" Classes="pill-well" CornerRadius="999" Padding="5" Margin="0,14,0,0"
+                            HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <RadioButton x:Name="SquareSegment" Classes="wr-seg" GroupName="WrapCardFormat"
+                                         Content="1:1" IsChecked="{Binding IsSquare}" />
+                            <RadioButton x:Name="StorySegment" Classes="wr-seg" GroupName="WrapCardFormat"
+                                         Content="9:16" IsChecked="{Binding IsStory}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── Footer: status on the left; Copy and Save ── -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="12.5" Opacity="0.65"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="CopyButton"
+                            Classes="pill-secondary"
+                            MinWidth="96"
+                            Content="{loc:T Wrap.Copy}"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Click="OnCopyClick" />
+                    <Button x:Name="SaveButton"
+                            Classes="pill-primary"
+                            MinWidth="120"
+                            Content="{loc:T Wrap.Save}"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Click="OnSaveClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

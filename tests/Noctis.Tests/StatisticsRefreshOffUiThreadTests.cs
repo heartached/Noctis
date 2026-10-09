@@ -27,7 +27,7 @@ public class StatisticsRefreshOffUiThreadTests
         var a = new Track { Title = "One", Artist = "Alpha", Album = "A", PlayCount = 3 };
         var b = new Track { Title = "Two", Artist = "Beta", Album = "B", PlayCount = 1 };
         library.TrackList.AddRange(new[] { a, b });
-        var log = new ProbeList(new[] { Play(a), Play(b), Play(a) });
+        var log = new ProbeList(new[] { Play(a, hoursAgo: 3), Play(b, hoursAgo: 2), Play(a, hoursAgo: 1) });
         var vm = new StatisticsViewModel(library, new FakePlayHistory(log));
 
         vm.Refresh();
@@ -37,8 +37,8 @@ public class StatisticsRefreshOffUiThreadTests
         Assert.False(log.ReadOnUiThread, "the play log was aggregated on the UI thread");
         Assert.Equal(2, vm.TotalTracks);
         Assert.True(vm.HasPlayHistory);
-        Assert.Equal(3, vm.PlayLog.Count);
-        Assert.Equal(new[] { "Alpha", "Beta" }, vm.TopArtists.Select(i => i.Label));
+        Assert.Equal(3, vm.RecentPlayCount);
+        Assert.Equal(new[] { "Alpha", "Beta" }, vm.TopArtists.Select(i => i.Name));
     }
 
     [AvaloniaFact]
@@ -64,12 +64,12 @@ public class StatisticsRefreshOffUiThreadTests
         Assert.Equal(2, vm.TotalTracks);
     }
 
-    private static PlayHistoryEvent Play(Track t) => new()
+    private static PlayHistoryEvent Play(Track t, int hoursAgo) => new()
     {
         TrackId = t.Id,
         Title = t.Title,
         Artist = t.Artist,
-        PlayedAtUtc = DateTime.UtcNow.AddHours(-1)
+        PlayedAtUtc = DateTime.UtcNow.AddHours(-hoursAgo)
     };
 
     private static void PumpUntil(Func<bool> done)

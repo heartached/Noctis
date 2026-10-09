@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.AddSongsDialog"
@@ -14,24 +14,64 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <Style Selector="Button.add-song-row">
+        <!-- Small caps over the list ("Shuffled from your library"), as the Lyrics Studio
+             picker's section label. -->
+        <Style Selector="TextBlock.as-section">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="0.5" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Rows highlight in place, never zoom (the list scrolls; a growing row would jitter
+             under the pointer). The Lyrics Studio picker's pick-row. -->
+        <Style Selector="Button.as-row">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="CornerRadius" Value="14" />
             <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Margin" Value="0,1" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.add-song-row:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#18FFFFFF" />
-        </Style>
-        <!-- Opt out of the global hover scale: rows should highlight, not zoom. -->
-        <Style Selector="Button.add-song-row:pointerover">
+        <Style Selector="Button.as-row:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <Style Selector="Button.add-song-row:disabled">
+        <Style Selector="Button.as-row:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.as-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.as-row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <!-- Already in the playlist: tagged, muted, not tickable (nothing to hover or click, so
+             it can never be added twice). Not IsEnabled=False: Fluent's disabled button paints
+             a grey box over the row. -->
+        <Style Selector="Button.as-row.in-playlist">
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="Button.as-row.in-playlist StackPanel.as-text">
             <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="Button.as-row.in-playlist Border.as-cover">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+
+        <!-- "In playlist": one filled tag size (the picker's state pill). -->
+        <Style Selector="Border.as-tag">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
 
         <!-- Selection circle: same recipe as CheckBox.metadata-pill-checkbox in Styles.axaml.
@@ -44,269 +84,272 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
-        <Style Selector="Button.add-song-row:pointerover Border.selection-circle">
-            <Setter Property="RenderTransform" Value="scale(1.06)" />
-        </Style>
-        <Style Selector="Button.add-song-row:pressed Border.selection-circle">
-            <Setter Property="RenderTransform" Value="scale(0.9)" />
-        </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay.
-         Fade/scale open-close animation: same pattern as the Create Playlist dialog. -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-09: the rounded pill pop-up of the Lyrics Studio picker, with the blurred app
+         behind: an icon header naming the playlist, a filled search pill, tidy rows (songs
+         already in the playlist tagged), the count in the footer. PillDialogHost draws the
+         blurred, dimmed owner and the card, and plays the open/close animation (every close
+         path — Cancel, Add, Esc, Alt+F4 — animates out once). The pick reaches the caller
+         through the view model's SongsChosen event, never Close(result). A fixed height: the
+         card does not jump as a search narrows the list. -->
+    <controls:PillDialogHost>
 
-        <Border x:Name="DialogCard"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="520" Height="620"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel>
+    <Grid Width="600" Height="660" RowDefinitions="Auto,Auto,*,Auto">
 
-                <!-- Header: title + search -->
-                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="12">
-                    <TextBlock Text="{loc:T AddSongs.AddSongs}"
-                               FontSize="20" FontWeight="Bold"
-                               HorizontalAlignment="Center" />
-                    <TextBox Text="{Binding SearchText}"
-                             Classes="crisp-input"
-                             Watermark="{loc:T AddSongs.SearchLibrary}"
-                             CornerRadius="999"
-                             x:Name="SearchBox" />
-
-                    <!-- Shuffled-picks subheader (no search yet) -->
-                    <Grid ColumnDefinitions="*,Auto"
-                          IsVisible="{Binding IsShuffleMode}">
-                        <TextBlock Grid.Column="0"
-                                   Text="{loc:T AddSongs.ShuffledFromLibrary}"
-                                   FontSize="11"
-                                   FontWeight="Bold"
-                                   Opacity="0.55"
-                                   LetterSpacing="0.5"
-                                   VerticalAlignment="Center" />
-                        <Button Grid.Column="1"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                CornerRadius="999"
-                                Padding="10,3"
-                                MinHeight="0"
-                                Cursor="Hand"
-                                ToolTip.Tip="{loc:T AddSongs.ShuffleAgainTip}"
-                                Command="{Binding ReshuffleCommand}">
-                            <TextBlock Text="{loc:T AddSongs.Shuffle}"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Opacity="0.6"
-                                       VerticalAlignment="Center" />
-                        </Button>
-                    </Grid>
-
-                    <!-- Row cap notice. The list renders at most 100 rows; without this
-                         the songs past row 100 simply weren't there, and the Add count
-                         read as a playlist limit. Select all still covers every match. -->
-                    <TextBlock Text="{Binding TruncationNotice}"
-                               IsVisible="{Binding IsTruncated}"
-                               FontSize="11"
-                               FontWeight="Bold"
-                               Opacity="0.55"
-                               LetterSpacing="0.5"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-
-                <!-- Footer: Cancel / Add -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <Button Grid.Column="0"
-                                HorizontalAlignment="Left"
-                                IsVisible="{Binding HasSelectableResults}"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                CornerRadius="999"
-                                Padding="10,6"
-                                MinHeight="0"
-                                Cursor="Hand"
-                                Command="{Binding ToggleSelectAllCommand}">
-                            <TextBlock Text="{Binding SelectAllText}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Opacity="0.6"
-                                       VerticalAlignment="Center" />
-                        </Button>
-                        <Button Grid.Column="1"
-                                Content="{loc:T AddSongs.Cancel}"
-                                Command="{Binding CancelCommand}"
-                                Width="100" Padding="0,8"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Margin="0,0,8,0"
-                                Cursor="Hand" />
-                        <Button Grid.Column="2"
-                                Content="{Binding AddButtonText}"
-                                Command="{Binding AddCommand}"
-                                IsEnabled="{Binding HasSelection}"
-                                MinWidth="100" Padding="16,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
+        <!-- Header: the playlist glyph (Create / Add to Playlist's), where the songs go and how
+             many it has. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <Border Width="22" Height="22" Opacity="0.6"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
+                    </Border>
                 </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText"
+                               Text="{Binding Title}"
+                               ToolTip.Tip="{Binding Title}"
+                               FontSize="18" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="SubtitleText"
+                               Text="{Binding Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <!-- Body: results / prompt / no-results -->
-                <Panel Margin="12,4,12,4">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding Results}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:AddSongItem">
-                                    <Button Classes="add-song-row"
-                                            IsEnabled="{Binding !IsInPlaylist}"
-                                            Command="{Binding $parent[ItemsControl].((vm:AddSongsDialogViewModel)DataContext).ToggleSelectCommand}"
-                                            CommandParameter="{Binding}">
-                                        <Grid ColumnDefinitions="40,*,Auto">
-                                            <Border Grid.Column="0"
-                                                    Width="36" Height="36"
-                                                    CornerRadius="5"
-                                                    ClipToBounds="True"
-                                                    VerticalAlignment="Center"
-                                                    Background="#18FFFFFF">
-                                                <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
-                                                                      DecodeWidth="128"
-                                                                      Stretch="UniformToFill" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="1">
-                                                <!-- Auto,Auto keeps the E badge hugging the title; the LayoutUpdated
-                                                     handler caps the title's MaxWidth so long titles trim instead of
-                                                     running over the selection circle. -->
-                                                <Grid ColumnDefinitions="Auto,Auto"
-                                                      ClipToBounds="True"
-                                                      LayoutUpdated="OnTitleCellLayoutUpdated">
-                                                    <TextBlock Grid.Column="0"
-                                                               Classes="one-line-explicit-title"
-                                                               Text="{Binding Track.Title}"
-                                                               FontSize="13" FontWeight="SemiBold" />
-                                                    <Border Grid.Column="1"
-                                                            Classes="explicit-badge compact"
-                                                            Margin="6,0,0,0"
-                                                            IsVisible="{Binding Track.IsExplicit}"
-                                                            ToolTip.Tip="{loc:T AddSongs.ExplicitTip}">
-                                                        <TextBlock Text="E"
-                                                                   Classes="explicit-badge-text compact"
-                                                                   FontSize="8"
-                                                                   Opacity="0.9" />
-                                                    </Border>
-                                                </Grid>
-                                                <TextBlock Text="{Binding Track.ArtistDisplay}"
-                                                           FontSize="11" Opacity="0.6"
-                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                            </StackPanel>
+        <!-- Search: a filled pill with its icon. It does not take the caret on open (a focused
+             pill wears the accent ring); typing anywhere in the dialog starts a search. -->
+        <TextBox x:Name="SearchBox"
+                 Grid.Row="1"
+                 Margin="28,16,28,6"
+                 Classes="pill-field"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="{loc:T AddSongs.SearchLibrary}"
+                 Padding="10,10,16,10">
+            <TextBox.InnerLeftContent>
+                <PathIcon Data="{StaticResource SearchIcon}" Width="13" Height="13" Opacity="0.5"
+                          Margin="16,0,0,0" VerticalAlignment="Center" />
+            </TextBox.InnerLeftContent>
+        </TextBox>
 
-                                            <!-- Added (already in playlist) -->
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{loc:T AddSongs.Added}"
-                                                       FontSize="11" FontWeight="SemiBold"
-                                                       Opacity="0.55"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsInPlaylist}" />
+        <!-- Body: what the list is (shuffled picks + reshuffle, or a capped search), the list,
+             or what to do when there is none. 20 + the row's 8 padding = the 28 inset above. -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*" Margin="20,4,20,4">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,4,8,6" MinHeight="30">
+                <TextBlock Grid.Column="0"
+                           Classes="as-section"
+                           Text="{loc:T AddSongs.ShuffledFromLibrary}"
+                           IsVisible="{Binding IsShuffleMode}" />
+                <!-- The list renders at most 100 rows; this says so, and Select all still
+                     covers every match. -->
+                <TextBlock x:Name="TruncationText"
+                           Grid.Column="0"
+                           Classes="as-section"
+                           Text="{Binding TruncationNotice}"
+                           IsVisible="{Binding IsTruncated}" />
+                <Button x:Name="ReshuffleButton"
+                        Grid.Column="1"
+                        Classes="pill-secondary"
+                        MinHeight="30"
+                        Padding="14,0"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        ToolTip.Tip="{loc:T AddSongs.ShuffleAgainTip}"
+                        Command="{Binding ReshuffleCommand}"
+                        IsVisible="{Binding IsShuffleMode}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" Opacity="0.7"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T AddSongs.Shuffle}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
 
-                                            <!-- Selection indicator -->
-                                            <Border Grid.Column="2"
-                                                    Classes="selection-circle"
-                                                    Classes.selected="{Binding IsSelected}"
-                                                    Width="22" Height="22"
-                                                    CornerRadius="11"
-                                                    BorderThickness="1.5"
-                                                    VerticalAlignment="Center"
-                                                    IsVisible="{Binding !IsInPlaylist}">
-                                                <Border.Transitions>
-                                                    <Transitions>
-                                                        <BrushTransition Property="Background" Duration="0:0:0.18">
-                                                            <BrushTransition.Easing>
-                                                                <CubicEaseOut />
-                                                            </BrushTransition.Easing>
-                                                        </BrushTransition>
-                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.18">
-                                                            <BrushTransition.Easing>
-                                                                <CubicEaseOut />
-                                                            </BrushTransition.Easing>
-                                                        </BrushTransition>
-                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                                                            <TransformOperationsTransition.Easing>
-                                                                <CubicEaseOut />
-                                                            </TransformOperationsTransition.Easing>
-                                                        </TransformOperationsTransition>
-                                                    </Transitions>
-                                                </Border.Transitions>
-                                                <Path Data="M 0 3.5 L 3 7 L 9 0"
-                                                      Stroke="{DynamicResource AccentForegroundBrush}"
-                                                      StrokeThickness="1.5"
-                                                      StrokeLineCap="Round"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      IsVisible="{Binding IsSelected}" />
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="ResultsList" ItemsSource="{Binding Results}">
+                    <!-- Virtualized: only the rows in view are built. -->
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AddSongItem">
+                            <Button Classes="as-row"
+                                    Classes.in-playlist="{Binding IsInPlaylist}"
+                                    Command="{Binding $parent[ItemsControl].((vm:AddSongsDialogViewModel)DataContext).ToggleSelectCommand}"
+                                    CommandParameter="{Binding}">
+                                <!-- The last column is the check's width on every row, so the
+                                     "In playlist" tags end where the checks do. -->
+                                <Grid ColumnDefinitions="40,*,Auto,22">
+                                    <Border Grid.Column="0"
+                                            Classes="pill-well as-cover"
+                                            Width="40" Height="40"
+                                            CornerRadius="8"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center">
+                                        <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
+                                                              DecodeWidth="128"
+                                                              Stretch="UniformToFill" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Classes="as-text" Margin="12,0" VerticalAlignment="Center" Spacing="1">
+                                        <!-- Auto,Auto keeps the E badge hugging the title; the
+                                             LayoutUpdated handler caps the title's MaxWidth so a
+                                             long title trims instead of pushing the badge out. -->
+                                        <Grid ColumnDefinitions="Auto,Auto"
+                                              ClipToBounds="True"
+                                              LayoutUpdated="OnTitleCellLayoutUpdated">
+                                            <TextBlock Grid.Column="0"
+                                                       Classes="one-line-explicit-title"
+                                                       Text="{Binding Track.Title}"
+                                                       FontSize="13" FontWeight="SemiBold" />
+                                            <Border Grid.Column="1"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="6,0,0,0"
+                                                    IsVisible="{Binding Track.IsExplicit}"
+                                                    ToolTip.Tip="{loc:T AddSongs.ExplicitTip}">
+                                                <TextBlock Text="E"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="8"
+                                                           Opacity="0.9" />
                                             </Border>
                                         </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                                        <TextBlock Text="{Binding Track.ArtistDisplay}"
+                                                   FontSize="11.5" Opacity="0.6"
+                                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                    </StackPanel>
 
-                    <!-- Prompt (nothing to shuffle and no search) -->
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Spacing="6" IsVisible="{Binding ShowPrompt}">
-                        <TextBlock Text="{loc:T AddSongs.NothingLeftAdd}"
-                                   FontSize="15" Opacity="0.5"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
-                        <TextBlock Text="{loc:T AddSongs.EverySongLibraryAlready}"
-                                   FontSize="12" Opacity="0.3"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
-                    </StackPanel>
+                                    <!-- Already in the playlist. -->
+                                    <Border Grid.Column="2" Grid.ColumnSpan="2"
+                                            Classes="as-tag"
+                                            IsVisible="{Binding IsInPlaylist}">
+                                        <TextBlock Text="{loc:T AddSongs.Added}"
+                                                   FontSize="10.5" FontWeight="SemiBold" Opacity="0.75" />
+                                    </Border>
 
-                    <!-- No results -->
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Spacing="6" IsVisible="{Binding ShowNoResults}">
-                        <TextBlock Text="{loc:T AddSongs.NoMatches}"
-                                   FontSize="15" Opacity="0.5"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
-                        <TextBlock Text="{loc:T AddSongs.NothingLibraryMatchesSearch}"
-                                   FontSize="12" Opacity="0.3"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
-                    </StackPanel>
-                </Panel>
+                                    <!-- Selection indicator -->
+                                    <Border Grid.Column="3"
+                                            Classes="selection-circle"
+                                            Classes.selected="{Binding IsSelected}"
+                                            Width="22" Height="22"
+                                            CornerRadius="11"
+                                            BorderThickness="1.5"
+                                            UseLayoutRounding="True"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding !IsInPlaylist}">
+                                        <Border.Transitions>
+                                            <Transitions>
+                                                <BrushTransition Property="Background" Duration="0:0:0.18">
+                                                    <BrushTransition.Easing>
+                                                        <CubicEaseOut />
+                                                    </BrushTransition.Easing>
+                                                </BrushTransition>
+                                                <BrushTransition Property="BorderBrush" Duration="0:0:0.18">
+                                                    <BrushTransition.Easing>
+                                                        <CubicEaseOut />
+                                                    </BrushTransition.Easing>
+                                                </BrushTransition>
+                                            </Transitions>
+                                        </Border.Transitions>
+                                        <Path Data="M 0 3.5 L 3 7 L 9 0"
+                                              Stroke="{DynamicResource AccentForegroundBrush}"
+                                              StrokeThickness="1.5"
+                                              StrokeLineCap="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsVisible="{Binding IsSelected}" />
+                                    </Border>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
-            </DockPanel>
+            <!-- Every library song is already in the playlist. -->
+            <StackPanel x:Name="PromptState" Grid.Row="1"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="6" IsVisible="{Binding ShowPrompt}">
+                <TextBlock Text="{loc:T AddSongs.NothingLeftAdd}"
+                           FontSize="15" FontWeight="SemiBold" Opacity="0.7"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{loc:T AddSongs.EverySongLibraryAlready}"
+                           FontSize="12.5" Opacity="0.5"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+            </StackPanel>
+
+            <!-- No songs in the library at all. -->
+            <StackPanel x:Name="EmptyLibraryState" Grid.Row="1"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="6" IsVisible="{Binding ShowEmptyLibrary}">
+                <TextBlock Text="{loc:T AddSongs.LibraryEmpty}"
+                           FontSize="15" FontWeight="SemiBold" Opacity="0.7"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{loc:T AddSongs.LibraryEmptyBody}"
+                           FontSize="12.5" Opacity="0.5"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+            </StackPanel>
+
+            <!-- A search that found nothing. -->
+            <StackPanel x:Name="NoResultsState" Grid.Row="1"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="6" IsVisible="{Binding ShowNoResults}">
+                <TextBlock Text="{loc:T AddSongs.NoMatches}"
+                           FontSize="15" FontWeight="SemiBold" Opacity="0.7"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{loc:T AddSongs.NothingLibraryMatchesSearch}"
+                           FontSize="12.5" Opacity="0.5"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Footer: Select all / Clear and the count on the left, Cancel / Add on the right. -->
+        <Border Grid.Row="3"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                <Button x:Name="SelectAllButton"
+                        Grid.Column="0"
+                        Classes="pill-secondary"
+                        MinHeight="34"
+                        Padding="16,0"
+                        FontSize="12.5"
+                        FontWeight="SemiBold"
+                        Margin="0,0,12,0"
+                        Content="{Binding SelectAllText}"
+                        Command="{Binding ToggleSelectAllCommand}"
+                        IsVisible="{Binding HasSelectableResults}" />
+                <TextBlock x:Name="SelectionCount"
+                           Grid.Column="1"
+                           Text="{Binding SelectionText}"
+                           FontSize="12.5" Opacity="0.6"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding HasSelection}" />
+                <Button Grid.Column="3"
+                        Classes="pill-secondary"
+                        Content="{loc:T AddSongs.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button x:Name="AddButton"
+                        Grid.Column="4"
+                        Classes="pill-primary"
+                        Content="{Binding AddButtonText}"
+                        Command="{Binding AddCommand}"
+                        IsEnabled="{Binding HasSelection}"
+                        MinWidth="120" />
+            </Grid>
         </Border>
-    </Border>
+    </Grid>
+
+    </controls:PillDialogHost>
 </Window>

@@ -578,6 +578,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // shows over both the lyrics page and the side panel.
         _lyricsVm.ShowNotice = text => TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
+        // Top Artists / Albums rows open their pages, as on Home.
+        _statisticsVm.AlbumOpened += (_, album) => OpenAlbumDetail(album);
+        _statisticsVm.SetViewArtistAction(ViewArtistByName);
         _statisticsVm.BackRequested += (_, _) =>
         {
             // Restore the pre-stats view from history, then reopen the Settings modal

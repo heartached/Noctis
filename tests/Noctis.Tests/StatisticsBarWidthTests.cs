@@ -47,8 +47,8 @@ public class StatisticsBarWidthTests
     {
         var vm = new StatisticsViewModel(new FakeLibraryService(), new NoOpPlayHistory());
         vm.SelectedTab = StatisticsViewModel.TabHistory; // Most Skipped lives on the History tab
-        vm.SkipRates.Add(new StatItem { Label = "A Bird's Last Look", SubLabel = "Macabre Plaza", Percentage = 1.0, ValueLabel = "100% · 5/5 skipped" });
-        vm.SkipRates.Add(new StatItem { Label = "Rush", SubLabel = "Seatbelts", Percentage = 0.5, ValueLabel = "50% · 2/4 skipped" });
+        vm.MostSkipped.Add(new StatsSkipRow { Title = "A Bird's Last Look", Subtitle = "Macabre Plaza", Fraction = 1.0, RateText = "100%" });
+        vm.MostSkipped.Add(new StatsSkipRow { Title = "Rush", Subtitle = "Seatbelts", Fraction = 0.5, RateText = "50%" });
         var view = new StatisticsView { DataContext = vm };
         var window = new Window { Width = 1400, Height = 900, Content = view };
         window.Show();
@@ -56,12 +56,13 @@ public class StatisticsBarWidthTests
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
 
-        // Fill borders are the ones whose parent is a 5px-tall clipped track.
+        // Skip-rate fills are the ones whose parent is a 4px-tall clipped track.
         var fills = view.GetVisualDescendants().OfType<Border>()
-            .Where(b => b.Parent is Border { Height: 5, ClipToBounds: true })
+            .Where(b => b.Parent is Border { Height: 4, ClipToBounds: true } && b.IsEffectivelyVisible)
             .ToList();
         Assert.Equal(2, fills.Count);
         var track = (Border)fills[0].Parent!;
+        Assert.Equal(track.Bounds.Width, ((Border)fills[1].Parent!).Bounds.Width, 0.5); // rows share one track width
         _output.WriteLine($"track {track.Bounds.Width} full {fills[0].Bounds.Width} half {fills[1].Bounds.Width}");
         Assert.True(track.Bounds.Width > 400, "test track must be wider than the old 400px cap");
         Assert.Equal(track.Bounds.Width, fills[0].Bounds.Width, 0.5);

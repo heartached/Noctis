@@ -5943,7 +5943,6 @@ public partial class SettingsViewModel : ViewModelBase
         // over the same collection plus a redundant tracks.Count subtraction.
         long totalBytes = 0;
         long totalDurationTicks = 0;
-        long totalPlays = 0;
         int losslessCount = 0;
         int hiResCount = 0;
         int likedCount = 0;
@@ -5952,7 +5951,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             totalBytes += t.FileSize;
             totalDurationTicks += t.Duration.Ticks;
-            totalPlays += t.PlayCount;
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
             if (t.IsFavorite) likedCount++;
@@ -5963,7 +5961,13 @@ public partial class SettingsViewModel : ViewModelBase
         // computed from the play log — see ListeningStatsCalculator.
         var listening = ListeningStatsCalculator.Compute(events, tracksById);
 
-        var (topArtists, topAlbums) = ComputeTopPlayed(tracks, albums);
+        // Plays, time listened and the top lists come from the same all-time report as the
+        // Statistics page and the Wrap (the play log, each play placed on its library track,
+        // plays cut off within seconds left out). They used to add up each track's PlayCount,
+        // which a re-added library resets: this tab said 60 plays while the page and the Wrap
+        // counted 2,081 on the owner's dev profile (10-09).
+        var report = ListeningReportBuilder.Build(events, new PlayEventResolver(tracks), ListeningPeriod.AllTime);
+        var (topArtists, topAlbums) = TopPlayed(report);
 
         var pct = tracks.Count > 0 ? (double)losslessCount / tracks.Count : 0;
         return new LibraryStatsResult(
@@ -5972,8 +5976,8 @@ public partial class SettingsViewModel : ViewModelBase
             TotalAlbums: albums.Count,
             TotalFileSize: FormatLibrarySize(totalBytes),
             TotalListeningTime: FormatDuration(TimeSpan.FromTicks(totalDurationTicks)),
-            TotalPlays: FormatCount(totalPlays),
-            TimeListened: FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks)),
+            TotalPlays: FormatCount(report.Plays),
+            TimeListened: FormatDuration(TimeSpan.FromTicks(report.ListenedTicks)),
             AvgTrackLength: listening.AvgListenedTrackLengthTicks > 0
                 ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
                 : tracks.Count > 0
@@ -6015,53 +6019,21 @@ public partial class SettingsViewModel : ViewModelBase
         _ = RefreshRemovedTracksAsync();
     }
 
-    private static (List<StatItem> Artists, List<StatItem> Albums) ComputeTopPlayed(
-        IReadOnlyList<Track> tracks, IReadOnlyList<Album> allAlbums)
+    private static (List<StatItem> Artists, List<StatItem> Albums) TopPlayed(ListeningReport report)
     {
-        var artists = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
-            .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g =>
+        static List<StatItem> Top(IReadOnlyList<ListeningRank> ranks)
+        {
+            var items = ranks.Take(5).Select(r => new StatItem
             {
-                // long: an int Sum throws on overflow (play counts arrive from synced devices).
-                var plays = g.Sum(t => (long)t.PlayCount);
-                return new StatItem
-                {
-                    Label = g.Key,
-                    SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
-                    Value = (int)Math.Min(plays, int.MaxValue),
-                    ValueLabel = $"{plays} plays"
-                };
-            })
-            .Where(i => i.Value > 0)
-            .OrderByDescending(i => i.Value)
-            .Take(5)
-            .ToList();
-        ApplyRanks(artists);
-
-        var albumsById = allAlbums.ToDictionary(a => a.Id);
-        var albums = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Album))
-            .GroupBy(t => t.AlbumId)
-            .Select(g =>
-            {
-                albumsById.TryGetValue(g.Key, out var album);
-                var plays = g.Sum(t => (long)t.PlayCount);
-                return new StatItem
-                {
-                    Label = album?.Name ?? g.First().Album,
-                    SubLabel = album?.Artist ?? g.First().Artist,
-                    Value = (int)Math.Min(plays, int.MaxValue),
-                    ValueLabel = $"{plays} plays"
-                };
-            })
-            .Where(i => i.Value > 0)
-            .OrderByDescending(i => i.Value)
-            .Take(5)
-            .ToList();
-        ApplyRanks(albums);
-
-        return (artists, albums);
+                Label = r.Name,
+                SubLabel = r.Subtitle,
+                Value = r.Plays,
+                ValueLabel = StatisticsViewModel.PlaysLabel(r.Plays),
+            }).ToList();
+            ApplyRanks(items);
+            return items;
+        }
+        return (Top(report.TopArtists), Top(report.TopAlbums));
     }
 
     private static void ApplyRanks(List<StatItem> items)
