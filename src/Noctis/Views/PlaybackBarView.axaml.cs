@@ -73,7 +73,8 @@ public partial class PlaybackBarView : UserControl
     // stale Thumb state or stray pointer moves from triggering seeks.
     private bool _isSeekDragging;
     private bool _isVolumeDragging;
-    private const double VolumeThumbSize = 18;
+    // Matches VolumeThumb's Width/Height in the XAML (compact pill, 10-08).
+    private const double VolumeThumbSize = 14;
     private const int VolumeStep = 5;
     private readonly TranslateTransform _volumeThumbTransform = new();
     private readonly VolumeWheelAccumulator _volumeWheel = new();

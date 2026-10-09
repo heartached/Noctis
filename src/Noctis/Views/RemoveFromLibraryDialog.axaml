@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.RemoveFromLibraryDialog"
         Title="{loc:T RemoveFromLibrary.RemoveFromLibrary}"
         CanResize="False"
@@ -9,97 +10,42 @@
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
 
-    <!-- Full-window dimmed overlay that captures all input.
-         Starts transparent; code-behind fades it in on open and back out
-         before closing (mirrors the Settings modal animation). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-08: the rounded pill pop-up with the blurred app behind, like the other
+         pop-ups. PillDialogHost draws the blurred, dimmed owner and the card, swallows clicks
+         and wheel on the backdrop, and plays the open/close animation (every close path —
+         a button, Esc, Alt+F4 — animates out once). The answer is kept in Choice, never in
+         Close(result), so the deferred close loses nothing. -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                Background="{DynamicResource AppMainBackground}"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Width="460"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-        <DockPanel Margin="0">
+        <StackPanel Width="460" Margin="28,24,28,22" Spacing="20">
 
-            <!-- Bottom: action buttons -->
-            <Border DockPanel.Dock="Bottom"
-                    Padding="24,12,24,16">
-                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-                    <Button Grid.Column="1"
-                            x:Name="TrashButton"
-                            Content="{loc:T RemoveFromLibrary.MoveRecycleBin}"
-                            Click="OnTrashClick"
-                            Padding="14,8"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="2"
-                            Content="{loc:T RemoveFromLibrary.KeepFiles}"
-                            Click="OnKeepClick"
-                            Padding="14,8"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="3"
-                            Content="{loc:T RemoveFromLibrary.Cancel}"
-                            Click="OnCancelClick"
-                            Padding="14,8"
-                            Classes="accent-btn"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            FontWeight="Bold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Cursor="Hand" />
-                </Grid>
-            </Border>
-
-            <!-- Message -->
-            <StackPanel Margin="24,16,24,8" VerticalAlignment="Center" Spacing="6">
+            <StackPanel Spacing="6">
                 <TextBlock x:Name="MessageText"
                            Text="{loc:T RemoveFromLibrary.RemoveFromLibrary2}"
-                           FontSize="15"
-                           FontWeight="SemiBold"
+                           FontSize="17"
+                           FontWeight="Bold"
                            TextWrapping="Wrap" />
                 <TextBlock x:Name="SubText"
-                           Text=""
                            FontSize="12.5"
-                           Opacity="0.7"
+                           Opacity="0.65"
                            TextWrapping="Wrap" />
             </StackPanel>
-        </DockPanel>
-        </Border>
-    </Border>
+
+            <!-- Cancel stays the accent (the safe answer); the two removals are quiet pills. -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button x:Name="TrashButton"
+                        Classes="pill-secondary"
+                        Content="{loc:T RemoveFromLibrary.MoveRecycleBin}"
+                        Click="OnTrashClick" />
+                <Button Classes="pill-secondary"
+                        Content="{loc:T RemoveFromLibrary.KeepFiles}"
+                        Click="OnKeepClick" />
+                <Button x:Name="CancelButton"
+                        Classes="pill-primary"
+                        Content="{loc:T RemoveFromLibrary.Cancel}"
+                        Click="OnCancelClick" />
+            </StackPanel>
+        </StackPanel>
+
+    </controls:PillDialogHost>
 </Window>

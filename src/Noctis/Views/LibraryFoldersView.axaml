@@ -23,6 +23,24 @@
         <Style Selector="TreeViewItem" x:DataType="m:FolderNode">
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
         </Style>
+        <!-- Expand/collapse chevron: the sidebar folders' stroked arrow, one right-pointing
+             glyph that FoldingTreeViewItem turns 0-90deg with the fold (Fluent swaps two
+             filled glyphs, which can't turn). Drawn symmetric about the 12px box's centre
+             (x 3.5-8.5, y 1-11), so it sits on the row's centre line and turns in place. -->
+        <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent">
+                        <Path Data="M 3.5,1 L 8.5,6 L 3.5,11"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="1.8"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Opacity="0.8" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
         <Style Selector="StackPanel.hidden-folder">
             <Setter Property="Opacity" Value="0.45" />
         </Style>
@@ -93,7 +111,9 @@
             <!-- AutoScrollToSelectedItem off: rows are wider than the pane (long folder
                  names), so the default scroll-into-view on click yanked the horizontal
                  scrollbar to the right. The clicked row is already visible anyway. -->
-            <TreeView x:Name="FolderTree"
+            <!-- FoldingTreeView: folders fold open and shut like the sidebar's playlist
+                 folders instead of snapping. -->
+            <controls:FoldingTreeView x:Name="FolderTree"
                       ItemsSource="{Binding RootNodes}"
                       SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                       AutoScrollToSelectedItem="False">
@@ -113,7 +133,7 @@
                         </StackPanel>
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
-            </TreeView>
+            </controls:FoldingTreeView>
         </Border>
 
         <!-- Right pane: header + track list -->

@@ -327,6 +327,24 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LyricsBackground.YouTubeClose" xml:space="preserve"><value>Cancel</value><comment>Button: fold the YouTube panel / stop the download</comment></data>
   <data name="LyricsBackground.NeedsYtDlp" xml:space="preserve"><value>Downloading from YouTube needs yt-dlp.</value><comment>Shown when the tool is missing</comment></data>
   <data name="LyricsBackground.InstallYtDlp" xml:space="preserve"><value>Install yt-dlp</value><comment>Button</comment></data>
+  <data name="LyricsVideo.UsesAlbumVideo" xml:space="preserve"><value>Plays the album's video</value><comment>Picker row status: a song without its own clip whose album has one</comment></data>
+  <data name="LyricsVideo.RowDownloading" xml:space="preserve"><value>Downloading from YouTube…</value><comment>Picker row status while its YouTube clip downloads</comment></data>
+  <data name="LyricsVideo.Change" xml:space="preserve"><value>Change</value><comment>Picker: pick another file for a row or the default that already has a clip</comment></data>
+  <data name="LyricsVideo.AlbumBy" xml:space="preserve"><value>Album · {0}</value><comment>Picker row subtitle for an album; {0} = album artist</comment></data>
+  <data name="LyricsVideo.FromYouTube" xml:space="preserve"><value>From YouTube</value><comment>Picker: title of the YouTube download panel</comment></data>
+  <data name="LyricsVideo.YouTubeTip" xml:space="preserve"><value>Download a video from YouTube</value><comment>Picker: tooltip of the round YouTube button</comment></data>
+  <data name="LyricsVideo.RemoveTip" xml:space="preserve"><value>Remove this video</value><comment>Picker: tooltip of the round remove button</comment></data>
+  <data name="LyricsVideo.PickTitle" xml:space="preserve"><value>Choose a video or GIF</value><comment>File picker title</comment></data>
+  <data name="LyricsVideo.Downloading" xml:space="preserve"><value>Downloading…</value><comment>YouTube panel status</comment></data>
+  <data name="LyricsVideo.Saving" xml:space="preserve"><value>Saving…</value><comment>YouTube panel status: the downloaded clip is being copied into place</comment></data>
+  <data name="LyricsVideo.Cancelled" xml:space="preserve"><value>Cancelled.</value><comment>YouTube panel status</comment></data>
+  <data name="LyricsVideo.DownloadFailed" xml:space="preserve"><value>Download failed: {0}</value><comment>YouTube panel status; {0} = reason</comment></data>
+  <data name="LyricsVideo.PasteLinkFirst" xml:space="preserve"><value>Paste a YouTube link first.</value><comment>YouTube panel status</comment></data>
+  <data name="LyricsVideo.InstallFirst" xml:space="preserve"><value>Install yt-dlp first.</value><comment>YouTube panel status</comment></data>
+  <data name="LyricsVideo.InstallingTool" xml:space="preserve"><value>Downloading yt-dlp…</value><comment>YouTube panel status</comment></data>
+  <data name="LyricsVideo.InstallFailed" xml:space="preserve"><value>Couldn't install yt-dlp: {0}</value><comment>YouTube panel status; {0} = reason</comment></data>
+  <data name="LyricsVideo.BestQuality" xml:space="preserve"><value>Best available</value><comment>YouTube panel: no resolution cap</comment></data>
+  <data name="LyricsVideo.Order" xml:space="preserve"><value>A song plays its own video, then its album's, then the default.</value><comment>Picker footer note</comment></data>
   <data name="Settings.Modify" xml:space="preserve"><value>Modify</value><comment>Appearance: opens the lyrics background video picker</comment></data>
   <data name="Settings.SeeMoreReleases" xml:space="preserve"><value>See more releases</value><comment>Advanced: expands the release history</comment></data>
   <data name="Settings.Remove" xml:space="preserve"><value>Remove</value><comment>Content in SettingsView.axaml</comment></data>
@@ -609,6 +627,11 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AddToPlaylist.Create" xml:space="preserve"><value>Create</value><comment>Content in AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.Playlists" xml:space="preserve"><value>Your Playlists</value><comment>Text in AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.NoPlaylistsYetCreate" xml:space="preserve"><value>No playlists yet — create one above.</value><comment>Text in AddToPlaylistDialog.axaml</comment></data>
+  <data name="AddToPlaylist.AddingOneSong" xml:space="preserve"><value>Adding 1 song</value><comment>Subtitle under the title in AddToPlaylistDialog.axaml when exactly one song is being added</comment></data>
+  <data name="AddToPlaylist.AddingSongs" xml:space="preserve"><value>Adding {0:N0} songs</value><comment>Subtitle under the title in AddToPlaylistDialog.axaml; {0} = number of songs being added</comment></data>
+  <data name="AddToPlaylist.Name" xml:space="preserve"><value>Name</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
+  <data name="AddToPlaylist.Description" xml:space="preserve"><value>Description</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
+  <data name="AddToPlaylist.Optional" xml:space="preserve"><value>Optional</value><comment>Watermark of the description field in the create pane of AddToPlaylistDialog.axaml</comment></data>
 
   <!-- AlbumDescriptionDialog.axaml (auto-migrated) -->
   <data name="AlbumDescription.AlbumDescription" xml:space="preserve"><value>Album Description</value><comment>Title in AlbumDescriptionDialog.axaml</comment></data>
@@ -1030,6 +1053,27 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LyricShare.SaveCard" xml:space="preserve"><value>Save Card</value><comment>Content in LyricShareDialog.axaml</comment></data>
   <data name="LyricShare.Copy" xml:space="preserve"><value>Copy</value><comment>Content in LyricShareDialog.axaml</comment></data>
   <data name="LyricShare.CopyImageTip" xml:space="preserve"><value>Copy the card image to the clipboard</value><comment>ToolTip in LyricShareDialog.axaml</comment></data>
+  <data name="ShareLyrics.Lines" xml:space="preserve"><value>Lines</value><comment>Section label above the lyric lines in LyricShareDialog.axaml</comment></data>
+  <data name="ShareLyrics.SelectedCount" xml:space="preserve"><value>{0} of {1}</value><comment>Picked lines out of the cap, e.g. "3 of 8" (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Clear" xml:space="preserve"><value>Clear</value><comment>Drops every picked line (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.FollowPlayback" xml:space="preserve"><value>Follow playback</value><comment>Checkbox: pick the lines as the song plays (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.LineTip" xml:space="preserve"><value>Click to pick · double-click to edit</value><comment>ToolTip on a lyric line row (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Close" xml:space="preserve"><value>Close</value><comment>Close button tooltip (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Square" xml:space="preserve"><value>1:1 · Square</value><comment>Format drop-down item (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Story" xml:space="preserve"><value>9:16 · Story</value><comment>Format drop-down item (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Video" xml:space="preserve"><value>Video</value><comment>Label above the Karaoke video checkbox (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.UpToLines" xml:space="preserve"><value>Up to {0} lines</value><comment>Status when picking past the line cap (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.NothingToExport" xml:space="preserve"><value>Pick a line first</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.NoAudioFile" xml:space="preserve"><value>No audio file for this track</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.NoFfmpeg" xml:space="preserve"><value>ffmpeg not found — set its path in Settings</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Saving" xml:space="preserve"><value>Saving {0}%</value><comment>Video export progress (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Encoding" xml:space="preserve"><value>Encoding</value><comment>Video export step (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Saved" xml:space="preserve"><value>Saved</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.Cancelled" xml:space="preserve"><value>Cancelled</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.ClipFailed" xml:space="preserve"><value>Clip failed: {0}</value><comment>Status; {0} is ffmpeg's last error line (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.SaveFailed" xml:space="preserve"><value>Save failed</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.CopyFailed" xml:space="preserve"><value>Copy failed</value><comment>Status (LyricShareDialog)</comment></data>
+  <data name="ShareLyrics.VideoFailed" xml:space="preserve"><value>Video export failed</value><comment>Status (LyricShareDialog)</comment></data>
 
   <!-- LyricsPanelView.axaml (auto-migrated) -->
   <data name="LyricsPanel.NoLyricsTrack" xml:space="preserve"><value>No lyrics for this track</value><comment>Text in LyricsPanelView.axaml</comment></data>
@@ -1594,6 +1638,21 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaylistDescription.EditDescriptionTip" xml:space="preserve"><value>Edit description</value><comment>ToolTip.Tip in PlaylistDescriptionDialog.axaml</comment></data>
   <data name="PlaylistDescription.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in PlaylistDescriptionDialog.axaml</comment></data>
   <data name="PlaylistDescription.Save" xml:space="preserve"><value>Save</value><comment>Content in PlaylistDescriptionDialog.axaml</comment></data>
+  <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
+  <data name="DescriptionDialog.Label" xml:space="preserve"><value>Description</value><comment>Label above the description editor</comment></data>
+  <data name="DescriptionDialog.AlbumPlaceholder" xml:space="preserve"><value>Write a few lines about this album…</value><comment>Placeholder in the empty album description editor</comment></data>
+  <data name="DescriptionDialog.PlaylistPlaceholder" xml:space="preserve"><value>Write a few lines about this playlist…</value><comment>Placeholder in the empty playlist description editor</comment></data>
+  <data name="DescriptionDialog.Clear" xml:space="preserve"><value>Clear</value><comment>Footer text action: empties the editor</comment></data>
+  <data name="DescriptionDialog.ClearTip" xml:space="preserve"><value>Empty the box. Nothing changes until you press Save.</value><comment>ToolTip.Tip on Clear</comment></data>
+  <data name="DescriptionDialog.SaveTip" xml:space="preserve"><value>Save (Ctrl+Enter)</value><comment>ToolTip.Tip on Save</comment></data>
+  <data name="DescriptionDialog.Characters" xml:space="preserve"><value>{0:N0} characters</value><comment>Live count under the editor; {0} = number of characters</comment></data>
+  <data name="DescriptionDialog.Character" xml:space="preserve"><value>1 character</value><comment>Live count under the editor, singular</comment></data>
+  <data name="DescriptionDialog.Words" xml:space="preserve"><value>{0:N0} words</value><comment>Live count under the editor; {0} = number of words</comment></data>
+  <data name="DescriptionDialog.Word" xml:space="preserve"><value>1 word</value><comment>Live count under the editor, singular</comment></data>
+  <data name="DescriptionDialog.Empty" xml:space="preserve"><value>No description</value><comment>Footer count when the editor is empty</comment></data>
+  <data name="DescriptionDialog.RemovesOnSave" xml:space="preserve"><value>Saving removes the description</value><comment>Footer note when the editor was emptied</comment></data>
+  <data name="DescriptionDialog.Songs" xml:space="preserve"><value>{0:N0} songs</value><comment>Fact chip; {0} = number of songs</comment></data>
+  <data name="DescriptionDialog.Song" xml:space="preserve"><value>1 song</value><comment>Fact chip, singular</comment></data>
 
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve"><value>Rename playlist</value><comment>ToolTip.Tip in PlaylistView.axaml</comment></data>
@@ -1673,6 +1732,13 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="RemoveFromLibrary.KeepFiles" xml:space="preserve"><value>Keep Files</value><comment>Content in RemoveFromLibraryDialog.axaml</comment></data>
   <data name="RemoveFromLibrary.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in RemoveFromLibraryDialog.axaml</comment></data>
   <data name="RemoveFromLibrary.RemoveFromLibrary2" xml:space="preserve"><value>Remove from your library?</value><comment>Text in RemoveFromLibraryDialog.axaml</comment></data>
+  <data name="RemoveFromLibrary.MoveTrash" xml:space="preserve"><value>Move to Trash</value><comment>Button on macOS/Linux (MoveRecycleBin is the Windows one)</comment></data>
+  <data name="RemoveFromLibrary.RecycleBin" xml:space="preserve"><value>Recycle Bin</value><comment>The Windows bin's name, used in DetailOne/DetailMany</comment></data>
+  <data name="RemoveFromLibrary.Trash" xml:space="preserve"><value>Trash</value><comment>The macOS/Linux bin's name, used in DetailOne/DetailMany</comment></data>
+  <data name="RemoveFromLibrary.QuestionOne" xml:space="preserve"><value>Remove 1 track from your library?</value><comment>Title, one track</comment></data>
+  <data name="RemoveFromLibrary.QuestionMany" xml:space="preserve"><value>Remove {0} tracks from your library?</value><comment>Title, {0} = number of tracks (2 or more)</comment></data>
+  <data name="RemoveFromLibrary.DetailOne" xml:space="preserve"><value>Keep Files only removes it from Noctis. Move to {0} also deletes the file.</value><comment>{0} = RecycleBin or Trash</comment></data>
+  <data name="RemoveFromLibrary.DetailMany" xml:space="preserve"><value>Keep Files only removes them from Noctis. Move to {0} also deletes the files.</value><comment>{0} = RecycleBin or Trash</comment></data>
 
   <!-- ReplayGainScannerDialog.axaml (auto-migrated) -->
   <data name="ReplayGainScanner.ScanReplayGain" xml:space="preserve"><value>Scan ReplayGain</value><comment>Title in ReplayGainScannerDialog.axaml</comment></data>
@@ -1768,11 +1834,19 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SongsViewOptions.Bitrate" xml:space="preserve"><value>Bitrate</value><comment>Content in SongsViewOptionsDialog.axaml</comment></data>
   <data name="SongsViewOptions.RestoreDefaults" xml:space="preserve"><value>Restore Defaults</value><comment>Content in SongsViewOptionsDialog.axaml</comment></data>
   <data name="SongsViewOptions.Done" xml:space="preserve"><value>Done</value><comment>Content in SongsViewOptionsDialog.axaml</comment></data>
+  <data name="ViewOptions.Subtitle" xml:space="preserve"><value>Sort, filter and pick the columns for Songs</value><comment>One-line purpose under the title in SongsViewOptionsDialog.axaml</comment></data>
+  <data name="ViewOptions.Columns" xml:space="preserve"><value>Columns</value><comment>Label above the column toggles in SongsViewOptionsDialog.axaml</comment></data>
 
   <!-- SpectrogramWindow.axaml (auto-migrated) -->
   <data name="Spectrogram.Spectrogram" xml:space="preserve"><value>Spectrogram</value><comment>Title in SpectrogramWindow.axaml</comment></data>
   <data name="Spectrogram.Close" xml:space="preserve"><value>Close</value><comment>Content in SpectrogramWindow.axaml</comment></data>
   <data name="Spectrogram.AnalyzingAudio" xml:space="preserve"><value>Analyzing audio…</value><comment>Text in SpectrogramWindow.axaml</comment></data>
+  <data name="Spectrogram.AnalyzingPercent" xml:space="preserve"><value>Analyzing audio… {0}%</value><comment>Spectrogram pop-up progress line; {0} = percent decoded</comment></data>
+  <data name="Spectrogram.Drawing" xml:space="preserve"><value>Drawing the spectrogram…</value><comment>Spectrogram pop-up progress line once decoding finished</comment></data>
+  <data name="Spectrogram.AnalysisCaption" xml:space="preserve"><value>FFT {0} · Hann window</value><comment>Spectrogram pop-up footer; {0} = FFT size</comment></data>
+  <data name="Spectrogram.NeedsFfmpeg" xml:space="preserve"><value>The spectrogram needs ffmpeg. Set the ffmpeg path in Settings and try again.</value><comment>Spectrogram pop-up error</comment></data>
+  <data name="Spectrogram.FileMissing" xml:space="preserve"><value>The file could not be found on disk.</value><comment>Spectrogram pop-up error</comment></data>
+  <data name="Spectrogram.Failed" xml:space="preserve"><value>Analysis failed: {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
 
   <!-- StatisticsView.axaml (auto-migrated) -->
   <data name="Statistics.ListeningStatistics" xml:space="preserve"><value>Listening Statistics</value><comment>Text in StatisticsView.axaml</comment></data>
@@ -2013,6 +2087,38 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendTo.LyricsIncluded" xml:space="preserve"><value>Lyrics file included</value><comment>Row tooltip</comment></data>
   <data name="SendTo.Copy" xml:space="preserve"><value>Copy</value><comment>Primary button</comment></data>
   <data name="SendTo.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+  <data name="SendToFolder.TitleOne" xml:space="preserve"><value>Send 1 song</value><comment>Title in SendToFolderViewModel, one song</comment></data>
+  <data name="SendToFolder.TitleMany" xml:space="preserve"><value>Send {0} songs</value><comment>Title in SendToFolderViewModel; {0} number of songs</comment></data>
+  <data name="SendToFolder.Subtitle" xml:space="preserve"><value>Copy to a USB stick, phone or any folder.</value><comment>Header line under the title in SendToFolderDialog.axaml</comment></data>
+  <data name="SendToFolder.Organize" xml:space="preserve"><value>Artist and album folders</value><comment>Option in SendToFolderDialog.axaml; off = every song straight into the folder</comment></data>
+  <data name="SendToFolder.ExampleTip" xml:space="preserve"><value>Where the first song lands. Folders follow your Organize Files pattern: {0}</value><comment>Tooltip on the example path; {0} the file pattern</comment></data>
+  <data name="SendToFolder.Lyrics" xml:space="preserve"><value>Include lyrics</value><comment>Option in SendToFolderDialog.axaml</comment></data>
+  <data name="SendToFolder.LyricsHint" xml:space="preserve"><value>Each song's lyrics files go with it.</value><comment>Line under the Include lyrics option</comment></data>
+  <data name="SendToFolder.PickFolder" xml:space="preserve"><value>Pick a folder to copy to.</value><comment>Footer before a destination is set</comment></data>
+  <data name="SendToFolder.FolderMissing" xml:space="preserve"><value>That folder doesn't exist.</value><comment>Error under the destination field</comment></data>
+  <data name="SendToFolder.NeedFullPath" xml:space="preserve"><value>Type the folder's full path, or use Browse.</value><comment>Error under the destination field for a relative path</comment></data>
+  <data name="SendToFolder.SummaryCopy" xml:space="preserve"><value>{0} to copy</value><comment>Plan summary part; {0} number of songs</comment></data>
+  <data name="SendToFolder.SummaryThere" xml:space="preserve"><value>{0} already there</value><comment>Plan/result summary part; {0} number of songs</comment></data>
+  <data name="SendToFolder.SummaryLyrics" xml:space="preserve"><value>{0} lyrics files</value><comment>Plan summary part; {0} number of lyrics files</comment></data>
+  <data name="SendToFolder.AllThere" xml:space="preserve"><value>Everything is already there.</value><comment>Plan summary when nothing needs copying</comment></data>
+  <data name="SendToFolder.Progress" xml:space="preserve"><value>Copied {0} of {1}</value><comment>Footer during the copy</comment></data>
+  <data name="SendToFolder.Done" xml:space="preserve"><value>Done · {0} copied</value><comment>Footer after the copy; {0} number of songs</comment></data>
+  <data name="SendToFolder.DoneFailed" xml:space="preserve"><value>{0} failed</value><comment>Result summary part; {0} number of songs</comment></data>
+  <data name="SendToFolder.Stopped" xml:space="preserve"><value>Stopped · {0} copied</value><comment>Footer after Stop; {0} number of songs</comment></data>
+  <data name="SendToFolder.FailedWith" xml:space="preserve"><value>Couldn't copy: {0}</value><comment>Footer when the copy failed; {0} the error</comment></data>
+  <data name="SendToFolder.DriveGone" xml:space="preserve"><value>The destination is gone (drive removed?). Nothing more was copied.</value><comment>Error when the destination drive disappears mid-copy</comment></data>
+  <data name="SendToFolder.ShowInFolder" xml:space="preserve"><value>Show in folder</value><comment>Footer button after the copy</comment></data>
+  <data name="SendToFolder.Cancel" xml:space="preserve"><value>Cancel</value><comment>Footer button before a copy</comment></data>
+  <data name="SendToFolder.Stop" xml:space="preserve"><value>Stop</value><comment>Footer button during a copy</comment></data>
+  <data name="SendToFolder.StateCopy" xml:space="preserve"><value>Copy</value><comment>Row chip: will be copied</comment></data>
+  <data name="SendToFolder.StateRenamed" xml:space="preserve"><value>Renamed</value><comment>Row chip: copied under a new name</comment></data>
+  <data name="SendToFolder.RenamedTip" xml:space="preserve"><value>A different file has this name there, so the copy gets a number.</value><comment>Tooltip on a Renamed row</comment></data>
+  <data name="SendToFolder.StateThere" xml:space="preserve"><value>Already there</value><comment>Row chip: identical file already in the folder</comment></data>
+  <data name="SendToFolder.StateAddLyrics" xml:space="preserve"><value>Add lyrics</value><comment>Row chip: song already there, its lyrics files are not</comment></data>
+  <data name="SendToFolder.StateCopying" xml:space="preserve"><value>Copying</value><comment>Row chip: being copied</comment></data>
+  <data name="SendToFolder.StateCopied" xml:space="preserve"><value>Copied</value><comment>Row chip: copied</comment></data>
+  <data name="SendToFolder.StateFailed" xml:space="preserve"><value>Failed</value><comment>Row chip: could not be copied (tooltip has the error)</comment></data>
+  <data name="SendToFolder.StateStopped" xml:space="preserve"><value>Stopped</value><comment>Row chip: the copy was stopped on this song</comment></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
@@ -2172,6 +2278,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudioPicker.Scanning" xml:space="preserve"><value>Looking through the library…</value><comment>Picker: while the suggestions load</comment></data>
   <data name="LyricsStudioPicker.SelectAll" xml:space="preserve"><value>Select all</value><comment>Picker footer</comment></data>
   <data name="LyricsStudioPicker.DeselectAll" xml:space="preserve"><value>Deselect all</value><comment>Picker footer</comment></data>
+  <data name="StudioPicker.HintWord" xml:space="preserve"><value>Each word lights up as it's sung.</value><comment>Choose songs: one-line hint beside the format pill, word timings chosen</comment></data>
+  <data name="StudioPicker.HintLine" xml:space="preserve"><value>Each line lights up as it's sung.</value><comment>Choose songs: one-line hint beside the format pill, line timings chosen</comment></data>
+  <data name="StudioPicker.SelectedCount" xml:space="preserve"><value>{0} selected</value><comment>Choose songs footer: how many songs are ticked ({0} = count)</comment></data>
+  <data name="StudioPicker.Clear" xml:space="preserve"><value>Clear</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
+  <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 song</value><comment>Choose songs: tag on an album row with one local song</comment></data>
+  <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.Queue" xml:space="preserve"><value>SONGS</value><comment>Queue column header</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Nothing to review yet</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Pick a song in the list. Songs with lyrics are timed when you press Start; songs without open a box to paste them.</value><comment>Review pane empty state</comment></data>
@@ -2348,4 +2460,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Scrobble.ResumeAlbum" xml:space="preserve"><value>Scrobble This Album Again</value><comment>Album menu: undo Don't Scrobble</comment></data>
   <data name="Scrobble.ResumeArtist" xml:space="preserve"><value>Scrobble This Artist Again</value><comment>Artist menu: undo Don't Scrobble</comment></data>
   <data name="Scrobble.OffByAlbumOrArtist" xml:space="preserve"><value>Not Scrobbled (Album or Artist)</value><comment>Song menu, disabled: the song's album or artist is set to not scrobble</comment></data>
+  <data name="QueueToast.AddedToQueue" xml:space="preserve"><value>Added to Queue</value><comment>Confirmation pill above the playback island after Add to Queue</comment></data>
+  <data name="QueueToast.PlayingNext" xml:space="preserve"><value>Playing Next</value><comment>Confirmation pill above the playback island after Play Next</comment></data>
+  <data name="QueueToast.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Confirmation pill detail line when several songs were queued; {0} = count</comment></data>
+  <data name="QueueToast.OneSong" xml:space="preserve"><value>1 song</value><comment>Confirmation pill detail line for one untitled song</comment></data>
 </root>

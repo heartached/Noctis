@@ -1511,8 +1511,39 @@ public partial class PlayerViewModel : ViewModelBase
         PlayTrack(tracks[startIndex]);
     }
 
+    /// <summary>
+    /// Raised once per user "Add to Queue" / "Play Next" (one track or a whole batch), so the
+    /// main window can confirm it (<see cref="QueueToastViewModel"/>). Restore, shuffle,
+    /// reorder and autoplay edit <see cref="UpNext"/> directly and never raise it; callers
+    /// that are not a user's own add in this window pass <c>announce: false</c>.
+    /// </summary>
+    public event EventHandler<QueueAddedEventArgs>? TracksQueued;
+
+    private void AnnounceQueued(IList<Track> tracks, string? sourceName, bool playNext)
+    {
+        if (tracks.Count == 0) return;
+        TracksQueued?.Invoke(this, new QueueAddedEventArgs(tracks.Count, tracks[0], sourceName, playNext));
+    }
+
     /// <summary>Inserts a track at the front of the UpNext queue ("Play Next").</summary>
-    public void AddNext(Track track)
+    public void AddNext(Track track, bool announce = true)
+    {
+        AddNextCore(track);
+        if (announce) AnnounceQueued(new[] { track }, null, playNext: true);
+    }
+
+    /// <summary>"Play Next" for a batch: inserts <paramref name="tracks"/> at the front of
+    /// UpNext keeping their order, with ONE <see cref="TracksQueued"/> for the lot.</summary>
+    /// <param name="sourceName">Album / playlist / folder name the confirmation shows.</param>
+    public void AddNextRange(IList<Track> tracks, string? sourceName = null, bool announce = true)
+    {
+        if (tracks.Count == 0) return;
+        // Each insert lands at the front: go backwards so the batch keeps its order.
+        for (var i = tracks.Count - 1; i >= 0; i--) AddNextCore(tracks[i]);
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: true);
+    }
+
+    private void AddNextCore(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddNext", $"track={track.Title}");
         CancelAutoMixTransition("queue changed");
@@ -1528,17 +1559,20 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
-    public void AddToQueue(Track track)
+    public void AddToQueue(Track track, bool announce = true)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Add(track);
         if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
+        if (announce) AnnounceQueued(new[] { track }, null, playNext: false);
     }
 
-    /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch.</summary>
-    public void AddRangeToQueue(IList<Track> tracks)
+    /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch,
+    /// with ONE <see cref="TracksQueued"/> for the lot.</summary>
+    /// <param name="sourceName">Album / playlist / folder name the confirmation shows.</param>
+    public void AddRangeToQueue(IList<Track> tracks, string? sourceName = null, bool announce = true)
     {
         if (tracks.Count == 0) return;
         DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
@@ -1552,6 +1586,7 @@ public partial class PlayerViewModel : ViewModelBase
             OnPropertyChanged(nameof(HasContent));
         }
         if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>

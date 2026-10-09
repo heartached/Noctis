@@ -948,15 +948,14 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void PlayNextAll()
     {
-        // Insert in reverse so the first track ends up first after the current one.
-        var tracks = GetAllTracks();
-        for (var i = tracks.Count - 1; i >= 0; i--) _player.AddNext(tracks[i]);
+        // One batch (keeps order, one queue confirmation) rather than one AddNext per track.
+        _player.AddNextRange(GetAllTracks(), ArtistName);
     }
 
     [RelayCommand]
     private void AddAllToQueue()
     {
-        foreach (var t in GetAllTracks()) _player.AddToQueue(t);
+        _player.AddRangeToQueue(GetAllTracks(), ArtistName);
     }
 
     [RelayCommand]

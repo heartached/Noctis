@@ -2638,7 +2638,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 } tracks) return;
         if (DataContext is not MainWindowViewModel vm) return;
         e.Handled = true;
-        vm.Player.AddRangeToQueue(tracks.ToList());
+        // The rows land in the open queue list itself: that is the confirmation.
+        vm.Player.AddRangeToQueue(tracks.ToList(), announce: false);
     }
 
     // Backdrop click closes the Settings modal; clicks inside the card are swallowed.

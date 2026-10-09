@@ -488,15 +488,12 @@ public sealed partial class WebRemoteServer
             }
             if (found.Count > 0)
             {
+                // announce: false — a remote / plugin call, not a click in this window, so
+                // no "Added to Queue" pill pops up over whatever the owner is doing.
                 if (mode == "next")
-                {
-                    // AddNext inserts at the front: go backwards so the batch keeps its order.
-                    for (var i = found.Count - 1; i >= 0; i--) _player.AddNext(found[i]);
-                }
+                    _player.AddNextRange(found, announce: false);
                 else
-                {
-                    _player.AddRangeToQueue(found);
-                }
+                    _player.AddRangeToQueue(found, announce: false);
             }
             return new { ok = true, added = found.Count, notFound = missing, upNextCount = _player.UpNext.Count };
         }));

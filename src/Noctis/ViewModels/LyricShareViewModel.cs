@@ -17,6 +17,10 @@ namespace Noctis.ViewModels;
 /// <paramref name="Hex"/> with <paramref name="IsAuto"/> means "derive from artwork".</summary>
 public record ShareSolidSwatch(string Hex, string Name, IBrush Preview, bool IsAuto = false);
 
+/// <summary>One entry of the Background drop-down: the blurred artwork, the artwork-derived
+/// solid ("Auto"), or a curated solid color.</summary>
+public record ShareBackgroundChoice(string Name, IBrush Preview, bool IsArtwork = false, bool IsAuto = false, string Hex = "");
+
 /// <summary>A lyric line the user can include on (and edit for) the share card.</summary>
 public partial class SelectableLyricLine : ObservableObject
 {
@@ -48,6 +52,30 @@ public partial class SelectableLyricLine : ObservableObject
 
     /// <summary>Line end time (Lyricsfile) — bounds the last word's sweep.</summary>
     public TimeSpan? EndTimestamp { get; }
+
+    /// <summary>True while the row shows its inline text box (double-click to edit).</summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
+    private string? _textBeforeEdit;
+
+    public void BeginEdit()
+    {
+        if (IsEditing) return;
+        _textBeforeEdit = Text;
+        IsEditing = true;
+    }
+
+    /// <summary>Leaves edit mode. <paramref name="keep"/> false (Esc) restores the text; an
+    /// emptied line also gets its text back rather than turning into a blank row.</summary>
+    public void EndEdit(bool keep)
+    {
+        if (!IsEditing) return;
+        if ((!keep || string.IsNullOrWhiteSpace(Text)) && _textBeforeEdit != null)
+            Text = _textBeforeEdit;
+        _textBeforeEdit = null;
+        IsEditing = false;
+    }
 }
 
 /// <summary>
@@ -58,6 +86,9 @@ public partial class LyricShareViewModel : ViewModelBase
 {
     /// <summary>Spotify caps at ~5; we allow a little more before the card gets cramped.</summary>
     public const int MaxLines = 8;
+
+    private static string L(string key) => Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
 
     private readonly Track _track;
     private readonly PlayerViewModel? _player;
@@ -121,6 +152,128 @@ public partial class LyricShareViewModel : ViewModelBase
         list.AddRange(swatches.Select(s =>
             new ShareSolidSwatch(s.Hex, s.Name, new SolidColorBrush(Color.Parse(s.Hex)))));
         return list;
+    }
+
+    // ── Pill drop-downs (owner 10-08: the outlined summary pills + flyouts became labelled
+    // pill-field ComboBoxes). Each maps onto the same flags the commands set, so every option
+    // the flyouts held is still here. ──
+
+    /// <summary>Background drop-down: Artwork, Auto (artwork-derived solid), then the curated solids.</summary>
+    public IReadOnlyList<ShareBackgroundChoice> BackgroundChoices { get; }
+
+    private bool _backgroundUpdating;
+
+    public ShareBackgroundChoice? SelectedBackground
+    {
+        get
+        {
+            if (IsArtworkBg) return BackgroundChoices[0];
+            if (IsAutoSolid) return BackgroundChoices[1];
+            return BackgroundChoices.FirstOrDefault(c => !c.IsArtwork && !c.IsAuto
+                && string.Equals(c.Hex, SolidColorHex, StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (value is null || ReferenceEquals(value, SelectedBackground)) return;
+            // Several flags change per pick; the drop-down hears about it once, at the end,
+            // so it never reads (and writes back) a half-applied state.
+            _backgroundUpdating = true;
+            try
+            {
+                if (value.IsArtwork) IsArtworkBg = true;
+                else if (value.IsAuto) SetAutoSolid();
+                else SetSolidColor(value.Hex);
+            }
+            finally { _backgroundUpdating = false; }
+            OnPropertyChanged(nameof(SelectedBackground));
+        }
+    }
+
+    private void RaiseBackgroundChanged()
+    {
+        OnPropertyChanged(nameof(BackgroundSummary));
+        if (!_backgroundUpdating) OnPropertyChanged(nameof(SelectedBackground));
+    }
+
+    /// <summary>0 = Card (panel header), 1 = Poster.</summary>
+    public int LayoutIndex
+    {
+        get => IsPosterLayout ? 1 : 0;
+        set { if (value == 1) IsPosterLayout = true; else if (value == 0) IsPanelLayout = true; }
+    }
+
+    /// <summary>0 = 1:1, 1 = 9:16.</summary>
+    public int FormatIndex
+    {
+        get => IsStory ? 1 : 0;
+        set { if (value == 1) IsStory = true; else if (value == 0) IsSquare = true; }
+    }
+
+    /// <summary>0 = Auto, 1 = White, 2 = Black.</summary>
+    public int TextColorIndex
+    {
+        get => TextColor switch { ShareTextColor.White => 1, ShareTextColor.Black => 2, _ => 0 };
+        set
+        {
+            if (value is < 0 or > 2) return;
+            TextColor = value switch { 1 => ShareTextColor.White, 2 => ShareTextColor.Black, _ => ShareTextColor.Auto };
+        }
+    }
+
+    // ── Selection summary ──
+
+    public int SelectedCount => Lines.Count(l => l.IsSelected);
+
+    /// <summary>At least one picked line has text: what the card, Copy and the saves need.</summary>
+    public bool HasSelection => Lines.Any(IsOnCard);
+
+    private static bool IsOnCard(SelectableLyricLine l) => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text);
+
+    /// <summary>The lines the card shows, in lyric order whatever order they were picked in.
+    /// One filter for the preview, Save/Copy and the clip, so the three always agree.</summary>
+    private List<SelectableLyricLine> CardSelection() => Lines.Where(IsOnCard).ToList();
+
+    /// <summary>The card's lyric text (tests).</summary>
+    internal IReadOnlyList<string> CardLines => CardSelection().Select(l => l.Text).ToList();
+
+    /// <summary>"3 of 8" next to Clear.</summary>
+    public string SelectionSummary => L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
+
+    private void RaiseSelectionChanged()
+    {
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(CanExportVideo));
+    }
+
+    /// <summary>A tap on a row: picks or drops the line (the 8-line cap still applies).</summary>
+    public void ToggleLine(SelectableLyricLine line) => line.IsSelected = !line.IsSelected;
+
+    /// <summary>Starts editing one line (any other open edit is kept first).</summary>
+    public void BeginEdit(SelectableLyricLine line)
+    {
+        foreach (var other in Lines)
+            if (!ReferenceEquals(other, line)) other.EndEdit(keep: true);
+        // An edited line is one meant for the card.
+        if (!line.IsSelected) line.IsSelected = true;
+        line.BeginEdit();
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        // A manual change takes over from playback, as a single tap does.
+        if (SyncEnabled) SyncEnabled = false;
+        _syncUpdatingSelection = true;
+        foreach (var line in Lines)
+            if (line.IsSelected) line.IsSelected = false;
+        _syncUpdatingSelection = false;
+        StatusText = string.Empty;
+        RaiseSelectionChanged();
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();
     }
 
     /// <summary>Whether the source lyrics carry timestamps (sync toggle is meaningful).</summary>
@@ -228,6 +381,9 @@ public partial class LyricShareViewModel : ViewModelBase
     public string TrackTitle => _track.Title;
     public string TrackArtist => _track.ArtistDisplay;
 
+    /// <summary>The header's second line: "TUTU · 6ix9ine" (just the title without an artist).</summary>
+    public string Subtitle => string.IsNullOrWhiteSpace(TrackArtist) ? TrackTitle : $"{TrackTitle} · {TrackArtist}";
+
     /// <summary>Suggested file name for the save dialog.</summary>
     public string SuggestedFileName
     {
@@ -244,12 +400,14 @@ public partial class LyricShareViewModel : ViewModelBase
     public string SuggestedVideoFileName => Path.ChangeExtension(SuggestedFileName, ".mp4");
 
     /// <summary>
-    /// True when a card is rendered AND the track has a real local audio file AND we're
-    /// not already rendering — i.e. the Save Video button should be enabled.
+    /// True when lines are picked AND the track has a real local audio file AND we're
+    /// not already rendering — i.e. the Save Video button should be enabled. (It used to
+    /// wait for the preview render too; the clip renders its own card, so the button no
+    /// longer lags the selection by the preview's debounce.)
     /// </summary>
     public bool CanExportVideo =>
         !IsRendering
-        && CurrentPng != null
+        && HasSelection
         && !string.IsNullOrWhiteSpace(_track.FilePath)
         && File.Exists(_track.FilePath);
 
@@ -278,6 +436,18 @@ public partial class LyricShareViewModel : ViewModelBase
         _autoColorHex = ShareCardRenderer.GetVibrantColorHex(_track.AlbumArtworkPath);
         _solidColorHex = _autoColorHex;   // default Solid background uses the Auto color from the start
         SolidSwatches = BuildSolidSwatches(_autoColorHex);
+        var auto = Color.Parse(_autoColorHex);
+        BackgroundChoices = new[]
+        {
+            new ShareBackgroundChoice(L("LyricShare.Artwork"), new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(auto, 0), new GradientStop(Color.Parse("#141414"), 1) },
+            }, IsArtwork: true),
+            new ShareBackgroundChoice(L("LyricShare.Auto"), new SolidColorBrush(auto), IsAuto: true),
+        }.Concat(SolidSwatches.Where(s => !s.IsAuto).Select(s => new ShareBackgroundChoice(s.Name, s.Preview, Hex: s.Hex)))
+         .ToList();
 
         for (int i = 0; i < lines.Count; i++)
         {
@@ -329,11 +499,12 @@ public partial class LyricShareViewModel : ViewModelBase
             {
                 // Revert the toggle that exceeded the cap.
                 line.IsSelected = false;
-                StatusText = $"Up to {MaxLines} lines";
+                StatusText = L("ShareLyrics.UpToLines", MaxLines);
                 return;
             }
 
             StatusText = string.Empty;
+            RaiseSelectionChanged();
             OnPropertyChanged(nameof(KaraokeAvailable));
             OnPropertyChanged(nameof(CardOptionsSummary));
             RefreshPreview();
@@ -341,14 +512,32 @@ public partial class LyricShareViewModel : ViewModelBase
         else if (e.PropertyName == nameof(SelectableLyricLine.Text) && line.IsSelected)
         {
             // Editing a selected line changes what the card shows.
+            RaiseSelectionChanged();
             RefreshPreview();
+        }
+    }
+
+    /// <summary>
+    /// Whether the player is on this dialog's song. Sync, the live karaoke sweep and the
+    /// clip's start read the player's clock, which belongs to whatever plays now: after the
+    /// song changed, the next song's position re-picked this song's lines.
+    /// </summary>
+    private bool IsOurTrackPlaying
+    {
+        get
+        {
+            if (_player?.CurrentTrack is not { } now) return false;
+            if (ReferenceEquals(now, _track)) return true;
+            if (now.Id != Guid.Empty && now.Id == _track.Id) return true;
+            return !string.IsNullOrEmpty(now.FilePath)
+                   && string.Equals(now.FilePath, _track.FilePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 
     private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!SyncEnabled) return;
-        if (e.PropertyName == nameof(PlayerViewModel.Position) && _player != null)
+        if (!SyncEnabled || _player == null) return;
+        if (e.PropertyName is nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.CurrentTrack))
             UpdateSyncHighlight(_player.Position);
     }
 
@@ -356,6 +545,14 @@ public partial class LyricShareViewModel : ViewModelBase
     private void UpdateSyncHighlight(TimeSpan position)
     {
         if (Lines.Count == 0) return;
+        if (!IsOurTrackPlaying)
+        {
+            // Another song (or nothing) plays: keep the picked lines, drop the highlight.
+            foreach (var line in Lines)
+                if (line.IsCurrent) line.IsCurrent = false;
+            _currentSyncIndex = -1;
+            return;
+        }
 
         // Small lookahead so the highlight lands as the line begins, matching the lyrics page.
         var adjusted = position + TimeSpan.FromMilliseconds(350);
@@ -397,6 +594,7 @@ public partial class LyricShareViewModel : ViewModelBase
                 Lines[i].IsSelected = sel;
         }
         _syncUpdatingSelection = false;
+        RaiseSelectionChanged();
         OnPropertyChanged(nameof(KaraokeAvailable));
         OnPropertyChanged(nameof(CardOptionsSummary));
         RefreshPreview();
@@ -423,52 +621,56 @@ public partial class LyricShareViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAutoText));
         OnPropertyChanged(nameof(IsWhiteText));
         OnPropertyChanged(nameof(IsBlackText));
+        OnPropertyChanged(nameof(TextColorIndex));
         OnPropertyChanged(nameof(CardOptionsSummary));
         RefreshPreview();
     }
 
     partial void OnIsArtworkBgChanged(bool value)
     {
-        OnPropertyChanged(nameof(BackgroundSummary));
+        RaiseBackgroundChanged();
         if (value) { IsSolidBg = false; RefreshPreview(); }
     }
 
     partial void OnIsSolidBgChanged(bool value)
     {
-        OnPropertyChanged(nameof(BackgroundSummary));
+        RaiseBackgroundChanged();
         if (value) { IsArtworkBg = false; RefreshPreview(); }
     }
 
-    partial void OnIsAutoSolidChanged(bool value)
-        => OnPropertyChanged(nameof(BackgroundSummary));
+    partial void OnIsAutoSolidChanged(bool value) => RaiseBackgroundChanged();
 
     partial void OnSolidColorHexChanged(string value)
     {
-        OnPropertyChanged(nameof(BackgroundSummary));
+        RaiseBackgroundChanged();
         if (IsSolidBg) RefreshPreview();
     }
 
     partial void OnIsSquareChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(FormatIndex));
         if (value) { IsStory = false; RefreshPreview(); }
     }
 
     partial void OnIsStoryChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(FormatIndex));
         if (value) { IsSquare = false; RefreshPreview(); }
     }
 
     partial void OnIsPanelLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(LayoutIndex));
         if (value) { IsPosterLayout = false; RefreshPreview(); }
     }
 
     partial void OnIsPosterLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(LayoutIndex));
         if (value) { IsPanelLayout = false; RefreshPreview(); }
     }
 
@@ -559,12 +761,15 @@ public partial class LyricShareViewModel : ViewModelBase
     private void RefreshPreviewCore()
     {
         var generation = ++_renderGeneration;
-        var selectedLines = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+        var selectedLines = CardSelection();
         var selected = selectedLines.Select(l => l.Text).ToList();
         if (selected.Count == 0)
         {
             CurrentPng = null;
+            var old = Preview;
             Preview = null;
+            // Deferred, as below: the last frame may still reference it.
+            if (old != null) Dispatcher.UIThread.Post(old.Dispose);
             TeardownAnimator();
             return;
         }
@@ -700,6 +905,8 @@ public partial class LyricShareViewModel : ViewModelBase
     private double GetSmoothedPositionSeconds()
     {
         if (_player == null) return 0;
+        // Another song's clock says nothing about this card: hold the last frame's time.
+        if (!IsOurTrackPlaying) return _clockLastMs / 1000.0;
         var raw = _player.Position;
         if (_player.State != PlaybackState.Playing)
         {
@@ -788,15 +995,10 @@ public partial class LyricShareViewModel : ViewModelBase
     public ShareClipTiming GetClipTiming()
     {
         var lines = Lines.Select(l => new ShareClipLine(l.Timestamp, l.IsSelected)).ToList();
-        double? position = _player?.Position.TotalSeconds;
+        double? position = IsOurTrackPlaying ? _player?.Position.TotalSeconds : null;
         return ShareClipTiming.Compute(lines, position);
     }
 
-    /// <summary>
-    /// Renders the current card + matching audio slice to an MP4 at <paramref name="outputPath"/>.
-    /// Returns a status string for the dialog (never throws). ffmpeg is resolved from the
-    /// app's audio-converter service; absence is reported, not fatal.
-    /// </summary>
     /// <summary>
     /// Renders the card at full export resolution, on demand.
     ///
@@ -806,8 +1008,7 @@ public partial class LyricShareViewModel : ViewModelBase
     /// </summary>
     public async Task<byte[]?> RenderExportPngAsync()
     {
-        var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text))
-            .Select(l => l.Text).ToList();
+        var selected = CardSelection().Select(l => l.Text).ToList();
         if (selected.Count == 0) return null;
 
         var spec = BuildSpec(selected);
@@ -824,16 +1025,34 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Renders the current card + matching audio slice to an MP4 at <paramref name="outputPath"/>.
+    /// Returns a status string for the dialog (never throws). ffmpeg is resolved from the
+    /// app's audio-converter service; absence is reported, not fatal.
+    ///
+    /// Both paths (still card, karaoke frames) run under one cancellation source, so Esc and
+    /// closing the dialog (<see cref="CancelExport"/>, <see cref="Detach"/>) stop either. The
+    /// still path used to get no token at all: closing mid-export left ffmpeg writing the clip
+    /// behind a closed dialog. A clip this run created and did not finish (cancelled or
+    /// failed) is deleted; a file the user chose to replace in the picker is not ours to remove.
+    /// </summary>
     public async Task<string> ExportClipAsync(string outputPath)
     {
-        if (CurrentPng is null)
-            return "Nothing to export";
+        if (!HasSelection)
+            return L("ShareLyrics.NothingToExport");
         if (string.IsNullOrWhiteSpace(_track.FilePath) || !File.Exists(_track.FilePath))
-            return "No audio file for this track";
+            return L("ShareLyrics.NoAudioFile");
 
         var ffmpeg = App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
         if (string.IsNullOrWhiteSpace(ffmpeg))
-            return "ffmpeg not found — set its path in Settings";
+            return L("ShareLyrics.NoFfmpeg");
+
+        _exportCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _exportCts = cts;
+        var token = cts.Token;
+        bool existedBefore = File.Exists(outputPath);
+        bool ok = false;
 
         IsRendering = true;
         StatusText = string.Empty;   // the footer spinner signals progress; text only for the frame pass
@@ -841,70 +1060,108 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             // Same line filter as RefreshPreview so the exported card, spec.Lines and
             // karaoke stay parallel to what the preview shows.
-            var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+            var selected = CardSelection();
             var spec = BuildSpec(selected.Select(l => l.Text).ToList());
             var timing = GetClipTiming();
+            string error;
 
             if (!(KaraokeEnabled && KaraokeAvailable))
             {
                 // Base-resolution still: the clip is 1080p-bound, so reusing the 2×
                 // supersampled CurrentPng would only quadruple the encode cost.
-                var still = await Task.Run(() => ShareCardRenderer.RenderLyricCardStyled(spec));
-                var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, outputPath, timing);
-                return ok ? "Saved" : $"Clip failed: {error}";
+                var still = await Task.Run(() => ShareCardRenderer.RenderLyricCardStyled(spec), token);
+                (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, outputPath, timing, token);
             }
-
-            // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
-            var karaoke = BuildKaraokeLines(selected);
-
-            var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(frameDir);
-            try
+            else
             {
-                // Progress + cancellation. Both were supported by the renderer and simply
-                // never passed: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
-                // work behind a static "Saving" label, with no percentage and no way to
-                // abort (closing the dialog didn't stop it either).
-                _exportCts?.Dispose();
-                _exportCts = new CancellationTokenSource();
-                var token = _exportCts.Token;
-
-                StatusText = "Saving 0%";
-                var progress = new Progress<(int Done, int Total)>(p =>
+                // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
+                var karaoke = BuildKaraokeLines(selected);
+                var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
+                Directory.CreateDirectory(frameDir);
+                try
                 {
-                    if (p.Total <= 0) return;
-                    var pct = (int)Math.Round(100.0 * p.Done / p.Total);
-                    Dispatcher.UIThread.Post(() => StatusText = $"Saving {pct}%");
-                });
+                    // Progress: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
+                    // work, so the footer counts it. Reports still queued when the run ends
+                    // (cancel, done) must not overwrite the final status.
+                    StatusText = L("ShareLyrics.Saving", 0);
+                    var progress = new Progress<(int Done, int Total)>(p =>
+                    {
+                        if (p.Total <= 0) return;
+                        var pct = (int)Math.Round(100.0 * p.Done / p.Total);
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            if (IsRendering && !token.IsCancellationRequested && ReferenceEquals(_exportCts, cts))
+                                StatusText = L("ShareLyrics.Saving", pct);
+                        });
+                    });
 
-                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                    spec, karaoke, timing, KaraokeFps, frameDir,
-                    (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
-                    token), token);
+                    await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
+                        spec, karaoke, timing, KaraokeFps, frameDir,
+                        (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
+                        token), token);
 
-                StatusText = "Encoding";
-                var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
-                var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
-                return ok ? "Saved" : $"Clip failed: {error}";
+                    StatusText = L("ShareLyrics.Encoding");
+                    var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
+                    (ok, error) = await ShareClipRenderer.RenderFramesAsync(
+                        ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
+                }
+                finally
+                {
+                    try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
+                }
             }
-            catch (OperationCanceledException)
+
+            // ShareClipRenderer turns a killed ffmpeg into (false, "cancelled"): that is a
+            // cancel, not a failure.
+            if (token.IsCancellationRequested)
             {
-                return "Cancelled";
+                ok = false;
+                return L("ShareLyrics.Cancelled");
             }
-            finally
-            {
-                try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
-            }
+            return ok ? L("ShareLyrics.Saved") : L("ShareLyrics.ClipFailed", error);
+        }
+        catch (OperationCanceledException)
+        {
+            return L("ShareLyrics.Cancelled");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error, "Share clip export failed", ex.Message);
+            return L("ShareLyrics.ClipFailed", ex.Message);
         }
         finally
         {
+            if (!ok && !existedBefore)
+                await DeletePartialAsync(outputPath);
+            if (ReferenceEquals(_exportCts, cts)) _exportCts = null;
+            cts.Dispose();
             IsRendering = false;
         }
     }
 
-    /// <summary>Cancels an in-flight clip export. Bound to the dialog's Cancel affordance.</summary>
-    public void CancelExport() => _exportCts?.Cancel();
+    /// <summary>Removes a clip the run left unfinished. ffmpeg is killed by then, but Windows
+    /// can hold the handle a moment after the process exits, so a few short retries.</summary>
+    private static async Task DeletePartialAsync(string path)
+    {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(path)) return;
+                File.Delete(path);
+                return;
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            await Task.Delay(50);
+        }
+    }
+
+    /// <summary>Cancels an in-flight clip export (Esc while it runs, and closing the dialog).</summary>
+    public void CancelExport()
+    {
+        try { _exportCts?.Cancel(); } catch (ObjectDisposedException) { }
+    }
 
     /// <summary>True while a clip export is running and can be cancelled.</summary>
     public bool CanCancelExport => IsRendering;
@@ -918,8 +1175,10 @@ public partial class LyricShareViewModel : ViewModelBase
 
         // Stop a running export. Detach() previously tore down only the preview animator,
         // so closing the dialog mid-export left thousands of frames still rendering.
-        try { _exportCts?.Cancel(); } catch { }
+        CancelExport();
         _previewDebounceCts?.Cancel();
+        foreach (var line in Lines)
+            line.EndEdit(keep: true);
 
         TeardownAnimator();
         if (_player != null)

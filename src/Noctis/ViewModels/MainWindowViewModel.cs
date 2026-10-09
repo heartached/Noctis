@@ -138,6 +138,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public SidebarViewModel Sidebar { get; }
     public TopBarViewModel TopBar { get; }
     public PlayerViewModel Player { get; }
+    /// <summary>"Added to Queue" / "Playing Next" pill above the island (owner 10-08).</summary>
+    public QueueToastViewModel QueueToast { get; } = new();
     public SettingsViewModel Settings { get; }
     public LyricsViewModel Lyrics => _lyricsVm;
 
@@ -339,6 +341,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Create long-lived ViewModels
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence), metadata);
+        QueueToast.Attach(Player);
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Sidebar.TopBar = TopBar;

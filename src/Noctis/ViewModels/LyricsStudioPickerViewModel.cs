@@ -71,10 +71,15 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
     /// <summary>Nothing typed and the library's missing-format songs are on show.</summary>
     public bool IsSuggesting => QueryEmpty && _suggestions.Count > 0;
     public string SuggestionsHeader => Localization.Loc.T(WordTimings ? "LyricsStudioPicker.MissingWord" : "LyricsStudioPicker.MissingLine");
+    /// <summary>The one-line hint beside the format pill: what the chosen format does.</summary>
+    public string FormatHint => Localization.Loc.T(WordTimings ? "StudioPicker.HintWord" : "StudioPicker.HintLine");
     public bool ShowPrompt => QueryEmpty && _suggestions.Count == 0 && !IsLoadingSuggestions;
+    /// <summary>Nothing typed and the missing-format list is still being read (not shown over a search).</summary>
+    public bool ShowLoading => QueryEmpty && IsLoadingSuggestions;
     public bool ShowNoResults => !QueryEmpty && Results.Count == 0;
     public bool HasSelection => SelectedCount > 0;
-    public string SelectionText => SelectedCount == 1 ? "1 song selected" : $"{SelectedCount} songs selected";
+    /// <summary>Footer count ("3 selected"): every ticked song, also those a search has hidden.</summary>
+    public string SelectionText => Localization.Loc.T("StudioPicker.SelectedCount", SelectedCount);
     public string AddButtonText => SelectedCount == 0
         ? Localization.Loc.T("LyricsStudioPicker.Add")
         : $"{Localization.Loc.T("LyricsStudioPicker.Add")} ({SelectedCount})";
@@ -82,7 +87,8 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
     /// <summary>Select all covers the song rows on show (album rows are shortcuts for their songs).</summary>
     public bool HasSelectableResults => Results.Any(r => !r.IsAlbum);
     public bool AreAllResultsSelected => HasSelectableResults && Results.Where(r => !r.IsAlbum).All(r => r.IsSelected);
-    public string SelectAllText => Localization.Loc.T(AreAllResultsSelected ? "LyricsStudioPicker.DeselectAll" : "LyricsStudioPicker.SelectAll");
+    /// <summary>"Select all" ticks the song rows on show; once they all are, "Clear" unticks those same rows.</summary>
+    public string SelectAllText => Localization.Loc.T(AreAllResultsSelected ? "StudioPicker.Clear" : "LyricsStudioPicker.SelectAll");
 
     /// <summary>The last format scan kicked off by a search (tests await it).</summary>
     internal Task FormatScan { get; private set; } = Task.CompletedTask;
@@ -136,6 +142,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(LineTimings));
         OnPropertyChanged(nameof(SuggestionsHeader));
+        OnPropertyChanged(nameof(FormatHint));
         // The format decides which songs count as missing.
         SuggestionsLoad = LoadSuggestionsAsync();
     }
@@ -147,7 +154,11 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
         OnPropertyChanged(nameof(AddButtonText));
     }
 
-    partial void OnIsLoadingSuggestionsChanged(bool value) => OnPropertyChanged(nameof(ShowPrompt));
+    partial void OnIsLoadingSuggestionsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowPrompt));
+        OnPropertyChanged(nameof(ShowLoading));
+    }
 
     private async Task LoadSuggestionsAsync()
     {
@@ -191,7 +202,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
                     ArtworkPath = album.ArtworkPath,
                     IsExplicit = album.IsExplicit,
                     Tracks = local,
-                    StateText = local.Count == 1 ? "1 song" : $"{local.Count} songs",
+                    StateText = local.Count == 1 ? Localization.Loc.T("StudioPicker.OneSong") : Localization.Loc.T("StudioPicker.SongCount", local.Count),
                     IsSelected = local.All(t => _selectedIds.Contains(t.Id)),
                 });
             }
@@ -219,6 +230,7 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsSuggesting));
         OnPropertyChanged(nameof(ShowPrompt));
+        OnPropertyChanged(nameof(ShowLoading));
         OnPropertyChanged(nameof(ShowNoResults));
         RaiseSelectAllState();
     }
@@ -297,10 +309,15 @@ public partial class LyricsStudioPickerViewModel : ObservableObject
     /// <summary>The songs ticked so far, in the order they were ticked.</summary>
     public IReadOnlyList<Track> PickedTracks => _picked;
 
+    private bool _confirmed;
+
+    /// <summary>Hands the pick over once: a second Add while the pop-up closes is ignored
+    /// (each one would start the Studio over the songs again).</summary>
     [RelayCommand]
     private void Confirm()
     {
-        if (_picked.Count == 0) return;
+        if (_picked.Count == 0 || _confirmed) return;
+        _confirmed = true;
         Confirmed?.Invoke(this, new LyricsStudioPick(_picked.ToList(), WordTimings));
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

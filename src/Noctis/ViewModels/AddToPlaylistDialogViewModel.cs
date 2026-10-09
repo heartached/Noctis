@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.ViewModels;
@@ -13,17 +14,34 @@ namespace Noctis.ViewModels;
 public partial class AddToPlaylistDialogViewModel : ViewModelBase
 {
     [ObservableProperty] private bool _isCreatingNew;
-    [ObservableProperty] private string _newPlaylistName = string.Empty;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmCreateCommand))]
+    private string _newPlaylistName = string.Empty;
     [ObservableProperty] private string _newPlaylistDescription = string.Empty;
     [ObservableProperty] private bool _showNameRequiredError;
-    [ObservableProperty] private int _trackCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrackCountText))]
+    private int _trackCount;
+
+    /// <summary>Set once a playlist was picked or a new one requested. The dialog animates out
+    /// after that, and a second pick or Create meanwhile (Enter in the name, a double click)
+    /// raised the result event again.</summary>
+    private bool _done;
 
     public ObservableCollection<PlaylistNavItem> Playlists { get; }
 
     public bool HasPlaylists => Playlists.Count > 0;
 
-    /// <summary>Dialog title follows the mode: list view vs inline create form.</summary>
-    public string DialogTitle => IsCreatingNew ? "Create New Playlist" : "Add to Playlist";
+    /// <summary>Dialog title follows the mode: list view vs inline create form (localized; it was
+    /// hard-coded English while the keys were translated).</summary>
+    public string DialogTitle => IsCreatingNew
+        ? Loc.T("AddToPlaylist.CreateNewPlaylist")
+        : Loc.T("AddToPlaylist.AddPlaylist");
+
+    /// <summary>"Adding 1 song" / "Adding 3 songs" under the title.</summary>
+    public string TrackCountText => TrackCount == 1
+        ? Loc.T("AddToPlaylist.AddingOneSong")
+        : Loc.T("AddToPlaylist.AddingSongs", TrackCount);
 
     /// <summary>The existing-playlists section is hidden while the create form is open.</summary>
     public bool ShowPlaylistList => HasPlaylists && !IsCreatingNew;
@@ -49,7 +67,8 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     [RelayCommand]
     private void SelectPlaylist(PlaylistNavItem? playlist)
     {
-        if (playlist == null) return;
+        if (playlist == null || _done || IsCreatingNew) return;
+        _done = true;
         PlaylistSelected?.Invoke(this, playlist);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -57,22 +76,30 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     [RelayCommand]
     private void ShowCreate()
     {
-        IsCreatingNew = true;
+        if (_done || IsCreatingNew) return;
+        // The form opens empty. Cleared here rather than on Back, so the text doesn't blink
+        // out while the form is still fading away.
+        NewPlaylistName = string.Empty;
+        NewPlaylistDescription = string.Empty;
         ShowNameRequiredError = false;
+        IsCreatingNew = true;
     }
 
     [RelayCommand]
     private void CancelCreate()
     {
+        if (_done) return;
         IsCreatingNew = false;
-        NewPlaylistName = string.Empty;
-        NewPlaylistDescription = string.Empty;
         ShowNameRequiredError = false;
     }
 
-    [RelayCommand]
+    private bool CanConfirmCreate() => !string.IsNullOrWhiteSpace(NewPlaylistName);
+
+    [RelayCommand(CanExecute = nameof(CanConfirmCreate))]
     private void ConfirmCreate()
     {
+        if (_done) return;
+        // Execute() doesn't consult CanExecute, so a blank name is still refused here.
         if (string.IsNullOrWhiteSpace(NewPlaylistName))
         {
             ShowNameRequiredError = true;
@@ -80,6 +107,7 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
         }
 
         ShowNameRequiredError = false;
+        _done = true;
         NewPlaylistRequested?.Invoke(this, (NewPlaylistName.Trim(), NewPlaylistDescription.Trim()));
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

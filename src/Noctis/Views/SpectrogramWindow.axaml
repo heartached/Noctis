@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.SpectrogramWindow"
         x:DataType="vm:SpectrogramViewModel"
         Title="{loc:T Spectrogram.Spectrogram}"
@@ -12,84 +13,167 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <!-- Same modal chrome as the Convert / Metadata dialogs: dimmed overlay, rounded card. -->
-    <Border Background="#50000000" PointerPressed="OnOverlayPointerPressed">
-        <Border x:Name="Card"
+    <Window.Styles>
+        <!-- Stream facts as small quiet chips (the field tone), in place of one run-on line. -->
+        <Style Selector="Border.sg-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        </Style>
+        <Style Selector="Border.sg-chip TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+
+        <!-- The plot sits on black whatever the theme (the palette starts at black), so the
+             text over it is a fixed light tone, readable on Dark and Light alike. -->
+        <Style Selector="TextBlock.sg-on-plot">
+            <Setter Property="Foreground" Value="#E6FFFFFF" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- One pill progress bar, centred in the plot. -->
+        <Style Selector="ProgressBar.sg-bar">
+            <Setter Property="Width" Value="280" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Background" Value="#2EFFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.sg-caption">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Owner 10-08: the rounded pill pop-up every tool uses. PillDialogHost draws the
+         blurred, dimmed app behind, the card with its shadow, and plays the open/close
+         animation (every close path — Close, Esc, the view model's Closed, Alt+F4 — animates
+         out once; the analysis is cancelled as soon as the close starts). -->
+    <controls:PillDialogHost>
+
+    <!-- MaxWidth/MaxHeight follow the window (code-behind) so the card, and the plot in it,
+         scale down on a small window instead of running off it. -->
+    <Grid x:Name="CardRoot" MaxWidth="1212" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: icon, title, artist · album, and the stream facts as chips. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well"
+                        VerticalAlignment="Top">
+                    <!-- Spectrum bars glyph. -->
+                    <Viewbox Width="22" Height="22" Opacity="0.6"
+                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Width="24" Height="24"
+                              Data="M4 14 V19 M8 9 V19 M12 4 V19 M16 8 V19 M20 13 V19"
+                              Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                              StrokeThickness="2.4"
+                              StrokeLineCap="Round" />
+                    </Viewbox>
+                </Border>
+
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText" Text="{Binding Title}" FontSize="18" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                    <TextBlock x:Name="SubtitleText" Text="{Binding Subtitle}" FontSize="13" Opacity="0.7"
+                               TextTrimming="CharacterEllipsis" />
+                    <ItemsControl x:Name="ChipList" ItemsSource="{Binding TechChips}" Margin="0,8,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Border Classes="sg-chip">
+                                    <TextBlock Text="{Binding}" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Plot: a rounded black inset. The composed image (axes drawn in) lives in a frame
+             of its own fixed size, scaled down by the Viewbox only, so the card is the same
+             size before and after the analysis lands. -->
+        <Border x:Name="PlotFrame"
+                Grid.Row="1"
+                Margin="28,18,28,18"
                 CornerRadius="20"
                 ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                MaxWidth="1180"
-                Margin="24,40"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                PointerPressed="OnCardPointerPressed"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header: track, artist · album, stream info -->
-                <Grid DockPanel.Dock="Top" Margin="24,18,24,10" ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Subtitle}" FontSize="13" Opacity="0.65"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding InfoLine}" FontSize="12" Opacity="0.5" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{loc:T Spectrogram.Spectrogram}" FontSize="12" FontWeight="SemiBold"
-                               Opacity="0.4" VerticalAlignment="Top" />
-                </Grid>
-
-                <!-- Footer: status + Close -->
-                <Border DockPanel.Dock="Bottom" Padding="24,10,24,16">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.7"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" />
-                        <Button Grid.Column="1"
-                                Content="{loc:T Spectrogram.Close}"
-                                Command="{Binding CloseCommand}"
-                                Width="110"
-                                Padding="0,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
-                </Border>
-
-                <!-- Plot area: black panel with the composed image (axes drawn in) -->
-                <Border Margin="24,0,24,0"
-                        CornerRadius="12"
-                        ClipToBounds="True"
-                        Background="#000000"
-                        Padding="8">
-                    <Panel>
-                        <Image Source="{Binding Image}"
-                               Stretch="Uniform"
-                               StretchDirection="DownOnly"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding !IsBusy}" />
-                        <!-- Busy / error state keeps the plot footprint so the card doesn't jump. -->
-                        <StackPanel x:Name="BusyPanel"
-                                    Spacing="12"
-                                    Width="360"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding IsBusy}">
-                            <TextBlock Text="{loc:T Spectrogram.AnalyzingAudio}" FontSize="14" FontWeight="SemiBold"
-                                       Foreground="#DDFFFFFF" HorizontalAlignment="Center"
-                                       IsVisible="{Binding !HasError}" />
-                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}"
-                                         Height="6" CornerRadius="3"
-                                         IsVisible="{Binding !HasError}" />
-                            <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#AAFFFFFF"
-                                       TextWrapping="Wrap" TextAlignment="Center" />
-                        </StackPanel>
+                Background="#000000"
+                Padding="12,10,12,8">
+            <Panel>
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+                    <Panel x:Name="PlotSlot">
+                        <Image x:Name="PlotImage"
+                               Source="{Binding Image}"
+                               Stretch="Fill" />
                     </Panel>
-                </Border>
-            </DockPanel>
+                </Viewbox>
+
+                <!-- Loading: the one progress readout. Error: the message, same place. -->
+                <StackPanel x:Name="LoadingPanel"
+                            Spacing="12"
+                            MaxWidth="420"
+                            Margin="24,0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False">
+                    <ProgressBar x:Name="ProgressBar"
+                                 Classes="sg-bar"
+                                 Minimum="0" Maximum="100"
+                                 Value="{Binding Progress}"
+                                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                 IsVisible="{Binding !HasError}" />
+                    <TextBlock x:Name="ProgressLabel"
+                               Classes="sg-on-plot"
+                               Text="{Binding ProgressText}"
+                               IsVisible="{Binding !HasError}" />
+                    <TextBlock x:Name="ErrorLabel"
+                               Classes="sg-on-plot"
+                               Text="{Binding ErrorText}"
+                               IsVisible="{Binding HasError}" />
+                </StackPanel>
+            </Panel>
         </Border>
-    </Border>
+
+        <!-- Footer: how the plot is made (quiet), and Close in the shared pill style. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="CaptionText"
+                           Grid.Column="0"
+                           Classes="sg-caption"
+                           Text="{Binding AnalysisCaption}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="0,0,16,0" />
+                <Button x:Name="CloseButton"
+                        Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T Spectrogram.Close}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

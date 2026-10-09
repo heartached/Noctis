@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.SendToFolderDialog"
         x:DataType="vm:SendToFolderViewModel"
         Title="{loc:T SendTo.Title}"
@@ -13,129 +14,300 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <Style Selector="TextBox.pill">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="MinHeight" Value="0" />
-        </Style>
-        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="Border.plan-row">
-            <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Background" Value="#10FFFFFF" />
-        </Style>
-        <Style Selector="Border.plan-row.skip">
+        <Style Selector="TextBlock.stf-label">
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+        </Style>
+        <Style Selector="TextBlock.stf-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="TextBlock.stf-error">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#FF8A80" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.stf-option">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.stf-hint">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Example path: one quiet chip per folder, the file name in the accent (the other
+             pop-ups' live example line). -->
+        <Style Selector="Border.stf-path-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,3" />
+        </Style>
+        <Style Selector="Border.stf-path-chip TextBlock">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Border.stf-path-chip.file TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- Songs already in the folder recede; the ones that go over stand out. -->
+        <Style Selector="Border.stf-row.skip">
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+
+        <!-- Per-row state chip: the converter's (dot + one word on a faint tint; the detail,
+             such as the error, is its tooltip). -->
+        <Style Selector="Border.stf-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="8,2,9,2" />
+            <Setter Property="Background" Value="#18808080" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.stf-chip Ellipse">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Fill" Value="#80808080" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.stf-chip.working Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.stf-chip.done">
+            <Setter Property="Background" Value="#293BB273" />
+        </Style>
+        <Style Selector="Border.stf-chip.done Ellipse">
+            <Setter Property="Fill" Value="#3BB273" />
+        </Style>
+        <Style Selector="Border.stf-chip.skipped">
+            <Setter Property="Background" Value="#33F2A33A" />
+        </Style>
+        <Style Selector="Border.stf-chip.skipped Ellipse">
+            <Setter Property="Fill" Value="#F2A33A" />
+        </Style>
+        <Style Selector="Border.stf-chip.failed">
+            <Setter Property="Background" Value="#33FF6B6B" />
+        </Style>
+        <Style Selector="Border.stf-chip.failed Ellipse">
+            <Setter Property="Fill" Value="#FF6B6B" />
+        </Style>
+
+        <!-- Thin footer bar while the copy runs (the converter's row bar). -->
+        <Style Selector="ProgressBar.stf-bar">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Background" Value="#26808080" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- Sections that come in once there is something to show (the song list, the
+             errors, the progress bar): hidden pose a few px low and clear, shown pose in
+             place. The view attaches the transitions, on the pill host's open curve. -->
+        <Style Selector=":is(Control).stf-reveal">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransform" Value="translateY(8px)" />
+        </Style>
+        <Style Selector=":is(Control).stf-reveal.shown">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="translateY(0px)" />
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="680"
-                MaxHeight="780"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header -->
-                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="{Binding SubtitleText}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                </StackPanel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor / Convert. PillDialogHost
+         draws the blurred, dimmed app behind, the card with its shadow, and plays the
+         open/close animation (every close path — Close, Esc, the view model's Closed,
+         Alt+F4 — animates out once). MaxHeight, not Height: the card is as tall as what it
+         shows (no empty area before a copy) and bounded so a long list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Footer -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
-                    <StackPanel Spacing="10">
-                        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
-                                     IsVisible="{Binding IsCopying}" />
-                        <Grid ColumnDefinitions="*,Auto,Auto">
-                            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            <Button Grid.Column="1" Content="{loc:T SendTo.Close}" Command="{Binding CancelCommand}"
-                                    Width="100" Padding="0,8" FontWeight="Bold" HorizontalContentAlignment="Center"
-                                    CornerRadius="999" Margin="0,0,8,0" Cursor="Hand" />
-                            <Button Grid.Column="2" Content="{loc:T SendTo.Copy}" Command="{Binding StartCommand}"
-                                    IsEnabled="{Binding CanStart}"
-                                    Width="110" Padding="0,8" Classes="accent-btn"
-                                    Background="{DynamicResource AccentButtonBackground}"
-                                    Foreground="{DynamicResource AccentForegroundBrush}"
-                                    FontWeight="SemiBold" HorizontalContentAlignment="Center"
-                                    CornerRadius="999" Cursor="Hand" />
-                        </Grid>
-                    </StackPanel>
+    <Grid Width="640" MaxHeight="720" RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- Header: icon, "Send N songs", one-line purpose. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource FolderIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T SendToFolder.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,4,24,8">
-                    <StackPanel Spacing="14">
-                        <!-- Destination -->
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="{loc:T SendTo.Destination}" FontSize="13" FontWeight="SemiBold" />
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Grid.Column="0" Classes="pill" Text="{Binding Destination}"
-                                         Watermark="{loc:T SendTo.DestinationHint}" />
-                                <Button Grid.Column="1" Content="{loc:T SendTo.Browse}" Click="OnBrowseClick"
-                                        Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" />
-                            </Grid>
-                        </StackPanel>
+        <!-- Destination + options: locked while a copy runs (the run already took them). -->
+        <StackPanel Grid.Row="1" Margin="28,18,28,18" Spacing="14" IsEnabled="{Binding IsIdle}">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="stf-label" Text="{loc:T SendTo.Destination}" />
+                <Grid ColumnDefinitions="*,8,Auto">
+                    <!-- Enter copies (when Copy is available); the host drops focus while it
+                         closes, so an Enter mid-close can't start a run. -->
+                    <TextBox x:Name="DestinationBox" Grid.Column="0" Classes="pill-field"
+                             Text="{Binding Destination}"
+                             Watermark="{loc:T SendTo.DestinationHint}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding StartCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button x:Name="BrowseButton" Grid.Column="2" Classes="pill-secondary"
+                            Content="{loc:T SendTo.Browse}"
+                            Padding="18,0"
+                            Click="OnBrowseClick" />
+                </Grid>
+                <TextBlock Classes="stf-error" Margin="4,0,0,0"
+                           Text="{Binding DestinationError}" IsVisible="{Binding HasDestinationError}" />
+            </StackPanel>
 
-                        <!-- Options -->
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="{loc:T SendTo.Organize}" FontSize="13" FontWeight="SemiBold" />
-                                <TextBlock FontSize="11" Opacity="0.55" TextWrapping="Wrap">
-                                    <Run Text="{loc:T SendTo.OrganizeHint}" /> <Run Text="{Binding OrganizePatternText}" FontFamily="Consolas,Menlo,monospace" />
-                                </TextBlock>
-                            </StackPanel>
-                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OrganizeIntoFolders}" OnContent="" OffContent="" VerticalAlignment="Center" />
-                        </Grid>
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="{loc:T SendTo.IncludeLyrics}" FontSize="13" FontWeight="SemiBold" />
-                                <TextBlock Text="{loc:T SendTo.IncludeLyricsHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IncludeLyrics}" OnContent="" OffContent="" VerticalAlignment="Center" />
-                        </Grid>
-
-                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-
-                        <!-- Plan -->
-                        <TextBlock Text="{Binding PlanSummary}" FontSize="12" Opacity="0.7" />
-                        <ItemsControl ItemsSource="{Binding Rows}">
-                            <!-- Virtualized: one row per selected track, so a Ctrl+A selection built
-                                 every row once the plan landed. VirtualizingStackPanel has no Spacing;
-                                 the 4px gap is the plan-row's bottom margin. -->
+            <!-- Options: one filled group, a round pill check per row (the converter's). -->
+            <Border Classes="pill-well" Padding="16,14">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="6">
+                        <CheckBox x:Name="OrganizeCheck" Classes="metadata-pill-checkbox"
+                                  IsChecked="{Binding OrganizeIntoFolders}">
+                            <TextBlock Classes="stf-option" Text="{loc:T SendToFolder.Organize}" />
+                        </CheckBox>
+                        <!-- Where the first song lands; folders follow the Organize Files pattern. -->
+                        <ItemsControl x:Name="ExampleChips" ItemsSource="{Binding ExampleChips}"
+                                      Margin="38,0,0,0" Background="Transparent"
+                                      ToolTip.Tip="{Binding ExampleTip}">
                             <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel ItemSpacing="4" LineSpacing="4" />
+                                </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:SendToFolderViewModel+PlanRow">
-                                    <Border Classes="plan-row" Classes.skip="{Binding IsSkip}">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <StackPanel Grid.Column="0" Spacing="1">
-                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding Target}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                <TextBlock Text="♪" FontSize="11" Opacity="0.5" IsVisible="{Binding HasLyrics}" VerticalAlignment="Center" ToolTip.Tip="{loc:T SendTo.LyricsIncluded}" />
-                                                <TextBlock Text="{Binding Action}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" IsVisible="{Binding !Done}" />
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
-                                                          Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
+                                <DataTemplate x:DataType="vm:SendToFolderViewModel+PathChip">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="›" FontSize="13" Opacity="0.4" VerticalAlignment="Center"
+                                                   IsVisible="{Binding !IsFirst}" />
+                                        <Border Classes="stf-path-chip pill-well" Classes.file="{Binding IsFile}">
+                                            <TextBlock Text="{Binding Text}" MaxWidth="240" TextTrimming="CharacterEllipsis" />
+                                        </Border>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
+
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.6" />
+
+                    <StackPanel Spacing="2">
+                        <CheckBox x:Name="LyricsCheck" Classes="metadata-pill-checkbox"
+                                  IsChecked="{Binding IncludeLyrics}">
+                            <TextBlock Classes="stf-option" Text="{loc:T SendToFolder.Lyrics}" />
+                        </CheckBox>
+                        <TextBlock Classes="stf-hint" Margin="38,0,0,0" Text="{loc:T SendToFolder.LyricsHint}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- The songs, once a folder is picked: one filled card each with its state chip.
+             Right padding is the overlay scrollbar's lane. -->
+        <ScrollViewer x:Name="PlanList" Grid.Row="2"
+                      Classes="stf-reveal" Classes.shown="{Binding HasRows}"
+                      IsVisible="{Binding HasRows}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Padding="28,0,28,10">
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <!-- Virtualized: one row per selected track, so a Ctrl+A selection built
+                     every row once the plan landed. VirtualizingStackPanel has no Spacing;
+                     the gap is the row's bottom margin. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SendToFolderViewModel+PlanRow">
+                        <Border Classes="pill-well stf-row" Classes.skip="{Binding IsSkip}"
+                                CornerRadius="16" Padding="16,9,12,9" Margin="0,0,0,6">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Text="♪" FontSize="11.5" Opacity="0.55"
+                                                   Margin="0,0,6,0" IsVisible="{Binding HasLyrics}"
+                                                   ToolTip.Tip="{loc:T SendTo.LyricsIncluded}" />
+                                        <TextBlock Text="{Binding Target}" FontSize="11.5" Opacity="0.55"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                </StackPanel>
+                                <Border Grid.Column="2" Classes="stf-chip"
+                                        Classes.working="{Binding IsWorking}"
+                                        Classes.done="{Binding IsCopied}"
+                                        Classes.skipped="{Binding IsSkipped}"
+                                        Classes.failed="{Binding IsFailed}"
+                                        ToolTip.Tip="{Binding Detail}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Ellipse />
+                                        <TextBlock Text="{Binding ChipText}" FontSize="11.5" Opacity="0.85" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- What went wrong, one line each (the rows' Failed chips carry the same text). -->
+        <Border x:Name="ErrorPanel" Grid.Row="3"
+                Classes="stf-reveal" Classes.shown="{Binding HasErrors}"
+                IsVisible="{Binding HasErrors}"
+                Margin="28,0,28,14" Padding="16,10" CornerRadius="16" Background="#1FFF6B6B">
+            <ScrollViewer MaxHeight="92" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Errors}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Classes="stf-error" Text="{Binding}" Margin="0,1" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
         </Border>
-    </Border>
+
+        <!-- Footer: plan summary / "Copied 3 of 5" with its bar on the left; Show in folder
+             (after a copy), Cancel / Stop / Close and Copy on the right. -->
+        <Border Grid.Row="4"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Classes="stf-status" Text="{Binding StatusMessage}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StatusMessage}" />
+                    <ProgressBar x:Name="CopyProgress" Classes="stf-bar stf-reveal"
+                                 Classes.shown="{Binding IsCopying}"
+                                 Minimum="0" Maximum="1" Value="{Binding Progress}" />
+                </StackPanel>
+                <Button x:Name="ShowInFolderButton" Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T SendToFolder.ShowInFolder}"
+                        Command="{Binding ShowInFolderCommand}"
+                        IsVisible="{Binding CanShowInFolder}"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-secondary"
+                        Content="{Binding CancelLabel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button x:Name="CopyButton" Grid.Column="3"
+                        Classes="pill-primary"
+                        Content="{loc:T SendTo.Copy}"
+                        Command="{Binding StartCommand}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

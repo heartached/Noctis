@@ -1,311 +1,248 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.SongsViewOptionsDialog"
         x:DataType="vm:SongsViewOptionsViewModel"
         Title="{loc:T SongsViewOptions.ViewOptions}"
         CanResize="False"
         WindowDecorations="None"
-        Background="Transparent"
         TransparencyLevelHint="Transparent"
-        ShowInTaskbar="False">
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
 
-    <!-- Dialog-local chrome, following PlaylistDescriptionDialog: only the pieces this
-         surface needs, defined here rather than added to the global sheet. -->
     <Window.Styles>
-        <!-- Small caps section heading (Music / Personal / File) -->
-        <Style Selector="TextBlock.view-opt-section">
-            <Setter Property="FontSize" Value="10" />
+        <!-- Small muted label above a control, inset to the pills' text (the other pill
+             pop-ups' field labels). -->
+        <Style Selector="TextBlock.vo-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="16,0,0,6" />
+        </Style>
+        <!-- Group heading inside a column well (Music / Personal / File). -->
+        <Style Selector="TextBlock.vo-group">
+            <Setter Property="FontSize" Value="10.5" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="LetterSpacing" Value="1.2" />
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="LetterSpacing" Value="1.1" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="3,0,0,4" />
         </Style>
 
-        <Style Selector="TextBlock.view-opt-label">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Opacity" Value="0.75" />
-        </Style>
-
-        <!-- Pill sort dropdown, same recipe as the metadata editor's genre combo.
-             Those styles are window-local to MetadataWindow, so this dialog carries
-             its own copies. Content is centered in the pill on both axes: the
-             selection box's default Stretch alignment draws the text at the top. -->
-        <Style Selector="ComboBox.view-opt-combo">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="ComboBox.view-opt-combo /template/ Border#Background">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBox.view-opt-combo /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-
-        <!-- Pill-shaped hover/selection highlight for the dropdown's items, matching
-             the genre combo's popup. Inset via margin so the pill doesn't bleed to
-             the popup edges, and round the background presenter. -->
-        <Style Selector="ComboBoxItem">
-            <Setter Property="Margin" Value="4,1" />
-            <Setter Property="Padding" Value="12,6" />
+        <!-- Segmented pill: the same recipe as Create Smart Playlist's Match All / Any
+             (sp-seg), so the two read as one control. A pill-well track; the chosen side is
+             a brighter filled pill with full-strength text, the other one recedes. -->
+        <Style Selector="RadioButton.vo-seg">
             <Setter Property="MinHeight" Value="30" />
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-
-        <!-- Segmented two-option pills (Ascending/Descending, All Songs/Only Favorites).
-             Same shape as the top bar's quality chips so the dialog reads as part of the
-             app rather than a stock settings sheet. Centered so the pair reads as one
-             control row rather than hanging off the left edge. -->
-        <Style Selector="Border.view-opt-segment">
-            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="3" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.view-opt-seg">
-            <Setter Property="Padding" Value="14,6" />
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="12.5" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Opacity" Value="0.55" />
-        </Style>
-        <Style Selector="Button.view-opt-seg:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
-        <Style Selector="Button.view-opt-seg.on">
-            <Setter Property="Opacity" Value="1" />
-            <Setter Property="Background" Value="#30FFFFFF" />
-        </Style>
-
-        <Style Selector="Border.view-opt-rule">
-            <Setter Property="Height" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Opacity" Value="0.6" />
-            <Setter Property="Margin" Value="0,18" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="SegFill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.vo-seg:pointerover">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="RadioButton.vo-seg:checked">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
-        <!-- Column checkboxes reuse the app's round accent checkbox; only the label
-             size is dialed down for the two-column grid. -->
-        <Style Selector="CheckBox.metadata-pill-checkbox">
+        <!-- Column toggles: the pill pop-ups' round checkbox (Smart Playlist's Limit,
+             ReplayGain's rows), one size down for the three wells. -->
+        <Style Selector="CheckBox.vo-column">
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="MinHeight" Value="30" />
         </Style>
-
-        <Style Selector="Button.view-opt-footer">
-            <Setter Property="Padding" Value="14,7" />
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Cursor" Value="Hand" />
+        <!-- A long translation wraps inside its well instead of running into the next one
+             (French "Sample Rate" is "Fréquence d'échantillonnage"). -->
+        <Style Selector="CheckBox.vo-column /template/ ContentPresenter">
+            <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
     </Window.Styles>
 
-    <!-- Fade/scale open-close animation: same pattern as the description dialogs
-         (code-behind settles to the open state on the next frame, mirrors on close). -->
-    <Border x:Name="DialogOverlay"
-            Background="#98000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor and the other pill
+         dialogs, with the blurred app behind. PillDialogHost draws the blurred, dimmed owner
+         and the card, and plays the open/close animation (Done, Esc, a click on the backdrop
+         and Alt+F4 all animate out once). Every control applies live, so there is nothing to
+         confirm or cancel: Done, Esc and the backdrop all just close.
+         MaxHeight, not Height: the card fits its content (no scrollbar at normal window
+         sizes) and only the body scrolls when the window is too small for it. -->
+    <controls:PillDialogHost>
 
-        <Border x:Name="OptionsCard"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                PointerPressed="OnCardPointerPressed"
-                Width="440"
-                MaxHeight="720"
-                CornerRadius="12"
+    <Grid x:Name="OptionsCard" Width="620" MaxHeight="720" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: icon (the top bar's View Options glyph), title, one-line purpose. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                BorderThickness="1"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-
-            <Grid RowDefinitions="Auto,*,Auto">
-
-                <!-- Header -->
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="24,20,16,0">
-                    <TextBlock Grid.Column="0"
-                               Text="{loc:T SongsViewOptions.ViewOptions}"
-                               FontSize="20"
-                               FontWeight="Bold"
-                               VerticalAlignment="Center" />
-                    <Button Grid.Column="1"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Width="32" Height="32"
-                            Padding="0"
-                            Cursor="Hand"
-                            ToolTip.Tip="{loc:T SongsViewOptions.CloseTip}"
-                            Click="OnCloseClick">
-                        <PathIcon Data="{StaticResource DismissIcon}"
-                                  Width="15" Height="15"
-                                  Opacity="0.75"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center" />
-                    </Button>
-                </Grid>
-
-                <!-- Scrollbar at the card's right edge like Settings (SettingsScrollViewer):
-                     the viewer spans the full card width and the CONTENT carries the 24px
-                     side inset, so the bar no longer floats 24px inside the card. -->
-                <ScrollViewer Grid.Row="1"
-                              Margin="0,16,0,0"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="24,0,24,0">
-
-                        <!-- Sort by -->
-                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,12">
-                            <TextBlock Grid.Column="0" Classes="view-opt-label" Text="{loc:T SongsViewOptions.SortBy}" Margin="0,0,12,0" />
-                            <!-- Explicit ItemTemplate rather than DisplayMemberBinding: the
-                                 project compiles bindings by default, and an item-scoped
-                                 binding needs its own x:DataType to resolve against the
-                                 option rather than this dialog's view model. -->
-                            <ComboBox Grid.Column="1"
-                                      Classes="view-opt-combo"
-                                      HorizontalAlignment="Stretch"
-                                      ItemsSource="{Binding SortOptions}"
-                                      SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:SongSortOption">
-                                        <TextBlock Text="{Binding Label}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </Grid>
-
-                        <Border Classes="view-opt-segment" Margin="0,0,0,4">
-                            <StackPanel Orientation="Horizontal" Spacing="2">
-                                <Button Classes="view-opt-seg" Classes.on="{Binding IsAscending}"
-                                        Content="{loc:T SongsViewOptions.Ascending}"
-                                        Command="{Binding SetAscendingCommand}" />
-                                <Button Classes="view-opt-seg" Classes.on="{Binding IsDescending}"
-                                        Content="{loc:T SongsViewOptions.Descending}"
-                                        Command="{Binding SetDescendingCommand}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Classes="view-opt-rule" />
-
-                        <!-- Show -->
-                        <TextBlock Classes="view-opt-label" Text="{loc:T SongsViewOptions.Show}" Margin="0,0,0,8" />
-                        <Border Classes="view-opt-segment">
-                            <StackPanel Orientation="Horizontal" Spacing="2">
-                                <Button Classes="view-opt-seg" Classes.on="{Binding ShowAllSongs}"
-                                        Content="{loc:T SongsViewOptions.AllSongs}"
-                                        Command="{Binding SetAllSongsCommand}" />
-                                <Button Classes="view-opt-seg" Classes.on="{Binding ShowOnlyFavorites}"
-                                        Content="{loc:T SongsViewOptions.OnlyFavorites}"
-                                        Command="{Binding SetOnlyFavoritesCommand}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Classes="view-opt-rule" />
-
-                        <!-- Columns. Grouped the way Apple Music groups them: what the track
-                             is, what you did with it, what the file is. -->
-                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.MUSIC}" />
-                        <Grid ColumnDefinitions="*,*">
-                            <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Artwork}"
-                                          IsChecked="{Binding Settings.ShowArtworkColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Artist}"
-                                          IsChecked="{Binding Settings.ShowArtistColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Album}"
-                                          IsChecked="{Binding Settings.ShowAlbumColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Genre}"
-                                          IsChecked="{Binding Settings.ShowGenreColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Time}"
-                                          IsChecked="{Binding Settings.ShowTimeColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.PERSONAL}" Margin="0,8,0,10" />
-                        <Grid ColumnDefinitions="*,*">
-                            <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Favorite}"
-                                          IsChecked="{Binding Settings.ShowFavoritesColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Plays}"
-                                          IsChecked="{Binding Settings.ShowPlaysColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Rating}"
-                                          IsChecked="{Binding Settings.ShowRatingColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <TextBlock Classes="view-opt-section" Text="{loc:T SongsViewOptions.FILE}" Margin="0,8,0,10" />
-                        <Grid ColumnDefinitions="*,*">
-                            <StackPanel Grid.Column="0">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.BPM}"
-                                          IsChecked="{Binding Settings.ShowBpmColumn, Mode=TwoWay}" />
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.SampleRate}"
-                                          IsChecked="{Binding Settings.ShowSampleRateColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <CheckBox Classes="metadata-pill-checkbox" Content="{loc:T SongsViewOptions.Bitrate}"
-                                          IsChecked="{Binding Settings.ShowBitrateColumn, Mode=TwoWay}" />
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <!-- Footer. No OK/Cancel: every control above applies immediately. -->
-                <StackPanel Grid.Row="2"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Right"
-                            Spacing="8"
-                            Margin="24,18,24,20">
-                    <Button Classes="view-opt-footer"
-                            Content="{loc:T SongsViewOptions.RestoreDefaults}"
-                            Background="Transparent"
-                            BorderThickness="1"
-                            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                            Command="{Binding RestoreDefaultsCommand}" />
-                    <Button Classes="view-opt-footer accent-btn"
-                            Content="{loc:T SongsViewOptions.Done}"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            BorderThickness="0"
-                            Click="OnCloseClick" />
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource ViewOptionsIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T SongsViewOptions.ViewOptions}" FontSize="18" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{loc:T ViewOptions.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
         </Border>
-    </Border>
+
+        <!-- Footer: Restore Defaults apart on the left (it resets everything above at once),
+             Done on the right where the other pill dialogs keep their primary action. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button x:Name="RestoreDefaultsButton"
+                        Grid.Column="0"
+                        Classes="pill-secondary"
+                        Content="{loc:T SongsViewOptions.RestoreDefaults}"
+                        Command="{Binding RestoreDefaultsCommand}" />
+                <Button x:Name="DoneButton"
+                        Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T SongsViewOptions.Done}"
+                        MinWidth="108"
+                        Click="OnDoneClick" />
+            </Grid>
+        </Border>
+
+        <!-- The 28px side margin is also the overlay scrollbar's lane. -->
+        <ScrollViewer x:Name="BodyScroll"
+                      Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="28,20,28,24" Spacing="18">
+
+                <!-- 1. Sort: the field as a filled pill drop-down, the direction as a
+                     segmented pill beside it, the same 40px tall. -->
+                <StackPanel>
+                    <TextBlock Classes="vo-label" Text="{loc:T SongsViewOptions.SortBy}" />
+                    <Grid ColumnDefinitions="*,10,Auto">
+                        <!-- Explicit ItemTemplate rather than DisplayMemberBinding: the
+                             project compiles bindings by default, and an item-scoped
+                             binding needs its own x:DataType to resolve against the
+                             option rather than this dialog's view model. -->
+                        <ComboBox x:Name="SortCombo"
+                                  Grid.Column="0"
+                                  Classes="pill-field"
+                                  VerticalAlignment="Center"
+                                  ItemsSource="{Binding SortOptions}"
+                                  SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SongSortOption">
+                                    <TextBlock Text="{Binding Label}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <!-- Stretched to the drop-down's row, so both pills are one height. -->
+                        <Border Grid.Column="2" Classes="pill-well" CornerRadius="999" Padding="5">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <RadioButton x:Name="AscendingSegment" Classes="vo-seg" GroupName="ViewOptionsSortDirection"
+                                             Content="{loc:T SongsViewOptions.Ascending}"
+                                             IsChecked="{Binding IsAscending}" />
+                                <RadioButton x:Name="DescendingSegment" Classes="vo-seg" GroupName="ViewOptionsSortDirection"
+                                             Content="{loc:T SongsViewOptions.Descending}"
+                                             IsChecked="{Binding IsDescending}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+
+                <!-- 2. Show: all songs or favorites only. -->
+                <StackPanel>
+                    <TextBlock Classes="vo-label" Text="{loc:T SongsViewOptions.Show}" />
+                    <Border Classes="pill-well" CornerRadius="999" Padding="5" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <RadioButton x:Name="AllSongsSegment" Classes="vo-seg" GroupName="ViewOptionsShow"
+                                         Content="{loc:T SongsViewOptions.AllSongs}"
+                                         IsChecked="{Binding ShowAllSongs}" />
+                            <RadioButton x:Name="OnlyFavoritesSegment" Classes="vo-seg" GroupName="ViewOptionsShow"
+                                         Content="{loc:T SongsViewOptions.OnlyFavorites}"
+                                         IsChecked="{Binding ShowOnlyFavorites}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 3. Columns, in three filled wells the way Apple Music groups them: what
+                     the track is, what you did with it, what the file is. The wells share
+                     one row height, so the three read as a set. -->
+                <StackPanel>
+                    <TextBlock Classes="vo-label" Text="{loc:T ViewOptions.Columns}" />
+                    <Grid x:Name="ColumnWells" ColumnDefinitions="*,10,*,10,*">
+                        <Border Grid.Column="0" Classes="pill-well" Padding="14,12,14,10">
+                            <StackPanel>
+                                <TextBlock Classes="vo-group" Text="{loc:T SongsViewOptions.MUSIC}" />
+                                <CheckBox x:Name="ArtworkColumnToggle" Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Artwork}"
+                                          IsChecked="{Binding Settings.ShowArtworkColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Artist}"
+                                          IsChecked="{Binding Settings.ShowArtistColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Album}"
+                                          IsChecked="{Binding Settings.ShowAlbumColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Genre}"
+                                          IsChecked="{Binding Settings.ShowGenreColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Time}"
+                                          IsChecked="{Binding Settings.ShowTimeColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Classes="pill-well" Padding="14,12,14,10">
+                            <StackPanel>
+                                <TextBlock Classes="vo-group" Text="{loc:T SongsViewOptions.PERSONAL}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Favorite}"
+                                          IsChecked="{Binding Settings.ShowFavoritesColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Rating}"
+                                          IsChecked="{Binding Settings.ShowRatingColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Plays}"
+                                          IsChecked="{Binding Settings.ShowPlaysColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="4" Classes="pill-well" Padding="14,12,14,10">
+                            <StackPanel>
+                                <TextBlock Classes="vo-group" Text="{loc:T SongsViewOptions.FILE}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.BPM}"
+                                          IsChecked="{Binding Settings.ShowBpmColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.Bitrate}"
+                                          IsChecked="{Binding Settings.ShowBitrateColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox vo-column"
+                                          Content="{loc:T SongsViewOptions.SampleRate}"
+                                          IsChecked="{Binding Settings.ShowSampleRateColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

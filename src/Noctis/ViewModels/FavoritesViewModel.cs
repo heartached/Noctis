@@ -370,16 +370,14 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayNextAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var tracks = album.Tracks.ToList();
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        _player.AddNextRange(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
     private void AddAlbumToQueue(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]

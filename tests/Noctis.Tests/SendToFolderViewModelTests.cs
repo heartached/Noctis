@@ -90,7 +90,7 @@ public class SendToFolderViewModelTests
             await vm.PlanRebuild;
             Assert.False(vm.CanStart);
             Assert.Empty(vm.Rows);
-            Assert.Equal("That folder doesn't exist.", vm.PlanSummary);
+            Assert.Equal(Noctis.Localization.Loc.T("SendToFolder.FolderMissing"), vm.DestinationError);
         }
         finally { try { Directory.Delete(root, true); } catch { } }
     }

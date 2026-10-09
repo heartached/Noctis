@@ -2,9 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
 using Noctis.Helpers;
+using Noctis.Localization;
 
 namespace Noctis.Views;
 
@@ -18,76 +17,55 @@ public enum RemoveFromLibraryChoice
 
 public partial class RemoveFromLibraryDialog : Window
 {
+    /// <summary>The answer; the first button wins (PillDialogHost absorbs later closes).</summary>
     public RemoveFromLibraryChoice Choice { get; private set; } = RemoveFromLibraryChoice.Cancel;
 
-    private bool _closing;
+    private bool _answered;
 
     public RemoveFromLibraryDialog()
     {
         InitializeComponent();
     }
 
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the Settings modal).
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
-    }
-
-    private async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
-    }
-
     public RemoveFromLibraryDialog(int itemCount) : this()
     {
         // "Recycle Bin" on Windows, "Trash" on macOS/Linux — matches each OS's own naming.
-        var binName = OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash";
-        TrashButton.Content = $"Move to {binName}";
+        // Localized (these used to be English literals that overwrote the translated XAML).
+        var windows = OperatingSystem.IsWindows();
+        var binName = Loc.T(windows ? "RemoveFromLibrary.RecycleBin" : "RemoveFromLibrary.Trash");
+        TrashButton.Content = Loc.T(windows ? "RemoveFromLibrary.MoveRecycleBin" : "RemoveFromLibrary.MoveTrash");
 
-        var noun = itemCount == 1 ? "track" : "tracks";
-        MessageText.Text = $"Remove {itemCount} {noun} from your library?";
-        SubText.Text = itemCount == 1
-            ? $"Keep Files only removes it from Noctis. Move to {binName} also deletes the file."
-            : $"Keep Files only removes them from Noctis. Move to {binName} also deletes the files.";
+        MessageText.Text = itemCount == 1
+            ? Loc.T("RemoveFromLibrary.QuestionOne")
+            : Loc.T("RemoveFromLibrary.QuestionMany", itemCount);
+        SubText.Text = Loc.T(itemCount == 1 ? "RemoveFromLibrary.DetailOne" : "RemoveFromLibrary.DetailMany", binName);
     }
 
-    private void OnTrashClick(object? sender, RoutedEventArgs e)
+    /// <summary>Records the answer and closes; PillDialogHost plays the close once.</summary>
+    private void Answer(RemoveFromLibraryChoice choice)
     {
-        Choice = RemoveFromLibraryChoice.Trash;
-        _ = CloseAnimatedAsync();
+        if (_answered) return;
+        _answered = true;
+        Choice = choice;
+        Close();
     }
 
-    private void OnKeepClick(object? sender, RoutedEventArgs e)
-    {
-        Choice = RemoveFromLibraryChoice.KeepFiles;
-        _ = CloseAnimatedAsync();
-    }
+    private void OnTrashClick(object? sender, RoutedEventArgs e) => Answer(RemoveFromLibraryChoice.Trash);
 
-    private void OnCancelClick(object? sender, RoutedEventArgs e)
-    {
-        Choice = RemoveFromLibraryChoice.Cancel;
-        _ = CloseAnimatedAsync();
-    }
+    private void OnKeepClick(object? sender, RoutedEventArgs e) => Answer(RemoveFromLibraryChoice.KeepFiles);
 
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
-    }
+    private void OnCancelClick(object? sender, RoutedEventArgs e) => Answer(RemoveFromLibraryChoice.Cancel);
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        e.Handled = true;
+        // Escape answers Cancel, as in the other pill pop-ups.
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            Answer(RemoveFromLibraryChoice.Cancel);
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     public static async Task<RemoveFromLibraryChoice> ShowAsync(int itemCount)

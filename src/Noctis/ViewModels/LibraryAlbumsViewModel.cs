@@ -1137,14 +1137,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        // Create a copy to avoid collection modification issues
-        var tracks = album.Tracks.ToList();
-
-        // Add tracks in reverse order so they appear in the correct order when inserted at position 0
-        for (int i = tracks.Count - 1; i >= 0; i--)
-        {
-            _player.AddNext(tracks[i]);
-        }
+        // A copy avoids collection modification issues; AddNextRange keeps album order.
+        _player.AddNextRange(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1152,7 +1146,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]

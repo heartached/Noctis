@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:conv="using:Noctis.Converters"
@@ -20,195 +20,135 @@
     </Window.Resources>
 
     <Window.Styles>
-        <!-- Disable hover/press zoom animation on dialog buttons. -->
-        <Style Selector="Button.no-zoom:pointerover">
+        <!-- Small muted label above a field or a section, as the Metadata editor's. -->
+        <Style Selector="TextBlock.atp-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+
+        <!-- A playlist row: a rounded filled tile in the fields' tone, no outline, no hover zoom
+             (the list scrolls; a growing row would jitter under the pointer). -->
+        <Style Selector="Button.atp-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="8,8,16,8" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.atp-row:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <Style Selector="Button.no-zoom:pressed">
+        <Style Selector="Button.atp-row:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.atp-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.atp-row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay that captures all input.
-         Starts transparent; code-behind fades it in on open and back out
-         before closing (mirrors the Settings modal animation). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor and Create New Playlist,
+         with the blurred app behind. PillDialogHost draws the backdrop and the card and plays the
+         open/close animation (every close path animates out once). The result reaches the caller
+         through the view model's PlaylistSelected / NewPlaylistRequested events, never through
+         Close(result), so the deferred close loses nothing.
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="520"
-                MaxHeight="600"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel Margin="0">
+         Two panes share the card: the playlist list and the inline create form. Each side is a
+         title, a pane and a footer; the code-behind cross-fades the sides with a short slide and
+         eases the pane area's height between the two (AddToPlaylistDialog.SwapPanes). -->
+    <ctrl:PillDialogHost>
 
-                <!-- Bottom bar: Cancel -->
-                <Border DockPanel.Dock="Bottom"
-                        Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13" Opacity="0.6">
-                            <TextBlock.Text>
-                                <Binding Path="TrackCount" StringFormat="Adding {0} track(s)" />
-                            </TextBlock.Text>
-                        </TextBlock>
-                        <Button Grid.Column="1"
-                                Content="{loc:T AddToPlaylist.Cancel}"
-                                IsVisible="{Binding !IsCreatingNew}"
-                                Command="{Binding CancelCommand}"
-                                Width="100"
-                                Padding="0,8"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
+    <Grid Width="480" RowDefinitions="Auto,Auto,Auto">
+
+        <!-- Header: the playlist glyph (the one the "+ New" menu and the track menu's Add to
+             Playlist show), the title of the side on screen, and how many songs are going in. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <Border x:Name="HeaderIcon"
+                            Width="22" Height="22" Opacity="0.6"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
+                    </Border>
                 </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <Panel>
+                        <TextBlock x:Name="ListTitle" Text="{loc:T AddToPlaylist.AddPlaylist}"
+                                   FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="CreateTitle" Text="{loc:T AddToPlaylist.CreateNewPlaylist}"
+                                   FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                   IsVisible="False" />
+                    </Panel>
+                    <TextBlock x:Name="TrackCountLabel"
+                               Text="{Binding TrackCountText}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <!-- Scrollable content -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,20,24,16" Spacing="14">
+        <!-- The two panes, stacked; the host clips while its height eases between them. -->
+        <Panel x:Name="PaneHost" Grid.Row="1" ClipToBounds="True">
 
-                        <!-- Title -->
-                        <TextBlock Text="{Binding DialogTitle}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   HorizontalAlignment="Center" />
+            <!-- List: Create New Playlist, then the playlists (or the empty state). -->
+            <StackPanel x:Name="ListPane" VerticalAlignment="Top" Margin="28,20,28,22" Spacing="16">
+                <Button x:Name="CreateNewButton"
+                        Classes="pill-primary"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding ShowCreateCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12"
+                                  Foreground="{DynamicResource AccentForegroundBrush}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T AddToPlaylist.CreateNewPlaylist}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
 
-                        <!-- Create new: collapsed pill -->
-                        <Button Command="{Binding ShowCreateCommand}"
-                                IsVisible="{Binding !IsCreatingNew}"
-                                Content="{loc:T AddToPlaylist.CreateNewPlaylist}"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Padding="16,10"
-                                CornerRadius="999"
-                                FontWeight="SemiBold"
-                                Cursor="Hand" />
-
-                        <!-- Create new: expanded form -->
-                        <Border IsVisible="{Binding IsCreatingNew}"
-                                Background="#15FFFFFF"
-                                CornerRadius="12"
-                                Padding="14">
-                            <StackPanel Spacing="10">
-                                <TextBox Text="{Binding NewPlaylistName}"
-                                         Classes="crisp-input"
-                                         Watermark="{loc:T AddToPlaylist.PlaylistName}"
-                                         CornerRadius="999"
-                                         Padding="14,8"
-                                         x:Name="NewNameTextBox" />
-                                <TextBlock Text="{loc:T AddToPlaylist.NameRequired}"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource AccentColorBrush}"
-                                           IsVisible="{Binding ShowNameRequiredError}" />
-                                <TextBox Text="{Binding NewPlaylistDescription}"
-                                         Classes="crisp-input"
-                                         Watermark="{loc:T AddToPlaylist.DescriptionOptional}"
-                                         CornerRadius="999"
-                                         Padding="14,8" />
-                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                    <Button Content="{loc:T AddToPlaylist.Back}"
-                                            Command="{Binding CancelCreateCommand}"
-                                            Width="90"
-                                            Padding="0,7"
-                                            FontWeight="Bold"
-                                            HorizontalContentAlignment="Center"
-                                            CornerRadius="999"
-                                            Cursor="Hand" />
-                                    <Button Content="{loc:T AddToPlaylist.Create}"
-                                            Command="{Binding ConfirmCreateCommand}"
-                                            Width="90"
-                                            Padding="0,7"
-                                            Classes="accent-btn"
-                                            Background="{DynamicResource AccentButtonBackground}"
-                                            Foreground="{DynamicResource AccentForegroundBrush}"
-                                            FontWeight="Bold"
-                                            HorizontalContentAlignment="Center"
-                                            CornerRadius="999"
-                                            Cursor="Hand" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Existing playlists header -->
-                        <TextBlock Text="{loc:T AddToPlaylist.Playlists}"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Margin="0,4,0,0"
-                                   IsVisible="{Binding ShowPlaylistList}" />
-
-                        <!-- Empty state -->
-                        <TextBlock Text="{loc:T AddToPlaylist.NoPlaylistsYetCreate}"
-                                   FontSize="13"
-                                   Opacity="0.55"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,16,0,0"
-                                   IsVisible="{Binding ShowEmptyState}" />
-
-                        <!-- Existing playlists list -->
-                        <ItemsControl ItemsSource="{Binding Playlists}" IsVisible="{Binding ShowPlaylistList}">
+                <StackPanel Spacing="8" IsVisible="{Binding HasPlaylists}">
+                    <TextBlock Classes="atp-label" Text="{loc:T AddToPlaylist.Playlists}" />
+                    <ScrollViewer x:Name="PlaylistScroller" MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="PlaylistList" ItemsSource="{Binding Playlists}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="6" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:PlaylistNavItem">
-                                    <Button Classes="no-zoom"
-                                            Background="#15FFFFFF"
-                                            BorderThickness="0"
-                                            CornerRadius="12"
-                                            Padding="14,10"
-                                            Margin="0,3"
-                                            HorizontalAlignment="Stretch"
-                                            HorizontalContentAlignment="Stretch"
-                                            Cursor="Hand"
+                                    <Button Classes="atp-row"
                                             Command="{Binding $parent[Window].((vm:AddToPlaylistDialogViewModel)DataContext).SelectPlaylistCommand}"
                                             CommandParameter="{Binding}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                                            <!-- Playlist artwork (matches sidebar visualization) -->
+                                        <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                            <!-- Playlist artwork (matches the sidebar thumbnail). -->
                                             <Border Grid.Column="0"
-                                                    Width="36" Height="36"
-                                                    CornerRadius="6"
+                                                    Width="40" Height="40"
+                                                    CornerRadius="10"
                                                     ClipToBounds="True"
                                                     Margin="0,0,12,0">
                                                 <Panel>
-                                                    <Border Background="{Binding Color, Converter={StaticResource HexColorConverter}}"
-                                                            CornerRadius="6" />
-                                                    <PathIcon Data="{StaticResource PlaylistsIcon}"
-                                                              Width="14" Height="14"
-                                                              Foreground="{DynamicResource SecondaryTextBrush}"
-                                                              HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"
-                                                              IsVisible="{Binding ShowFallbackIcon}" />
+                                                    <Border Background="{Binding Color, Converter={StaticResource HexColorConverter}}" />
+                                                    <Border Width="16" Height="16"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Background="{DynamicResource SecondaryTextBrush}"
+                                                            RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                            IsVisible="{Binding ShowFallbackIcon}">
+                                                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
+                                                    </Border>
                                                     <!-- DecodeWidth 128 matches the sidebar's playlist thumbs so both
-                                                         surfaces share one warm cache bucket (36px render target). -->
+                                                         surfaces share one warm cache bucket. -->
                                                     <ctrl:CachedImage SourcePath="{Binding Art1}"
                                                                       DecodeWidth="128"
                                                                       Stretch="UniformToFill"
@@ -239,30 +179,84 @@
                                                                       IsVisible="{Binding HasCustomArt}" />
                                                 </Panel>
                                             </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Label}"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="14"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="2"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="12"
-                                                       Opacity="0.55">
-                                                <TextBlock.Text>
-                                                    <Binding Path="TrackCount" StringFormat="{}{0} tracks" />
-                                                </TextBlock.Text>
-                                            </TextBlock>
+                                            <!-- Name, and the Playlists page's "16 tracks · 54 min" line. -->
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Label}"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding MetaText}"
+                                                           FontSize="12"
+                                                           Opacity="0.55"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding MetaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
                                         </Grid>
                                     </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
 
-                    </StackPanel>
-                </ScrollViewer>
+                <!-- Empty state: one quiet well under the Create button. -->
+                <Border x:Name="EmptyState" Classes="pill-well" Padding="20,18" IsVisible="{Binding !HasPlaylists}">
+                    <TextBlock Text="{loc:T AddToPlaylist.NoPlaylistsYetCreate}"
+                               FontSize="13" Opacity="0.6"
+                               TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" />
+                </Border>
+            </StackPanel>
 
-            </DockPanel>
+            <!-- Create: name (Enter creates) and the optional description, as Create New Playlist. -->
+            <StackPanel x:Name="CreatePane" VerticalAlignment="Top" Margin="28,20,28,24" Spacing="16" IsVisible="False">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="atp-label" Text="{loc:T AddToPlaylist.Name}" />
+                    <TextBox x:Name="NameTextBox"
+                             Classes="pill-field"
+                             Text="{Binding NewPlaylistName}"
+                             Watermark="{loc:T AddToPlaylist.PlaylistName}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding ConfirmCreateCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="atp-label" Text="{loc:T AddToPlaylist.Description}" />
+                    <TextBox x:Name="DescriptionTextBox"
+                             Classes="pill-field"
+                             Text="{Binding NewPlaylistDescription}"
+                             Watermark="{loc:T AddToPlaylist.Optional}" />
+                </StackPanel>
+            </StackPanel>
+        </Panel>
+
+        <!-- Footer: Cancel for the list; Back / Create for the form (Create stays disabled
+             until the name has something in it). -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Panel HorizontalAlignment="Right">
+                <StackPanel x:Name="ListFooter" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                    <Button Classes="pill-secondary"
+                            Content="{loc:T AddToPlaylist.Cancel}"
+                            Command="{Binding CancelCommand}"
+                            MinWidth="108" />
+                </StackPanel>
+                <StackPanel x:Name="CreateFooter" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"
+                            IsVisible="False">
+                    <Button Classes="pill-secondary"
+                            Content="{loc:T AddToPlaylist.Back}"
+                            Command="{Binding CancelCreateCommand}"
+                            MinWidth="108" />
+                    <Button Classes="pill-primary"
+                            Content="{loc:T AddToPlaylist.Create}"
+                            Command="{Binding ConfirmCreateCommand}"
+                            MinWidth="108" />
+                </StackPanel>
+            </Panel>
         </Border>
-    </Border>
+    </Grid>
+    </ctrl:PillDialogHost>
 </Window>

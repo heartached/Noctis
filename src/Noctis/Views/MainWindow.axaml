@@ -218,7 +218,8 @@
                             </ToolTip.Tip>
                             <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
                             <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Main.All}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="all">
                                         <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
                                     </MenuItem>
@@ -256,7 +257,8 @@
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource ReleaseTypeIcon}"/>
                                 <Button.Flyout>
-                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.All}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="all">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -295,7 +297,8 @@
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource SortIcon}"/>
                                 <Button.Flyout>
-                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.Default}" Command="{Binding AlbumSortCommand}" CommandParameter="default">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -472,7 +475,8 @@
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource SortIcon}"/>
                                 <Button.Flyout>
-                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.Default}" Command="{Binding PlaylistSortCommand}" CommandParameter="default">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -507,7 +511,11 @@
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Command="{Binding PageCreatePlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="16" Height="16" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <!-- The shared IconMaskPlaylist brush (the Create New Playlist header and the
+                                                 track menu's Add to Playlist use the same glyph), 14px like the other rows:
+                                                 at 16 this near-edge-to-edge PNG (ink 44 of 48 px) sat closer to the pill's
+                                                 rounded left edge than the Smart / Import / YouTube glyphs. -->
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                         <MenuItem.Header>
                                             <StackPanel Margin="0,5" Spacing="2">
@@ -589,7 +597,8 @@
                             </ToolTip.Tip>
                             <PathIcon Data="{StaticResource SortIcon}"/>
                             <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Main.Name}" Command="{Binding ArtistSortCommand}" CommandParameter="name">
                                         <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}"/></MenuItem.Icon>
                                     </MenuItem>
@@ -643,7 +652,8 @@
                                 </ToolTip.Tip>
                                 <PathIcon Data="{StaticResource SortIcon}"/>
                                 <Button.Flyout>
-                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.FoldersSortDefault}" Command="{Binding FoldersSortCommand}" CommandParameter="default">
                                             <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
@@ -1345,6 +1355,12 @@
                    Foreground="{DynamicResource IslandForeground}"
                    VerticalAlignment="Center"/>
     </Border>
+
+    <!-- "Added to Queue" / "Playing Next" confirmation (owner 10-08): rises just above the
+         island (16 margin + 50 island + 14 gap), above it in Z, never hit-tested. -->
+    <views:QueueToastView DataContext="{Binding QueueToast}"
+                          Margin="0,0,0,80"
+                          ZIndex="40" />
 
     <!-- Bottom playback island (Apple Music-style glass pill). No clip: the island's glass
          must hear of repaints right beside the pill, which its blur reads (see GlassReach). -->

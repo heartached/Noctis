@@ -946,12 +946,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         OnPropertyChanged(nameof(HasDescription));
         OnPropertyChanged(nameof(HasDescriptionChanges));
+        SaveDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnDescriptionEditorTextChanged(string value)
     {
         OnPropertyChanged(nameof(HasDescriptionChanges));
+        SaveDescriptionEditCommand.NotifyCanExecuteChanged();
     }
+
+    /// <summary>Raised once a description edit has been saved; the pop-up closes on it.</summary>
+    public event EventHandler? DescriptionSaved;
 
     [RelayCommand]
     private async Task OpenDescription()
@@ -987,16 +992,25 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         IsDescriptionEditing = true;
     }
 
-    [RelayCommand]
+    /// <summary>Saves the edited description, only when the text really changed (the pop-up's
+    /// Ctrl+Enter reaches this without the Save button's disabled state; an unchanged save
+    /// would still bump the playlist's Updated date).</summary>
+    [RelayCommand(CanExecute = nameof(HasDescriptionChanges))]
     private async Task SaveDescriptionEdit()
     {
+        if (!HasDescriptionChanges) return;
         var edited = (DescriptionEditorText ?? string.Empty).Trim();
         _playlist.Description = edited;
         _playlist.ModifiedAt = DateTime.UtcNow;
+        // The header's "Updated …" line reads ModifiedAt; say it moved (as a rename does).
+        OnPropertyChanged(nameof(ModifiedDateDisplay));
+        OnPropertyChanged(nameof(ModifiedDateValue));
         PlaylistDescription = edited;
+        DescriptionEditorText = edited;
         IsDescriptionEditing = false;
         IsDescriptionOpen = false;
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
+        DescriptionSaved?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -1011,16 +1025,13 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private void PlayNextAll()
     {
-        var tracks = Tracks.ToList();
-        if (tracks.Count == 0) return;
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        _player.AddNextRange(Tracks.ToList(), _playlist.Name);
     }
 
     [RelayCommand]
     private void AddAllToQueue()
     {
-        _player.AddRangeToQueue(Tracks.ToList());
+        _player.AddRangeToQueue(Tracks.ToList(), _playlist.Name);
     }
 
     /// <summary>Opens the search-driven library picker to add songs to this (manual) playlist.</summary>

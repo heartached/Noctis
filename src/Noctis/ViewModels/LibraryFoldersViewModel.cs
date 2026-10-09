@@ -376,10 +376,8 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     [RelayCommand]
     private void PlayNodeNext(FolderNode node)
     {
-        var tracks = CollectTracks(node);
-        // Add in reverse order so they play in folder order when inserted up front.
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        // AddNextRange keeps folder order when the batch goes in up front.
+        _player.AddNextRange(CollectTracks(node), node.DisplayName);
     }
 
     [RelayCommand]
@@ -387,7 +385,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        _player.AddRangeToQueue(tracks);
+        _player.AddRangeToQueue(tracks, node.DisplayName);
     }
 
     [RelayCommand]

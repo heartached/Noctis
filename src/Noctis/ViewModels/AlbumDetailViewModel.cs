@@ -342,6 +342,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowAddAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnAlbumDescriptionFullChanged(string value)
@@ -352,11 +353,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnAlbumDescriptionEditorTextChanged(string value)
     {
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     private async Task LoadAlbumDescriptionAsync()
@@ -372,16 +375,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
             var snippet = !string.IsNullOrWhiteSpace(summary) ? summary : full;
             var fullText = !string.IsNullOrWhiteSpace(full) ? full : summary;
+            // The editor follows the lookup while it still holds what was shown before it:
+            // "Edit Description" can open before the lookup lands, and an untouched (empty)
+            // editor then counted as a change — Save lit up and wrote an empty override that
+            // erased the album's description. Text the user typed is never replaced.
+            var editorUntouched = string.Equals(
+                (AlbumDescriptionEditorText ?? string.Empty).Trim(),
+                AlbumDescriptionDialogText.Trim(),
+                StringComparison.Ordinal);
             if (!string.IsNullOrWhiteSpace(snippet))
                 AlbumDescription = snippet;
             if (!string.IsNullOrWhiteSpace(fullText))
                 AlbumDescriptionFull = fullText;
-            if (!IsAlbumDescriptionEditing)
-            {
-                AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
-                    ? AlbumDescriptionFull
-                    : AlbumDescription;
-            }
+            if (editorUntouched)
+                AlbumDescriptionEditorText = AlbumDescriptionDialogText;
         }
         catch
         {
@@ -620,7 +627,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Stable picks: sample once per (artist, albumId) and reuse on subsequent
         // rebuilds (e.g. metadata save → LibraryUpdated) so the section doesn't
         // reshuffle while the user is viewing the same album.
-        var key = $"{currentArtist} {currentId}";
+        var key = $"{currentArtist}\0{currentId}";
         var poolById = pool.ToDictionary(a => a.Id);
         List<Album> picks;
         if (_moreByArtistKey == key && _moreByArtistOrder != null)
@@ -856,9 +863,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         IsAlbumDescriptionEditing = true;
     }
 
-    [RelayCommand]
+    /// <summary>Raised once a description edit has been saved; the pop-up closes on it.</summary>
+    public event EventHandler? AlbumDescriptionSaved;
+
+    /// <summary>Saves the edited description. Only when the text really changed: the pop-up's
+    /// Ctrl+Enter reaches this without the Save button's disabled state, and saving the shown
+    /// Last.fm text unchanged would pin it as the user's own override.</summary>
+    [RelayCommand(CanExecute = nameof(HasAlbumDescriptionChanges))]
     private async Task SaveAlbumDescriptionEdit()
     {
+        if (!HasAlbumDescriptionChanges) return;
         var edited = (AlbumDescriptionEditorText ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(edited))
         {
@@ -872,9 +886,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             await _lastFm.SetAlbumDescriptionOverrideAsync(Album.Artist, Album.Name, edited);
             AlbumDescription = edited;
             AlbumDescriptionFull = edited;
+            AlbumDescriptionEditorText = edited;
         }
 
         IsAlbumDescriptionEditing = false;
+        AlbumDescriptionSaved?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -932,7 +948,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
-        _player.AddRangeToQueue(InAlbumOrder(Tracks));
+        _player.AddRangeToQueue(InAlbumOrder(Tracks), Album.Name);
 
         var generation = ++_albumAddedGeneration;
         AlbumAddedToQueue = true;
@@ -1132,17 +1148,15 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayNextRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        // Insert in reverse so playback order matches album order.
-        var tracks = InAlbumOrder(album.Tracks);
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        // AddNextRange keeps album order when the batch goes in up front.
+        _player.AddNextRange(InAlbumOrder(album.Tracks), album.Name);
     }
 
     [RelayCommand]
     private void AddRelatedAlbumToQueue(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(InAlbumOrder(album.Tracks));
+        _player.AddRangeToQueue(InAlbumOrder(album.Tracks), album.Name);
     }
 
     [RelayCommand]

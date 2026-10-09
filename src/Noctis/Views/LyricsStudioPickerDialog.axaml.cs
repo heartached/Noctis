@@ -1,74 +1,53 @@
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
-/// <summary>Lyrics Studio › Choose songs. Same overlay card and fade/scale open-close as
-/// <see cref="AddSongsDialog"/> and <see cref="LyricsBackgroundPickerDialog"/>.</summary>
+/// <summary>
+/// Lyrics Studio › Choose songs &amp; albums, in the rounded pill pop-up (PillDialogHost: the
+/// blurred app behind and the shared open/close animation). Every close — Cancel, Add, Esc,
+/// Alt+F4 — is a plain Close() the host turns into the animated one, played once.
+/// </summary>
 public partial class LyricsStudioPickerDialog : Window
 {
-    private bool _closing;
+    private LyricsStudioPickerViewModel? _vm;
 
     public LyricsStudioPickerDialog()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) =>
-        {
-            if (DataContext is LyricsStudioPickerViewModel vm)
-                vm.CloseRequested += (_, _) => _ = CloseAnimatedAsync();
-        };
     }
 
-    protected override void OnOpened(EventArgs e)
+    protected override void OnDataContextChanged(EventArgs e)
     {
-        base.OnOpened(e);
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-            SearchBox.Focus();
-        }, DispatcherPriority.Loaded);
+        base.OnDataContextChanged(e);
+        if (_vm is not null) _vm.CloseRequested -= OnCloseRequested;
+        _vm = DataContext as LyricsStudioPickerViewModel;
+        if (_vm is not null) _vm.CloseRequested += OnCloseRequested;
     }
 
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    public async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
-    }
+    private void OnCloseRequested(object? sender, EventArgs e) => Close();
 
+    /// <summary>
+    /// Esc closes like Cancel. The search box does not take the caret on open: a focused pill
+    /// field wears the accent ring, which read as an outline on a box nobody had touched.
+    /// </summary>
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
-            _ = CloseAnimatedAsync();
+            Close();
             return;
         }
         base.OnKeyDown(e);
     }
 
-    /// <summary>A press on the dimmed backdrop (not the card) closes, like Esc and Cancel.</summary>
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        e.Handled = true;
-        if (ReferenceEquals(e.Source, DialogOverlay)) _ = CloseAnimatedAsync();
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e) => e.Handled = true;
-
     /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once per cell and
-    /// stashed in Tag: LayoutUpdated fires after every window layout pass and a cell's children never change.</summary>
+    /// stashed in Tag: LayoutUpdated fires after every window layout pass and a cell's children never
+    /// change (a recycled row keeps its cell and only swaps the data).</summary>
     private sealed record TitleCellChildren(TextBlock Title, Border? ExplicitBadge);
 
     /// <summary>

@@ -41,18 +41,8 @@
              pill-primary, pill-secondary) that PillDialogHost brings with it
              (Noctis.UI/Assets/PillDialog.axaml). -->
 
-        <!-- Pill-shaped hover/selection highlight for dropdown items, matching the
-             rounded menu highlight used elsewhere. Inset via margin so the pill
-             doesn't bleed to the popup edges, and round the background presenter. -->
-        <Style Selector="ComboBoxItem">
-            <Setter Property="Margin" Value="4,1" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
+        <!-- The inset pill rows of the drop-downs (media kind, genre, advisory…) come with
+             ComboBox.pill-field from PillDialog.axaml; every ComboBox here is pill-field. -->
 
         <!-- Sidebar tab rows: full-width vertical list, accent bar + tint when selected -->
         <Style Selector="TabItem">

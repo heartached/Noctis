@@ -199,8 +199,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        _player.AddNextRange(tracks, playlist.Name);
     }
 
     [RelayCommand]
@@ -209,7 +208,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         var playlist = ResolvePlaylist(item);
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
-        _player.AddRangeToQueue(tracks);
+        _player.AddRangeToQueue(tracks, playlist.Name);
     }
 
     [RelayCommand]

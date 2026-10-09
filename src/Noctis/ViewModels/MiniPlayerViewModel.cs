@@ -428,7 +428,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [RelayCommand]
     private void PlaySearchResult(Track track)
     {
-        Player.AddNext(track);
+        // Plays now, so no "Playing Next" pill (it would also land in the hidden main window).
+        Player.AddNext(track, announce: false);
         Player.NextCommand.Execute(null);
     }
 

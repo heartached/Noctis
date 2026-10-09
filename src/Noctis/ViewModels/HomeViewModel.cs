@@ -969,11 +969,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        var tracks = album.Tracks.ToList();
-        for (int i = tracks.Count - 1; i >= 0; i--)
-        {
-            _player.AddNext(tracks[i]);
-        }
+        _player.AddNextRange(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -981,7 +977,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]

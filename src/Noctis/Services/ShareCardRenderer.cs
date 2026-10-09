@@ -296,7 +296,7 @@ public static class ShareCardRenderer
         float lyBottom = footerTop - LyricGapBottom;
         float avail = Math.Max(0f, lyBottom - lyTop);
 
-        var (wrapped, lyricSize, lineHeight) = FitLyrics(spec, boxContentW, avail, lyricFace);
+        var (wrapped, lyricSize, lineHeight, _) = FitLyrics(spec, boxContentW, avail, lyricFace);
         float blockH = wrapped.Count * lineHeight;
         float firstBaseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
         var rowX = new float[wrapped.Count];
@@ -336,8 +336,8 @@ public static class ShareCardRenderer
 
         float FixedH(float a) => a + gapArtTitle + titleSize + gapTitleArtist + artistSize
                                  + gapArtistLyrics + gapLyricsFooter + FooterHeight;
-        var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace);
-        float overflow = FixedH(artSize) + fit.wrapped.Count * fit.lineHeight - safeH;
+        var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace, ComfortLyricSize);
+        float overflow = FixedH(artSize) + fit.naturalRows * fit.lineHeight - safeH;
         if (overflow > 0)
         {
             // Long selections at the minimum lyric size: give the artwork's pixels to the
@@ -385,7 +385,7 @@ public static class ShareCardRenderer
 
         // ── Centered lyric rows ─────────────────────────────────────────
         float lyTop = artRect.Bottom + gapArtTitle + titleSize + gapTitleArtist + artistSize + gapArtistLyrics;
-        var (wrapped, lyricSize, lineHeight) = fit;
+        var (wrapped, lyricSize, lineHeight, _) = fit;
         float firstBaseline = lyTop + lyricSize * 0.80f;
         using var lyricMeasure = TextPaint(lyricFace, lyricSize, fg);
         var rowX = new float[wrapped.Count];
@@ -722,13 +722,24 @@ public static class ShareCardRenderer
         }
     }
 
+    /// <summary>Smallest lyric size the fit shrinks to before it drops rows.</summary>
+    private const float MinLyricSize = 28f;
+
+    /// <summary>The Poster layout's old floor: below it the artwork shrinks first.</summary>
+    private const float ComfortLyricSize = 34f;
+
     /// <summary>
     /// Greedily shrinks the lyric font (from a format-dependent base) until the wrapped
     /// block fits <paramref name="maxLyricsH"/>; returns the wrapped lines, chosen size and
     /// line height. Shared by the box-sizing and draw passes so the two always agree.
+    /// A block still too tall at <see cref="MinLyricSize"/> (eight long lines on a 1:1 card)
+    /// keeps the rows that fit and ends the last one with "…": the rows used to be drawn
+    /// whatever their height, over the wordmark and off the bottom of the image.
+    /// <c>naturalRows</c> is the row count before that cut, so the Poster layout can give
+    /// the artwork's pixels to the lyrics first.
     /// </summary>
-    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight) FitLyrics(
-        LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace)
+    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight, int naturalRows) FitLyrics(
+        LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace, float minSize = MinLyricSize)
     {
         var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
         float lyricSize = spec.Format == ShareCardFormat.Story ? 78f : 66f;
@@ -740,11 +751,33 @@ public static class ShareCardRenderer
             lyricPaint.TextSize = lyricSize;
             wrapped = WrapAll(renderLines, contentW, s => MeasureTextFallback(lyricPaint, s));
             lineHeight = lyricSize * 1.30f;
-            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34f)
+            // +0.5: the draw pass re-fits into the box the sizing pass made (avail is
+            // computed back from it), so float noise must not shrink the font a step.
+            if (wrapped.Count * lineHeight <= maxLyricsH + 0.5f || lyricSize <= minSize)
                 break;
-            lyricSize -= 3f;
+            lyricSize = Math.Max(minSize, lyricSize - 3f);
         }
-        return (wrapped, lyricSize, lineHeight);
+
+        int naturalRows = wrapped.Count;
+        int fits = Math.Max(1, (int)Math.Floor((maxLyricsH + 0.5f) / lineHeight));
+        if (wrapped.Count > fits)
+        {
+            wrapped = wrapped.Take(fits).ToList();
+            var (lastText, lastLine) = wrapped[^1];
+            float Measure(string s) => MeasureTextFallback(lyricPaint, s);
+            var marked = lastText.TrimEnd() + "…";
+            if (Measure(marked) > contentW)
+            {
+                marked = "…";
+                for (int len = lastText.Length - 1; len > 0; len--)
+                {
+                    var candidate = lastText[..len].TrimEnd() + "…";
+                    if (Measure(candidate) <= contentW) { marked = candidate; break; }
+                }
+            }
+            wrapped[^1] = (marked, lastLine);
+        }
+        return (wrapped, lyricSize, lineHeight, naturalRows);
     }
 
     private const int VibrantCacheMax = 300;

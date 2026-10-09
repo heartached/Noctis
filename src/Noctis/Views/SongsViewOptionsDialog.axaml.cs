@@ -1,8 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
+using Avalonia.Interactivity;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 
@@ -10,16 +9,20 @@ namespace Noctis.Views;
 
 /// <summary>
 /// Apple Music-style View Options sheet for the Songs list: sort field, direction,
-/// favorites filter and column visibility. Everything applies live, so the dialog has
-/// no OK/Cancel — closing it simply dismisses the sheet.
+/// favorites filter and column visibility, in the shared rounded pill pop-up
+/// (PillDialogHost: blurred app behind, animated open/close). Everything applies live, so
+/// the dialog has no OK/Cancel — Done, Escape and a click on the backdrop all just close.
 /// </summary>
 public partial class SongsViewOptionsDialog : Window
 {
-    private bool _closing;
-
     public SongsViewOptionsDialog()
     {
         InitializeComponent();
+        // Light-dismiss, as the sheet always had: nothing is pending, so a click on the
+        // blurred backdrop closes it. On the window, not the host: outside the card the host
+        // draws nothing hit-testable (its backdrop layer is IsHitTestVisible=False), so a
+        // backdrop press is routed to the window alone and a handler on the host never saw it.
+        AddHandler(PointerPressedEvent, OnBackdropPointerPressed, RoutingStrategies.Tunnel);
     }
 
     public SongsViewOptionsDialog(SongsViewOptionsViewModel vm) : this()
@@ -27,65 +30,31 @@ public partial class SongsViewOptionsDialog : Window
         DataContext = vm;
     }
 
-    protected override void OnOpened(EventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the description dialogs).
-        Dispatcher.UIThread.Post(() =>
+        // Escape is Done (an open drop-down takes its own Escape first, so the key never
+        // reaches here then). PillDialogHost turns the Close into the animated one.
+        if (e.Key == Key.Escape)
         {
-            DialogOverlay.Opacity = 1;
-            OptionsCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
-    }
-
-    protected override async void OnKeyDown(KeyEventArgs e)
-    {
+            e.Handled = true;
+            Close();
+            return;
+        }
         base.OnKeyDown(e);
-        if (e.Key != Key.Escape) return;
-        e.Handled = true;
-        // async void: an escaped exception would crash the app.
-        try { await CloseAnimatedAsync(); }
-        catch { Close(); }
     }
 
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    private async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        OptionsCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
-    }
+    private void OnDoneClick(object? sender, RoutedEventArgs e) => Close();
 
-    private async void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void OnBackdropPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // async void: an escaped exception would crash the app.
-        try { await CloseAnimatedAsync(); }
-        catch { Close(); }
-    }
-
-    private async void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        // Light-dismiss: a click on the dimmed backdrop closes the sheet. Nothing here
-        // is pending, so unlike the description dialogs there is no unsaved-edit guard.
-        e.Handled = true;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        // async void: an escaped exception would crash the app.
-        try { await CloseAnimatedAsync(); }
-        catch { Close(); }
-    }
-
-    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
+        // With the Sort by list open, the click outside belongs to the list's own
+        // light-dismiss: it closes the list, not the sheet.
+        if (SortCombo.IsDropDownOpen) return;
+        // Inside the card (its rounded corners included) is the card's business.
+        if (new Rect(OptionsCard.Bounds.Size).Contains(e.GetPosition(OptionsCard))) return;
         e.Handled = true;
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
+        Close();
     }
 
     public static async Task ShowAsync(SongsViewOptionsViewModel vm)
