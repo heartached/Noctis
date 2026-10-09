@@ -22,6 +22,8 @@
              away and back (TreeViewItem containers are recreated each visit). -->
         <Style Selector="TreeViewItem" x:DataType="m:FolderNode">
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <!-- Screen readers read the row as "Bruno Mars, 172 songs" (empty otherwise). -->
+            <Setter Property="AutomationProperties.Name" Value="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}" />
         </Style>
         <!-- Expand/collapse chevron: the sidebar folders' stroked arrow, one right-pointing
              glyph that FoldingTreeViewItem turns 0-90deg with the fold (Fluent swaps two

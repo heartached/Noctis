@@ -22,6 +22,7 @@
              so the command is invoked from the code-behind instead of Button.Command. -->
                         <DataTemplate x:Key="ChartRowTemplate" x:DataType="m:TopSongRow">
                             <Button Classes="browse-item home-chart-row"
+                                    AutomationProperties.Name="{Binding Track, Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                     helpers:DragFileBehavior.EnableFileDrag="True"
                                     ContextRequested="OnChartRowContextRequested"
                                     DoubleTapped="OnChartRowDoubleTapped">
@@ -163,6 +164,15 @@
         </Style>
         <Style Selector="Button.home-history-pill:pointerover">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
+        </Style>
+
+        <!-- The hero's Resume / Pause reads the label it shows (screen readers otherwise read
+             its content's type name, "Avalonia.Controls.StackPanel"). -->
+        <Style Selector="Button.continue-resume">
+            <Setter Property="AutomationProperties.Name" Value="{loc:T Home.Resume}"/>
+        </Style>
+        <Style Selector="Button.continue-resume.playing">
+            <Setter Property="AutomationProperties.Name" Value="{loc:T Home.Pause}"/>
         </Style>
 
         <!-- Rank numerals for the chart rows: plain white on both charts (09-13; the
@@ -488,7 +498,8 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="8" MinWidth="128">
-                                <Button Classes="accent-btn"
+                                <Button Classes="accent-btn continue-resume"
+                                        Classes.playing="{Binding IsContinuePlaying}"
                                         Background="{DynamicResource AccentButtonBackground}"
                                         BorderThickness="0"
                                         Padding="16,8"
@@ -580,6 +591,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:Artist">
                                         <Button Background="Transparent" BorderThickness="0" Padding="6"
+                                                AutomationProperties.Name="{Binding Name}"
                                                 Margin="0,2,18,2" Cursor="Hand"
                                                 Width="172"
                                                 HorizontalContentAlignment="Center"
@@ -869,6 +881,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnTimeRotationContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTimeRotationCommand}"
                                             CommandParameter="{Binding}">
@@ -930,6 +943,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnHeavyRotationContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayHeavyRotationCommand}"
                                             CommandParameter="{Binding}">
@@ -991,6 +1005,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnRediscoveredContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayRediscoveredCommand}"
                                             CommandParameter="{Binding}">

@@ -899,5 +899,7 @@ public partial class Track : ObservableObject
         }
     }
 
-    public override string ToString() => $"{Artist} - {Title}";
+    /// <summary>"Title, Artist" as the row shows them. A track list row's accessible name
+    /// falls back to its item's ToString(), so screen readers read the song, not the type.</summary>
+    public override string ToString() => $"{TitleDisplay}, {ArtistDisplay}";
 }

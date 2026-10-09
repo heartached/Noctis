@@ -310,6 +310,16 @@
         <Style Selector="Button.sort-pill:pressed">
             <Setter Property="RenderTransform" Value="scale(1.045)" />
         </Style>
+        <!-- Screen readers read a sort pill as it shows, "Sort: Newest first" (its content
+             alone reads as its type name, "Avalonia.Controls.StackPanel"). -->
+        <Style Selector="Button.sort-pill" x:DataType="vm:ArtistDetailViewModel">
+            <Setter Property="AutomationProperties.Name">
+                <MultiBinding StringFormat="{}{0} {1}">
+                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Main.Sort]" />
+                    <Binding Path="ReleaseSortLabel" />
+                </MultiBinding>
+            </Setter>
+        </Style>
         <!-- No hover zoom on covers and portraits: opt out of the global button scale. -->
         <Style Selector="Button.latest-cover:pointerover, Button.similar-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
@@ -524,6 +534,7 @@
         <DataTemplate x:Key="SongPill" x:DataType="m:TopSongRow">
             <Button Classes="browse-item song-row"
                     Classes.playing="{Binding Track.IsNowPlaying}"
+                    AutomationProperties.Name="{Binding Track, Converter={x:Static helpers:AccessibleNames.ItemName}}"
                     Background="{DynamicResource HomeCardBackground}"
                     BorderThickness="0"
                     CornerRadius="6"
@@ -650,6 +661,7 @@
             <!-- 190px disc: the same size as the Artists grid tiles (user ask 09-15). -->
             <StackPanel Spacing="10" Width="190" Margin="0,0,22,26">
                 <Button Classes="similar-tile"
+                        AutomationProperties.Name="{Binding Name}"
                         Focusable="False"
                         Background="Transparent"
                         BorderThickness="0"
@@ -889,7 +901,8 @@
             <StackPanel Margin="32,2,32,0">
                 <StackPanel Orientation="Horizontal" Spacing="26">
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabOverview}"
-                            Command="{Binding SelectTabCommand}" CommandParameter="overview">
+                            Command="{Binding SelectTabCommand}" CommandParameter="overview"
+                            AutomationProperties.Name="{loc:T ArtistDetail.Overview}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.Overview}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
@@ -897,7 +910,8 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabAlbums}"
-                            Command="{Binding SelectTabCommand}" CommandParameter="albums">
+                            Command="{Binding SelectTabCommand}" CommandParameter="albums"
+                            AutomationProperties.Name="{loc:T ArtistDetail.Albums}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.Albums}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
@@ -905,7 +919,8 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSingles}"
-                            Command="{Binding SelectTabCommand}" CommandParameter="singles">
+                            Command="{Binding SelectTabCommand}" CommandParameter="singles"
+                            AutomationProperties.Name="{loc:T ArtistDetail.SinglesEPs}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
@@ -913,7 +928,8 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSongs}"
-                            Command="{Binding SelectTabCommand}" CommandParameter="songs">
+                            Command="{Binding SelectTabCommand}" CommandParameter="songs"
+                            AutomationProperties.Name="{loc:T ArtistDetail.Songs}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.Songs}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
@@ -921,7 +937,8 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSimilar}"
-                            Command="{Binding SelectTabCommand}" CommandParameter="similar">
+                            Command="{Binding SelectTabCommand}" CommandParameter="similar"
+                            AutomationProperties.Name="{loc:T ArtistDetail.SimilarArtists}">
                         <StackPanel>
                             <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" />
                             <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
@@ -1029,7 +1046,8 @@
                                 <TextBlock Text="{Binding LatestReleaseSongsLine}" FontSize="12" Opacity="0.6" />
                                 <Button Classes="grey-pill" Margin="0,10,0,0" Padding="20,7"
                                         HorizontalAlignment="Left"
-                                        Command="{Binding PlayLatestReleaseCommand}">
+                                        Command="{Binding PlayLatestReleaseCommand}"
+                                        AutomationProperties.Name="{loc:T ArtistDetail.Play}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <PathIcon Data="{StaticResource PlaySolidIcon}" Width="11" Height="11" VerticalAlignment="Center" />
                                         <TextBlock Text="{loc:T ArtistDetail.Play}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />

@@ -1,4 +1,7 @@
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
@@ -102,6 +105,8 @@ public class FoldingTreeViewItem : TreeViewItem
     /// <summary>The chevron's current turn in degrees (tests).</summary>
     internal double ChevronAngle => _turn.Angle;
 
+    protected override AutomationPeer OnCreateAutomationPeer() => new FoldingTreeViewItemAutomationPeer(this);
+
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         SnapTo(IsExpanded);
@@ -110,7 +115,13 @@ public class FoldingTreeViewItem : TreeViewItem
         _items = e.NameScope.Find<ItemsPresenter>("PART_ItemsPresenter");
         _header = e.NameScope.Find<Control>("PART_LayoutRoot");
         _chevron = e.NameScope.Find<Control>("PART_ExpandCollapseChevron");
-        if (_chevron != null) _chevron.RenderTransform = _turn;
+        if (_chevron != null)
+        {
+            _chevron.RenderTransform = _turn;
+            // The row itself expands and collapses for screen readers (its peer, below); the
+            // chevron would be a second, nameless toggle beside it.
+            AutomationProperties.SetAccessibilityView(_chevron, AccessibilityView.Raw);
+        }
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -249,5 +260,47 @@ public class FoldingTreeViewItem : TreeViewItem
         // Full height behind the clip, top-anchored: the rows slide, they don't squash.
         base.ArrangeOverride(finalSize.WithHeight(Math.Max(finalSize.Height, _natural.Height)));
         return finalSize;
+    }
+}
+
+/// <summary>
+/// Avalonia's tree item peer (12.1) offers selection and scrolling but no ExpandCollapse
+/// pattern, so screen readers and UI Automation can't tell a folder is open or open it
+/// (UIA read 10-09). This one adds it: a folder without subfolders is a leaf.
+/// </summary>
+public class FoldingTreeViewItemAutomationPeer : TreeViewItemAutomationPeer, IExpandCollapseProvider
+{
+    public FoldingTreeViewItemAutomationPeer(TreeViewItem owner) : base(owner)
+        => owner.PropertyChanged += OnOwnerPropertyChanged;
+
+    private TreeViewItem Item => (TreeViewItem)Owner;
+
+    public ExpandCollapseState ExpandCollapseState => State(Item.IsExpanded);
+
+    public bool ShowsMenu => false;
+
+    public void Expand() => SetExpanded(true);
+
+    public void Collapse() => SetExpanded(false);
+
+    /// <summary>SetCurrentValue, not a local value: the Folders page binds IsExpanded two-way
+    /// to the folder in a style, which a local value would cut off.</summary>
+    private void SetExpanded(bool open)
+    {
+        if (!Item.IsEnabled) throw new ElementNotEnabledException();
+        if (Item.ItemCount == 0) return;
+        Item.SetCurrentValue(TreeViewItem.IsExpandedProperty, open);
+    }
+
+    private ExpandCollapseState State(bool open)
+        => Item.ItemCount == 0 ? ExpandCollapseState.LeafNode
+            : open ? ExpandCollapseState.Expanded
+            : ExpandCollapseState.Collapsed;
+
+    private void OnOwnerPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == TreeViewItem.IsExpandedProperty)
+            RaisePropertyChangedEvent(ExpandCollapsePatternIdentifiers.ExpandCollapseStateProperty,
+                State(e.GetOldValue<bool>()), State(e.GetNewValue<bool>()));
     }
 }

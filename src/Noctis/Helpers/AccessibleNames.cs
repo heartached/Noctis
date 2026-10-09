@@ -4,6 +4,9 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Data.Converters;
+using Noctis.Localization;
+using Noctis.Models;
 
 namespace Noctis.Helpers;
 
@@ -41,6 +44,25 @@ public static class AccessibleNames
         => button.Content is string ? null
             : ToolTip.GetTip(button) is string tip && !string.IsNullOrWhiteSpace(tip) ? tip
             : null;
+
+    /// <summary>
+    /// Names a templated row after the item it shows, for a row button or container that
+    /// would otherwise read its content's type name ("Avalonia.Controls.Border", UIA 10-09):
+    /// <c>AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"</c>.
+    /// </summary>
+    public static readonly IValueConverter ItemName = new FuncValueConverter<object?, string?>(NameOfItem);
+
+    /// <summary>A song reads "title, artist" (<see cref="Track.ToString"/>), a chart row its
+    /// song, a folder "name, N songs"; anything else its ToString().</summary>
+    public static string? NameOfItem(object? item) => item switch
+    {
+        TopSongRow row => row.Track.ToString(),
+        FolderNode folder => $"{folder.DisplayName}, "
+                             + (folder.TotalTrackCount == 1
+                                 ? Loc.T("DescriptionDialog.Song")
+                                 : Loc.T("DescriptionDialog.Songs", folder.TotalTrackCount)),
+        _ => item?.ToString(),
+    };
 
     private static void Sync(Button button)
     {

@@ -194,6 +194,7 @@
                 </Button>
                 <Button Grid.Column="2"
                         Command="{Binding ClearQueueCommand}"
+                        AutomationProperties.Name="{loc:T Queue.Clear}"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="6,3"
