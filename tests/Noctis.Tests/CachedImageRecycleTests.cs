@@ -95,7 +95,7 @@ public class CachedImageRecycleTests : IDisposable
         await Flush();
 
         image.SourcePath = P("a");
-        await Flush();
+        await PumpUntil(() => Volatile.Read(ref calls) == 1);
         Assert.Null(image.Source); // the first decode is parked in the decoder
 
         // A recycled container: the detach moves the load generation on, and the same
@@ -104,7 +104,7 @@ public class CachedImageRecycleTests : IDisposable
         host.Children.Add(image);
         await Flush();
         gate.Set();
-        await Flush();
+        await PumpUntil(() => image.Source != null);
 
         AssertShowsItsOwnCover(image);
         window.Close();
@@ -116,11 +116,13 @@ public class CachedImageRecycleTests : IDisposable
         // Slow decodes on a narrow lane, so work queues and many decodes find their tile
         // already moved on (the skip) — the same pressure a wheel glide puts on the pool.
         using var lane = new SemaphoreSlim(2);
+        var decoding = 0;
         ArtworkCache.DecoderOverride = (path, width) =>
         {
+            Interlocked.Increment(ref decoding);
             lane.Wait();
             try { Thread.Sleep(3); return Make(path, width); }
-            finally { lane.Release(); }
+            finally { lane.Release(); Interlocked.Decrement(ref decoding); }
         };
         // A budget of a few covers: entries are evicted (and re-decoded) all the time, like a
         // long grid scroll past the byte budget.
@@ -147,7 +149,8 @@ public class CachedImageRecycleTests : IDisposable
             Dispatcher.UIThread.RunJobs();
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
-        await Flush(settleMs: 1500);
+        // Settled once no decode is running and every tile has a bitmap up again.
+        await PumpUntil(() => Volatile.Read(ref decoding) == 0 && images.All(i => i.SourcePath == null || i.Source != null));
 
         foreach (var image in images.Where(i => i.SourcePath != null))
             AssertShowsItsOwnCover(image);
@@ -248,6 +251,22 @@ public class CachedImageRecycleTests : IDisposable
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             await Task.Delay(20);
         } while (DateTime.UtcNow < until);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>
+    /// Pumps until <paramref name="condition"/> holds: decodes run on below-normal pool threads,
+    /// which a busy machine can leave waiting far longer than any fixed settle time.
+    /// </summary>
+    private static async Task PumpUntil(Func<bool> condition, int budgetMs = 60000)
+    {
+        var deadline = Environment.TickCount64 + budgetMs;
+        while (!condition() && Environment.TickCount64 < deadline)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            await Task.Delay(10);
+        }
         Dispatcher.UIThread.RunJobs();
     }
 }

@@ -257,6 +257,17 @@ public static class ArtworkCache
     /// at <paramref name="decodeWidth"/> itself instead of its bucket.
     /// </summary>
     public static Bitmap? LoadAndCache(string path, int decodeWidth, bool exact)
+        => LoadAndCache(path, decodeWidth, exact, acquire: false);
+
+    /// <summary>
+    /// As <see cref="LoadAndCache(string,int,bool)"/>; with <paramref name="acquire"/> the bitmap
+    /// comes back already <see cref="Acquire"/>d for the caller, who must <see cref="Release"/> it.
+    /// A decode run off the UI thread is not on screen until the UI thread gets to it, and other
+    /// decodes can evict it meanwhile: only the dispose grace kept it alive, so a UI thread busier
+    /// than that showed a disposed bitmap and the next layout threw. A new entry carries the hold
+    /// from before it is cached, so no eviction can dispose it in between.
+    /// </summary>
+    internal static Bitmap? LoadAndCache(string path, int decodeWidth, bool exact, bool acquire)
     {
         try
         {
@@ -270,6 +281,7 @@ public static class ArtworkCache
             if (Cache.TryGetValue(key, out var hit))
             {
                 Touch(hit);
+                if (acquire) Acquire(hit.Bitmap);
                 return hit.Bitmap;
             }
 
@@ -290,6 +302,7 @@ public static class ArtworkCache
 
             var counter = Interlocked.Increment(ref _accessCounter);
             var newEntry = new CacheEntry(key, path, width, bitmap, counter);
+            if (acquire) newEntry.Refs = 1;
 
             if (!Cache.TryAdd(key, newEntry))
             {
@@ -298,6 +311,7 @@ public static class ArtworkCache
                 if (Cache.TryGetValue(key, out var existing))
                 {
                     Touch(existing);
+                    if (acquire) Acquire(existing.Bitmap);
                     return existing.Bitmap;
                 }
                 return null;
