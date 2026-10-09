@@ -1,9 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
-        xmlns:svc="using:Noctis.Services"
         xmlns:controls="using:Noctis.Controls"
         xmlns:conv="using:Noctis.Converters"
         x:Class="Noctis.Views.CreateSmartPlaylistDialog"
@@ -20,39 +19,15 @@
         <conv:SmartPlaylistDisplayNameConverter x:Key="DisplayName" />
     </Window.Resources>
 
-    <!-- Scoped outlines so input rows + the Cancel pill stay visible on light themes
-         where the dialog body and inputs share a (near-)white surface. -->
     <Window.Styles>
-        <!-- One outline for every control on a rule row. The Value box gets its white
-             1.5px ring from the global TextBox.crisp-input rule, which paints the
-             TEMPLATE part (Border#PART_BorderElement) — a Setter on the control's own
-             BorderBrush, as this block used to carry, never reached it, so the dropdowns
-             and the limit box sat in Fluent's dimmer grey next to a white Value pill.
-             These pin the same white on each template's own border part. -->
-        <Style Selector="ComboBox.crisp-combo">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+        <!-- Small muted label above a field / section, as the Metadata editor's. -->
+        <Style Selector="TextBlock.sp-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
         </Style>
-        <!-- Border#Background is Fluent's ComboBox border; HighlightBackground is the
-             focus/press overlay drawn over it, so both need the pill radius or the
-             corners square off the moment the dropdown is opened. -->
-        <Style Selector="ComboBox.crisp-combo /template/ Border#Background">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <Style Selector="ComboBox.crisp-combo:pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="White" />
-        </Style>
-        <Style Selector="ComboBox.crisp-combo:focus /template/ Border#Background,
-                         ComboBox.crisp-combo:pressed /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-        <Style Selector="ComboBox.crisp-combo /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999" />
+        <Style Selector="TextBlock.sp-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
         </Style>
 
         <!-- Pill-shaped hover/selection highlight for the dropdown items, the same recipe
@@ -67,316 +42,343 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
 
-        <!-- The limit box is a NumericUpDown, so its visible ring is the ButtonSpinner's
-             border, not the inner TextBox's (that one is pinned to 0 in Styles.axaml). -->
-        <Style Selector="NumericUpDown.limit-pill-number">
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+        <!-- Match All / Any: a two-segment pill in the fields' tone; the chosen side is a
+             brighter filled pill with full-strength text, the other one recedes. -->
+        <Style Selector="RadioButton.sp-seg">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="SegFill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="NumericUpDown.limit-pill-number /template/ ButtonSpinner#PART_Spinner">
+        <Style Selector="RadioButton.sp-seg:pointerover">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="RadioButton.sp-seg:checked">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+
+        <!-- A rule row's ✕: quiet until hovered. -->
+        <Style Selector="Button.sp-remove">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.sp-remove:pointerover">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.sp-remove:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- "Add description": a plain accent text button on the Name label's line. -->
+        <Style Selector="Button.sp-link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.sp-link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- The limit number in the pill-field look. limit-pill-number (Styles.axaml) clears
+             the inner TextBox; the visible pill is the ButtonSpinner, filled here like a
+             pill-field: transparent 1.5px ring at rest, accent while editing, greyed off. -->
+        <Style Selector="NumericUpDown.sp-limit /template/ ButtonSpinner#PART_Spinner">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
-        <Style Selector="NumericUpDown.limit-pill-number /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="White" />
+        <Style Selector="NumericUpDown.sp-limit:pointerover /template/ ButtonSpinner#PART_Spinner">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-
-        <!-- Until "Limit to" is ticked, both of its controls are switched off. The white
-             above is pinned per template part, so Fluent's own disabled chrome never gets a
-             look in — each one therefore states its own greyed-out ring here, and they use
-             the SAME brush so the pair dims together rather than one staying lit. -->
-        <Style Selector="ComboBox.crisp-combo:disabled /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="#59FFFFFF" />
+        <Style Selector="NumericUpDown.sp-limit:focus-within /template/ ButtonSpinner#PART_Spinner">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
         </Style>
-        <Style Selector="NumericUpDown.limit-pill-number:disabled /template/ ButtonSpinner#PART_Spinner">
-            <Setter Property="BorderBrush" Value="#59FFFFFF" />
+        <Style Selector="NumericUpDown.sp-limit:disabled /template/ ButtonSpinner#PART_Spinner">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         </Style>
-        <Style Selector="NumericUpDown.limit-pill-number:disabled /template/ ButtonSpinner#PART_Spinner /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#59FFFFFF" />
+        <Style Selector="NumericUpDown.sp-limit:disabled">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <!-- The sentence's words dim with the controls while Limit is off. -->
+        <Style Selector="TextBlock.sp-off">
+            <Setter Property="Opacity" Value="0.4" />
         </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay that captures all input.
-         Starts transparent; code-behind fades it in on open and back out
-         before closing (same animation as the Add to Playlist dialog). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor, with the blurred app
+         behind, and a cleaner layout: name first (description one click away), the rules as
+         plain pill rows under one "Match All / Any" choice, the limit as one sentence, the
+         live count in the footer. PillDialogHost draws the blurred, dimmed owner, the card
+         with its shadow, and plays the open/close animation (every close path — Cancel,
+         Create, Esc, Alt+F4 — animates out once). The result reaches the caller through
+         the view model's SmartPlaylistCreated event, never through Close(result).
+         MaxHeight, not Height: the card grows with the rules and then scrolls. -->
+    <controls:PillDialogHost>
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="620"
-                MaxHeight="560"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel Margin="0">
+    <Grid Width="640" MaxHeight="680" RowDefinitions="Auto,*,Auto">
 
-                <!-- Bottom bar: preview count + Create/Cancel -->
-                <Border DockPanel.Dock="Bottom"
-                        Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13" Opacity="0.6">
-                            <TextBlock.Text>
-                                <Binding Path="MatchingTrackCount" StringFormat="Matches {0} tracks" />
-                            </TextBlock.Text>
-                        </TextBlock>
-                        <Button Grid.Column="2"
-                                Content="{loc:T CreateSmartPlaylist.Cancel}"
-                                Command="{Binding CancelCommand}"
-                                BorderThickness="0"
-                                Width="100"
-                                Padding="0,8"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Margin="0,0,8,0"
-                                Cursor="Hand" />
-                        <Button Grid.Column="3"
-                                Content="{loc:T CreateSmartPlaylist.Create}"
-                                Command="{Binding CreateCommand}"
-                                Width="100"
-                                Padding="0,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
+        <!-- Header: title and the one-line purpose (the Playlists page "New" menu's words). -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-
-                <!-- Scrollable content -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,20,24,16" Spacing="14">
-
-                        <!-- Title -->
-                        <TextBlock Text="{loc:T CreateSmartPlaylist.CreateSmartPlaylist}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   HorizontalAlignment="Center" />
-
-                        <!-- Name + description: same pill inputs as the other playlist dialogs -->
-                        <StackPanel Spacing="10" Margin="0,4,0,0">
-                            <TextBox Text="{Binding PlaylistName}"
-                                     Classes="crisp-input"
-                                     Watermark="{loc:T CreateSmartPlaylist.PlaylistName}"
-                                     CornerRadius="999"
-                                     Padding="14,8"
-                                     x:Name="NameTextBox" />
-                            <TextBlock Text="{loc:T CreateSmartPlaylist.NameRequired}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource AccentColorBrush}"
-                                       IsVisible="{Binding ShowNameRequiredError}" />
-                            <TextBox Text="{Binding PlaylistDescription}"
-                                     Classes="crisp-input"
-                                     Watermark="{loc:T CreateSmartPlaylist.DescriptionOptional}"
-                                     CornerRadius="999"
-                                     Padding="14,8" />
-                        </StackPanel>
-
-                        <!-- Rules header with the match mode inline on the right -->
-                        <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                            <TextBlock Grid.Column="0"
-                                       Text="{loc:T CreateSmartPlaylist.Rules}"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{loc:T CreateSmartPlaylist.Match}"
-                                           VerticalAlignment="Center"
-                                           FontSize="13"
-                                           Opacity="0.7" />
-                                <!-- The same switch every Settings row uses (LottieToggle),
-                                     not Fluent's ToggleSwitch: its off state is the dark
-                                     slate track with a white knob rather than the pale pill
-                                     Fluent draws here. LottieToggle carries no On/Off
-                                     content, so the label sits beside it. -->
-                                <controls:LottieToggle IsChecked="{Binding MatchAll}"
-                                                       VerticalAlignment="Center" />
-                                <TextBlock Text="ALL rules" VerticalAlignment="Center" FontSize="13"
-                                           IsVisible="{Binding MatchAll}" />
-                                <TextBlock Text="ANY rule" VerticalAlignment="Center" FontSize="13"
-                                           IsVisible="{Binding !MatchAll}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Rules list -->
-                        <ItemsControl ItemsSource="{Binding Rules}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:SmartPlaylistRuleViewModel">
-                                    <!-- Glide, the Settings sub-block reveal: a new rule slides
-                                         out from under Add Rule and a removed one folds away
-                                         instead of both popping. Lift/Motion copied from the
-                                         Integrations "Show Album on Discord" block. -->
-                                    <controls:CollapsibleContent IsOpen="{Binding IsRevealed}" Lift="10" Motion="Glide">
-                                    <Border Background="{DynamicResource ChipBackground}" CornerRadius="12" Padding="12" Margin="0,3">
-                                        <Grid ColumnDefinitions="*,*,*,Auto">
-                                            <!-- Field dropdown -->
-                                            <ComboBox Grid.Column="0"
-                                                      Classes="crisp-combo"
-                                                      ItemsSource="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).AllFields}"
-                                                      SelectedItem="{Binding SelectedField}"
-                                                      Margin="0,0,8,0"
-                                                      CornerRadius="999"
-                                                      Padding="14,0"
-                                                      VerticalAlignment="Center"
-                                                      VerticalContentAlignment="Center"
-                                                      HorizontalAlignment="Stretch">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="m:RuleField">
-                                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-
-                                            <!-- Operator dropdown -->
-                                            <ComboBox Grid.Column="1"
-                                                      Classes="crisp-combo"
-                                                      ItemsSource="{Binding AvailableOperators}"
-                                                      SelectedItem="{Binding SelectedOperator}"
-                                                      Margin="0,0,8,0"
-                                                      CornerRadius="999"
-                                                      Padding="14,0"
-                                                      VerticalAlignment="Center"
-                                                      VerticalContentAlignment="Center"
-                                                      HorizontalAlignment="Stretch">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate x:DataType="m:RuleOperator">
-                                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-
-                                            <!-- Value input(s) -->
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                                                <TextBox Text="{Binding Value}"
-                                                         Classes="crisp-input"
-                                                         IsVisible="{Binding ShowValueInput}"
-                                                         Watermark="{loc:T CreateSmartPlaylist.Value}"
-                                                         MinWidth="100"
-                                                         CornerRadius="999"
-                                                         Padding="12,6"
-                                                         VerticalAlignment="Center"
-                                                         VerticalContentAlignment="Center"
-                                                         HorizontalAlignment="Stretch" />
-                                                <TextBox Text="{Binding Value2}"
-                                                         Classes="crisp-input"
-                                                         IsVisible="{Binding ShowValue2Input}"
-                                                         Watermark="{loc:T CreateSmartPlaylist.To}"
-                                                         Width="80"
-                                                         CornerRadius="999"
-                                                         Padding="12,6"
-                                                         VerticalAlignment="Center"
-                                                         VerticalContentAlignment="Center" />
-                                            </StackPanel>
-
-                                            <!-- Remove button -->
-                                            <Button Grid.Column="3"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    CornerRadius="999"
-                                                    Padding="8,4"
-                                                    Margin="4,0,0,0"
-                                                    Cursor="Hand"
-                                                    VerticalAlignment="Center"
-                                                    Command="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).RemoveRuleCommand}"
-                                                    CommandParameter="{Binding}">
-                                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" />
-                                            </Button>
-                                        </Grid>
-                                    </Border>
-                                    </controls:CollapsibleContent>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <!-- Add Rule button — quiet chip so Create stays the only accent action -->
-                        <Button Command="{Binding AddRuleCommand}"
-                                Background="{DynamicResource ChipBackground}"
-                                BorderThickness="0"
-                                HorizontalAlignment="Left"
-                                Padding="16,7"
-                                CornerRadius="999"
-                                FontWeight="SemiBold"
-                                Cursor="Hand">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
-                                <TextBlock Text="{loc:T CreateSmartPlaylist.AddRule}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Limit section -->
-                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding HasLimit}" Content="{loc:T CreateSmartPlaylist.Limit}" VerticalAlignment="Center" Padding="4,0,0,0" />
-                            <NumericUpDown Value="{Binding LimitCount}"
-                                           Minimum="1" Maximum="1000"
-                                           IsEnabled="{Binding HasLimit}"
-                                           Width="72"
-                                           Height="36"
-                                           Classes="limit-pill-number"
-                                           CornerRadius="999"
-                                           ShowButtonSpinner="False"
-                                           FormatString="0"
-                                           Padding="0"
-                                           TextAlignment="Center"
-                                           HorizontalContentAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           VerticalContentAlignment="Center" />
-                            <TextBlock Text="{loc:T CreateSmartPlaylist.TracksSortedBy}" VerticalAlignment="Center" FontSize="13" />
-                            <ComboBox Classes="crisp-combo"
-                                      ItemsSource="{Binding AllSortOptions}"
-                                      SelectedItem="{Binding SortBy}"
-                                      IsEnabled="{Binding HasLimit}"
-                                      Width="160"
-                                      CornerRadius="999"
-                                      Padding="14,0"
-                                      VerticalAlignment="Center"
-                                      VerticalContentAlignment="Center">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="m:SmartPlaylistSortBy">
-                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
-
-                    </StackPanel>
-                </ScrollViewer>
-
-            </DockPanel>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T CreateSmartPlaylist.CreateSmartPlaylist}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T CreateSmartPlaylist.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
         </Border>
-    </Border>
+
+        <!-- Footer: live count on the left, Cancel / Create on the right. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock x:Name="MatchCount"
+                           Grid.Column="0" Classes="sp-status" Text="{Binding MatchCountText}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T CreateSmartPlaylist.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T CreateSmartPlaylist.Create}"
+                        Command="{Binding CreateCommand}"
+                        IsEnabled="{Binding HasRules}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+
+        <!-- The 28px side margin is also the overlay scrollbar's lane. -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="28,20,28,24" Spacing="22">
+
+                <!-- 1. Name (Enter creates); the description opens under it on request. -->
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="16,0,4,6">
+                        <TextBlock Grid.Column="0" Classes="sp-label" Text="{loc:T CreateSmartPlaylist.Name}"
+                                   VerticalAlignment="Center" />
+                        <Button x:Name="AddDescriptionButton"
+                                Grid.Column="1" Classes="sp-link"
+                                Content="{loc:T CreateSmartPlaylist.AddDescription}"
+                                VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBox x:Name="NameTextBox"
+                             Classes="pill-field"
+                             Text="{Binding PlaylistName}"
+                             Watermark="{loc:T CreateSmartPlaylist.PlaylistName}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding CreateCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <TextBlock Text="{loc:T CreateSmartPlaylist.NameRequired}"
+                               FontSize="12"
+                               Margin="16,6,0,0"
+                               Foreground="{DynamicResource AccentColorBrush}"
+                               IsVisible="{Binding ShowNameRequiredError}" />
+                    <controls:CollapsibleContent x:Name="DescriptionReveal" IsOpen="False" Lift="10" Motion="Glide">
+                        <StackPanel Spacing="6" Margin="0,14,0,0">
+                            <TextBlock Classes="sp-label" Text="{loc:T CreateSmartPlaylist.Description}" Margin="16,0,0,0" />
+                            <TextBox x:Name="DescriptionTextBox"
+                                     Classes="pill-field"
+                                     Text="{Binding PlaylistDescription}"
+                                     Watermark="{loc:T CreateSmartPlaylist.Optional}" />
+                        </StackPanel>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+
+                <!-- 2. Rules, under one Match All / Any choice. -->
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="16,0,0,8">
+                        <TextBlock Grid.Column="0" Classes="sp-label" Text="{loc:T CreateSmartPlaylist.Rules}"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <TextBlock Classes="sp-label" Text="{loc:T CreateSmartPlaylist.Match}"
+                                       VerticalAlignment="Center" />
+                            <Border Classes="pill-well" CornerRadius="999" Padding="3">
+                                <StackPanel Orientation="Horizontal" Spacing="2">
+                                    <RadioButton x:Name="MatchAllSegment" Classes="sp-seg" GroupName="SmartMatchMode"
+                                                 Content="{loc:T CreateSmartPlaylist.MatchAll}"
+                                                 IsChecked="{Binding MatchAll}" />
+                                    <RadioButton x:Name="MatchAnySegment" Classes="sp-seg" GroupName="SmartMatchMode"
+                                                 Content="{loc:T CreateSmartPlaylist.MatchAny}"
+                                                 IsChecked="{Binding MatchAny}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <ItemsControl x:Name="RulesList" ItemsSource="{Binding Rules}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SmartPlaylistRuleViewModel">
+                                <!-- Glide, the Settings sub-block reveal: a new rule slides out
+                                     from under Add rule and a removed one folds away instead of
+                                     both popping. -->
+                                <controls:CollapsibleContent IsOpen="{Binding IsRevealed}" Lift="10" Motion="Glide">
+                                    <Grid ColumnDefinitions="*,8,*,8,1.2*,4,Auto" Margin="0,0,0,8">
+                                        <!-- Field -->
+                                        <ComboBox Grid.Column="0"
+                                                  Classes="pill-field"
+                                                  ItemsSource="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).AllFields}"
+                                                  SelectedItem="{Binding SelectedField}"
+                                                  VerticalAlignment="Center">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="m:RuleField">
+                                                    <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <!-- Operator -->
+                                        <ComboBox Grid.Column="2"
+                                                  Classes="pill-field"
+                                                  ItemsSource="{Binding AvailableOperators}"
+                                                  SelectedItem="{Binding SelectedOperator}"
+                                                  VerticalAlignment="Center">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="m:RuleOperator">
+                                                    <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <!-- Value (and the upper bound for "is between") -->
+                                        <Grid Grid.Column="4" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                            <TextBox Grid.Column="0"
+                                                     Classes="pill-field"
+                                                     Text="{Binding Value}"
+                                                     IsVisible="{Binding ShowValueInput}"
+                                                     Watermark="{loc:T CreateSmartPlaylist.Value}"
+                                                     MinWidth="0" />
+                                            <TextBox Grid.Column="1"
+                                                     Classes="pill-field"
+                                                     Text="{Binding Value2}"
+                                                     IsVisible="{Binding ShowValue2Input}"
+                                                     Watermark="{loc:T CreateSmartPlaylist.To}"
+                                                     Width="84"
+                                                     Margin="6,0,0,0" />
+                                        </Grid>
+
+                                        <!-- Remove -->
+                                        <Button Grid.Column="6"
+                                                Classes="sp-remove"
+                                                VerticalAlignment="Center"
+                                                ToolTip.Tip="{loc:T CreateSmartPlaylist.RemoveRule}"
+                                                AutomationProperties.Name="{loc:T CreateSmartPlaylist.RemoveRule}"
+                                                Command="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).RemoveRuleCommand}"
+                                                CommandParameter="{Binding}">
+                                            <PathIcon Data="{StaticResource DismissIcon}" Width="11" Height="11" />
+                                        </Button>
+                                    </Grid>
+                                </controls:CollapsibleContent>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Add rule: quiet pill so Create stays the only accent action. -->
+                    <Button Classes="pill-secondary"
+                            Command="{Binding AddRuleCommand}"
+                            HorizontalAlignment="Left"
+                            MinHeight="32"
+                            Padding="14,0"
+                            FontSize="12.5"
+                            FontWeight="SemiBold">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource AddIcon}" Width="11" Height="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:T CreateSmartPlaylist.AddRule}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- 3. Limit, as one sentence: [✓] Limit to [25] tracks, sorted by [Most Played ▾]. -->
+                <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="8">
+                    <CheckBox x:Name="LimitCheckBox"
+                              Classes="metadata-pill-checkbox"
+                              IsChecked="{Binding HasLimit}"
+                              Content="{loc:T CreateSmartPlaylist.Limit}"
+                              VerticalAlignment="Center" />
+                    <NumericUpDown x:Name="LimitBox"
+                                   Classes="limit-pill-number sp-limit"
+                                   Value="{Binding LimitCount}"
+                                   Minimum="1" Maximum="1000"
+                                   IsEnabled="{Binding HasLimit}"
+                                   Width="76"
+                                   MinWidth="0"
+                                   Height="40"
+                                   ShowButtonSpinner="False"
+                                   FormatString="0"
+                                   VerticalAlignment="Center" />
+                    <TextBlock Text="{loc:T CreateSmartPlaylist.TracksSortedBy}"
+                               Classes.sp-off="{Binding !HasLimit}"
+                               FontSize="13" VerticalAlignment="Center" />
+                    <ComboBox x:Name="SortBox"
+                              Classes="pill-field"
+                              ItemsSource="{Binding AllSortOptions}"
+                              SelectedItem="{Binding SortBy}"
+                              IsEnabled="{Binding HasLimit}"
+                              HorizontalAlignment="Left"
+                              MinWidth="170"
+                              VerticalAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:SmartPlaylistSortBy">
+                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </WrapPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

@@ -1,7 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:views="using:Noctis.Views"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.AudioConverterDialog"
         x:DataType="vm:AudioConverterViewModel"
         Title="{loc:T AudioConverter.Convert}"
@@ -13,182 +15,295 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <Style Selector="TextBox.pill">
+        <Style Selector="TextBlock.cv-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+        </Style>
+        <Style Selector="TextBlock.cv-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="TextBlock.cv-error">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#FF8A80" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Per-row state chip: a dot and one word on a faint tint (Import's Matched/Missing);
+             the full status (ffmpeg's error, the output path) is its tooltip. -->
+        <Style Selector="Border.cv-chip">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="Padding" Value="8,2,9,2" />
+            <Setter Property="Background" Value="#18808080" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.cv-chip Ellipse">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Fill" Value="#80808080" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.cv-chip.working Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.cv-chip.done">
+            <Setter Property="Background" Value="#293BB273" />
+        </Style>
+        <Style Selector="Border.cv-chip.done Ellipse">
+            <Setter Property="Fill" Value="#3BB273" />
+        </Style>
+        <Style Selector="Border.cv-chip.skipped">
+            <Setter Property="Background" Value="#33F2A33A" />
+        </Style>
+        <Style Selector="Border.cv-chip.skipped Ellipse">
+            <Setter Property="Fill" Value="#F2A33A" />
+        </Style>
+        <Style Selector="Border.cv-chip.failed">
+            <Setter Property="Background" Value="#33FF6B6B" />
+        </Style>
+        <Style Selector="Border.cv-chip.failed Ellipse">
+            <Setter Property="Fill" Value="#FF6B6B" />
+        </Style>
+
+        <!-- Thin inline bar under the row while its file converts (YouTube download's bar). -->
+        <Style Selector="ProgressBar.cv-bar">
+            <Setter Property="Height" Value="3" />
             <Setter Property="MinHeight" Value="0" />
-        </Style>
-        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBox.pill">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
-        </Style>
-        <!-- Pill-shaped hover/selection highlight for dropdown items, matching the
-             rounded menu highlight used elsewhere. Margin insets each row so the pill
-             floats; CornerRadius on the content presenter clips it to a pill. -->
-        <Style Selector="ComboBox.pill ComboBoxItem">
-            <Setter Property="Margin" Value="4,1" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBox.pill ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Background" Value="#26808080" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Margin" Value="0,5,0,1" />
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="680"
-                MaxHeight="820"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header -->
-                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
-                    <TextBlock Text="{Binding TitleText}"
-                               FontSize="20" FontWeight="Bold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="{loc:T AudioConverter.TranscodeSelectedTracksAnother}"
-                               FontSize="12" Opacity="0.6"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor / Find Metadata.
+         PillDialogHost draws the blurred, dimmed app behind, the card with its shadow, and
+         plays the open/close animation (every close path — Cancel, Esc, the view model's
+         Closed, Alt+F4 — animates out once). MaxHeight, not Height: the card sizes to its
+         content and stays bounded so a long queue virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Footer -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
-                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1"
-                                Content="{loc:T AudioConverter.Cancel}"
-                                Command="{Binding CancelCommand}"
-                                Width="100" Padding="0,8"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Margin="0,0,8,0"
-                                Cursor="Hand" />
-                        <Button Grid.Column="2"
-                                Content="{loc:T AudioConverter.Convert}"
-                                Command="{Binding StartCommand}"
-                                IsEnabled="{Binding !IsConverting}"
-                                Width="100" Padding="0,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
+    <Grid Width="640" MaxHeight="760" RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- Header: icon, "Convert N tracks", one-line purpose. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource SyncIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto"
-                              Padding="24,4,24,8">
-                    <StackPanel Spacing="14">
-
-                        <!-- Format + bitrate -->
-                        <Grid ColumnDefinitions="140,*">
-                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.Format}" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Classes="pill"
-                                      ItemsSource="{Binding FormatOptions}"
-                                      SelectedItem="{Binding SelectedFormat}"
-                                      HorizontalAlignment="Stretch" />
-                        </Grid>
-
-                        <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitrateApplies}">
-                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.BitrateKbps}" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Classes="pill"
-                                      ItemsSource="{Binding BitrateOptions}"
-                                      SelectedItem="{Binding SelectedBitrate}"
-                                      HorizontalAlignment="Stretch" />
-                        </Grid>
-
-                        <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitDepthApplies}">
-                            <TextBlock Grid.Column="0" Text="{loc:T AudioConverter.BitDepth}" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1" Classes="pill"
-                                      ItemsSource="{Binding BitDepthOptions}"
-                                      SelectedItem="{Binding SelectedBitDepth}"
-                                      HorizontalAlignment="Stretch" />
-                        </Grid>
-
-                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-
-                        <!-- Output folder -->
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="{loc:T AudioConverter.OutputFolder}" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="{loc:T AudioConverter.LeaveBlankWriteNext}"
-                                       FontSize="11" Opacity="0.55" />
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Grid.Column="0" Classes="pill"
-                                         Text="{Binding OutputFolder}"
-                                         Watermark="{loc:T AudioConverter.BesideSourceFile}" />
-                                <Button Grid.Column="1" Content="{loc:T AudioConverter.Browse}"
-                                        Click="OnBrowseOutputClick"
-                                        Padding="14,8"
-                                        CornerRadius="999"
-                                        Margin="8,0,0,0"
-                                        Cursor="Hand" />
-                            </Grid>
-                        </StackPanel>
-
-                        <!-- Filename pattern -->
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="{loc:T AudioConverter.FilenamePattern}" FontSize="13" FontWeight="SemiBold" />
-                            <TextBlock Text="{loc:T AudioConverter.TokensArtistAlbumartistAlbum}"
-                                       FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
-                            <TextBox Classes="pill" Text="{Binding FilenamePattern}" />
-                        </StackPanel>
-
-                        <!-- Options -->
-                        <StackPanel Spacing="6">
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding CopyTags}" Content="{loc:T AudioConverter.CopyTagsFromSource}" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding EmbedArtwork}" Content="{loc:T AudioConverter.EmbedSourceArtwork}" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding OverwriteExisting}" Content="{loc:T AudioConverter.OverwriteExistingOutputFiles}" />
-                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding AddToLibrary}" Content="{loc:T AudioConverter.AddLibraryShowApp}" />
-                        </StackPanel>
-
-                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-
-                        <!-- Job list -->
-                        <TextBlock Text="{loc:T AudioConverter.Queue}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
-                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="220">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Jobs}">
-                                    <!-- Virtualized like the ReplayGain queue: Jobs holds one entry per
-                                         selected track, so a Ctrl+A selection built every row on the UI
-                                         thread the moment the dialog opened. -->
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <VirtualizingStackPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:AudioConverterViewModel+JobRow">
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                                                <StackPanel Grid.Column="0" Spacing="1">
-                                                    <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding TrackSubtitle}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center"
-                                                           Margin="12,0,0,0" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T AudioConverter.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
         </Border>
-    </Border>
+
+        <!-- Settings: locked while a run goes (the run already took them). -->
+        <StackPanel Grid.Row="1" Margin="28,18,28,0" Spacing="14" IsEnabled="{Binding IsIdle}">
+
+            <!-- Format + quality side by side; quality is a bitrate for lossy formats and a
+                 bit depth for lossless ones. -->
+            <Grid ColumnDefinitions="*,12,*">
+                <StackPanel Grid.Column="0" Spacing="6">
+                    <TextBlock Classes="cv-label" Text="{loc:T AudioConverter.Format}" />
+                    <ComboBox Classes="pill-field"
+                              ItemsSource="{Binding FormatOptions}"
+                              SelectedItem="{Binding SelectedFormat}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding Converter={x:Static views:AudioConverterDialog.FormatLabel}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Classes="cv-label" Text="{loc:T AudioConverter.Quality}" />
+                    <Panel>
+                        <ComboBox Classes="pill-field"
+                                  IsVisible="{Binding BitrateApplies}"
+                                  ItemsSource="{Binding BitrateOptions}"
+                                  SelectedItem="{Binding SelectedBitrate}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:Int32">
+                                    <TextBlock Text="{Binding StringFormat={}{0} kbps}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ComboBox Classes="pill-field"
+                                  IsVisible="{Binding BitDepthApplies}"
+                                  ItemsSource="{Binding BitDepthOptions}"
+                                  SelectedItem="{Binding SelectedBitDepth}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding Converter={x:Static views:AudioConverterDialog.BitDepthLabel}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ComboBox Classes="pill-field"
+                                  IsVisible="{Binding PcmBitDepthApplies}"
+                                  ItemsSource="{Binding PcmBitDepthOptions}"
+                                  SelectedItem="{Binding SelectedPcmBitDepth}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding Converter={x:Static views:AudioConverterDialog.BitDepthLabel}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Panel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Output folder: the watermark says where files go when it's blank. -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="cv-label" Text="{loc:T AudioConverter.OutputFolder}" />
+                <Grid ColumnDefinitions="*,8,Auto">
+                    <TextBox Grid.Column="0" Classes="pill-field"
+                             Text="{Binding OutputFolder}"
+                             Watermark="{loc:T AudioConverter.NextToOriginal}" />
+                    <Button x:Name="BrowseButton" Grid.Column="2" Classes="pill-secondary"
+                            Content="{loc:T AudioConverter.Browse}"
+                            Padding="18,0"
+                            Click="OnBrowseOutputClick" />
+                </Grid>
+                <TextBlock Classes="cv-error" Text="{Binding FolderError}" IsVisible="{Binding HasFolderError}" />
+            </StackPanel>
+
+            <!-- File name: tag chips add a token at the caret; the accent line is the first
+                 track's resulting name. -->
+            <StackPanel Spacing="6">
+                <TextBlock Classes="cv-label" Text="{loc:T AudioConverter.FileName}" />
+                <TextBox x:Name="PatternBox"
+                         Classes="pill-field"
+                         Text="{Binding FilenamePattern}"
+                         Watermark="%title%" />
+                <ItemsControl x:Name="TokenChips" ItemsSource="{Binding Tokens}" Margin="4,0,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemSpacing="6" LineSpacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AudioConverterViewModel+PatternToken">
+                            <!-- Not focusable: the pattern keeps the caret the chip inserts at. -->
+                            <Button Classes="pill-secondary"
+                                    Content="{Binding Label}"
+                                    Focusable="False"
+                                    MinHeight="28"
+                                    Padding="12,0"
+                                    FontSize="12"
+                                    FontWeight="Normal"
+                                    ToolTip.Tip="{loc:T AudioConverter.InsertToken}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,2,0,0"
+                            Background="Transparent"
+                            ToolTip.Tip="{loc:T AudioConverter.ExampleTip}"
+                            IsVisible="{Binding ExampleName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="→" FontSize="12.5" Opacity="0.45" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ExampleName}" FontSize="12.5"
+                               Foreground="{DynamicResource AccentColorBrush}"
+                               TextTrimming="CharacterEllipsis" MaxWidth="560" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="cv-error" Text="{Binding PatternError}" IsVisible="{Binding HasPatternError}" />
+            </StackPanel>
+
+            <!-- Options: four short pill checks, detail in their tooltips. -->
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,8,Auto" Margin="0,2,0,0">
+                <CheckBox Grid.Row="0" Grid.Column="0" Classes="metadata-pill-checkbox"
+                          IsChecked="{Binding CopyTags}"
+                          Content="{loc:T AudioConverter.OptCopyTags}"
+                          ToolTip.Tip="{loc:T AudioConverter.TipCopyTags}" />
+                <CheckBox Grid.Row="0" Grid.Column="1" Classes="metadata-pill-checkbox"
+                          IsChecked="{Binding EmbedArtworkEffective}"
+                          IsEnabled="{Binding ArtworkApplies}"
+                          Content="{loc:T AudioConverter.OptEmbedArtwork}"
+                          ToolTip.Tip="{loc:T AudioConverter.TipEmbedArtwork}"
+                          ToolTip.ShowOnDisabled="True" />
+                <CheckBox Grid.Row="2" Grid.Column="0" Classes="metadata-pill-checkbox"
+                          IsChecked="{Binding OverwriteExisting}"
+                          Content="{loc:T AudioConverter.OptOverwrite}"
+                          ToolTip.Tip="{loc:T AudioConverter.TipOverwrite}" />
+                <CheckBox Grid.Row="2" Grid.Column="1" Classes="metadata-pill-checkbox"
+                          IsChecked="{Binding AddToLibrary}"
+                          Content="{loc:T AudioConverter.OptAddToLibrary}"
+                          ToolTip.Tip="{loc:T AudioConverter.TipAddToLibrary}" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Queue: one filled card per file with its state chip and, while it converts, a
+             thin bar. Right padding is the overlay scrollbar's lane. -->
+        <ScrollViewer Grid.Row="2"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Padding="28,18,28,10">
+            <ItemsControl ItemsSource="{Binding Jobs}">
+                <!-- Virtualized: Jobs holds one entry per selected track, so a Ctrl+A
+                     selection built every row on the UI thread the moment the dialog opened. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AudioConverterViewModel+JobRow">
+                        <Border Classes="pill-well" CornerRadius="16" Padding="16,9,12,9" Margin="0,0,0,6">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TrackTitle}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding TrackSubtitle}" FontSize="11.5" Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <ProgressBar Classes="cv-bar" IsIndeterminate="True"
+                                                 IsVisible="{Binding IsWorking}" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Classes="cv-chip"
+                                        Classes.working="{Binding IsWorking}"
+                                        Classes.done="{Binding IsSucceeded}"
+                                        Classes.skipped="{Binding IsSkipped}"
+                                        Classes.failed="{Binding IsFailedState}"
+                                        ToolTip.Tip="{Binding Detail}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Ellipse />
+                                        <TextBlock Text="{Binding ChipText}" FontSize="11.5" Opacity="0.85" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Footer: status left, Cancel / Convert right (the editor's Cancel / Save). -->
+        <Border Grid.Row="3"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="cv-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"
+                           ToolTip.Tip="{Binding StatusMessage}" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{Binding CancelLabel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T AudioConverter.Convert}"
+                        Command="{Binding StartCommand}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

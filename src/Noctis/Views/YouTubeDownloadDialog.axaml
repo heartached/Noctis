@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.YouTubeDownloadDialog"
         x:DataType="vm:YouTubeDownloadViewModel"
         Title="{loc:T YouTube.Title}"
@@ -13,214 +14,265 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
-             mid-grey, layout-rounded. The Fluent templates restyle the border on hover/focus/press,
-             so the template parts are pinned too. Neutral buttons opt in via .pill-outline. -->
-        <Style Selector="TextBox.pill">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="16,10" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <!-- Result cards: filled pill-well rows; a downloaded one gets the accent ring, like a
+             ticked row in Find metadata. The 1.5px ring is always there (transparent otherwise)
+             so finishing only recolours it and nothing shifts. -->
+        <Style Selector="Border.yt-row">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <Style Selector="TextBox.pill:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-        </Style>
-        <Style Selector="TextBox.pill:focus /template/ Border#PART_BorderElement, TextBox.pill:focus-within /template/ Border#PART_BorderElement">
+        <Style Selector="Border.yt-row.done">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="BorderThickness" Value="1.5" />
         </Style>
-        <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+        <Style Selector="Border.yt-art">
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="#14FFFFFF" />
         </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="ProgressBar.yt-bar">
+            <Setter Property="Height" Value="4" />
+            <Setter Property="MinHeight" Value="0" />
+            <!-- Fluent's MinWidth (200) pushed the install bar wider than its 160 px slot. -->
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Background" Value="#26FFFFFF" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
         </Style>
-        <Style Selector="Border.result-row">
-            <Setter Property="Padding" Value="10" />
-            <Setter Property="CornerRadius" Value="14" />
-            <Setter Property="Background" Value="#10FFFFFF" />
-        </Style>
-        <Style Selector="Border.result-row:pointerover">
-            <Setter Property="Background" Value="#1AFFFFFF" />
-        </Style>
-        <Style Selector="TextBlock.status.failed">
+        <Style Selector="TextBlock.yt-failed">
             <Setter Property="Foreground" Value="#FF8A80" />
         </Style>
-        <!-- Round header X (same look as the Settings header close). -->
-        <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        <!-- Footer status, as Find metadata's. -->
+        <Style Selector="TextBlock.yt-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
         </Style>
-        <Style Selector="Button.dialog-close:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
+
+        <!-- Loading skeleton (Find online's): a slow breath, keyed on [IsVisible=True] so a
+             hidden skeleton's INFINITE clock doesn't keep ticking. -->
+        <Style Selector="Border.yt-skel">
+            <Setter Property="Background" Value="#17FFFFFF" />
+        </Style>
+        <Style Selector="StackPanel.yt-skeleton[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:1.1" IterationCount="INFINITE" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </Window.Styles>
 
-    <!-- Fade/scale open-close animation: the same pattern the New Playlist and New Smart
-         Playlist dialogs use, so every entry in the New menu opens the same way. -->
-    <Border x:Name="DialogOverlay" Background="#50000000" Opacity="0">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
-        <Border x:Name="DialogCard"
-                CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="720"
-                MaxHeight="820"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel>
-                <!-- Header -->
-                <StackPanel DockPanel.Dock="Top" Margin="24,18,24,12" Spacing="10">
-                    <!-- Centred title + one-line description, round X at the top-right. -->
-                    <Panel Margin="0,0,-6,0">
-                        <StackPanel Spacing="2" Margin="34,2,34,0">
-                            <TextBlock Text="{loc:T YouTube.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                            <TextBlock Text="{loc:T YouTube.Subtitle}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                        </StackPanel>
-                        <Button Classes="dialog-close" Command="{Binding CloseCommand}"
-                                ToolTip.Tip="{loc:T Common.Close}"
-                                HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
-                        </Button>
-                    </Panel>
-                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding !ShowSetup}">
-                        <TextBox Grid.Column="0" Classes="pill" x:Name="QueryBox"
-                                 Text="{Binding Query}"
-                                 Watermark="{loc:T YouTube.SearchHint}">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
-                        <Button Grid.Column="1" Command="{Binding SearchCommand}" IsEnabled="{Binding !IsSearching}"
-                                Classes="accent-btn" Padding="18,10" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand"
-                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                            <TextBlock Text="{loc:T YouTube.Search}" FontWeight="SemiBold" />
-                        </Button>
-                    </Grid>
-                </StackPanel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor / Find metadata.
+         PillDialogHost draws the blurred, dimmed app behind, the card with its shadow, and
+         plays the open/close animation (Close, Esc, the view model's Closed and Alt+F4 all
+         animate out once). MaxHeight, not Height: the card shrinks with a short window. -->
+    <controls:PillDialogHost>
 
-                <!-- Sticky bar: status only (the header X closes; there is no primary action here). -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
-                        Background="#09FFFFFF"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="0,1,0,0">
-                    <StackPanel Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="13" Opacity="0.8" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
-                                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasDestination}">
-                            <TextBlock Text="{loc:T YouTube.SavesTo}" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding DestinationFolder}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding ToolVersionText}" FontSize="11" Opacity="0.4" VerticalAlignment="Center" Margin="8,0,0,0" />
-                        </StackPanel>
+    <Grid Width="680" MaxHeight="720" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: icon, title, where downloads go; then one search row. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,18"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="16">
+                <Grid ColumnDefinitions="56,16,*">
+                    <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                        <PathIcon Data="{StaticResource YouTubeIcon}" Width="22" Height="22" Opacity="0.6"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T YouTube.Title}" FontSize="18" FontWeight="Bold" />
+                        <TextBlock FontSize="13" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding HasDestination}"
+                                   ToolTip.Tip="{Binding DestinationFolder}">
+                            <Run Text="{loc:T YouTube.SavesTo}" /><Run Text=" " /><Run Text="{Binding DestinationFolder}" />
+                        </TextBlock>
                     </StackPanel>
-                </Border>
+                </Grid>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="24,0,24,8">
-                    <StackPanel Spacing="8">
-                        <!-- First run: the downloader itself -->
-                        <Border CornerRadius="14" Padding="16" Background="#14FFFFFF" IsVisible="{Binding ShowSetup}">
-                            <StackPanel Spacing="10">
-                                <TextBlock Text="{loc:T YouTube.SetupTitle}" FontSize="14" FontWeight="SemiBold" />
-                                <TextBlock Text="{loc:T YouTube.SetupBody}" FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <ProgressBar Grid.Column="0" Value="{Binding InstallProgress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
-                                                 VerticalAlignment="Center" Margin="0,0,12,0" IsVisible="{Binding IsInstallingTool}" />
-                                    <Button Grid.Column="1" Command="{Binding InstallToolCommand}" IsEnabled="{Binding !IsInstallingTool}"
-                                            Classes="accent-btn" Padding="16,8" CornerRadius="999" Cursor="Hand"
-                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                                        <TextBlock Text="{loc:T YouTube.Install}" FontWeight="SemiBold" />
-                                    </Button>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <ProgressBar IsIndeterminate="True" Height="3" CornerRadius="2" IsVisible="{Binding IsSearching}" />
-
-                        <!-- Results -->
-                        <ItemsControl ItemsSource="{Binding Results}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:YouTubeDownloadViewModel+ResultRow">
-                                    <Border Classes="result-row">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                            <Border Grid.Column="0" Width="64" Height="64" CornerRadius="10" ClipToBounds="True" Background="#22000000">
-                                                <Panel>
-                                                    <PathIcon Data="{StaticResource SongsIcon}" Width="18" Height="18" Opacity="0.4"
-                                                              HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
-                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
-                                                </Panel>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding Subtitle}" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis" />
-                                                <StackPanel Spacing="4" IsVisible="{Binding IsBusy}">
-                                                    <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="3" CornerRadius="2" />
-                                                    <TextBlock Text="{Binding StatusText}" FontSize="11" Opacity="0.6" />
-                                                </StackPanel>
-                                                <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding StatusText}" FontSize="11" Opacity="0.75"
-                                                           IsVisible="{Binding Failed}" TextWrapping="Wrap" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
-                                                <Button Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownload}"
-                                                        Classes="accent-btn" Padding="14,8" CornerRadius="999" Cursor="Hand"
-                                                        Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                                                    <TextBlock Text="{loc:T YouTube.Download}" FontSize="12" FontWeight="SemiBold" />
-                                                </Button>
-                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDone}">
-                                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.8" VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <TextBlock Text="{loc:T YouTube.EmptyHint}" FontSize="12" Opacity="0.45" TextAlignment="Center" Margin="0,24"
-                                   IsVisible="{Binding !HasResults}" />
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
+                <!-- Search or paste a link + the round accent search button (Find online's). -->
+                <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding !ShowSetup}">
+                    <TextBox x:Name="QueryBox" Grid.Column="0" Classes="pill-field"
+                             Text="{Binding Query}"
+                             Watermark="{loc:T YouTube.SearchHint}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button x:Name="SearchButton" Grid.Column="1" Classes="pill-primary" Width="40" Padding="0" Margin="8,0,0,0"
+                            Command="{Binding SearchCommand}"
+                            IsEnabled="{Binding !IsSearching}"
+                            ToolTip.Tip="{loc:T YouTube.Search}"
+                            AutomationProperties.Name="{loc:T YouTube.Search}">
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14"
+                                  Foreground="{DynamicResource AccentForegroundBrush}" />
+                    </Button>
+                </Grid>
+            </StackPanel>
         </Border>
-    </Border>
+
+        <!-- Footer: status (and a tiny yt-dlp version note) on the left, Close on the right. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Classes="yt-status" Text="{Binding StatusMessage}"
+                               IsVisible="{Binding HasStatus}"
+                               ToolTip.Tip="{Binding StatusMessage}"
+                               TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                    <!-- The version note; when a copy Noctis may not replace (PATH) is out of date,
+                         a small Update pill installs Noctis's own copy, which then takes priority. -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasToolVersion}">
+                        <TextBlock Text="{Binding ToolVersionText}" FontSize="11" Opacity="0.35"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button x:Name="UpdateToolButton"
+                                Classes="pill-secondary"
+                                Content="{loc:T YouTube.UpdateTool}"
+                                Command="{Binding InstallToolCommand}"
+                                IsVisible="{Binding ShowToolUpdate}"
+                                ToolTip.Tip="{loc:T YouTube.UpdateToolTip}"
+                                MinHeight="0" Padding="10,2" FontSize="11" />
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="CloseButton" Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T YouTube.Close}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+
+        <Panel Grid.Row="1" MinHeight="300">
+
+            <!-- yt-dlp missing: one clear install action, its progress under it. -->
+            <StackPanel x:Name="SetupPanel" IsVisible="{Binding ShowSetup}" Spacing="10" Margin="28,40"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="48" Height="48" CornerRadius="24" Classes="pill-well" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource YouTubeIcon}" Width="18" Height="18" Opacity="0.5" />
+                </Border>
+                <TextBlock Text="{loc:T YouTube.SetupTitle}" FontSize="14" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{loc:T YouTube.SetupBody}" FontSize="11.5" Opacity="0.55" MaxWidth="320"
+                           TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+                <Button x:Name="InstallButton" Classes="pill-primary" MinWidth="160" Margin="0,8,0,0"
+                        HorizontalAlignment="Center"
+                        Command="{Binding InstallToolCommand}"
+                        IsEnabled="{Binding !IsInstallingTool}">
+                    <Panel>
+                        <TextBlock Text="{loc:T YouTube.Install}" IsVisible="{Binding !IsInstallingTool}" />
+                        <TextBlock Text="{loc:T YouTube.Installing}" IsVisible="{Binding IsInstallingTool}" />
+                    </Panel>
+                </Button>
+                <ProgressBar Classes="yt-bar" Width="160" Value="{Binding InstallProgress}"
+                             HorizontalAlignment="Center" IsVisible="{Binding IsInstallingTool}" />
+            </StackPanel>
+
+            <!-- Searching: the cards' outline, breathing. -->
+            <StackPanel Classes="yt-skeleton" Spacing="8" Margin="28,16,28,8" IsVisible="{Binding ShowSkeleton}">
+                <Border Classes="pill-well" CornerRadius="18" Padding="10">
+                    <Grid ColumnDefinitions="56,14,*">
+                        <Border Classes="yt-skel" Width="56" Height="56" CornerRadius="12" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="yt-skel" Height="10" CornerRadius="5" Width="220" HorizontalAlignment="Left" />
+                            <Border Classes="yt-skel" Height="8" CornerRadius="4" Width="140" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border Classes="pill-well" CornerRadius="18" Padding="10">
+                    <Grid ColumnDefinitions="56,14,*">
+                        <Border Classes="yt-skel" Width="56" Height="56" CornerRadius="12" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="yt-skel" Height="10" CornerRadius="5" Width="180" HorizontalAlignment="Left" />
+                            <Border Classes="yt-skel" Height="8" CornerRadius="4" Width="168" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border Classes="pill-well" CornerRadius="18" Padding="10">
+                    <Grid ColumnDefinitions="56,14,*">
+                        <Border Classes="yt-skel" Width="56" Height="56" CornerRadius="12" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="yt-skel" Height="10" CornerRadius="5" Width="248" HorizontalAlignment="Left" />
+                            <Border Classes="yt-skel" Height="8" CornerRadius="4" Width="120" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Nothing yet: one muted line. -->
+            <StackPanel IsVisible="{Binding ShowEmpty}" Spacing="10" Margin="28,40"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="48" Height="48" CornerRadius="24" Classes="pill-well" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource SearchIcon}" Width="18" Height="18" Opacity="0.5" />
+                </Border>
+                <TextBlock Text="{loc:T YouTube.EmptyHint}" FontSize="12.5" Opacity="0.5" MaxWidth="320"
+                           TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+            </StackPanel>
+
+            <!-- Results: thumbnail, title, channel · duration, Download on the right; progress
+                 and errors inline on the card. Right padding is the overlay scrollbar's lane. -->
+            <ScrollViewer IsVisible="{Binding ShowResults}"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                          Padding="28,16,28,8">
+                <ItemsControl x:Name="ResultsList" ItemsSource="{Binding Results}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:YouTubeDownloadViewModel+ResultRow">
+                            <Border Classes="pill-well yt-row" Classes.done="{Binding IsDone}"
+                                    CornerRadius="18" Padding="10,10,14,10" Margin="0,0,0,8">
+                                <Grid ColumnDefinitions="56,14,*,12,Auto">
+                                    <Border Grid.Column="0" Classes="yt-art" VerticalAlignment="Center">
+                                        <Panel>
+                                            <PathIcon Data="{StaticResource SongsIcon}" Width="18" Height="18" Opacity="0.3"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      IsVisible="{Binding !HasThumbnail}" />
+                                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                                   IsVisible="{Binding HasThumbnail}" />
+                                        </Panel>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Opacity="0.6"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Spacing="4" Margin="0,4,0,0" IsVisible="{Binding IsBusy}">
+                                            <ProgressBar Classes="yt-bar" Value="{Binding Progress}" />
+                                            <TextBlock Text="{Binding StatusText}" FontSize="11" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Classes="yt-failed" Text="{Binding StatusText}" FontSize="11.5"
+                                                   IsVisible="{Binding Failed}" TextWrapping="Wrap" MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+
+                                    <Panel Grid.Column="4" VerticalAlignment="Center">
+                                        <Button Classes="pill-secondary" MinHeight="34" Padding="16,0" FontSize="12.5"
+                                                Command="{Binding DownloadCommand}"
+                                                IsVisible="{Binding ShowDownload}"
+                                                Content="{loc:T YouTube.Download}" />
+                                        <TextBlock Text="{Binding ProgressText}" FontSize="12.5" FontWeight="SemiBold"
+                                                   Opacity="0.7" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   IsVisible="{Binding IsBusy}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDone}">
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="13" Height="13"
+                                                      Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding StatusText}" FontSize="12.5" Opacity="0.8"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Panel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Panel>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

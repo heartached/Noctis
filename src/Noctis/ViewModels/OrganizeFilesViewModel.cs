@@ -25,8 +25,24 @@ public partial class OrganizeFilesViewModel : ViewModelBase
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _canUndo;
     [ObservableProperty] private bool _hasApplicableMoves;
+    /// <summary>Where the pattern puts one library track, relative to the destination
+    /// (e.g. "Artist/Album/01 Title.flac"): a live example under the pattern field.</summary>
+    [ObservableProperty] private string _sampleTarget = string.Empty;
 
     public BulkObservableCollection<OrganizeRow> Rows { get; } = new();
+
+    /// <summary>The planner's tokens, as chips under the pattern field (the view inserts
+    /// <see cref="PatternToken.Token"/> at the caret).</summary>
+    public IReadOnlyList<PatternToken> Tokens { get; } = new PatternToken[]
+    {
+        new("AlbumArtist"), new("Artist"), new("Album"), new("TrackNo"),
+        new("DiscNo"), new("Title"), new("Year"), new("Genre"),
+    };
+
+    public sealed record PatternToken(string Label)
+    {
+        public string Token => "{" + Label + "}";
+    }
 
     public event EventHandler? Closed;
 
@@ -40,7 +56,33 @@ public partial class OrganizeFilesViewModel : ViewModelBase
             : settingsVm.OrganizePattern;
         _targetRoot = settingsVm.OrganizeTargetRoot;
         CanUndo = _service.CanUndo;
+        UpdateSample();
         _ = PreviewAsync();
+    }
+
+    private static string L(string key) => Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
+
+    partial void OnPatternChanged(string value) => UpdateSample();
+    partial void OnTargetRootChanged(string value) => UpdateSample();
+
+    /// <summary>Plans the first library track alone (display only; the full plan is
+    /// still built by Preview), so the example follows every keystroke.</summary>
+    private void UpdateSample()
+    {
+        var track = _tracks.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.FilePath));
+        var root = EffectiveTargetRoot();
+        if (track is null || string.IsNullOrWhiteSpace(root)) { SampleTarget = string.Empty; return; }
+        try
+        {
+            var move = _service.Plan(new[] { track }, Pattern, root).FirstOrDefault();
+            SampleTarget = move is null ? string.Empty : new OrganizeRow(move, root).TargetRelativeFull;
+        }
+        catch (Exception)
+        {
+            // A half-typed pattern can make an invalid path; the example just goes blank.
+            SampleTarget = string.Empty;
+        }
     }
 
     private string EffectiveTargetRoot()
@@ -61,12 +103,12 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         {
             Rows.Clear();
             HasApplicableMoves = false;
-            StatusMessage = "Set a destination folder (or add a media folder first).";
+            StatusMessage = L("OrganizeFiles.NoDestination");
             IsBusy = false;
             return;
         }
 
-        StatusMessage = "Building preview…";
+        StatusMessage = L("OrganizeFiles.Building");
         var pattern = Pattern;
         var tracks = _tracks;
         var plan = await Task.Run(() => _service.Plan(tracks, pattern, root));
@@ -77,7 +119,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
 
         var moveCount = plan.Count(m => m.Action != OrganizeAction.Skip);
         HasApplicableMoves = moveCount > 0;
-        StatusMessage = $"{moveCount} to move · {plan.Count - moveCount} already organized";
+        StatusMessage = L("OrganizeFiles.Summary", moveCount, plan.Count - moveCount);
         IsBusy = false;
     }
 
@@ -86,7 +128,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
     {
         if (IsBusy || !HasApplicableMoves) return;
         IsBusy = true;
-        StatusMessage = "Moving files…";
+        StatusMessage = L("OrganizeFiles.Moving");
 
         // Remember the chosen pattern/destination for next time.
         _settingsVm.OrganizePattern = Pattern;
@@ -101,8 +143,8 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         // Refresh — moved rows now read back as "already organized".
         await PreviewAsync();
         StatusMessage = result.Failed > 0
-            ? $"Moved {result.Moved} · {result.Failed} failed"
-            : $"Moved {result.Moved} file{(result.Moved == 1 ? string.Empty : "s")}";
+            ? L("OrganizeFiles.MovedFailed", result.Moved, result.Failed)
+            : L("OrganizeFiles.Moved", result.Moved);
     }
 
     [RelayCommand]
@@ -110,13 +152,13 @@ public partial class OrganizeFilesViewModel : ViewModelBase
     {
         if (IsBusy || !CanUndo) return;
         IsBusy = true;
-        StatusMessage = "Undoing…";
+        StatusMessage = L("OrganizeFiles.Undoing");
         var result = await _service.UndoLastAsync();
         await RemapPlaylistsAsync(result);
         CanUndo = _service.CanUndo;
         IsBusy = false;
         await PreviewAsync();
-        StatusMessage = $"Restored {result.Moved} file{(result.Moved == 1 ? string.Empty : "s")}";
+        StatusMessage = L("OrganizeFiles.Restored", result.Moved);
     }
 
     /// <summary>Moved tracks get new ids; point the sidebar's live playlists at them.</summary>
@@ -138,11 +180,12 @@ public partial class OrganizeFilesViewModel : ViewModelBase
                 rel = move.TargetPath.Substring(targetRoot.Length).TrimStart('\\', '/');
             TargetRelativeFull = rel;
             TargetRelative = DisplayPath.MiddleEllipsis(rel);
+            IsInPlace = move.Action == OrganizeAction.Skip;
             ActionText = move.Action switch
             {
-                OrganizeAction.Skip => "Already organized",
-                OrganizeAction.Conflict => "Move (renamed)",
-                _ => "Move"
+                OrganizeAction.Skip => L("OrganizeFiles.ActionInPlace"),
+                OrganizeAction.Conflict => L("OrganizeFiles.ActionRenamed"),
+                _ => L("OrganizeFiles.ActionMove")
             };
         }
 
@@ -150,5 +193,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         public string TargetRelative { get; }
         public string TargetRelativeFull { get; }
         public string ActionText { get; }
+        /// <summary>Already where the pattern puts it: the row is dimmed.</summary>
+        public bool IsInPlace { get; }
     }
 }

@@ -52,8 +52,45 @@ public sealed class YouTubeImportService : IYouTubeImportService
         AppSettings s;
         try { s = _settings(); } catch { return string.Empty; }
         if (!string.IsNullOrWhiteSpace(s.YouTubeDownloadFolder)) return s.YouTubeDownloadFolder.Trim();
-        var first = s.MusicFolders.FirstOrDefault(f => !string.IsNullOrWhiteSpace(f));
-        return string.IsNullOrWhiteSpace(first) ? string.Empty : Path.Combine(first.Trim(), "YouTube");
+        return DefaultDownloadFolder(s.MusicFolders);
+    }
+
+    /// <summary>
+    /// The download folder when none is set: "YouTube" inside the deepest folder that holds
+    /// every music folder. Owner 10-08: with one music folder per artist (B:\ALAC\Taylor Swift,
+    /// B:\ALAC\Drake, …) the old "inside the first music folder" put downloads in
+    /// B:\ALAC\Taylor Swift\YouTube; now B:\ALAC\YouTube. A shared folder that is only a drive
+    /// root (B:\), or none at all (C:\Music + D:\Songs), keeps the old rule rather than writing
+    /// to a drive's top level. Files there stay in the library across rescans even outside the
+    /// music folders: the import marks them added individually (LibraryService, GitHub #108).
+    /// </summary>
+    internal static string DefaultDownloadFolder(IEnumerable<string> musicFolders)
+    {
+        var roots = musicFolders.Where(f => !string.IsNullOrWhiteSpace(f))
+            .Select(f => f.Trim().TrimEnd('\\', '/'))
+            .Where(f => f.Length > 0)
+            .ToList();
+        if (roots.Count == 0) return string.Empty;
+        var fallback = Path.Combine(roots[0], "YouTube");
+
+        var cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        static string[] Split(string p) => p.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+        var common = Split(roots[0]);
+        var shared = common.Length;
+        foreach (var root in roots.Skip(1))
+        {
+            var parts = Split(root);
+            var n = 0;
+            while (n < shared && n < parts.Length && string.Equals(common[n], parts[n], cmp)) n++;
+            shared = n;
+        }
+        // One segment is only the drive ("B:") or, on Unix, a top-level folder: too broad.
+        if (shared < 2) return fallback;
+
+        // Keep what the split dropped: a Unix root "/" or a network share's "\\".
+        var prefix = roots[0].StartsWith(@"\\") ? @"\\" : roots[0].StartsWith('/') ? "/" : string.Empty;
+        var sep = roots[0].Contains('\\') ? "\\" : "/";
+        return prefix + string.Join(sep, common.Take(shared)) + sep + "YouTube";
     }
 
     public Task<List<YouTubeTrackInfo>> SearchAsync(string query, CancellationToken ct) => Tool.SearchAsync(query, 12, ct);

@@ -26,31 +26,25 @@ public static class StreamingLinkHints
         if (!Uri.TryCreate(t, UriKind.Absolute, out var uri)) return null;
         var host = uri.Host.ToLowerInvariant();
 
+        // Owner 10-08 "less words": one short line each (they were full how-to sentences), and
+        // through Loc like the rest of the Import pop-up.
         if (host is "open.spotify.com" or "spotify.link" || host.EndsWith(".spotify.com"))
-            return new StreamingLinkHint("Spotify",
-                "Spotify no longer lets apps read playlists. Export it with Exportify (log in, click Export next to the playlist), then choose the CSV file here.",
-                Exportify, "Open Exportify");
+            return new StreamingLinkHint("Spotify", T("Import.Hint.Spotify"), Exportify, T("Import.Hint.OpenExportify"));
 
         if (host == "music.apple.com" || host.EndsWith(".music.apple.com"))
-            return new StreamingLinkHint("Apple Music",
-                "Apple Music playlists need Apple's paid developer access. Convert it with TuneMyMusic (export to file), then choose the file here.",
-                TuneMyMusic, "Open TuneMyMusic");
+            return new StreamingLinkHint("Apple Music", T("Import.Hint.AppleMusic"), TuneMyMusic, T("Import.Hint.OpenTuneMyMusic"));
 
         if (host is "tidal.com" or "listen.tidal.com" || host.EndsWith(".tidal.com"))
-            return new StreamingLinkHint("TIDAL",
-                "TIDAL links can't be fetched yet. Convert it with TuneMyMusic (export to file), then choose the file here.",
-                TuneMyMusic, "Open TuneMyMusic");
+            return new StreamingLinkHint("TIDAL", T("Import.Hint.Tidal"), TuneMyMusic, T("Import.Hint.OpenTuneMyMusic"));
 
         if (host == "music.youtube.com" || host == "youtube.com" || host == "www.youtube.com" || host == "youtu.be")
-            return new StreamingLinkHint("YouTube Music",
-                "YouTube Music has no playlist API. Convert it with TuneMyMusic (export to file), then choose the file here.",
-                TuneMyMusic, "Open TuneMyMusic");
+            return new StreamingLinkHint("YouTube Music", T("Import.Hint.YouTubeMusic"), TuneMyMusic, T("Import.Hint.OpenTuneMyMusic"));
 
         if (host.Contains("music.amazon."))
-            return new StreamingLinkHint("Amazon Music",
-                "Amazon Music has no public API. Convert it with TuneMyMusic (export to file), then choose the file here.",
-                TuneMyMusic, "Open TuneMyMusic");
+            return new StreamingLinkHint("Amazon Music", T("Import.Hint.AmazonMusic"), TuneMyMusic, T("Import.Hint.OpenTuneMyMusic"));
 
         return null;
     }
+
+    private static string T(string key) => Localization.Loc.T(key);
 }

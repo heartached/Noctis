@@ -114,7 +114,7 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
         var albumPeak = new Dictionary<Guid, double>();
         if (albumMode)
         {
-            foreach (var grp in tracks.Where(t => !measured[t].Failed).GroupBy(t => t.AlbumId))
+            foreach (var grp in tracks.Where(t => !measured[t].Failed).GroupBy(AlbumGroupKey))
             {
                 // Duration-weighted energy mean, not an arithmetic mean of LUFS values.
                 // LUFS is logarithmic, so averaging it directly gave every track equal
@@ -160,10 +160,10 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             var trackPeakLinear = DbToLinear(r.TruePeakDbtp);
             double? aGainDb = null;
             double? aPeakLinear = null;
-            if (albumMode && albumGain.TryGetValue(t.AlbumId, out var ag))
+            if (albumMode && albumGain.TryGetValue(AlbumGroupKey(t), out var ag))
             {
                 aGainDb = ClampGain(ag);
-                aPeakLinear = DbToLinear(albumPeak[t.AlbumId]);
+                aPeakLinear = DbToLinear(albumPeak[AlbumGroupKey(t)]);
             }
 
             var (ok, error) = WriteReplayGainTags(t.FilePath, trackGainDb, trackPeakLinear, aGainDb, aPeakLinear);
@@ -185,6 +185,16 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
     }
 
     private static double DbToLinear(double db) => System.Math.Pow(10.0, db / 20.0);
+
+    /// <summary>
+    /// Which album a track's album gain is computed over. A track without a real album name
+    /// (blank, or the literal "Unknown Album" placeholder) is its own album: they all share one
+    /// AlbumId (Track.UnknownAlbumBucketId), so grouping by it gave every untagged single one
+    /// combined "album gain" across unrelated songs (10-08). Album gain then equals track gain,
+    /// as rsgain and foobar2000 do for an album of one.
+    /// </summary>
+    internal static Guid AlbumGroupKey(Track t) =>
+        Track.IsRealAlbumName(t.Album) && t.AlbumId != Track.UnknownAlbumBucketId ? t.AlbumId : t.Id;
 
     /// <summary>
     /// Bounds a computed gain to a sane window before it is written into a file tag.

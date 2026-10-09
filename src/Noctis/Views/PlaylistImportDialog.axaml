@@ -2,9 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:loc="using:Noctis.Localization"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.PlaylistImportDialog"
         x:DataType="vm:PlaylistImportViewModel"
-        Title="Import Playlist"
+        Title="{loc:T Import.Title}"
         CanResize="False"
         WindowDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -13,221 +14,249 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
-             mid-grey, layout-rounded. The Fluent templates restyle the border on hover/focus/press,
-             so the template parts are pinned too. Neutral buttons opt in via .pill-outline. -->
-        <Style Selector="TextBox">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="TextBlock.pi-label">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <!-- Footer status, as the editor's change summary. -->
+        <Style Selector="TextBlock.pi-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+
+        <!-- Start panel: the drop target. The 1.5px ring is always there (transparent at
+             rest) so a file dragged over only recolours it and nothing shifts. -->
+        <Style Selector="Border.pi-drop">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <!-- A CornerRadius set on the TextBox does not reach Fluent's border part, so the
-             link box's pill has to be pinned here as well as inline. -->
-        <Style Selector="TextBox[CornerRadius=999] /template/ Border#PART_BorderElement">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-        </Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus-within /template/ Border#PART_BorderElement">
+        <Style Selector="Border.pi-drop.drag">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="BorderThickness" Value="1.5" />
         </Style>
-        <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+
+        <!-- Found / Missing chip on each row: a dot and the word on a faint tint. -->
+        <Style Selector="Border.pi-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="8,2,9,2" />
+            <Setter Property="Background" Value="#293BB273" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="Border.pi-chip.missing">
+            <Setter Property="Background" Value="#33F2A33A" />
         </Style>
-        <!-- Round header X (same look as the Settings header close). -->
-        <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        <Style Selector="Border.pi-chip Ellipse">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Fill" Value="#3BB273" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.dialog-close:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
+        <Style Selector="Border.pi-chip.missing Ellipse">
+            <Setter Property="Fill" Value="#F2A33A" />
         </Style>
-        <!-- Quiet secondary actions in the sticky bar: no fill, no border, dims until hovered.
-             The Fluent template paints a hover fill on the presenter, so pin it transparent. -->
-        <Style Selector="Button.text-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="FontSize" Value="13" />
+        <Style Selector="Border.pi-row.missing TextBlock.pi-title">
             <Setter Property="Opacity" Value="0.7" />
-            <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.text-btn:pointerover">
-            <Setter Property="Opacity" Value="1" />
+
+        <!-- Loading skeleton, as Find online's: a slow breath, keyed on [IsVisible=True] so a
+             hidden skeleton's INFINITE clock doesn't keep ticking. -->
+        <Style Selector="Border.pi-skel">
+            <Setter Property="Background" Value="#17FFFFFF" />
         </Style>
-        <Style Selector="Button.text-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Opacity" Value="1" />
+        <Style Selector="StackPanel.pi-skeleton[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:1.1" IterationCount="INFINITE" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </Window.Styles>
 
-    <!-- Fade/scale open-close animation: the same pattern the New Playlist and New Smart
-         Playlist dialogs use (code-behind settles to the open state on the next frame and
-         mirrors it on close), so every entry in the New menu opens the same way. -->
-    <Border x:Name="DialogOverlay" Background="#50000000" Opacity="0">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
-        <Border x:Name="DialogCard"
-                CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="640"
-                MaxHeight="780"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel>
-                <!-- Header: centred title + one-line description, round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
-                    <StackPanel Spacing="2" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T Import.Title}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="{loc:T Import.Subtitle}"
-                                   FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Classes="dialog-close" Command="{Binding CloseCommand}"
-                            ToolTip.Tip="{loc:T Common.Close}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
-                    </Button>
-                </Panel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor / Find Metadata.
+         PillDialogHost draws the blurred, dimmed app behind, the card with its shadow, and
+         plays the open/close animation (every close path — Cancel, Esc, the view model's
+         Closed, Alt+F4 — animates out once before the real close). MaxHeight, not Height:
+         the card shrinks with a short list and stays bounded so the list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Sticky bar: status on the left, one primary on the right. -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
-                        Background="#09FFFFFF"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
-                                   FontSize="13" Opacity="0.8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="{loc:T Common.Create}" Command="{Binding CreateCommand}"
-                                IsEnabled="{Binding CanCreate}"
-                                Padding="22,10" Margin="12,0,0,0"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
+    <Grid Width="640" MaxHeight="680" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: title and the one-line purpose. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource PlaylistsIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T Import.Title}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T Import.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Footer: status on the left, Cancel / Create playlist on the right. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="pi-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"
+                           ToolTip.Tip="{Binding StatusMessage}" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{Binding CancelLabel}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T Import.CreatePlaylist}"
+                        Command="{Binding CreateCommand}"
+                        IsEnabled="{Binding CanCreate}"
+                        MinWidth="108" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*">
+
+            <!-- Source: paste a link (imports as soon as it is complete) or pick a file. -->
+            <StackPanel Grid.Row="0" Spacing="10" Margin="28,20,28,0">
+                <Grid ColumnDefinitions="*,8,Auto,8,Auto">
+                    <TextBox x:Name="LinkBox" Grid.Column="0" Classes="pill-field"
+                             Text="{Binding LinkText}"
+                             Watermark="{loc:T Import.LinkWatermark}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding ImportLinkCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button Grid.Column="2" Classes="pill-primary" Width="40" Padding="0"
+                            Command="{Binding ImportLinkCommand}"
+                            IsEnabled="{Binding CanImportLink}"
+                            ToolTip.Tip="{loc:T Import.LinkButton}"
+                            AutomationProperties.Name="{loc:T Import.LinkButton}">
+                        <PathIcon Data="{StaticResource ChevronRightIcon}" Width="12" Height="12"
+                                  Foreground="{DynamicResource AccentForegroundBrush}" />
+                    </Button>
+                    <Button x:Name="ChooseFileButton" Grid.Column="4" Classes="pill-secondary"
+                            Content="{loc:T Import.ChooseFile}" Padding="18,0" />
+                </Grid>
+
+                <!-- Only when needed: a link Noctis can't fetch (Spotify, Apple Music, …) says
+                     what works instead; a TIDAL link without a sign-in offers the sign-in. -->
+                <Border Classes="pill-well" CornerRadius="18" Padding="16,10,10,10"
+                        IsVisible="{Binding HasLinkHelp}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <TextBlock Grid.Column="0" Text="{Binding LinkHelp}" FontSize="12.5" Opacity="0.85"
+                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="pill-primary" MinHeight="34" Padding="16,0"
+                                FontSize="12.5"
+                                Content="{Binding LinkHelpLabel}" Command="{Binding OpenLinkHelpCommand}"
+                                VerticalAlignment="Center" />
                     </Grid>
                 </Border>
+            </StackPanel>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="24,4,24,8">
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button x:Name="ChooseFileButton" Content="{loc:T Import.ChooseFile}"
-                                    Classes="pill-outline" HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
-                            <TextBlock Text="{loc:T Import.DropHint}"
-                                       FontSize="12" Opacity="0.55" VerticalAlignment="Center" />
-                        </StackPanel>
+            <!-- Name of the playlist to create, once there is something to create. -->
+            <StackPanel Grid.Row="1" Spacing="6" Margin="28,18,28,0" IsVisible="{Binding HasPreview}">
+                <TextBlock Classes="pi-label" Text="{loc:T Import.PlaylistName}" Margin="16,0,0,0" />
+                <TextBox Classes="pill-field" Text="{Binding PlaylistName}"
+                         Watermark="{loc:T Import.PlaylistName}" />
+            </StackPanel>
 
-                        <!-- Link import: public Deezer playlists/albums via the keyless api.deezer.com, and
-                             TIDAL playlists/albums through the user's own TIDAL sign-in (PKCE, TidalAuthService).
-                             Spotify/Apple links are not accepted — their APIs no longer allow reading
-                             other users' playlists without a per-app quota this app can't get. -->
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="{loc:T Import.LinkLabel}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                <!-- Pill, and the URL centred on both axes: the box sits beside
-                                     a pill button, so a square-cornered left-aligned field read
-                                     as a different family of control. MinHeight 0 + explicit
-                                     padding because Fluent's default 32px min height leaves the
-                                     text riding the top of a pill this tall. -->
-                                <TextBox Grid.Column="0" Text="{Binding LinkText}"
-                                         CornerRadius="999"
-                                         MinHeight="0"
-                                         Padding="16,9"
-                                         TextAlignment="Center"
-                                         HorizontalContentAlignment="Center"
-                                         VerticalContentAlignment="Center"
-                                         Watermark="https://www.deezer.com/en/playlist/…  ·  https://tidal.com/playlist/…" />
-                                <Button Grid.Column="1" Content="{loc:T Import.LinkButton}" Command="{Binding ImportLinkCommand}"
-                                        IsEnabled="{Binding CanImportLink}" Classes="pill-outline"
-                                        Padding="14,8" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center" />
-                            </Grid>
-                            <!-- Spotify / Apple / TIDAL / YouTube / Amazon link: say exactly what works instead. -->
-                            <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" IsVisible="{Binding HasLinkHelp}">
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                    <TextBlock Grid.Column="0" Text="{Binding LinkHelp}" FontSize="12" Opacity="0.85"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Content="{Binding LinkHelpLabel}" Command="{Binding OpenLinkHelpCommand}"
-                                            Padding="12,6" CornerRadius="16" Cursor="Hand" VerticalAlignment="Center"
-                                            Classes="accent-btn"
-                                            Background="{DynamicResource AccentButtonBackground}"
-                                            Foreground="{DynamicResource AccentForegroundBrush}" />
+            <!-- Start: the drop target, with the formats in one muted line (details in its tip). -->
+            <Border x:Name="DropZone" Grid.Row="2" Classes="pill-well pi-drop"
+                    CornerRadius="22" Height="196" Margin="28,16,28,24"
+                    IsVisible="{Binding ShowStart}">
+                <StackPanel Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource PlaylistsIcon}" Width="26" Height="26" Opacity="0.35"
+                              HorizontalAlignment="Center" Margin="0,0,0,6" />
+                    <TextBlock Text="{loc:T Import.DropTitle}" FontSize="14" FontWeight="SemiBold"
+                               Opacity="0.8" HorizontalAlignment="Center" />
+                    <StackPanel x:Name="FormatsHint" Orientation="Horizontal" Spacing="6"
+                                HorizontalAlignment="Center" Background="Transparent"
+                                ToolTip.Tip="{loc:T Import.FormatsTip}">
+                        <TextBlock Text="{loc:T Import.Formats}" FontSize="12" Opacity="0.5"
+                                   VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource InfoIcon}" Width="12" Height="12" Opacity="0.45"
+                                  VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Reading / fetching and matching: skeleton rows where the list will be. -->
+            <StackPanel Grid.Row="2" Classes="pi-skeleton" Spacing="6" Margin="28,16,28,24"
+                        IsVisible="{Binding IsAnalyzing}">
+                <Border Classes="pill-well" CornerRadius="16" Padding="16,12">
+                    <StackPanel Spacing="6">
+                        <Border Classes="pi-skel" Height="10" CornerRadius="5" Width="180" HorizontalAlignment="Left" />
+                        <Border Classes="pi-skel" Height="8" CornerRadius="4" Width="110" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="pill-well" CornerRadius="16" Padding="16,12">
+                    <StackPanel Spacing="6">
+                        <Border Classes="pi-skel" Height="10" CornerRadius="5" Width="140" HorizontalAlignment="Left" />
+                        <Border Classes="pi-skel" Height="8" CornerRadius="4" Width="150" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="pill-well" CornerRadius="16" Padding="16,12">
+                    <StackPanel Spacing="6">
+                        <Border Classes="pi-skel" Height="10" CornerRadius="5" Width="210" HorizontalAlignment="Left" />
+                        <Border Classes="pi-skel" Height="8" CornerRadius="4" Width="90" HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Every entry, missing first, each with its Matched / Missing chip. Right padding
+                 is the overlay scrollbar's lane, so it never sits on a row. -->
+            <ScrollViewer Grid.Row="2"
+                          IsVisible="{Binding HasPreview}"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                          Padding="28,14,28,10">
+                <ItemsControl x:Name="RowsList" ItemsSource="{Binding Rows}">
+                    <!-- Virtualized: a long playlist is thousands of rows. -->
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlaylistImportViewModel+ImportRow">
+                            <Border Classes="pill-well pi-row" Classes.missing="{Binding !IsMatched}"
+                                    CornerRadius="16" Padding="16,9,12,9" Margin="0,0,0,6">
+                                <Grid ColumnDefinitions="*,12,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Classes="pi-title" Text="{Binding Title}" FontSize="13"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Artist}" FontSize="11.5" Opacity="0.55"
+                                                   TextTrimming="CharacterEllipsis" IsVisible="{Binding HasArtist}" />
+                                    </StackPanel>
+                                    <Panel Grid.Column="2" VerticalAlignment="Center">
+                                        <Border Classes="pi-chip" IsVisible="{Binding IsMatched}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Ellipse />
+                                                <TextBlock Text="{loc:T Import.Matched}" FontSize="11.5" Opacity="0.85" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="pi-chip missing" IsVisible="{Binding !IsMatched}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Ellipse />
+                                                <TextBlock Text="{loc:T Import.Missing}" FontSize="11.5" Opacity="0.85" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Panel>
                                 </Grid>
                             </Border>
-                        </StackPanel>
-
-                        <StackPanel Spacing="4" IsVisible="{Binding HasPreview}">
-                            <TextBlock Text="{loc:T Import.PlaylistName}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                            <TextBox Text="{Binding PlaylistName}" Watermark="{loc:T Import.PlaylistName}" />
-                        </StackPanel>
-
-                        <Grid ColumnDefinitions="*,*" IsVisible="{Binding HasPreview}">
-                            <StackPanel Grid.Column="0" Spacing="1">
-                                <TextBlock Text="{loc:T Import.Matched}" FontSize="11" Opacity="0.5" />
-                                <TextBlock Text="{Binding MatchedCount}" FontSize="22" FontWeight="Bold" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Spacing="1">
-                                <TextBlock Text="{loc:T Import.Missing}" FontSize="11" Opacity="0.5" />
-                                <TextBlock Text="{Binding MissingCount}" FontSize="22" FontWeight="Bold" />
-                            </StackPanel>
-                        </Grid>
-
-                        <StackPanel Spacing="6" IsVisible="{Binding HasMissing}">
-                            <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-                            <TextBlock Text="{loc:T Import.MissingHeader}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
-                            <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="360">
-                                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding MissingTracks}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="x:String">
-                                                <TextBlock Text="{Binding}" FontSize="12" Opacity="0.8" Margin="0,2" TextTrimming="CharacterEllipsis" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </Border>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
-    </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

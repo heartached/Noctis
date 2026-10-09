@@ -18,9 +18,16 @@ public partial class CreatePlaylistDialogViewModel : ViewModelBase
     /// <summary>Fires when the dialog should close.</summary>
     public event EventHandler? CloseRequested;
 
+    /// <summary>Set once Create has handed the playlist over. Enter in the name field (a
+    /// KeyBinding) still reached Create while the dialog animated out, firing
+    /// PlaylistCreated a second time.</summary>
+    private bool _created;
+
     [RelayCommand]
     private void Create()
     {
+        if (_created) return;
+
         // Validate name is not empty
         if (string.IsNullOrWhiteSpace(PlaylistName))
         {
@@ -29,6 +36,7 @@ public partial class CreatePlaylistDialogViewModel : ViewModelBase
         }
 
         ShowNameRequiredError = false;
+        _created = true;
         PlaylistCreated?.Invoke(this, (PlaylistName.Trim(), PlaylistDescription.Trim()));
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

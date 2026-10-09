@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.DuplicateFinderDialog"
         x:DataType="vm:DuplicateFinderViewModel"
         Title="{loc:T DuplicateFinder.FindDuplicates}"
@@ -13,149 +14,243 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Neutral pill buttons share the Settings pill outline (1.5px translucent mid-grey,
-             layout-rounded); the Fluent template swaps BorderBrush on hover/press, so pin it. -->
-        <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <!-- Header "Rescan" pill: the editor's header "Find online" pill (pill-secondary with
+             an accent glyph). BorderThickness is set on the button itself, as there. -->
+        <Style Selector="Button.df-header-action">
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- One copy of a song: a filled card (the pill-well tone) that IS the keep/delete
+             toggle. Checked = kept: accent ring + accent "Keep" chip. Unchecked = will be
+             deleted: no ring, dimmed text, quiet "Delete" chip. The 1.5px ring is always there
+             (transparent when off) so toggling only recolours it and nothing shifts. Own
+             template, and its presenter is not named PART_ContentPresenter, so Fluent's
+             ToggleButton :checked accent fill never paints over the card. -->
+        <Style Selector="ToggleButton.df-copy">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="16,10,12,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="CopyCard"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <ContentPresenter x:Name="CopyContent"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="ToggleButton.df-copy:pointerover">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <!-- Round header X (same look as the Settings header close). -->
-        <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+        <Style Selector="ToggleButton.df-copy:checked">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
-        <Style Selector="Button.dialog-close:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
+        <Style Selector="StackPanel.df-dim">
+            <Setter Property="Opacity" Value="0.5" />
         </Style>
-        <!-- Quiet secondary actions in the sticky bar: no fill, no border, dims until hovered.
-             The Fluent template paints a hover fill on the presenter, so pin it transparent. -->
-        <Style Selector="Button.text-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Opacity" Value="0.7" />
-            <Setter Property="Cursor" Value="Hand" />
+
+        <!-- Keep / Delete state chips at the card's right edge. -->
+        <Style Selector="Border.df-chip">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.text-btn:pointerover">
-            <Setter Property="Opacity" Value="1" />
+        <Style Selector="TextBlock.df-chip-text">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.text-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Opacity" Value="1" />
+
+        <!-- Footer status, as the editor's change summary. -->
+        <Style Selector="TextBlock.df-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="720"
-                MaxHeight="820"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header: centred title + one-line description, round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
-                    <StackPanel Spacing="2" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T DuplicateFinder.FindDuplicates}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="{loc:T DuplicateFinder.GroupedByArtistTitle}"
-                                   FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Classes="dialog-close" Command="{Binding CloseCommand}"
-                            ToolTip.Tip="{loc:T Common.Close}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
-                    </Button>
-                </Panel>
+    <!-- Owner 10-08: the same rounded pill pop-up as the Metadata editor / Find Metadata.
+         PillDialogHost draws the blurred, dimmed app behind, the card with its shadow, and
+         plays the open/close animation (every close path — Close, Esc, the view model's
+         Closed, Alt+F4 — animates out once before the real close).
+         MaxHeight, not Height: the card shrinks with a short window and a short list, and
+         stays bounded so the group list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Sticky bar: count on the left, quiet Rescan, one primary on the right. -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
-                        Background="#09FFFFFF"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
-                                   FontSize="13" Opacity="0.8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="{loc:T DuplicateFinder.Rescan}" Command="{Binding RescanCommand}"
-                                IsEnabled="{Binding !IsBusy}" Classes="text-btn"
-                                VerticalAlignment="Center" Margin="12,0,8,0" />
-                        <Button Grid.Column="2" Command="{Binding DeleteSelectedCommand}"
-                                IsEnabled="{Binding HasSelection}"
-                                Padding="22,10"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
-                            <TextBlock>
-                                <Run Text="{loc:T DuplicateFinder.Delete}" /><Run Text=" " /><Run Text="{Binding SelectedCount}" />
-                            </TextBlock>
-                        </Button>
-                    </Grid>
+    <Grid Width="720" MaxHeight="700" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: title, the one-line how-to, and Rescan where the editor has Find online. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*,Auto">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <PathIcon Data="{StaticResource CopyIcon}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="24,4,24,8">
-                    <ItemsControl ItemsSource="{Binding Groups}">
-                        <!-- Virtualized: a library with many duplicates built every group card (and
-                             its per-copy rows) on open. Each group's own list stays small. -->
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VirtualizingStackPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupGroup">
-                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                    <StackPanel Spacing="8">
-                                        <StackPanel Spacing="1">
-                                            <TextBlock Text="{Binding Header}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Subheader}" FontSize="11" Opacity="0.55" />
-                                        </StackPanel>
-                                        <ItemsControl ItemsSource="{Binding Rows}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupRow">
-                                                    <!-- DockPanel (badge docked right, text fills the rest) so long
-                                                         file paths can never push the Keep badge off the card. -->
-                                                    <DockPanel Margin="0,3">
-                                                        <CheckBox DockPanel.Dock="Left" Classes="metadata-pill-checkbox"
-                                                                  IsChecked="{Binding Delete}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                        <Border DockPanel.Dock="Right" VerticalAlignment="Center"
-                                                                IsVisible="{Binding IsSuggestedKeep}"
-                                                                Background="{DynamicResource AccentColorBrush}"
-                                                                CornerRadius="999" Padding="8,3" Margin="8,0,0,0">
-                                                            <TextBlock Text="{loc:T DuplicateFinder.Keep}" FontSize="10" FontWeight="SemiBold"
-                                                                       Foreground="{DynamicResource AccentForegroundBrush}" />
-                                                        </Border>
-                                                        <StackPanel Spacing="1" Margin="0,0,8,0">
-                                                            <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{Binding FolderPath}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis"
-                                                                       ToolTip.Tip="{Binding FolderPathFull}" />
-                                                            <TextBlock Text="{Binding Quality}" FontSize="11" Opacity="0.7" />
-                                                        </StackPanel>
-                                                    </DockPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T DuplicateFinder.FindDuplicates}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T DuplicateFinder.Hint}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <Button Grid.Column="3"
+                        Classes="pill-secondary df-header-action"
+                        BorderThickness="1.5"
+                        MinHeight="36"
+                        Padding="16,0"
+                        FontSize="12.5"
+                        VerticalAlignment="Center"
+                        Command="{Binding RescanCommand}">
+                    <!-- Owner 10-08: the icon was the hairline SyncIcon at 12px (fuzzy, a smudge of
+                         a ring) and never moved. Now a stroked refresh arrow at 16px with round caps,
+                         that spins while a scan runs and eases to rest when it ends (code-behind,
+                         on the frame clock). The pill stays clickable-looking while scanning: a
+                         second click is ignored by the view model rather than greying the pill. -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Viewbox x:Name="RescanIcon" Width="16" Height="16" VerticalAlignment="Center"
+                                 RenderTransformOrigin="50%,50%">
+                            <Viewbox.RenderTransform>
+                                <RotateTransform />
+                            </Viewbox.RenderTransform>
+                            <Path Width="24" Height="24"
+                                  Data="M20.5 12 A8.5 8.5 0 1 1 17.4 5.4 M20.5 3.5 V8 H16"
+                                  Stroke="{DynamicResource AccentColorBrush}"
+                                  StrokeThickness="2.4"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round" />
+                        </Viewbox>
+                        <TextBlock Text="{loc:T DuplicateFinder.Rescan}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
         </Border>
-    </Border>
+
+        <!-- Footer: group count on the left, Close / Delete N on the right (the editor's
+             Cancel / Save). Delete still asks before anything is trashed. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="df-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T DuplicateFinder.Close}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Command="{Binding DeleteSelectedCommand}"
+                        IsEnabled="{Binding HasSelection}"
+                        MinWidth="108">
+                    <TextBlock>
+                        <Run Text="{loc:T DuplicateFinder.Delete}" /><Run Text=" " /><Run Text="{Binding SelectedCount}" />
+                    </TextBlock>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Scanning, or nothing found: say so where the list would be. -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding ListMessage}"
+                   IsVisible="{Binding !HasGroups}"
+                   FontSize="13" Opacity="0.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Margin="28,48" />
+
+        <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding HasGroups}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      Padding="28,16,28,8">
+            <ItemsControl ItemsSource="{Binding Groups}">
+                <!-- Virtualized: a library with many duplicates built every group (and its
+                     per-copy cards) on open. Each group's own list stays small. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupGroup">
+                        <StackPanel Spacing="6" Margin="0,0,0,18">
+                            <!-- Song title, artist muted, copy count as a small chip. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,0,2,2">
+                                <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="14" FontWeight="Bold"
+                                           MaxWidth="380" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding Artist}" FontSize="13" Opacity="0.55"
+                                           Margin="8,0,8,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Classes="pill-well" CornerRadius="999" Padding="9,2"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CopiesText}" FontSize="11" Opacity="0.7" />
+                                </Border>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupRow">
+                                        <ToggleButton Classes="df-copy" IsChecked="{Binding Keep}" Margin="0,0,0,6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0" Spacing="2" Classes.df-dim="{Binding Delete}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding Quality}" FontSize="13" FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center" />
+                                                        <!-- The copy the matcher rates best quality. -->
+                                                        <TextBlock Text="{loc:T DuplicateFinder.Best}" IsVisible="{Binding IsSuggestedKeep}"
+                                                                   FontSize="11.5" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Location}" FontSize="11.5" Opacity="0.6"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding FilePathFull}" />
+                                                </StackPanel>
+                                                <!-- State, not an action: the whole card toggles it. -->
+                                                <Panel Grid.Column="1" MinWidth="84" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <Border Classes="df-chip" IsVisible="{Binding Keep}"
+                                                            Background="{DynamicResource AccentColorBrush}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="10" Height="10"
+                                                                      Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                            <TextBlock Classes="df-chip-text" Text="{loc:T DuplicateFinder.Keep}"
+                                                                       Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Border Classes="df-chip" IsVisible="{Binding Delete}" Opacity="0.6">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                                            <PathIcon Data="{StaticResource TrashIcon}" Width="11" Height="11" />
+                                                            <TextBlock Classes="df-chip-text" Text="{loc:T DuplicateFinder.Delete}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Panel>
+                                            </Grid>
+                                        </ToggleButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>
