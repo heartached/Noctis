@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -118,6 +119,35 @@ public class EditPlaylistDialogTests
     }
 
     // ── Bugs ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Live check 10-09: starred, the Star row turned into a square accent rectangle that hid
+    /// the star and the check. Fluent's ToggleButton:checked style painted the row template's
+    /// PART_ContentPresenter. The presenter stays clear; the star is the artist page's
+    /// animated star (HeartIcon, ZoomOnToggle) and is on; the row has a spoken name.
+    /// </summary>
+    [AvaloniaFact]
+    public void StarredRow_KeepsItsRoundedFill_AndShowsTheAnimatedStar()
+    {
+        EnsureAppStyles();
+        var vm = EditPlaylistDialogViewModel.ForPlaylist(
+            new Playlist { Name = "Gym", IsPinned = true }, null, Array.Empty<string>());
+        var (win, _) = Open(vm);
+        try
+        {
+            PumpUntil(() => false, 300);
+            var row = Named<ToggleButton>(win, "StarToggle");
+            Assert.True(row.IsChecked);
+            var presenter = row.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+            Assert.Equal(0, AccentTestHarness.ColorOf(presenter.Background).A);
+
+            var star = row.GetVisualDescendants().OfType<Noctis.Controls.HeartIcon>().Single();
+            Assert.True(star.IsFavorite);
+            Assert.True(star.ZoomOnToggle);
+            Assert.False(string.IsNullOrWhiteSpace(Avalonia.Automation.AutomationProperties.GetName(row)));
+        }
+        finally { win.Close(); }
+    }
 
     [AvaloniaFact]
     public void Escape_Closes_WithoutSaving()

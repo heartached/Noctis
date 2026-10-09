@@ -186,9 +186,10 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Solid accent like the Settings sheet's X (owner 10-09: "match that"). -->
                 <Button x:Name="CloseButton"
                         Grid.Column="7"
-                        Classes="pill-secondary"
+                        Classes="pill-primary"
                         Width="36" Height="36" MinHeight="36" Padding="0"
                         VerticalAlignment="Top"
                         ToolTip.Tip="{loc:T Wrap.Close}"

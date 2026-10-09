@@ -150,9 +150,10 @@
                     <TextBlock Text="{Binding Subtitle}"
                                FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
+                <!-- Solid accent like the Settings sheet's X (owner 10-09: "match that"). -->
                 <Button x:Name="CloseButton"
                         Grid.Column="3"
-                        Classes="pill-secondary"
+                        Classes="pill-primary"
                         Width="36" Height="36" MinHeight="36" Padding="0"
                         VerticalAlignment="Top"
                         ToolTip.Tip="{loc:T ShareLyrics.Close}"

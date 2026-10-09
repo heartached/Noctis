@@ -125,14 +125,20 @@
         <Style Selector="ToggleButton.ep-toggle-row:pressed">
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
         </Style>
-        <Style Selector="ToggleButton.ep-toggle-row PathIcon.ep-star">
-            <Setter Property="Opacity" Value="0.45" />
+        <!-- Fluent's ToggleButton :checked/:pointerover/:pressed styles target the template's
+             PART_ContentPresenter and painted a square accent fill over the row: starred, the
+             star and the check vanished into a red rectangle (live check 10-09). The row draws
+             its own rounded fill (RowFill), so the presenter stays clear. -->
+        <Style Selector="ToggleButton.ep-toggle-row /template/ ContentPresenter#PART_ContentPresenter,
+                         ToggleButton.ep-toggle-row:checked /template/ ContentPresenter#PART_ContentPresenter,
+                         ToggleButton.ep-toggle-row:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                         ToggleButton.ep-toggle-row:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                         ToggleButton.ep-toggle-row:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                         ToggleButton.ep-toggle-row:checked:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         </Style>
-        <Style Selector="ToggleButton.ep-toggle-row:checked PathIcon.ep-star">
-            <Setter Property="Opacity" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-
         <!-- Selection circle: the Add Songs / Lyrics Studio picker recipe (brushes in styles so
              .selected wins over the resting look). -->
         <Style Selector="Border.selection-circle">
@@ -288,13 +294,21 @@
 
             <ToggleButton x:Name="StarToggle"
                           Classes="ep-toggle-row"
+                          AutomationProperties.Name="{loc:T EditPlaylist.StarKeepAtTop}"
                           IsChecked="{Binding IsPinned}">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <PathIcon Grid.Column="0"
-                              Classes="ep-star"
-                              Data="{StaticResource StarIcon}"
-                              Width="16" Height="16"
-                              VerticalAlignment="Center" />
+                    <!-- The artist page's favourite star (owner 10-09: same click animation): zooms
+                         in when starred, out when unstarred, colours crossfading
+                         (HeartIcon.ZoomOnToggle). -->
+                    <ctrl:HeartIcon Grid.Column="0"
+                                    IsFavorite="{Binding IsPinned}"
+                                    Glyph="{StaticResource StarIcon}"
+                                    Size="16"
+                                    OnBrush="{DynamicResource AccentColorBrush}"
+                                    OffOpacity="0.45"
+                                    OutlineWhenOff="False"
+                                    ZoomOnToggle="True"
+                                    VerticalAlignment="Center" />
                     <TextBlock Grid.Column="1"
                                Text="{loc:T EditPlaylist.StarKeepAtTop}"
                                Margin="12,0"
