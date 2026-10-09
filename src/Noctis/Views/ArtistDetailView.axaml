@@ -372,6 +372,7 @@
         <!-- Album tile shared by every release grid (mirrors MoreByArtistView) -->
         <DataTemplate x:Key="AlbumTile" x:DataType="m:Album">
             <Button Classes="album-tile"
+                    AutomationProperties.Name="{Binding Name}"
                     Focusable="False"
                     Margin="2"
                     MinHeight="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileHeight}"

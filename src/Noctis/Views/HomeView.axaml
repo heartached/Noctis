@@ -748,6 +748,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Album">
                                     <Button Classes="album-tile home-album-tile"
+                                            AutomationProperties.Name="{Binding Name}"
                                             Margin="2"
                                             Padding="2"
                                             VerticalAlignment="Top"

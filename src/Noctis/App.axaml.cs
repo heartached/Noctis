@@ -100,6 +100,9 @@ public partial class App : Application
 
         // Every ComboBox drop-down eases open (fade + glide), matching the Settings folds.
         Noctis.Helpers.ComboBoxDropDownAnimator.Install();
+
+        // Icon-only buttons are named by their tooltip for screen readers / UI Automation.
+        Noctis.Helpers.AccessibleNames.Install();
     }
 
     /// <summary>

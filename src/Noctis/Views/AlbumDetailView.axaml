@@ -667,7 +667,8 @@
                     Padding="0"
                     Width="32" Height="32"
                     Cursor="Hand"
-                    Command="{Binding ToggleAlbumFavoritesCommand}">
+                    Command="{Binding ToggleAlbumFavoritesCommand}"
+                    AutomationProperties.Name="{loc:T AlbumDetail.FavoriteEverySongAlbum}">
                 <ToolTip.Tip>
                     <TextBlock Text="{loc:T AlbumDetail.FavoriteEverySongAlbum}" />
                 </ToolTip.Tip>
@@ -996,7 +997,8 @@
         <StackPanel Margin="0,28,0,0"
                     IsVisible="{Binding HasOtherVersions}">
             <Button Classes="section-toggle" Classes.expanded="{Binding IsOtherVersionsExpanded}"
-                    Command="{Binding ToggleOtherVersionsSectionCommand}">
+                    Command="{Binding ToggleOtherVersionsSectionCommand}"
+                    AutomationProperties.Name="{loc:T AlbumDetail.OtherVersions}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Text="{loc:T AlbumDetail.OtherVersions}"
                                Classes="page-text"
@@ -1025,6 +1027,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:Album">
                             <Button Classes="album-tile related-album-tile"
+                                    AutomationProperties.Name="{Binding Name}"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
@@ -1198,6 +1201,7 @@
                 </ItemsControl>
             </ScrollViewer>
             <Button x:Name="OtherVersionsLeft"
+                    AutomationProperties.Name="{loc:T A11y.ScrollLeft}"
                     Classes="hscroll-arrow"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
@@ -1210,6 +1214,7 @@
                           Foreground="White" />
             </Button>
             <Button x:Name="OtherVersionsRight"
+                    AutomationProperties.Name="{loc:T A11y.ScrollRight}"
                     Classes="hscroll-arrow"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
@@ -1234,7 +1239,8 @@
                  mystery button) with the boxed, rotating one used everywhere else. -->
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,0">
                 <Button Grid.Column="0" Classes="section-toggle" Classes.expanded="{Binding IsMoreByExpanded}"
-                        Command="{Binding ToggleMoreBySectionCommand}" VerticalAlignment="Center">
+                        Command="{Binding ToggleMoreBySectionCommand}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding MoreByArtistTitle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="page-text"
                                    Text="{Binding MoreByArtistTitle}"
@@ -1280,6 +1286,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:Album">
                             <Button Classes="album-tile related-album-tile"
+                                    AutomationProperties.Name="{Binding Name}"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
@@ -1453,6 +1460,7 @@
                 </ItemsControl>
             </ScrollViewer>
             <Button x:Name="MoreByArtistLeft"
+                    AutomationProperties.Name="{loc:T A11y.ScrollLeft}"
                     Classes="hscroll-arrow"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
@@ -1465,6 +1473,7 @@
                           Foreground="White" />
             </Button>
             <Button x:Name="MoreByArtistRight"
+                    AutomationProperties.Name="{loc:T A11y.ScrollRight}"
                     Classes="hscroll-arrow"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"

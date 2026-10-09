@@ -1620,6 +1620,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>Favorite</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Options</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Play</value><comment>Text in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.Pause" xml:space="preserve"><value>Pause</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Play Next</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.AddQueue" xml:space="preserve"><value>Add to Queue</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.AddPlaylist" xml:space="preserve"><value>Add to Playlist</value><comment>Header in PlaybackBarView.axaml</comment></data>
@@ -2556,4 +2557,6 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="QueueToast.PlayingNext" xml:space="preserve"><value>Playing Next</value><comment>Confirmation pill above the playback island after Play Next</comment></data>
   <data name="QueueToast.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Confirmation pill detail line when several songs were queued; {0} = count</comment></data>
   <data name="QueueToast.OneSong" xml:space="preserve"><value>1 song</value><comment>Confirmation pill detail line for one untitled song</comment></data>
+  <data name="A11y.ScrollLeft" xml:space="preserve"><value>Scroll left</value><comment>Screen-reader name of the arrow that scrolls an album page tile row left</comment></data>
+  <data name="A11y.ScrollRight" xml:space="preserve"><value>Scroll right</value><comment>Screen-reader name of the arrow that scrolls an album page tile row right</comment></data>
 </root>

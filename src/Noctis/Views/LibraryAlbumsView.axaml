@@ -203,6 +203,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Album">
                                     <Button Classes="album-tile"
+                                            AutomationProperties.Name="{Binding Name}"
                                             Focusable="False"
                                             Margin="2"
                                             HorizontalAlignment="Stretch"

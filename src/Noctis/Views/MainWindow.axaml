@@ -212,7 +212,7 @@
                                 <Binding Path="!IsPageTitleVisible"/>
                             </MultiBinding>
                         </Panel.IsVisible>
-                        <Button Classes="corner-icon">
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/></TextBlock>
                             </ToolTip.Tip>
@@ -251,7 +251,7 @@
                         </StackPanel.IsVisible>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Type}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Type}"/><Run Text=" "/><Run Text="{Binding ReleaseTypeFilterLabel}"/><Run Text=" · "/><Run Text="{Binding QualityFilterLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -291,7 +291,7 @@
                         </Panel>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding AlbumSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -379,7 +379,7 @@
                         </Panel>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding PageSortColumn}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -469,7 +469,7 @@
                     <!-- Playlists: sort popover + New (primary). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding PlaylistActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding PlaylistSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -591,7 +591,7 @@
 
                     <!-- Artists grid: sort popover (Name / Songs / Albums + direction). -->
                     <Panel VerticalAlignment="Center" IsVisible="{Binding HasArtistSort}">
-                        <Button Classes="corner-icon">
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding ArtistSortLabel}"/></TextBlock>
                             </ToolTip.Tip>
@@ -646,7 +646,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding FoldersSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -693,7 +693,7 @@
                          Flow is on, a layout icon (Carousel / Cascade / Collage) sits beside it. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding HasViewModeToggle}">
-                        <Button Classes="corner-icon" IsVisible="{Binding IsCoverFlowMode}">
+                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Layout}" IsVisible="{Binding IsCoverFlowMode}">
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.Layout}"/><Run Text=" "/><Run Text="{Binding CoverFlowLayoutLabel}"/></TextBlock>
                             </ToolTip.Tip>
@@ -985,6 +985,7 @@
                                             </Border>
                                         </Grid>
                                         <Button Classes="queue-link"
+                                                AutomationProperties.Name="{Binding ArtistDisplay}"
                                                 HorizontalAlignment="Left"
                                                 Margin="0,2,0,0"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
@@ -1139,6 +1140,7 @@
                                                     </Border>
                                                 </Grid>
                                                 <Button Classes="queue-link"
+                                                        AutomationProperties.Name="{Binding ArtistDisplay}"
                                                         HorizontalAlignment="Left"
                                                         Margin="0,2,0,0"
                                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
@@ -1400,6 +1402,7 @@
                            VerticalAlignment="Center" />
                 <Button Classes="accent-pill"
                         Command="{Binding Player.ShowQueueCommand}"
+                        AutomationProperties.Name="{loc:T Main.Queue}"
                         CornerRadius="999"
                         Padding="12,6"
                         VerticalAlignment="Center"

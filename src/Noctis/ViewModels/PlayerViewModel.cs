@@ -488,7 +488,8 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _shareLyrics;
     private Action? _saveLyrics;
 
-    public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
+    /// <summary>Also the play/pause button's accessible name (AccessibleNames), so localized.</summary>
+    public string PlayPauseTooltip => Localization.Loc.T(State == PlaybackState.Playing ? "PlaybackBar.Pause" : "PlaybackBar.Play");
 
     /// <summary>True when playback is actively playing (not paused or stopped).</summary>
     public bool IsPlaying => State == PlaybackState.Playing;

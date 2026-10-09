@@ -1,7 +1,8 @@
 ﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helpers="using:Noctis.Helpers"
-        xmlns:controls="using:Noctis.Controls">
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:loc="using:Noctis.Localization">
 
     <!--
         Global style overrides for the Noctis music player.
@@ -1097,11 +1098,15 @@
             </Transitions>
         </Setter>
     </Style>
+    <!-- Icon-only: named for screen readers / UI Automation, which otherwise read the
+         content's type name ("Avalonia.Controls.Panel"). -->
     <Style Selector="Button.tile-play">
         <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="AutomationProperties.Name" Value="{loc:T Main.PlayTip}" />
     </Style>
     <Style Selector="Button.tile-more">
         <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="AutomationProperties.Name" Value="{loc:T Main.OptionsTip}" />
     </Style>
     <Style Selector="Button.album-tile:pointerover Button.tile-play, Button.album-tile:pointerover Button.tile-more">
         <Setter Property="Opacity" Value="1" />

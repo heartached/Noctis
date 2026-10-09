@@ -35,6 +35,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:PlaylistNavItem">
                             <Button Classes="album-tile"
+                                    AutomationProperties.Name="{Binding Label}"
                                     Margin="2"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Top"

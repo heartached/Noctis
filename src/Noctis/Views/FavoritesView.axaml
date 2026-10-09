@@ -49,6 +49,7 @@
                                 <DataTemplate x:DataType="m:FavoriteItem">
                                     <!-- Single button per item — left-click routed in code-behind -->
                                     <Button Classes="album-tile"
+                                            AutomationProperties.Name="{Binding Title}"
                                             Focusable="False"
                                             Margin="2"
                                             HorizontalAlignment="Stretch"
