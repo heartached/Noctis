@@ -18,11 +18,9 @@
     <Styles.Resources>
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
+                <!-- The filled field tones (PillFieldBackground*) live app-wide in Styles.axaml
+                     and the theme overlays, shared with the Settings page's pill boxes. -->
                 <ResourceDictionary x:Key="Dark">
-                    <!-- Filled field tones: a soft lift off the card instead of an outline. -->
-                    <SolidColorBrush x:Key="PillFieldBackground" Color="#1CFFFFFF" />
-                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#26FFFFFF" />
-                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#14FFFFFF" />
                     <!-- 1px rim: brighter along the top edge, as light catching the card. -->
                     <LinearGradientBrush x:Key="PillDialogRimBrush" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Offset="0" Color="#38FFFFFF" />
@@ -31,9 +29,6 @@
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="PillFieldBackground" Color="#0F000000" />
-                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#17000000" />
-                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#08000000" />
                     <SolidColorBrush x:Key="PillDialogRimBrush" Color="#14000000" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>

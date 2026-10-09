@@ -49,7 +49,7 @@
 
   <!-- Import Playlist dialog -->
   <data name="Import.Title" xml:space="preserve"><value>Import Playlist</value></data>
-  <data name="Import.Subtitle" xml:space="preserve"><value>Bring a playlist from a file or a Deezer/TIDAL link.</value></data>
+  <data name="Import.Subtitle" xml:space="preserve"><value>From a file or a Deezer or TIDAL link.</value></data>
   <data name="Import.ChooseFile" xml:space="preserve"><value>Choose file…</value></data>
   <data name="Import.DropHint" xml:space="preserve"><value>or drop a .csv / .json / .m3u file anywhere on this window</value></data>
   <data name="Import.LinkLabel" xml:space="preserve"><value>Or paste a playlist link (Deezer and TIDAL import directly)</value></data>
@@ -58,6 +58,32 @@
   <data name="Import.Matched" xml:space="preserve"><value>Matched</value></data>
   <data name="Import.Missing" xml:space="preserve"><value>Missing</value></data>
   <data name="Import.MissingHeader" xml:space="preserve"><value>Missing tracks (not found in your library)</value></data>
+  <data name="Import.LinkWatermark" xml:space="preserve"><value>Paste a Deezer or TIDAL link</value></data>
+  <data name="Import.DropTitle" xml:space="preserve"><value>Drop a playlist file here</value></data>
+  <data name="Import.Formats" xml:space="preserve"><value>CSV, JSON or M3U</value></data>
+  <data name="Import.FormatsTip" xml:space="preserve"><value>Spotify: export a CSV with Exportify.
+Apple Music, YouTube Music, Amazon: export a file with TuneMyMusic.
+Deezer and TIDAL: paste the link.</value></data>
+  <data name="Import.CreatePlaylist" xml:space="preserve"><value>Create playlist</value></data>
+  <data name="Import.Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Import.StatusMatching" xml:space="preserve"><value>Matching with your library…</value></data>
+  <data name="Import.StatusFetching" xml:space="preserve"><value>Fetching from {0}…</value><comment>{0} = Deezer or TIDAL</comment></data>
+  <data name="Import.StatusEmptyFile" xml:space="preserve"><value>No tracks in that file.</value></data>
+  <data name="Import.StatusEmptyLink" xml:space="preserve"><value>That {0} link has no tracks (private or removed).</value><comment>{0} = Deezer or TIDAL</comment></data>
+  <data name="Import.StatusReadFailed" xml:space="preserve"><value>Couldn't read the file: {0}</value><comment>{0} = error message</comment></data>
+  <data name="Import.StatusFetchFailed" xml:space="preserve"><value>Couldn't fetch the link: {0}</value><comment>{0} = error message</comment></data>
+  <data name="Import.StatusResult" xml:space="preserve"><value>{0} of {1} matched</value><comment>{0} = tracks found in the library, {1} = tracks in the playlist</comment></data>
+  <data name="Import.StatusCreating" xml:space="preserve"><value>Creating playlist…</value></data>
+  <data name="Import.StatusCreated" xml:space="preserve"><value>Created “{0}” with {1} tracks.</value><comment>{0} = playlist name, {1} = track count</comment></data>
+  <data name="Import.StatusCreatedOne" xml:space="preserve"><value>Created “{0}” with 1 track.</value><comment>{0} = playlist name</comment></data>
+  <data name="Import.StatusTidalWaiting" xml:space="preserve"><value>Finish signing in to TIDAL in your browser…</value></data>
+  <data name="Import.StatusTidalFailed" xml:space="preserve"><value>TIDAL sign-in didn't finish. Try again.</value></data>
+  <data name="Import.StatusTidalSignedIn" xml:space="preserve"><value>Signed in to TIDAL. Paste a TIDAL link.</value></data>
+  <data name="Import.StatusTidalNeeded" xml:space="preserve"><value>Sign in to TIDAL to import this link.</value></data>
+  <data name="Import.TidalHelp" xml:space="preserve"><value>TIDAL playlists are read with your own account (read-only, one browser sign-in).</value></data>
+  <data name="Import.TidalSignIn" xml:space="preserve"><value>Sign in to TIDAL</value></data>
+  <data name="Import.PickerTitle" xml:space="preserve"><value>Choose a playlist export</value></data>
+  <data name="Import.PickerFilter" xml:space="preserve"><value>Playlist exports</value></data>
   <data name="Common.Close" xml:space="preserve"><value>Close</value></data>
   <data name="Common.Create" xml:space="preserve"><value>Create</value></data>
 
@@ -318,6 +344,9 @@
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Show background vocals and adlibs in a smaller row under the line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Glass Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar, queue and menus look. The queue and menus use it when Liquid Glass is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Background Blur</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
+  <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How blurred the app looks behind pop-ups like the metadata editor and behind Settings. Slide all the way left to turn it off.</value><comment>Settings slider description (Background Blur)</comment></data>
+  <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Off</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
@@ -705,6 +734,50 @@
   <data name="AudioConverter.OverwriteExistingOutputFiles" xml:space="preserve"><value>Overwrite existing output files</value><comment>Content in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.AddLibraryShowApp" xml:space="preserve"><value>Add to library (show in app)</value><comment>Content in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.Queue" xml:space="preserve"><value>Queue</value><comment>Text in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.Subtitle" xml:space="preserve"><value>Make a copy in another audio format.</value><comment>Header line under the title in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.TitleOne" xml:space="preserve"><value>Convert 1 track</value><comment>Title in AudioConverterViewModel, one track</comment></data>
+  <data name="AudioConverter.TitleMany" xml:space="preserve"><value>Convert {0} tracks</value><comment>Title in AudioConverterViewModel; {0} number of tracks</comment></data>
+  <data name="AudioConverter.Quality" xml:space="preserve"><value>Quality</value><comment>Label over the bitrate / bit depth box in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.NextToOriginal" xml:space="preserve"><value>Next to each original file</value><comment>Watermark of the output folder box in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.FileName" xml:space="preserve"><value>File name</value><comment>Label over the file name pattern in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.InsertToken" xml:space="preserve"><value>Add to the file name</value><comment>Tooltip on the tag chips under the file name pattern in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.ExampleTip" xml:space="preserve"><value>The first track's new name</value><comment>Tooltip on the example name under the pattern in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.PatternInvalid" xml:space="preserve"><value>A file name can't contain : * ? " &lt; &gt; |</value><comment>Error under the file name pattern in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.FolderNotFull" xml:space="preserve"><value>Type a full folder path, or pick one with Browse.</value><comment>Error under the output folder in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.OptCopyTags" xml:space="preserve"><value>Copy tags</value><comment>Option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.TipCopyTags" xml:space="preserve"><value>Copy every tag from the original file</value><comment>Tooltip of the Copy tags option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.OptEmbedArtwork" xml:space="preserve"><value>Embed artwork</value><comment>Option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.TipEmbedArtwork" xml:space="preserve"><value>Put the cover inside the new file (MP3, AAC (.m4a), FLAC and ALAC can hold one)</value><comment>Tooltip of the Embed artwork option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.OptOverwrite" xml:space="preserve"><value>Overwrite existing</value><comment>Option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.TipOverwrite" xml:space="preserve"><value>Replace a file that already has the same name; otherwise that track is skipped</value><comment>Tooltip of the Overwrite existing option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.OptAddToLibrary" xml:space="preserve"><value>Add to library</value><comment>Option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.TipAddToLibrary" xml:space="preserve"><value>Show the copies in Noctis, titled like “Song (FLAC)”</value><comment>Tooltip of the Add to library option in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.DepthSource" xml:space="preserve"><value>Same as source</value><comment>Bit depth choice "Auto" in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.DepthBits" xml:space="preserve"><value>{0}-bit</value><comment>Bit depth choice in AudioConverterDialog; {0} 16 or 24</comment></data>
+  <data name="AudioConverter.TokenArtist" xml:space="preserve"><value>Artist</value><comment>Tag chip in AudioConverterDialog (inserts %artist%)</comment></data>
+  <data name="AudioConverter.TokenAlbumArtist" xml:space="preserve"><value>Album artist</value><comment>Tag chip in AudioConverterDialog (inserts %albumartist%)</comment></data>
+  <data name="AudioConverter.TokenAlbum" xml:space="preserve"><value>Album</value><comment>Tag chip in AudioConverterDialog (inserts %album%)</comment></data>
+  <data name="AudioConverter.TokenTitle" xml:space="preserve"><value>Title</value><comment>Tag chip in AudioConverterDialog (inserts %title%)</comment></data>
+  <data name="AudioConverter.TokenTrack" xml:space="preserve"><value>Track no.</value><comment>Tag chip in AudioConverterDialog (inserts %tracknumber2%, e.g. 01)</comment></data>
+  <data name="AudioConverter.TokenDisc" xml:space="preserve"><value>Disc no.</value><comment>Tag chip in AudioConverterDialog (inserts %discnumber%)</comment></data>
+  <data name="AudioConverter.TokenYear" xml:space="preserve"><value>Year</value><comment>Tag chip in AudioConverterDialog (inserts %year%)</comment></data>
+  <data name="AudioConverter.TokenGenre" xml:space="preserve"><value>Genre</value><comment>Tag chip in AudioConverterDialog (inserts %genre%)</comment></data>
+  <data name="AudioConverter.TokenComposer" xml:space="preserve"><value>Composer</value><comment>Tag chip in AudioConverterDialog (inserts %composer%)</comment></data>
+  <data name="AudioConverter.Stop" xml:space="preserve"><value>Stop</value><comment>Cancel button while a conversion runs, AudioConverterDialog</comment></data>
+  <data name="AudioConverter.Close" xml:space="preserve"><value>Close</value><comment>Cancel button after a conversion ran, AudioConverterDialog</comment></data>
+  <data name="AudioConverter.NoFfmpeg" xml:space="preserve"><value>ffmpeg not found. Set its path in Settings.</value><comment>Status in AudioConverterViewModel</comment></data>
+  <data name="AudioConverter.Converting" xml:space="preserve"><value>Converting…</value><comment>Status in AudioConverterViewModel</comment></data>
+  <data name="AudioConverter.Cancelled" xml:space="preserve"><value>Cancelled.</value><comment>Status in AudioConverterViewModel</comment></data>
+  <data name="AudioConverter.FailedWith" xml:space="preserve"><value>Failed: {0}</value><comment>Status in AudioConverterViewModel; {0} error message</comment></data>
+  <data name="AudioConverter.Finished" xml:space="preserve"><value>Finished · {0} converted</value><comment>Status in AudioConverterViewModel; {0} files converted</comment></data>
+  <data name="AudioConverter.FinishedFailed" xml:space="preserve"><value>{0} failed</value><comment>Status suffix in AudioConverterViewModel; {0} files failed</comment></data>
+  <data name="AudioConverter.FinishedSkipped" xml:space="preserve"><value>{0} skipped</value><comment>Status suffix in AudioConverterViewModel; {0} files skipped</comment></data>
+  <data name="AudioConverter.StatePending" xml:space="preserve"><value>Pending</value><comment>Row state chip in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.StateConverting" xml:space="preserve"><value>Converting</value><comment>Row state chip in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.StateDone" xml:space="preserve"><value>Done</value><comment>Row state chip in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.StateSkipped" xml:space="preserve"><value>Skipped</value><comment>Row state chip in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.StateFailed" xml:space="preserve"><value>Failed</value><comment>Row state chip in AudioConverterDialog</comment></data>
+  <data name="AudioConverter.StateCancelled" xml:space="preserve"><value>Cancelled</value><comment>Row state chip in AudioConverterDialog</comment></data>
 
   <!-- CommandPaletteDialog.axaml (auto-migrated) -->
   <data name="CommandPalette.CommandPalette" xml:space="preserve"><value>Command palette</value><comment>Title in CommandPaletteDialog.axaml</comment></data>
@@ -731,6 +804,10 @@
   <data name="CreatePlaylist.PlaylistName" xml:space="preserve"><value>Playlist name</value><comment>Watermark in CreatePlaylistDialog.axaml</comment></data>
   <data name="CreatePlaylist.NameRequired" xml:space="preserve"><value>Name is required</value><comment>Text in CreatePlaylistDialog.axaml</comment></data>
   <data name="CreatePlaylist.DescriptionOptional" xml:space="preserve"><value>Description (optional)</value><comment>Watermark in CreatePlaylistDialog.axaml</comment></data>
+  <data name="CreatePlaylist.Subtitle" xml:space="preserve"><value>Pick the tracks yourself</value><comment>One-line purpose under the title in CreatePlaylistDialog.axaml</comment></data>
+  <data name="CreatePlaylist.Name" xml:space="preserve"><value>Name</value><comment>Field label in CreatePlaylistDialog.axaml</comment></data>
+  <data name="CreatePlaylist.Description" xml:space="preserve"><value>Description</value><comment>Field label in CreatePlaylistDialog.axaml</comment></data>
+  <data name="CreatePlaylist.Optional" xml:space="preserve"><value>Optional</value><comment>Watermark of the description field in CreatePlaylistDialog.axaml</comment></data>
 
   <!-- CreateSmartPlaylistDialog.axaml (auto-migrated) -->
   <data name="CreateSmartPlaylist.CreateSmartPlaylist" xml:space="preserve"><value>Create Smart Playlist</value><comment>Title in CreateSmartPlaylistDialog.axaml</comment></data>
@@ -743,9 +820,20 @@
   <data name="CreateSmartPlaylist.Match" xml:space="preserve"><value>Match</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Value" xml:space="preserve"><value>Value</value><comment>Watermark in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.To" xml:space="preserve"><value>To...</value><comment>Watermark in CreateSmartPlaylistDialog.axaml</comment></data>
-  <data name="CreateSmartPlaylist.AddRule" xml:space="preserve"><value>Add Rule</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.AddRule" xml:space="preserve"><value>Add rule</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Limit" xml:space="preserve"><value>Limit to</value><comment>Content in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>tracks, sorted by</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.Subtitle" xml:space="preserve"><value>Fills itself from rules you set</value><comment>One-line purpose under the title in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.Name" xml:space="preserve"><value>Name</value><comment>Field label in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.Description" xml:space="preserve"><value>Description</value><comment>Field label in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.AddDescription" xml:space="preserve"><value>Add description</value><comment>Button that reveals the optional description field in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.Optional" xml:space="preserve"><value>Optional</value><comment>Watermark of the description field in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.MatchAll" xml:space="preserve"><value>All</value><comment>Segment: a track must match every rule (Match All / Any) in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.MatchAny" xml:space="preserve"><value>Any</value><comment>Segment: a track may match any one rule (Match All / Any) in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.MatchesCount" xml:space="preserve"><value>Matches {0:N0} tracks</value><comment>Live count in the footer of CreateSmartPlaylistDialog.axaml; {0} = number of tracks</comment></data>
+  <data name="CreateSmartPlaylist.MatchesOne" xml:space="preserve"><value>Matches 1 track</value><comment>Live count in the footer of CreateSmartPlaylistDialog.axaml when exactly one track matches</comment></data>
+  <data name="CreateSmartPlaylist.NoRules" xml:space="preserve"><value>Add a rule to start</value><comment>Footer of CreateSmartPlaylistDialog.axaml when every rule was removed</comment></data>
+  <data name="CreateSmartPlaylist.RemoveRule" xml:space="preserve"><value>Remove rule</value><comment>Tooltip of a rule row's remove button in CreateSmartPlaylistDialog.axaml</comment></data>
 
   <!-- DuplicateFinderDialog.axaml (auto-migrated) -->
   <data name="DuplicateFinder.FindDuplicates" xml:space="preserve"><value>Find Duplicates</value><comment>Title in DuplicateFinderDialog.axaml</comment></data>
@@ -754,6 +842,20 @@
   <data name="DuplicateFinder.Close" xml:space="preserve"><value>Close</value><comment>Content in DuplicateFinderDialog.axaml</comment></data>
   <data name="DuplicateFinder.Delete" xml:space="preserve"><value>Delete</value><comment>Text in DuplicateFinderDialog.axaml</comment></data>
   <data name="DuplicateFinder.Keep" xml:space="preserve"><value>Keep</value><comment>Text in DuplicateFinderDialog.axaml</comment></data>
+  <data name="DuplicateFinder.Hint" xml:space="preserve"><value>Click a copy to keep or delete it.</value><comment>Header subtitle in DuplicateFinderDialog.axaml</comment></data>
+  <data name="DuplicateFinder.Best" xml:space="preserve"><value>Best</value><comment>Tag on the highest-quality copy in a duplicate group</comment></data>
+  <data name="DuplicateFinder.Copies" xml:space="preserve"><value>{0} copies</value><comment>Chip on a duplicate group; {0} = number of copies (always 2 or more)</comment></data>
+  <data name="DuplicateFinder.Scanning" xml:space="preserve"><value>Scanning…</value><comment>Duplicate finder status while scanning</comment></data>
+  <data name="DuplicateFinder.NoneFound" xml:space="preserve"><value>No duplicates found</value><comment>Duplicate finder status when nothing was found</comment></data>
+  <data name="DuplicateFinder.GroupsOne" xml:space="preserve"><value>1 group</value><comment>Duplicate finder footer: one duplicate group found</comment></data>
+  <data name="DuplicateFinder.GroupsMany" xml:space="preserve"><value>{0} groups</value><comment>Duplicate finder footer; {0} = number of duplicate groups found</comment></data>
+  <data name="DuplicateFinder.FilesOne" xml:space="preserve"><value>1 file</value><comment>Used inside other DuplicateFinder messages as {0}</comment></data>
+  <data name="DuplicateFinder.FilesMany" xml:space="preserve"><value>{0} files</value><comment>Used inside other DuplicateFinder messages as {0}; {0} = number of files</comment></data>
+  <data name="DuplicateFinder.ConfirmRecycleBin" xml:space="preserve"><value>Move {0} to the Recycle Bin?</value><comment>Delete confirmation (Windows); {0} = "1 file" / "12 files"</comment></data>
+  <data name="DuplicateFinder.ConfirmTrash" xml:space="preserve"><value>Move {0} to the Trash?</value><comment>Delete confirmation (macOS/Linux); {0} = "1 file" / "12 files"</comment></data>
+  <data name="DuplicateFinder.ConfirmKeepNote" xml:space="preserve"><value>Copies marked Keep stay where they are.</value><comment>Second line of the delete confirmation</comment></data>
+  <data name="DuplicateFinder.Deleting" xml:space="preserve"><value>Deleting {0}…</value><comment>Duplicate finder status; {0} = "1 file" / "12 files"</comment></data>
+  <data name="DuplicateFinder.Deleted" xml:space="preserve"><value>Deleted {0}</value><comment>Duplicate finder status; {0} = "1 file" / "12 files"</comment></data>
 
   <!-- EditPlaylistDialog.axaml (auto-migrated) -->
   <data name="EditPlaylist.EditPlaylist" xml:space="preserve"><value>Edit Playlist</value><comment>Title in EditPlaylistDialog.axaml</comment></data>
@@ -1410,7 +1512,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
 
   <!-- OrganizeFilesDialog.axaml (auto-migrated) -->
   <data name="OrganizeFiles.OrganizeFiles" xml:space="preserve"><value>Organize Files</value><comment>Title in OrganizeFilesDialog.axaml</comment></data>
-  <data name="OrganizeFiles.RenameMoveFilesInto" xml:space="preserve"><value>Sort files into folders by their tags. Preview first.</value><comment>Text in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.RenameMoveFilesInto" xml:space="preserve"><value>Sort files into folders by their tags.</value><comment>Text in OrganizeFilesDialog.axaml</comment></data>
   <data name="OrganizeFiles.UndoLast" xml:space="preserve"><value>Undo last</value><comment>Content in OrganizeFilesDialog.axaml</comment></data>
   <data name="OrganizeFiles.Close" xml:space="preserve"><value>Close</value><comment>Content in OrganizeFilesDialog.axaml</comment></data>
   <data name="OrganizeFiles.Apply" xml:space="preserve"><value>Apply</value><comment>Content in OrganizeFilesDialog.axaml</comment></data>
@@ -1420,6 +1522,20 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="OrganizeFiles.FirstMediaFolder" xml:space="preserve"><value>First media folder</value><comment>Watermark in OrganizeFilesDialog.axaml</comment></data>
   <data name="OrganizeFiles.UpdatePreview" xml:space="preserve"><value>Update preview</value><comment>Content in OrganizeFilesDialog.axaml</comment></data>
   <data name="OrganizeFiles.Preview" xml:space="preserve"><value>Preview</value><comment>Text in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.Destination" xml:space="preserve"><value>Destination</value><comment>Field label in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.InsertToken" xml:space="preserve"><value>Add to pattern</value><comment>Tooltip on the tag chips under the pattern in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.SampleTip" xml:space="preserve"><value>Example from your library</value><comment>Tooltip on the example path under the pattern in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.NoDestination" xml:space="preserve"><value>Add a media folder or set a destination.</value><comment>Status in OrganizeFilesViewModel</comment></data>
+  <data name="OrganizeFiles.Building" xml:space="preserve"><value>Building preview…</value><comment>Status in OrganizeFilesViewModel</comment></data>
+  <data name="OrganizeFiles.Summary" xml:space="preserve"><value>{0} to move · {1} in place</value><comment>Status in OrganizeFilesViewModel; {0} files to move, {1} files already in place</comment></data>
+  <data name="OrganizeFiles.Moving" xml:space="preserve"><value>Moving files…</value><comment>Status in OrganizeFilesViewModel</comment></data>
+  <data name="OrganizeFiles.Moved" xml:space="preserve"><value>{0} moved</value><comment>Status in OrganizeFilesViewModel; {0} file count</comment></data>
+  <data name="OrganizeFiles.MovedFailed" xml:space="preserve"><value>{0} moved · {1} failed</value><comment>Status in OrganizeFilesViewModel; {0} moved, {1} failed</comment></data>
+  <data name="OrganizeFiles.Undoing" xml:space="preserve"><value>Undoing…</value><comment>Status in OrganizeFilesViewModel</comment></data>
+  <data name="OrganizeFiles.Restored" xml:space="preserve"><value>{0} restored</value><comment>Status in OrganizeFilesViewModel; {0} file count</comment></data>
+  <data name="OrganizeFiles.ActionMove" xml:space="preserve"><value>Move</value><comment>Preview row chip in OrganizeFilesDialog.axaml</comment></data>
+  <data name="OrganizeFiles.ActionRenamed" xml:space="preserve"><value>Move (renamed)</value><comment>Preview row chip: moved under a new name to avoid a collision</comment></data>
+  <data name="OrganizeFiles.ActionInPlace" xml:space="preserve"><value>In place</value><comment>Preview row chip: the file is already where the pattern puts it</comment></data>
 
   <!-- PlaybackBarView.axaml (auto-migrated) -->
   <data name="PlaybackBar.PlaybackSpeedTip" xml:space="preserve"><value>Playback speed</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
@@ -1565,6 +1681,30 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Compute album gain (group by AlbumId)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Queue</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Add files…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Measure loudness and write ReplayGain tags.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>EBU R128 loudness, written as ReplayGain 2.0 tags (−18 LUFS reference)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.TitleOne" xml:space="preserve"><value>Scan ReplayGain · 1 track</value><comment>Title in ReplayGainScannerViewModel, one ticked track</comment></data>
+  <data name="ReplayGainScanner.TitleMany" xml:space="preserve"><value>Scan ReplayGain · {0} tracks</value><comment>Title in ReplayGainScannerViewModel; {0} ticked tracks</comment></data>
+  <data name="ReplayGainScanner.AlbumGain" xml:space="preserve"><value>Album gain — treat each album as a whole</value><comment>Option in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AlbumGainTip" xml:space="preserve"><value>Also writes an album gain, so songs keep their loudness relative to the rest of their album</value><comment>Tooltip of the album gain option in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.Scan" xml:space="preserve"><value>Scan</value><comment>Primary button in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.Done" xml:space="preserve"><value>Done</value><comment>Primary button after a scan finished, ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.Stop" xml:space="preserve"><value>Stop</value><comment>Cancel button while a scan runs, ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.NoFfmpeg" xml:space="preserve"><value>ffmpeg not found — set the path in Settings → Advanced → Helper programs.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.TickOne" xml:space="preserve"><value>Tick at least one track to scan.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.Scanning" xml:space="preserve"><value>Scanning…</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.Finished" xml:space="preserve"><value>Finished · {0} scanned</value><comment>Status in ReplayGainScannerViewModel; {0} tracks tagged</comment></data>
+  <data name="ReplayGainScanner.FinishedFailed" xml:space="preserve"><value>{0} failed</value><comment>Status suffix in ReplayGainScannerViewModel; {0} tracks failed</comment></data>
+  <data name="ReplayGainScanner.Cancelled" xml:space="preserve"><value>Cancelled.</value><comment>Status in ReplayGainScannerViewModel</comment></data>
+  <data name="ReplayGainScanner.FailedWith" xml:space="preserve"><value>Failed: {0}</value><comment>Status in ReplayGainScannerViewModel; {0} error message</comment></data>
+  <data name="ReplayGainScanner.StatePending" xml:space="preserve"><value>Pending</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.StateTagged" xml:space="preserve"><value>Already scanned</value><comment>Row state chip in ReplayGainScannerDialog: the file already has ReplayGain tags</comment></data>
+  <data name="ReplayGainScanner.StateMeasuring" xml:space="preserve"><value>Measuring</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.StateMeasured" xml:space="preserve"><value>Measured</value><comment>Row state chip in ReplayGainScannerDialog: measured, waiting for the rest of the album before tags are written</comment></data>
+  <data name="ReplayGainScanner.StateDone" xml:space="preserve"><value>Done</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.StateSkipped" xml:space="preserve"><value>Skipped</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.StateFailed" xml:space="preserve"><value>Failed</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
+  <data name="ReplayGainScanner.StateCancelled" xml:space="preserve"><value>Cancelled</value><comment>Row state chip in ReplayGainScannerDialog</comment></data>
 
   <!-- ServerView.axaml (auto-migrated) -->
   <data name="Server.NoServerConnected" xml:space="preserve"><value>No server connected</value><comment>Text in ServerView.axaml</comment></data>
@@ -1882,15 +2022,37 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
 
   <data name="YouTube.Title" xml:space="preserve"><value>Add from YouTube</value><comment>Dialog title</comment></data>
   <data name="YouTube.Subtitle" xml:space="preserve"><value>Search or paste a link. Saved to your library with cover art.</value><comment>Dialog subtitle</comment></data>
-  <data name="YouTube.SearchHint" xml:space="preserve"><value>Search YouTube or paste a link…</value><comment>Search box watermark</comment></data>
+  <data name="YouTube.SearchHint" xml:space="preserve"><value>Search or paste a link</value><comment>Search box watermark</comment></data>
   <data name="YouTube.Search" xml:space="preserve"><value>Search</value><comment>Search button</comment></data>
   <data name="YouTube.SetupTitle" xml:space="preserve"><value>One-time setup</value><comment>First-run card title</comment></data>
-  <data name="YouTube.SetupBody" xml:space="preserve"><value>Noctis uses yt-dlp (free, open source) to talk to YouTube. It is downloaded once into Noctis's own folder and updated from here.</value><comment>First-run card body</comment></data>
+  <data name="YouTube.SetupBody" xml:space="preserve"><value>Downloads need yt-dlp. Noctis installs it once and keeps it updated.</value><comment>First-run card body</comment></data>
   <data name="YouTube.Install" xml:space="preserve"><value>Install yt-dlp</value><comment>First-run card button</comment></data>
   <data name="YouTube.Download" xml:space="preserve"><value>Download</value><comment>Per-result button</comment></data>
   <data name="YouTube.SavesTo" xml:space="preserve"><value>Saves to</value><comment>Footer label before the folder</comment></data>
-  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Results appear here. Downloads land in your library folder, tagged and with cover art.</value><comment>Empty state</comment></data>
+  <data name="YouTube.EmptyHint" xml:space="preserve"><value>Find a song, then download it into your library.</value><comment>Empty state</comment></data>
   <data name="YouTube.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
+  <data name="YouTube.UpdateTool" xml:space="preserve"><value>Update</value><comment>Small footer button next to "yt-dlp 2026.07.04 · update available": installs Noctis's own up-to-date yt-dlp</comment></data>
+  <data name="YouTube.UpdateToolTip" xml:space="preserve"><value>Install Noctis's own up-to-date copy of yt-dlp.</value><comment>Tooltip of the footer Update button</comment></data>
+  <data name="Import.Hint.Spotify" xml:space="preserve"><value>Spotify blocks this. Export it with Exportify, then choose the CSV file.</value><comment>Import Playlist: a Spotify link was pasted</comment></data>
+  <data name="Import.Hint.AppleMusic" xml:space="preserve"><value>Apple Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Apple Music link was pasted</comment></data>
+  <data name="Import.Hint.Tidal" xml:space="preserve"><value>This TIDAL link can't be read here yet. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: a TIDAL link in a build without TIDAL sign-in</comment></data>
+  <data name="Import.Hint.YouTubeMusic" xml:space="preserve"><value>YouTube Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: a YouTube Music link was pasted</comment></data>
+  <data name="Import.Hint.AmazonMusic" xml:space="preserve"><value>Amazon Music can't be read directly. Convert it with TuneMyMusic, then choose the file.</value><comment>Import Playlist: an Amazon Music link was pasted</comment></data>
+  <data name="Import.Hint.OpenExportify" xml:space="preserve"><value>Open Exportify</value><comment>Button: opens exportify.net (a product name, keep it)</comment></data>
+  <data name="Import.Hint.OpenTuneMyMusic" xml:space="preserve"><value>Open TuneMyMusic</value><comment>Button: opens tunemymusic.com (a product name, keep it)</comment></data>
+  <data name="YouTube.Installing" xml:space="preserve"><value>Installing…</value><comment>Install button label while yt-dlp downloads</comment></data>
+  <data name="YouTube.Status.NoFolder" xml:space="preserve"><value>Add a music folder in Settings → Library first.</value><comment>Footer status: no library folder to save into</comment></data>
+  <data name="YouTube.Status.InstallingTool" xml:space="preserve"><value>Downloading yt-dlp…</value><comment>Footer status while yt-dlp installs</comment></data>
+  <data name="YouTube.Status.Ready" xml:space="preserve"><value>yt-dlp is ready.</value><comment>Footer status after yt-dlp installed</comment></data>
+  <data name="YouTube.Status.InstallFailed" xml:space="preserve"><value>Couldn't install yt-dlp — {0}</value><comment>Footer status; {0} = error message</comment></data>
+  <data name="YouTube.Status.InstallFirst" xml:space="preserve"><value>Install yt-dlp first.</value><comment>Footer status: search pressed before setup</comment></data>
+  <data name="YouTube.Status.ReadingLink" xml:space="preserve"><value>Reading link…</value><comment>Footer status while a pasted link resolves</comment></data>
+  <data name="YouTube.Status.Searching" xml:space="preserve"><value>Searching…</value><comment>Footer status while searching</comment></data>
+  <data name="YouTube.Status.NothingFound" xml:space="preserve"><value>Nothing found.</value><comment>Footer status: search returned no results</comment></data>
+  <data name="YouTube.Status.SearchFailed" xml:space="preserve"><value>Search failed — {0}</value><comment>Footer status; {0} = error message</comment></data>
+  <data name="YouTube.Row.Starting" xml:space="preserve"><value>Starting…</value><comment>Result card status when a download begins</comment></data>
+  <data name="YouTube.Row.InLibrary" xml:space="preserve"><value>In your library</value><comment>Result card status after the download was imported</comment></data>
+  <data name="YouTube.Row.SavedToFolder" xml:space="preserve"><value>Saved to folder</value><comment>Result card status: saved but not imported</comment></data>
 
   <data name="YouTubeSettings.Section" xml:space="preserve"><value>YOUTUBE DOWNLOADS</value><comment>Library tab section title</comment></data>
   <data name="YouTubeSettings.Title" xml:space="preserve"><value>Add songs from YouTube</value><comment>Card title</comment></data>

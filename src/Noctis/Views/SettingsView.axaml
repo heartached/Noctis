@@ -238,8 +238,8 @@
             <Setter Property="Foreground" Value="#E5534B"/>
             <Setter Property="Opacity" Value="0.9"/>
         </Style>
-        <!-- Server type picker: the visible outline is drawn by a plain wrapper Border
-             (server-pill-shell) carrying exactly the metadata-info-field stroke, and the
+        <!-- Server type picker: the visible box (fill + focus ring) is drawn by a plain wrapper
+             Border (server-pill-shell) carrying exactly the metadata-info-field recipe, and the
              ComboBox's own Fluent chrome is fully disarmed in every state. Pinning the
              stroke on the template's Border#Background was tried twice and never rendered
              the same as the TextBox's PART_BorderElement (same declared 1.5px/brush,
@@ -248,14 +248,19 @@
         <Style Selector="Border.server-pill-shell">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="BorderThickness" Value="1.5"/>
-            <!-- Same grey stroke as every other Settings pill box (user ask 09-08). -->
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <!-- Same filled pill as every other Settings pill box (owner 10-08: the metadata
+                 editor's look): transparent ring at rest, the soft field fill. -->
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <Style Selector="Border.server-pill-shell:pointerover">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
         </Style>
         <!-- Focus parity: the field boxes turn accent on :focus, the shell follows suit. -->
         <Style Selector="Border.server-pill-shell:focus-within">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
         </Style>
         <Style Selector="ComboBox.server-pill">
             <Setter Property="CornerRadius" Value="999"/>
@@ -697,7 +702,7 @@
                     <DataValidationErrors>
                         <Panel>
                             <Border Name="Background"
-                                    Background="{DynamicResource ButtonBackground}"
+                                    Background="{DynamicResource PillFieldBackground}"
                                     BorderThickness="0"
                                     CornerRadius="16"
                                     Padding="{TemplateBinding Padding}"
@@ -754,7 +759,7 @@
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="ComboBox.pill-combo:pointerover /template/ Border#Background">
-            <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
         </Style>
         <!-- Selected item highlight. Foreground tracks the accent's contrast colour so the
              label stays readable even when the accent is white (otherwise white-on-white). -->
@@ -796,21 +801,32 @@
             <Setter Property="Padding" Value="16,11" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="UseLayoutRounding" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         </Style>
         <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
             <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <Style Selector="TextBox.metadata-info-field:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
         <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
         </Style>
         <Style Selector="TextBox.metadata-info-field:focus-within /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+        </Style>
+        <Style Selector="TextBox.metadata-info-field:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         </Style>
         <Style Selector="ComboBox.transition-pill">
             <Setter Property="Width" Value="132"/>
@@ -944,20 +960,23 @@
         <!-- The theme draws TextBox chrome on its inner border element (including
              hover/focus recolors), so the pill background has to be set there for
              every state or the theme's square highlight bleeds through. -->
+        <!-- Same filled pill as the other Settings boxes (owner 10-08): field fill, accent
+             ring on focus. -->
         <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
         </Style>
         <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
 
         <!-- Accent sliders (vertical EQ) -->
@@ -1138,31 +1157,86 @@
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="RenderTransform" Value="translateY(6px)"/>
         </Style>
-        <!-- ── Pill BOXES in Settings (text fields and combo boxes, never buttons): one mid-grey
-             stroke, 1.5px, layout-rounded so both control types rasterise it identically. The
-             brush is a translucent grey so it reads as the same mid grey on dark and light cards. ── -->
+        <!-- ── Pill BOXES in Settings (text fields, number fields and combo boxes, never buttons):
+             the metadata editor's filled pill (owner 10-08, PillDialog.axaml pill-field). A soft
+             PillFieldBackground lift off the card, no outline; the 1.5px border is always there
+             (transparent at rest) so focus only recolours it to the accent and nothing shifts.
+             Every state is pinned on the template part so Fluent's hover/focus/disabled boxes
+             never bleed through; a disabled box keeps the resting fill and is greyed by its row
+             (or Fluent's dimmed text), not by a different box. ── -->
         <Style Selector="TextBox">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
         </Style>
         <Style Selector="TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
         </Style>
         <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
         </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus-within /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
         </Style>
-        <!-- Every combo box: pill shell, label centred, and the pill-combo dropdown (rounded
-             popup, pill rows, accent highlight) so no combo has square rows. -->
-        <Style Selector="ComboBox">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
+        <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+        </Style>
+        <!-- Plain number fields (plugin settings): Fluent draws the box on the spinner shell
+             (its inner TextBox stays clear), so the shell takes the filled pill. eq-pill-number
+             hides its spinner and fills its TextBox instead (rules above). -->
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ ButtonSpinner">
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number):pointerover /template/ ButtonSpinner">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number):focus-within /template/ ButtonSpinner">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number):disabled /template/ ButtonSpinner">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
+        </Style>
+        <!-- Its inner TextBox stays clear (the shell is the box), in every state. -->
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ TextBox#PART_TextBox:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="NumericUpDown:not(.eq-pill-number) /template/ TextBox#PART_TextBox:disabled /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <!-- Every combo box: filled pill shell, label centred, and the pill-combo dropdown
+             (rounded popup, pill rows, accent highlight) so no combo has square rows. -->
+        <Style Selector="ComboBox">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="MinHeight" Value="34"/>
@@ -1170,16 +1244,33 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="ComboBox /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="UseLayoutRounding" Value="True"/>
         </Style>
-        <Style Selector="ComboBox:pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="#99A0A0A8"/>
-        </Style>
-        <Style Selector="ComboBox:focus /template/ Border#Background, ComboBox:dropdownopen /template/ Border#Background">
+        <Style Selector="ComboBox /template/ Border#HighlightBackground">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <!-- States skip server-pill: its fill and ring are drawn by the server-pill-shell
+             wrapper, so the combo's own chrome must stay clear in every state. -->
+        <Style Selector="ComboBox:not(.server-pill):pointerover /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}"/>
+        </Style>
+        <Style Selector="ComboBox:not(.server-pill):pressed /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}"/>
+        </Style>
+        <Style Selector="ComboBox:not(.server-pill):focus /template/ Border#Background, ComboBox:not(.server-pill):dropdownopen /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="ComboBox:not(.server-pill):disabled /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}"/>
         </Style>
         <Style Selector="ComboBox /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -1228,7 +1319,6 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Background" Value="#22000000"/>
         </Style>
         <Style Selector="TextBox.profile-name /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999"/>
@@ -2048,6 +2138,31 @@
                                 VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
                                    Text="{Binding PlaybackBarBackgroundOpacity, StringFormat='{}{0:P0}'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="44" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <!-- Background Blur (owner 10-08): the app behind pop-ups and this sheet, a smooth
+                 0–100% slider like the opacity ones, far left = off (dim only). Applied live: the
+                 sheet's own backdrop re-blurs as the thumb moves. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.BackgroundBlur}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.BackgroundBlurHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider Grid.Column="0"
+                                Classes="accent-slider"
+                                Minimum="0" Maximum="1"
+                                x:Name="BackgroundBlurSlider"
+                                Value="{Binding BackgroundBlurAmount, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding BackgroundBlurLabel}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center"
                                    MinWidth="44" TextAlignment="Right" Margin="12,0,0,0"/>
@@ -4166,31 +4281,17 @@
                 </Grid>
             </Border>
             <Border Classes="setting-row">
-                <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto">
-                    <TextBlock Grid.Column="0" Grid.Row="0" Text="{loc:T YouTubeSettings.Folder}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Grid.Row="0" Text="{Binding YouTubeDownloadFolder}" Watermark="{Binding YouTubeDownloadFolderHint}"
+                <!-- The watermark is the folder a blank field uses, so no hint line under it. -->
+                <Grid ColumnDefinitions="150,*,Auto">
+                    <TextBlock Grid.Column="0" Text="{loc:T YouTubeSettings.Folder}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Text="{Binding YouTubeDownloadFolder}" Watermark="{Binding YouTubeDownloadFolderHint}"
                              CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Grid.Row="0" Content="{loc:T Settings.Browse}" Command="{Binding BrowseYouTubeFolderCommand}"
+                    <Button Grid.Column="2" Content="{loc:T Settings.Browse}" Command="{Binding BrowseYouTubeFolderCommand}"
                             Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Text="{loc:T YouTubeSettings.FolderHint}"
-                               FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="2,6,0,0"/>
                 </Grid>
             </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="150,*,Auto" RowDefinitions="Auto,Auto,Auto">
-                    <TextBlock Grid.Column="0" Grid.Row="0" Text="{loc:T YouTubeSettings.Tool}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Grid.Row="0" Text="{Binding YtDlpPath}" Watermark="{loc:T YouTubeSettings.ToolPathHint}"
-                             CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Grid.Row="0" Classes="pill-action" Command="{Binding InstallYtDlpCommand}" IsEnabled="{Binding !IsInstallingYtDlp}"
-                            Padding="14,8" CornerRadius="999" Margin="8,0,0,0" Cursor="Hand" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:T YouTubeSettings.InstallUpdate}" FontSize="12"/>
-                    </Button>
-                    <TextBlock Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding YtDlpStatus}"
-                               FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="2,6,0,0"/>
-                    <ProgressBar Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="2" Value="{Binding YtDlpInstallProgress}" Minimum="0" Maximum="1"
-                                 Height="3" CornerRadius="2" Margin="0,6,0,0" IsVisible="{Binding IsInstallingYtDlp}"/>
-                </Grid>
-            </Border>
+            <!-- No yt-dlp row (owner 10-08): the downloader installs and keeps its own copy
+                 current; a custom path set earlier still works (YtDlpTool.Resolve). -->
             </StackPanel>
             </Border>
 

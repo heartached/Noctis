@@ -256,10 +256,10 @@ public partial class SettingsViewModel
     // ── YouTube downloads (Library tab) ──
 
     [ObservableProperty] private string _youTubeDownloadFolder = string.Empty;
+    /// <summary>A custom yt-dlp the user set before 10-08. Kept and honoured (YtDlpTool.Resolve)
+    /// but no longer shown: the downloader installs and updates its own copy (owner 10-08:
+    /// the Settings yt-dlp row is gone).</summary>
     [ObservableProperty] private string _ytDlpPath = string.Empty;
-    [ObservableProperty] private string _ytDlpStatus = string.Empty;
-    [ObservableProperty] private bool _isInstallingYtDlp;
-    [ObservableProperty] private double _ytDlpInstallProgress;
 
     public string YouTubeDownloadFolderHint =>
         App.Services?.GetService<IYouTubeImportService>()?.ResolveDownloadFolder() is { Length: > 0 } f ? f : "Add a music folder first";
@@ -277,41 +277,6 @@ public partial class SettingsViewModel
         if (!_settingsLoaded) return;
         _settings.YtDlpPath = value ?? string.Empty;
         QueueSettingsSave();
-        _ = RefreshYtDlpStatusAsync();
-    }
-
-    private async Task RefreshYtDlpStatusAsync()
-    {
-        var svc = App.Services?.GetService<IYouTubeImportService>();
-        if (svc is null) { YtDlpStatus = string.Empty; return; }
-        var path = svc.Tool.Resolve();
-        if (path is null) { YtDlpStatus = "Not installed — Noctis can download it for you (about 15 MB)."; return; }
-        var version = await svc.Tool.GetVersionAsync(CancellationToken.None);
-        YtDlpStatus = version is null ? $"Found at {path} but it could not run." : $"{YtDlpParsing.VersionLabel(version, svc.Tool.LatestKnownVersion)} · {path}";
-        if (version is null || _ytDlpUpdateCheckStarted) return;
-        // First time the row shows this session: quiet update check (updates only Noctis's own copy), then re-render.
-        _ytDlpUpdateCheckStarted = true;
-        var check = await svc.Tool.EnsureSessionUpdateCheckAsync();
-        if (check.Updated || check.UpdateAvailable) await RefreshYtDlpStatusAsync();
-    }
-
-    private bool _ytDlpUpdateCheckStarted;
-
-    [RelayCommand]
-    private async Task InstallYtDlp()
-    {
-        var svc = App.Services?.GetService<IYouTubeImportService>();
-        if (svc is null || IsInstallingYtDlp) return;
-        IsInstallingYtDlp = true;
-        YtDlpInstallProgress = 0;
-        YtDlpStatus = "Downloading yt-dlp…";
-        try
-        {
-            await svc.Tool.InstallAsync(new Progress<double>(p => Dispatcher.UIThread.Post(() => YtDlpInstallProgress = p)), CancellationToken.None);
-            await RefreshYtDlpStatusAsync();
-        }
-        catch (Exception ex) { YtDlpStatus = $"Install failed — {ex.Message}"; }
-        finally { IsInstallingYtDlp = false; }
     }
 
     [RelayCommand]
@@ -538,7 +503,6 @@ public partial class SettingsViewModel
         }
         else if (tab == TabLibrary)
         {
-            _ = RefreshYtDlpStatusAsync();
             OnPropertyChanged(nameof(YouTubeDownloadFolderHint));
         }
     }

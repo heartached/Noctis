@@ -76,6 +76,16 @@ public class BlurredBackdrop : Panel
     private readonly Transitions _imageFade;
     private readonly Transitions _dimFade;
     private WriteableBitmap? _snapshot;
+    /// <summary>The unblurred snapshot behind <see cref="_snapshot"/>, kept while it is up so
+    /// the Background Blur slider re-blurs it live instead of taking a new snapshot per step.</summary>
+    private BackdropSnapshot.Source? _source;
+    /// <summary>Re-blur output buffer (one re-blur runs at a time).</summary>
+    private byte[]? _reblurBuffer;
+    private bool _reblurRunning;
+    private bool _reblurAgain;
+    /// <summary>The slider is at Off while a snapshot is up: the image is faded out under the
+    /// plain dim, and kept so moving the slider back fades it in without a new snapshot.</summary>
+    private bool _blurHidden;
     private Task<bool>? _capture;
     /// <summary>Bumped by every <see cref="ScheduleRefresh"/> (and <see cref="Release"/>):
     /// only the wait that is still the latest retakes.</summary>
@@ -114,6 +124,9 @@ public class BlurredBackdrop : Panel
     internal Border DimLayer => _dim;
     /// <summary>True while a retake is scheduled (tests).</summary>
     internal bool IsRefreshPending => _refreshPending;
+    /// <summary>The radius the shown snapshot was blurred at, and how many live re-blurs ran (tests).</summary>
+    internal double ShownRadius { get; private set; }
+    internal int ReblurCount { get; private set; }
 
     /// <summary>
     /// Call when the sheet starts to open: takes the snapshot unless one is still up (a
@@ -137,10 +150,22 @@ public class BlurredBackdrop : Panel
         var epoch = _epoch;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         WriteableBitmap? bitmap = null;
+        BackdropSnapshot.Source? source = null;
+        var radius = BackdropSnapshot.BlurRadius;
         try
         {
-            if (Target is { } target && TopLevel.GetTopLevel(this) is { } top)
-                bitmap = await BackdropSnapshot.CaptureBlurredAsync(target, top, "BlurredBackdrop");
+            // Background Blur off: no snapshot, the plain dim alone.
+            if (BackdropSnapshot.IsBlurEnabled && Target is { } target && TopLevel.GetTopLevel(this) is { } top)
+            {
+                source = await BackdropSnapshot.CaptureSourceAsync(target, top, "BlurredBackdrop");
+                if (source != null && epoch == _epoch)
+                {
+                    radius = BackdropSnapshot.BlurRadius;
+                    var pixels = new byte[source.Width * source.Height * 4];
+                    await Task.Run(() => source.BlurInto(pixels, radius));
+                    bitmap = source.CreateBitmap(pixels);
+                }
+            }
         }
         finally
         {
@@ -159,17 +184,75 @@ public class BlurredBackdrop : Panel
         var first = _snapshot is null;
         var old = _snapshot;
         _snapshot = bitmap;
+        _source = source;
+        ShownRadius = radius;
         _image.Source = bitmap;
         old?.Dispose();
-        if (first)
+        if (first || _blurHidden)
         {
             // Showing already (the dim went up before the snapshot): cross-fade from the
             // sharp app under the full dim to the blur under the lighter one. Not showing
             // yet: settle at once, the layer's own fade carries it in.
             var showing = IsEffectivelyVisible && Opacity > 0;
-            SetLayers(imageOpacity: 1, dimOpacity: Math.Clamp(BlurDimOpacity, 0, 1), animate: showing);
+            ShowBlur(animate: showing);
         }
+        // The slider moved while this was being taken: catch up on the new source.
+        if (ShownRadius != BackdropSnapshot.BlurRadius) OnBlurRadiusChanged(this, EventArgs.Empty);
         return true;
+    }
+
+    /// <summary>The blurred snapshot under the lighter dim, or (slider at Off) faded out under
+    /// the plain dim with the snapshot kept.</summary>
+    private void ShowBlur(bool animate)
+    {
+        _blurHidden = !BackdropSnapshot.IsBlurEnabled;
+        if (_blurHidden)
+            SetLayers(imageOpacity: 0, dimOpacity: 1, animate: animate);
+        else
+            SetLayers(imageOpacity: 1, dimOpacity: Math.Clamp(BlurDimOpacity, 0, 1), animate: animate);
+    }
+
+    /// <summary>
+    /// Re-blurs the kept source at the slider's current radius, off the UI thread, into the
+    /// bitmap already shown. One runs at a time; changes that land meanwhile are folded into
+    /// one more pass at the newest value, so a drag follows the thumb without queueing up.
+    /// </summary>
+    private async Task ReblurAsync()
+    {
+        if (_reblurRunning) { _reblurAgain = true; return; }
+        _reblurRunning = true;
+        try
+        {
+            do
+            {
+                _reblurAgain = false;
+                var epoch = _epoch;
+                var source = _source;
+                var bitmap = _snapshot;
+                if (source is null || bitmap is null) return;
+                var radius = BackdropSnapshot.BlurRadius;
+                if (radius <= 0 || radius == ShownRadius) continue;
+                var length = source.Width * source.Height * 4;
+                if (_reblurBuffer?.Length != length) _reblurBuffer = new byte[length];
+                var buffer = _reblurBuffer;
+                await Task.Run(() => source.BlurInto(buffer, radius));
+                if (epoch != _epoch) return;              // closed meanwhile
+                if (!ReferenceEquals(bitmap, _snapshot))  // retaken meanwhile: redo on the new one
+                {
+                    _reblurAgain = true;
+                    continue;
+                }
+                source.CopyInto(bitmap, buffer);
+                _image.InvalidateVisual();
+                ShownRadius = radius;
+                ReblurCount++;
+            }
+            while (_reblurAgain);
+        }
+        finally
+        {
+            _reblurRunning = false;
+        }
     }
 
     /// <summary>
@@ -185,6 +268,9 @@ public class BlurredBackdrop : Panel
         _image.Source = null;
         _snapshot?.Dispose();
         _snapshot = null;
+        _source = null;
+        _reblurBuffer = null;
+        _blurHidden = false;
         SetLayers(imageOpacity: 0, dimOpacity: 1, animate: false);
     }
 
@@ -208,6 +294,31 @@ public class BlurredBackdrop : Panel
         if (_snapshot != null) await CaptureAsync();
     }
 
+    /// <summary>
+    /// Settings → Background Blur moved while the sheet is up (the slider lives on it): the
+    /// kept source is re-blurred live at the new strength (<see cref="ReblurAsync"/>), Off
+    /// cross-fades to the plain dim and back, and with no snapshot up yet (the sheet opened
+    /// with blur off) one is taken at once and fades in.
+    /// </summary>
+    private void OnBlurRadiusChanged(object? sender, EventArgs e)
+    {
+        if (_snapshot != null)
+        {
+            var hidden = !BackdropSnapshot.IsBlurEnabled;
+            if (hidden != _blurHidden) ShowBlur(animate: IsEffectivelyVisible && Opacity > 0);
+            if (!hidden) _ = ReblurAsync();
+            return;
+        }
+        if (BackdropSnapshot.IsBlurEnabled && IsEffectivelyVisible && Opacity > 0)
+            _ = CaptureAsync();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        BackdropSnapshot.BlurRadiusChanged += OnBlurRadiusChanged;
+    }
+
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
@@ -219,6 +330,7 @@ public class BlurredBackdrop : Panel
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        BackdropSnapshot.BlurRadiusChanged -= OnBlurRadiusChanged;
         Release();
     }
 

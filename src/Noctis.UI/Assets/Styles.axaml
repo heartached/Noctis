@@ -103,6 +103,11 @@
                     <!-- Settings hover shade: every clickable button in Settings (and the dialogs
                          it opens) darkens in place on hover, the way the accent buttons do. -->
                     <SolidColorBrush x:Key="SettingsButtonHoverBrush" Color="#33000000" />
+                    <!-- Filled pill fields (metadata editor, Settings): a soft lift off the card
+                         instead of an outline. Classes in PillDialog.axaml / SettingsView. -->
+                    <SolidColorBrush x:Key="PillFieldBackground" Color="#1CFFFFFF" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#14FFFFFF" />
 
                     <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
                     <SolidColorBrush x:Key="GlassPillBackground" Color="#26FFFFFF" />
@@ -244,6 +249,10 @@
                     <!-- Settings hover shade: every clickable button in Settings (and the dialogs
                          it opens) darkens in place on hover, the way the accent buttons do. -->
                     <SolidColorBrush x:Key="SettingsButtonHoverBrush" Color="#14000000" />
+                    <!-- Filled pill fields (metadata editor, Settings). -->
+                    <SolidColorBrush x:Key="PillFieldBackground" Color="#0F000000" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#17000000" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#08000000" />
 
                     <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
                     <SolidColorBrush x:Key="GlassPillBackground" Color="#18000000" />

@@ -241,7 +241,20 @@ public class PillDialogHost : ContentControl
             _card.IsHitTestVisible = false;
             _card.Opacity = 0;
             _card.RenderTransform = CardHidden;
+            ReleaseFocusFromCard();
         }
+    }
+
+    /// <summary>
+    /// The tunnel handler stops KeyDown while the close plays, but key gestures still run on a
+    /// handled event: a text field's Enter binding fired again mid-close (10-08 — Create made
+    /// a playlist twice). With nothing inside the card focused they have no target left.
+    /// </summary>
+    private void ReleaseFocusFromCard()
+    {
+        if (_card is null || TopLevel.GetTopLevel(this)?.FocusManager is not { } focus) return;
+        if (focus.GetFocusedElement() is Visual focused && (ReferenceEquals(focused, _card) || _card.IsVisualAncestorOf(focused)))
+            focus.Focus(null); // Avalonia 12: Focus(null) clears (ClearFocus was removed)
     }
 
     private void EnsureTransitions()

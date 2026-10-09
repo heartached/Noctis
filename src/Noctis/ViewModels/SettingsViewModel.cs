@@ -1589,6 +1589,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    /// <summary>Background Blur behind pop-ups and the Settings sheet, 0–1, far left = off.
+    /// Mirrors <see cref="AppSettings.BackgroundBlurAmount"/>; applied live through BackdropSnapshot.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BackgroundBlurLabel))]
+    private double _backgroundBlurAmount = AppSettings.BackgroundBlurAmountDefault;
+    /// <summary>The slider's readout: "Off" at the far left, else a percent like the opacity sliders.</summary>
+    public string BackgroundBlurLabel => BackgroundBlurAmount < AppSettings.BackgroundBlurOffBelow
+        ? Loc.T("Settings.BackgroundBlurOff")
+        : BackgroundBlurAmount.ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>The backdrop radius for a slider amount: 0 (off) at the far left, else a
+    /// share of BackdropSnapshot.MaxBlurRadius (the default 10% is radius 1).</summary>
+    internal static double BackdropRadiusFor(double amount) =>
+        amount < AppSettings.BackgroundBlurOffBelow ? 0 : amount * Noctis.Controls.BackdropSnapshot.MaxBlurRadius;
     /// <summary>Opacity of the track box inside the player bar. Mirrors
     /// <see cref="AppSettings.PlaybackBarTrackBoxOpacity"/>.</summary>
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
@@ -1978,7 +1992,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
 
-    // OrganizeFilesViewModel writes both of these back here when its dialog closes, but
+    // OrganizeFilesViewModel writes both of these back here when Apply runs, but
     // nothing persisted them — unlike every other setting they had no change handler, so
     // they only reached disk if some unrelated save happened to run afterwards. Killing
     // the process before that lost the user's organize template.
@@ -2586,6 +2600,8 @@ public partial class SettingsViewModel : ViewModelBase
             HomeLastPlayedExpanded = _settings.HomeLastPlayedExpanded;
             HomeShowHeavyRotation = _settings.HomeShowHeavyRotation;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
+            BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
+            Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(BackgroundBlurAmount);
             PlaybackBarTrackBoxOpacity = Math.Clamp(_settings.PlaybackBarTrackBoxOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
@@ -3048,6 +3064,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeLastPlayedExpanded = HomeLastPlayedExpanded;
         _settings.HomeShowHeavyRotation = HomeShowHeavyRotation;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
         _settings.PlaybackBarTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
@@ -4032,6 +4049,21 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyPlayerSettings();
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
+    }
+
+    partial void OnBackgroundBlurAmountChanged(double value)
+    {
+        var clamped = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : AppSettings.BackgroundBlurAmountDefault;
+        if (clamped != value)
+        {
+            BackgroundBlurAmount = clamped;
+            return;
+        }
+
+        // Live: an open Settings sheet re-blurs its backdrop as the thumb moves, the next
+        // pop-up uses the new strength.
+        Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(value);
         if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
@@ -6746,6 +6778,7 @@ public partial class SettingsViewModel : ViewModelBase
             ExternalOpenAppPath = defaultSettings.ExternalOpenAppPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            BackgroundBlurAmount = defaultSettings.BackgroundBlurAmount;
             PlaybackBarTrackBoxOpacity = defaultSettings.PlaybackBarTrackBoxOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;

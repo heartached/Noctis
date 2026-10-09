@@ -463,6 +463,16 @@ public class AppSettings
     /// on it also tints the queue drawer and the island's menus. Key kept so looks carry over.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
+    /// <summary>Background Blur (owner 10-08): how strongly the app behind a pop-up (the
+    /// metadata editor) and the Settings sheet is blurred, 0 = off (dim only) to 1 = the
+    /// strongest, shown as a percent like the opacity sliders. Default 10% (owner 10-08), a
+    /// light blur. (The first build stored a 0–10 step as "BackgroundBlur"; a new
+    /// key so that value is never read as a fraction.)</summary>
+    public double BackgroundBlurAmount { get; set; } = BackgroundBlurAmountDefault;
+    public const double BackgroundBlurAmountDefault = 0.1;
+    /// <summary>Below this the slider reads Off and no blur is drawn (the thumb at the far left).</summary>
+    public const double BackgroundBlurOffBelow = 0.005;
+
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
     /// (0 = no box, 1 = solid white). Default 0.07 is the reference LCD's soft lift.</summary>
     public double PlaybackBarTrackBoxOpacity { get; set; } = 0.07;
@@ -926,6 +936,9 @@ public class AppSettings
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        BackgroundBlurAmount = double.IsFinite(BackgroundBlurAmount)
+            ? Math.Clamp(BackgroundBlurAmount, 0, 1)
+            : BackgroundBlurAmountDefault;
         PlaybackBarTrackBoxOpacity = double.IsFinite(PlaybackBarTrackBoxOpacity)
             ? Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1)
             : 0.07;
