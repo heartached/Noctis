@@ -65,6 +65,22 @@ public class SearchCapsuleMorphTests
         } while (Environment.TickCount64 < end);
     }
 
+    /// <summary>Pumps like <see cref="Pump"/> until <paramref name="settled"/> holds or the
+    /// budget runs out. For end states of wall-clock transitions: a fixed wait just past the
+    /// animation's length fails whenever a loaded machine stalls the pump that long.</summary>
+    private static async Task PumpUntil(Window window, Func<bool> settled, int budgetMs = 3000)
+    {
+        var end = Environment.TickCount64 + budgetMs;
+        while (true)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            if (settled() || Environment.TickCount64 >= end) return;
+            await Task.Delay(8);
+        }
+    }
+
     private static async Task<Rig> OpenSettled()
     {
         var rig = Build();
@@ -112,17 +128,33 @@ public class SearchCapsuleMorphTests
         var rig = Build();
         var railGlyph = Center(rig.RailButton.GetVisualDescendants().OfType<PathIcon>().First(), rig.Window);
 
+        // The hand-off frame is the morph's first layout pass (the first with its transitions
+        // attached), read as it happens. Reading after RunJobs measured wall-clock time instead:
+        // a stall between the morph's first pulse and the read (a loaded machine, a slow first
+        // layout) let more frames run inside RunJobs, and the read caught the pill mid-grow.
+        (double Width, Point Glyph)? handOff = null;
+        void OnCapsuleLayout(object? sender, EventArgs e)
+        {
+            if (handOff != null || rig.Capsule.Transitions is not { Count: > 0 }) return;
+            if (rig.Capsule.GetVisualDescendants().OfType<PathIcon>().FirstOrDefault() is { } glyph)
+                handOff = (rig.Capsule.Bounds.Width, Center(glyph, rig.Window));
+        }
+        rig.Capsule.LayoutUpdated += OnCapsuleLayout;
+
         rig.TopBar.OpenSearchCommand.Execute(null);
         Assert.Equal(SidebarView.SearchCapsuleClosedSize, rig.Capsule.Width);   // the snap pose
         Assert.Equal(SidebarView.SearchCapsuleClosedSize, rig.Capsule.Height);
         Dispatcher.UIThread.RunJobs();   // positions the overlay (and starts the grow)
         rig.Window.UpdateLayout();
+        rig.Capsule.LayoutUpdated -= OnCapsuleLayout;
         // Hand-off frame: the rail button's own disc, glyph exactly over the button's.
-        Assert.InRange(rig.Capsule.Bounds.Width, SidebarView.SearchCapsuleClosedSize, SidebarView.SearchCapsuleClosedSize + 4);
+        Assert.True(handOff.HasValue, "no layout pass ran once the morph started");
+        Assert.InRange(handOff.Value.Width, SidebarView.SearchCapsuleClosedSize, SidebarView.SearchCapsuleClosedSize + 4);
+        Assert.Equal(railGlyph, handOff.Value.Glyph);
         var capGlyph = rig.Capsule.GetVisualDescendants().OfType<PathIcon>().First();
-        Assert.Equal(railGlyph, Center(capGlyph, rig.Window));
 
-        await Pump(rig.Window, 600);
+        await PumpUntil(rig.Window, () => rig.Capsule.Bounds.Width == SidebarView.SearchCapsuleOpenWidth
+                                          && rig.Capsule.Bounds.Height == SidebarView.SearchCapsuleOpenHeight);
         Assert.Equal(SidebarView.SearchCapsuleOpenWidth, rig.Capsule.Bounds.Width);
         Assert.Equal(SidebarView.SearchCapsuleOpenHeight, rig.Capsule.Bounds.Height);
         Assert.Equal(railGlyph, Center(capGlyph, rig.Window)); // glyph anchored through the morph
@@ -141,7 +173,9 @@ public class SearchCapsuleMorphTests
         var closeWidth = rig.Capsule.Transitions!.OfType<DoubleTransition>().First(t => t.Property == Avalonia.Layout.Layoutable.WidthProperty);
         Assert.True(closeWidth.Delay + closeWidth.Duration < openWidth.Duration, "close should be quicker than open");
 
-        await Pump(rig.Window, 500);
+        await PumpUntil(rig.Window, () => !rig.Popup.IsOpen
+                                          && rig.Capsule.Width == SidebarView.SearchCapsuleClosedSize
+                                          && rig.RailButton.Opacity == 1);
         Assert.False(rig.Popup.IsOpen);
         Assert.Equal(SidebarView.SearchCapsuleClosedSize, rig.Capsule.Width);
         Assert.Equal(1, rig.RailButton.Opacity);

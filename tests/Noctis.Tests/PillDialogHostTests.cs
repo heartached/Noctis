@@ -56,10 +56,25 @@ public class PillDialogHostTests
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             if (condition()) return true;
-            Thread.Sleep(5);
+            WaitOnDispatcher(5);
         }
         Dispatcher.UIThread.RunJobs();
         return condition();
+    }
+
+    /// <summary>
+    /// Waits by running the dispatcher loop, not Thread.Sleep, so DispatcherTimers fire.
+    /// An animation frame that commits nothing to the compositor (two pulses close enough
+    /// to produce the same colour) leaves the next frame to Avalonia's 16 ms animation
+    /// DispatcherTimer, and RunJobs only promotes due timers after it runs a job: with an
+    /// empty queue the clock never pulsed again and the 60 ms Background tween froze
+    /// part-way (the Save fill stuck at #707BE6 on its way to #3B82F6).
+    /// </summary>
+    private static void WaitOnDispatcher(int ms)
+    {
+        var frame = new DispatcherFrame();
+        using (DispatcherTimer.RunOnce(() => frame.Continue = false, TimeSpan.FromMilliseconds(ms), DispatcherPriority.Send))
+            Dispatcher.UIThread.PushFrame(frame);
     }
 
     private static Track T(string title, int n, Guid albumId) => new()
@@ -144,15 +159,12 @@ public class PillDialogHostTests
                 AccentTestHarness.WithAccent("#3B82F6", ThemeVariant.Dark, () =>
                 {
                     // The style value (what the app-wide 60 ms Background tween heads to) is the new
-                    // accent exactly; the painted brush lands on it (headless back-to-back tweens can
-                    // park a few units short, so that one is checked with a small tolerance).
+                    // accent exactly, and the painted brush lands on it exactly once the tween ends.
                     var blue = Color.Parse("#3B82F6");
                     Assert.True(PumpUntil(() => save.GetBaseValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty) is { HasValue: true } v
                                                 && v.Value is ISolidColorBrush s && s.Color == blue),
                         $"style fill stayed {save.GetBaseValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty)}");
-                    static bool Near(Color a, Color b) =>
-                        Math.Abs(a.R - b.R) <= 12 && Math.Abs(a.G - b.G) <= 12 && Math.Abs(a.B - b.B) <= 12;
-                    Assert.True(PumpUntil(() => save.Background is ISolidColorBrush s && Near(s.Color, blue)),
+                    Assert.True(PumpUntil(() => save.Background is ISolidColorBrush s && s.Color == blue),
                         $"painted fill stayed {save.Background}");
                     Assert.IsAssignableFrom<ISolidColorBrush>(save.Background);
                     Assert.DoesNotContain(save.GetVisualDescendants().OfType<Border>(), x => x.Background is IGradientBrush);
