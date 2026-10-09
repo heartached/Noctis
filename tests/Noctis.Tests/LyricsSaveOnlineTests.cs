@@ -363,9 +363,12 @@ public class LyricsSaveOnlineTests
             remote.Vm.ApplySearchedLyrics(remote.Track, Result(synced: Lrc), "LRCLIB");
             Assert.False(remote.Vm.CanSaveToFile);
             await remote.Vm.SaveLyricsToFileCommand.ExecuteAsync(null);
+            // Drain first: the automatic sidecar persist runs on the writer lane, so checking
+            // before it settled passed or failed on timing alone (it wrote a streamed song's
+            // .lrc whenever the lane ran first).
+            await DrainWriterLaneAsync();
             Assert.False(File.Exists(Sidecar(remote.Track, ".lrc")));
             Assert.Empty(remote.Prompts);
-            await DrainWriterLaneAsync();
         }
         finally { Cleanup(local.Track); Cleanup(remote.Track); }
     }

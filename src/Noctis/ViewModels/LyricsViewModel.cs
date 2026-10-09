@@ -1733,9 +1733,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
 
         var trackPath = track.FilePath;
-        if (string.IsNullOrWhiteSpace(trackPath))
+        // A streamed song (Jellyfin, Subsonic) has no folder of its own: its FilePath is a
+        // stream URL, so nothing may be written beside it (Save to File has the same rule,
+        // CanSaveOnlineLyrics). This used to queue a sidecar write there anyway.
+        if (string.IsNullOrWhiteSpace(trackPath) || track.SourceType != SourceType.Local)
         {
-            // No sidecar can exist without a track path — just reflect the lyrics
+            // No sidecar can exist without a track path of its own — just reflect the lyrics
             // into the in-memory track fields for the Metadata editor.
             track.Lyrics = plain ?? string.Empty;
             track.SyncedLyrics = synced ?? string.Empty;
