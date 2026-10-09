@@ -2479,6 +2479,8 @@ public partial class PlayerViewModel : ViewModelBase
         var prepared = _autoMixPreparedSnapshot;
         _autoMixPreparedSnapshot = null;
 
+        RecordSkipOnReplace();
+
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
@@ -2615,6 +2617,7 @@ public partial class PlayerViewModel : ViewModelBase
             return;
         }
         _isAdvancingQueue = true;
+        _endingByPlayback = reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix or QueueAdvanceReason.Error;
         try
         {
             AdvanceQueueCore(reason);
@@ -2622,7 +2625,28 @@ public partial class PlayerViewModel : ViewModelBase
         finally
         {
             _isAdvancingQueue = false;
+            _endingByPlayback = false;
         }
+    }
+
+    /// <summary>True while the queue moves on by itself (the song ended, AutoMix, a playback
+    /// error): the song being left was not skipped. See <see cref="RecordSkipOnReplace"/>.</summary>
+    private bool _endingByPlayback;
+
+    /// <summary>
+    /// A song the user leaves in its first half is a skip in the play log, however they left
+    /// it: Next (which marks it itself), Previous, or picking another song. Only Next marked it
+    /// before, so with "Count a play after: Immediately" a double-click on another song left the
+    /// first one a full play: on the owner's main profile 2,655 of 4,800 logged plays were cut
+    /// off within 30 s (10-09). Not when the song ended by itself, failed, or was stopped, and
+    /// not for a play that isn't counted yet (it has no log event, GitHub #101).
+    /// </summary>
+    private void RecordSkipOnReplace()
+    {
+        if (_endingByPlayback || CurrentTrack is not { } leaving || _playCountPending) return;
+        if (State is not (PlaybackState.Playing or PlaybackState.Paused)) return;
+        if (PositionFraction >= 0.5) return;
+        _playHistory?.RecordSkip(leaving);
     }
 
     private bool _allowExplicitContent = true;
