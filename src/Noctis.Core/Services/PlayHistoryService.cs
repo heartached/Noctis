@@ -111,6 +111,27 @@ public sealed class PlayHistoryService : IPlayHistoryService
         }
     }
 
+    public void RemapTrackIds(IReadOnlyDictionary<Guid, Guid> remap)
+    {
+        if (remap.Count == 0) return;
+        lock (_lock)
+        {
+            EnsureLoaded();
+            var changed = false;
+            foreach (var e in _events!)
+            {
+                if (remap.TryGetValue(e.TrackId, out var newId))
+                {
+                    e.TrackId = newId;
+                    changed = true;
+                }
+            }
+            if (!changed) return;
+            PublishSnapshot();
+            ScheduleSave();
+        }
+    }
+
     public Task FlushAsync()
     {
         lock (_lock)

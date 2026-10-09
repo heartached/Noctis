@@ -2821,6 +2821,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (renamed.Count > 0)
             {
                 var remap = await _library.RelocateTracksAsync(renamed);
+                App.Services?.GetService<IPlayHistoryService>()?.RemapTrackIds(remap);
                 if (App.Services?.GetService<MainWindowViewModel>() is { } main)
                     await main.Sidebar.ApplyTrackIdRemapAsync(remap);
             }

@@ -161,10 +161,14 @@ public partial class OrganizeFilesViewModel : ViewModelBase
         StatusMessage = L("OrganizeFiles.Restored", result.Moved);
     }
 
-    /// <summary>Moved tracks get new ids; point the sidebar's live playlists at them.</summary>
+    /// <summary>Moved tracks get new ids; point the sidebar's live playlists and the play
+    /// log at them (the log kept the old ids, so moved songs' plays lost their album/genre).</summary>
     private static Task RemapPlaylistsAsync(OrganizeResult result)
-        => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.ApplyTrackIdRemapAsync(result.TrackIdRemap)
+    {
+        App.Services?.GetService<IPlayHistoryService>()?.RemapTrackIds(result.TrackIdRemap);
+        return App.Services?.GetService<MainWindowViewModel>()?.Sidebar.ApplyTrackIdRemapAsync(result.TrackIdRemap)
            ?? Task.CompletedTask;
+    }
 
     [RelayCommand]
     private void Close() => Closed?.Invoke(this, EventArgs.Empty);
