@@ -38,17 +38,20 @@
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
-        <!-- Example path: one quiet chip per folder, the file name in the accent (the other
-             pop-ups' live example line). -->
+        <!-- Example path: one quiet chip per folder, the file name at full strength. Not the
+             accent: on the grey chip a dark accent read at ~1.2:1 (live check 10-09, #8E1B3A
+             on #404040). -->
         <Style Selector="Border.stf-path-chip">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="10,3" />
         </Style>
         <Style Selector="Border.stf-path-chip TextBlock">
             <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.7" />
         </Style>
         <Style Selector="Border.stf-path-chip.file TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <!-- Songs already in the folder recede; the ones that go over stand out. -->

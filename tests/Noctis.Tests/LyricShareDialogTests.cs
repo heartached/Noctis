@@ -227,6 +227,29 @@ public class LyricShareDialogTests
 
     // ── Selection (not bugs; guards for the new rows) ──
 
+    /// <summary>
+    /// The owner's "lines wrap very narrowly": multi-line LRC lines (GitHub #116) reached the
+    /// list with their "\n" breaks (live check 10-09: "(Great John on the\nbeat, by the way)"),
+    /// so the full-width rows broke after 2-4 words. Each lyric line is one line in the list,
+    /// on the card and in Copy.
+    /// </summary>
+    [AvaloniaFact]
+    public void MultiLineLyricLines_AreOneLine_InTheListAndOnTheCard()
+    {
+        var lines = new[] { "(Great John on the\nbeat, by the way)", "First **** play,\r\n I bet he die", "plain line" };
+        var vm = new LyricShareViewModel(Song(), lines, 0);
+        try
+        {
+            Assert.Equal("(Great John on the beat, by the way)", vm.Lines[0].Text);
+            Assert.Equal("First **** play, I bet he die", vm.Lines[1].Text);
+            Assert.Equal("plain line", vm.Lines[2].Text);
+            vm.ClearSelectionCommand.Execute(null);
+            vm.ToggleLine(vm.Lines[0]);
+            Assert.Equal(new[] { "(Great John on the beat, by the way)" }, vm.CardLines);
+        }
+        finally { vm.Detach(); }
+    }
+
     /// <summary>The card shows the picked lines in lyric order, whatever order they were picked in.</summary>
     [AvaloniaFact]
     public void CardLines_FollowLyricOrder_NotPickOrder()

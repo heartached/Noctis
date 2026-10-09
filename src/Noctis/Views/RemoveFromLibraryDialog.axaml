@@ -17,7 +17,8 @@
          Close(result), so the deferred close loses nothing. -->
     <controls:PillDialogHost>
 
-        <StackPanel Width="460" Margin="28,24,28,22" Spacing="20">
+        <!-- 500: the English detail line fits on one line (at 460 "file." wrapped alone). -->
+        <StackPanel Width="500" Margin="28,24,28,22" Spacing="20">
 
             <StackPanel Spacing="6">
                 <TextBlock x:Name="MessageText"

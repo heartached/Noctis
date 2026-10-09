@@ -160,7 +160,8 @@
                         </Grid>
 
                         <!-- Link, quality, Download. -->
-                        <Grid ColumnDefinitions="*,8,150,8,Auto" IsVisible="{Binding ToolInstalled}">
+                        <!-- 180: "Best available" clipped to "Best availabl" at 150 (live check 10-09). -->
+                        <Grid ColumnDefinitions="*,8,180,8,Auto" IsVisible="{Binding ToolInstalled}">
                             <TextBox x:Name="LinkBox" Grid.Column="0" Classes="pill-field"
                                      Text="{Binding YouTubeUrl}"
                                      Watermark="{loc:T LyricsBackground.YouTubeWatermark}"

@@ -415,6 +415,18 @@ public partial class LyricShareViewModel : ViewModelBase
     partial void OnPreviewChanged(Bitmap? value) => OnPropertyChanged(nameof(CanExportVideo));
     partial void OnIsRenderingChanged(bool value) => OnPropertyChanged(nameof(CanExportVideo));
 
+    /// <summary>
+    /// A lyric line as one line. Multi-line LRC lines (GitHub #116) carry their breaks, and the
+    /// list printed them, so lines broke at the lyrics page's wrap points into a ragged
+    /// column of 2-4 words (owner 10-08; live check 10-09: "(Great John on the\nbeat, by the
+    /// way)"). The card wraps by spaces only, so it measured "the\nbeat," as one word.
+    /// </summary>
+    internal static string OneLine(string text) =>
+        text.IndexOfAny(new[] { '\r', '\n' }) < 0
+            ? text
+            : string.Join(" ", text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim()).Where(part => part.Length > 0));
+
     public LyricShareViewModel(Track track, IReadOnlyList<string> lines, int preselectIndex = 0)
         : this(track, lines, null, null, null, null, preselectIndex)
     {
@@ -454,7 +466,7 @@ public partial class LyricShareViewModel : ViewModelBase
             var ts = timestamps != null && i < timestamps.Count ? timestamps[i] : null;
             var words = wordTimings != null && i < wordTimings.Count ? wordTimings[i] : null;
             var end = endTimestamps != null && i < endTimestamps.Count ? endTimestamps[i] : null;
-            Lines.Add(new SelectableLyricLine(lines[i], ts, words, end));
+            Lines.Add(new SelectableLyricLine(OneLine(lines[i]), ts, words, end));
         }
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
