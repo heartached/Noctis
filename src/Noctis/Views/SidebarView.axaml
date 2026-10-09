@@ -112,15 +112,22 @@
 
         <!-- Right-click menu for playlist rows and folder headers. One shared menu; the
              items switch on IsFolder. Opened from code-behind on right-press so the
-             ListBox doesn't also select (and navigate to) the row. -->
+             ListBox doesn't also select (and navigate to) the row.
+             v2 look (10-09 redesign): line icons, grouped rows, the destructive row last in red.
+             Playlist rows: [Edit, Star / Unstar] · [Move to Folder, Remove from Folder] · [Delete].
+             Folder headers: [New Playlist in Folder, Rename] · [Remove Folder]. -->
         <Style Selector="ListBox#PlaylistList ListBoxItem">
             <Setter Property="ContextMenu">
-                <ContextMenu x:DataType="m:PlaylistNavItem">
+                <ContextMenu x:DataType="m:PlaylistNavItem" Classes="v2">
                     <!-- Playlist rows -->
                     <MenuItem Header="{loc:T Sidebar.EditPlaylist}"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).EditPlaylistItemCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEdit}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Header="{loc:T Sidebar.StarSidebar}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
                               CommandParameter="{Binding}">
@@ -130,6 +137,9 @@
                                 <Binding Path="!IsPinned" />
                             </MultiBinding>
                         </MenuItem.IsVisible>
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineStar}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
                     </MenuItem>
                     <MenuItem Header="{loc:T Sidebar.UnstarFromSidebar}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).TogglePinItemCommand}"
@@ -140,11 +150,19 @@
                                 <Binding Path="IsPinned" />
                             </MultiBinding>
                         </MenuItem.IsVisible>
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon mv2-pinned" Data="{StaticResource MenuLineStar}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
                     </MenuItem>
+                    <Separator IsVisible="{Binding !IsFolder}" />
                     <MenuItem Header="{loc:T Sidebar.MoveFolder}"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).MoveToFolderCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Header="{loc:T Sidebar.RemoveFromFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RemoveFromFolderCommand}"
                               CommandParameter="{Binding}">
@@ -154,27 +172,47 @@
                                 <Binding Path="HasFolder" />
                             </MultiBinding>
                         </MenuItem.IsVisible>
+                        <MenuItem.Icon>
+                            <!-- Dynamic: IconsMenuExtra.axaml may not be merged where a test mounts the sidebar. -->
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{DynamicResource MenuLineFolderRemove}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
                     </MenuItem>
                     <Separator IsVisible="{Binding !IsFolder}" />
                     <MenuItem Header="{loc:T Sidebar.DeletePlaylist}" Classes="danger"
                               IsVisible="{Binding !IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DeletePlaylistItemCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTrash}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
 
                     <!-- Folder headers -->
                     <MenuItem Header="{loc:T Sidebar.NewPlaylistFolder}"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).NewPlaylistInFolderCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Header="{loc:T Sidebar.RenameFolder}"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).RenameFolderCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEdit}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <Separator IsVisible="{Binding IsFolder}" />
                     <MenuItem Header="{loc:T Sidebar.RemoveFolderKeepPlaylists}" Classes="danger"
                               IsVisible="{Binding IsFolder}"
                               Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).DissolveFolderCommand}"
-                              CommandParameter="{Binding}" />
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTrash}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                        </MenuItem.Icon>
+                    </MenuItem>
                 </ContextMenu>
             </Setter>
         </Style>
@@ -431,7 +469,7 @@
                                                     Background="Transparent" BorderThickness="0"
                                                     Foreground="{DynamicResource IslandForeground}"
                                                     Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                                <TextBlock Text="{loc:T Sidebar.Text}" FontSize="11" Opacity="0.5"/>
+                                                <ctrl:LineIcon Data="{StaticResource MenuLineClose}" Width="12" Height="12" Opacity="0.5"/>
                                             </Button>
                                         </Grid>
                                     </Grid>
@@ -583,9 +621,17 @@
                                Background="Transparent"
                                ToolTip.Tip="{loc:T Sidebar.RightClickNewPlaylistTip}">
                         <TextBlock.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="{loc:T Sidebar.NewPlaylist}" Command="{Binding CreatePlaylistCommand}" />
-                                <MenuItem Header="{loc:T Sidebar.NewSmartPlaylist}" Command="{Binding CreateSmartPlaylistFromSidebarCommand}" />
+                            <ContextMenu Classes="v2">
+                                <MenuItem Header="{loc:T Sidebar.NewPlaylist}" Command="{Binding CreatePlaylistCommand}">
+                                    <MenuItem.Icon>
+                                        <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T Sidebar.NewSmartPlaylist}" Command="{Binding CreateSmartPlaylistFromSidebarCommand}">
+                                    <MenuItem.Icon>
+                                        <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSmartPlaylist}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </TextBlock.ContextMenu>
                     </TextBlock>

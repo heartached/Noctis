@@ -155,7 +155,7 @@
                     <Button Grid.Column="1" Classes="dialog-close" Command="{Binding CancelCommand}"
                             ToolTip.Tip="{loc:T Common.Close}"
                             VerticalAlignment="Top" Margin="12,0,0,0">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12"/>
+                        <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
                     </Button>
                 </Grid>
 

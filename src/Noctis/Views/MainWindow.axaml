@@ -221,19 +221,19 @@
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Main.All}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="all">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.Albums}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="album">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Albums}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Albums}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.Singles}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="single">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Singles}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Singles}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.EPs}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="ep">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.Other}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="other">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>
                                     </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>
@@ -260,29 +260,29 @@
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.All}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="all">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=All}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Albums}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="album">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Albums}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Albums}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Singles}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="single">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Singles}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Singles}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.EPs}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="ep">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Other}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="other">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator/>
                                         <MenuItem Header="{loc:T Main.All}" Command="{Binding QualityFilterCommand}" CommandParameter="all">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumQualityAll}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumQualityAll}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Lossless}" Command="{Binding QualityFilterCommand}" CommandParameter="lossless">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumQualityLossless}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumQualityLossless}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.HiRes}" Command="{Binding QualityFilterCommand}" CommandParameter="hires">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumQualityHiRes}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumQualityHiRes}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -300,43 +300,43 @@
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.Default}" Command="{Binding AlbumSortCommand}" CommandParameter="default">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.TitleZ}" Command="{Binding AlbumSortCommand}" CommandParameter="title">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=title}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=title}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.AlbumArtist}" Command="{Binding AlbumSortCommand}" CommandParameter="albumartist">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albumartist}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albumartist}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Year}" Command="{Binding AlbumSortCommand}" CommandParameter="year">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=year}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=year}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.RecentlyAdded}" Command="{Binding AlbumSortCommand}" CommandParameter="dateadded">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=dateadded}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=dateadded}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateModified}" Command="{Binding AlbumSortCommand}" CommandParameter="datemodified">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=datemodified}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=datemodified}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.MostPlayed}" Command="{Binding AlbumSortCommand}" CommandParameter="mostplayed">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=mostplayed}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=mostplayed}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <!-- Re-picking Random deals a new shuffle (issue #45). -->
                                         <MenuItem Header="{loc:T Main.Random}" Command="{Binding AlbumSortCommand}" CommandParameter="random">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=random}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=random}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
                                         <!-- Direction is meaningless for "Default", which floats
                                              recent imports rather than ordering by one key. -->
                                         <MenuItem Header="{loc:T Main.Ascending}" Command="{Binding AlbumSortCommand}" CommandParameter="ascending" IsEnabled="{Binding AlbumSortDirectionEnabled}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortAscending}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortAscending}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding AlbumSortCommand}" CommandParameter="descending" IsEnabled="{Binding AlbumSortDirectionEnabled}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortDescending}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
                                         <!-- GitHub #106: each artist's releases newest first under Album Artist. -->
                                         <MenuItem Header="{loc:T Main.NewestAlbumsFirst}" Command="{Binding AlbumSortCommand}" CommandParameter="newestfirst" IsEnabled="{Binding AlbumSortNewestFirstEnabled}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding AlbumSortNewestFirst}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding AlbumSortNewestFirst}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -357,20 +357,20 @@
                                                 PlacementConstraintAdjustment="None"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.AllSongs}" Command="{Binding PageSetShowAllItemsCommand}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageShowAllItems}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageShowAllItems}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.OnlyFavorites}" Command="{Binding PageSetShowOnlyFavoritesCommand}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageShowOnlyFavorites}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageShowOnlyFavorites}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator IsVisible="{Binding SongsFiltersVisible}"/>
                                         <MenuItem Header="{loc:T Main.All}" Command="{Binding SongsQualityCommand}" CommandParameter="All" IsVisible="{Binding SongsFiltersVisible}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding SongsQualityAll}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SongsQualityAll}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Lossless}" Command="{Binding SongsQualityCommand}" CommandParameter="Lossless" IsVisible="{Binding SongsFiltersVisible}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding SongsQualityLossless}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SongsQualityLossless}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.HiRes}" Command="{Binding SongsQualityCommand}" CommandParameter="HiRes" IsVisible="{Binding SongsFiltersVisible}">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding SongsQualityHiRes}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SongsQualityHiRes}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -391,56 +391,56 @@
                                         <!-- Checkmarks compare each item's key against PageSortColumn,
                                              so a sort chosen from a column header shows here too. -->
                                         <MenuItem Header="{loc:T Main.Title}" Command="{Binding PageSortCommand}" CommandParameter="Title">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Title}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Title}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Artist}" Command="{Binding PageSortCommand}" CommandParameter="Artist">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Artist}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Artist}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Album}" Command="{Binding PageSortCommand}" CommandParameter="Album">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Album}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Album}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.AlbumByArtist}" Command="{Binding PageSortCommand}" CommandParameter="Album Artist">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Album Artist'}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Album Artist'}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Genre}" Command="{Binding PageSortCommand}" CommandParameter="Genre">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Genre}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Genre}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Time}" Command="{Binding PageSortCommand}" CommandParameter="Time">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Time}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Time}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Plays}" Command="{Binding PageSortCommand}" CommandParameter="Plays">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Plays}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Plays}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Favorite}" Command="{Binding PageSortCommand}" CommandParameter="IsFavorite">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=IsFavorite}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=IsFavorite}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Rating}" Command="{Binding PageSortCommand}" CommandParameter="Rating">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Rating}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Rating}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Year}" Command="{Binding PageSortCommand}" CommandParameter="Year">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Year}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Year}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.BPM}" Command="{Binding PageSortCommand}" CommandParameter="Bpm">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bpm}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bpm}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Bitrate}" Command="{Binding PageSortCommand}" CommandParameter="Bitrate">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bitrate}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bitrate}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.SampleRate}" Command="{Binding PageSortCommand}" CommandParameter="SampleRate">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=SampleRate}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=SampleRate}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.DateModified}" Command="{Binding PageSortCommand}" CommandParameter="Date Modified">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Modified'}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Modified'}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="{loc:T Main.Ascending}" Command="{Binding PageSortCommand}" CommandParameter="Ascending">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortAscending}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortAscending}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding PageSortCommand}" CommandParameter="Descending">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PageSortDescending}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -478,19 +478,19 @@
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.Default}" Command="{Binding PlaylistSortCommand}" CommandParameter="default">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Name}" Command="{Binding PlaylistSortCommand}" CommandParameter="name">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.RecentlyCreated}" Command="{Binding PlaylistSortCommand}" CommandParameter="created">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=created}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=created}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.RecentlyModified}" Command="{Binding PlaylistSortCommand}" CommandParameter="modified">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.TrackCount}" Command="{Binding PlaylistSortCommand}" CommandParameter="tracks">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=tracks}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaylistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=tracks}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -510,12 +510,9 @@
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Command="{Binding PageCreatePlaylistCommand}">
+                                        <!-- v2 line icons (10-09); New Playlist shares the Create Playlist dialog header's glyph. -->
                                         <MenuItem.Icon>
-                                            <!-- The shared IconMaskPlaylist brush (the Create New Playlist header and the
-                                                 track menu's Add to Playlist use the same glyph), 14px like the other rows:
-                                                 at 16 this near-edge-to-edge PNG (ink 44 of 48 px) sat closer to the pill's
-                                                 rounded left edge than the Smart / Import / YouTube glyphs. -->
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{DynamicResource LineCreatePlaylist}"/>
                                         </MenuItem.Icon>
                                         <MenuItem.Header>
                                             <StackPanel Margin="0,5" Spacing="2">
@@ -526,8 +523,7 @@
                                     </MenuItem>
                                     <MenuItem Command="{Binding PageCreateSmartPlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSmartPlaylist}"/>
                                         </MenuItem.Icon>
                                         <MenuItem.Header>
                                             <StackPanel Margin="0,5" Spacing="2">
@@ -539,7 +535,7 @@
                                     <Separator />
                                     <MenuItem Command="{Binding PageImportPlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Arrow%20Down%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineImport}"/>
                                         </MenuItem.Icon>
                                         <MenuItem.Header>
                                             <StackPanel Margin="0,5" Spacing="2">
@@ -553,13 +549,13 @@
                                          library folder, tagged, like any import. No YouTube section in the app. -->
                                     <MenuItem Command="{Binding AddFromYouTubeCommand}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
                                         </MenuItem.Icon>
                                         <MenuItem.Header>
                                             <StackPanel Margin="0,5" Spacing="2">
-                                                <TextBlock Text="{loc:T Main.AddFromYouTube}" FontSize="13" FontWeight="SemiBold" />
-                                                <TextBlock Text="{loc:T Main.AddFromYouTubeHint}" FontSize="11" Opacity="0.55" />
+                                                <TextBlock Text="{loc:T Main.AddFromYouTube}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <!-- Wraps: menus cap at 330 px, and the hint ran past it (French far more). -->
+                                                <TextBlock Text="{loc:T Main.AddFromYouTubeHint}" FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </MenuItem.Header>
                                     </MenuItem>
@@ -577,12 +573,8 @@
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayArtistCommand}" ToolTip.Tip="{loc:T Main.PlayAllTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Border Width="12" Height="12" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
+                                <PathIcon Data="{StaticResource PlayIcon}" Width="12" Height="12"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{loc:T Main.PlayTip}" FontSize="12" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
@@ -600,20 +592,20 @@
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Main.Name}" Command="{Binding ArtistSortCommand}" CommandParameter="name">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=name}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.SongCount}" Command="{Binding ArtistSortCommand}" CommandParameter="songs">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=songs}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=songs}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.AlbumCount}" Command="{Binding ArtistSortCommand}" CommandParameter="albums">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albums}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albums}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <Separator/>
                                     <MenuItem Header="{loc:T Main.Ascending}" Command="{Binding ArtistSortCommand}" CommandParameter="Ascending">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortAscending}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortAscending}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.Descending}" Command="{Binding ArtistSortCommand}" CommandParameter="Descending">
-                                        <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding ArtistSortDescending}"/></MenuItem.Icon>
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortDescending}"/></MenuItem.Icon>
                                     </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>
@@ -630,12 +622,8 @@
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFavoritesCommand}" ToolTip.Tip="{loc:T Main.PlayTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Border Width="12" Height="12" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
+                                <PathIcon Data="{StaticResource PlayIcon}" Width="12" Height="12"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{loc:T Main.PlayTip}" FontSize="12" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
@@ -655,13 +643,13 @@
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                         <MenuItem Header="{loc:T Main.FoldersSortDefault}" Command="{Binding FoldersSortCommand}" CommandParameter="default">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.FoldersSortModifiedNewest}" Command="{Binding FoldersSortCommand}" CommandParameter="modified-newest">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-newest}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-newest}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.FoldersSortModifiedOldest}" Command="{Binding FoldersSortCommand}" CommandParameter="modified-oldest">
-                                            <MenuItem.Icon><PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-oldest}"/></MenuItem.Icon>
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding FoldersSortMode, Converter={StaticResource StringEquals}, ConverterParameter=modified-oldest}"/></MenuItem.Icon>
                                         </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
@@ -677,12 +665,8 @@
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFolderCommand}" ToolTip.Tip="{loc:T Main.PlayFolderTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Border Width="12" Height="12" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
+                                <PathIcon Data="{StaticResource PlayIcon}" Width="12" Height="12"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{loc:T Main.PlayTip}" FontSize="12" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
@@ -1079,26 +1063,14 @@
                                                     <MenuItem Header="{loc:T Main.RemoveFromQueue}"
                                                               Click="OnQueueRemoveClick">
                                                         <MenuItem.Icon>
-                                                            <Border Width="14" Height="14"
-                                                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                                    RenderOptions.BitmapInterpolationMode="HighQuality">
-                                                                <Border.OpacityMask>
-                                                                    <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
-                                                                </Border.OpacityMask>
-                                                            </Border>
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueueRemove}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <!-- GitHub #105: ReplayGain for queued tracks, library or not. -->
                                                     <MenuItem Header="{loc:T Main.ScanReplayGain}"
                                                               Click="OnQueueScanReplayGainClick">
                                                         <MenuItem.Icon>
-                                                            <Border Width="14" Height="14"
-                                                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                                    RenderOptions.BitmapInterpolationMode="HighQuality">
-                                                                <Border.OpacityMask>
-                                                                    <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" />
-                                                                </Border.OpacityMask>
-                                                            </Border>
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineReplayGain}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                 </ContextMenu>
@@ -1408,13 +1380,8 @@
                         VerticalAlignment="Center"
                         Cursor="Hand">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Border Width="14" Height="14"
-                                Background="{DynamicResource AccentForegroundBrush}"
-                                RenderOptions.BitmapInterpolationMode="HighQuality">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
+                        <controls:LineIcon Width="15" Height="15" Data="{StaticResource MenuLineQueue}"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="{loc:T Main.Queue}"
                                    FontSize="13"
                                    FontWeight="Bold"

@@ -579,8 +579,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _lyricsVm.ShowNotice = text => TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
         // Top Artists / Albums rows open their pages, as on Home.
-        _statisticsVm.AlbumOpened += (_, album) => OpenAlbumDetail(album);
-        _statisticsVm.SetViewArtistAction(ViewArtistByName);
         _statisticsVm.BackRequested += (_, _) =>
         {
             // Restore the pre-stats view from history, then reopen the Settings modal
@@ -670,6 +668,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _albumsVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _songsVm.SetSearchLyricsAction(SearchLyricsForTrack);
+        _favoritesVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _foldersVm.SetSearchLyricsAction(SearchLyricsForTrack);
         Player.SetSearchLyricsAction(SearchLyricsForTrack);
 

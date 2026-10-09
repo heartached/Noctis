@@ -11,6 +11,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -175,12 +176,53 @@ public partial class ArtistDetailView : UserControl
         }
     }
 
-    private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
+    // ── Album tiles: one shared v2 menu (10-09 redesign), bound to the tile on open ──
+    // Replaces the per-tile XAML ContextMenu: same commands (through the shared
+    // LibraryAlbumsVm) and parameters, plus the entries the Albums page tile menu has.
+
+    private AlbumContextMenuBuilder? _albumMenuBuilder;
+    /// <summary>Culture each menu's strings were read in (they are read once, at Build).</summary>
+    private string? _albumMenuCulture, _trackMenuCulture;
+
+    private void OnAlbumTileContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (DataContext is not ArtistDetailViewModel vm) return;
-        if (vm.LibraryAlbumsVm is not { } albumsVm) return;
+        if (sender is Button tile && OpenAlbumMenu(tile))
+            e.Handled = true;
+    }
+
+    private bool OpenAlbumMenu(Button tile)
+    {
+        if (tile.DataContext is not Album album) return false;
+        if (DataContext is not ArtistDetailViewModel vm) return false;
+        if (vm.LibraryAlbumsVm is not { } albumsVm) return false;
+
         // Single-album right-click on this page; clear any stale ctrl-selection on the shared VM.
         albumsVm.CtrlSelectedAlbums = new List<Album>();
+
+        if (_albumMenuBuilder == null || _albumMenuCulture != Loc.Instance.Culture.Name)
+        {
+            _albumMenuCulture = Loc.Instance.Culture.Name;
+            _albumMenuBuilder = new AlbumContextMenuBuilder();
+            _albumMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
+        }
+
+        _albumMenuBuilder.Bind(
+            album,
+            playCommand: albumsVm.PlayAlbumCommand,
+            shuffleCommand: albumsVm.ShuffleAlbumCommand,
+            playNextCommand: albumsVm.PlayNextCommand,
+            addToQueueCommand: albumsVm.AddToQueueCommand,
+            addToPlaylistCommand: albumsVm.AddToNewPlaylistCommand,
+            toggleFavoritesCommand: albumsVm.ToggleAlbumFavoritesCommand,
+            openMetadataCommand: albumsVm.OpenMetadataCommand,
+            showInExplorerCommand: albumsVm.ShowInExplorerCommand,
+            removeCommand: albumsVm.RemoveFromLibraryCommand,
+            convertCommand: albumsVm.ConvertAlbumCommand,
+            scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
+            searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand);
+
+        OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
+        return true;
     }
 
     /// <summary>A song row plays on DOUBLE click (user ask 09-14), like every flat track list
@@ -215,10 +257,12 @@ public partial class ArtistDetailView : UserControl
         if (DataContext is not ArtistDetailViewModel vm) return false;
         if (vm.LibraryAlbumsVm is not { } albumsVm) return false;
 
-        if (_trackMenuBuilder == null)
+        // v2 layout (10-09 redesign); rebuilt after a live language switch so it follows it.
+        if (_trackMenuBuilder == null || _trackMenuCulture != Loc.Instance.Culture.Name)
         {
+            _trackMenuCulture = Loc.Instance.Culture.Name;
             _trackMenuBuilder = new TrackContextMenuBuilder();
-            _trackMenuBuilder.Build("Remove from Library", null, this);
+            _trackMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
         }
 
         _trackMenuBuilder.Bind(
@@ -313,10 +357,18 @@ public partial class ArtistDetailView : UserControl
             vm.RemovePicture();
     }
 
-    /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
+    /// <summary>Tile hover dots: the same menu a right-click on the tile opens, bound
+    /// afresh (the tile may still hold the shared menu from an older language or album).</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Helpers.AlbumTile.OpenMenu(sender);
+        for (var c = sender as Control; c != null; c = c.Parent as Control)
+        {
+            if (c is Button tile && tile.Classes.Contains("album-tile"))
+            {
+                OpenAlbumMenu(tile);
+                break;
+            }
+        }
         e.Handled = true;
     }
 }

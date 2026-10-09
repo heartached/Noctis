@@ -29,7 +29,6 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     private Dictionary<Guid, Models.Track> _tracksById = new();
     private readonly Task _initialized;
     private WrapStats _stats = new();
-    private int _renderGeneration;
     private int _loadGeneration;
     private bool _disposed;
 
@@ -282,6 +281,7 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
         HasCharts = HasData && (clock.Any(v => v > 0) || stats.Timeline.Count > 0);
 
         StatusText = string.Empty;
+        InvalidateCards();
         RefreshPreview();
     }
 
@@ -353,7 +353,9 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     private void SelectStory() => IsStory = true;
 
     /// <summary>What the share card shows for the stats on screen.</summary>
-    internal WrapCardSpec BuildCardSpec() => new()
+    internal WrapCardSpec BuildCardSpec() => BuildCardSpec(IsStory ? ShareCardFormat.Story : ShareCardFormat.Square);
+
+    private WrapCardSpec BuildCardSpec(ShareCardFormat format) => new()
     {
         PeriodLabel = _stats.PeriodLabel,
         TopArtists = _stats.TopArtists.Select(e => e.Name).ToList(),
@@ -367,44 +369,86 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
         TopAlbumArtist = _stats.TopAlbums.Count > 0 ? _stats.TopAlbums[0].Subtitle : null,
         TopAlbumPlays = _stats.TopAlbums.Count > 0 ? _stats.TopAlbums[0].Plays : 0,
         AlbumCoverPaths = _stats.TopAlbums.Select(a => a.ArtworkPath).ToList(),
-        Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
+        Format = format,
     };
+
+    // Both card shapes, rendered once per set of stats. The 1:1 / 9:16 segments used to
+    // re-render on every click — ~0.4 s for 1:1 and ~1.2 s for 9:16 (owner 10-09: "isn't
+    // changing in real time"); now the second shape renders in the background right after the
+    // first, so a click swaps to it at once. The cache owns the bitmaps (Preview borrows one).
+    private readonly Dictionary<ShareCardFormat, (byte[] Png, Bitmap Bitmap)> _cards = new();
+    private readonly HashSet<ShareCardFormat> _rendering = new();
+    private int _cardEpoch;
+
+    private ShareCardFormat SelectedFormat => IsStory ? ShareCardFormat.Story : ShareCardFormat.Square;
+
+    /// <summary>Drops both cached cards (the stats changed); in-flight renders are ignored.</summary>
+    private void InvalidateCards()
+    {
+        _cardEpoch++;
+        _rendering.Clear();
+        Preview = null;
+        CurrentPng = null;
+        foreach (var card in _cards.Values) card.Bitmap.Dispose();
+        _cards.Clear();
+    }
 
     private void RefreshPreview()
     {
-        var generation = ++_renderGeneration;
         if (!HasData)
         {
-            CurrentPng = null;
-            var stale = Preview;
-            Preview = null;
-            stale?.Dispose();
+            InvalidateCards();
             return;
         }
 
-        var spec = BuildCardSpec();
+        var format = SelectedFormat;
+        if (_cards.TryGetValue(format, out var card))
+        {
+            CurrentPng = card.Png;
+            Preview = card.Bitmap;
+        }
+        else
+        {
+            RenderCard(format);
+        }
+        // Warm the other shape so the next click is instant.
+        var other = format == ShareCardFormat.Story ? ShareCardFormat.Square : ShareCardFormat.Story;
+        RenderCard(other);
+    }
+
+    private void RenderCard(ShareCardFormat format)
+    {
+        if (_cards.ContainsKey(format) || !_rendering.Add(format)) return;
+        var epoch = _cardEpoch;
+        var spec = BuildCardSpec(format);
         Task.Run(() =>
         {
             try
             {
                 var png = ShareCardRenderer.RenderWrapCard(spec);
                 using var ms = new MemoryStream(png);
-                var bitmap = new Bitmap(ms);
+                // The preview well is ~330 px wide: a 720 px decode looks the same there and
+                // scales far faster than the 1080-wide card on every swap. Save/Copy keep the PNG.
+                var bitmap = Bitmap.DecodeToWidth(ms, 720, BitmapInterpolationMode.HighQuality);
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (generation != _renderGeneration)
+                    if (_disposed || epoch != _cardEpoch)
                     {
                         bitmap.Dispose();
                         return;
                     }
-                    var old = Preview;
-                    CurrentPng = png;
-                    Preview = bitmap;
-                    old?.Dispose();
+                    _rendering.Remove(format);
+                    _cards[format] = (png, bitmap);
+                    if (SelectedFormat == format)
+                    {
+                        CurrentPng = png;
+                        Preview = bitmap;
+                    }
                 });
             }
             catch (Exception ex)
             {
+                Dispatcher.UIThread.Post(() => { if (epoch == _cardEpoch) _rendering.Remove(format); });
                 DebugLogger.Log(DebugLogger.Category.UI, DebugLogger.Level.Error,
                     "Wrap card render failed", ex.Message);
             }
@@ -421,11 +465,8 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _disposed = true;
-        // Any in-flight render will see a bumped generation and drop its own bitmap.
-        _renderGeneration++;
+        // In-flight renders see a new card epoch (InvalidateCards) and drop their bitmap.
         _loadGeneration++;
-        Preview?.Dispose();
-        Preview = null;
-        CurrentPng = null;
+        InvalidateCards();
     }
 }

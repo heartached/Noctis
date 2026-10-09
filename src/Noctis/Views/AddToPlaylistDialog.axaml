@@ -21,6 +21,13 @@
 
     <Window.Styles>
         <!-- Small muted label above a field or a section, as the Metadata editor's. -->
+        <Style Selector="ctrl|LineIcon.atp-head-icon">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+        </Style>
         <Style Selector="TextBlock.atp-label">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Opacity" Value="0.5" />
@@ -77,13 +84,17 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <Border x:Name="HeaderIcon"
-                            Width="22" Height="22" Opacity="0.6"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
-                    </Border>
+                    <!-- Owner 10-09 "match the icons for the same action": the track menu's
+                         Add to Playlist line icon, and New Playlist's own on the create side
+                         (cross-fades with the title; ApplyMode). -->
+                    <Panel Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <ctrl:LineIcon x:Name="HeaderIcon" Classes="atp-head-icon"
+                                       Data="{StaticResource MenuLinePlaylistAdd}"
+                                       Width="22" Height="22" Opacity="0.6" />
+                        <ctrl:LineIcon x:Name="CreateHeaderIcon" Classes="atp-head-icon"
+                                       Data="{DynamicResource LineCreatePlaylist}"
+                                       Width="22" Height="22" Opacity="0" />
+                    </Panel>
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                     <Panel>
@@ -110,9 +121,9 @@
                         HorizontalAlignment="Stretch"
                         Command="{Binding ShowCreateCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12"
-                                  Foreground="{DynamicResource AccentForegroundBrush}"
-                                  VerticalAlignment="Center" />
+                        <ctrl:LineIcon Data="{DynamicResource LineCreatePlaylist}" Width="16" Height="16"
+                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                       VerticalAlignment="Center" />
                         <TextBlock Text="{loc:T AddToPlaylist.CreateNewPlaylist}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>

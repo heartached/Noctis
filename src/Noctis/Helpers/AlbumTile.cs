@@ -43,11 +43,14 @@ public static class AlbumTile
         return null;
     }
 
-    /// <summary>Album tracks in disc/track order: what "Play" on a tile queues from the top.</summary>
+    /// <summary>Album tracks in disc/track order: what "Play" on a tile queues from the top.
+    /// Same rules as the library's album order and the album page (missing track numbers
+    /// sink to the end of their disc), so the tile starts on the album page's first song.</summary>
     public static List<Track> OrderedTracks(Album album)
         => (album.Tracks ?? new List<Track>())
             .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
-            .ThenBy(t => t.TrackNumber)
+            .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
 }
 

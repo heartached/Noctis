@@ -30,7 +30,9 @@ public partial class AddToPlaylistDialog : Window
     /// <summary>The outgoing side clears quickly so the two never read as overlapping text.</summary>
     internal static readonly TimeSpan SwapFadeOutDuration = TimeSpan.FromMilliseconds(140);
 
-    internal static readonly TransformOperations SlideRest = TransformOperations.Parse("translateX(0px)");
+    /// <summary>The header tile glyph's opacity (every pop-up header uses 0.6).</summary>
+    private const double HeaderIconOpacity = 0.6;
+    internal static readonly TransformOperations SlideRest =TransformOperations.Parse("translateX(0px)");
     internal static readonly TransformOperations SlideLeft = TransformOperations.Parse("translateX(-24px)");
     internal static readonly TransformOperations SlideRight = TransformOperations.Parse("translateX(24px)");
 
@@ -122,6 +124,9 @@ public partial class AddToPlaylistDialog : Window
         if (_modeApplied && create == _showingCreate) return;
         _modeApplied = true;
         _showingCreate = create;
+        // Header tile: Add to Playlist's icon on the list, New Playlist's on the form.
+        HeaderIcon.Opacity = create ? 0 : HeaderIconOpacity;
+        CreateHeaderIcon.Opacity = create ? HeaderIconOpacity : 0;
         var run = ++_swapRun;
         var incoming = Side(create);
         var outgoing = Side(!create);

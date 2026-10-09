@@ -145,17 +145,9 @@ public class GridScrollFrameCostTests : IDisposable
         var tiles = view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
         Assert.True(tiles.Count >= 10, $"only {tiles.Count} tiles realized");
 
-        // Every tile's context menu draws the same few PNGs: one decoded bitmap per icon,
-        // not nine fresh decodes per tile each time a row is realized.
-        var iconSources = tiles
-            .SelectMany(t => t.ContextMenu!.Items.OfType<MenuItem>())
-            .Select(m => (m.Icon as Border)?.OpacityMask)
-            .OfType<ImageBrush>()
-            .Select(b => b.Source)
-            .ToList();
-        Assert.True(iconSources.Count >= tiles.Count * 7, $"expected the menu icons, found {iconSources.Count}");
-        Assert.True(iconSources.Distinct().Count() <= 7,
-            $"{iconSources.Distinct().Count()} distinct icon bitmaps for {tiles.Count} tiles: the menu PNGs are decoded per tile");
+        // Tiles carry no menu of their own (10-09: one shared v2 menu is built on right-click),
+        // so realizing a row decodes no menu icons at all.
+        Assert.All(tiles, t => Assert.Null(t.ContextMenu));
 
         // Covers are decoded for the tile they fill (bucketed device width), not the 768 cap.
         var cover = view.GetVisualDescendants().OfType<CachedImage>().First(i => i.Bounds.Width > 100);

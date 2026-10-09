@@ -137,4 +137,14 @@
     <SolidColorBrush x:Key="SidebarHoverBrush" Color="#14FFFFFF" />
     <SolidColorBrush x:Key="QueueDrawerBackground" Color="#F5161616" />
     <SolidColorBrush x:Key="QueueDrawerForeground" Color="#F2F2F2" />
+    <!-- Context menu v2 (ContextMenu.v2, 10-09): translucent tints over the menu card. -->
+    <SolidColorBrush x:Key="MenuV2BorderBrush" Color="#17FFFFFF" />
+    <SolidColorBrush x:Key="MenuV2SeparatorBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="MenuV2HoverBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="MenuV2IconBrush" Color="#A6FFFFFF" />
+    <SolidColorBrush x:Key="MenuV2SecondaryBrush" Color="#8CFFFFFF" />
+    <SolidColorBrush x:Key="MenuV2TileBrush" Color="#0DFFFFFF" />
+    <SolidColorBrush x:Key="MenuV2TileHoverBrush" Color="#1FFFFFFF" />
+    <SolidColorBrush x:Key="MenuV2TilePressedBrush" Color="#29FFFFFF" />
+    <SolidColorBrush x:Key="MenuV2DangerHoverBrush" Color="#24E74856" />
 </ResourceDictionary>

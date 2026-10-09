@@ -33,22 +33,19 @@
     <Grid Width="480" RowDefinitions="Auto,Auto,Auto">
 
         <!-- Header: title and the one-line purpose (the Playlists page "New" menu's words).
-             Owner 10-08 "make sure the icons match": the glyph is the "+ New" menu row's and the
-             track menu's Add to Playlist one (the shared IconMaskPlaylist brush), not the
-             bulleted-list PlaylistsIcon geometry. -->
+             Owner 10-09 "match the icons for the same action; same icon for different things →
+             make unique ones": New Playlist's own line icon (a note with a plus), not Add to
+             Playlist's list-with-a-plus. -->
         <Border Grid.Row="0"
                 Padding="28,22,28,16"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <Border x:Name="HeaderIcon"
-                            Width="22" Height="22" Opacity="0.6"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
-                    </Border>
+                    <controls:LineIcon x:Name="HeaderIcon"
+                                       Data="{DynamicResource LineCreatePlaylist}"
+                                       Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{loc:T CreatePlaylist.CreateNewPlaylist}" FontSize="18" FontWeight="Bold" />

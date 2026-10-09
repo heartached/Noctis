@@ -15,6 +15,11 @@ public sealed class PaletteItem
     public string Subtitle { get; init; } = string.Empty;
     public string Category { get; init; } = string.Empty;
     public object? Icon { get; init; }
+    /// <summary>The icon is a stroked line icon (MenuLine*/Line*/PageLine*), drawn with
+    /// LineIcon; otherwise a filled glyph drawn with PathIcon.</summary>
+    public bool IsLineIcon { get; init; }
+    public bool ShowGlyphIcon => Icon != null && !IsLineIcon;
+    public bool ShowLineIcon => Icon != null && IsLineIcon;
     public required Action Execute { get; init; }
 }
 
@@ -76,6 +81,12 @@ public partial class CommandPaletteViewModel : ViewModelBase
         catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
     }
 
+    /// <summary>Line icons (the menus' set) are strokes; everything else is a filled glyph.</summary>
+    internal static bool IsLine(string key) =>
+        key.StartsWith("MenuLine", StringComparison.Ordinal)
+        || key.StartsWith("PageLine", StringComparison.Ordinal)
+        || key.StartsWith("Line", StringComparison.Ordinal);
+
     private static object? Icon(string key) =>
         Application.Current?.TryFindResource(key, out var res) == true ? res : null;
 
@@ -88,6 +99,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
             Title = title,
             Category = "Page",
             Icon = Icon(icon),
+            IsLineIcon = IsLine(icon),
             Execute = () => _main.NavigateCommand.Execute(key),
         });
 
@@ -97,10 +109,10 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Page("Go to Artists", "artists", "ArtistsIcon");
         Page("Go to Folders", "folders", "FolderIcon");
         Page("Go to Playlists", "playlists", "PlaylistsIcon");
-        Page("Go to Favorites", "favorites", "HeartFillIcon");
+        Page("Go to Favorites", "favorites", "FavoritesIcon");
         Page("Go to Statistics", "statistics", "StatisticsIcon");
-        Page("Go to Queue", "queue", "PlaylistsIcon");
-        Page("Go to Lyrics", "lyrics", "LyricsIcon");
+        Page("Go to Queue", "queue", "MenuLineQueue");
+        Page("Go to Lyrics", "lyrics", "MenuLineLyrics");
         Page("Go to Settings", "settings", "SettingsIcon");
 
         void Action(string title, string icon, Action run, string subtitle = "") =>
@@ -110,6 +122,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
                 Subtitle = subtitle,
                 Category = "Action",
                 Icon = Icon(icon),
+                IsLineIcon = IsLine(icon),
                 Execute = run,
             });
 
@@ -118,7 +131,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Action("Previous track", "PreviousIcon", () => _main.Player.PreviousCommand.Execute(null));
         Action("Add from YouTube…", "SearchIcon", () => _ = MetadataHelper.OpenYouTubeDownloadDialog(),
             "Search or paste a link; downloads into your library folder");
-        Action("Lyrics Studio…", "LyricsIcon", () => _ = MetadataHelper.OpenLyricsStudioForLibrary(_main),
+        Action("Lyrics Studio…", "SidebarLyricsStudioIcon", () => _ = MetadataHelper.OpenLyricsStudioForLibrary(_main),
             "Time or transcribe lyrics for songs without synced lyrics");
         Action("Toggle shuffle", "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
         Action("Cycle repeat mode", "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));

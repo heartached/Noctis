@@ -587,45 +587,33 @@
                                         helpers:GlassMenuFlyout.Enable="True">
                                 <MenuItem Header="0.75×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="75">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=75}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=75}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.1Normal}" Command="{Binding SetPlaybackRateCommand}" CommandParameter="100">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=100}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=100}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="1.25×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="125">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=125}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=125}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="1.5×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="150">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=150}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=150}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="1.75×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="175">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=175}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=175}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="2×" Command="{Binding SetPlaybackRateCommand}" CommandParameter="200">
                                     <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                              IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=200}"/>
-                                </MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PlaybackRatePercent, Converter={StaticResource IntEquals}, ConverterParameter=200}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
                                 <!-- Pitch (Harmonoid-style, independent of speed): semitones on the
@@ -642,9 +630,7 @@
                                     <MenuItem Header="+1" Command="{Binding SetPitchCommand}" CommandParameter="1"/>
                                     <MenuItem Header="{loc:T PlaybackBar.PitchNormal}" Command="{Binding SetPitchCommand}" CommandParameter="0">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding !IsPitchChanged}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding !IsPitchChanged}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="−1" Command="{Binding SetPitchCommand}" CommandParameter="-1"/>
@@ -803,37 +789,27 @@
                                 <Separator IsVisible="{Binding IsSleepTimerActive}"/>
                                 <MenuItem Header="{loc:T PlaybackBar.15Minutes}" Command="{Binding StartSleepTimerCommand}" CommandParameter="15">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.30Minutes}" Command="{Binding StartSleepTimerCommand}" CommandParameter="30">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.45Minutes}" Command="{Binding StartSleepTimerCommand}" CommandParameter="45">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.1Hour}" Command="{Binding StartSleepTimerCommand}" CommandParameter="60">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.EndTrack}" Command="{Binding ToggleStopAfterCurrentCommand}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding StopAfterCurrentTrack}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator IsVisible="{Binding IsSleepTimerActive}"/>
@@ -861,31 +837,28 @@
                                     Background="{DynamicResource AccentColorBrush}"
                                     Opacity="0.18"
                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}" />
+                            <!-- The same filled repeat glyphs as the queue header and the mini player
+                                 (RepeatAllIcon / RepeatOneIcon): off in the island's icon colour,
+                                 all / one in the accent; repeat-one carries its own "1". -->
                             <Panel Width="18" Height="18">
-                                <!-- Off: white glyph, matching the transport icons -->
-                                <Border Background="{DynamicResource IslandIconFill}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality"
-                                        IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
-                                <!-- All / One: accent glyph -->
-                                <Border Background="{DynamicResource AccentColorBrush}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality"
-                                        IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
-                                <!-- "1" badge: repeat-one only -->
-                                <TextBlock Text="1"
-                                           FontSize="8"
-                                           FontWeight="Bold"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource AccentColorBrush}"
-                                           IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
+                                <Viewbox Width="18" Height="18"
+                                         IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="{DynamicResource IslandIconFill}" Data="{StaticResource RepeatAllIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="18" Height="18"
+                                         IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="18" Height="18"
+                                         IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
                             </Panel>
                         </Panel>
                     </Button>
@@ -1366,35 +1339,30 @@
                                         PlacementConstraintAdjustment="FlipY"
                                         helpers:MenuOpenAnimation.EnableFlyoutClose="True"
                                         helpers:GlassMenuFlyout.Enable="True">
-                                <MenuItem Command="{Binding PlayPauseCommand}"
-                                          MaxWidth="400">
-                                    <MenuItem.Header>
-                                        <TextBlock Text="{loc:T PlaybackBar.Play}"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   FontWeight="Normal"
-                                                   FontSize="14"
-                                                   FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                    </MenuItem.Header>
+                                <!-- v2 menu (10-09): plain header like every other row (the card trims it),
+                                     muted line icons throughout. -->
+                                <MenuItem Header="{loc:T PlaybackBar.Play}"
+                                          Command="{Binding PlayPauseCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.ShuffleTip}"
                                           Command="{Binding ShuffleCurrentAlbumCommand}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.PlayNext}"
                                           Command="{Binding PlayNextCurrentTrackCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.AddQueue}"
                                           Command="{Binding AddCurrentTrackToQueueCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -1402,7 +1370,7 @@
                                           Header="{loc:T PlaybackBar.AddPlaylist}"
                                           Command="{Binding AddCurrentTrackToNewPlaylistCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -1410,26 +1378,26 @@
                                           Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Favorites%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineHeart}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.RemoveFromFavorites}"
                                           Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding CurrentTrack.IsFavorite, FallbackValue=False}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
+                                        <controls:LineIcon Classes="mv2-icon mv2-fav" Data="{StaticResource MenuLineHeart}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.Metadata}"
                                           Command="{Binding OpenCurrentTrackMetadataCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.SearchLyrics}"
                                           Command="{Binding SearchCurrentTrackLyricsCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <!-- Lyrics page, online lyrics shown (GitHub #115): save them next to the
@@ -1438,9 +1406,7 @@
                                           Command="{Binding SaveCurrentTrackLyricsCommand}"
                                           IsVisible="{Binding CanSaveLyricsToFile}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource SaveDiskIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSave}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <!-- Lyrics side-panel toggle (everywhere but the lyrics full view). -->
@@ -1448,33 +1414,36 @@
                                           Click="OnLyricsPanelButtonClick"
                                           IsVisible="{Binding !IsLyricsPageActive}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Lyrics%20Panel%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyricsPanel}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.RemoveLyrics}" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackLyricsCommand}"
                                           IsVisible="{Binding IsLyricsPageActive}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.ShowFolder}"
                                           Command="{Binding ShowCurrentTrackInExplorerCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.ViewAlbumTip}"
                                           Command="{Binding ViewCurrentTrackAlbumCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis.UI/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.SleepTimer}"
                                           x:Name="SleepTimerMenuItem"
                                           PointerEntered="OnExpandSubMenuPointerEntered">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTimer}"/>
+                                    </MenuItem.Icon>
                                     <MenuItem IsEnabled="False" IsVisible="{Binding IsSleepTimerActive}">
                                         <MenuItem.Header>
                                             <TextBlock FontSize="12" Opacity="0.7">
@@ -1488,44 +1457,34 @@
                                               Command="{Binding StartSleepTimerCommand}"
                                               CommandParameter="15">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.30Minutes}"
                                               Command="{Binding StartSleepTimerCommand}"
                                               CommandParameter="30">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.45Minutes}"
                                               Command="{Binding StartSleepTimerCommand}"
                                               CommandParameter="45">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.1Hour}"
                                               Command="{Binding StartSleepTimerCommand}"
                                               CommandParameter="60">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.EndTrack}"
                                               Command="{Binding ToggleStopAfterCurrentCommand}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding StopAfterCurrentTrack}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator IsVisible="{Binding IsSleepTimerActive}"/>
@@ -1539,16 +1498,14 @@
                                           Command="{Binding ToggleStopAfterCurrentCommand}"
                                           IsVisible="{Binding !IsLyricsPageActive}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding StopAfterCurrentTrack}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.RemoveFromLibrary}" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackFromLibraryCommand}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <!-- Lyrics-mode entries (only visible when the bar is mounted inside the lyrics page) -->
@@ -1557,23 +1514,20 @@
                                           Header="{loc:T PlaybackBar.LyricsDisplay}"
                                           IsVisible="{Binding IsLyricsPageActive}"
                                           PointerEntered="OnExpandSubMenuPointerEntered">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineText}"/>
+                                    </MenuItem.Icon>
                                     <MenuItem Header="{loc:T PlaybackBar.Synced}"
                                               Command="{Binding SetLyricsSyncedCommand}"
                                               IsEnabled="{Binding IsLyricsSyncedAvailable}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
-                                                      Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding IsLyricsSyncedActive}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsLyricsSyncedActive}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T PlaybackBar.Plain}"
                                               Command="{Binding SetLyricsPlainCommand}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
-                                                      Width="14" Height="14"
-                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                      IsVisible="{Binding IsLyricsPlainActive}"/>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsLyricsPlainActive}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuItem>
@@ -1582,10 +1536,7 @@
                                           ToolTip.Tip="{loc:T Settings.MusicVideosHint}"
                                           IsVisible="{Binding CurrentTrackHasMusicVideoFile}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideosEnabled}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideosEnabled}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.MusicVideoAudio}"
@@ -1594,28 +1545,21 @@
                                           IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideosEnabled}"
                                           IsVisible="{Binding CurrentTrackHasMusicVideoFile}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CheckmarkIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideoUseVideoAudio}"/>
+                                        <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideoUseVideoAudio}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.BackgroundColor}"
                                           Command="{Binding OpenLyricsBackgroundColorCommand}"
                                           IsVisible="{Binding IsLyricsPageActive}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource PaletteIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePalette}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.ShareLyrics}"
                                           Command="{Binding ShareCurrentTrackLyricsCommand}"
                                           IsVisible="{Binding CanShareLyrics}">
                                     <MenuItem.Icon>
-                                        <PathIcon Data="{StaticResource CameraIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineCamera}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
@@ -1645,13 +1589,7 @@
                             Click="OnLyricsButtonClick"
                             ToolTip.Tip="{loc:T PlaybackBar.LyricsTip}"
                             Width="34" Height="34">
-                        <Border Width="16" Height="16"
-                                Background="{DynamicResource IslandIconFill}"
-                                RenderOptions.BitmapInterpolationMode="HighQuality">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineLyrics}" Foreground="{DynamicResource IslandIconFill}" />
                     </Button>
 
                     <!-- Queue button -->
@@ -1660,13 +1598,7 @@
                             Tag="QueueToggle"
                             ToolTip.Tip="{loc:T PlaybackBar.QueueTip}"
                             Width="34" Height="34">
-                        <Border Width="16" Height="16"
-                                Background="{DynamicResource IslandIconFill}"
-                                RenderOptions.BitmapInterpolationMode="HighQuality">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineQueue}" Foreground="{DynamicResource IslandIconFill}" />
                     </Button>
 
                     <!-- Volume control: clicking the icon opens a small slider popup above it.

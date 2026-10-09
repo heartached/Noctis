@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -83,16 +84,147 @@ public partial class FavoritesView : UserControl
         MultiSelectHelper.HandleAlbumSelectAllByData(e, allItems, CollectTiles(), _selectedItems);
     }
 
-    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
-    {
-        // Close any menu still open from a previous rapid right-click so menus
-        // don't stack on top of each other.
-        ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+    // ── Tile menu: the shared v2 menus (10-09 redesign), bound to the tile on open ──
+    // A favourite song gets the track menu, a favourite album the album menu. The VM's
+    // FavoriteItem commands (which act on the Ctrl-selection) stay the targets: the
+    // builders hand their rows the Track / Album, and FavoriteItemCommand maps that back
+    // to the item the menu was opened on.
 
-        if (DataContext is not FavoritesViewModel vm) return;
+    private TrackContextMenuBuilder? _trackMenuBuilder;
+    private AlbumContextMenuBuilder? _albumMenuBuilder;
+    /// <summary>Culture each menu's strings were read in (they are read once, at Build).</summary>
+    private string? _trackMenuCulture, _albumMenuCulture;
+    /// <summary>The album menu's View Album row (the album builder has no such entry).</summary>
+    private MenuItem? _albumViewAlbum;
+    private Control? _menuOwner;
+    /// <summary>The item the open menu acts on.</summary>
+    private FavoriteItem? _menuItem;
+    private readonly Dictionary<ICommand, FavoriteItemCommand> _itemCommands = new();
+
+    private FavoriteItemCommand ItemCommand(ICommand inner)
+    {
+        if (!_itemCommands.TryGetValue(inner, out var command))
+            _itemCommands[inner] = command = new FavoriteItemCommand(inner, () => _menuItem);
+        return command;
+    }
+
+    private void OnFavoriteTileContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is Button tile && OpenItemMenu(tile))
+            e.Handled = true;
+    }
+
+    private bool OpenItemMenu(Button tile)
+    {
+        if (tile.DataContext is not FavoriteItem item) return false;
+        if (DataContext is not FavoritesViewModel vm) return false;
 
         // Push ctrl-selected items to ViewModel so commands can operate on all of them
         vm.CtrlSelectedItems = _selectedItems.ToList();
+        _menuItem = item;
+
+        ContextMenu menu;
+        if (item.IsAlbum)
+        {
+            var builder = GetAlbumMenu();
+            builder.Bind(
+                item.Album!,
+                playCommand: ItemCommand(vm.PlayItemCommand),
+                shuffleCommand: ItemCommand(vm.ShuffleItemCommand),
+                playNextCommand: ItemCommand(vm.PlayNextItemCommand),
+                addToQueueCommand: ItemCommand(vm.AddItemToQueueCommand),
+                addToPlaylistCommand: ItemCommand(vm.AddItemToNewPlaylistCommand),
+                toggleFavoritesCommand: ItemCommand(vm.RemoveItemFavoriteCommand),
+                openMetadataCommand: ItemCommand(vm.OpenItemMetadataCommand),
+                showInExplorerCommand: ItemCommand(vm.ShowItemInExplorerCommand),
+                removeCommand: ItemCommand(vm.RemoveItemFromLibraryCommand),
+                convertCommand: ItemCommand(vm.ConvertItemCommand),
+                scanReplayGainCommand: ItemCommand(vm.ScanItemReplayGainCommand),
+                searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+            _albumViewAlbum!.Command = ItemCommand(vm.ViewItemAlbumCommand);
+            _albumViewAlbum.CommandParameter = item.Album;
+            MenuV2.RefreshLayout(builder.Menu.Items);
+            menu = builder.Menu;
+        }
+        else
+        {
+            var builder = GetTrackMenu();
+            builder.Bind(
+                item.Track!,
+                playCommand: ItemCommand(vm.PlayItemCommand),
+                shuffleCommand: ItemCommand(vm.ShuffleItemCommand),
+                playNextCommand: ItemCommand(vm.PlayNextItemCommand),
+                addToQueueCommand: ItemCommand(vm.AddItemToQueueCommand),
+                addToPlaylistCommand: ItemCommand(vm.AddItemToNewPlaylistCommand),
+                toggleFavoriteCommand: ItemCommand(vm.RemoveItemFavoriteCommand),
+                openMetadataCommand: ItemCommand(vm.OpenItemMetadataCommand),
+                searchLyricsCommand: vm.SearchLyricsTrackCommand,
+                showInExplorerCommand: ItemCommand(vm.ShowItemInExplorerCommand),
+                removeCommand: ItemCommand(vm.RemoveItemFromLibraryCommand),
+                convertCommand: ItemCommand(vm.ConvertItemCommand),
+                scanReplayGainCommand: ItemCommand(vm.ScanItemReplayGainCommand),
+                viewAlbumCommand: ItemCommand(vm.ViewItemAlbumCommand),
+                viewArtistCommand: vm.ViewArtistCommand);
+            // The builder leaves Shuffle without a parameter (track lists shuffle the whole
+            // list); the item command needs to know which favourite it is.
+            builder.Shuffle.CommandParameter = item.Track;
+            builder.QuickShuffle.CommandParameter = item.Track;
+            menu = builder.Menu;
+        }
+
+        OpenMenu(menu, tile);
+        return true;
+    }
+
+    private TrackContextMenuBuilder GetTrackMenu()
+    {
+        // Rebuilt after a live language switch so the menu follows it.
+        if (_trackMenuBuilder == null || _trackMenuCulture != Loc.Instance.Culture.Name)
+        {
+            _trackMenuCulture = Loc.Instance.Culture.Name;
+            _trackMenuBuilder = new TrackContextMenuBuilder();
+            _trackMenuBuilder.Build(Loc.T("Favorites.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
+        }
+        return _trackMenuBuilder;
+    }
+
+    private AlbumContextMenuBuilder GetAlbumMenu()
+    {
+        if (_albumMenuBuilder == null || _albumMenuCulture != Loc.Instance.Culture.Name)
+        {
+            _albumMenuCulture = Loc.Instance.Culture.Name;
+            _albumMenuBuilder = new AlbumContextMenuBuilder();
+            _albumMenuBuilder.Build(Loc.T("Favorites.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
+            // The old Favorites menu offered View Album on albums too; it gets its own group
+            // under the playlist/favourite rows, where the track menu keeps it.
+            var items = _albumMenuBuilder.Menu.Items;
+            var at = items.IndexOf(_albumMenuBuilder.Unfavorite) + 1;
+            _albumViewAlbum = MenuV2.Row(this, Loc.T("Favorites.ViewAlbum"), "MenuLineAlbum");
+            items.Insert(at, new Separator());
+            items.Insert(at + 1, _albumViewAlbum);
+        }
+        return _albumMenuBuilder;
+    }
+
+    private void OpenMenu(ContextMenu menu, Control owner)
+    {
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(menu);
+        if (menu.IsOpen)
+            menu.Close();
+
+        // Detach from the previous owner so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_menuOwner != null && !ReferenceEquals(_menuOwner, owner))
+            _menuOwner.ContextMenu = null;
+        if (menu.Parent is Control prev && !ReferenceEquals(prev, owner))
+            prev.ContextMenu = null;
+
+        _menuOwner = owner;
+        owner.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(owner);
     }
 
     /// <summary>Left-click handler: play track or open album depending on item type.</summary>
@@ -199,14 +331,59 @@ public partial class FavoritesView : UserControl
         }
     }
 
-    /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
+    /// <summary>Tile hover dots: the same menu a right-click on the tile opens, bound
+    /// afresh (a recycled tile may still hold the shared menu bound to another item).
+    /// OpenItemMenu also pushes the current selection.</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        // Opening the menu from code skips its Opening event, so push the current selection
-        // here; otherwise the commands see whatever the last right-click left on the ViewModel.
-        if (DataContext is FavoritesViewModel vm)
-            vm.CtrlSelectedItems = _selectedItems.ToList();
-        Helpers.AlbumTile.OpenMenu(sender);
+        for (var c = sender as Control; c != null; c = c.Parent as Control)
+        {
+            if (c is Button tile && tile.Classes.Contains("album-tile"))
+            {
+                OpenItemMenu(tile);
+                break;
+            }
+        }
         e.Handled = true;
+    }
+}
+
+/// <summary>
+/// A Favorites menu row's command: the shared builders hand each row the Track or Album,
+/// while the view model's commands take the <see cref="FavoriteItem"/> (and act on the
+/// Ctrl-selection it belongs to). Maps the row's parameter back to the item the menu was
+/// opened on; anything else cannot run.
+/// </summary>
+internal sealed class FavoriteItemCommand : ICommand
+{
+    public ICommand Inner { get; }
+    private readonly Func<FavoriteItem?> _current;
+
+    public FavoriteItemCommand(ICommand inner, Func<FavoriteItem?> current)
+    {
+        Inner = inner;
+        _current = current;
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => Inner.CanExecuteChanged += value;
+        remove => Inner.CanExecuteChanged -= value;
+    }
+
+    public FavoriteItem? Resolve(object? parameter)
+    {
+        if (parameter is FavoriteItem item) return item;
+        var current = _current();
+        if (current == null || parameter == null) return null;
+        return ReferenceEquals(current.Track, parameter) || ReferenceEquals(current.Album, parameter) ? current : null;
+    }
+
+    public bool CanExecute(object? parameter) => Resolve(parameter) is { } item && Inner.CanExecute(item);
+
+    public void Execute(object? parameter)
+    {
+        if (Resolve(parameter) is { } item)
+            Inner.Execute(item);
     }
 }

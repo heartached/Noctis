@@ -408,12 +408,15 @@
             <Setter Property="Opacity" Value="1"/>
         </Style>
 
-        <!-- "…" popup menu rows -->
+        <!-- "…" popup menu rows: the app's v2 menu rows (Styles.axaml "Menus"): 32px, pill
+             hover in MenuV2HoverBrush, 13.5px labels, 16px line icons 11px from the label. -->
         <Style Selector="Button.mini-menu-item">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -427,15 +430,24 @@
         </Style>
         <Style Selector="Button.mini-menu-item /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="CornerRadius" Value="999"/>
         </Style>
         <!-- Theme brushes, not white overlays: the menu card is painted in the app's
              theme background, which a light or custom theme can make pale. -->
         <Style Selector="Button.mini-menu-item:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}"/>
         </Style>
         <Style Selector="Button.mini-menu-item:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource MenuV2TileHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.mini-menu-item TextBlock">
+            <Setter Property="FontSize" Value="13.5"/>
+        </Style>
+        <!-- Hairline separators, inset like the app menus' -->
+        <Style Selector="Border.mini-menu-separator">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="8,5"/>
+            <Setter Property="Background" Value="{DynamicResource MenuV2SeparatorBrush}"/>
         </Style>
 
         <!-- Icon-form hover overlay fade -->
@@ -791,7 +803,7 @@
                                 ToolTip.Tip="{loc:T MiniPlayer.BackFullViewTip}"
                                 ToolTip.Placement="Left"
                                 Click="OnCloseClick">
-                            <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" Foreground="White"/>
+                            <controls:LineIcon Data="{StaticResource MenuLineExpand}" Width="14" Height="14" Foreground="White"/>
                         </Button>
                         <Button Classes="mini-transport" Width="46" Height="46"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -2384,7 +2396,7 @@
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlaySearchResultCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="{loc:T MiniPlayer.PlayTip}">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
+                                                    <PathIcon Data="{StaticResource PlayIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -2463,7 +2475,7 @@
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlayFromQueueCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="{loc:T MiniPlayer.PlayTip}">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
+                                                    <PathIcon Data="{StaticResource PlayIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="{DynamicResource MiniDrawerText}"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -2516,15 +2528,15 @@
                    VerticalOffset="6"
                    IsLightDismissEnabled="False"
                    WindowManagerAddShadowHint="False">
-                <!-- Chrome follows the app's right-click menus (Styles.axaml's ContextMenu /
-                     MenuFlyoutPresenter): the active theme's sidebar background, radius 16,
-                     padding 6 — so a custom or light theme carries over here too. -->
+                <!-- Chrome follows the app's menus (Styles.axaml "Menus", the v2 card): the active
+                     theme's sidebar background, radius 18, hairline MenuV2BorderBrush, padding 6,
+                     248 wide — so a custom or light theme carries over here too. -->
                 <Border x:Name="MenuCard"
-                        Width="176"
+                        Width="248"
                         Background="{DynamicResource AppSidebarBackground}"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        BorderBrush="{DynamicResource MenuV2BorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="16"
+                        CornerRadius="18"
                         Padding="6"
                         RenderTransformOrigin="50%,0%"
                         RenderTransform="scale(0.96)"
@@ -2554,67 +2566,50 @@
                             </TransformOperationsTransition>
                         </Transitions>
                     </Border.Transitions>
-                    <StackPanel Spacing="1">
+                    <StackPanel Spacing="0">
                         <Button Classes="mini-menu-item" Command="{Binding ToggleSearchDrawerCommand}"
                                 Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="{loc:T MiniPlayer.Search}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Search}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Command="{Binding ToggleQueueDrawerCommand}"
                                 Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <!-- Same artwork the playback bar's queue button uses, so the two
-                                     read as the same control. PathIcon glyphs made Queue and Lyrics
-                                     nearly identical here — both were plain stacks of lines. -->
-                                <!-- Theme brush, not a white overlay: the card is painted in the
-                                     app's theme background, so a light theme left these icons and
-                                     labels white-on-pale and effectively unreadable. -->
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Queue%20ICON.png" Stretch="Uniform"/>
-                                    </Border.OpacityMask>
-                                </Border>
-                                <TextBlock Text="{loc:T MiniPlayer.Queue}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <!-- The v2 menus' line icons (10-09): Queue (play mark on the last
+                                     line) and Lyrics (speech bubble) read apart, as in the track menu.
+                                     Theme brushes, not white overlays: the card is painted in the
+                                     app's theme background, so a light theme must stay readable. -->
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Queue}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- The large-icon form has its own always-visible volume bar -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleVolumeDrawerCommand}"
                                 Click="OnMenuItemClick"
                                 IsVisible="{Binding ShowVolumeMenuItem}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Volume%20ICON.png" Stretch="Uniform"/>
-                                    </Border.OpacityMask>
-                                </Border>
-                                <TextBlock Text="{loc:T MiniPlayer.Volume}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVolume}"/>
+                                <TextBlock Text="{loc:T MiniPlayer.Volume}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- The fixed designs have no heart button on the card, so the menu carries it. -->
                         <Button Classes="mini-menu-item" Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 Click="OnMenuItemClick" IsVisible="{Binding IsDesignForm}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <controls:HeartIcon Size="14" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:HeartIcon Size="16" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
                                                     IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <TextBlock Text="{loc:T MiniPlayer.FavoritesTip}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T MiniPlayer.FavoritesTip}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Stays in the list while lyrics are open: it is the only way back
                              out of the split view, so hiding it stranded the user there. -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleLyricsFormCommand}"
                                 Click="OnMenuItemClick">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform"/>
-                                    </Border.OpacityMask>
-                                </Border>
-                                <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
+                                <TextBlock Text="{Binding LyricsMenuLabel}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- EQ on/off (GitHub #94): the Settings → Audio master switch, reachable
@@ -2622,14 +2617,12 @@
                         <Button Classes="mini-menu-item" Command="{Binding Settings.ToggleEqualizerCommand}"
                                 Click="OnMenuItemClick" HorizontalContentAlignment="Stretch"
                                 ToolTip.Tip="{loc:T MiniPlayer.EqualizerTip}">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <Panel Width="14" Height="14">
-                                    <PathIcon Data="{StaticResource EqualizerIcon}" Width="14" Height="14" IsVisible="{Binding !Settings.EqualizerEnabled}"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                    <PathIcon Data="{StaticResource EqualizerIcon}" Width="14" Height="14" IsVisible="{Binding Settings.EqualizerEnabled}"
-                                              Foreground="{DynamicResource AccentColorBrush}"/>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                                <Panel Width="16" Height="16">
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEqualizer}" IsVisible="{Binding !Settings.EqualizerEnabled}"/>
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEqualizer}" Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Settings.EqualizerEnabled}"/>
                                 </Panel>
-                                <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.Equalizer}" FontSize="13"
+                                <TextBlock Grid.Column="1" Text="{loc:T MiniPlayer.Equalizer}"
                                            Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                                 <Panel Grid.Column="2">
                                     <TextBlock Text="{loc:T MiniPlayer.EqualizerOn}" IsVisible="{Binding Settings.EqualizerEnabled}"
@@ -2641,8 +2634,7 @@
                         </Button>
                         <!-- Design switcher: the Settings ▸ Mini Player Design picker within reach.
                              Same setting, so Settings and this segment stay in step. -->
-                        <Border Height="1" Margin="8,4"
-                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <Border Classes="mini-menu-separator"/>
                         <Border CornerRadius="999" Padding="2" Margin="4,2,4,2"
                                 Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
                                 ToolTip.Tip="{loc:T MiniPlayer.MiniPlayerDesignTip}">
@@ -2676,31 +2668,28 @@
                         </Border>
                         <!-- Was the corner badge. No OnMenuItemClick needed: closing the
                              window takes the popup with it. -->
-                        <Border Height="1" Margin="8,4"
-                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <Border Classes="mini-menu-separator"/>
                         <!-- Pin (Windows): survives Show desktop / Minimize all and stays
                              above games; the label says which way it goes. -->
                         <Button x:Name="PinMenuItem" Classes="mini-menu-item" Command="{Binding TogglePinCommand}"
                                 Click="OnMenuItemClick" IsVisible="{Binding CanPin}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Panel Width="14" Height="14">
-                                    <PathIcon Data="{StaticResource PinIcon}" Width="14" Height="14" IsVisible="{Binding !IsPinned}"
-                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                    <PathIcon Data="{StaticResource PinFilledIcon}" Width="14" Height="14" IsVisible="{Binding IsPinned}"
-                                              Foreground="{DynamicResource AccentColorBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Panel Width="16" Height="16">
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePin}" IsVisible="{Binding !IsPinned}"/>
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePin}" Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding IsPinned}"/>
                                 </Panel>
                                 <Panel>
                                     <TextBlock Text="{loc:T MiniPlayer.PinOnTop}" IsVisible="{Binding !IsPinned}"
-                                               FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                                     <TextBlock Text="{loc:T MiniPlayer.Unpin}" IsVisible="{Binding IsPinned}"
-                                               FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                                 </Panel>
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Click="OnCloseClick">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="{loc:T MiniPlayer.BackFullViewTip}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineExpand}"/>
+                                <TextBlock Text="{loc:T MiniPlayer.BackFullViewTip}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

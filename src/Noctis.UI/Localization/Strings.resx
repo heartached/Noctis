@@ -658,6 +658,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AlbumDescription.EditDescriptionTip" xml:space="preserve"><value>Edit description</value><comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.CloseTip" xml:space="preserve"><value>Close</value><comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.EmptyClickToAdd" xml:space="preserve"><value>No description yet. Click here to add one.</value><comment>Text in AlbumDescriptionDialog.axaml</comment></data>
+  <data name="AlbumDetail.FooterOneSong" xml:space="preserve"><value>1 song, {0}</value><comment>Album page footer for a one-song album; {0} = total length (e.g. "3 min")</comment></data>
+  <data name="AlbumDetail.FooterSongs" xml:space="preserve"><value>{0:N0} songs, {1}</value><comment>Album page footer; {0} = number of songs, {1} = total length (e.g. "45 min")</comment></data>
   <data name="AlbumDetail.AddDescription" xml:space="preserve"><value>Add a description</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDescription.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in AlbumDescriptionDialog.axaml</comment></data>
   <data name="AlbumDescription.Save" xml:space="preserve"><value>Save</value><comment>Content in AlbumDescriptionDialog.axaml</comment></data>
@@ -2559,4 +2561,14 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="QueueToast.OneSong" xml:space="preserve"><value>1 song</value><comment>Confirmation pill detail line for one untitled song</comment></data>
   <data name="A11y.ScrollLeft" xml:space="preserve"><value>Scroll left</value><comment>Screen-reader name of the arrow that scrolls an album page tile row left</comment></data>
   <data name="A11y.ScrollRight" xml:space="preserve"><value>Scroll right</value><comment>Screen-reader name of the arrow that scrolls an album page tile row right</comment></data>
+  <data name="Menu.FetchLyrics" xml:space="preserve"><value>Fetch &amp; Save Lyrics</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
+  <data name="Menu.LyricsStudio" xml:space="preserve"><value>Open in Lyrics Studio…</value><comment>v2 right-click menu, Lyrics submenu</comment></data>
+  <data name="Menu.ChooseSongVideo" xml:space="preserve"><value>Choose video for this song…</value><comment>v2 right-click menu, Lyrics Background Video submenu</comment></data>
+  <data name="Menu.StartRadio" xml:space="preserve"><value>Start Radio</value><comment>v2 right-click menu row</comment></data>
+  <data name="Menu.Snooze" xml:space="preserve"><value>Snooze for a Month</value><comment>v2 right-click menu row: hide the song from suggestions for a month</comment></data>
+  <data name="Menu.Badge" xml:space="preserve"><value>Badge</value><comment>v2 right-click menu submenu (colored song badges)</comment></data>
+  <data name="Menu.NewBadge" xml:space="preserve"><value>New badge…</value><comment>v2 right-click menu, Badge submenu</comment></data>
+  <data name="Menu.RemoveBadge" xml:space="preserve"><value>Remove badge</value><comment>v2 right-click menu, Badge submenu</comment></data>
+  <data name="Menu.RateTip" xml:space="preserve"><value>Rate {0} of 5</value><comment>v2 right-click menu rating star tooltip; {0} = number of stars</comment></data>
+  <data name="Menu.ClearRating" xml:space="preserve"><value>Clear rating</value><comment>v2 right-click menu rating row clear button tooltip</comment></data>
 </root>

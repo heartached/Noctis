@@ -501,7 +501,7 @@
                                 <Button Grid.Column="3" Classes="pill-secondary" MinHeight="30" Width="30" Padding="0"
                                         Margin="6,0,0,0"
                                         Command="{Binding DismissSearchAppliedCommand}">
-                                    <PathIcon Data="{StaticResource DismissIcon}" Width="9" Height="9" />
+                                    <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="16" Height="16" />
                                 </Button>
                             </Grid>
                         </Border>
@@ -849,18 +849,20 @@
                                                  Classes="pill-field"
                                                  Text="{Binding Value}"
                                                  Watermark="{loc:T Metadata.Value}" />
+                                        <!-- Vector ✕ (MenuLineClose): the "✕" character isn't in
+                                             Inter and fell back to a different font per OS. -->
                                         <Button Grid.Column="4"
-                                                Content="✕"
                                                 Command="{Binding $parent[ItemsControl].((vm:MetadataViewModel)DataContext).RemoveCustomTagCommand}"
                                                 CommandParameter="{Binding}"
                                                 Width="30" Height="30"
                                                 Padding="0"
-                                                FontSize="11"
                                                 HorizontalContentAlignment="Center"
                                                 VerticalContentAlignment="Center"
                                                 CornerRadius="999"
                                                 Cursor="Hand"
-                                                VerticalAlignment="Center" />
+                                                VerticalAlignment="Center">
+                                            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="16" Height="16" />
+                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -1786,11 +1788,12 @@
                                                                     Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).NudgeSyncedLineForwardCommand}"
                                                                     CommandParameter="{Binding}" />
                                                             <Button Classes="synced-nudge"
-                                                                    Content="✕"
                                                                     ToolTip.Tip="{loc:T Metadata.ClearTimestampTip}"
                                                                     IsEnabled="{Binding HasTimestamp}"
                                                                     Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).ClearSyncedLineTimestampCommand}"
-                                                                    CommandParameter="{Binding}" />
+                                                                    CommandParameter="{Binding}">
+                                                                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="16" Height="16" />
+                                                            </Button>
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>

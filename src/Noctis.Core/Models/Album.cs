@@ -365,7 +365,9 @@ public class Album : ObservableObject
     public string ReleaseKindYearLine => Year > 0 ? $"{ReleaseKindTitle} · {Year}" : ReleaseKindTitle;
 
     /// <summary>Album-page related tile caption: "1982 · 8 songs"; the count alone when the year is unknown.</summary>
-    public string YearSongsLine => Year > 0 ? $"{Year} · {TrackCount} songs" : $"{TrackCount} songs";
+    public string YearSongsLine => Year > 0 ? $"{Year} · {SongCountText}" : SongCountText;
+
+    private string SongCountText => TrackCount == 1 ? "1 song" : $"{TrackCount} songs";
 
     /// <summary>
     /// Album year from its tracks in album order: the first track's, or the first dated

@@ -97,20 +97,18 @@
 
     <Grid Width="600" Height="660" RowDefinitions="Auto,Auto,*,Auto">
 
-        <!-- Header: the playlist glyph (Create / Add to Playlist's), where the songs go and how
-             many it has. -->
+        <!-- Header: Add to Playlist's line icon (the track menu row's), where the songs go and
+             how many it has. -->
         <Border Grid.Row="0"
                 Padding="28,22,28,16"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <Border Width="22" Height="22" Opacity="0.6"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
-                    </Border>
+                    <controls:LineIcon x:Name="HeaderIcon"
+                                       Data="{StaticResource MenuLinePlaylistAdd}"
+                                       Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                     <TextBlock x:Name="TitleText"
@@ -166,7 +164,7 @@
                         Command="{Binding ReshuffleCommand}"
                         IsVisible="{Binding IsShuffleMode}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" Opacity="0.7"
+                        <controls:LineIcon Data="{StaticResource MenuLineShuffle}" Width="15" Height="15" Opacity="0.8"
                                   VerticalAlignment="Center" />
                         <TextBlock Text="{loc:T AddSongs.Shuffle}" VerticalAlignment="Center" />
                     </StackPanel>

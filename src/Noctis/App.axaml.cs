@@ -103,6 +103,11 @@ public partial class App : Application
 
         // Icon-only buttons are named by their tooltip for screen readers / UI Automation.
         Noctis.Helpers.AccessibleNames.Install();
+
+        // Submenus (Lyrics ▸, Tools ▸ …) open 100 ms after the pointer rests on their row
+        // instead of Avalonia's 400 ms default, which read as lag; a short wait still keeps
+        // them from flashing open while the pointer passes over.
+        Avalonia.Controls.Platform.DefaultMenuInteractionHandler.MenuShowDelay = TimeSpan.FromMilliseconds(100);
     }
 
     /// <summary>

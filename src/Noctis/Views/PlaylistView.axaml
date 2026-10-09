@@ -193,17 +193,25 @@
 
         <!-- # column: the row number fades into a grip hint on hover, but only
              when reorder is actually possible (manual playlist + manual sort + no filter) -->
-        <Style Selector="TextBlock.row-index, TextBlock.row-grip">
+        <Style Selector="TextBlock.row-index, controls|LineIcon.row-grip">
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
                 </Transitions>
             </Setter>
         </Style>
+        <!-- Resting opacities live here, not on the elements: a local value outranks the
+             :pointerover styles below, which left the swap dead (the grip never showed). -->
+        <Style Selector="TextBlock.row-index">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <Style Selector="controls|LineIcon.row-grip">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
         <Style Selector="Border.row-body.reorderable:pointerover TextBlock.row-index">
             <Setter Property="Opacity" Value="0" />
         </Style>
-        <Style Selector="Border.row-body.reorderable:pointerover TextBlock.row-grip">
+        <Style Selector="Border.row-body.reorderable:pointerover controls|LineIcon.row-grip">
             <Setter Property="Opacity" Value="0.55" />
         </Style>
 
@@ -528,7 +536,7 @@
                                 Cursor="Hand"
                                 ToolTip.Tip="{loc:T Playlist.PlayTip}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="{StaticResource PlaySolidIcon}"
+                                <PathIcon Data="{StaticResource PlayIcon}"
                                           Width="13" Height="13"
                                           Foreground="{DynamicResource AccentForegroundBrush}"
                                           VerticalAlignment="Center" />
@@ -590,20 +598,22 @@
                                 ToolTip.Tip="{loc:T Playlist.OptionsTip}">
                             <PathIcon Data="{StaticResource MoreDotsIcon}"
                                       Width="13" Height="13" />
+                            <!-- A MenuFlyout (not a ContextMenu opened from Click): the v2 menu look is global,
+                                 and a flyout closes on a second click of its button, where the ContextMenu
+                                 closed on the press and then reopened on the click. -->
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedLeft"
-                                            PlacementConstraintAdjustment="None"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="{loc:T Playlist.PlayNext}"
                                               Command="{Binding PlayNextAllCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Playlist.AddQueue}"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineQueue}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
@@ -611,20 +621,20 @@
                                               Command="{Binding AddSongsCommand}"
                                               IsVisible="{Binding IsManualPlaylist}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="M11 5H13V11H19V13H13V19H11V13H5V11H11V5Z" Width="13" Height="13" />
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Playlist.EditPlaylist}"
                                               Command="{Binding EditPlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskEditPlaylist" /></Border.OpacityMask></Border>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEdit}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
                                     <MenuItem Header="{loc:T Playlist.DeletePlaylist}" Classes="danger"
                                               Command="{Binding DeletePlaylistCommand}">
                                         <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineTrash}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuFlyout>
@@ -646,9 +656,9 @@
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="{Binding SortLabel, StringFormat='Sort: {0}'}"
                                            FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <TextBlock Text="{loc:T Playlist.Text}"
-                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                           FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                                <!-- Vector chevron: the Segoe Fluent glyph it replaces only exists on Windows. -->
+                                <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                          Width="8" Height="8" Opacity="0.6" VerticalAlignment="Center" />
                             </StackPanel>
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedLeft"
@@ -757,15 +767,14 @@
                                     <Panel Grid.Column="0" VerticalAlignment="Center">
                                         <TextBlock Classes="row-index"
                                                    FontSize="11.5"
-                                                   Opacity="0.4"
                                                    HorizontalAlignment="Center" />
-                                        <TextBlock Classes="row-grip"
-                                                   Text="{loc:T Playlist.Text4}"
-                                                   FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                                   FontSize="12"
-                                                   Opacity="0"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
+                                        <!-- Vector six-dot grip: the Segoe Fluent glyph it replaces only exists on Windows. -->
+                                        <controls:LineIcon Classes="row-grip"
+                                                           Data="{DynamicResource LineGrip}"
+                                                           StrokeThickness="3.6"
+                                                           Width="12" Height="12"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
                                     </Panel>
 
                                     <!-- Cover art thumbnail (play overlay on hover) -->
@@ -800,7 +809,7 @@
                                                     ToolTip.Tip="{loc:T Playlist.PlayFromHereTip}"
                                                     Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).PlayFromCommand}"
                                                     CommandParameter="{Binding}">
-                                                <PathIcon Data="{StaticResource PlaySolidIcon}"
+                                                <PathIcon Data="{StaticResource PlayIcon}"
                                                           Width="14" Height="14"
                                                           Foreground="White" />
                                             </Button>
@@ -1146,7 +1155,7 @@
                             <Button Click="OnSelectionClearClick"
                                     Padding="8,5"
                                     ToolTip.Tip="{loc:T Playlist.ClearSelectionTip}">
-                                <TextBlock Text="{loc:T Playlist.Text5}" FontSize="11" Opacity="0.6" />
+                                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="12" Height="12" Opacity="0.6" />
                             </Button>
                         </StackPanel>
                     </Border>

@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -41,6 +40,10 @@ public class AddToPlaylistDialogTests
     internal static void EnsureAppStyles()
     {
         var app = Application.Current!;
+        // The pop-up line icons (App.axaml merges them next to Icons.axaml); checked on their
+        // own because another test may have merged Icons.axaml first.
+        if (!app.Resources.TryGetResource("LineCreatePlaylist", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/IconsLine.axaml") });
         if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
         app.Resources["InterSemiBold"] = FontFamily.Default;
         app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
@@ -490,59 +493,48 @@ public class AddToPlaylistDialogTests
         throw new DirectoryNotFoundException("Could not locate repo root from " + AppContext.BaseDirectory);
     }
 
-    private static readonly XNamespace Av = "https://github.com/avaloniaui";
-
-    private static XElement NewMenuRow(XDocument mainWindow, string command) =>
-        mainWindow.Descendants(Av + "MenuItem").Single(m => (string?)m.Attribute("Command") == $"{{Binding {command}}}");
-
-    private static XElement RowIcon(XElement row) =>
-        row.Element(Av + "MenuItem.Icon")!.Elements().Single();
-
     [AvaloniaFact]
-    public void NewMenu_AndCreateDialogHeaders_ShowTheSameGlyphs()
+    public void CreateAndAddDialogHeaders_ShowTheirActionsLineIcons()
     {
         EnsureAppStyles();
         var app = Application.Current!;
-        Assert.True(app.TryFindResource("IconMaskPlaylist", out var playlistMask));
-        Assert.True(app.TryFindResource("SmartPlaylistIcon", out var smartGeometry));
-
-        // The Playlists page "+ New" menu: New Playlist uses the shared IconMaskPlaylist brush,
-        // New Smart Playlist the SmartPlaylistIcon geometry; every row's glyph is 14 px.
-        var main = XDocument.Load(Path.Combine(RepoRoot(), "src", "Noctis", "Views", "MainWindow.axaml"));
-        var newRow = RowIcon(NewMenuRow(main, "PageCreatePlaylistCommand"));
-        Assert.Equal("IconMaskPlaylist", (string?)newRow.Descendants(Av + "StaticResource").Single().Attribute("ResourceKey"));
-        var smartRow = RowIcon(NewMenuRow(main, "PageCreateSmartPlaylistCommand"));
-        Assert.Equal("{StaticResource SmartPlaylistIcon}", (string?)smartRow.Attribute("Data"));
-        var menu = NewMenuRow(main, "PageCreatePlaylistCommand").Parent!;
-        foreach (var row in menu.Elements(Av + "MenuItem"))
+        Geometry G(string key)
         {
-            var icon = RowIcon(row);
-            Assert.Equal("14", (string?)icon.Attribute("Width"));
-            Assert.Equal("14", (string?)icon.Attribute("Height"));
+            Assert.True(app.TryFindResource(key, out var g), key);
+            return Assert.IsAssignableFrom<Geometry>(g);
         }
 
-        // The track context menu's Add to Playlist shows the same PNG the brush holds.
-        var icons = XDocument.Load(Path.Combine(RepoRoot(), "src", "Noctis.UI", "Assets", "Icons.axaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var maskUri = (string?)icons.Descendants(Av + "ImageBrush").Single(b => (string?)b.Attribute(x + "Key") == "IconMaskPlaylist").Attribute("Source");
+        // Owner 10-09: Add to Playlist's pop-up shows the track menu row's own line icon, and
+        // New Playlist gets its own (not the list-with-a-plus, which is a different action).
         var builder = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Noctis", "Helpers", "TrackContextMenuBuilder.cs"));
-        Assert.Contains($"AddToPlaylist.Icon = CreatePngIcon(\"{maskUri}\")", builder);
+        Assert.Contains("Loc.T(\"LibraryAlbums.AddPlaylist\"), \"MenuLinePlaylistAdd\")", builder);
+        Assert.NotSame(G("MenuLinePlaylistAdd"), G("LineCreatePlaylist"));
 
-        // The dialogs: the same resource instances in their header tiles.
         var plain = new CreatePlaylistDialog { DataContext = new CreatePlaylistDialogViewModel() };
         var smart = new CreateSmartPlaylistDialog { DataContext = new CreateSmartPlaylistDialogViewModel(new FakeLibraryService()) };
-        var add = new AddToPlaylistDialog { DataContext = new AddToPlaylistDialogViewModel(Lists(1), 1) };
+        var vm = new AddToPlaylistDialogViewModel(Lists(1), 1);
+        var add = new AddToPlaylistDialog { DataContext = vm };
         try
         {
             plain.Show();
             smart.Show();
             add.Show();
-            Assert.Same(playlistMask, plain.FindControl<Border>("HeaderIcon")!.OpacityMask);
-            Assert.Same(playlistMask, add.FindControl<Border>("HeaderIcon")!.OpacityMask);
-            Assert.Same(smartGeometry, smart.FindControl<PathIcon>("HeaderIcon")!.Data);
-            // Nothing in the plain dialog's header still draws the bulleted-list geometry.
-            Assert.True(app.TryFindResource("PlaylistsIcon", out var bulleted));
-            Assert.DoesNotContain(plain.GetVisualDescendants().OfType<PathIcon>(), p => ReferenceEquals(p.Data, bulleted));
+            Assert.Same(G("LineCreatePlaylist"), plain.FindControl<LineIcon>("HeaderIcon")!.Data);
+            Assert.Same(G("MenuLineSmartPlaylist"), smart.FindControl<LineIcon>("HeaderIcon")!.Data);
+            var listIcon = add.FindControl<LineIcon>("HeaderIcon")!;
+            var createIcon = add.FindControl<LineIcon>("CreateHeaderIcon")!;
+            Assert.Same(G("MenuLinePlaylistAdd"), listIcon.Data);
+            Assert.Same(G("LineCreatePlaylist"), createIcon.Data);
+
+            // The list shows Add to Playlist's glyph; the inline Create form swaps to New Playlist's.
+            Assert.True(PumpUntil(() => listIcon.Opacity > 0.59 && createIcon.Opacity < 0.01));
+            vm.ShowCreateCommand.Execute(null);
+            Assert.True(PumpUntil(() => listIcon.Opacity < 0.01 && createIcon.Opacity > 0.59));
+
+            // No PNG mask glyphs left in the create dialogs (the list rows' cover fallback
+            // mirrors the sidebar's playlist thumbnail and stays until that one changes).
+            foreach (var w in new Window[] { plain, smart })
+                Assert.DoesNotContain(w.GetVisualDescendants().OfType<Border>(), b => b.OpacityMask is ImageBrush);
         }
         finally
         {

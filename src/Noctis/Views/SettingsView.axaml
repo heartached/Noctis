@@ -662,21 +662,13 @@
             <Setter Property="Opacity" Value="0.07"/>
         </Style>
 
-        <!-- Library > Tools: one row per tool, a plain monochrome glyph in front of the
-             title (same family as the rail icons). -->
-        <Style Selector="PathIcon.tool-icon">
+        <!-- Library > Tools: one row per tool, a monochrome line icon in front of the title —
+             the same stroked glyph the tool's menu row / dialog header uses (owner 10-09:
+             one icon per action everywhere). -->
+        <Style Selector="controls|LineIcon.tool-icon">
             <Setter Property="Width" Value="20"/>
             <Setter Property="Height" Value="20"/>
-            <Setter Property="Opacity" Value="0.85"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="2,0,16,0"/>
-        </Style>
-        <!-- Sidebar bitmap icons (Folder / Playlist PNGs) drawn as an opacity mask so
-             they take the same colour and size as the geometry glyphs beside them. -->
-        <Style Selector="Border.tool-bitmap">
-            <Setter Property="Width" Value="20"/>
-            <Setter Property="Height" Value="20"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
             <Setter Property="Opacity" Value="0.85"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="2,0,16,0"/>
@@ -714,18 +706,14 @@
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
-                                    <Border Grid.Column="1"
-                                            Width="15"
-                                            Height="15"
-                                            Margin="4,0,4,0"
-                                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                                        <Border.OpacityMask>
-                                            <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Arrow Down ICON.png" Stretch="Uniform"/>
-                                        </Border.OpacityMask>
-                                    </Border>
+                                    <PathIcon Grid.Column="1"
+                                              Data="{StaticResource ChevronDownThinIcon}"
+                                              Width="11"
+                                              Height="11"
+                                              Margin="6,0,6,0"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Popup Name="PART_Popup"
@@ -1560,7 +1548,7 @@
                 ToolTip.Tip="{loc:T Settings.CloseTip}"
                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseSettingsCommand}"
                 VerticalAlignment="Top" Margin="12,2,0,0">
-            <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12"/>
+            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="24" Height="24" Margin="-6" StrokeThickness="1.75"/>
         </Button>
     </Grid>
 
@@ -1906,10 +1894,18 @@
                                             <ContextMenu>
                                                 <MenuItem Header="{loc:T Settings.Edit}"
                                                           Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenThemeEditorCommand}"
-                                                          CommandParameter="{Binding Id}"/>
-                                                <MenuItem Header="{loc:T Settings.Delete}"
+                                                          CommandParameter="{Binding Id}">
+                                                    <MenuItem.Icon>
+                                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="{loc:T Settings.Delete}" Classes="danger"
                                                           Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}"
-                                                          CommandParameter="{Binding Id}"/>
+                                                          CommandParameter="{Binding Id}">
+                                                    <MenuItem.Icon>
+                                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                         <StackPanel Spacing="8" HorizontalAlignment="Center">
@@ -3728,7 +3724,7 @@
                                                 Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveEqBandCommand}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip.Tip="{loc:T Settings.RemoveBandTip}">
-                                            <PathIcon Data="{StaticResource DismissIcon}" Width="10" Height="10"/>
+                                            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" Margin="-5" StrokeThickness="2.1"/>
                                         </Button>
                                     </Grid>
                                 </DataTemplate>
@@ -4203,11 +4199,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Border Grid.Column="0" Classes="tool-bitmap" RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask>
-                            <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Folder%20ICON.png" Stretch="Uniform"/>
-                        </Border.OpacityMask>
-                    </Border>
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{DynamicResource LineOrganizeFiles}"/>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{loc:T Settings.OrganizeFiles}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.RenameMoveFilesInto}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -4220,7 +4212,7 @@
             </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <PathIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource CopyIcon}"/>
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{DynamicResource LineDuplicates}"/>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{loc:T Settings.FindDuplicates}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.FindDuplicateTracksRemove}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -4233,7 +4225,7 @@
             </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <PathIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource TagIcon}"/>
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{DynamicResource LineFindMetadata}"/>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{loc:T Settings.FindMetadata}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.IdentifyPoorlyTaggedTracks}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -4246,11 +4238,7 @@
             </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Border Grid.Column="0" Classes="tool-bitmap" RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask>
-                            <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Playlist%20icon.png" Stretch="Uniform"/>
-                        </Border.OpacityMask>
-                    </Border>
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineImport}"/>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{loc:T Settings.ImportPlaylist}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.ImportM3UExportifyCSV}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -4269,7 +4257,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <PathIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource PlayIcon}"/>
+                    <controls:LineIcon Grid.Column="0" Classes="tool-icon" Data="{StaticResource MenuLineSearch}"/>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{loc:T YouTubeSettings.Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T YouTubeSettings.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -4856,8 +4844,7 @@
                                 Command="{Binding ClearProfileAvatarCommand}"
                                 ToolTip.Tip="{loc:T Settings.RemovePictureTip}"
                                 IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                            <PathIcon Data="{StaticResource DismissIcon}" Width="8" Height="8" UseLayoutRounding="False"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="16" Height="16" Margin="-4" StrokeThickness="2.62" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
                     </Panel>
                     <!-- Name: an editable box, the way a profile field reads. -->

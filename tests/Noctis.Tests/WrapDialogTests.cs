@@ -207,6 +207,46 @@ public class WrapDialogTests : IDisposable
         Assert.Equal(1, closed);
     }
 
+    /// <summary>Owner 10-09: switching the share card between 1:1 and 9:16 left the old card
+    /// on screen. Clicking a segment must re-render the preview at that shape.</summary>
+    [AvaloniaFact]
+    public void ShareCard_FormatSegments_RerenderThePreview()
+    {
+        EnsureAppStyles();
+        var (lib, events) = SampleData();
+        var vm = new WrapViewModel(new History(events), lib, new WrapArchiveService(ArchiveFile), _ => null);
+        var win = new WrapDialog(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1300, Height = 900 };
+        win.Show();
+        try
+        {
+            // The rendered PNG's own height (IHDR); headless bitmaps don't decode real pixels.
+            static int PngHeight(byte[]? png) => png is { Length: > 24 }
+                ? (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23] : 0;
+
+            Assert.True(PumpUntil(() => vm.HasData && !vm.IsLoading && PngHeight(vm.CurrentPng) == 1080, 5000),
+                $"1:1 card is {PngHeight(vm.CurrentPng)} tall");
+
+            win.FindControl<RadioButton>("StorySegment")!.IsChecked = true;
+            Assert.True(PumpUntil(() => PngHeight(vm.CurrentPng) == 1920, 5000),
+                $"9:16 card is {PngHeight(vm.CurrentPng)} tall");
+
+            win.FindControl<RadioButton>("SquareSegment")!.IsChecked = true;
+            Assert.True(PumpUntil(() => PngHeight(vm.CurrentPng) == 1080, 5000),
+                $"1:1 card is {PngHeight(vm.CurrentPng)} tall");
+
+            // Both shapes are rendered now: a switch is instant (no re-render to wait for).
+            win.FindControl<RadioButton>("StorySegment")!.IsChecked = true;
+            Assert.Equal(1920, PngHeight(vm.CurrentPng));
+            win.FindControl<RadioButton>("SquareSegment")!.IsChecked = true;
+            Assert.Equal(1080, PngHeight(vm.CurrentPng));
+        }
+        finally
+        {
+            win.Close();
+            vm.Dispose();
+        }
+    }
+
     /// <summary>Saved years are whole-year snapshots: picking one hides "This month" and shows
     /// that year's recap; the share card follows.</summary>
     [AvaloniaFact]

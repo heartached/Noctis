@@ -83,7 +83,7 @@
         <!-- Header: icon, title, one line of what this is. -->
         <Grid Grid.Row="0" Margin="28,22,28,0" ColumnDefinitions="56,16,*">
             <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                <PathIcon Data="{StaticResource PlayIcon}" Width="20" Height="20" Opacity="0.6"
+                <controls:LineIcon x:Name="HeaderIcon" Data="{StaticResource MenuLineVideo}" Width="22" Height="22" Opacity="0.6"
                           HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
@@ -98,14 +98,14 @@
             <Border x:Name="DefaultWell" Classes="pill-well" Padding="12">
                 <Grid ColumnDefinitions="44,12,*,10,Auto">
                     <Border Grid.Column="0" Classes="lbg-art" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14"
+                        <controls:LineIcon Data="{StaticResource MenuLineVideo}" Width="18" Height="18"
                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                   Opacity="0.35" IsVisible="{Binding !HasDefaultVideo}" />
                     </Border>
                     <Border Grid.Column="0" Classes="lbg-art" VerticalAlignment="Center"
                             Background="{DynamicResource AccentColorBrush}"
                             IsVisible="{Binding HasDefaultVideo}">
-                        <PathIcon Data="{StaticResource PlayIcon}" Width="14" Height="14"
+                        <controls:LineIcon Data="{StaticResource MenuLineVideo}" Width="18" Height="18"
                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                   Foreground="{DynamicResource AccentForegroundBrush}" />
                     </Border>
@@ -133,7 +133,7 @@
                                 IsVisible="{Binding HasDefaultVideo}"
                                 ToolTip.Tip="{loc:T LyricsVideo.RemoveTip}"
                                 AutomationProperties.Name="{loc:T LyricsVideo.RemoveTip}">
-                            <PathIcon Data="{StaticResource TrashIcon}" Width="13" Height="13" Opacity="0.75" />
+                            <controls:LineIcon Data="{StaticResource MenuLineTrash}" Width="16" Height="16" Opacity="0.75" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -294,7 +294,7 @@
                                                     IsVisible="{Binding HasOwnVideo}"
                                                     ToolTip.Tip="{loc:T LyricsVideo.RemoveTip}"
                                                     AutomationProperties.Name="{loc:T LyricsVideo.RemoveTip}">
-                                                <PathIcon Data="{StaticResource TrashIcon}" Width="13" Height="13" Opacity="0.75" />
+                                                <controls:LineIcon Data="{StaticResource MenuLineTrash}" Width="16" Height="16" Opacity="0.75" />
                                             </Button>
                                         </Panel>
                                     </StackPanel>

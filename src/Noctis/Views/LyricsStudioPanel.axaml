@@ -319,11 +319,14 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <!-- Chromeless presenter for the Settings popover (the Find online pop-overs' recipe):
-             the pill-popover card inside draws the chrome; the padding is its shadow's room. -->
+             the pill-popover card inside draws the chrome; the padding is its shadow's room.
+             The card's shadow (0 10 30, PillDialog.axaml) needs ~20 px above, ~30 at the sides and
+             ~40 below: a uniform 12 cut it off in straight lines, so it read as a square box
+             (owner 10-09). The flyout's offsets keep the card where the 12 px padding put it. -->
         <Style Selector="FlyoutPresenter.studio-options-pop">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="12" />
+            <Setter Property="Padding" Value="32,24,32,40" />
         </Style>
         <Style Selector="TextBlock.studio-pop-label">
             <Setter Property="FontSize" Value="12" />
@@ -414,7 +417,7 @@
             </StackPanel>
             <Button Grid.Column="1" Classes="dialog-close" Command="{Binding CloseCommand}"
                     ToolTip.Tip="{loc:T Settings.CloseTip}" VerticalAlignment="Top" Margin="12,0,0,0">
-                <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="24" Height="24" Margin="-6" StrokeThickness="1.75" />
             </Button>
         </Grid>
 
@@ -477,6 +480,7 @@
                     <Button.Flyout>
                         <!-- The drop-down motion the Find online pop-overs use (DropDownFlyoutMotion). -->
                         <Flyout Placement="BottomEdgeAlignedLeft" ShowMode="Standard" FlyoutPresenterClasses="studio-options-pop"
+                                HorizontalOffset="-20" VerticalOffset="-12"
                                 helpers:DropDownFlyoutMotion.Enable="True">
                             <!-- The pill pop-over card (the editor's search pop-ups): the dialog card's fill
                                  and rim. Sized to its longest option (a fixed 360 clipped "· Experimental"). -->
@@ -730,14 +734,14 @@
                                                 <MenuFlyout Placement="BottomEdgeAlignedRight" helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                                     <MenuItem Header="{loc:T LyricsStudio.Skip}" Command="{Binding SkipCommand}">
                                                         <MenuItem.Icon>
-                                                            <PathIcon Data="{StaticResource NextIcon}" Width="14" Height="14" />
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSkip}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
                                                               IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
                                                               ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">
                                                         <MenuItem.Icon>
-                                                            <PathIcon Data="{StaticResource MicIcon}" Width="14" Height="14" />
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineMic}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                 </MenuFlyout>

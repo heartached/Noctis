@@ -13,6 +13,9 @@ public partial class LibraryFoldersView : UserControl
 {
     private TrackContextMenuBuilder? _menuBuilder;
     private FolderContextMenuBuilder? _folderMenuBuilder;
+    /// <summary>Culture each menu's strings were read in (they are read once, at Build).</summary>
+    private string? _menuCulture;
+    private string? _folderMenuCulture;
     private ListBoxItem? _menuOwnerItem;
     private EventHandler? _pendingScrollRestore;
     private LibraryFoldersViewModel? _subscribedVm;
@@ -83,12 +86,21 @@ public partial class LibraryFoldersView : UserControl
 
     private ContextMenu GetOrCreateContextMenu()
     {
-        if (_menuBuilder != null) return _menuBuilder.Menu;
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_menuBuilder != null && _menuCulture == culture) return _menuBuilder.Menu;
+        // A live language switch while this page is open: rebuild so the menu follows it.
+        if (_menuBuilder != null)
+        {
+            DetachMenuFromOwner();
+            _menuBuilder = null;
+        }
 
         if (DataContext is not LibraryFoldersViewModel) return new ContextMenu();
 
+        // v2 layout (10-09 redesign): quick tiles, grouped rows, Tools ▸.
         _menuBuilder = new TrackContextMenuBuilder();
-        return _menuBuilder.Build("Remove from Library", null, this);
+        _menuCulture = culture;
+        return _menuBuilder.Build(Noctis.Localization.Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
     }
 
     private void BindContextMenuToTrack(Track track)
@@ -170,10 +182,15 @@ public partial class LibraryFoldersView : UserControl
         var item = source.FindAncestorOfType<TreeViewItem>(includeSelf: true);
         if (item?.DataContext is not FolderNode node) return;
 
-        if (_folderMenuBuilder == null)
+        // Rebuilt after a live language switch so the menu follows it.
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_folderMenuBuilder == null || _folderMenuCulture != culture)
         {
+            if (_folderMenuBuilder?.Menu.IsOpen == true)
+                _folderMenuBuilder.Menu.Close();
+            _folderMenuCulture = culture;
             _folderMenuBuilder = new FolderContextMenuBuilder();
-            _folderMenuBuilder.Build();
+            _folderMenuBuilder.Build(this);
         }
 
         _folderMenuBuilder.Bind(

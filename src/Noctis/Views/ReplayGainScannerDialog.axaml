@@ -89,7 +89,7 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*,Auto">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <PathIcon Data="{StaticResource SpeakerHighIcon}" Width="22" Height="22" Opacity="0.6"
+                    <controls:LineIcon x:Name="HeaderIcon" Data="{StaticResource MenuLineReplayGain}" Width="22" Height="22" Opacity="0.6"
                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">

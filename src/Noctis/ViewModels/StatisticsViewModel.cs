@@ -114,28 +114,6 @@ public partial class StatisticsViewModel : ViewModelBase
         Refresh();
     }
 
-    // ── Navigation (wired by the shell the same way as Home) ──
-
-    public event EventHandler<Album>? AlbumOpened;
-
-    private Action<string>? _viewArtistAction;
-    public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
-
-    [RelayCommand]
-    private void OpenArtist(StatsArtistTile? tile)
-    {
-        if (tile is { CanOpen: true } && !string.IsNullOrWhiteSpace(tile.Name))
-            _viewArtistAction?.Invoke(tile.Name);
-    }
-
-    [RelayCommand]
-    private void OpenAlbum(StatsRankRow? row)
-    {
-        if (row is not { CanOpen: true }) return;
-        var album = _library.GetAlbumById(row.AlbumId);
-        if (album != null) AlbumOpened?.Invoke(this, album);
-    }
-
     // ── Listening summary (the selected period) ──
 
     [ObservableProperty] private bool _hasPlayHistory;
@@ -432,8 +410,9 @@ public partial class StatisticsViewModel : ViewModelBase
                 Rank = i + 1,
                 Name = artist?.Name ?? entry.Name,
                 PlaysText = PlaysLabel(entry.Plays),
-                ImagePath = artist != null ? CachedArtistPhoto(artist, images) : null,
-                CanOpen = artist != null,
+                // An artist only in the play history (its files left the library) still has the
+                // portrait cached under its name's id (owner 10-09: Chase Atlantic showed blank).
+                ImagePath = CachedArtistPhoto(artist ?? new Artist { Id = LibraryService.ComputeArtistId(entry.Name), Name = entry.Name }, images),
             });
         }
         return tiles;
@@ -474,7 +453,6 @@ public partial class StatisticsViewModel : ViewModelBase
                 ArtworkPath = NonEmpty(album?.ArtworkPath) ?? NonEmpty(entry.Track?.AlbumArtworkPath),
                 Fraction = max > 0 ? (double)entry.Plays / max : 0,
                 AlbumId = entry.AlbumId,
-                CanOpen = album != null,
             };
         }).ToList();
     }
@@ -491,7 +469,6 @@ public partial class StatisticsViewModel : ViewModelBase
             ArtworkPath = NonEmpty(entry.Track?.AlbumArtworkPath),
             Fraction = max > 0 ? (double)entry.Plays / max : 0,
             AlbumId = entry.AlbumId,
-            CanOpen = entry.AlbumId != Guid.Empty && albumsById.ContainsKey(entry.AlbumId),
         }).ToList();
     }
 
@@ -566,7 +543,6 @@ public partial class StatisticsViewModel : ViewModelBase
                     : Loc.T("Stats.LastPlayed", FormatAge(nowUtc - x.Last.Value)),
                 ArtworkPath = NonEmpty(x.Track.AlbumArtworkPath),
                 AlbumId = x.Track.AlbumId,
-                CanOpen = albumsById.ContainsKey(x.Track.AlbumId),
             })
             .ToList();
     }
@@ -766,8 +742,6 @@ public sealed class StatsArtistTile
     public string PlaysText { get; init; } = string.Empty;
     public string? ImagePath { get; init; }
     public bool HasImage => !string.IsNullOrEmpty(ImagePath);
-    /// <summary>The artist is in the library, so the tile can open its page.</summary>
-    public bool CanOpen { get; init; }
 }
 
 /// <summary>A ranked album or song (Top Albums / Top Songs), or a Forgotten Favorite (Rank 0).</summary>
@@ -784,7 +758,6 @@ public sealed class StatsRankRow
     /// <summary>Plays relative to the list's leader (0–1).</summary>
     public double Fraction { get; init; }
     public Guid AlbumId { get; init; }
-    public bool CanOpen { get; init; }
 }
 
 /// <summary>One hour column of the Listening by Hour chart.</summary>

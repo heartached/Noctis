@@ -695,7 +695,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _groupedDiscNumbers = Tracks.Select(t => t.DiscNumber).ToArray();
         DiscGroups.Clear();
         var pending = new List<(ObservableCollection<Track> Target, List<Track> Remainder)>();
-        foreach (var g in Tracks.GroupBy(t => t.DiscNumber).OrderBy(g => g.Key))
+        // Disc 0 (untagged) is disc 1, as in InAlbumOrder and the library's album sort: a
+        // separate "Disc 0" group sat above disc 1 while play order ran 1, 2, … across both,
+        // so Play on a row there skipped the disc-1 rows shown below it.
+        foreach (var g in Tracks.GroupBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber).OrderBy(g => g.Key))
         {
             var all = g.ToList();
             var visible = new ObservableCollection<Track>(all.Take(TrackRealizeChunk));
@@ -914,23 +917,24 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
-    /// <summary>Star click on a row or Rate ▸ in its menu.</summary>
-    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(new[] { track }, stars);
+    /// <summary>Star click on a row or Rate ▸ in its menu. Rates the whole Ctrl-selection when
+    /// the row is in it, like the Songs and playlist pages (it used to rate the one row).</summary>
+    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(SelectionOr(track), stars);
 
     [RelayCommand]
     private Task RateTrack(RateRequest request) => RateAsync(request.Track, request.Stars);
 
     [RelayCommand]
-    private Task FetchLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: false);
+    private Task FetchLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(TakeSelectionOr(track), remove: false);
 
     [RelayCommand]
-    private Task RemoveLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: true);
+    private Task RemoveLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(TakeSelectionOr(track), remove: true);
 
     [RelayCommand]
-    private Task OpenLyricsStudio(Track track) => MetadataHelper.OpenLyricsStudio(new[] { track });
+    private Task OpenLyricsStudio(Track track) => MetadataHelper.OpenLyricsStudio(TakeSelectionOr(track));
 
     [RelayCommand]
-    private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(new[] { track });
+    private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(TakeSelectionOr(track));
 
     /// <summary>Whole album → folder / Lyrics Studio (header menu).</summary>
     [RelayCommand]
@@ -963,6 +967,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
     private List<Track> SelectionOr(Track track) =>
         CtrlSelectedTracks.Contains(track) ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+
+    /// <summary><see cref="SelectionOr"/>, then the selection is used up (as the bulk actions do).</summary>
+    private List<Track> TakeSelectionOr(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        return tracks;
+    }
 
     [RelayCommand]
     private async Task OpenMetadata(Track track)
@@ -1024,9 +1036,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        track.IsFavorite = !track.IsFavorite;
-        await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged(new[] { track });
+        // The whole Ctrl-selection when the row is in it, all set the way the clicked
+        // row's entry reads ("Favorites" / "Remove from Favorites").
+        var tracks = TakeSelectionOr(track);
+        var newState = !track.IsFavorite;
+        foreach (var t in tracks)
+            t.IsFavorite = newState;
+        await _library.SaveTrackUserStateAsync(tracks);
+        _library.NotifyFavoritesChanged(tracks);
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
@@ -1049,7 +1066,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        await _sidebar.CreatePlaylistWithTrackAsync(track);
+        await _sidebar.CreatePlaylistWithTracksAsync(TakeSelectionOr(track));
     }
 
     [RelayCommand]
@@ -1062,11 +1079,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track }))
+        var tracks = SelectionOr(track);
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        var idx = Tracks.IndexOf(track);
-        if (idx >= 0)
-            Tracks.RemoveAt(idx);
+        CtrlSelectedTracks.Clear();
+        foreach (var removed in tracks)
+        {
+            var idx = Tracks.IndexOf(removed);
+            if (idx >= 0)
+                Tracks.RemoveAt(idx);
+        }
     }
 
     [RelayCommand]

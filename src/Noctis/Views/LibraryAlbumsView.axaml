@@ -210,112 +210,11 @@
                                             VerticalAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
                                             Loaded="OnAlbumTileLoaded"
+                                            ContextRequested="OnAlbumTileContextRequested"
                                             Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
                                             CommandParameter="{Binding}">
 
-                                        <!-- Context menu for album tiles -->
-                                        <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
-                                                <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
-                                                          CommandParameter="{Binding}"
-                                                          MaxWidth="400">
-                                                    <MenuItem.Header>
-                                                        <TextBlock Text="{loc:T LibraryAlbums.Play}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   FontWeight="Normal"
-                                                                   FontSize="14"
-                                                                   FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                                    </MenuItem.Header>
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlay" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.Shuffle}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShuffleAlbumCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.PlayNext}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayNextCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.AddQueue}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToQueueCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <Separator />
-                                                <MenuItem Header="{loc:T LibraryAlbums.AddPlaylist}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToNewPlaylistCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <Separator />
-                                                <MenuItem Header="{loc:T LibraryAlbums.Favorites}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ToggleAlbumFavoritesCommand}"
-                                                          CommandParameter="{Binding}"
-                                                          IsVisible="{Binding !IsAllTracksFavorite}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFavorites" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.RemoveFromFavorites}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ToggleAlbumFavoritesCommand}"
-                                                          CommandParameter="{Binding}"
-                                                          IsVisible="{Binding IsAllTracksFavorite}">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.Metadata}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenMetadataCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.ConvertAlbum}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ConvertAlbumCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="{loc:T LibraryAlbums.ScanReplayGain}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ScanAlbumReplayGainCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <!-- Don't Scrobble This Album: binds itself on open (ScrobbleMenu.Entry) -->
-                                                <MenuItem helpers:ScrobbleMenu.Entry="album" />
-                                                <MenuItem Header="{loc:T LibraryAlbums.ShowFolder}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShowInExplorerCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFolder" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <Separator />
-                                                <MenuItem Header="{loc:T LibraryAlbums.RemoveFromLibrary}" Classes="danger"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).RemoveFromLibraryCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
+                                        <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
 
                                         <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
                                             <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->

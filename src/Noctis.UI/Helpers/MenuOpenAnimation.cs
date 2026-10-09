@@ -78,6 +78,16 @@ public static class MenuOpenAnimation
     public static void SetFade(Control control, double value) => control.SetValue(FadeProperty, value);
     public static double GetFade(Control control) => control.GetValue(FadeProperty);
 
+    /// <summary>
+    /// Non-zero: the open motion slides in sideways from this X offset instead of rising up.
+    /// Set on submenu cards, which open beside their row (-8 = out of the parent menu).
+    /// </summary>
+    public static readonly AttachedProperty<double> OffsetXProperty =
+        AvaloniaProperty.RegisterAttached<Control, double>("OffsetX", typeof(MenuOpenAnimation));
+
+    public static void SetOffsetX(Control control, double value) => control.SetValue(OffsetXProperty, value);
+    public static double GetOffsetX(Control control) => control.GetValue(OffsetXProperty);
+
     private static readonly AttachedProperty<long> LastRunProperty =
         AvaloniaProperty.RegisterAttached<Control, long>("LastRun", typeof(MenuOpenAnimation));
 
@@ -154,12 +164,15 @@ public static class MenuOpenAnimation
         // Start hidden + nudged down, then settle into place on the next frame so the
         // transitions animate the change instead of snapping straight to the end state.
         var fade = FadePropertyOf(control);
+        var offsetX = GetOffsetX(control);
         control.SetValue(fade, 0.0);
-        control.RenderTransform = TransformOperations.Parse($"translateY({OpenOffsetY}px)");
+        control.RenderTransform = TransformOperations.Parse(offsetX != 0
+            ? $"translateX({offsetX.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)"
+            : $"translateY({OpenOffsetY}px)");
         Dispatcher.UIThread.Post(() =>
         {
             control.SetValue(fade, 1.0);
-            control.RenderTransform = TransformOperations.Parse("translateY(0px)");
+            control.RenderTransform = TransformOperations.Parse(offsetX != 0 ? "translateX(0px)" : "translateY(0px)");
         }, DispatcherPriority.Render);
     }
 

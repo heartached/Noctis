@@ -40,94 +40,9 @@
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Top"
                                     Command="{Binding $parent[ItemsControl].((vm:LibraryPlaylistsViewModel)DataContext).OpenPlaylistCommand}"
-                                    CommandParameter="{Binding}">
-
-                                <!-- Context menu for playlist tiles -->
-                                <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}">
-                                        <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).PlayPlaylistCommand}"
-                                                  CommandParameter="{Binding}"
-                                                  MaxWidth="400">
-                                            <MenuItem.Header>
-                                                <TextBlock Text="{loc:T LibraryPlaylists.Play}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           FontWeight="Normal"
-                                                           FontSize="14"
-                                                           FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                            </MenuItem.Header>
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlay" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.Shuffle}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).ShufflePlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.PlayNext}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).PlayNextPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.AddQueue}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).AddPlaylistToQueueCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T LibraryPlaylists.ViewPlaylist}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).OpenPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.EditPlaylist}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).EditPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskEditPlaylist" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.ExportPlaylist}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).ExportPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource SaveDiskIcon}" Width="14" Height="14" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.StarSidebar}"
-                                                  IsVisible="{Binding !IsPinned}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="#F1C40F" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T LibraryPlaylists.UnstarFromSidebar}"
-                                                  IsVisible="{Binding IsPinned}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="#F1C40F" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T LibraryPlaylists.DeletePlaylist}" Classes="danger"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).DeletePlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
+                                    CommandParameter="{Binding}"
+                                    ContextRequested="OnPlaylistTileContextRequested">
+                                <!-- Right-click / dots: one shared v2 menu built in code (OnPlaylistTileContextRequested). -->
 
                                 <StackPanel Spacing="0">
                                     <!-- Playlist artwork with layered fallback (synced with sidebar) -->

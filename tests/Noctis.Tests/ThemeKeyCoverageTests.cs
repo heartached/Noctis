@@ -71,6 +71,11 @@ public class ThemeKeyCoverageTests
         if (!app.Styles.OfType<StyleInclude>().Any(s => s.Source?.ToString().EndsWith("Styles.axaml") == true))
             app.Styles.Add(new StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
 
+        // The icon dictionaries App.axaml merges next to Icons.axaml (pages, pop-ups, menus).
+        foreach (var name in new[] { "IconsPages", "IconsLine", "IconsMenuExtra" })
+            if (!app.Resources.MergedDictionaries.OfType<ResourceInclude>().Any(r => r.Source?.ToString().EndsWith(name + ".axaml") == true))
+                app.Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://Noctis/")) { Source = new Uri($"avares://Noctis.UI/Assets/{name}.axaml") });
+
         var variant = light ? ThemeVariant.Light : ThemeVariant.Dark;
         var overlay = new ResourceInclude(new Uri("avares://Noctis/"))
         {

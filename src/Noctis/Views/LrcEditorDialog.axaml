@@ -3,6 +3,7 @@
              xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.LrcEditorDialog"
         x:DataType="vm:LrcEditorViewModel"
         Title="{loc:T LrcEditor.SyncLyrics}"
@@ -85,7 +86,7 @@
                             Width="32" Height="32" Padding="0"
                             HorizontalAlignment="Right" VerticalAlignment="Top"
                             Cursor="Hand" Click="OnCloseClick">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="16" Height="16" Opacity="0.75"/>
+                        <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="24" Height="24" Opacity="0.75"/>
                     </Button>
                 </Grid>
 
@@ -163,19 +164,26 @@
                                         CommandParameter="{Binding}"/>
 
                                 <!-- Stamp this line now -->
-                                <Button Grid.Column="4" Classes="lrc-nudge" Content="⏱"
+                                <!-- Vector glyphs: the ⏱ / ✕ characters aren't in Inter, so each OS
+                                     drew them from a different fallback font (a colour emoji on
+                                     Windows, tofu where no font has them). -->
+                                <Button Grid.Column="4" Classes="lrc-nudge"
                                         Margin="8,0,0,0"
                                         ToolTip.Tip="{loc:T LrcEditor.StampCurrentPositionTip}"
                                         Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).StampLineCommand}"
-                                        CommandParameter="{Binding}"/>
+                                        CommandParameter="{Binding}">
+                                    <controls:LineIcon Data="{DynamicResource LineStopwatch}" Width="15" Height="15"/>
+                                </Button>
 
                                 <!-- Clear -->
-                                <Button Grid.Column="5" Classes="lrc-nudge" Content="✕"
+                                <Button Grid.Column="5" Classes="lrc-nudge"
                                         Margin="4,0,0,0"
                                         ToolTip.Tip="{loc:T LrcEditor.ClearTimestampTip}"
                                         IsEnabled="{Binding HasTimestamp}"
                                         Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).ClearTimestampCommand}"
-                                        CommandParameter="{Binding}"/>
+                                        CommandParameter="{Binding}">
+                                    <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="16" Height="16"/>
+                                </Button>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

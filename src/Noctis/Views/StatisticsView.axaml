@@ -141,30 +141,13 @@
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
-        <!-- Clickable rows/tiles: no Fluent grey box; a soft wash on hover only when the
-             row leads somewhere. -->
-        <Style Selector="Button.stats-item">
+        <!-- Top Artists / Albums / Songs and Play History rows are read-only (owner 10-09: no
+             click to open, no hover zoom or square). -->
+        <Style Selector="Border.stats-item">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        </Style>
-        <Style Selector="Button.stats-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.stats-item:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.stats-item.link">
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="Button.stats-item.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
-        </Style>
-        <Style Selector="Button.stats-item.link:pointerover Border.portrait-ring">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
 
         <!-- Rank numerals: tabular, the podium in the accent colour. -->
@@ -190,6 +173,13 @@
 
         <!-- Placeholder glyph under a cover: a plain Path (PathIcon is a templated control,
              and every row carries one). -->
+        <!-- Placeholder glyphs sit in a Viewbox, which centres them: a Path stretched Uniform into
+             a square box draws a narrower-than-tall glyph against the left edge (the Top Artists
+             person sat ~4 px left of its circle, owner 10-09). -->
+        <Style Selector="Viewbox.ph">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
         <Style Selector="Path.ph">
             <Setter Property="Stretch" Value="Uniform" />
             <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
@@ -285,7 +275,8 @@
                         Command="{Binding OpenWrapCommand}"
                         ToolTip.Tip="{loc:T Statistics.ListeningRecapTopTracksTip}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <PathIcon Data="{StaticResource CameraIcon}" Width="13" Height="13" VerticalAlignment="Center" />
+                        <!-- Its own glyph: the camera is Share Lyrics (an image card) and the profile photo. -->
+                        <controls:LineIcon Data="{DynamicResource PageLineRecap}" Width="15" Height="15" VerticalAlignment="Center" />
                         <TextBlock Text="{loc:T Statistics.NoctisWrap}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -386,15 +377,13 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:StatsArtistTile">
-                                    <Button Classes="stats-item" Classes.link="{Binding CanOpen}" Padding="6,10"
-                                            Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenArtistCommand}"
-                                            CommandParameter="{Binding}">
+                                    <Border Classes="stats-item" Padding="6,10">
                                         <StackPanel Spacing="8" HorizontalAlignment="Center">
                                             <Panel Width="88" Height="88" HorizontalAlignment="Center">
                                                 <Border Width="88" Height="88" CornerRadius="44" ClipToBounds="True"
                                                         Background="{DynamicResource PillFieldBackgroundPointerOver}">
                                                     <Panel>
-                                                        <Path Classes="ph" Data="{StaticResource ArtistsIcon}" Width="36" Height="36" />
+                                                        <Viewbox Classes="ph" Width="36" Height="36"><Path Classes="ph" Data="{StaticResource ArtistsIcon}" /></Viewbox>
                                                         <controls:CachedImage SourcePath="{Binding ImagePath}" IsVisible="{Binding HasImage}"
                                                                               Stretch="UniformToFill" Width="88" Height="88" />
                                                     </Panel>
@@ -417,7 +406,7 @@
                                                            HorizontalAlignment="Center" />
                                             </StackPanel>
                                         </StackPanel>
-                                    </Button>
+                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -437,14 +426,12 @@
                             <ItemsControl ItemsSource="{Binding TopAlbums}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:StatsRankRow">
-                                        <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
-                                                Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
-                                                CommandParameter="{Binding}">
+                                        <Border Classes="stats-item">
                                             <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
                                                 <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
                                                 <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">
                                                     <Panel>
-                                                        <Path Classes="ph" Data="{StaticResource AlbumsIcon}" Width="18" Height="18" />
+                                                        <Viewbox Classes="ph" Width="18" Height="18"><Path Classes="ph" Data="{StaticResource AlbumsIcon}" /></Viewbox>
                                                         <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
                                                                               Stretch="UniformToFill" />
                                                     </Panel>
@@ -458,7 +445,7 @@
                                                 <TextBlock Grid.Column="3" Text="{Binding PlaysText}" FontSize="12" FontWeight="SemiBold"
                                                            Opacity="0.7" VerticalAlignment="Center" />
                                             </Grid>
-                                        </Button>
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -475,14 +462,12 @@
                             <ItemsControl ItemsSource="{Binding TopTracks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:StatsRankRow">
-                                        <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
-                                                Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
-                                                CommandParameter="{Binding}">
+                                        <Border Classes="stats-item">
                                             <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
                                                 <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
                                                 <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">
                                                     <Panel>
-                                                        <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="18" Height="18" />
+                                                        <Viewbox Classes="ph" Width="18" Height="18"><Path Classes="ph" Data="{StaticResource SongsIcon}" /></Viewbox>
                                                         <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
                                                                               Stretch="UniformToFill" />
                                                     </Panel>
@@ -496,7 +481,7 @@
                                                 <TextBlock Grid.Column="3" Text="{Binding PlaysText}" FontSize="12" FontWeight="SemiBold"
                                                            Opacity="0.7" VerticalAlignment="Center" />
                                             </Grid>
-                                        </Button>
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -661,7 +646,7 @@
                                                 <Grid ColumnDefinitions="40,*,100" ColumnSpacing="12" Margin="6,5">
                                                     <Border Classes="thumb" Width="40" Height="40">
                                                         <Panel>
-                                                            <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="16" Height="16" />
+                                                            <Viewbox Classes="ph" Width="16" Height="16"><Path Classes="ph" Data="{StaticResource SongsIcon}" /></Viewbox>
                                                             <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
                                                                                   Stretch="UniformToFill" />
                                                         </Panel>
@@ -707,13 +692,11 @@
                                     <ItemsControl ItemsSource="{Binding Owner.ForgottenFavorites}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:StatsRankRow">
-                                                <Button Classes="stats-item" Classes.link="{Binding CanOpen}"
-                                                        Command="{Binding $parent[UserControl].((vm:StatisticsViewModel)DataContext).OpenAlbumCommand}"
-                                                        CommandParameter="{Binding}">
+                                                <Border Classes="stats-item">
                                                     <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="12">
                                                         <Border Classes="thumb" Width="40" Height="40">
                                                             <Panel>
-                                                                <Path Classes="ph" Data="{StaticResource FavoritesIcon}" Width="16" Height="16" />
+                                                                <Viewbox Classes="ph" Width="16" Height="16"><Path Classes="ph" Data="{StaticResource FavoritesIcon}" /></Viewbox>
                                                                 <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
                                                                                       Stretch="UniformToFill" />
                                                             </Panel>
@@ -727,7 +710,7 @@
                                                         <TextBlock Grid.Column="2" Text="{Binding PlaysText}" FontSize="11.5" Opacity="0.6"
                                                                    VerticalAlignment="Center" />
                                                     </Grid>
-                                                </Button>
+                                                </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -756,7 +739,7 @@
                     <Grid ColumnDefinitions="36,3*,2*,Auto,Auto" ColumnSpacing="12" Height="48" Margin="13,0">
                         <Border Classes="thumb" Width="36" Height="36" CornerRadius="6">
                             <Panel>
-                                <Path Classes="ph" Data="{StaticResource SongsIcon}" Width="14" Height="14" />
+                                <Viewbox Classes="ph" Width="14" Height="14"><Path Classes="ph" Data="{StaticResource SongsIcon}" /></Viewbox>
                                 <controls:CachedImage SourcePath="{Binding ArtworkPath}" IsVisible="{Binding HasArtwork}"
                                                       Stretch="UniformToFill" />
                             </Panel>

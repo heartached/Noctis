@@ -134,7 +134,7 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <PathIcon Data="{StaticResource FolderIcon}" Width="22" Height="22" Opacity="0.6"
+                    <controls:LineIcon x:Name="HeaderIcon" Data="{StaticResource MenuLineSendToFolder}" Width="22" Height="22" Opacity="0.6"
                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
@@ -237,8 +237,8 @@
                                     <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
                                     <DockPanel>
-                                        <TextBlock DockPanel.Dock="Left" Text="♪" FontSize="11.5" Opacity="0.55"
-                                                   Margin="0,0,6,0" IsVisible="{Binding HasLyrics}"
+                                        <controls:LineIcon DockPanel.Dock="Left" Data="{StaticResource MenuLineLyrics}" Width="13" Height="13" Opacity="0.55"
+                                                   Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasLyrics}"
                                                    ToolTip.Tip="{loc:T SendTo.LyricsIncluded}" />
                                         <TextBlock Text="{Binding Target}" FontSize="11.5" Opacity="0.55"
                                                    TextTrimming="CharacterEllipsis" />

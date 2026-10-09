@@ -578,7 +578,7 @@
                             Cursor="Hand"
                             ToolTip.Tip="{loc:T AlbumDetail.PlayTip}">
                         <StackPanel Orientation="Horizontal" Spacing="3">
-                            <PathIcon Data="{StaticResource PlaySolidIcon}"
+                            <PathIcon Data="{StaticResource PlayIcon}"
                                      Width="13" Height="13"
                                      Foreground="{Binding $parent[Button].Foreground}"
                                      VerticalAlignment="Center" />
@@ -624,13 +624,9 @@
                         <Panel>
                             <StackPanel Orientation="Horizontal" Spacing="6"
                                         IsVisible="{Binding !AlbumAddedToQueue}">
-                                <Border Width="16" Height="16" VerticalAlignment="Center"
-                                        Background="{Binding $parent[Button].Foreground}"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <StaticResource ResourceKey="IconMaskQueue" />
-                                    </Border.OpacityMask>
-                                </Border>
+                                <controls:LineIcon Width="17" Height="17" VerticalAlignment="Center"
+                                                   Data="{StaticResource MenuLineQueue}"
+                                                   Foreground="{Binding $parent[Button].Foreground}" />
                                 <TextBlock Text="{loc:T AlbumDetail.AddQueue}"
                                            FontSize="14"
                                            FontWeight="Bold"
@@ -697,50 +693,49 @@
                                 PlacementConstraintAdjustment="None"
                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True"
                                 Opened="OnAlbumFlyoutOpened">
-                        <MenuItem MaxWidth="400"
+                        <!-- v2 menu (10-09): plain header like every other row (the card trims it),
+                             muted line icons throughout. -->
+                        <MenuItem Header="{loc:T AlbumDetail.PlayTip}"
                                   Command="{Binding PlayAllCommand}">
-                            <MenuItem.Header>
-                                <TextBlock Text="{loc:T AlbumDetail.PlayTip}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                            </MenuItem.Header>
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlay" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.ShuffleTip}"
                                   Command="{Binding ShufflePlayCommand}">
                             <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.AddQueue}"
                                   Command="{Binding AddAlbumToQueueCommand}">
                             <MenuItem.Icon>
-                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
                         <MenuItem Header="{loc:T AlbumDetail.AddPlaylist}"
                                   Command="{Binding AddAlbumToNewPlaylistCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
                         <MenuItem Header="{loc:T AlbumDetail.Metadata}"
                                   Command="{Binding OpenAlbumMetadataCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.EditDescription}"
                                   Command="{Binding EditAlbumDescriptionCommand}">
                             <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource EditIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineText}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.LyricsBackgroundVideo}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskLyrics" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVideo}"/>
                             </MenuItem.Icon>
                             <MenuItem Header="{loc:T AlbumDetail.ChooseAlbumVideo}"
                                       Command="{x:Static helpers:LyricsBackgroundOverrides.ChooseForAlbumCommand}"
@@ -750,30 +745,34 @@
                                       CommandParameter="{Binding Album}" />
                         </MenuItem>
                         <!-- Don't Scrobble This Album: binds itself on open (ScrobbleMenu.Entry) -->
-                        <MenuItem helpers:ScrobbleMenu.Entry="album" />
+                        <MenuItem helpers:ScrobbleMenu.Entry="album">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineScrobbleOff}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.ConvertAlbum}"
                                   Command="{Binding ConvertAlbumCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineConvert}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.ScanReplayGain}"
                                   Command="{Binding ScanAlbumReplayGainCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineReplayGain}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.ShowFolder}"
                                   Command="{Binding ShowAlbumInExplorerCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFolder" /></Border.OpacityMask></Border>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
                         <MenuItem Header="{loc:T AlbumDetail.RemoveFromLibrary}" Classes="danger"
                                   Command="{Binding RemoveAlbumFromLibraryCommand}">
                             <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                     </MenuFlyout>
@@ -795,9 +794,11 @@
                        IsVisible="{Binding Album.HasReleaseDate}" />
             <TextBlock FontSize="13" Opacity="0.45">
                 <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{0} songs, {1}">
+                    <MultiBinding Converter="{x:Static helpers:AlbumFacts.SongsAndLength}">
                         <Binding Path="Album.TrackCount" />
                         <Binding Path="Album.TotalDurationFormatted" />
+                        <!-- Not read by the converter: re-runs it when the language switches live. -->
+                        <Binding Source="{x:Static loc:Loc.Instance}" Path="[AlbumDetail.FooterSongs]" />
                     </MultiBinding>
                 </TextBlock.Text>
             </TextBlock>
@@ -1038,103 +1039,9 @@
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Top"
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
-                                    CommandParameter="{Binding}">
-                                <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
-                                        <MenuItem MaxWidth="400"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Header>
-                                                <TextBlock Text="{loc:T AlbumDetail.PlayTip}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                            </MenuItem.Header>
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlay" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ShuffleTip}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShuffleRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.PlayNext}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayNextRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.AddQueue}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToQueueCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.AddPlaylist}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.Favorites}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleRelatedAlbumFavoritesCommand}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding !IsAllTracksFavorite}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFavorites" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.RemoveFromFavorites}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleRelatedAlbumFavoritesCommand}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding IsAllTracksFavorite}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.Metadata}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumMetadataCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ConvertAlbum}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ScanReplayGain}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ShowFolder}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowRelatedAlbumInExplorerCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFolder" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.RemoveFromLibrary}" Classes="danger"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RemoveRelatedAlbumFromLibraryCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
+                                    CommandParameter="{Binding}"
+                                    ContextRequested="OnRelatedAlbumContextRequested">
+                                <!-- Right-click / dots: one shared v2 menu built in code (OnRelatedAlbumContextRequested). -->
                                 <StackPanel Spacing="6" VerticalAlignment="Top">
                                     <Border Width="220" Height="220"
                                             CornerRadius="6"
@@ -1297,103 +1204,9 @@
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Top"
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
-                                    CommandParameter="{Binding}">
-                                <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
-                                        <MenuItem MaxWidth="400"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Header>
-                                                <TextBlock Text="{loc:T AlbumDetail.PlayTip}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                            </MenuItem.Header>
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlay" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ShuffleTip}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShuffleRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.PlayNext}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayNextRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskForward" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.AddQueue}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToQueueCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskQueue" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.AddPlaylist}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.Favorites}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleRelatedAlbumFavoritesCommand}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding !IsAllTracksFavorite}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFavorites" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.RemoveFromFavorites}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleRelatedAlbumFavoritesCommand}"
-                                                  CommandParameter="{Binding}"
-                                                  IsVisible="{Binding IsAllTracksFavorite}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.Metadata}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumMetadataCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ConvertAlbum}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertRelatedAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ScanReplayGain}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskMetadata" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="{loc:T AlbumDetail.ShowFolder}"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowRelatedAlbumInExplorerCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><StaticResource ResourceKey="IconMaskFolder" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{loc:T AlbumDetail.RemoveFromLibrary}" Classes="danger"
-                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RemoveRelatedAlbumFromLibraryCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
+                                    CommandParameter="{Binding}"
+                                    ContextRequested="OnRelatedAlbumContextRequested">
+                                <!-- Right-click / dots: one shared v2 menu built in code (OnRelatedAlbumContextRequested). -->
                                 <StackPanel Spacing="6" VerticalAlignment="Top">
                                     <Border Width="220" Height="220"
                                             CornerRadius="6"

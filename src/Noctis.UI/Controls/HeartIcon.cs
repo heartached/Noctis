@@ -81,8 +81,11 @@ public sealed class HeartIcon : Panel
     public bool ShowWhenOff { get => GetValue(ShowWhenOffProperty); set => SetValue(ShowWhenOffProperty, value); }
     public bool OutlineWhenOff { get => GetValue(OutlineWhenOffProperty); set => SetValue(OutlineWhenOffProperty, value); }
 
-    /// <summary>Resource key of the shared heart geometry (Assets/Icons.axaml).</summary>
-    private const string GeometryKey = "HeartFillIcon";
+    /// <summary>Resource key of the shared heart geometry (Assets/Icons.axaml). The solid
+    /// fill of the SAME silhouette as the outline below (and the sidebar's Favorites badge):
+    /// HeartFillIcon is a different (Material) heart, so favoriting swapped the shape, not
+    /// just the fill.</summary>
+    private const string GeometryKey = "FavoritesFilledIcon";
     private const string OutlineGeometryKey = "HeartOutlineIcon";
 
     /// <summary>State changes this soon after a DataContext change are a re-bind, not a click.</summary>

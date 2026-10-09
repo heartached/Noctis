@@ -158,7 +158,7 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="56,16,*,Auto,10,Auto,14,Auto">
                 <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
-                    <PathIcon Data="{StaticResource StatisticsIcon}" Width="22" Height="22" Opacity="0.6"
+                    <controls:LineIcon x:Name="HeaderIcon" Data="{DynamicResource PageLineRecap}" Width="22" Height="22" Opacity="0.6"
                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
@@ -205,7 +205,7 @@
                         ToolTip.Tip="{loc:T Wrap.Close}"
                         AutomationProperties.Name="{loc:T Wrap.Close}"
                         Click="OnCloseClick">
-                    <PathIcon Data="{StaticResource DismissIcon}" Width="11" Height="11" />
+                    <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
                 </Button>
             </Grid>
         </Border>

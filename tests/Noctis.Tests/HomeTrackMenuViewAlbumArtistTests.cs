@@ -254,6 +254,8 @@ public class HomeTrackMenuViewAlbumArtistTests
         var menu = row.ContextMenu;
         Assert.NotNull(menu);
         Assert.True(menu!.IsOpen);
+        // Home uses the v2 menu (owner 10-09: "apply it everywhere").
+        Assert.Contains("v2", menu.Classes);
         return menu;
     }
 

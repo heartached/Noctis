@@ -993,9 +993,10 @@
                             IsVisible="{Binding HasAlternateLyrics}"
                             Command="{Binding SwitchToAlternateLyricsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="{StaticResource AttachIcon}"
-                                     Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
-                                     VerticalAlignment="Center"/>
+                            <!-- Swap arrows, not the paperclip (AttachIcon) this used to borrow. -->
+                            <controls:LineIcon Data="{DynamicResource PageLineSwapSource}"
+                                               Width="13" Height="13" Foreground="{Binding LyricsPrimaryFg}"
+                                               VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding AlternateLyricsLabel}" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
@@ -1449,9 +1450,10 @@
                     IsVisible="{Binding IsAutoFollowPaused}"
                     Command="{Binding ResumeAutoFollowCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource ClipboardIcon}"
-                             Width="14" Height="14"
-                             VerticalAlignment="Center"/>
+                    <!-- A locate crosshair, not the clipboard (ClipboardIcon is Paste). -->
+                    <controls:LineIcon Data="{DynamicResource PageLineFollow}"
+                                       Width="15" Height="15"
+                                       VerticalAlignment="Center"/>
                     <TextBlock Text="{loc:T Lyrics.Follow}" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>

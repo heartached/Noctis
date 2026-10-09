@@ -81,26 +81,12 @@
                                             VerticalAlignment="Center"
                                             Cursor="Hand"
                                             Command="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).OpenArtistCommand, FallbackValue={x:Null}}"
-                                            CommandParameter="{Binding}">
+                                            CommandParameter="{Binding}"
+                                            ContextRequested="OnArtistTileContextRequested">
                                         <Button.Clip>
                                             <EllipseGeometry Center="95,95" RadiusX="95" RadiusY="95" />
                                         </Button.Clip>
-                                        <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}">
-                                                <!-- Favorite toggle (GitHub #41). IsFavorite isn't observable;
-                                                     the rows re-materialize after every toggle, so the next
-                                                     open shows the right item — same deal as Remove Picture. -->
-                                                <MenuItem Header="{loc:T LibraryArtists.SetAsFavorite}" Click="OnToggleFavoriteArtistClick"
-                                                          IsVisible="{Binding !IsFavorite}" />
-                                                <MenuItem Header="{loc:T LibraryArtists.RemoveFromFavorites}" Click="OnToggleFavoriteArtistClick"
-                                                          IsVisible="{Binding IsFavorite}" />
-                                                <Separator />
-                                                <MenuItem Header="{loc:T LibraryArtists.ChooseFromFile}" Click="OnChangeArtistImageClick" />
-                                                <MenuItem Header="{loc:T LibraryArtists.FindPictureOnline}" Click="OnSearchArtistImageClick" />
-                                                <MenuItem Header="{loc:T LibraryArtists.RemovePicture}" Classes="danger" Click="OnRemoveArtistImageClick"
-                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
+                                        <!-- Right-click: one shared v2 menu built in code (OnArtistTileContextRequested). -->
                                         <!-- Circular portrait with icon fallback -->
                                         <Border Width="190" Height="190"
                                                 CornerRadius="95"

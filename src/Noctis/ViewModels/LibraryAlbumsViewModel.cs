@@ -1132,6 +1132,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
+    /// <summary>Album tile menu: Search Lyrics for the album's first song (as on Home).</summary>
+    [RelayCommand]
+    private void SearchLyricsAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        _searchLyricsAction?.Invoke(album.Tracks[0]);
+    }
+
     [RelayCommand]
     private void PlayNext(Album album)
     {
@@ -1165,11 +1173,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var albums = SelectionOr(album);
         if (albums.Count == 0) return;
+        // One target for the whole selection, from the label that was clicked: "Favorites"
+        // on a partly-favorited album used to un-favorite a full album selected with it.
+        var newState = album != null ? !album.IsAllTracksFavorite : !albums.All(a => a.IsAllTracksFavorite);
         var changed = new List<Track>();
         foreach (var a in albums)
         {
             if (a.Tracks == null || a.Tracks.Count == 0) continue;
-            var newState = !a.IsAllTracksFavorite;
             foreach (var track in a.Tracks)
             {
                 track.IsFavorite = newState;

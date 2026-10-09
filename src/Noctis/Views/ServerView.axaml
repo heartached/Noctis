@@ -68,7 +68,11 @@
                                             <ContextMenu>
                                                 <MenuItem Header="{loc:T Server.Play}"
                                                           Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayServerAlbumCommand}"
-                                                          CommandParameter="{Binding}"/>
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                         <StackPanel Spacing="6">
@@ -175,13 +179,25 @@
                                 <ContextMenu>
                                     <MenuItem Header="{loc:T Server.Play}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayAlbumTrackCommand}"
-                                              CommandParameter="{Binding}"/>
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="{loc:T Server.PlayNext}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
-                                              CommandParameter="{Binding}"/>
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="{loc:T Server.AddQueue}"
                                               Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
-                                              CommandParameter="{Binding}"/>
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <TextBlock Grid.Column="0" Text="{Binding TrackNumber}" FontSize="13" Opacity="0.45"
@@ -258,13 +274,25 @@
                                     <ContextMenu>
                                         <MenuItem Header="{loc:T Server.Play}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlaySearchTrackCommand}"
-                                                  CommandParameter="{Binding}"/>
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T Server.PlayNext}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
-                                                  CommandParameter="{Binding}"/>
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T Server.AddQueue}"
                                                   Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
-                                                  CommandParameter="{Binding}"/>
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                     </ContextMenu>
                                 </Grid.ContextMenu>
                                 <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,8,0">

@@ -389,64 +389,9 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenAlbumCommand}"
-                    CommandParameter="{Binding}">
-                <Button.ContextMenu>
-                    <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
-                        <MenuItem Header="{loc:T ArtistDetail.Play}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.PlayAlbumCommand}"
-                                  CommandParameter="{Binding}">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="{loc:T ArtistDetail.Shuffle}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ShuffleAlbumCommand}"
-                                  CommandParameter="{Binding}">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="{loc:T ArtistDetail.PlayNext}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.PlayNextCommand}"
-                                  CommandParameter="{Binding}" />
-                        <MenuItem Header="{loc:T ArtistDetail.AddQueue}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.AddToQueueCommand}"
-                                  CommandParameter="{Binding}" />
-                        <Separator />
-                        <MenuItem Header="{loc:T ArtistDetail.AddPlaylist}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.AddToNewPlaylistCommand}"
-                                  CommandParameter="{Binding}" />
-                        <Separator />
-                        <MenuItem Header="{loc:T ArtistDetail.Favorites}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ToggleAlbumFavoritesCommand}"
-                                  CommandParameter="{Binding}"
-                                  IsVisible="{Binding !IsAllTracksFavorite}" />
-                        <MenuItem Header="{loc:T ArtistDetail.RemoveFromFavorites}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ToggleAlbumFavoritesCommand}"
-                                  CommandParameter="{Binding}"
-                                  IsVisible="{Binding IsAllTracksFavorite}">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="{loc:T ArtistDetail.Metadata}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.OpenMetadataCommand}"
-                                  CommandParameter="{Binding}" />
-                        <!-- Don't Scrobble This Album: binds itself on open (ScrobbleMenu.Entry) -->
-                        <MenuItem helpers:ScrobbleMenu.Entry="album" />
-                        <MenuItem Header="{loc:T ArtistDetail.ShowFolder}"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.ShowInExplorerCommand}"
-                                  CommandParameter="{Binding}" />
-                        <Separator />
-                        <MenuItem Header="{loc:T ArtistDetail.RemoveFromLibrary}" Classes="danger"
-                                  Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).LibraryAlbumsVm.RemoveFromLibraryCommand}"
-                                  CommandParameter="{Binding}">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </ContextMenu>
-                </Button.ContextMenu>
+                    CommandParameter="{Binding}"
+                    ContextRequested="OnAlbumTileContextRequested">
+                <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
 
                 <Grid RowDefinitions="Auto,64"
                       Width="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileArtworkSize}"
@@ -816,7 +761,7 @@
                                     Cursor="Hand"
                                     ToolTip.Tip="{loc:T ArtistDetail.PlayEverythingByArtistTip}">
                                 <StackPanel Orientation="Horizontal" Spacing="3">
-                                    <PathIcon Data="{StaticResource PlaySolidIcon}"
+                                    <PathIcon Data="{StaticResource PlayIcon}"
                                               Width="13" Height="13"
                                               Foreground="{DynamicResource AccentForegroundBrush}"
                                               VerticalAlignment="Center" />
@@ -877,18 +822,50 @@
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedLeft"
                                                 helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                        <MenuItem Header="{loc:T ArtistDetail.PlayNext}" Command="{Binding PlayNextAllCommand}" />
-                                        <MenuItem Header="{loc:T ArtistDetail.AddQueue}" Command="{Binding AddAllToQueueCommand}" />
-                                        <MenuItem Header="{loc:T ArtistDetail.ShufflePopular}" Command="{Binding ShufflePopularCommand}" />
+                                        <MenuItem Header="{loc:T ArtistDetail.PlayNext}" Command="{Binding PlayNextAllCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T ArtistDetail.AddQueue}" Command="{Binding AddAllToQueueCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T ArtistDetail.ShufflePopular}" Command="{Binding ShufflePopularCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T ArtistDetail.ShuffleFavorites}" Command="{Binding ShuffleFavoritesCommand}"
-                                                  IsVisible="{Binding HasFavorites}" />
+                                                  IsVisible="{Binding HasFavorites}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <!-- Don't Scrobble This Artist: binds itself on open (ScrobbleMenu.Entry) -->
-                                        <MenuItem helpers:ScrobbleMenu.Entry="artist" />
+                                        <MenuItem helpers:ScrobbleMenu.Entry="artist">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineScrobbleOff}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="{loc:T ArtistDetail.ChoosePictureFromFile}" Click="OnChangePictureClick" />
-                                        <MenuItem Header="{loc:T ArtistDetail.FindPictureOnline}" Click="OnSearchPictureClick" />
+                                        <MenuItem Header="{loc:T ArtistDetail.ChoosePictureFromFile}" Click="OnChangePictureClick">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineImage}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T ArtistDetail.FindPictureOnline}" Click="OnSearchPictureClick">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="{loc:T ArtistDetail.RemovePicture}" Classes="danger" Click="OnRemovePictureClick"
-                                                  IsVisible="{Binding HasImage}" />
+                                                  IsVisible="{Binding HasImage}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
@@ -1049,7 +1026,7 @@
                                         Command="{Binding PlayLatestReleaseCommand}"
                                         AutomationProperties.Name="{loc:T ArtistDetail.Play}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <PathIcon Data="{StaticResource PlaySolidIcon}" Width="11" Height="11" VerticalAlignment="Center" />
+                                        <PathIcon Data="{StaticResource PlayIcon}" Width="11" Height="11" VerticalAlignment="Center" />
                                         <TextBlock Text="{loc:T ArtistDetail.Play}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
@@ -1224,9 +1201,9 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBlock Text="{loc:T Playlist.Text}"
-                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                            <!-- Vector chevron: the old Segoe Fluent glyph exists only on Windows (blank box on macOS/Linux). -->
+                            <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                      Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
                         </StackPanel>
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedLeft"
@@ -1264,9 +1241,9 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding ReleaseSortLabel, StringFormat='Sort: {0}'}"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <TextBlock Text="{loc:T Playlist.Text}"
-                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                            <!-- Vector chevron: the old Segoe Fluent glyph exists only on Windows (blank box on macOS/Linux). -->
+                            <PathIcon Data="{StaticResource ChevronDownThinIcon}"
+                                      Width="9" Height="9" Opacity="0.6" VerticalAlignment="Center" />
                         </StackPanel>
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedLeft"

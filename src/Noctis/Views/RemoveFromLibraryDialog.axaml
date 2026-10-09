@@ -17,20 +17,33 @@
          Close(result), so the deferred close loses nothing. -->
     <controls:PillDialogHost>
 
-        <!-- 500: the English detail line fits on one line (at 460 "file." wrapped alone). -->
-        <StackPanel Width="500" Margin="28,24,28,22" Spacing="20">
+        <!-- 500 for the text: the English detail line fits on one line (at 460 "file." wrapped
+             alone); the header tile's 56 + 16 come on top. -->
+        <StackPanel Width="572" Margin="28,24,28,22" Spacing="20">
 
-            <StackPanel Spacing="6">
-                <TextBlock x:Name="MessageText"
-                           Text="{loc:T RemoveFromLibrary.RemoveFromLibrary2}"
-                           FontSize="17"
-                           FontWeight="Bold"
-                           TextWrapping="Wrap" />
-                <TextBlock x:Name="SubText"
-                           FontSize="12.5"
-                           Opacity="0.65"
-                           TextWrapping="Wrap" />
-            </StackPanel>
+            <Grid ColumnDefinitions="56,16,*">
+                <!-- Owner 10-09 "same icon for the same action": the menus' Remove row glyph,
+                     red like that row. -->
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well"
+                        VerticalAlignment="Top">
+                    <controls:LineIcon x:Name="HeaderIcon"
+                                       Data="{DynamicResource MenuLineTrash}"
+                                       Foreground="#E74856"
+                                       Width="22" Height="22"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock x:Name="MessageText"
+                               Text="{loc:T RemoveFromLibrary.RemoveFromLibrary2}"
+                               FontSize="17"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="SubText"
+                               FontSize="12.5"
+                               Opacity="0.65"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
 
             <!-- Cancel stays the accent (the safe answer); the two removals are quiet pills. -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">

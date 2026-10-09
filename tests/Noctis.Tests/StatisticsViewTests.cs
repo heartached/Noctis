@@ -116,6 +116,46 @@ public class StatisticsViewTests
         return (library, events);
     }
 
+    /// <summary>Owner 10-09: Top Artists / Albums / Songs (and Play History rows) are read-only:
+    /// no click to open, no hover zoom or square. They used to be Buttons.</summary>
+    [Fact]
+    public void StatsItems_AreNotClickable()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Noctis.sln"))) dir = dir.Parent;
+        var xaml = File.ReadAllText(Path.Combine(dir!.FullName, "src", "Noctis", "Views", "StatisticsView.axaml"));
+        Assert.DoesNotContain("<Button Classes=\"stats-item\"", xaml);
+        Assert.Contains("<Border Classes=\"stats-item\"", xaml);
+        Assert.DoesNotContain("OpenArtistCommand", xaml);
+        Assert.DoesNotContain("OpenAlbumCommand", xaml);
+    }
+
+    /// <summary>Owner 10-09: the Top Artists placeholder person sat ~4 px left of its circle.
+    /// A Path stretched Uniform into a square box pins a narrower-than-tall glyph to the left;
+    /// the Viewbox the view now wraps it in centres it.</summary>
+    [AvaloniaFact]
+    public void ArtistPlaceholder_Glyph_IsCentredInItsCircle()
+    {
+        EnsureAppStyles();
+        var path = new Avalonia.Controls.Shapes.Path { Data = (Geometry)Application.Current!.FindResource("ArtistsIcon")!, Stretch = Stretch.Uniform };
+        var box = new Viewbox { Width = 36, Height = 36, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Child = path };
+        var circle = new Border { Width = 88, Height = 88, Child = new Panel { Children = { box } } };
+        var win = new Window { Width = 200, Height = 200, Content = circle };
+        win.Show();
+        try
+        {
+            win.UpdateLayout();
+            var topLeft = path.TranslatePoint(new Point(0, 0), circle)!.Value;
+            var bottomRight = path.TranslatePoint(new Point(path.Bounds.Width, path.Bounds.Height), circle)!.Value;
+            var cx = (topLeft.X + bottomRight.X) / 2;
+            var cy = (topLeft.Y + bottomRight.Y) / 2;
+            Assert.InRange(cx, 43.5, 44.5);
+            Assert.InRange(cy, 43.5, 44.5);
+            Assert.True(bottomRight.X - topLeft.X < 36, "the glyph is narrower than its box, so centring matters");
+        }
+        finally { win.Close(); }
+    }
+
     [AvaloniaFact]
     public void BothTabs_Build_WithNoBindingErrors()
     {
@@ -212,28 +252,8 @@ public class StatisticsViewTests
         StatisticsNumbersTests.Refresh(vm);
 
         Assert.Equal(path, vm.TopArtists[0].ImagePath);
-        Assert.True(vm.TopArtists[0].CanOpen);
         Assert.Null(vm.TopArtists[1].ImagePath);
         Assert.Equal(0, handler.Requests);
-    }
-
-    [AvaloniaFact]
-    public void OpeningAnAlbumRow_RaisesAlbumOpened_AndAnArtistTile_CallsTheArtistAction()
-    {
-        var (library, events) = SampleData(60, 300);
-        var vm = new StatisticsViewModel(library, new StatisticsNumbersTests.History(events));
-        StatisticsNumbersTests.Refresh(vm);
-        Album? opened = null;
-        string? artist = null;
-        vm.AlbumOpened += (_, al) => opened = al;
-        vm.SetViewArtistAction(name => artist = name);
-
-        vm.OpenAlbumCommand.Execute(vm.TopAlbums[0]);
-        vm.OpenArtistCommand.Execute(vm.TopArtists[0]);
-
-        Assert.NotNull(opened);
-        Assert.Equal(vm.TopAlbums[0].AlbumId, opened!.Id);
-        Assert.Equal(vm.TopArtists[0].Name, artist);
     }
 
     /// <summary>
