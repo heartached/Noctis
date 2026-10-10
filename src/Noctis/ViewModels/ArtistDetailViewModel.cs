@@ -917,17 +917,31 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>Every track the artist is on: releases newest-first in album order, then
     /// feature appearances; de-duplicated.</summary>
-    internal List<Track> GetAllTracks()
+    internal List<Track> GetAllTracks() => AllTracks(_allReleases, _allSongs);
+
+    /// <summary><see cref="GetAllTracks"/> for an artist with no page open (the Artists grid's
+    /// Send to Folder, GitHub #121).</summary>
+    internal static List<Track> AllTracksOf(IReadOnlyList<Album> allAlbums, string artistName)
+    {
+        var (releases, _, songs) = Classify(allAlbums, artistName);
+        return AllTracks(releases, songs);
+    }
+
+    private static List<Track> AllTracks(List<Album> releases, List<Track> songs)
     {
         var tracks = new List<Track>();
         var seen = new HashSet<Guid>();
-        foreach (var album in _allReleases)
+        foreach (var album in releases)
             foreach (var t in album.Tracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber))
                 if (seen.Add(t.Id)) tracks.Add(t);
-        foreach (var t in _allSongs)
+        foreach (var t in songs)
             if (seen.Add(t.Id)) tracks.Add(t);
         return tracks;
     }
+
+    /// <summary>GitHub #121: every song of the artist → Send to Folder (copy or move).</summary>
+    [RelayCommand]
+    private Task SendArtistToFolder() => MetadataHelper.OpenSendToFolderDialog(GetAllTracks());
 
     [RelayCommand]
     private void PlayAll()

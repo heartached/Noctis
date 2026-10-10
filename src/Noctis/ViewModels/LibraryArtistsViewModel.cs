@@ -405,6 +405,15 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ArtistOpened?.Invoke(this, artist);
     }
 
+    /// <summary>The songs the artist page's Play All plays (its releases, then features).</summary>
+    internal List<Track> TracksOf(Artist artist)
+        => ArtistDetailViewModel.AllTracksOf(_library.Albums, artist.Name);
+
+    /// <summary>GitHub #121: every song of the artist → Send to Folder (copy or move).</summary>
+    [RelayCommand]
+    private Task SendArtistToFolder(Artist artist)
+        => artist == null ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(TracksOf(artist));
+
     /// <summary>
     /// Toggles the artist's favorite flag (GitHub #41): favorites float to the top of
     /// the grid and carry an accent star. Persisted by name, then the rows rebuild so

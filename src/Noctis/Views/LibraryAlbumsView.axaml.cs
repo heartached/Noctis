@@ -205,6 +205,7 @@ public partial class LibraryAlbumsView : UserControl
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
             searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+        _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, tile);
         return true;

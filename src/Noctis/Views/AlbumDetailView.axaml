@@ -762,6 +762,13 @@
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineReplayGain}"/>
                             </MenuItem.Icon>
                         </MenuItem>
+                        <!-- GitHub #121: SendAlbumToFolderCommand existed since 2a616afb but no menu bound it. -->
+                        <MenuItem Header="{loc:T SendTo.Title}"
+                                  Command="{Binding SendAlbumToFolderCommand}">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="{loc:T AlbumDetail.ShowFolder}"
                                   Command="{Binding ShowAlbumInExplorerCommand}">
                             <MenuItem.Icon>

@@ -220,6 +220,7 @@ public partial class ArtistDetailView : UserControl
             convertCommand: albumsVm.ConvertAlbumCommand,
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
             searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand);
+        _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

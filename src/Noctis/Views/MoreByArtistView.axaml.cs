@@ -93,6 +93,7 @@ public partial class MoreByArtistView : UserControl
             convertCommand: albumsVm.ConvertAlbumCommand,
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
             searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand);
+        _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, tile);
         return true;

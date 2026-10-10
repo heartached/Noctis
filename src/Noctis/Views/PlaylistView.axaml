@@ -601,6 +601,13 @@
                                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEdit}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- GitHub #121: SendPlaylistToFolderCommand existed since 2a616afb but no menu bound it. -->
+                                    <MenuItem Header="{loc:T SendTo.Title}"
+                                              Command="{Binding SendPlaylistToFolderCommand}">
+                                        <MenuItem.Icon>
+                                            <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Header="{loc:T Playlist.DeletePlaylist}" Classes="danger"
                                               Command="{Binding DeletePlaylistCommand}">

@@ -1232,6 +1232,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
     }
 
+    /// <summary>GitHub #121: the album (or the Ctrl-selection it is in) → Send to Folder.</summary>
+    [RelayCommand]
+    private async Task SendAlbumToFolder(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenSendToFolderDialog(tracks);
+    }
+
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
 

@@ -849,6 +849,12 @@
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineScrobbleOff}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <!-- GitHub #121: every song of the artist → Send to Folder. -->
+                                        <MenuItem Header="{loc:T SendTo.Title}" Command="{Binding SendArtistToFolderCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <Separator />
                                         <MenuItem Header="{loc:T ArtistDetail.ChoosePictureFromFile}" Click="OnChangePictureClick">
                                             <MenuItem.Icon>

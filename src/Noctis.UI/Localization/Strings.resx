@@ -2181,6 +2181,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendTo.IncludeLyricsHint" xml:space="preserve"><value>Copies each song's .lrc alongside it when there is one.</value><comment>Toggle help</comment></data>
   <data name="SendTo.LyricsIncluded" xml:space="preserve"><value>Lyrics file included</value><comment>Row tooltip</comment></data>
   <data name="SendTo.Copy" xml:space="preserve"><value>Copy</value><comment>Primary button</comment></data>
+  <data name="SendTo.Move" xml:space="preserve"><value>Move</value><comment>Primary button when "Move instead of copy" is on (GitHub #121)</comment></data>
   <data name="SendTo.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
   <data name="SendToFolder.TitleOne" xml:space="preserve"><value>Send 1 song</value><comment>Title in SendToFolderViewModel, one song</comment></data>
   <data name="SendToFolder.TitleMany" xml:space="preserve"><value>Send {0} songs</value><comment>Title in SendToFolderViewModel; {0} number of songs</comment></data>
@@ -2214,6 +2215,15 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendToFolder.StateCopied" xml:space="preserve"><value>Copied</value><comment>Row chip: copied</comment></data>
   <data name="SendToFolder.StateFailed" xml:space="preserve"><value>Failed</value><comment>Row chip: could not be copied (tooltip has the error)</comment></data>
   <data name="SendToFolder.StateStopped" xml:space="preserve"><value>Stopped</value><comment>Row chip: the copy was stopped on this song</comment></data>
+  <data name="SendToFolder.Move" xml:space="preserve"><value>Move instead of copy</value><comment>Option in SendToFolderDialog.axaml (GitHub #121); off = copy</comment></data>
+  <data name="SendToFolder.MoveHint" xml:space="preserve"><value>The library follows them, plays and playlists too.</value><comment>Line under the Move option</comment></data>
+  <data name="SendToFolder.SummaryMove" xml:space="preserve"><value>{0} to move</value><comment>Plan summary part in a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.ProgressMove" xml:space="preserve"><value>Moved {0} of {1}</value><comment>Footer during a move</comment></data>
+  <data name="SendToFolder.DoneMove" xml:space="preserve"><value>Done · {0} moved</value><comment>Footer after a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.StoppedMove" xml:space="preserve"><value>Stopped · {0} moved</value><comment>Footer after Stop in a move; {0} number of songs</comment></data>
+  <data name="SendToFolder.StateMove" xml:space="preserve"><value>Move</value><comment>Row chip: will be moved</comment></data>
+  <data name="SendToFolder.StateMoving" xml:space="preserve"><value>Moving</value><comment>Row chip: being moved</comment></data>
+  <data name="SendToFolder.StateMoved" xml:space="preserve"><value>Moved</value><comment>Row chip: moved</comment></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
