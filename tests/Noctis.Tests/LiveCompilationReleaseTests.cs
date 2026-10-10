@@ -72,6 +72,44 @@ public class LiveCompilationReleaseTests : IDisposable
         Assert.Equal(ReleaseType.Live, ExtendedTagIO.ReadReleaseType(read, out _));
     }
 
+    /// <summary>Picard writes the MP3 release type to TXXX "MusicBrainz Album Type" (not
+    /// RELEASETYPE / MUSICBRAINZ_ALBUM_TYPE): null-separated in ID3v2.4, "/"-joined in v2.3.</summary>
+    [Theory]
+    [InlineData(4, "MusicBrainz Album Type", ReleaseType.Live, "album", "live")]
+    [InlineData(3, "MusicBrainz Album Type", ReleaseType.Live, "album/live")]
+    [InlineData(4, "musicbrainz album type", ReleaseType.Compilation, "album", "compilation")]
+    public void Tag_PicardMp3Frame_IsRead(byte version, string description, ReleaseType expected, params string[] values)
+    {
+        var path = CreateMp3WithId3v2Only(_dir);
+        using (var f = TagLib.File.Create(path))
+        {
+            var id3 = (TagLib.Id3v2.Tag)f.GetTag(TagLib.TagTypes.Id3v2, true);
+            id3.Version = version;
+            var frame = TagLib.Id3v2.UserTextInformationFrame.Get(id3, description, true);
+            frame.Text = values;
+            f.Save();
+        }
+        using var read = TagLib.File.Create(path);
+        Assert.Equal(version, ((TagLib.Id3v2.Tag)read.GetTag(TagLib.TagTypes.Id3v2, false)).Version);
+        Assert.Equal(expected, ExtendedTagIO.ReadReleaseType(read, out _));
+    }
+
+    /// <summary>A RELEASETYPE frame still wins over Picard's MusicBrainz frame (existing precedence).</summary>
+    [Fact]
+    public void Tag_ReleaseTypeFrame_StillWinsOverPicardFrame()
+    {
+        var path = CreateMp3WithId3v2Only(_dir);
+        using (var f = TagLib.File.Create(path))
+        {
+            var id3 = (TagLib.Id3v2.Tag)f.GetTag(TagLib.TagTypes.Id3v2, true);
+            TagLib.Id3v2.UserTextInformationFrame.Get(id3, "RELEASETYPE", true).Text = new[] { "soundtrack" };
+            TagLib.Id3v2.UserTextInformationFrame.Get(id3, "MusicBrainz Album Type", true).Text = new[] { "album", "live" };
+            f.Save();
+        }
+        using var read = TagLib.File.Create(path);
+        Assert.Equal(ReleaseType.Soundtrack, ExtendedTagIO.ReadReleaseType(read, out _));
+    }
+
     private static Album MakeAlbum(string name, string artist, int year, int tracks,
         ReleaseType? tagged = null, bool compilationFlag = false)
     {
