@@ -139,7 +139,7 @@
                 </Border>
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
-                    <TextBlock Text="{loc:T SendToFolder.Subtitle}"
+                    <TextBlock Text="{Binding SubtitleText}"
                                FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>

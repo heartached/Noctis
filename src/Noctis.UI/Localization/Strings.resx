@@ -981,6 +981,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="LibraryAlbums.RemoveFromLibrary" xml:space="preserve"><value>Remove from Library</value><comment>Header in LibraryAlbumsView.axaml</comment></data>
   <data name="LibraryAlbums.NoAlbumsFound" xml:space="preserve"><value>No albums found</value><comment>Text in LibraryAlbumsView.axaml</comment></data>
   <data name="LibraryAlbums.AddMusicFoldersSettings" xml:space="preserve"><value>Add music folders in Settings to get started</value><comment>Text in LibraryAlbumsView.axaml</comment></data>
+  <data name="LibraryAlbums.NoFilterMatches" xml:space="preserve"><value>No albums match</value><comment>Albums page empty state while a search or a Type / Quality filter is on</comment></data>
+  <data name="LibraryAlbums.NoFilterMatchesHint" xml:space="preserve"><value>Try another Type or Quality filter, or clear the search</value><comment>Albums page empty state hint while a search or a Type / Quality filter is on</comment></data>
 
   <!-- LibraryArtistsView.axaml (auto-migrated) -->
   <data name="LibraryArtists.SetAsFavorite" xml:space="preserve"><value>Set as Favorite</value><comment>Header in LibraryArtistsView.axaml</comment></data>
@@ -2198,6 +2200,8 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="SendToFolder.Lyrics" xml:space="preserve"><value>Include lyrics</value><comment>Option in SendToFolderDialog.axaml</comment></data>
   <data name="SendToFolder.LyricsHint" xml:space="preserve"><value>Each song's lyrics files go with it.</value><comment>Line under the Include lyrics option</comment></data>
   <data name="SendToFolder.PickFolder" xml:space="preserve"><value>Pick a folder to copy to.</value><comment>Footer before a destination is set</comment></data>
+  <data name="SendToFolder.PickFolderMove" xml:space="preserve"><value>Pick a folder to move to.</value><comment>Footer before a destination is set, while Move instead of copy is on</comment></data>
+  <data name="SendToFolder.SubtitleMove" xml:space="preserve"><value>Move to another folder; the library follows.</value><comment>Header line under the title in SendToFolderDialog.axaml while Move instead of copy is on</comment></data>
   <data name="SendToFolder.FolderMissing" xml:space="preserve"><value>That folder doesn't exist.</value><comment>Error under the destination field</comment></data>
   <data name="SendToFolder.NeedFullPath" xml:space="preserve"><value>Type the folder's full path, or use Browse.</value><comment>Error under the destination field for a relative path</comment></data>
   <data name="SendToFolder.SummaryCopy" xml:space="preserve"><value>{0} to copy</value><comment>Plan summary part; {0} number of songs</comment></data>

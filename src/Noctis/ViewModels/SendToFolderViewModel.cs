@@ -34,11 +34,16 @@ public partial class SendToFolderViewModel : ViewModelBase
     /// <summary>GitHub #121 (2026-10-10): move instead of copy (off by default). The library
     /// follows each moved song; its lyrics files always go with it.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StartLabel), nameof(CanChooseLyrics))]
+    [NotifyPropertyChangedFor(nameof(StartLabel), nameof(CanChooseLyrics), nameof(SubtitleText))]
     private bool _moveFiles;
 
     /// <summary>The primary button: Copy, or Move.</summary>
     public string StartLabel => MoveFiles ? L("SendTo.Move") : L("SendTo.Copy");
+
+    /// <summary>Header line: says move while Move is on (live check 10-10: it kept "Copy to…").</summary>
+    public string SubtitleText => MoveFiles ? L("SendToFolder.SubtitleMove") : L("SendToFolder.Subtitle");
+
+    private string PickFolderText => L(MoveFiles ? "SendToFolder.PickFolderMove" : "SendToFolder.PickFolder");
 
     /// <summary>Lyrics are a choice for a copy; a move always takes them along.</summary>
     public bool CanChooseLyrics => !MoveFiles;
@@ -261,7 +266,7 @@ public partial class SendToFolderViewModel : ViewModelBase
             _plan = Array.Empty<SendToFolderItem>();
             _planRoot = string.Empty;
             HasPlan = false;
-            PlanSummary = root.Length == 0 ? L("SendToFolder.PickFolder") : string.Empty;
+            PlanSummary = root.Length == 0 ? PickFolderText : string.Empty;
             if (!keepRunState) StatusMessage = PlanSummary;
             return;
         }
