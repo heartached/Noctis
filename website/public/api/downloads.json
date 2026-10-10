@@ -1,7 +1,6 @@
 {
   "total": 13619,
   "byRelease": {
-    "plugin-mixxx-v1.0.1": 0,
     "v1.5.9": 803,
     "v1.5.8": 467,
     "v1.5.7": 358,
@@ -66,7 +65,7 @@
   "latestTag": "v1.5.9",
   "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.5.9",
   "publishedAt": "2026-10-02T11:17:04Z",
-  "releaseCount": 60,
+  "releaseCount": 59,
   "stars": 269,
   "openIssues": 11,
   "assets": {
@@ -129,6 +128,6 @@
     "linuxTar": "148 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-10-10T02:06:59.911Z",
+  "updatedAt": "2026-10-10T02:07:36.481Z",
   "degraded": false
 }
