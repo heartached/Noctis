@@ -117,7 +117,7 @@
     {
       "tag": "lullaby-v1",
       "version": "lullaby-v1",
-      "name": "Lullaby",
+      "name": "Lullaby v1.0.0",
       "publishedAt": "2026-09-30T22:11:46Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/lullaby-v1",
       "prerelease": false,
@@ -3042,6 +3042,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-10-10T02:07:37.390Z",
+  "updatedAt": "2026-10-10T12:26:09.575Z",
   "degraded": false
 }

@@ -1,11 +1,11 @@
 {
-  "total": 13619,
+  "total": 13643,
   "byRelease": {
-    "v1.5.9": 803,
-    "v1.5.8": 467,
-    "v1.5.7": 358,
-    "lullaby-v1": 102,
-    "v1.5.6": 282,
+    "v1.5.9": 818,
+    "v1.5.8": 469,
+    "v1.5.7": 360,
+    "lullaby-v1": 104,
+    "v1.5.6": 284,
     "v1.5.5": 339,
     "v1.5.4": 370,
     "v1.5.3": 71,
@@ -57,7 +57,7 @@
     "v1.1.2": 9,
     "v1.1.1": 7,
     "v1.1.0": 73,
-    "v1.0.2": 30,
+    "v1.0.2": 31,
     "v1.0.1": 22,
     "v1.0.0": 11
   },
@@ -66,14 +66,14 @@
   "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.5.9",
   "publishedAt": "2026-10-02T11:17:04Z",
   "releaseCount": 59,
-  "stars": 269,
-  "openIssues": 11,
+  "stars": 270,
+  "openIssues": 12,
   "assets": {
     "windowsInstaller": {
       "name": "Noctis-v1.5.9-Setup.exe",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-v1.5.9-Setup.exe",
       "size": 152405346,
-      "downloads": 448
+      "downloads": 455
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
@@ -85,7 +85,7 @@
       "name": "Noctis-osx-arm64.dmg",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-osx-arm64.dmg",
       "size": 206822346,
-      "downloads": 38
+      "downloads": 39
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
@@ -97,7 +97,7 @@
       "name": "Noctis-x86_64.AppImage",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-x86_64.AppImage",
       "size": 213957112,
-      "downloads": 99
+      "downloads": 101
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
@@ -115,7 +115,7 @@
       "name": "SHA256SUMS",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/SHA256SUMS",
       "size": 1001,
-      "downloads": 124
+      "downloads": 126
     }
   },
   "sizes": {
@@ -128,6 +128,6 @@
     "linuxTar": "148 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-10-10T02:07:36.481Z",
+  "updatedAt": "2026-10-10T12:26:08.870Z",
   "degraded": false
 }
