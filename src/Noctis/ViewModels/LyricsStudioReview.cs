@@ -65,6 +65,7 @@ public sealed partial class ReviewLine : ObservableObject
     {
         Confidence = line.Confidence;
         Interpolated = line.Interpolated;
+        Companions = line.Companions;
         // An interpolated line's words are the aligner's even spread, not heard times.
         HasWordTimings = line.Words.Count > 0 && !line.Interpolated;
         var start = line.Start;
@@ -96,6 +97,10 @@ public sealed partial class ReviewLine : ObservableObject
 
     public double Confidence { get; }
     public bool Interpolated { get; }
+
+    /// <summary>The source line's romaji / translation (GitHub #116): not timed here, written back at its start.</summary>
+    public IReadOnlyList<string>? Companions { get; }
+
     public bool IsLow => Interpolated || Confidence < 0.5;
 
     /// <summary>True when the words carry real (heard, nudged or tapped) times rather than an even spread.</summary>
@@ -399,7 +404,7 @@ public sealed partial class ReviewLine : ObservableObject
             ? Words.Select(w => new AlignedWord(w.Text, w.Start, w.End)).ToList()
             : Array.Empty<AlignedWord>();
         // A line the user timed by hand is no longer a guess: keep its words on the next rebuild.
-        return new AlignedLine(text, Start, end, words, Confidence, Interpolated && !HasWordTimings);
+        return new AlignedLine(text, Start, end, words, Confidence, Interpolated && !HasWordTimings) { Companions = Companions };
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

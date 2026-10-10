@@ -95,7 +95,7 @@
                     Margin="16"
                     ToolTip.Tip="{loc:T Common.Close}"
                     Click="OnCloseClick">
-                <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
             </Button>
         </Panel>
     </Border>

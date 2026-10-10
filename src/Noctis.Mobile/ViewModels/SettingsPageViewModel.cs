@@ -48,8 +48,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public IReadOnlyList<string> DarkThemes => MobileTheme.DarkThemes;
     public IReadOnlyList<AccentSwatch> AccentChoices => Accents;
 
-    /// <summary>The configured roots as the user would name them ("Music/Tones"), not SAF URIs.</summary>
-    public IReadOnlyList<string> FolderLabels => Shell.Library.Folders.Select(FolderDisplay).ToList();
+    /// <summary>The configured roots as the user would name them ("Music/Tones"), not SAF URIs.
+    /// A folder whose access was lost says so: its songs stay listed but none of them plays.</summary>
+    public IReadOnlyList<string> FolderLabels => Shell.Library.Folders
+        .Select(f => Shell.Library.HasAccess(f) ? FolderDisplay(f) : $"{FolderDisplay(f)} (access lost: add it again)")
+        .ToList();
 
     public string VersionText => Shell.VersionText;
 

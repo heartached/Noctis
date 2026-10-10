@@ -92,11 +92,17 @@ public partial class SidebarViewModel : ViewModelBase
     public event EventHandler<string>? NavigationRequested;
     public event EventHandler<Guid>? PlaylistTracksChanged;
 
+    /// <summary>The Edit Playlist dialog saved this playlist (name, description, cover, star,
+    /// folder). An open playlist page refreshes its header from it, whichever menu opened the
+    /// dialog.</summary>
+    public event EventHandler<Guid>? PlaylistEdited;
+
     public SidebarViewModel(IPersistenceService persistence, ILibraryService library)
     {
         _persistence = persistence;
         _library = library;
         _library.LibraryUpdated += (_, _) => RefreshFavoritesCount();
+        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(RefreshPlaylistCounts);
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
         Loc.Instance.CultureChanged += (_, _) => RelabelSections();
     }
@@ -166,6 +172,11 @@ public partial class SidebarViewModel : ViewModelBase
     /// item that is already highlighted (e.g. Home while inside an album opened from Home)
     /// never reaches OnSelectedNavItemChanged — the view routes those clicks here.</summary>
     public void RequestNavigation(NavItem item) => NavigationRequested?.Invoke(this, item.Key);
+
+    /// <summary>True for an entry that opens a sheet over the current page instead of going
+    /// to a page (Settings): its row never takes the selection, so the highlight stays on the
+    /// section the user is in.</summary>
+    public static bool OpensSheet(NavItem item) => item.Key == "settings";
 
     /// <summary>
     /// Toggles a folder header the user clicked, easing its rows (see <see cref="FoldFolderRows"/>
@@ -262,6 +273,7 @@ public partial class SidebarViewModel : ViewModelBase
             existing.Label = desired[i].Label;
             existing.IsExpanded = desired[i].IsExpanded;
             existing.TrackCount = desired[i].TrackCount;
+            existing.GroupPosition = desired[i].GroupPosition;
             desired[i] = existing;
         }
 
@@ -287,8 +299,8 @@ public partial class SidebarViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder
-    /// on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
+    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder and
+    /// GroupPosition on playlist items and synthesizes folder header rows. <paramref name="folderOrder"/>
     /// maps folders the user dragged into place to their position (see FolderOrders).
     /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
     /// "playlist:id") the user placed among each other to their position (see
@@ -305,6 +317,7 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var item in all.Where(i => i.IsPinned))
         {
             item.IsInFolder = false;
+            item.GroupPosition = SidebarGroupPosition.None;
             rows.Add(item);
         }
 
@@ -329,6 +342,7 @@ public partial class SidebarViewModel : ViewModelBase
             if (folder == null)
             {
                 members[0].IsInFolder = false;
+                members[0].GroupPosition = SidebarGroupPosition.None;
                 rows.Add(members[0]);
                 continue;
             }
@@ -341,13 +355,19 @@ public partial class SidebarViewModel : ViewModelBase
                 IsFolder = true,
                 IsExpanded = expanded,
                 TrackCount = members.Count,
+                GroupPosition = expanded ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
             });
 
-            if (!expanded) continue;
-            foreach (var item in members)
+            if (!expanded)
             {
-                item.IsInFolder = true;
-                rows.Add(item);
+                foreach (var item in members) item.GroupPosition = SidebarGroupPosition.None;
+                continue;
+            }
+            for (var m = 0; m < members.Count; m++)
+            {
+                members[m].IsInFolder = true;
+                members[m].GroupPosition = m == members.Count - 1 ? SidebarGroupPosition.Last : SidebarGroupPosition.Member;
+                rows.Add(members[m]);
             }
         }
 
@@ -486,6 +506,43 @@ public partial class SidebarViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
+    /// <summary>
+    /// Songs the playlist page will actually list: entries the library resolves. Songs under
+    /// a hidden library folder (or files gone from disk) don't resolve, and the sidebar said
+    /// "4 songs" over a page of 2. Before the library has loaded nothing resolves yet, so the
+    /// stored count stands in until <see cref="RefreshPlaylistCounts"/> runs.
+    /// </summary>
+    private int CountShownTracks(Playlist pl)
+    {
+        if (_library.Tracks.Count == 0) return pl.TrackIds.Count;
+        var shown = 0;
+        foreach (var id in pl.TrackIds)
+            if (_library.GetTrackById(id) != null) shown++;
+        return shown;
+    }
+
+    /// <summary>Re-resolves every playlist row's count, meta line and collage after the
+    /// library changed (load, scan, a folder hidden or shown).</summary>
+    private void RefreshPlaylistCounts()
+    {
+        foreach (var navItem in PlaylistItems)
+        {
+            if (navItem.PlaylistId is not { } id) continue;
+            var playlist = Playlists.FirstOrDefault(p => p.Id == id);
+            if (playlist != null) ApplyRebuilt(navItem, BuildPlaylistNavItem(playlist));
+        }
+    }
+
+    private static void ApplyRebuilt(PlaylistNavItem navItem, PlaylistNavItem rebuilt)
+    {
+        navItem.TrackCount = rebuilt.TrackCount;
+        navItem.MetaText = rebuilt.MetaText;
+        navItem.Art1 = rebuilt.Art1;
+        navItem.Art2 = rebuilt.Art2;
+        navItem.Art3 = rebuilt.Art3;
+        navItem.Art4 = rebuilt.Art4;
+    }
+
     /// <summary>Builds a PlaylistNavItem with resolved artwork for sidebar display.</summary>
     private PlaylistNavItem BuildPlaylistNavItem(Playlist pl)
     {
@@ -496,7 +553,7 @@ public partial class SidebarViewModel : ViewModelBase
             IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
             IsSmartPlaylist = pl.IsSmartPlaylist,
             PlaylistId = pl.Id,
-            TrackCount = pl.TrackIds.Count,
+            TrackCount = CountShownTracks(pl),
             CoverArtPath = pl.CoverArtPath,
             Color = pl.Color,
             IsPinned = pl.IsPinned,
@@ -510,7 +567,7 @@ public partial class SidebarViewModel : ViewModelBase
             var t = _library.GetTrackById(trackId);
             if (t != null) totalDuration += t.Duration;
         }
-        var tracksLabel = pl.TrackIds.Count == 1 ? "1 track" : $"{pl.TrackIds.Count:N0} tracks";
+        var tracksLabel = item.TrackCount == 1 ? "1 track" : $"{item.TrackCount:N0} tracks";
         var durationLabel = totalDuration.TotalHours >= 1
             ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
             : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
@@ -868,12 +925,16 @@ public partial class SidebarViewModel : ViewModelBase
 
         // Only add tracks that aren't already in the playlist to prevent duplicates
         var existingIds = new HashSet<Guid>(playlist.TrackIds);
+        var now = DateTime.UtcNow;
         foreach (var track in tracks)
         {
             if (existingIds.Add(track.Id))
+            {
                 playlist.TrackIds.Add(track.Id);
+                playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+            }
         }
-        playlist.ModifiedAt = DateTime.UtcNow;
+        playlist.ModifiedAt = now;
 
         // Update the sidebar item's track count and artwork
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
@@ -929,7 +990,7 @@ public partial class SidebarViewModel : ViewModelBase
     {
         if (playlist == null || playlist.IsSmartPlaylist) return;
 
-        var dialogVm = new AddSongsDialogViewModel(_library.Tracks.ToList(), playlist.TrackIds);
+        var dialogVm = new AddSongsDialogViewModel(_library.Tracks.ToList(), playlist.TrackIds, playlist.Name);
         var dialog = new AddSongsDialog { DataContext = dialogVm };
 
         IReadOnlyList<Track>? chosen = null;
@@ -1054,21 +1115,7 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task EditPlaylistAsync(Playlist playlist)
     {
         var currentNavItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
-        var dialogVm = new EditPlaylistDialogViewModel
-        {
-            PlaylistName = playlist.Name,
-            PlaylistDescription = playlist.Description,
-            PlaylistColor = playlist.Color,
-            CoverArtPath = playlist.CoverArtPath,
-            Art1 = currentNavItem?.Art1,
-            Art2 = currentNavItem?.Art2,
-            Art3 = currentNavItem?.Art3,
-            Art4 = currentNavItem?.Art4,
-            IsPinned = playlist.IsPinned,
-            PlaylistFolder = playlist.Folder,
-            ExistingFoldersHint = string.Join(", ", GetFolderNames()),
-            ExistingFolders = GetFolderNames(),
-        };
+        var dialogVm = EditPlaylistDialogViewModel.ForPlaylist(playlist, currentNavItem, GetFolderNames());
         var dialog = new EditPlaylistDialog { DataContext = dialogVm };
 
         bool saved = false;
@@ -1098,10 +1145,17 @@ public partial class SidebarViewModel : ViewModelBase
 
         if (!saved) return;
 
+        await ApplyPlaylistEditAsync(playlist, dialogVm, newName, newDescription);
+    }
+
+    /// <summary>Writes a saved Edit Playlist dialog back to the playlist, its sidebar row and
+    /// disk. Split from <see cref="EditPlaylistAsync"/> so it runs without a dialog (tests).</summary>
+    internal async Task ApplyPlaylistEditAsync(Playlist playlist, EditPlaylistDialogViewModel dialogVm, string newName, string newDescription)
+    {
         playlist.Name = newName;
         playlist.Description = newDescription;
         playlist.IsPinned = dialogVm.IsPinned;
-        FileIntoFolder(playlist, dialogVm.PlaylistFolder);
+        FileIntoFolder(playlist, dialogVm.ResolvedFolder);
         playlist.ModifiedAt = DateTime.UtcNow;
 
         // Handle cover art changes
@@ -1130,8 +1184,15 @@ public partial class SidebarViewModel : ViewModelBase
                     try { File.Delete(stale); } catch { }
             }
 
-            File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
+            // The picked file can be the cover already in place (the picker opened in
+            // playlist_covers): copying a file onto itself threw, and the rest of the edit
+            // (name, star, folder) was never saved.
+            if (!string.Equals(Path.GetFullPath(dialogVm.PendingCoverArtFile), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
             playlist.CoverArtPath = destPath;
+            // A new picture of the same type lands on the same path (<id>.jpg): drop the
+            // decode of the old one, or every CachedImage on that path keeps drawing it.
+            ArtworkCache.Invalidate(destPath);
         }
 
         // Rebuild the sidebar nav item with updated info
@@ -1153,6 +1214,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
     }
 
     /// <summary>Gets a playlist by its ID.</summary>

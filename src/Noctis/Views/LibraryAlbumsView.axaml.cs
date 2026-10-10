@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -99,6 +100,8 @@ public partial class LibraryAlbumsView : UserControl
     // ── Artist page Songs section: shared track context menu (same pattern as HomeView) ──
 
     private TrackContextMenuBuilder? _trackMenuBuilder;
+    /// <summary>Culture the track menu's strings were read in (they are read once, at Build).</summary>
+    private string? _trackMenuCulture;
     private Control? _menuOwner;
 
     private void OnArtistSongContextRequested(object? sender, ContextRequestedEventArgs e)
@@ -108,10 +111,12 @@ public partial class LibraryAlbumsView : UserControl
         if (owner.DataContext is not TopSongRow row) return;
         if (DataContext is not LibraryAlbumsViewModel vm) return;
 
-        if (_trackMenuBuilder == null)
+        // v2 layout (10-09 redesign); rebuilt after a live language switch so it follows it.
+        if (_trackMenuBuilder == null || _trackMenuCulture != Loc.Instance.Culture.Name)
         {
+            _trackMenuCulture = Loc.Instance.Culture.Name;
             _trackMenuBuilder = new TrackContextMenuBuilder();
-            _trackMenuBuilder.Build("Remove from Library", null, this);
+            _trackMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
         }
 
         _trackMenuBuilder.Bind(
@@ -136,8 +141,7 @@ public partial class LibraryAlbumsView : UserControl
         // Close any menu still open from a previous rapid right-click so menus
         // don't stack on top of each other.
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         // Detach from the previous owner so Open() doesn't throw
         // "Cannot show ContextMenu on a different control".
@@ -152,16 +156,58 @@ public partial class LibraryAlbumsView : UserControl
         menu.Open(owner);
     }
 
-    private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
-    {
-        // Close any menu still open from a previous rapid right-click so menus
-        // don't stack on top of each other.
-        ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+    // ── Album tiles: one shared v2 menu (10-09 redesign), bound to the tile on open ──
+    // Replaces the per-tile XAML ContextMenu: same commands and parameters, plus the
+    // album's Lyrics Background Video ▸ and Search Lyrics the XAML menu lacked.
 
-        if (DataContext is not LibraryAlbumsViewModel vm) return;
+    private AlbumContextMenuBuilder? _albumMenuBuilder;
+    /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
+    private string? _albumMenuCulture;
+
+    private void OnAlbumTileContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is Button tile && OpenAlbumMenu(tile,
+                e.TryGetPosition(tile, out var at) ? tile.PointToScreen(at) : null))
+            e.Handled = true;
+    }
+
+    /// <param name="anchor">Screen point the menu grows out of (the click), or null.</param>
+    private bool OpenAlbumMenu(Button tile, PixelPoint? anchor)
+    {
+        if (tile.DataContext is not Album album) return false;
+        if (DataContext is not LibraryAlbumsViewModel vm) return false;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
         vm.CtrlSelectedAlbums = _selectedAlbums.ToList();
+
+        // Rebuilt after a live language switch so the menu follows it.
+        if (_albumMenuBuilder == null || _albumMenuCulture != Loc.Instance.Culture.Name)
+        {
+            _albumMenuCulture = Loc.Instance.Culture.Name;
+            _albumMenuBuilder = new AlbumContextMenuBuilder();
+            _albumMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
+            // Trial (10-09): this menu alone opens with the "pop" motion instead of the rise-up.
+            MenuOpenAnimation.SetPop(_albumMenuBuilder.Menu, true);
+        }
+        MenuOpenAnimation.SetPopAnchor(_albumMenuBuilder.Menu, anchor);
+
+        _albumMenuBuilder.Bind(
+            album,
+            playCommand: vm.PlayAlbumCommand,
+            shuffleCommand: vm.ShuffleAlbumCommand,
+            playNextCommand: vm.PlayNextCommand,
+            addToQueueCommand: vm.AddToQueueCommand,
+            addToPlaylistCommand: vm.AddToNewPlaylistCommand,
+            toggleFavoritesCommand: vm.ToggleAlbumFavoritesCommand,
+            openMetadataCommand: vm.OpenMetadataCommand,
+            showInExplorerCommand: vm.ShowInExplorerCommand,
+            removeCommand: vm.RemoveFromLibraryCommand,
+            convertCommand: vm.ConvertAlbumCommand,
+            scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
+            searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+
+        OpenMenu(_albumMenuBuilder.Menu, tile);
+        return true;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -299,11 +345,18 @@ public partial class LibraryAlbumsView : UserControl
     /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        // Opening the menu from code skips its Opening event, so push the current selection
-        // here; otherwise the commands see whatever the last right-click left on the ViewModel.
-        if (DataContext is LibraryAlbumsViewModel vm)
-            vm.CtrlSelectedAlbums = _selectedAlbums.ToList();
-        Helpers.AlbumTile.OpenMenu(sender);
+        // Always (re)bind from the tile: a recycled tile may still hold the shared menu
+        // bound to the album it showed before. OpenAlbumMenu also pushes the selection.
+        for (var c = sender as Control; c != null; c = c.Parent as Control)
+        {
+            if (c is Button tile && tile.Classes.Contains("album-tile"))
+            {
+                // Grow out of the dots button's centre.
+                var dots = sender as Control;
+                OpenAlbumMenu(tile, dots?.PointToScreen(new Point(dots.Bounds.Width / 2, dots.Bounds.Height / 2)));
+                break;
+            }
+        }
         e.Handled = true;
     }
 }

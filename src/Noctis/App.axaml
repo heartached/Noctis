@@ -37,6 +37,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://Noctis.UI/Assets/Icons.axaml" />
+                <ResourceInclude Source="avares://Noctis.UI/Assets/IconsPages.axaml" />
+                <ResourceInclude Source="avares://Noctis.UI/Assets/IconsLine.axaml" />
+                <ResourceInclude Source="avares://Noctis.UI/Assets/IconsMenuExtra.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="InterSemiBold">avares://Noctis.UI/Assets/Fonts/Inter-SemiBold.ttf#Inter SemiBold</FontFamily>
             <!-- Do NOT declare fallbacks for accent-overlay keys here. A ResourceDictionary

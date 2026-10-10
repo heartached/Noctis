@@ -21,6 +21,10 @@ public partial class DuplicateFinderViewModel : ViewModelBase
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private int _selectedCount;
     [ObservableProperty] private bool _hasSelection;
+    /// <summary>False while scanning and when nothing was found: the list area then shows <see cref="ListMessage"/>.</summary>
+    [ObservableProperty] private bool _hasGroups;
+    /// <summary>What the empty list area says: scanning, or no duplicates.</summary>
+    [ObservableProperty] private string _listMessage = string.Empty;
 
     public ObservableCollection<DupGroup> Groups { get; } = new();
 
@@ -32,6 +36,12 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         _ = ScanAsync();
     }
 
+    private static string L(string key) => Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
+
+    /// <summary>"1 file" / "12 files".</summary>
+    private static string Files(int n) => n == 1 ? L("DuplicateFinder.FilesOne") : L("DuplicateFinder.FilesMany", n);
+
     [RelayCommand]
     private Task Rescan() => ScanAsync();
 
@@ -39,17 +49,20 @@ public partial class DuplicateFinderViewModel : ViewModelBase
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Scanning for duplicates…";
+        StatusMessage = ListMessage = L("DuplicateFinder.Scanning");
         Groups.Clear();
+        HasGroups = false;
 
         var found = await _service.FindAsync();
         foreach (var g in found)
             Groups.Add(new DupGroup(g, RecomputeSelection));
 
         RecomputeSelection();
+        HasGroups = Groups.Count > 0;
+        ListMessage = L("DuplicateFinder.NoneFound");
         StatusMessage = Groups.Count == 0
-            ? "No duplicates found."
-            : $"{Groups.Count} duplicate group{(Groups.Count == 1 ? string.Empty : "s")} found";
+            ? ListMessage
+            : Groups.Count == 1 ? L("DuplicateFinder.GroupsOne") : L("DuplicateFinder.GroupsMany", Groups.Count);
         IsBusy = false;
     }
 
@@ -70,19 +83,20 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         // Confirm before trashing. The rows arrive pre-ticked (every non-keep copy in
         // every group), so the Delete button was the only gate between opening the dialog
         // and deleting files across the whole library in one click.
+        var question = OperatingSystem.IsWindows()
+            ? L("DuplicateFinder.ConfirmRecycleBin", Files(ids.Count))
+            : L("DuplicateFinder.ConfirmTrash", Files(ids.Count));
         var confirmed = await Views.ConfirmationDialog.ShowAsync(
-            $"Move {ids.Count} file{(ids.Count == 1 ? string.Empty : "s")} to the " +
-            $"{(OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash")}?\n\n" +
-            "The copy marked \"Keep\" in each group stays where it is.");
+            question + "\n\n" + L("DuplicateFinder.ConfirmKeepNote"));
         if (!confirmed) return;
 
         IsBusy = true;
-        StatusMessage = $"Deleting {ids.Count} file{(ids.Count == 1 ? string.Empty : "s")}…";
+        StatusMessage = L("DuplicateFinder.Deleting", Files(ids.Count));
         var n = await _service.DeleteAsync(ids);
         IsBusy = false;
 
         await ScanAsync();
-        StatusMessage = $"Deleted {n} file{(n == 1 ? string.Empty : "s")}";
+        StatusMessage = L("DuplicateFinder.Deleted", Files(n));
     }
 
     [RelayCommand]
@@ -93,26 +107,36 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         public DupGroup(DuplicateGroup model, Action onChanged)
         {
             var first = model.Tracks[0];
-            Header = $"{first.PrimaryArtist} — {first.Title}";
-            Subheader = $"{model.Tracks.Count} copies · {first.DurationFormatted}";
+            Title = first.Title;
+            Artist = first.PrimaryArtist;
+            CopiesText = L("DuplicateFinder.Copies", model.Tracks.Count);
+            // Sample rate / bit depth only when they tell the copies apart; otherwise they
+            // are the same number on every row. A lossy copy has no bit depth (0), which
+            // alone is no difference worth a column.
+            var showFormat = model.Tracks.Select(t => t.SampleRate).Where(r => r > 0).Distinct().Count() > 1
+                          || model.Tracks.Select(t => t.BitsPerSample).Where(b => b > 0).Distinct().Count() > 1;
             foreach (var t in model.Tracks)
-                Rows.Add(new DupRow(t, t.Id == model.SuggestedKeepId) { Changed = onChanged });
+                Rows.Add(new DupRow(t, t.Id == model.SuggestedKeepId, showFormat) { Changed = onChanged });
         }
 
-        public string Header { get; }
-        public string Subheader { get; }
+        public string Title { get; }
+        public string Artist { get; }
+        /// <summary>"2 copies".</summary>
+        public string CopiesText { get; }
         public ObservableCollection<DupRow> Rows { get; } = new();
     }
 
     public partial class DupRow : ObservableObject
     {
-        public DupRow(Track t, bool suggestedKeep)
+        public DupRow(Track t, bool suggestedKeep, bool showFormat = false)
         {
             TrackId = t.Id;
             FileName = Path.GetFileName(t.FilePath);
+            FilePathFull = t.FilePath;
             FolderPathFull = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
             FolderPath = DisplayPath.MiddleEllipsis(FolderPathFull);
-            Quality = BuildQuality(t);
+            Location = DisplayPath.MiddleEllipsis(t.FilePath, 80);
+            Quality = BuildQuality(t, showFormat);
             IsSuggestedKeep = suggestedKeep;
             _delete = !suggestedKeep; // default: keep the best copy, delete the rest
         }
@@ -121,25 +145,42 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         public string FileName { get; }
         public string FolderPath { get; }
         public string FolderPathFull { get; }
+        /// <summary>The whole file path, middle-ellipsized (start and file name stay readable).</summary>
+        public string Location { get; }
+        public string FilePathFull { get; }
         public string Quality { get; }
+        /// <summary>The copy the matcher rates best (lossless, then depth/rate/bitrate/size).</summary>
         public bool IsSuggestedKeep { get; }
 
         [ObservableProperty] private bool _delete;
 
+        /// <summary>The inverse of <see cref="Delete"/>: what the copy card toggles (checked = kept).</summary>
+        public bool Keep
+        {
+            get => !Delete;
+            set => Delete = !value;
+        }
+
         public Action? Changed { get; set; }
 
-        partial void OnDeleteChanged(bool value) => Changed?.Invoke();
+        partial void OnDeleteChanged(bool value)
+        {
+            OnPropertyChanged(nameof(Keep));
+            Changed?.Invoke();
+        }
 
-        private static string BuildQuality(Track t)
+        private static string BuildQuality(Track t, bool showFormat)
         {
             var parts = new List<string>();
             var codec = string.IsNullOrEmpty(t.CodecShortName)
                 ? Path.GetExtension(t.FilePath).TrimStart('.').ToUpperInvariant()
                 : t.CodecShortName;
             if (!string.IsNullOrEmpty(codec)) parts.Add(codec);
-            if (t.IsLossless) parts.Add("Lossless");
             if (t.Bitrate > 0) parts.Add($"{t.Bitrate} kbps");
-            if (t.SampleRate > 0) parts.Add($"{t.SampleRate / 1000.0:0.#} kHz");
+            if (showFormat && t.SampleRate > 0)
+                parts.Add(t.BitsPerSample > 0
+                    ? $"{t.BitsPerSample}-bit {t.SampleRate / 1000.0:0.#} kHz"
+                    : $"{t.SampleRate / 1000.0:0.#} kHz");
             parts.Add(FormatSize(t.FileSize));
             return string.Join(" · ", parts);
         }

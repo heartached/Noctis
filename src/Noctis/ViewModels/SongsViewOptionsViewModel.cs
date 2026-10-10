@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
+using Noctis.Models;
 
 namespace Noctis.ViewModels;
 
@@ -32,24 +34,29 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
     /// Every field the Songs list can sort by, in the dialog's display order. Keys must
     /// match the switch arms in <c>BuildFilteredAndSortedTracks</c>; an unknown key
     /// falls through to its title-ordered default rather than throwing.
+    /// <para>
+    /// Labels are the top bar's Sort menu entries (MainWindow.axaml, the same Main.* keys),
+    /// so both surfaces name a field with the same, translated word. They were English
+    /// literals: in Turkish the menu said "Eklenme Tarihi" while this list said "Date Added".
+    /// </para>
     /// </summary>
     public IReadOnlyList<SongSortOption> SortOptions { get; } = new[]
     {
-        new SongSortOption("Title", "Title"),
-        new SongSortOption("Artist", "Artist"),
-        new SongSortOption("Album", "Album"),
-        new SongSortOption("Album Artist", "Album by Artist"),
-        new SongSortOption("Genre", "Genre"),
-        new SongSortOption("Time", "Time"),
-        new SongSortOption("Plays", "Plays"),
-        new SongSortOption("IsFavorite", "Favorite"),
-        new SongSortOption("Rating", "Rating"),
-        new SongSortOption("Year", "Year"),
-        new SongSortOption("Bpm", "BPM"),
-        new SongSortOption("Bitrate", "Bitrate"),
-        new SongSortOption("SampleRate", "Sample Rate"),
-        new SongSortOption("Date Added", "Date Added"),
-        new SongSortOption("Date Modified", "Date Modified"),
+        new SongSortOption("Title", Loc.T("Main.Title")),
+        new SongSortOption("Artist", Loc.T("Main.Artist")),
+        new SongSortOption("Album", Loc.T("Main.Album")),
+        new SongSortOption("Album Artist", Loc.T("Main.AlbumByArtist")),
+        new SongSortOption("Genre", Loc.T("Main.Genre")),
+        new SongSortOption("Time", Loc.T("Main.Time")),
+        new SongSortOption("Plays", Loc.T("Main.Plays")),
+        new SongSortOption("IsFavorite", Loc.T("Main.Favorite")),
+        new SongSortOption("Rating", Loc.T("Main.Rating")),
+        new SongSortOption("Year", Loc.T("Main.Year")),
+        new SongSortOption("Bpm", Loc.T("Main.BPM")),
+        new SongSortOption("Bitrate", Loc.T("Main.Bitrate")),
+        new SongSortOption("SampleRate", Loc.T("Main.SampleRate")),
+        new SongSortOption("Date Added", Loc.T("Main.DateAdded")),
+        new SongSortOption("Date Modified", Loc.T("Main.DateModified")),
     };
 
     public SongsViewOptionsViewModel(LibrarySongsViewModel songs, SettingsViewModel settings)
@@ -103,10 +110,33 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public bool IsAscending => _songs.SortAscending;
-    public bool IsDescending => !_songs.SortAscending;
-    public bool ShowOnlyFavorites => _songs.ShowOnlyFavorites;
-    public bool ShowAllSongs => !_songs.ShowOnlyFavorites;
+    // The two segmented pills are RadioButton pairs bound two-way. Only a segment being
+    // checked acts; the partner's uncheck (false) is the group's echo and is ignored, so a
+    // pick runs exactly one SelectSort / filter change.
+
+    public bool IsAscending
+    {
+        get => _songs.SortAscending;
+        set { if (value) SetAscending(); }
+    }
+
+    public bool IsDescending
+    {
+        get => !_songs.SortAscending;
+        set { if (value) SetDescending(); }
+    }
+
+    public bool ShowOnlyFavorites
+    {
+        get => _songs.ShowOnlyFavorites;
+        set { if (value) SetOnlyFavorites(); }
+    }
+
+    public bool ShowAllSongs
+    {
+        get => !_songs.ShowOnlyFavorites;
+        set { if (value) SetAllSongs(); }
+    }
 
     [RelayCommand]
     private void SetAscending() => _songs.SelectSortCommand.Execute("Ascending");
@@ -121,26 +151,28 @@ public partial class SongsViewOptionsViewModel : ViewModelBase, IDisposable
     private void SetOnlyFavorites() => _songs.SetShowOnlyFavoritesCommand.Execute(null);
 
     /// <summary>
-    /// Returns every option in this dialog to its fresh-install value. Mirrors the
-    /// defaults declared on <see cref="Models.AppSettings"/> — keep the two in step.
+    /// Returns every option in this dialog to its fresh-install value, read from
+    /// <see cref="AppSettings"/> itself rather than restated here, so the two can't drift.
     /// </summary>
     [RelayCommand]
     private void RestoreDefaults()
     {
-        Settings.ShowArtworkColumn = true;
-        Settings.ShowArtistColumn = true;
-        Settings.ShowAlbumColumn = true;
-        Settings.ShowGenreColumn = true;
-        Settings.ShowTimeColumn = true;
-        Settings.ShowFavoritesColumn = true;
-        Settings.ShowRatingColumn = true;
-        Settings.ShowPlaysColumn = true;
-        Settings.ShowBpmColumn = false;
-        Settings.ShowBitrateColumn = false;
-        Settings.ShowSampleRateColumn = false;
+        var defaults = new AppSettings();
+        Settings.ShowArtworkColumn = defaults.ShowArtworkColumn;
+        Settings.ShowArtistColumn = defaults.ShowArtistColumn;
+        Settings.ShowAlbumColumn = defaults.ShowAlbumColumn;
+        Settings.ShowGenreColumn = defaults.ShowGenreColumn;
+        Settings.ShowTimeColumn = defaults.ShowTimeColumn;
+        Settings.ShowFavoritesColumn = defaults.ShowFavoritesColumn;
+        Settings.ShowRatingColumn = defaults.ShowRatingColumn;
+        Settings.ShowPlaysColumn = defaults.ShowPlaysColumn;
+        Settings.ShowBpmColumn = defaults.ShowBpmColumn;
+        Settings.ShowBitrateColumn = defaults.ShowBitrateColumn;
+        Settings.ShowSampleRateColumn = defaults.ShowSampleRateColumn;
 
-        _songs.SetShowAllItemsCommand.Execute(null);
-        _songs.SelectSortCommand.Execute("Date Added");
-        _songs.SelectSortCommand.Execute("Descending");
+        if (defaults.SongsShowOnlyFavorites) _songs.SetShowOnlyFavoritesCommand.Execute(null);
+        else _songs.SetShowAllItemsCommand.Execute(null);
+        _songs.SelectSortCommand.Execute(defaults.SongsSortColumn);
+        _songs.SelectSortCommand.Execute(defaults.SongsSortAscending ? "Ascending" : "Descending");
     }
 }

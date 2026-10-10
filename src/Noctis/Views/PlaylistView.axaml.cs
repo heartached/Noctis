@@ -23,6 +23,8 @@ public partial class PlaylistView : UserControl
     // See LibrarySongsView for why this is data-tracked rather than container-tracked.
     private readonly HashSet<Track> _selectedTracks = new();
     private TrackContextMenuBuilder? _menuBuilder;
+    /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
+    private string? _menuCulture;
     private ListBoxItem? _menuOwnerItem;
 
     // ── Drag-reorder state (pointer-tracked, liquid motion shared with the queue) ──
@@ -382,13 +384,24 @@ public partial class PlaylistView : UserControl
 
     private ContextMenu GetOrCreateContextMenu()
     {
-        if (_menuBuilder != null) return _menuBuilder.Menu;
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_menuBuilder != null && _menuCulture == culture) return _menuBuilder.Menu;
+        // A live language switch while this page is open: rebuild so the menu follows it.
+        if (_menuBuilder != null)
+        {
+            DetachMenuFromOwner();
+            _menuBuilder = null;
+        }
 
         if (DataContext is not PlaylistViewModel) return new ContextMenu();
 
+        // v2 layout (10-09 redesign). Remove only takes the song out of this playlist (the
+        // file and the library entry stay), so it is a plain row, not a red one.
         _menuBuilder = new TrackContextMenuBuilder();
-        return _menuBuilder.Build("Remove from Playlist",
-            "avares://Noctis.UI/Assets/Icons/Remove%20from%20Playlist%20ICON.png", this);
+        _menuCulture = culture;
+        var menu = _menuBuilder.Build(Noctis.Localization.Loc.T("Playlist.Remove"), null, this, v2: true, removeIsDanger: false);
+        _menuBuilder.Remove.Icon = MenuV2.LineIcon(this, "MenuLinePlaylistRemove");
+        return menu;
     }
 
     private void BindContextMenuToTrack(Track track)
@@ -422,6 +435,9 @@ public partial class PlaylistView : UserControl
             badgeNames: vm.BadgeNames);
         // Same gate as the selection bar's Remove: smart playlists are rule-driven.
         _menuBuilder.Remove.IsVisible = vm.IsManualPlaylist;
+        // Bind settled the separators with Remove still shown; the views open the menu with
+        // Open(), which never raises Opening, so settle them again here.
+        MenuV2.RefreshLayout(_menuBuilder.Menu.Items);
     }
 
     private void DetachMenuFromOwner()
@@ -560,8 +576,7 @@ public partial class PlaylistView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;
@@ -662,11 +677,17 @@ public partial class PlaylistView : UserControl
 
     private void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        // Only a drag took the capture (StartPlaylistDrag). This handler tunnels, so on a
+        // plain click it runs BEFORE the row's buttons see the release: dropping the
+        // capture there reset the pressed Button and its Click never fired, killing the
+        // artist/album links, heart, art play and "..." menu (Discord Luwi 2026-10-03).
         if (_dragActive)
+        {
             BeginPlaylistSettle();
+            e.Pointer.Capture(null);
+        }
         else
             ResetPlaylistDragState();
-        e.Pointer.Capture(null);
     }
 
     private void OnTrackRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)

@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 
 namespace Noctis.Services.LocalApi;
@@ -71,11 +72,15 @@ public sealed class LyricsViewModelLyricsSource : ILocalApiLyricsSource
                 (long)l.Timestamp.Value.TotalMilliseconds,
                 l.EndTimestamp.HasValue ? (long)l.EndTimestamp.Value.TotalMilliseconds : null,
                 l.Text,
-                words));
+                words,
+                Layer(l.Transliteration),
+                Layer(l.Translation)));
         }
 
         var plainSource = unsynced.Count > 0 ? unsynced : lines;
-        var plain = string.Join("\n", plainSource.Where(l => !l.IsIntroPlaceholder).Select(l => l.Text));
+        // A line's romanization / translation follow it, as they sit in an LRC file (GitHub #116).
+        var plain = string.Join("\n", plainSource.Where(l => !l.IsIntroPlaceholder)
+            .SelectMany(l => LrcParser.CompanionLines(l).Prepend(l.Text)));
 
         if (synced.Count == 0 && string.IsNullOrWhiteSpace(plain))
             return null;
@@ -84,7 +89,9 @@ public sealed class LyricsViewModelLyricsSource : ILocalApiLyricsSource
             return new LocalApiLyrics(trackId, true, synced.Any(l => l.Words is { Count: > 0 }), synced, plain);
 
         var plainLines = plainSource.Where(l => !l.IsIntroPlaceholder)
-            .Select(l => new LocalApiLyricLine(null, null, l.Text, null)).ToList();
+            .Select(l => new LocalApiLyricLine(null, null, l.Text, null, Layer(l.Transliteration), Layer(l.Translation))).ToList();
         return new LocalApiLyrics(trackId, false, false, plainLines, plain);
     }
+
+    private static string? Layer(string? text) => string.IsNullOrWhiteSpace(text) ? null : text;
 }

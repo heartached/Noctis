@@ -151,6 +151,25 @@ public partial class QueuePage : UserControl
         Sheet.RenderTransform = TransformOperations.Parse("translateY(0px)");
         if (TabBar != null) TabBar.RenderTransform = TransformOperations.Parse("translateY(0px)");
         Dim.Opacity = 1;
+        FollowSlideWithLayout();
+    }
+
+    /// <summary>
+    /// The list's VirtualizingStackPanel realizes rows for its effective viewport, which Avalonia
+    /// recomputes only in a layout pass. The slide is a render transform and runs none, so the
+    /// list kept the empty viewport it measured below the screen and showed one row of 34 (S23,
+    /// 2026-10-05). A pass per frame while the sheet moves lets rows appear as they come into view.
+    /// </summary>
+    private void FollowSlideWithLayout()
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        var until = DateTime.UtcNow + Slide + TimeSpan.FromMilliseconds(100);
+        void Frame(TimeSpan _)
+        {
+            QueueList.ItemsPanelRoot?.InvalidateMeasure();
+            if (_shown && !_closing && DateTime.UtcNow < until) top.RequestAnimationFrame(Frame);
+        }
+        top.RequestAnimationFrame(Frame);
     }
 
     /// <summary>Jumps to the end of the running slide. Internal for tests: the headless clock

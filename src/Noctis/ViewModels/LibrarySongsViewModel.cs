@@ -313,7 +313,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
 
-        _player.ReplaceQueueAndPlay(tracks, index);
+        _player.PlayFromRow(tracks, index);
     }
 
     [RelayCommand]

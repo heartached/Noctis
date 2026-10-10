@@ -378,8 +378,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var recentTracks = LastPlayed.Where(t => t.Id != track.Id).ToList();
             recentTracks.Insert(0, track);
             ReplaceLastPlayed(recentTracks);
+
+            // A counted play raises no LibraryUpdated, so Home stays clean and RefreshAsync
+            // keeps the old ranking: the row's "N plays" ticks up live while its rank doesn't
+            // (Discord: 47 plays at #5 under 46 at #4).
+            _ = RefreshTopSongsAsync();
         });
     }
+
+    private async Task RefreshTopSongsAsync()
+    {
+        var allTracks = _library.Tracks;
+        var top = await Task.Run(() => PickTopSongs(allTracks));
+        ReplaceTopSongsIfChanged(top);
+    }
+
+    private static List<Track> PickTopSongs(IReadOnlyList<Track> tracks)
+        => tracks
+            .Where(t => t.PlayCount > 0)
+            .OrderByDescending(t => t.PlayCount)
+            .Take(6)
+            .ToList();
 
     /// <summary>
     /// Set by MainWindowViewModel when Home becomes (or stops being) the current view.
@@ -440,12 +459,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var allTracks = _library.Tracks;
             if (allTracks.Count > 0)
             {
-                var top = await Task.Run(() =>
-                    allTracks
-                        .Where(t => t.PlayCount > 0)
-                        .OrderByDescending(t => t.PlayCount)
-                        .Take(6)
-                        .ToList());
+                var top = await Task.Run(() => PickTopSongs(allTracks));
                 ReplaceTopSongsIfChanged(top);
             }
             else
@@ -685,6 +699,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         TopArtists.ReplaceAll(artists);
     }
 
+    /// <summary>
+    /// The portrait the Artists page cached for a credited artist name, or null (the menu
+    /// shows the placeholder). Cache files only, never a download; safe off the UI thread
+    /// (the track menus' View Artist ▸ calls it from a worker).
+    /// </summary>
+    internal string? CachedArtistPhoto(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var trimmed = name.Trim();
+        var artist = _library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+                     ?? new Artist { Id = ComputeArtistId(trimmed), Name = trimmed };
+        return StatisticsViewModel.CachedArtistPhoto(artist, _artistImages);
+    }
+
     private static Guid ComputeArtistId(string artistName)
     {
         var hash = System.Security.Cryptography.MD5.HashData(
@@ -882,6 +910,16 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         else PlayTopSong(row.Track);
     }
 
+    /// <summary>The Play / Pause over a chart row's art (as on the artist page's Top Songs):
+    /// pauses or resumes the track that is already on, otherwise plays the row from its list.</summary>
+    [RelayCommand]
+    private void TogglePlayChartRow(TopSongRow? row)
+    {
+        if (row?.Track is not { } track) return;
+        if (track.IsNowPlaying) { _player.PlayPauseCommand.Execute(null); return; }
+        PlayChartRow(row);
+    }
+
     [RelayCommand]
     private void PlayLastPlayed(Track track) => PlayFromRow(LastPlayed, track);
 
@@ -945,11 +983,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        var tracks = album.Tracks.ToList();
-        for (int i = tracks.Count - 1; i >= 0; i--)
-        {
-            _player.AddNext(tracks[i]);
-        }
+        _player.AddNextRange(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -957,7 +991,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]

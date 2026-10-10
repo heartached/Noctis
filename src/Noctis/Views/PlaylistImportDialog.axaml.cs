@@ -2,9 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using Avalonia.Media.Transformation;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -16,40 +14,19 @@ public partial class PlaylistImportDialog : Window
         InitializeComponent();
     }
 
-    private bool _closing;
-
-    /// <summary>Settles the scrim and card to their open state on the frame after the
-    /// window appears, so the transitions declared in XAML have something to animate to.</summary>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
-    }
-
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    private async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
-    }
-
     public PlaylistImportDialog(PlaylistImportViewModel vm) : this()
     {
         DataContext = vm;
-        vm.Closed += (_, _) => _ = CloseAnimatedAsync();
+        // PillDialogHost turns this into the animated close; nothing is returned through
+        // Close(result), so the deferred close loses nothing.
+        vm.Closed += (_, _) => Close();
         ChooseFileButton.Click += OnChooseFile;
 
-        // Drop an export file anywhere on the dialog instead of hunting for it in the picker.
+        // Drop an export file anywhere on the dialog instead of hunting for it in the picker;
+        // the start panel lights its ring while a file is over the window.
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, (_, _) => SetDragHighlight(false));
         AddHandler(DragDrop.DropEvent, OnDrop);
 
         // If a playlist link is already on the clipboard, offer it (Deezer imports at once,
@@ -71,7 +48,7 @@ public partial class PlaylistImportDialog : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        // Escape closes the same way the header X does.
+        // Escape closes the same way Cancel does.
         if (e.Key == Key.Escape && DataContext is PlaylistImportViewModel vm)
         {
             e.Handled = true;
@@ -81,9 +58,13 @@ public partial class PlaylistImportDialog : Window
         base.OnKeyDown(e);
     }
 
-    private static void OnDragOver(object? sender, DragEventArgs e)
+    private void SetDragHighlight(bool on) => DropZone.Classes.Set("drag", on);
+
+    private void OnDragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer.Contains(DataFormat.File) ? DragDropEffects.Copy : DragDropEffects.None;
+        var isFile = e.DataTransfer.Contains(DataFormat.File);
+        e.DragEffects = isFile ? DragDropEffects.Copy : DragDropEffects.None;
+        SetDragHighlight(isFile);
         e.Handled = true;
     }
 
@@ -92,6 +73,7 @@ public partial class PlaylistImportDialog : Window
         // async void: an escaped exception would crash the app.
         try
         {
+            SetDragHighlight(false);
             if (DataContext is not PlaylistImportViewModel vm) return;
             var file = (e.DataTransfer.TryGetFiles() ?? Enumerable.Empty<IStorageItem>()).OfType<IStorageFile>().FirstOrDefault();
             var path = file?.TryGetLocalPath();
@@ -117,11 +99,11 @@ public partial class PlaylistImportDialog : Window
 
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Choose a playlist export",
+                Title = Localization.Loc.T("Import.PickerTitle"),
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Playlist exports") { Patterns = new[] { "*.csv", "*.json", "*.m3u", "*.m3u8" } },
+                    new FilePickerFileType(Localization.Loc.T("Import.PickerFilter")) { Patterns = new[] { "*.csv", "*.json", "*.m3u", "*.m3u8" } },
                     FilePickerFileTypes.All
                 }
             });

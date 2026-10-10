@@ -345,7 +345,7 @@ public sealed class JellyfinClient : IMediaServerClient
                 var name = entry.ValueKind == JsonValueKind.String ? entry.GetString() : null;
                 if (!string.IsNullOrWhiteSpace(name)) names.Add(name!);
             }
-            if (names.Count > 0) return string.Join(", ", names);
+            if (names.Count > 0) return string.Join(ArtistCredit.JoinText, names);
         }
         return fallback;
     }

@@ -34,12 +34,37 @@ public partial class AddSongsDialogViewModel : ViewModelBase
 
     public ObservableCollection<AddSongItem> Results { get; } = new();
 
+    private readonly string? _playlistName;
+
+    /// <summary>"Add songs to Road Trip" (plain "Add Songs" when the caller gave no name).</summary>
+    public string Title => string.IsNullOrWhiteSpace(_playlistName)
+        ? Localization.Loc.T("AddSongs.AddSongs")
+        : Localization.Loc.T("AddSongs.TitleFor", _playlistName.Trim());
+
+    /// <summary>How many of the library's songs the playlist already has (what its page lists).</summary>
+    public int InPlaylistCount { get; }
+
+    public string Subtitle => InPlaylistCount switch
+    {
+        0 => Localization.Loc.T("AddSongs.PlaylistEmpty"),
+        1 => Localization.Loc.T("AddSongs.PlaylistOneSong"),
+        _ => Localization.Loc.T("AddSongs.PlaylistSongCount", InPlaylistCount),
+    };
+
     /// <summary>True while the search box is empty and shuffled library picks are shown.</summary>
     public bool IsShuffleMode => string.IsNullOrWhiteSpace(SearchText) && _shuffledPicks.Count > 0;
-    public bool ShowPrompt => string.IsNullOrWhiteSpace(SearchText) && _shuffledPicks.Count == 0;
+    /// <summary>Nothing to suggest because every library song is already in the playlist.</summary>
+    public bool ShowPrompt => string.IsNullOrWhiteSpace(SearchText) && _shuffledPicks.Count == 0 && !IsLibraryEmpty;
+    /// <summary>Nothing to suggest because the library has no songs (the prompt above said they
+    /// were all in the playlist).</summary>
+    public bool ShowEmptyLibrary => string.IsNullOrWhiteSpace(SearchText) && IsLibraryEmpty;
+    public bool IsLibraryEmpty => _library.Count == 0;
     public bool ShowNoResults => !string.IsNullOrWhiteSpace(SearchText) && Results.Count == 0;
     public bool HasSelection => _selected.Count > 0;
-    public string AddButtonText => _selected.Count > 0 ? $"Add {_selected.Count}" : "Add";
+    public string SelectionText => Localization.Loc.T("AddSongs.SelectedCount", _selected.Count);
+    public string AddButtonText => _selected.Count > 0
+        ? Localization.Loc.T("AddSongs.AddCount", _selected.Count)
+        : Localization.Loc.T("AddSongs.Add");
 
     /// <summary>
     /// How many tracks the query matches, ignoring the row cap. At most MaxResults rows
@@ -49,7 +74,7 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     /// </summary>
     public int MatchCount => _matches.Count;
     public bool IsTruncated => _matches.Count > Results.Count;
-    public string TruncationNotice => $"showing {Results.Count} of {_matches.Count} matches";
+    public string TruncationNotice => Localization.Loc.T("AddSongs.Showing", Results.Count, _matches.Count);
 
     /// <summary>Tracks the user can actually tick (ones already in the playlist can't).</summary>
     private IEnumerable<Track> SelectableMatches => _matches.Where(t => !_alreadyInPlaylist.Contains(t.Id));
@@ -61,8 +86,10 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     /// <summary>Names the count only when it exceeds what is on screen — otherwise
     /// "Select all" already means the visible rows.</summary>
     public string SelectAllText => AreAllResultsSelected
-        ? "Deselect all"
-        : IsTruncated ? $"Select all {SelectableMatches.Count()}" : "Select all";
+        ? Localization.Loc.T("AddSongs.Clear")
+        : IsTruncated
+            ? Localization.Loc.T("AddSongs.SelectAllCount", SelectableMatches.Count())
+            : Localization.Loc.T("AddSongs.SelectAll");
 
     /// <summary>Fires with the chosen tracks when the user confirms.</summary>
     public event EventHandler<IReadOnlyList<Track>>? SongsChosen;
@@ -70,10 +97,16 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     /// <summary>Fires when the dialog should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public AddSongsDialogViewModel(IReadOnlyList<Track> library, IEnumerable<Guid> alreadyInPlaylist)
+    /// <summary>Set once Add has handed the songs over; a second Add while the dialog animates
+    /// out does nothing.</summary>
+    private bool _added;
+
+    public AddSongsDialogViewModel(IReadOnlyList<Track> library, IEnumerable<Guid> alreadyInPlaylist, string? playlistName = null)
     {
         _library = library ?? Array.Empty<Track>();
         _alreadyInPlaylist = new HashSet<Guid>(alreadyInPlaylist ?? Enumerable.Empty<Guid>());
+        _playlistName = playlistName;
+        InPlaylistCount = _library.Where(t => _alreadyInPlaylist.Contains(t.Id)).Select(t => t.Id).Distinct().Count();
         BuildShuffledPicks();
         RefreshResults();
     }
@@ -145,6 +178,7 @@ public partial class AddSongsDialogViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(IsShuffleMode));
         OnPropertyChanged(nameof(ShowPrompt));
+        OnPropertyChanged(nameof(ShowEmptyLibrary));
         OnPropertyChanged(nameof(ShowNoResults));
         OnPropertyChanged(nameof(MatchCount));
         OnPropertyChanged(nameof(IsTruncated));
@@ -215,6 +249,7 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     {
         SelectedCount = _selected.Count;
         OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(SelectionText));
         OnPropertyChanged(nameof(AddButtonText));
         OnPropertyChanged(nameof(AreAllResultsSelected));
         OnPropertyChanged(nameof(SelectAllText));
@@ -223,8 +258,10 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     [RelayCommand]
     private void Add()
     {
+        if (_added) return;
         if (_selected.Count > 0)
         {
+            _added = true;
             // Projected in tick order (see _selectionOrder), not library order.
             var byId = _library.Where(t => _selected.Contains(t.Id))
                 .GroupBy(t => t.Id)
@@ -251,7 +288,7 @@ public partial class AddSongItem : ObservableObject
 
     public Track Track { get; }
 
-    /// <summary>True when the track is already in the target playlist (shown disabled/added).</summary>
+    /// <summary>True when the track is already in the target playlist (tagged "In playlist", not tickable).</summary>
     public bool IsInPlaylist { get; set; }
 
     [ObservableProperty] private bool _isSelected;

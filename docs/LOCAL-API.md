@@ -322,6 +322,10 @@ online or plugin, whichever it loaded).
   whole text.
 - `wordLevel: true`: at least one line has per-word timing (ELRC / TTML karaoke).
   `words` is `null` on lines without it.
+- `romanization` / `translation`: the line's extra layers (TTML translations and
+  transliterations, or LRC lines that share the line's timestamp: one extra line is the
+  translation, two are the romanization then the translation). `null` when absent.
+  `text` (the whole-song string) lists them under their line.
 - `{ "trackId": "…", "available": false }` while nothing is loaded for this track yet
   (lyrics can arrive a moment after a track starts), or there are none.
 

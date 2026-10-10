@@ -150,6 +150,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private EventHandler<string>? _accentChangedHandler;
     private EventHandler<bool>? _liquidGlassChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _settingsBackdropRefreshHandler;
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
     private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
@@ -164,7 +165,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
     private Border? _settingsOverlay;
-    private Border? _settingsScrim;
+    private Controls.BlurredBackdrop? _settingsScrim;
+    /// <summary>Bumped on every Settings open/close, so a reveal still waiting for the
+    /// backdrop snapshot knows when it has been overtaken.</summary>
+    private int _settingsSheetEpoch;
     private Controls.GlassPanel? _settingsGlass;
     private Border? _settingsCard;
     private Border? _queuePopupPanel;
@@ -196,6 +200,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         RestoreMiniPlayerPlacement(_miniPlayer, miniVm, vm.Settings.GetSettings());
 
         _miniPlayer.Show();
+        // Avalonia's Win32 Show() re-shows in the state code last SET, not the current one: a
+        // maximize done by Windows (snap, caption double-click, Win+Up) arrives through WM_SIZE
+        // and never updates it, so closing the mini player brought the window back un-maximized
+        // (Discord, Andre 10-07). Setting the current state records it before Hide().
+        WindowState = WindowState;
         Hide();
     }
 
@@ -437,6 +446,29 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
     }
 
+    /// <summary>
+    /// Settings open, after the overlay went visible (card, frost and scrim still at 0): waits
+    /// for the scrim's blurred snapshot of the app (BlurredBackdrop.PrepareAsync — at most its
+    /// budget, normally a frame or two), then fades the scrim (unless it is already up) and
+    /// plays the sheet's entrance. The snapshot is of AppContentLayer only, so the sheet being
+    /// in the tree meanwhile can't end up in it. A close (or another open) in the meantime
+    /// wins: this one then does nothing.
+    /// </summary>
+    private async void RevealSettingsSheet(bool fadeScrim)
+    {
+        var epoch = ++_settingsSheetEpoch;
+        if (_settingsScrim is { HasSnapshot: false } scrim)
+            await scrim.PrepareAsync();
+        else
+            // Reopened during the close fade, the snapshot still up: one frame at 0 first
+            // so the transitions animate the settle (as the open always did).
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Render);
+        if (epoch != _settingsSheetEpoch || DataContext is not MainWindowViewModel { IsSettingsModalOpen: true })
+            return;
+        if (fadeScrim) SetSettingsScrim(visible: null, opacity: 1);
+        SetSettingsSheet(shown: true);
+    }
+
     /// <summary>Mirrors the Settings overlay's visibility/opacity onto the sibling scrim
     /// (see SettingsScrim in the XAML for why it is not the overlay's Background).</summary>
     private void SetSettingsScrim(bool? visible, double? opacity)
@@ -501,6 +533,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
 
+                // A setting changed from the open sheet (theme, Liquid Glass, accent,
+                // language…) repaints the app under it: retake the blurred backdrop right
+                // after that renders, so it keeps up with the sheet (owner 10-09). No-op while
+                // Settings is closed (no snapshot up). Progress streams (scan, downloads)
+                // change nothing visible under the blur.
+                _settingsBackdropRefreshHandler = (_, e) =>
+                {
+                    if (e.PropertyName?.EndsWith("Progress", StringComparison.Ordinal) != true)
+                        _settingsScrim?.RefreshSoon();
+                };
+                vm.Settings.PropertyChanged += _settingsBackdropRefreshHandler;
+
                 // The 'System' theme tile resolved the OS light/dark mode once and
                 // never tracked later switches. The VM no-ops unless System is the
                 // active theme; Post guards against a non-UI-thread raise (SetTheme
@@ -532,7 +576,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
                 _rootPanel = this.FindControl<DockPanel>("RootPanel");
                 _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
-                _settingsScrim = this.FindControl<Border>("SettingsScrim");
+                _settingsScrim = this.FindControl<Controls.BlurredBackdrop>("SettingsScrim");
+                if (_settingsScrim != null)
+                    _settingsScrim.Target = this.FindControl<Panel>("AppContentLayer");
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
@@ -666,35 +712,36 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                                     {
                                         if (_settingsScrim != null) _settingsScrim.Transitions = scrimTransitions;
-                                        SetSettingsSheet(shown: true);
                                     }, Avalonia.Threading.DispatcherPriority.Render);
+                                    // The blur cross-fades in under the dim when it lands.
+                                    RevealSettingsSheet(fadeScrim: false);
                                 }
                                 else
                                 {
-                                    // Backdrop fades in while the card scales up; the settle
-                                    // happens on the next frame so the transitions animate it.
+                                    // Backdrop fades in while the card scales up, once the
+                                    // blurred snapshot is ready (see RevealSettingsSheet).
                                     _settingsOverlay.IsVisible = true;
                                     SetSettingsScrim(visible: true, opacity: null);
-                                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                                    {
-                                        SetSettingsScrim(visible: null, opacity: 1);
-                                        SetSettingsSheet(shown: true);
-                                    }, Avalonia.Threading.DispatcherPriority.Render);
+                                    RevealSettingsSheet(fadeScrim: true);
                                 }
                             }
                             else
                             {
                                 // Mirror of the open animation, then drop the overlay out
                                 // of the tree once the 140ms transitions have played.
+                                var closeEpoch = ++_settingsSheetEpoch;
                                 SetSettingsScrim(visible: null, opacity: 0);
                                 SetSettingsSheet(shown: false);
                                 Avalonia.Threading.DispatcherTimer.RunOnce(() =>
                                 {
-                                    if (_settingsOverlay != null &&
+                                    // Not when reopened (and maybe closed again) since: the
+                                    // latest close hides it, with its own snapshot still up.
+                                    if (_settingsOverlay != null && closeEpoch == _settingsSheetEpoch &&
                                         DataContext is MainWindowViewModel m && !m.IsSettingsModalOpen)
                                     {
                                         _settingsOverlay.IsVisible = false;
                                         SetSettingsScrim(visible: false, opacity: null);
+                                        _settingsScrim?.Release();
                                     }
                                 }, TimeSpan.FromMilliseconds(150));
                             }
@@ -1299,6 +1346,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
+            if (_settingsBackdropRefreshHandler != null)
+                vm.Settings.PropertyChanged -= _settingsBackdropRefreshHandler;
 
             if (_sidebarAlwaysExpandedHandler != null)
                 vm.Settings.SidebarAlwaysExpandedChanged -= _sidebarAlwaysExpandedHandler;
@@ -1786,10 +1835,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             case ShortcutAction.PreviousTrack:
                 vm.Player.PreviousCommand.Execute(null);
                 return true;
+            // Adjusting while muted means "let me hear it", as the bar's wheel/drag do: a
+            // shortcut step used to change the level silently under the mute (10-08).
             case ShortcutAction.VolumeUp:
+                vm.Player.UnmuteForAdjust();
                 vm.Player.Volume = Math.Min(100, vm.Player.Volume + 5);
                 return true;
             case ShortcutAction.VolumeDown:
+                vm.Player.UnmuteForAdjust();
                 vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
                 return true;
             case ShortcutAction.ToggleFavorite:
@@ -2352,7 +2405,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private double _queueBandStartRow;
     private Point _queueBandLastPos;
     private int[]? _queueBandKeep;
-    private DispatcherTimer? _queueBandScrollTimer;
+    // Band auto-scroll runs on the compositor frame clock (one step per rendered frame) —
+    // a 16 ms DispatcherTimer on Windows lands on the 15.6 ms USER-timer grid and ticked at
+    // 41–48/s with uneven 16/31 ms steps. One frame in flight at a time; the loop ends
+    // itself when the band is released.
+    private bool _queueBandFrameQueued;
+    private long _queueBandLastFrameTicks;
 
     /// <summary>First on-screen realized row: its index, its top (margin included) in
     /// <paramref name="listBox"/> coordinates, and the row pitch.</summary>
@@ -2415,8 +2473,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 return;
             _queueBandActive = true;
             e.Pointer.Capture(listBox);
-            _queueBandScrollTimer ??= CreateQueueBandScrollTimer();
-            _queueBandScrollTimer.Start();
+            _queueBandLastFrameTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            QueueBandFrameRequest();
         }
         _queueBandLastPos = pos;
         UpdateQueueBand(listBox);
@@ -2474,30 +2532,42 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         marquee.IsVisible = true;
     }
 
-    private DispatcherTimer CreateQueueBandScrollTimer()
+    private void QueueBandFrameRequest()
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        timer.Tick += (_, _) =>
+        if (!_queueBandActive || _queueBandFrameQueued) return;
+        _queueBandFrameQueued = true;
+        RequestAnimationFrame(QueueBandFrame);
+    }
+
+    private void QueueBandFrame(TimeSpan _)
+    {
+        _queueBandFrameQueued = false;
+        if (!_queueBandActive) return;
+
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        // Real elapsed time, clamped so a stalled UI thread can't produce one giant jump.
+        var dt = Math.Min((now - _queueBandLastFrameTicks) / (double)System.Diagnostics.Stopwatch.Frequency, 0.1);
+        _queueBandLastFrameTicks = now;
+
+        if (this.FindControl<ListBox>("QueuePopupListBox") is { } listBox
+            && listBox.FindDescendantOfType<ScrollViewer>() is { } scroller)
         {
-            if (!_queueBandActive
-                || this.FindControl<ListBox>("QueuePopupListBox") is not { } listBox
-                || listBox.FindDescendantOfType<ScrollViewer>() is not { } scroller)
-                return;
-            var y = _queueBandLastPos.Y;
-            var height = listBox.Bounds.Height;
-            var depth = y < QueueBandEdge ? y - QueueBandEdge
-                : y > height - QueueBandEdge ? y - (height - QueueBandEdge)
-                : 0;
-            if (depth == 0) return;
-            var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
-            var next = Math.Clamp(scroller.Offset.Y + Math.Clamp(depth, -60, 60) * 0.5, 0, max);
-            if (Math.Abs(next - scroller.Offset.Y) < 0.5) return;
-            scroller.Offset = scroller.Offset.WithY(next);
-            // Realize/arrange the rows at the new offset before measuring off them.
-            listBox.UpdateLayout();
-            UpdateQueueBand(listBox);
-        };
-        return timer;
+            var delta = QueueBandAutoScroll.Step(_queueBandLastPos.Y, listBox.Bounds.Height, QueueBandEdge, dt);
+            if (delta != 0)
+            {
+                var max = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
+                var next = Math.Clamp(scroller.Offset.Y + delta, 0, max);
+                if (Math.Abs(next - scroller.Offset.Y) > 0.01)
+                {
+                    scroller.Offset = scroller.Offset.WithY(next);
+                    // Realize/arrange the rows at the new offset before measuring off them.
+                    listBox.UpdateLayout();
+                    UpdateQueueBand(listBox);
+                }
+            }
+        }
+
+        QueueBandFrameRequest();
     }
 
     private void EndQueueBand()
@@ -2505,7 +2575,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         _queueBandPending = false;
         _queueBandActive = false;
         _queueBandKeep = null;
-        _queueBandScrollTimer?.Stop();
         if (this.FindControl<Border>("QueueMarquee") is { } marquee)
             marquee.IsVisible = false;
     }
@@ -2529,7 +2598,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel, handledEventsToo: true);
 
-        var rootPanel = this.FindControl<Panel>("RootPanel")?.Parent as Panel;
+        // The window's root Panel (RootPanel now sits one level down, in AppContentLayer).
+        var rootPanel = Content as Panel;
         if (rootPanel != null)
         {
             DragDrop.SetAllowDrop(rootPanel, true);
@@ -2569,7 +2639,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 } tracks) return;
         if (DataContext is not MainWindowViewModel vm) return;
         e.Handled = true;
-        vm.Player.AddRangeToQueue(tracks.ToList());
+        // The rows land in the open queue list itself: that is the confirmation.
+        vm.Player.AddRangeToQueue(tracks.ToList(), announce: false);
     }
 
     // Backdrop click closes the Settings modal; clicks inside the card are swallowed.

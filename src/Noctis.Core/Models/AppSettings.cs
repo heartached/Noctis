@@ -45,6 +45,11 @@ public class AppSettings
     /// <summary>Persistent include/exclude rules for scanning.</summary>
     public List<FolderRule> FolderRules { get; set; } = new();
 
+    /// <summary>Folders (any level) the user hid from the library in the Folders view. Their
+    /// tracks stay scanned and in library.json, with their play counts, favorites and ratings,
+    /// but drop out of every other view until the folder is shown again. No rescan either way.</summary>
+    public List<string> HiddenLibraryFolders { get; set; } = new();
+
     /// <summary>Directory names to ignore while scanning (case-insensitive).</summary>
     public List<string> IgnoredFolderNames { get; set; } = new() { ".git", "node_modules", "$recycle.bin", "system volume information" };
 
@@ -344,6 +349,9 @@ public class AppSettings
     /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB) before falling back to transcription.</summary>
     public bool LyricsStudioOnlineLyrics { get; set; } = true;
 
+    /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
+    public bool LyricsStudioSaveTtml { get; set; }
+
     // ── Songs page optional columns ──
     // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;
@@ -393,6 +401,16 @@ public class AppSettings
     /// (release date), "oldest" (undated releases last) or "name" (A–Z). One setting for
     /// both tabs and every artist.</summary>
     public string ArtistReleaseSortMode { get; set; } = "newest";
+
+    /// <summary>Whether the artist page Overview's "Similar Artists" section shows its
+    /// tiles (Luwi, Discord 10-04). One setting for every artist; defaults to expanded,
+    /// the pre-feature layout.</summary>
+    public bool ArtistSimilarExpanded { get; set; } = true;
+
+    /// <summary>Album page "Other Versions" / "More By {Artist}" fold state, one setting each
+    /// for every album (10-05); default expanded, the pre-feature layout.</summary>
+    public bool AlbumOtherVersionsExpanded { get; set; } = true;
+    public bool AlbumMoreByExpanded { get; set; } = true;
 
     /// <summary>Folders track-pane sort (GitHub #89): "default" (folder order),
     /// "modified-newest" or "modified-oldest" (file last-modified time).</summary>
@@ -444,6 +462,16 @@ public class AppSettings
     /// original #66 alpha glass look. Shown as "Glass Opacity" (GitHub #104): with Liquid Glass
     /// on it also tints the queue drawer and the island's menus. Key kept so looks carry over.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
+
+    /// <summary>Background Blur (owner 10-08): how strongly the app behind a pop-up (the
+    /// metadata editor) and the Settings sheet is blurred, 0 = off (dim only) to 1 = the
+    /// strongest, shown as a percent like the opacity sliders. Default 10% (owner 10-08), a
+    /// light blur. (The first build stored a 0–10 step as "BackgroundBlur"; a new
+    /// key so that value is never read as a fraction.)</summary>
+    public double BackgroundBlurAmount { get; set; } = BackgroundBlurAmountDefault;
+    public const double BackgroundBlurAmountDefault = 0.1;
+    /// <summary>Below this the slider reads Off and no blur is drawn (the thumb at the far left).</summary>
+    public const double BackgroundBlurOffBelow = 0.005;
 
     /// <summary>Opacity of the white track box (song info card) inside the playback bar
     /// (0 = no box, 1 = solid white). Default 0.07 is the reference LCD's soft lift.</summary>
@@ -598,6 +626,12 @@ public class AppSettings
     /// Applies to both artist and album-artist tags; see ArtistCredit.DefaultSeparators.</summary>
     public List<string> ArtistTagSeparators { get; set; } = ArtistCredit.DefaultSeparators.ToList();
 
+    /// <summary>The join (ArtistCredit.JoinText) the indexed artist credits were read with —
+    /// multi-value artist tags are joined with it. Every build before GitHub #117 used ", ".
+    /// When the active join differs, LibraryService.ApplyArtistCreditJoinAsync re-reads the
+    /// affected tracks' tags so their credits split under the current separators.</summary>
+    public string ArtistCreditJoin { get; set; } = ", ";
+
     /// <summary>GitHub #99: the Artists grid's name sort skips a leading word from
     /// <see cref="ArtistSortIgnoredWords"/> ("The Beatles" sorts under B). Off by default.</summary>
     public bool IgnoreLeadingWordsInArtistSort { get; set; } = false;
@@ -680,11 +714,20 @@ public class AppSettings
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
     public bool ListenBrainzScrobblingEnabled { get; set; } = false;
 
+    /// <summary>Songs, albums and artists never sent to Last.fm or ListenBrainz (nor to plugins'
+    /// scrobble hook): "track:{id}", "album:{id}", "artist:{name}"; see
+    /// Helpers.ScrobbleExclusionKeys. Plays still count in Noctis itself.</summary>
+    public List<string>? ScrobbleExcludedKeys { get; set; }
+
     /// <summary>ListenBrainz user token (single-string credential pasted by the user from listenbrainz.org/profile/).</summary>
     public string ListenBrainzToken { get; set; } = "";
 
     /// <summary>ListenBrainz username (populated after a successful validate-token call).</summary>
     public string ListenBrainzUsername { get; set; } = "";
+
+    /// <summary>ListenBrainz-compatible API URL for self-hosted servers (Koito, Maloja, …).
+    /// Empty = the official api.listenbrainz.org (GitHub #118).</summary>
+    public string ListenBrainzApiUrl { get; set; } = "";
 
     /// <summary>
     /// Internal metadata schema version used for one-time library backfills
@@ -833,6 +876,10 @@ public class AppSettings
     /// <summary>Whether MusicBrainz is used as the fallback tag source.</summary>
     public bool MusicBrainzEnabled { get; set; } = true;
 
+    /// <summary>Whether the metadata editor's Search Metadata asks Apple Music (the keyless
+    /// iTunes Search API) — covers, copyright, explicit flags, track/disc counts.</summary>
+    public bool AppleMusicMetadataEnabled { get; set; } = true;
+
     // ── Audio Converter ──
 
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
@@ -889,6 +936,9 @@ public class AppSettings
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        BackgroundBlurAmount = double.IsFinite(BackgroundBlurAmount)
+            ? Math.Clamp(BackgroundBlurAmount, 0, 1)
+            : BackgroundBlurAmountDefault;
         PlaybackBarTrackBoxOpacity = double.IsFinite(PlaybackBarTrackBoxOpacity)
             ? Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1)
             : 0.07;

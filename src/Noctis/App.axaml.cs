@@ -100,6 +100,14 @@ public partial class App : Application
 
         // Every ComboBox drop-down eases open (fade + glide), matching the Settings folds.
         Noctis.Helpers.ComboBoxDropDownAnimator.Install();
+
+        // Icon-only buttons are named by their tooltip for screen readers / UI Automation.
+        Noctis.Helpers.AccessibleNames.Install();
+
+        // Submenus (Lyrics ▸, Tools ▸ …) open 100 ms after the pointer rests on their row
+        // instead of Avalonia's 400 ms default, which read as lag; a short wait still keeps
+        // them from flashing open while the pointer passes over.
+        Avalonia.Controls.Platform.DefaultMenuInteractionHandler.MenuShowDelay = TimeSpan.FromMilliseconds(100);
     }
 
     /// <summary>
@@ -122,6 +130,9 @@ public partial class App : Application
             window.Opened -= LogRenderer;
             try
             {
+                // Which clock drives RequestAnimationFrame / transitions on this machine. Logged
+                // before the GPU-interop probe, whose throw would otherwise take this line with it.
+                DebugLog.Write("Startup", $"frame clock: {Helpers.RenderClockInfo.Describe()}");
                 // GPU backends (ANGLE/D3D11, Vulkan) expose GPU interop; the software renderer does not.
                 var compositor = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(window)?.Compositor;
                 var interop = compositor == null ? null : await compositor.TryGetCompositionGpuInterop();

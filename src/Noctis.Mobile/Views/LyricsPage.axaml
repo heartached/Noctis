@@ -97,7 +97,7 @@
                                      or words to show; without this the page anchors on a blank slot. -->
                                 <TextBlock Text="•••" FontWeight="Bold" Foreground="{StaticResource LyricsFg}"
                                            IsVisible="{Binding IsIntroPlaceholder}" />
-                                <TextBlock Text="{Binding Text}" FontWeight="Bold" TextWrapping="Wrap"
+                                <TextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold" TextWrapping="Wrap"
                                            Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}" />
                                 <ItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsActive}"
                                               IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}">
@@ -126,7 +126,7 @@
                                         </MultiBinding>
                                     </TextBlock.IsVisible>
                                 </TextBlock>
-                                <TextBlock Text="{Binding Translation}" TextWrapping="Wrap" Opacity="0.6"
+                                <TextBlock Text="{Binding Translation, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" TextWrapping="Wrap" Opacity="0.6"
                                            Foreground="{StaticResource LyricsFg}"
                                            FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
                                     <TextBlock.IsVisible>

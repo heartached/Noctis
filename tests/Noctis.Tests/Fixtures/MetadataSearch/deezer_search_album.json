@@ -1,0 +1,63 @@
+{
+ "data": [
+  {
+   "id": 302127,
+   "title": "Discovery",
+   "link": "https://www.deezer.com/album/302127",
+   "cover": "https://api.deezer.com/album/302127/image",
+   "cover_small": "https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/56x56-000000-80-0-0.jpg",
+   "cover_medium": "https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/250x250-000000-80-0-0.jpg",
+   "cover_big": "https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/500x500-000000-80-0-0.jpg",
+   "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/1000x1000-000000-80-0-0.jpg",
+   "md5_image": "5718f7c81c27e0b2417e2a4c45224f8a",
+   "genre_id": 106,
+   "nb_tracks": 14,
+   "record_type": "album",
+   "tracklist": "https://api.deezer.com/album/302127/tracks",
+   "explicit_lyrics": false,
+   "artist": {
+    "id": 27,
+    "name": "Daft Punk",
+    "link": "https://www.deezer.com/artist/27",
+    "picture": "https://api.deezer.com/artist/27/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/638e69b9caaf9f9f3f8826febea7b543/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/638e69b9caaf9f9f3f8826febea7b543/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/638e69b9caaf9f9f3f8826febea7b543/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/638e69b9caaf9f9f3f8826febea7b543/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/27/top?limit=50",
+    "type": "artist"
+   },
+   "type": "album"
+  },
+  {
+   "id": 74901252,
+   "title": "Discovery",
+   "link": "https://www.deezer.com/album/74901252",
+   "cover": "https://api.deezer.com/album/74901252/image",
+   "cover_small": "https://cdn-images.dzcdn.net/images/cover/4ff21b23662026086ec6145e406b6b0e/56x56-000000-80-0-0.jpg",
+   "cover_medium": "https://cdn-images.dzcdn.net/images/cover/4ff21b23662026086ec6145e406b6b0e/250x250-000000-80-0-0.jpg",
+   "cover_big": "https://cdn-images.dzcdn.net/images/cover/4ff21b23662026086ec6145e406b6b0e/500x500-000000-80-0-0.jpg",
+   "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4ff21b23662026086ec6145e406b6b0e/1000x1000-000000-80-0-0.jpg",
+   "md5_image": "4ff21b23662026086ec6145e406b6b0e",
+   "genre_id": 106,
+   "nb_tracks": 16,
+   "record_type": "album",
+   "tracklist": "https://api.deezer.com/album/74901252/tracks",
+   "explicit_lyrics": false,
+   "artist": {
+    "id": 2198571,
+    "name": "Data Punk",
+    "link": "https://www.deezer.com/artist/2198571",
+    "picture": "https://api.deezer.com/artist/2198571/image",
+    "picture_small": "https://cdn-images.dzcdn.net/images/artist/46e8b7327cdf24c8b6c52e2c71dc5936/56x56-000000-80-0-0.jpg",
+    "picture_medium": "https://cdn-images.dzcdn.net/images/artist/46e8b7327cdf24c8b6c52e2c71dc5936/250x250-000000-80-0-0.jpg",
+    "picture_big": "https://cdn-images.dzcdn.net/images/artist/46e8b7327cdf24c8b6c52e2c71dc5936/500x500-000000-80-0-0.jpg",
+    "picture_xl": "https://cdn-images.dzcdn.net/images/artist/46e8b7327cdf24c8b6c52e2c71dc5936/1000x1000-000000-80-0-0.jpg",
+    "tracklist": "https://api.deezer.com/artist/2198571/top?limit=50",
+    "type": "artist"
+   },
+   "type": "album"
+  }
+ ],
+ "total": 2
+}

@@ -25,6 +25,30 @@ public class LrcLibService : ILrcLibService
         _http = httpClient;
     }
 
+    /// <summary>Pause before the one retry of a "busy" answer; tests set it to zero.</summary>
+    internal TimeSpan BusyRetryDelay { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// GET with one retry when LRCLIB says it is busy: under load it answers 503
+    /// "ServerOverloaded … please retry in a moment" (or 429). Live check 10-05: /get for a
+    /// song came back 503 while /search answered 200, and Edit Info reported "check your
+    /// internet connection" on a machine that was online. Still busy after the retry, the
+    /// caller gets the provider error as before.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendWithBusyRetryAsync(string url, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
+            var response = await _http.SendAsync(request, ct);
+            if (attempt > 0 || response.StatusCode is not (HttpStatusCode.ServiceUnavailable or HttpStatusCode.TooManyRequests))
+                return response;
+            response.Dispose();
+            await Task.Delay(BusyRetryDelay, ct);
+        }
+    }
+
     public async Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
     {
         var cacheKey = CacheKey("get", artist, trackName, Math.Round(durationSeconds).ToString(CultureInfo.InvariantCulture));
@@ -37,10 +61,7 @@ public class LrcLibService : ILrcLibService
                       $"&track_name={Uri.EscapeDataString(trackName)}" +
                       $"&duration={Math.Round(durationSeconds)}";
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
-
-            using var response = await _http.SendAsync(request, ct);
+            using var response = await SendWithBusyRetryAsync(url, ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 Store(cacheKey, (LrcLibResult?)null);
@@ -80,10 +101,7 @@ public class LrcLibService : ILrcLibService
             var url = $"{BaseUrl}/search?artist_name={Uri.EscapeDataString(artist)}" +
                       $"&track_name={Uri.EscapeDataString(trackName)}";
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
-
-            using var response = await _http.SendAsync(request, ct);
+            using var response = await SendWithBusyRetryAsync(url, ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 var empty = new List<LrcLibResult>();

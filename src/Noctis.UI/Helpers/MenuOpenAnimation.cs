@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
@@ -78,6 +82,57 @@ public static class MenuOpenAnimation
     public static void SetFade(Control control, double value) => control.SetValue(FadeProperty, value);
     public static double GetFade(Control control) => control.GetValue(FadeProperty);
 
+    /// <summary>
+    /// Non-zero: the open motion slides in sideways from this X offset instead of rising up.
+    /// Set on submenu cards, which open beside their row (-8 = out of the parent menu).
+    /// </summary>
+    public static readonly AttachedProperty<double> OffsetXProperty =
+        AvaloniaProperty.RegisterAttached<Control, double>("OffsetX", typeof(MenuOpenAnimation));
+
+    public static void SetOffsetX(Control control, double value) => control.SetValue(OffsetXProperty, value);
+    public static double GetOffsetX(Control control) => control.GetValue(OffsetXProperty);
+
+    /// <summary>
+    /// The "pop" open (Albums-page album menu, trial 10-09): the card grows out of the click point
+    /// (<see cref="PopAnchorProperty"/>) while it fades in, then its rows settle in one after
+    /// another, and it closes with that motion reversed. Set on every ContextMenu and
+    /// MenuFlyoutPresenter by the global menu style (Styles.axaml); replaces the rise-up there.
+    /// </summary>
+    public static readonly AttachedProperty<bool> PopProperty =
+        AvaloniaProperty.RegisterAttached<Control, bool>("Pop", typeof(MenuOpenAnimation));
+
+    public static void SetPop(Control control, bool value) => control.SetValue(PopProperty, value);
+    public static bool GetPop(Control control) => control.GetValue(PopProperty);
+
+    /// <summary>Screen point (px) the <see cref="PopProperty"/> card grows from; set before each open.
+    /// Null: the last pointer press if it was recent (the click that opened the menu), else the
+    /// card's top-left corner.</summary>
+    public static readonly AttachedProperty<PixelPoint?> PopAnchorProperty =
+        AvaloniaProperty.RegisterAttached<Control, PixelPoint?>("PopAnchor", typeof(MenuOpenAnimation));
+
+    public static void SetPopAnchor(Control control, PixelPoint? value) => control.SetValue(PopAnchorProperty, value);
+    public static PixelPoint? GetPopAnchor(Control control) => control.GetValue(PopAnchorProperty);
+
+    private const double PopScale = 0.9;
+    private const double PopDurationMs = 280;
+    private const double PopFadeMs = 160;
+    private const double PopRowDurationMs = 240;
+    private const double PopRowStaggerMs = 16;
+    private const double PopRowOffsetY = 6;
+    private const int PopStaggeredRows = 10;
+    private const double PopCloseMs = 150;
+    private const double PopCloseScale = 0.94;
+    // Accelerate out: leaves gently, gone quickly.
+    private static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.4, 0, 1, 1);
+    // Soft decelerate (easeOutQuint-like): quick start, long gentle landing, no overshoot.
+    private static readonly Avalonia.Animation.Easings.Easing PopEase = new CubicBezierEase(0.22, 1, 0.36, 1);
+
+    // The last pointer press anywhere in the app (screen px + when): the default PopAnchor, so a
+    // menu grows out of the right-click or the button press that opened it.
+    private static PixelPoint _lastPress;
+    private static long _lastPressAt;
+    private const long PressAnchorMaxAgeMs = 1500;
+
     private static readonly AttachedProperty<long> LastRunProperty =
         AvaloniaProperty.RegisterAttached<Control, long>("LastRun", typeof(MenuOpenAnimation));
 
@@ -91,6 +146,12 @@ public static class MenuOpenAnimation
 
     static MenuOpenAnimation()
     {
+        InputElement.PointerPressedEvent.AddClassHandler<TopLevel>((top, e) =>
+        {
+            _lastPress = top.PointToScreen(e.GetPosition(top));
+            _lastPressAt = Environment.TickCount64;
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
+
         EnableProperty.Changed.AddClassHandler<Control>((control, args) =>
         {
             control.AttachedToVisualTree -= OnAttached;
@@ -118,6 +179,20 @@ public static class MenuOpenAnimation
             // attach event would be missed. Run now if we're already in the visual tree.
             if (TopLevel.GetTopLevel(control) is not null)
                 TryRun(control);
+        });
+
+        // A Pop menu also closes with the motion reversed (see OnPopMenuClosing for how it
+        // avoids the stranded-popup trap described above).
+        PopProperty.Changed.AddClassHandler<Control>((control, args) =>
+        {
+            if (control is not ContextMenu menu)
+                return;
+            menu.Closing -= OnPopMenuClosing;
+            menu.Closed -= OnPopMenuClosed;
+            if (!args.GetNewValue<bool>())
+                return;
+            menu.Closing += OnPopMenuClosing;
+            menu.Closed += OnPopMenuClosed;
         });
 
         EnableFlyoutCloseProperty.Changed.AddClassHandler<MenuFlyout>((flyout, args) =>
@@ -149,18 +224,221 @@ public static class MenuOpenAnimation
             return; // collapse the popup's double-attach into a single animation
         control.SetValue(LastRunProperty, now);
 
+        if (GetPop(control))
+        {
+            RunPop(control);
+            return;
+        }
+
         EnsureTransitions(control, TimeSpan.FromMilliseconds(OpenDurationMs));
 
         // Start hidden + nudged down, then settle into place on the next frame so the
         // transitions animate the change instead of snapping straight to the end state.
         var fade = FadePropertyOf(control);
+        var offsetX = GetOffsetX(control);
         control.SetValue(fade, 0.0);
-        control.RenderTransform = TransformOperations.Parse($"translateY({OpenOffsetY}px)");
+        control.RenderTransform = TransformOperations.Parse(offsetX != 0
+            ? $"translateX({offsetX.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)"
+            : $"translateY({OpenOffsetY}px)");
         Dispatcher.UIThread.Post(() =>
         {
             control.SetValue(fade, 1.0);
-            control.RenderTransform = TransformOperations.Parse("translateY(0px)");
+            control.RenderTransform = TransformOperations.Parse(offsetX != 0 ? "translateX(0px)" : "translateY(0px)");
         }, DispatcherPriority.Render);
+    }
+
+    /// <summary>
+    /// <see cref="PopProperty"/> open: the card scales up from the click point while it fades in,
+    /// and its visible rows fade + rise into place one after another. Start values are set with
+    /// no transitions (so they snap), then the targets are set a frame later with them.
+    /// </summary>
+    private static void RunPop(Control card)
+    {
+        var run = card.GetValue(LastRunProperty);
+        var fade = FadePropertyOf(card);
+        card.Transitions = null;
+        card.IsHitTestVisible = true;
+        card.SetValue(fade, 0.0);
+        card.RenderTransform = TransformOperations.Parse(
+            $"scale({PopScale.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (card.GetValue(LastRunProperty) != run || card.GetValue(CloseAnimationRunningProperty))
+                return; // reopened or closing meanwhile; that run owns the card
+
+            card.RenderTransformOrigin = PopOrigin(card);
+            var rows = card is ItemsControl items
+                ? items.GetRealizedContainers().Where(c => c.IsVisible).ToList()
+                : new List<Control>();
+            foreach (var row in rows)
+            {
+                row.Transitions = null;
+                row.Opacity = 0;
+                row.RenderTransform = TransformOperations.Parse($"translateY({PopRowOffsetY}px)");
+            }
+
+            card.Transitions = new Transitions
+            {
+                new DoubleTransition { Property = fade, Duration = TimeSpan.FromMilliseconds(PopFadeMs), Easing = new CubicEaseOut() },
+                new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(PopDurationMs), Easing = PopEase },
+            };
+            card.SetValue(fade, 1.0);
+            card.RenderTransform = TransformOperations.Parse("scale(1)");
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (card.GetValue(LastRunProperty) != run || card.GetValue(CloseAnimationRunningProperty))
+                    return;
+                for (var i = 0; i < rows.Count; i++)
+                {
+                    var delay = TimeSpan.FromMilliseconds(Math.Min(i, PopStaggeredRows) * PopRowStaggerMs);
+                    var duration = TimeSpan.FromMilliseconds(PopRowDurationMs);
+                    rows[i].Transitions = new Transitions
+                    {
+                        new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration, Delay = delay, Easing = new CubicEaseOut() },
+                        new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Delay = delay, Easing = PopEase },
+                    };
+                    rows[i].Opacity = 1;
+                    rows[i].RenderTransform = TransformOperations.Parse("translateY(0px)");
+                }
+
+                // Once every row has landed, hand the rows back to their styles.
+                DispatcherTimer.RunOnce(() =>
+                {
+                    foreach (var row in rows)
+                    {
+                        row.Transitions = null;
+                        row.ClearValue(Visual.OpacityProperty);
+                        row.ClearValue(Visual.RenderTransformProperty);
+                    }
+                }, TimeSpan.FromMilliseconds(PopRowDurationMs + PopStaggeredRows * PopRowStaggerMs + 60));
+            }, DispatcherPriority.Render);
+        }, DispatcherPriority.Render);
+    }
+
+    /// <summary>
+    /// <see cref="PopProperty"/> close: the open motion in reverse (shrink back toward the click
+    /// point + fade). The real close is held for <see cref="PopCloseMs"/>, which is what once
+    /// stranded right-click menus open but invisible (see the note in the static constructor).
+    /// This path guards against that: the card stops taking input the moment the close starts,
+    /// the deferred close is forced through <see cref="CloseNow"/> (which also restores the card),
+    /// and a reopen or any other close cancels the pending one instead of racing it.
+    /// </summary>
+    private static void OnPopMenuClosing(object? sender, CancelEventArgs e)
+    {
+        if (sender is not ContextMenu menu)
+            return;
+
+        // Our own forced close (CloseNow): let it through. RestorePopCard clears the flag.
+        if (menu.GetValue(CloseAfterAnimationProperty))
+            return;
+
+        // Never refuse a close we didn't start: a second close while fading (or one from a
+        // teardown) goes straight through and simply ends the fade early. Popup closes itself
+        // from OnDetachedFromLogicalTree when its window closes (Avalonia 12.1.3 Popup.cs:651),
+        // and cancelling that left the popup open while the window tore down, which threw in
+        // StyledElement.OnDetachedFromLogicalTreeCore (caught by AppMenusV2Tests).
+        if (menu.GetValue(CloseAnimationRunningProperty))
+            return;
+
+        // Animate only while the menu, its popup and the control it opened from are all still in
+        // a live window; otherwise this close is part of a teardown or navigation, so close now.
+        if (TopLevel.GetTopLevel(menu) is null ||
+            menu.Parent is not Popup popup ||
+            !((Avalonia.LogicalTree.ILogical)popup).IsAttachedToLogicalTree ||
+            popup.PlacementTarget is { } target && TopLevel.GetTopLevel(target) is null)
+            return;
+
+        e.Cancel = true;
+        menu.SetValue(CloseAnimationRunningProperty, true);
+        StartPopClose(menu);
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (menu.GetValue(CloseAnimationRunningProperty))
+                CloseNow(menu); // still ours (nothing else closed or reopened it meanwhile)
+        }, TimeSpan.FromMilliseconds(PopCloseMs));
+    }
+
+    /// <summary>The pop close motion: inert at once (an invisible-but-open card must never take a
+    /// click or a scroll), then shrink toward the open's origin while fading out.</summary>
+    private static void StartPopClose(Control card)
+    {
+        var duration = TimeSpan.FromMilliseconds(PopCloseMs);
+        var fade = FadePropertyOf(card);
+        card.IsHitTestVisible = false;
+        card.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = fade, Duration = duration, Easing = PopCloseEase },
+            new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = PopCloseEase },
+        };
+        card.SetValue(fade, 0.0);
+        card.RenderTransform = TransformOperations.Parse(
+            $"scale({PopCloseScale.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+    }
+
+    /// <summary>
+    /// Closes a <see cref="PopProperty"/> menu at once, skipping (or cutting short) its close
+    /// motion. Call it before reopening the same menu: a reopen must not wait on, or be swallowed
+    /// by, a close that is still fading out.
+    /// </summary>
+    public static void CloseNow(ContextMenu menu)
+    {
+        if (menu.IsOpen)
+        {
+            menu.SetValue(CloseAfterAnimationProperty, true);
+            // Close the menu's Popup (its logical parent) directly, NOT via menu.Close().
+            // ContextMenu.Close() works by setting Popup.IsOpen = false; when that close was
+            // cancelled (the close motion cancels it), Popup.CloseCore returns early and leaves
+            // IsOpen false while the popup is still shown (Avalonia 12.1.3 Popup.cs CloseCore).
+            // Every later menu.Close() then sets false -> false, which changes nothing, so the
+            // menu could never close again: the "stranded open but invisible" bug noted above.
+            // Popup.Close() calls CloseCore whatever IsOpen says.
+            if (menu.Parent is Popup popup)
+                popup.Close();
+            else
+                menu.Close();
+        }
+        RestorePopCard(menu);
+    }
+
+    private static void OnPopMenuClosed(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ContextMenu menu)
+            RestorePopCard(menu);
+    }
+
+    /// <summary>Back to a visible, clickable, idle card once the popup is gone, so no close state
+    /// can leak into the next open. LastRun is cleared too: a reopen is always a real open, even
+    /// inside the double-attach guard window.</summary>
+    private static void RestorePopCard(ContextMenu menu)
+    {
+        ResetCloseState(menu);
+        menu.Transitions = null;
+        menu.IsHitTestVisible = true;
+        menu.Opacity = 1;
+        if (GetUseFade(menu)) SetFade(menu, 1);
+        menu.RenderTransform = TransformOperations.Parse("scale(1)");
+        menu.SetValue(LastRunProperty, 0L);
+    }
+
+    /// <summary>The <see cref="PopAnchorProperty"/> point inside the card, clamped to its edges, so
+    /// the card grows out of the corner the pointer is at even when the menu flipped up or left.
+    /// Mapped through the popup's top level: the card fills it, and unlike the card it carries no
+    /// RenderTransform that would skew the mapping.</summary>
+    private static RelativePoint PopOrigin(Control card)
+    {
+        var size = card.Bounds.Size;
+        var anchor = GetPopAnchor(card) ??
+            (Environment.TickCount64 - _lastPressAt <= PressAnchorMaxAgeMs ? _lastPress : (PixelPoint?)null);
+        if (anchor is null || size.Width <= 0 || size.Height <= 0 ||
+            TopLevel.GetTopLevel(card) is not { } top)
+            return RelativePoint.TopLeft;
+
+        var p = top.PointToClient(anchor.Value);
+        return new RelativePoint(
+            Math.Clamp(p.X, 0, size.Width), Math.Clamp(p.Y, 0, size.Height), RelativeUnit.Absolute);
     }
 
     private static void OnContextMenuClosing(object? sender, CancelEventArgs e)
@@ -249,11 +527,20 @@ public static class MenuOpenAnimation
 
     private static void RunCloseAnimation(Control control, Action afterAnimation)
     {
-        EnsureTransitions(control, TimeSpan.FromMilliseconds(CloseDurationMs));
-        control.SetValue(FadePropertyOf(control), 0.0);
-        control.RenderTransform = TransformOperations.Parse($"translateY({CloseOffsetY}px)");
+        var durationMs = CloseDurationMs;
+        if (GetPop(control))
+        {
+            StartPopClose(control);
+            durationMs = PopCloseMs;
+        }
+        else
+        {
+            EnsureTransitions(control, TimeSpan.FromMilliseconds(CloseDurationMs));
+            control.SetValue(FadePropertyOf(control), 0.0);
+            control.RenderTransform = TransformOperations.Parse($"translateY({CloseOffsetY}px)");
+        }
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(CloseDurationMs) };
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(durationMs) };
         timer.Tick += (_, _) =>
         {
             timer.Stop();
@@ -296,7 +583,8 @@ public static class MenuOpenAnimation
     {
         control.Opacity = 1;
         if (GetUseFade(control)) SetFade(control, 1);
-        control.RenderTransform = TransformOperations.Parse("translateY(0px)");
+        control.IsHitTestVisible = true;
+        control.RenderTransform = TransformOperations.Parse(GetPop(control) ? "scale(1)" : "translateY(0px)");
     }
 
     /// <summary>The property the open/close fade drives: <see cref="FadeProperty"/> on a glass

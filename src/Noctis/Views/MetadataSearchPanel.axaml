@@ -1,0 +1,712 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:helpers="using:Noctis.Helpers"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:ms="using:Noctis.ViewModels.MetadataSearch"
+             x:Class="Noctis.Views.MetadataSearchPanel"
+             x:DataType="ms:MetadataSearchPanelViewModel">
+
+    <!-- Find online (owner 10-08: Search metadata revamp). Covers the editor's body inside
+         the pill card: query on top, ranked results on the left, a before → after comparison
+         of the picked result on the right, Cancel / Apply at the bottom. Uses the pill classes
+         from PillDialog.axaml so it reads as the same surface.
+         Owner 10-08: declutter Find online ("less clutter and less wording … make sure all of
+         the buttons and options are organized"): one search row (sources behind one pill),
+         two-line result cards, one tick column for the cover and every field, the rarely used
+         options behind ⋯, explanations in tooltips. 8 px grid; 13 px body, 11.5 px secondary. -->
+    <UserControl.Styles>
+        <!-- Result cards: soft rounded rows; the picked one gets the accent ring. -->
+        <!-- Right padding = the scrollbar's lane (Styles.axaml ScrollBar:vertical 14 + 2 margin):
+             the bar overlays the scroll content, so without it the bar sat on top of the cards
+             and cut through the selected card's accent ring (owner 10-08). -->
+        <Style Selector="ListBox.ms-results">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0,0,16,0" />
+        </Style>
+        <Style Selector="ListBox.ms-results ListBoxItem">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="ListBox.ms-results ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ms-results ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#12FFFFFF" />
+        </Style>
+        <Style Selector="ListBox.ms-results ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1CFFFFFF" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="ListBox.ms-results ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#24FFFFFF" />
+        </Style>
+
+        <!-- Track table rows: no selection chrome, just a calm hover. -->
+        <Style Selector="ListBox.ms-tracks">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0,0,16,0" /> <!-- scrollbar lane, as ms-results -->
+        </Style>
+        <Style Selector="ListBox.ms-tracks ListBoxItem">
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="ListBox.ms-tracks ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.ms-tracks ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#0FFFFFFF" />
+        </Style>
+        <Style Selector="ListBox.ms-tracks ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#0FFFFFFF" />
+        </Style>
+        <Style Selector="Grid.ms-trow.same">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+
+        <!-- Score / delta badge: accent for Strong, neutral for Good, amber for Weak. -->
+        <Style Selector="Border.ms-conf">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="Background" Value="#1FFFFFFF" />
+        </Style>
+        <Style Selector="Border.ms-conf.strong">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.ms-conf.strong TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+        <Style Selector="Border.ms-conf.weak">
+            <Setter Property="Background" Value="#33F2A33A" />
+        </Style>
+        <Style Selector="Border.ms-conf.weak TextBlock">
+            <Setter Property="Foreground" Value="#F2C27A" />
+        </Style>
+
+        <!-- Comparison rows: changed values carry the accent, the rest sit back. -->
+        <Style Selector="Border.ms-row">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="6,6" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.ms-row:pointerover">
+            <Setter Property="Background" Value="#0FFFFFFF" />
+        </Style>
+        <Style Selector="Border.ms-row.same">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="Border.ms-row.blocked">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <Style Selector="TextBlock.ms-new.changed">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.ms-new.unticked">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+
+        <!-- Row ticks: the editor's round checkbox without its label gap. -->
+        <!-- Exactly the circle's 28 px, left-aligned: the template always reserves a 10 px label
+             gap (38 px wanted), and centred in the 30 px tick column that pushed the circle 4 px
+             left of its slot, which clipped its left edge (owner 10-08).
+             No clip: a CheckBox clips to its own bounds (ClipToBounds defaults to true on
+             templated controls), and with MinHeight 0 the box is exactly the circle's 22 px,
+             so the hover grow (1.06 → 23.3 px) was cut flat top and bottom (owner 10-08). -->
+        <Style Selector="CheckBox.ms-tick">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="ClipToBounds" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <!-- Master tick, some but not all on: the accent fill with a dash. -->
+        <Style Selector="CheckBox.ms-tick:indeterminate /template/ Path#IndicatorCheck">
+            <Setter Property="IsVisible" Value="True" />
+            <Setter Property="Data" Value="M 0 0 L 8 0" />
+        </Style>
+        <!-- Menu options: the Studio's one-size-down checkbox, no grow on hover (half-pixel ring). -->
+        <Style Selector="CheckBox.ms-option">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <Style Selector="CheckBox.ms-option:pointerover /template/ Border#IndicatorBorder">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- Sources pill: the secondary pill with a count and, after a failed source, a dot. -->
+        <Style Selector="Button.ms-sources">
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Border.ms-count">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="MinWidth" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Background" Value="#26FFFFFF" />
+        </Style>
+
+        <!-- Round icon button (⋯ options); the accent marks an option that is on. -->
+        <Style Selector="Button.ms-icon">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.ms-icon /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="CornerRadius" Value="16" />
+        </Style>
+        <Style Selector="Button.ms-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#14FFFFFF" />
+        </Style>
+        <Style Selector="Button.ms-icon PathIcon">
+            <Setter Property="Opacity" Value="0.75" />
+        </Style>
+        <Style Selector="Button.ms-icon.on PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <!-- Chromeless presenter for the menus (the Studio's recipe): the card draws the chrome. -->
+        <Style Selector="FlyoutPresenter.ms-pop">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12" />
+        </Style>
+        <Style Selector="Border.ms-pop-card">
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Background" Value="{DynamicResource ComboBoxDropDownBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxDropDownBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BoxShadow" Value="0 10 30 0 #90000000" />
+        </Style>
+
+        <!-- Segmented switch (album: Album | Tracks). -->
+        <Style Selector="Button.ms-seg">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.ms-seg.on">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.ms-seg.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#26FFFFFF" />
+        </Style>
+        <Style Selector="Button.ms-seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1AFFFFFF" />
+        </Style>
+
+        <!-- Loading skeleton: a slow breath, keyed on [IsVisible=True] like the spinners so a
+             hidden skeleton's INFINITE clock doesn't keep ticking. -->
+        <Style Selector="Border.ms-skel">
+            <Setter Property="Background" Value="#17FFFFFF" />
+        </Style>
+        <Style Selector="StackPanel.ms-skeleton[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:1.1" IterationCount="INFINITE" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <Style Selector="Ellipse.ms-spinner">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeDashArray" Value="11,5" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        </Style>
+        <Style Selector="Ellipse.ms-spinner[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                    <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Cover thumbnails in the Cover row: accent ring on the new one when it will be used. -->
+        <Style Selector="Border.ms-art">
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="#14FFFFFF" />
+        </Style>
+        <Style Selector="Border.ms-newart">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Border.ms-newart.off">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+
+        <Style Selector="Ellipse.ms-dot">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Fill" Value="#66FFFFFF" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Ellipse.ms-dot.ok">
+            <Setter Property="Fill" Value="#3BB273" />
+        </Style>
+        <Style Selector="Ellipse.ms-dot.problem">
+            <Setter Property="Fill" Value="#F2A33A" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+
+        <!-- ── Query: one row — fields, sources, search ── -->
+        <StackPanel Grid.Row="0" Spacing="8" Margin="24,16,24,16">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <!-- Single track: title / artist / album. Album: album / album artist. -->
+                <Grid Grid.Column="0" ColumnDefinitions="*,8,*,8,*" IsVisible="{Binding TrackScope}">
+                    <TextBox x:Name="FirstQueryBox" Grid.Column="0" Classes="pill-field"
+                             Watermark="{loc:T MetadataSearch.QueryTitle}"
+                             Text="{Binding QueryTitle}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <TextBox Grid.Column="2" Classes="pill-field"
+                             Watermark="{loc:T MetadataSearch.QueryArtist}"
+                             Text="{Binding QueryArtist}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <TextBox Grid.Column="4" Classes="pill-field"
+                             Watermark="{loc:T MetadataSearch.QueryAlbum}"
+                             Text="{Binding QueryAlbum}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                </Grid>
+                <Grid Grid.Column="0" ColumnDefinitions="3*,8,2*" IsVisible="{Binding AlbumScope}">
+                    <TextBox x:Name="FirstAlbumQueryBox" Grid.Column="0" Classes="pill-field"
+                             Watermark="{loc:T MetadataSearch.QueryAlbum}"
+                             Text="{Binding QueryAlbum}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <TextBox Grid.Column="2" Classes="pill-field"
+                             Watermark="{loc:T MetadataSearch.QueryAlbumArtist}"
+                             Text="{Binding QueryAlbumArtist}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                </Grid>
+
+                <!-- Sources: which providers to ask, and what each answered last time. -->
+                <Button x:Name="SourcesButton" Grid.Column="1" Classes="pill-secondary ms-sources" Margin="8,0,0,0"
+                        IsVisible="{Binding HasProviderChoice}"
+                        ToolTip.Tip="{Binding SourcesTip}"
+                        AutomationProperties.Name="{loc:T MetadataSearch.Sources}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{loc:T MetadataSearch.Sources}" VerticalAlignment="Center" />
+                        <!-- A failed source dots the count's corner (no width change, so the
+                             fields don't shift when a search comes back with a problem). -->
+                        <Panel VerticalAlignment="Center">
+                            <Border Classes="ms-count">
+                                <TextBlock Text="{Binding SelectedSourceCount}" FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Ellipse Classes="ms-dot problem" Width="7" Height="7" Margin="0,-2,-2,0"
+                                     HorizontalAlignment="Right" VerticalAlignment="Top"
+                                     IsVisible="{Binding HasProviderProblem}" />
+                        </Panel>
+                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="9" Height="9" Opacity="0.6"
+                                  VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="ms-pop"
+                                helpers:DropDownFlyoutMotion.Enable="True">
+                            <Border Classes="ms-pop-card" MinWidth="220">
+                                <ItemsControl ItemsSource="{Binding Providers}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="8" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="ms:ProviderChip">
+                                            <Grid ColumnDefinitions="*,16,Auto">
+                                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox ms-option"
+                                                          Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                                            VerticalAlignment="Center" IsVisible="{Binding HasStatus}">
+                                                    <Ellipse Classes="ms-dot" Classes.ok="{Binding IsOk}" Classes.problem="{Binding IsProblem}" />
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="11.5" Opacity="0.6"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button Grid.Column="2" Classes="pill-primary" Width="40" Padding="0" Margin="8,0,0,0"
+                        Command="{Binding SearchCommand}"
+                        IsEnabled="{Binding IsAvailable}"
+                        ToolTip.Tip="{loc:T MetadataSearch.Search}"
+                        AutomationProperties.Name="{loc:T MetadataSearch.Search}">
+                    <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14"
+                              Foreground="{DynamicResource AccentForegroundBrush}" />
+                </Button>
+            </Grid>
+
+            <!-- Only a source that failed speaks up ("Apple Music offline"); counts are in Sources. -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="16,0,0,0"
+                        IsVisible="{Binding ShowProviderProblem}">
+                <Ellipse Classes="ms-dot problem" />
+                <TextBlock Text="{Binding ProviderProblemText}" FontSize="11.5" Foreground="#F2C27A"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ── Results | before → after ── -->
+        <Grid Grid.Row="1" ColumnDefinitions="280,16,*" Margin="16,0,24,16">
+
+            <!-- Results: title, then artist · album; score and year on the right. Where it came
+                 from and why it ranked there are in the tooltip. -->
+            <Panel Grid.Column="0">
+                <ListBox x:Name="ResultsList" Classes="ms-results"
+                         ItemsSource="{Binding Candidates}"
+                         SelectedItem="{Binding SelectedCandidate}"
+                         IsVisible="{Binding HasResults}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="ms:CandidateItem">
+                            <Grid ColumnDefinitions="48,12,*,8,Auto" RowDefinitions="Auto,Auto"
+                                  Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                                <Border Grid.Column="0" Grid.RowSpan="2" Width="48" Height="48" CornerRadius="10"
+                                        ClipToBounds="True" Classes="pill-well">
+                                    <Panel>
+                                        <PathIcon Data="{StaticResource AlbumsIcon}" Width="18" Height="18" Opacity="0.3"
+                                                  IsVisible="{Binding !HasThumbnail}" />
+                                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                                               IsVisible="{Binding HasThumbnail}" />
+                                    </Panel>
+                                </Border>
+                                <TextBlock Grid.Column="2" Grid.Row="0" Text="{Binding Title}" FontSize="13"
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                                <TextBlock Grid.Column="2" Grid.Row="1" Text="{Binding Subtitle}" FontSize="11.5"
+                                           Opacity="0.6" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" />
+                                <Border Grid.Column="4" Grid.Row="0" Classes="ms-conf"
+                                        Classes.strong="{Binding IsStrong}" Classes.weak="{Binding IsWeak}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2">
+                                    <TextBlock Text="{Binding ConfidenceText}" FontSize="10.5" FontWeight="Bold" />
+                                </Border>
+                                <!-- Score centred over the year (owner 10-08: right-aligned they sat
+                                     off-centre, the badge being wider than the year). -->
+                                <TextBlock Grid.Column="4" Grid.Row="1" Text="{Binding YearText}" FontSize="11.5"
+                                           Opacity="0.45" HorizontalAlignment="Center" VerticalAlignment="Top" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Skeleton while searching -->
+                <StackPanel Classes="ms-skeleton" Spacing="4" IsVisible="{Binding IsSearching}">
+                    <Grid ColumnDefinitions="48,12,*" Margin="8">
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="140" HorizontalAlignment="Left" />
+                            <Border Classes="ms-skel" Height="8" CornerRadius="4" Width="100" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="48,12,*" Margin="8">
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="112" HorizontalAlignment="Left" />
+                            <Border Classes="ms-skel" Height="8" CornerRadius="4" Width="132" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="48,12,*" Margin="8">
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="152" HorizontalAlignment="Left" />
+                            <Border Classes="ms-skel" Height="8" CornerRadius="4" Width="88" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="48,12,*" Margin="8">
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                            <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="124" HorizontalAlignment="Left" />
+                            <Border Classes="ms-skel" Height="8" CornerRadius="4" Width="112" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Panel>
+
+            <!-- Empty / unavailable / failed / waiting: centred across both columns -->
+            <StackPanel Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding ShowMessage}" Spacing="8"
+                        Margin="0,0,0,48" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="48" Height="48" CornerRadius="24" Classes="pill-well" HorizontalAlignment="Center">
+                    <Panel>
+                        <PathIcon Data="{StaticResource SearchIcon}" Width="18" Height="18" Opacity="0.5"
+                                  IsVisible="{Binding !IsWaitingForLoad}" />
+                        <Ellipse Classes="ms-spinner" IsVisible="{Binding IsWaitingForLoad}" />
+                    </Panel>
+                </Border>
+                <TextBlock Text="{Binding MessageTitle}" FontSize="14" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+                <TextBlock Text="{Binding MessageBody}" FontSize="11.5" Opacity="0.55" MaxWidth="320"
+                           TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"
+                           IsVisible="{Binding HasMessageBody}" />
+            </StackPanel>
+
+            <!-- While searching: the compare card's outline, breathing like the results. -->
+            <Border Grid.Column="2" Classes="pill-well" CornerRadius="24" Padding="22,18"
+                    IsVisible="{Binding IsSearching}">
+                <StackPanel Classes="ms-skeleton" Spacing="16">
+                    <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="96" HorizontalAlignment="Left" />
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                        <Border Classes="ms-skel" Width="48" Height="48" CornerRadius="10" />
+                    </StackPanel>
+                    <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="260" HorizontalAlignment="Left" />
+                    <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="312" HorizontalAlignment="Left" />
+                    <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="208" HorizontalAlignment="Left" />
+                    <Border Classes="ms-skel" Height="10" CornerRadius="5" Width="288" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!-- Before → after -->
+            <Border Grid.Column="2" Classes="pill-well" CornerRadius="24" Padding="16,12,16,8"
+                    IsVisible="{Binding HasSelection}">
+                <Grid RowDefinitions="Auto,*">
+
+                    <!-- Toolbar: master tick (in the rows' tick column), album | tracks, the
+                         change count, and ⋯ for the options. -->
+                    <Grid Grid.Row="0" ColumnDefinitions="30,Auto,Auto,*,Auto" Margin="6,0,0,8" MinHeight="32">
+                        <CheckBox x:Name="MasterTick" Grid.Column="0" Classes="metadata-pill-checkbox ms-tick"
+                                  IsChecked="{Binding AllSelected, Mode=OneWay}"
+                                  Command="{Binding ToggleAllCommand}"
+                                  IsEnabled="{Binding HasSelectable}"
+                                  ToolTip.Tip="{loc:T MetadataSearch.SelectAllTip}"
+                                  AutomationProperties.Name="{loc:T MetadataSearch.SelectAllTip}" />
+                        <Border Grid.Column="1" Classes="pill-well" CornerRadius="999" Padding="3" Margin="0,0,8,0"
+                                VerticalAlignment="Center" IsVisible="{Binding AlbumScope}">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="ms-seg" Classes.on="{Binding IsFieldsPane}"
+                                        Content="{loc:T MetadataSearch.FieldsTab}"
+                                        Command="{Binding ShowFieldsPaneCommand}" />
+                                <Button Classes="ms-seg" Classes.on="{Binding IsTracksPane}"
+                                        Content="{Binding TracksTabText}"
+                                        Command="{Binding ShowTracksPaneCommand}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding FieldSummary}" FontSize="13" FontWeight="SemiBold"
+                                   Opacity="0.75" VerticalAlignment="Center" Margin="2,0,0,0"
+                                   IsVisible="{Binding IsFieldsPane}" />
+                        <Button Grid.Column="4" Classes="ms-icon" Classes.on="{Binding HasActiveOptions}"
+                                ToolTip.Tip="{loc:T MetadataSearch.Options}"
+                                AutomationProperties.Name="{loc:T MetadataSearch.Options}">
+                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15" />
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="ms-pop"
+                                        helpers:DropDownFlyoutMotion.Enable="True">
+                                    <Border Classes="ms-pop-card">
+                                        <StackPanel Spacing="12">
+                                            <CheckBox Classes="metadata-pill-checkbox ms-option"
+                                                      Content="{loc:T MetadataSearch.OnlyFillEmpty}"
+                                                      IsChecked="{Binding OnlyFillEmpty}" />
+                                            <CheckBox Classes="metadata-pill-checkbox ms-option"
+                                                      Content="{loc:T MetadataSearch.ShowUnchanged}"
+                                                      IsChecked="{Binding ShowUnchanged}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+
+                    <!-- Cover + fields: one tick column, one label column, now → new. -->
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding IsFieldsPane}"
+                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="2" Margin="0,0,16,0"> <!-- scrollbar lane, as ms-results -->
+                            <Border Classes="ms-row" IsVisible="{Binding HasNewArtwork}">
+                                <Grid ColumnDefinitions="30,96,*,24,*">
+                                    <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox ms-tick"
+                                              IsChecked="{Binding UseArtwork}"
+                                              IsEnabled="{Binding HasNewArtwork}"
+                                              ToolTip.Tip="{loc:T MetadataSearch.UseCover}"
+                                              AutomationProperties.Name="{loc:T MetadataSearch.UseCover}" />
+                                    <TextBlock Grid.Column="1" Text="{loc:T MetadataSearch.F.Cover}" FontSize="12" Opacity="0.55"
+                                               VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                        <Border Classes="ms-art">
+                                            <Panel>
+                                                <PathIcon Data="{StaticResource AlbumsIcon}" Width="18" Height="18" Opacity="0.25"
+                                                          IsVisible="{Binding !HasCurrentArtwork}" />
+                                                <Image Source="{Binding CurrentArtwork}" Stretch="UniformToFill"
+                                                       IsVisible="{Binding HasCurrentArtwork}" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Text="{Binding CurrentArtworkSize}" FontSize="11.5" Opacity="0.5"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="3" Text="→" FontSize="13" Opacity="0.35"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
+                                        <Border Classes="ms-art ms-newart" Classes.off="{Binding !UseArtwork}">
+                                            <Panel>
+                                                <PathIcon Data="{StaticResource AlbumsIcon}" Width="18" Height="18" Opacity="0.25"
+                                                          IsVisible="{Binding !HasNewArtworkPreview}" />
+                                                <Image Source="{Binding NewArtwork}" Stretch="UniformToFill"
+                                                       IsVisible="{Binding HasNewArtworkPreview}" />
+                                                <Ellipse Classes="ms-spinner" IsVisible="{Binding IsDownloadingArtwork}"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding NewArtworkSize}" FontSize="11.5" Opacity="0.6" />
+                                            <TextBlock Text="{Binding ArtworkNote}" FontSize="11.5" Opacity="0.45"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <ItemsControl ItemsSource="{Binding VisibleRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="ms:CompareRow">
+                                        <!-- A row this editor can't store: dimmed, ⓘ in the tick
+                                             column, the reason on hover. -->
+                                        <Border Classes="ms-row" Classes.same="{Binding !IsChanged}" Classes.blocked="{Binding IsBlocked}"
+                                                ToolTip.Tip="{Binding BlockedReason}">
+                                            <Grid ColumnDefinitions="30,96,*,24,*">
+                                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox ms-tick"
+                                                          IsChecked="{Binding IsChecked}"
+                                                          IsVisible="{Binding CanToggle}" />
+                                                <PathIcon Grid.Column="0" Data="{StaticResource InfoIcon}" Width="14" Height="14"
+                                                          HorizontalAlignment="Left" VerticalAlignment="Center" Margin="7,0,0,0"
+                                                          IsVisible="{Binding IsBlocked}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12" Opacity="0.55"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Current}" FontSize="13" Opacity="0.6"
+                                                           VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="3" Text="→" FontSize="13" Opacity="0.35"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           IsVisible="{Binding IsChanged}" />
+                                                <TextBlock Grid.Column="4" Classes="ms-new"
+                                                           Classes.changed="{Binding IsChecked}"
+                                                           Classes.unticked="{Binding !IsChecked}"
+                                                           Text="{Binding New}" FontSize="13"
+                                                           VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Album: tracks (virtualized; a box set runs to hundreds). One line per
+                         track; lengths in the tooltip, a chip only when they differ. -->
+                    <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsTracksPane}">
+                        <ListBox Grid.Row="0" Classes="ms-tracks" ItemsSource="{Binding TrackRows}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="ms:TrackMatchRow">
+                                    <Grid Classes="ms-trow" Classes.same="{Binding !CanToggle}"
+                                          ColumnDefinitions="30,*,24,*,Auto" MinHeight="28"
+                                          Background="Transparent" ToolTip.Tip="{Binding DurationTip}">
+                                        <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox ms-tick"
+                                                  IsChecked="{Binding IsIncluded}"
+                                                  IsVisible="{Binding CanToggle}" />
+                                        <TextBlock Grid.Column="1" FontSize="13" TextTrimming="CharacterEllipsis" Opacity="0.75"
+                                                   VerticalAlignment="Center">
+                                            <Run Text="{Binding LocalNumber}" Foreground="#80FFFFFF" /><Run Text="  " /><Run Text="{Binding LocalTitle}" />
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="2" Text="→" FontSize="13" Opacity="0.35"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   IsVisible="{Binding IsMatched}" />
+                                        <TextBlock Grid.Column="3" FontSize="13" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" IsVisible="{Binding IsMatched}"
+                                                   Classes="ms-new" Classes.changed="{Binding IsIncluded}">
+                                            <Run Text="{Binding NewNumber}" /><Run Text="  " /><Run Text="{Binding NewTitle}" />
+                                        </TextBlock>
+                                        <Border Grid.Column="4" Classes="ms-conf" Classes.weak="{Binding DeltaIsLarge}"
+                                                Margin="8,0,0,0" VerticalAlignment="Center"
+                                                IsVisible="{Binding HasDelta}">
+                                            <TextBlock Text="{Binding DeltaText}" FontSize="10.5" FontWeight="SemiBold" />
+                                        </Border>
+                                        <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="{Binding StatusText}"
+                                                   FontSize="11.5" FontStyle="Italic" Opacity="0.45" VerticalAlignment="Center"
+                                                   IsVisible="{Binding !IsMatched}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Grid.Row="1" Text="{Binding TrackExtraNote}" FontSize="11.5" Opacity="0.45" Margin="6,8,0,0"
+                                   IsVisible="{Binding TrackExtraNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── Footer: where it's from, then Cancel / Apply ── -->
+        <Border Grid.Row="2" Padding="24,12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,8,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding FooterText}" FontSize="11.5" Opacity="0.45"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <Button Grid.Column="1" Classes="pill-secondary" MinWidth="96"
+                        Content="{loc:T MetadataSearch.Back}"
+                        Command="{Binding CloseCommand}" />
+                <Button x:Name="ApplyButton" Grid.Column="3" Classes="pill-primary" MinWidth="112"
+                        Command="{Binding ApplyCommand}">
+                    <TextBlock Text="{Binding ApplyText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

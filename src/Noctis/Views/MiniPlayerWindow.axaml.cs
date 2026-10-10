@@ -33,8 +33,6 @@ public partial class MiniPlayerWindow : Window
     private static readonly TimeSpan DrawerExitDuration = TimeSpan.FromMilliseconds(200);
     private Avalonia.Threading.DispatcherTimer? _drawerHideTimer;
 
-    private Avalonia.Threading.DispatcherTimer? _lyricsScrollTimer;
-
     // Debounce for the viewport-derived lyric font size (see LyricsScroll.SizeChanged).
     private Avalonia.Threading.DispatcherTimer? _lyricsFontTimer;
     private double _pendingLyricsFontSize = 21;
@@ -454,6 +452,7 @@ public partial class MiniPlayerWindow : Window
                 _lastVmForm = Vm?.Form;
 
                 SyncFormVisual();
+                ApplyTransparencyHint(); // frost is Classic-only; a design switch turns it on or off
                 UpdateLyricsSurfaceRegistration();
                 UpdateFlowAnimationState();
                 if (Vm?.IsLyricsForm == true)
@@ -619,19 +618,17 @@ public partial class MiniPlayerWindow : Window
         _suppressPlacementCapture = true;
         _sizeAnimating = true;
 
-        // Render priority + whole-DIP steps: the default Background priority starves
-        // under layout churn (irregular jumps), and fractional sizes shimmer the
-        // border/clip on every tick — together they read as the card shaking.
-        var timer = new Avalonia.Threading.DispatcherTimer(Avalonia.Threading.DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(16),
-        };
-        timer.Tick += (_, _) =>
+        // Stepped by the compositor frame clock (TopLevel.RequestAnimationFrame), not a
+        // DispatcherTimer: on Windows a 16 ms DispatcherTimer fires on the 15.6 ms USER-timer
+        // grid — measured 41–48 ticks/s with alternating 16/31 ms steps — so the glide ran at
+        // ~40 fps with uneven jumps while the frame clock delivered one tick per refresh.
+        // Whole-DIP steps stay: fractional sizes shimmer the border/clip on every frame.
+        _sizeAnimationOwner = generation;
+        void Frame(TimeSpan _)
         {
             // A newer jump owns the flag now, and a closing window must not be resized.
             if (generation != _resizeAnimationGeneration || _closeAnimationDone)
             {
-                timer.Stop();
                 // Superseded (a drawer or a newer jump took the height): whatever was
                 // waiting on this glide shows now rather than never.
                 if (generation == _sizeAnimationOwner) { _sizeAnimating = false; RevealDeferredForm(); }
@@ -642,15 +639,18 @@ public partial class MiniPlayerWindow : Window
             var eased = 1 - Math.Pow(1 - t, 3);   // CubicEaseOut, matching the card's own curve
             Width = Math.Round(fromWidth + (targetWidth - fromWidth) * eased);
             Height = Math.Round(fromHeight + (targetHeight - fromHeight) * eased);
-            // Same eased value as the size, in the same tick, so an anchored edge holds still.
+            // Same eased value as the size, in the same frame, so an anchored edge holds still.
+            // Only when the pixel changed: Position's setter moves the native window unconditionally.
             if (toPosition is { } to)
-                Position = new PixelPoint(
+            {
+                var p = new PixelPoint(
                     (int)Math.Round(fromPosition.X + (to.X - fromPosition.X) * eased),
                     (int)Math.Round(fromPosition.Y + (to.Y - fromPosition.Y) * eased));
+                if (p != Position) Position = p;
+            }
 
-            if (t < 1) return;
+            if (t < 1) { RequestAnimationFrame(Frame); return; }
 
-            timer.Stop();
             Width = targetWidth;
             Height = targetHeight;
             if (toPosition is { } landed) Position = landed;
@@ -658,9 +658,8 @@ public partial class MiniPlayerWindow : Window
             _sizeAnimating = false;
             CapturePlacement();
             RevealDeferredForm();
-        };
-        _sizeAnimationOwner = generation;
-        timer.Start();
+        }
+        RequestAnimationFrame(Frame);
     }
 
     /// <summary>Generation of the AnimateSizeTo that owns <see cref="_sizeAnimating"/>.</summary>
@@ -890,11 +889,18 @@ public partial class MiniPlayerWindow : Window
         var grid = FormGrid.Bounds.Size;
         if (grid.Width <= 0 || grid.Height <= 0) return;
         var i = _designGroundInsets;
+        var trim = Vm?.Form == MiniPlayerForm.Pill ? PillGroundTrim : 0;
         Canvas.SetLeft(g.Ground, i.Left - _designGroundRootOffset.X);
-        Canvas.SetTop(g.Ground, i.Top - _designGroundRootOffset.Y);
+        Canvas.SetTop(g.Ground, i.Top - _designGroundRootOffset.Y + trim);
         g.Ground.Width = Math.Max(0, grid.Width - i.Left - i.Right);
-        g.Ground.Height = Math.Max(0, grid.Height - i.Top - i.Bottom);
+        g.Ground.Height = Math.Max(0, grid.Height - i.Top - i.Bottom - 2 * trim);
     }
+
+    /// <summary>The Pill's slab is the cover's height on paper, but the slab (a Canvas child)
+    /// and the cover snap to device pixels separately: at 125% the slab's top landed a pixel
+    /// above the cover's and its square left corner showed as a step. A DIP in from the top
+    /// and bottom keeps the slab's edge inside the cover's outline at any scale.</summary>
+    internal const double PillGroundTrim = 1;
 
     private static bool NearlyEqual(Thickness a, Thickness b) =>
         Math.Abs(a.Left - b.Left) < 0.5 && Math.Abs(a.Top - b.Top) < 0.5 &&
@@ -984,7 +990,12 @@ public partial class MiniPlayerWindow : Window
     {
         // The opaque fallback (no compositor / NOCTIS_MINI_OPAQUE) owns the hint.
         if (_squareCard) return;
-        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true;
+        // Classic only. The frost needs the window region below, and a region edge is never
+        // anti-aliased: the Pill's round cover and both designs' rounded slabs came out
+        // stair-stepped (and lost their drop shadows) — GitHub/Discord 1v1ctus 2026-10-05.
+        // The designs sit on their own opaque-ish ground, so they skip the OS backdrop.
+        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true
+                      && Vm is not { IsDesignForm: true };
         TransparencyLevelHint = TransparencyLevels(frosted);
         if (frosted == _frosted) return;
         _frosted = frosted;
@@ -1008,7 +1019,7 @@ public partial class MiniPlayerWindow : Window
             var pill = vm.Form == MiniPlayerForm.Pill;
             var ground = pill ? PillGround : SleeveGround;
             if (LayoutRectIn(ground, this) is { Width: > 0, Height: > 0 } slab)
-                shapes.Add(new RegionShape(slab, ground.CornerRadius.TopLeft, false));
+                shapes.Add(new RegionShape(slab, ground.CornerRadius.TopRight, false));
             if (pill && LayoutRectIn(PillCover, this) is { Width: > 0, Height: > 0 } cover)
                 shapes.Add(new RegionShape(cover, cover.Width / 2, true));
         }
@@ -1115,11 +1126,16 @@ public partial class MiniPlayerWindow : Window
 
     // Wheel over a design card: volume, 5 per notch (the classic forms have their own bar
     // or the Volume drawer; the designs' only volume affordance is the drawer item).
+    // Touchpads and hi-res wheels report fractions at a high rate: "any delta = one notch" made
+    // a small swipe jump 0→100 (10-08). The playback bar's accumulator turns them into notches.
+    private readonly PlaybackBarView.VolumeWheelAccumulator _volumeWheel = new();
+
     private void OnDesignVolumeWheel(object? sender, PointerWheelEventArgs e)
     {
         if (Vm == null || e.Delta.Y == 0) return;
-        Vm.NudgeVolume(e.Delta.Y > 0 ? 1 : -1);
         e.Handled = true;
+        var notches = _volumeWheel.Add(e.Delta.Y, e.Timestamp);
+        if (notches != 0) Vm.NudgeVolume(notches);
     }
 
     private IBrush? _classicRootFill;
@@ -1156,7 +1172,7 @@ public partial class MiniPlayerWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _drawerHideTimer?.Stop();
-        _lyricsScrollTimer?.Stop();
+        _lyricsChaseRunning = false;
         _lyricsFontTimer?.Stop();
         _pillSpinner?.Stop();
         _flow?.Dispose();
@@ -1551,20 +1567,11 @@ public partial class MiniPlayerWindow : Window
         // window has ACTUALLY reached, keeping the form row constant (see there).
         _drawerAnim = (generation, fromHeight - fromDrawer, Math.Max(fromDrawer, targetDrawerHeight));
 
-        // Render priority: the default (Background) starves under layout churn and the
-        // eased glide degrades into irregular jumps.
-        var timer = new Avalonia.Threading.DispatcherTimer(Avalonia.Threading.DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(16)
-        };
-        timer.Tick += (_, _) =>
+        // Frame clock, not a DispatcherTimer — see AnimateSizeTo for the measurement.
+        void Frame(TimeSpan _)
         {
             if (generation != _resizeAnimationGeneration || _closeAnimationDone)
-            {
-                // A newer animation owns _drawerAnim (its generation differs) — leave it.
-                timer.Stop();
-                return;
-            }
+                return; // A newer animation owns _drawerAnim (its generation differs) — leave it.
 
             var t = Math.Clamp(clock.Elapsed.TotalMilliseconds / durationMs, 0, 1);
             var eased = 1 - Math.Pow(1 - t, 3);
@@ -1578,9 +1585,8 @@ public partial class MiniPlayerWindow : Window
                 _drawerShiftY = shift;
             }
 
-            if (t < 1) return;
+            if (t < 1) { RequestAnimationFrame(Frame); return; }
 
-            timer.Stop();
             _drawerAnim = null;
             Height = fromHeight + delta;
             _drawerHeight = targetDrawerHeight;
@@ -1589,8 +1595,8 @@ public partial class MiniPlayerWindow : Window
             _suppressPlacementCapture = false;
             onLanded();
             CapturePlacement();
-        };
-        timer.Start();
+        }
+        RequestAnimationFrame(Frame);
     }
 
     /// <summary>In-flight drawer animation: generation tag (only honored while it matches
@@ -1679,8 +1685,7 @@ public partial class MiniPlayerWindow : Window
 
         if (!animated)
         {
-            _lyricsScrollTimer?.Stop();
-            _lyricsScrollTimer = null;
+            _lyricsChaseRunning = false;
             LyricsScroll.Offset = new Vector(0, target);
             return;
         }
@@ -1688,26 +1693,45 @@ public partial class MiniPlayerWindow : Window
         // Exponential chase (same idea as the lyrics page / SmoothScrollBehavior): a
         // new active line only moves the goalpost, so back-to-back updates during a
         // timeline scrub retarget the glide mid-flight instead of restarting it from
-        // zero velocity — the flow never stutters.
+        // zero velocity — the flow never stutters. Stepped on the compositor frame clock
+        // with real dt, so the decay per second is the same at 60 and 250 Hz.
         _lyricsChaseTarget = target;
-        if (_lyricsScrollTimer != null) return;
-
-        _lyricsScrollTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
-        _lyricsScrollTimer.Tick += (_, _) =>
-        {
-            var current = LyricsScroll.Offset.Y;
-            var remaining = _lyricsChaseTarget - current;
-            if (Math.Abs(remaining) < 0.5)
-            {
-                LyricsScroll.Offset = new Vector(0, _lyricsChaseTarget);
-                _lyricsScrollTimer?.Stop();
-                _lyricsScrollTimer = null;
-                return;
-            }
-            LyricsScroll.Offset = new Vector(0, current + remaining * 0.10);
-        };
-        _lyricsScrollTimer.Start();
+        if (_lyricsChaseRunning) return;
+        _lyricsChaseRunning = true;
+        _lyricsChaseLastTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        RequestAnimationFrame(LyricsChaseFrame);
     }
 
     private double _lyricsChaseTarget;
+    private bool _lyricsChaseRunning;
+    private long _lyricsChaseLastTicks;
+    // 10 % of the remaining distance per ~15 ms tick, as before: τ = 0.015 / −ln(0.9).
+    private const double LyricsChaseTauSeconds = 0.142;
+
+    private void LyricsChaseFrame(TimeSpan _)
+    {
+        if (!_lyricsChaseRunning) return;
+
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        // Clamped so a stalled UI thread cannot produce one huge jump.
+        var dt = Math.Min((now - _lyricsChaseLastTicks) / (double)System.Diagnostics.Stopwatch.Frequency, 0.1);
+        _lyricsChaseLastTicks = now;
+
+        var current = LyricsScroll.Offset.Y;
+        var remaining = _lyricsChaseTarget - current;
+        if (Math.Abs(remaining) < 0.5)
+        {
+            LyricsScroll.Offset = new Vector(0, _lyricsChaseTarget);
+            _lyricsChaseRunning = false;
+            return;
+        }
+        LyricsScroll.Offset = new Vector(0, current + remaining * (1 - Math.Exp(-dt / LyricsChaseTauSeconds)));
+        // Coerced write = target unreachable (extent shrank); a chase that cannot land must not keep the compositor rendering.
+        if (Math.Abs(LyricsScroll.Offset.Y - current) < 1e-6)
+        {
+            _lyricsChaseRunning = false;
+            return;
+        }
+        RequestAnimationFrame(LyricsChaseFrame);
+    }
 }

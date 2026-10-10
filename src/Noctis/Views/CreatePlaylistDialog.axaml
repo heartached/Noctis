@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.CreatePlaylistDialog"
         x:DataType="vm:CreatePlaylistDialogViewModel"
         Title="{loc:T CreatePlaylist.CreateNewPlaylist}"
@@ -12,103 +13,91 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <!-- Full-window dimmed overlay that captures all input.
-         Starts transparent; code-behind fades it in on open and back out
-         before closing (same animation as the Add to Playlist dialog). -->
-    <Border x:Name="DialogOverlay"
-            Background="#50000000"
-            Opacity="0"
-            PointerPressed="OnOverlayPointerPressed"
-            PointerWheelChanged="OnOverlayWheel">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+    <Window.Styles>
+        <!-- Small muted label above a field, as the Metadata editor's. -->
+        <Style Selector="TextBlock.cp-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+    </Window.Styles>
 
-        <!-- Centered dialog card -->
-        <Border x:Name="DialogCard"
-                CornerRadius="24"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="450"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                RenderTransformOrigin="50%,50%"
-                RenderTransform="scale(0.96)"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <Border.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Border.Transitions>
-            <DockPanel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor, with the blurred app
+         behind. PillDialogHost draws the blurred, dimmed owner, the card with its shadow, and
+         plays the open/close animation (every close path — Cancel, Create, Esc, Alt+F4 —
+         animates out once). The result reaches the caller through the view model's
+         PlaylistCreated event, never through Close(result), so the deferred close loses
+         nothing. -->
+    <controls:PillDialogHost>
 
-                <!-- Bottom: Create / Cancel buttons -->
-                <Border DockPanel.Dock="Bottom"
-                        Padding="24,12,24,16">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <Button Grid.Column="1"
-                                Content="{loc:T CreatePlaylist.Cancel}"
-                                Command="{Binding CancelCommand}"
-                                Width="100"
-                                Padding="0,8"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Margin="0,0,8,0"
-                                Cursor="Hand" />
-                        <Button Grid.Column="2"
-                                Content="{loc:T CreatePlaylist.Create}"
-                                Command="{Binding CreateCommand}"
-                                Width="100"
-                                Padding="0,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="Bold"
-                                HorizontalContentAlignment="Center"
-                                CornerRadius="999"
-                                Cursor="Hand" />
-                    </Grid>
+    <Grid Width="480" RowDefinitions="Auto,Auto,Auto">
+
+        <!-- Header: title and the one-line purpose (the Playlists page "New" menu's words).
+             Owner 10-09 "match the icons for the same action; same icon for different things →
+             make unique ones": New Playlist's own line icon (a note with a plus), not Add to
+             Playlist's list-with-a-plus. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <controls:LineIcon x:Name="HeaderIcon"
+                                       Data="{DynamicResource LineCreatePlaylist}"
+                                       Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-
-                <!-- Content: same pill inputs as the Add to Playlist create form -->
-                <StackPanel Margin="24,20,24,16" Spacing="14">
-
-                    <!-- Title -->
-                    <TextBlock Text="{loc:T CreatePlaylist.CreateNewPlaylist}"
-                               FontSize="20"
-                               FontWeight="Bold"
-                               HorizontalAlignment="Center" />
-
-                    <StackPanel Spacing="10" Margin="0,4,0,0">
-                        <TextBox Text="{Binding PlaylistName}"
-                                 Classes="crisp-input"
-                                 Watermark="{loc:T CreatePlaylist.PlaylistName}"
-                                 CornerRadius="999"
-                                 Padding="14,8"
-                                 x:Name="NameTextBox" />
-                        <TextBlock Text="{loc:T CreatePlaylist.NameRequired}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource AccentColorBrush}"
-                                   IsVisible="{Binding ShowNameRequiredError}" />
-                        <TextBox Text="{Binding PlaylistDescription}"
-                                 Classes="crisp-input"
-                                 Watermark="{loc:T CreatePlaylist.DescriptionOptional}"
-                                 CornerRadius="999"
-                                 Padding="14,8" />
-                    </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T CreatePlaylist.CreateNewPlaylist}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T CreatePlaylist.Subtitle}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
-    </Border>
+
+        <!-- Name (Enter creates) and the optional description. -->
+        <StackPanel Grid.Row="1" Margin="28,20,28,24" Spacing="16">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="cp-label" Text="{loc:T CreatePlaylist.Name}" />
+                <TextBox x:Name="NameTextBox"
+                         Classes="pill-field"
+                         Text="{Binding PlaylistName}"
+                         Watermark="{loc:T CreatePlaylist.PlaylistName}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding CreateCommand}" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <TextBlock Text="{loc:T CreatePlaylist.NameRequired}"
+                           FontSize="12"
+                           Margin="16,0,0,0"
+                           Foreground="{DynamicResource AccentColorBrush}"
+                           IsVisible="{Binding ShowNameRequiredError}" />
+            </StackPanel>
+            <StackPanel Spacing="6">
+                <TextBlock Classes="cp-label" Text="{loc:T CreatePlaylist.Description}" />
+                <TextBox x:Name="DescriptionTextBox"
+                         Classes="pill-field"
+                         Text="{Binding PlaylistDescription}"
+                         Watermark="{loc:T CreatePlaylist.Optional}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Footer: Cancel / Create on the right (the editor's Cancel / Save). -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button Classes="pill-secondary"
+                        Content="{loc:T CreatePlaylist.Cancel}"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="108" />
+                <Button Classes="pill-primary"
+                        Content="{loc:T CreatePlaylist.Create}"
+                        Command="{Binding CreateCommand}"
+                        MinWidth="108" />
+            </StackPanel>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

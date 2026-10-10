@@ -89,7 +89,7 @@ public partial class LrcEditorViewModel : ViewModelBase
     /// <summary>
     /// Parses LRC or plain text into (timestamp?, text) lines. Lines without a
     /// leading [mm:ss.xx] tag come back with a null timestamp; blank lines are
-    /// dropped. Only the first tag per line is honored.
+    /// dropped. A line with a stack of tags becomes one entry per tag.
     /// </summary>
     public static List<(TimeSpan? Time, string Text)> ParseLrc(string text)
     {
@@ -126,24 +126,35 @@ public partial class LrcEditorViewModel : ViewModelBase
                 continue;
             }
 
-            var minutes = int.Parse(match.Groups[1].Value);
-            var seconds = int.Parse(match.Groups[2].Value);
-            var fraction = match.Groups[3].Success ? match.Groups[3].Value : "0";
-            var ms = fraction.Length switch
-            {
-                1 => int.Parse(fraction) * 100,
-                2 => int.Parse(fraction) * 10,
-                _ => int.Parse(fraction),
-            };
-
-            var time = new TimeSpan(0, 0, minutes, seconds, ms);
-            // Strip every leading timestamp tag (some files stack repeats).
+            // A stack of leading tags ("[00:05.00][00:35.00]Chorus") is the same words sung at
+            // each time: one row per tag. Keeping only the first lost the repeats the moment
+            // Edit Info rewrote the text from these rows (touching any row on the Timestamp
+            // Lyrics tab turned the chorus at 0:35 into nothing).
+            var times = new List<TimeSpan>();
             var content = line;
             while (TimestampPattern.Match(content) is { Success: true } m)
+            {
+                times.Add(ToTime(m));
                 content = content[m.Length..];
-            result.Add((time, content.Trim()));
+            }
+            foreach (var time in times)
+                result.Add((time, content.Trim()));
         }
         return result;
+    }
+
+    private static TimeSpan ToTime(Match match)
+    {
+        var minutes = int.Parse(match.Groups[1].Value);
+        var seconds = int.Parse(match.Groups[2].Value);
+        var fraction = match.Groups[3].Success ? match.Groups[3].Value : "0";
+        var ms = fraction.Length switch
+        {
+            1 => int.Parse(fraction) * 100,
+            2 => int.Parse(fraction) * 10,
+            _ => int.Parse(fraction),
+        };
+        return new TimeSpan(0, 0, minutes, seconds, ms);
     }
 
     /// <summary>Builds LRC text from lines that carry timestamps, in time order.</summary>

@@ -126,6 +126,29 @@ public class MiniPlayerFrostSettingTests : IDisposable
         Assert.Same(MiniPlayerWindow.TransparencyLevels(true), MiniPlayerWindow.TransparencyLevels(true));
     }
 
+    /// <summary>10-08: the wheel over a mini player design changed the level silently while
+    /// muted; adjusting now unmutes, as the playback bar's wheel/drag always did.</summary>
+    [AvaloniaFact]
+    public void DesignWheelVolume_UnmutesLikeTheBar()
+    {
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+
+        player.Volume = 40;
+        player.IsMuted = true;
+        vm.NudgeVolume(1);
+        Assert.False(player.IsMuted);
+        Assert.Equal(45, player.Volume);
+
+        vm.NudgeVolume(0); // a fraction that hasn't reached a notch: nothing changes
+        Assert.Equal(45, player.Volume);
+    }
+
     [AvaloniaFact]
     public void ReattachingTheViewModel_DoesNotChangeTheHintInstance()
     {
@@ -176,6 +199,50 @@ public class MiniPlayerFrostSettingTests : IDisposable
             Assert.Equal(MiniPlayerWindow.TransparencyLevels(OperatingSystem.IsWindows()), win.TransparencyLevelHint);
 
             settings.MiniPlayerFrostedBackground = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>The frost needs a window region, whose edge is never anti-aliased, so the Pill
+    /// and Sleeve came out stair-stepped with it on (1v1ctus, 2026-10-05). The designs skip
+    /// the OS backdrop; Classic keeps it, and switching between them follows live.</summary>
+    [AvaloniaFact]
+    public void Frost_AppliesToClassicOnly_AndFollowsADesignSwitch()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null)
+            {
+                Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml"),
+            });
+
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        settings.MiniPlayerFrostedBackground = true;
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+        vm.SetDesignCommand.Execute("Pill");
+
+        var win = new MiniPlayerWindow { DataContext = vm };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+
+            vm.SetDesignCommand.Execute("Classic");
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(MiniPlayerWindow.TransparencyLevels(OperatingSystem.IsWindows()), win.TransparencyLevelHint);
+
+            vm.SetDesignCommand.Execute("Sleeve");
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
         }
@@ -249,6 +316,50 @@ public class MiniPlayerFrostSettingTests : IDisposable
                     Assert.True(sleeve.Rect.Width < win.ClientSize.Width, "the slab is inset from the window rect");
                     break;
             }
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>1v1ctus 2026-10-05: a notch of desktop showed where the Pill's cover met its
+    /// slab, top and bottom. The slab's left end (under the cover) is square and its edges sit
+    /// just inside the cover's height, so the slab never pokes out past the round cover.</summary>
+    [AvaloniaFact]
+    public async Task PillSlab_IsSquareUnderTheCover_AndStaysInsideItsHeight()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var vm = new MiniPlayerViewModel(player, lyrics, settings, library);
+        vm.SetDesignCommand.Execute("Pill");
+        var win = new MiniPlayerWindow { DataContext = vm };
+        win.Show();
+        try
+        {
+            var end = Environment.TickCount64 + 400;
+            while (Environment.TickCount64 < end)
+            {
+                Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(8);
+            }
+            Rect R(string n) { var c = win.FindControl<Control>(n)!; return new Rect(c.TranslatePoint(new Point(0, 0), win)!.Value, c.Bounds.Size); }
+            var ground = win.FindControl<Border>("PillGround")!;
+            var slab = R("PillGround");
+            var cover = R("PillCover");
+
+            Assert.Equal(0, ground.CornerRadius.TopLeft);
+            Assert.Equal(0, ground.CornerRadius.BottomLeft);
+            Assert.Equal(24, ground.CornerRadius.TopRight);
+            Assert.Equal(cover.Center.X, slab.Left, 1);   // the square end is under the cover
+            Assert.Equal(cover.Top + MiniPlayerWindow.PillGroundTrim, slab.Top, 1);
+            Assert.Equal(cover.Bottom - MiniPlayerWindow.PillGroundTrim, slab.Bottom, 1);
         }
         finally
         {

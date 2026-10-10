@@ -174,6 +174,8 @@ public class VlcAudioPlayer : IAudioPlayer
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    private long _enginePtsGapCount;   // every PtsGap this session (the log line is rate-limited)
+    private long _lastPtsGapLogTick;   // Environment.TickCount64 of the last PtsGap line
     // VLC clock date (µs) of the slot's pause callback; 0 = not paused. A pause moves
     // VLC's input clock on by its length, so blocks after the resume are stamped that
     // much later — not a hole (EngineResume carries the expected pts across it).
@@ -1883,9 +1885,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (t.Data.Audio.Channels > 0) channels = (int)t.Data.Audio.Channels;
                 break;
             }
-            // amem rejects rates above 384 kHz; the sink renders at most stereo
-            // (LibVLC downmixes to what we pin below).
-            rate = Math.Clamp(rate, 8000, 384000);
+            // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
+            // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
+            // The sink renders at most stereo (LibVLC downmixes to what we pin below).
+            rate = AmemRate.Fit(Math.Max(rate, 8000));
             channels = Math.Clamp(channels, 1, 2);
 
             string? notice = null;
@@ -4236,8 +4239,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (expectedPts > 0 && Math.Abs(pts - expectedPts) > 20_000)
                 {
                     var gapMs = (pts - expectedPts) / 1000.0;
-                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PtsGap",
-                        $"slot={slot}, gapMs={gapMs:0.#}, frames={count}");
+                    // Rate-limited like Underrun (one line per 250 ms carrying the running
+                    // count): a gap on every block logged ~10 lines a second (Discord, Ardhito
+                    // 10-08), enough to push everything else out of the 500-line session log.
+                    var gaps = Interlocked.Increment(ref _enginePtsGapCount);
+                    var now = Environment.TickCount64;
+                    if (now - Interlocked.Read(ref _lastPtsGapLogTick) >= 250)
+                    {
+                        Interlocked.Exchange(ref _lastPtsGapLogTick, now);
+                        DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PtsGap",
+                            $"slot={slot}, gapMs={gapMs:0.#}, frames={count}, count={gaps}");
+                    }
                     // A forward hole is VLC having dropped late audio because the input
                     // stalled longer than the read-ahead window; widen it for what follows.
                     NoteInputGap(gapMs);

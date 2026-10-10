@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══ Pop-up line icons (10-09) ═══
+         Owner 10-09: "match all the icons for the same action everywhere; if icons are the
+         same for different things or low quality, make new, unique ones." Every pop-up
+         header now shows the same line icon as the menu row / button that opens it (the
+         MenuLine* keys in Icons.axaml). These are the actions that had no line icon yet, or
+         whose old glyph meant something else (the tag that also marks a Badge, the folder
+         that also means Show in Folder, the playlist PNG shared by Add to Playlist and New
+         Playlist).
+
+         Same rules as the menu set: drawn for Noctis by hand on a 24 grid as OPEN STROKES,
+         no fill; draw with Noctis.Controls.LineIcon (or MenuV2.LineIcon): StrokeThickness
+         2.25 grid units, round caps/joins, which lands 1.5px at 16px. Keep 3+ units
+         between strokes so they stay apart at 16px. Merged next to Icons.axaml. -->
+
+    <!-- New Playlist: a note with a plus. Not MenuLinePlaylistAdd (the list with a plus is
+         "put these tracks into a playlist"); this one makes an empty playlist. -->
+    <StreamGeometry x:Key="LineCreatePlaylist">M9.5 17.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0ZM9.5 17.5V4.5l5 2M17.5 13v7M14 16.5h7</StreamGeometry>
+
+    <!-- Find Duplicates: two overlapping cards (a copy) -->
+    <StreamGeometry x:Key="LineDuplicates">M9 8.5h9.5A1.5 1.5 0 0 1 20 10v8.5a1.5 1.5 0 0 1-1.5 1.5H9a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 9 8.5ZM16.5 8.5v-3A1.5 1.5 0 0 0 15 4H5.5A1.5 1.5 0 0 0 4 5.5V15a1.5 1.5 0 0 0 1.5 1.5h2</StreamGeometry>
+
+    <!-- Organize Files: a folder tree (a trunk branching into two entries). Not the folder,
+         which is Show in Folder. -->
+    <StreamGeometry x:Key="LineOrganizeFiles">M5.5 3.5V15a2 2 0 0 0 2 2H13M5.5 8.5H13M14.5 6H19a1.5 1.5 0 0 1 1.5 1.5v2A1.5 1.5 0 0 1 19 11h-4.5A1.5 1.5 0 0 1 13 9.5v-2A1.5 1.5 0 0 1 14.5 6ZM14.5 14.5H19a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-4.5A1.5 1.5 0 0 1 13 18v-2a1.5 1.5 0 0 1 1.5-1.5Z</StreamGeometry>
+
+    <!-- Find Metadata: tag lines under a magnifier. Not the tag (MenuLineBadge is Badge). -->
+    <StreamGeometry x:Key="LineFindMetadata">M4.5 6h12M4.5 10.5h7M4.5 15h4M15.5 18.5a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7ZM18 17.5l2.5 2.5</StreamGeometry>
+
+    <!-- Add (a rule, a row): a plain plus, the same stroke as the rest -->
+    <StreamGeometry x:Key="LinePlus">M12 5.5v13M5.5 12h13</StreamGeometry>
+
+    <!-- Lyric line timing (LRC editor "stamp this line now"): a stopwatch. Replaces the ⏱
+         emoji, which has no glyph in Inter and falls back to a colour emoji on Windows and to
+         whatever the font stack has (or tofu) on Linux/macOS. -->
+    <StreamGeometry x:Key="LineStopwatch">M12 20.5a7 7 0 1 0 0-14a7 7 0 0 0 0 14ZM12 10v3.5M10 3.5h4M18 7l1.2-1.2</StreamGeometry>
+</ResourceDictionary>

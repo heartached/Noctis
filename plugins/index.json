@@ -6,13 +6,13 @@
       "name": "Mixxx",
       "author": "Noctis",
       "description": "Imports the BPM and key from your Mixxx library.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "minAppVersion": "1.5.9",
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
-      "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.0/Noctis.Plugins.Mixxx-1.0.0.zip",
-      "sha256": "15aa84fa8683445815ec8da8fa1b381f787d67417b401dd17b4cecc82454f061",
-      "size": 11758,
+      "download": "https://github.com/heartached/Noctis/releases/download/plugin-mixxx-v1.0.1/Noctis.Plugins.Mixxx-1.0.1.zip",
+      "sha256": "0c87f61087cb3b0b21ba7ab4ca2e56b07344d6150f341dc7e89e8b8ef88d09ce",
+      "size": 11781,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.Mixxx"
     }
   ]

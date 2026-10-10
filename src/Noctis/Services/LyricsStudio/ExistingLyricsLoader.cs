@@ -20,6 +20,7 @@ public static partial class ExistingLyricsLoader
 {
     private static readonly string[] ElrcExtensions = { ".elrc", ".ELRC", ".Elrc" };
     private static readonly string[] LrcExtensions = { ".lrc", ".LRC", ".Lrc" };
+    private static readonly string[] TtmlExtensions = { ".ttml", ".TTML", ".Ttml" };
 
     [GeneratedRegex(@"^\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]")]
     private static partial Regex LeadingTimestamp();
@@ -59,12 +60,19 @@ public static partial class ExistingLyricsLoader
         return null;
     }
 
-    /// <summary>Sidecar-aware format check: what a track has on disk or in its tags, without parsing everything.</summary>
+    /// <summary>
+    /// Sidecar-aware format check: what a track has on disk or in its tags, without parsing
+    /// everything. A .ttml counts first, as on the lyrics page: a song whose only lyrics were a
+    /// word-timed .ttml (Apple Music style, or the Studio's own "Also save as TTML") was listed
+    /// as having no timings, and "Skip songs already in this format" never skipped it.
+    /// </summary>
     public static LyricsFormat DetectFormat(Track track)
     {
         var path = track.FilePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
+            var ttml = FindSidecar(path, TtmlExtensions);
+            if (ttml is not null && TtmlFormat(ttml) is { } tf) return tf;
             var elrc = FindSidecar(path, ElrcExtensions);
             if (elrc is not null && TryRead(elrc, out var text))
             {
@@ -116,6 +124,7 @@ public static partial class ExistingLyricsLoader
 
     private static bool TryDetectSidecar(Dictionary<string, string> sidecars, string stem, out LyricsFormat format)
     {
+        if (sidecars.TryGetValue(stem + ".ttml", out var ttml) && TtmlFormat(ttml) is { } tf) { format = tf; return true; }
         foreach (var ext in new[] { ".elrc", ".lrc" })
         {
             if (!sidecars.TryGetValue(stem + ext, out var file) || !TryRead(file, out var text)) continue;
@@ -126,7 +135,7 @@ public static partial class ExistingLyricsLoader
         return false;
     }
 
-    /// <summary>Case-insensitive "stem.ext" → full path for every .lrc/.elrc in <paramref name="dir"/>; null when the folder can't be listed.</summary>
+    /// <summary>Case-insensitive "stem.ext" → full path for every .lrc/.elrc/.ttml in <paramref name="dir"/>; null when the folder can't be listed.</summary>
     private static Dictionary<string, string>? ListSidecars(string dir)
     {
         try
@@ -136,12 +145,23 @@ public static partial class ExistingLyricsLoader
             foreach (var file in Directory.EnumerateFiles(dir))
             {
                 var ext = System.IO.Path.GetExtension(file);
-                if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase) || ext.Equals(".elrc", StringComparison.OrdinalIgnoreCase))
+                if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase) || ext.Equals(".elrc", StringComparison.OrdinalIgnoreCase)
+                    || ext.Equals(".ttml", StringComparison.OrdinalIgnoreCase))
                     map.TryAdd(System.IO.Path.GetFileName(file), file);
             }
             return map;
         }
         catch { return null; }
+    }
+
+    /// <summary>A .ttml sidecar's timing as the lyrics page reads it: word spans → word timings (Elrc), timed lines → Lrc; null when unreadable or untimed.</summary>
+    private static LyricsFormat? TtmlFormat(string file)
+    {
+        if (!TryRead(file, out var text)) return null;
+        var (lines, _) = TtmlParser.Parse(text);
+        if (lines is not { Count: > 0 }) return null;
+        if (lines.Any(l => l.Words is { Count: > 0 })) return LyricsFormat.Elrc;
+        return lines.Any(l => l.Timestamp.HasValue) ? LyricsFormat.Lrc : null;
     }
 
     public static string? FindSidecar(string trackFilePath, string[] extensions)
@@ -162,11 +182,14 @@ public static partial class ExistingLyricsLoader
     /// <summary>
     /// LRC or enhanced LRC text → aligned lines. Word tags become words; a line without word
     /// tags keeps an empty word list so it stays line-level until it is upgraded. Header tags
-    /// and empty end-marker lines are dropped; lines come back in time order.
+    /// and empty end-marker lines are dropped; lines come back in time order, file order kept
+    /// among lines sharing a start. Plain lines sharing a line's start in its voice (romaji,
+    /// translation — GitHub #116) become its <see cref="AlignedLine.Companions"/>, by the
+    /// lyrics page's rule (<see cref="LrcParser"/>): word-timed or other-voice lines stay sung.
     /// </summary>
     public static IReadOnlyList<AlignedLine> ParseTimed(string text)
     {
-        var raw = new List<(TimeSpan Start, string Text, List<WordTiming>? Words)>();
+        var raw = new List<(TimeSpan Start, string Text, List<WordTiming>? Words, LyricVoice Voice)>();
         foreach (var rawLine in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
         {
             var line = rawLine.Trim();
@@ -186,20 +209,22 @@ public static partial class ExistingLyricsLoader
             }
             if (stamps.Count == 0) continue;
 
-            var (body, _) = EnhancedLrcParser.StripVoiceMarker(rest);
+            var (body, voice) = EnhancedLrcParser.StripVoiceMarker(rest);
             if (stamps.Count == 1) body = EnhancedLrcParser.TagLeadingText(body, stamps[0]);
             var (plain, words) = EnhancedLrcParser.ParseLine(body);
             if (string.IsNullOrWhiteSpace(plain)) continue;
             // Word times are absolute, so they only make sense on a single-stamp line.
             var lineWords = stamps.Count == 1 ? words : null;
-            foreach (var s in stamps) raw.Add((s, plain.Trim(), lineWords));
+            foreach (var s in stamps) raw.Add((s, plain.Trim(), lineWords, voice));
         }
-        raw.Sort((a, b) => a.Start.CompareTo(b.Start));
+        // Stable: List.Sort reordered lines sharing a start once a file passed 16 lines.
+        raw = raw.OrderBy(r => r.Start).ToList();
+        var companions = GroupCompanions(raw);
 
         var result = new List<AlignedLine>(raw.Count);
         for (var i = 0; i < raw.Count; i++)
         {
-            var (start, plain, words) = raw[i];
+            var (start, plain, words, _) = raw[i];
             var nextStart = i + 1 < raw.Count ? raw[i + 1].Start : (TimeSpan?)null;
             var aligned = new List<AlignedWord>();
             if (words is { Count: > 0 })
@@ -217,9 +242,72 @@ public static partial class ExistingLyricsLoader
             var lineEnd = aligned.Count > 0 ? aligned[^1].End
                 : nextStart ?? start + DefaultWordSpan * Math.Max(1, plain.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
             if (lineEnd < start) lineEnd = start;
-            result.Add(new AlignedLine(plain, start, lineEnd, aligned, Confidence: 1, Interpolated: false));
+            result.Add(new AlignedLine(plain, start, lineEnd, aligned, Confidence: 1, Interpolated: false)
+            {
+                Companions = companions[i],
+            });
         }
         return result;
+    }
+
+    /// <summary>
+    /// Gives re-timed lines back the <see cref="AlignedLine.Companions"/> of the source lines
+    /// they were timed from: the engine aligns only the sung text, so without this a re-time
+    /// and save dropped the romaji and translation (GitHub #116). Matched in order by text.
+    /// </summary>
+    public static IReadOnlyList<AlignedLine> CarryCompanions(IReadOnlyList<AlignedLine> source, IReadOnlyList<AlignedLine> timed)
+    {
+        if (!source.Any(l => l.Companions is { Count: > 0 })) return timed;
+        var result = new List<AlignedLine>(timed.Count);
+        var j = 0;
+        foreach (var line in timed)
+        {
+            var k = j;
+            while (k < source.Count && !string.Equals(source[k].Text.Trim(), line.Text.Trim(), StringComparison.Ordinal)) k++;
+            if (k < source.Count)
+            {
+                j = k + 1;
+                if (source[k].Companions is { Count: > 0 } companions && line.Companions is null)
+                {
+                    result.Add(line with { Companions = companions });
+                    continue;
+                }
+            }
+            result.Add(line);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Pulls companion lines (plain, same start, same voice as an earlier line there) out of
+    /// <paramref name="raw"/>; returns each remaining line's companions, index-aligned with it.
+    /// </summary>
+    private static List<List<string>?> GroupCompanions(List<(TimeSpan Start, string Text, List<WordTiming>? Words, LyricVoice Voice)> raw)
+    {
+        var companions = new List<List<string>?>(raw.Count);
+        var kept = new List<(TimeSpan, string, List<WordTiming>?, LyricVoice)>(raw.Count);
+        var taken = new bool[raw.Count];
+        for (var i = 0; i < raw.Count; i++)
+        {
+            if (taken[i]) continue;
+            var main = raw[i];
+            List<string>? mine = null;
+            var seen = new HashSet<string>(StringComparer.Ordinal) { main.Text };
+            // A word-timed "(…)" line is an ad-lib of the line before it, not an entry.
+            var adlib = main.Words is { Count: > 0 } && TimedLyricsBuilder.IsFullyParenthesized(main.Text);
+            for (var k = i + 1; !adlib && k < raw.Count && raw[k].Start == main.Start; k++)
+            {
+                var other = raw[k];
+                if (taken[k] || other.Words is { Count: > 0 } || other.Voice != main.Voice) continue;
+                taken[k] = true;
+                if (seen.Add(other.Text)) (mine ??= new List<string>()).Add(other.Text);
+            }
+            kept.Add(main);
+            companions.Add(mine);
+        }
+        raw.Clear();
+        raw.AddRange(kept);
+        return companions;
     }
 
     private static bool TryParseFile(string path, out IReadOnlyList<AlignedLine> lines)

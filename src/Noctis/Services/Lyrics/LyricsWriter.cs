@@ -58,7 +58,10 @@ public sealed class LyricsWriter
     /// line-timed .lrc in place would silently hide the word timings they just made. The old
     /// file goes to the recycle bin, not into the void; when the trash refuses it stays put.
     /// </summary>
-    public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar)
+    /// <param name="ttml">Also written as a .ttml sidecar when given (Lyrics Studio's "Also save as TTML").
+    /// The lyrics page reads .lyricsfile and .ttml before .elrc and .lrc, so without one a leftover
+    /// .ttml or .lyricsfile is removed like a stale .elrc — it would hide what was just saved.</param>
+    public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar, string? ttml = null)
     {
         var hasSynced = !string.IsNullOrWhiteSpace(synced);
         var hasPlain = !string.IsNullOrWhiteSpace(plain);
@@ -88,8 +91,19 @@ public sealed class LyricsWriter
             {
                 WriteSidecar(lrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
                 // A leftover .elrc would out-rank the new .lrc on the lyrics page.
-                RemoveSidecar(elrcPath, replaceForeignSidecar, ref replaced, ref kept);
+                foreach (var stale in SidecarsOnDisk(path, ".elrc"))
+                    RemoveSidecar(stale, replaceForeignSidecar, ref replaced, ref kept);
             }
+
+            var ttmlPath = Path.ChangeExtension(path, ".ttml");
+            if (!string.IsNullOrWhiteSpace(ttml))
+                WriteSidecar(ttmlPath, ttml, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
+            else
+                foreach (var stale in SidecarsOnDisk(path, ".ttml"))
+                    RemoveSidecar(stale, replaceForeignSidecar, ref replaced, ref kept);
+            // LRCGET's .lyricsfile out-ranks every other sidecar: a Studio save stayed invisible under one.
+            foreach (var stale in SidecarsOnDisk(path, ".lyricsfile"))
+                RemoveSidecar(stale, replaceForeignSidecar, ref replaced, ref kept);
         }
 
         if (embedInTags && !string.IsNullOrWhiteSpace(path) && track.SourceType == SourceType.Local)
@@ -100,6 +114,63 @@ public sealed class LyricsWriter
                 Task.Run(() => { try { _metadata.WriteTrackMetadata(track); } catch { } });
         }
         return new LyricsSaveOutcome(true, sidecarWritten, replaced, kept);
+    }
+
+    /// <summary>
+    /// The lyrics files beside <paramref name="audioPath"/> that a <see cref="SaveDetailed"/> of
+    /// <paramref name="synced"/> (no TTML) would replace or remove, quoted names only, in the
+    /// lyrics page's read order — for the prompt before a save. A file that already holds exactly
+    /// what the save writes is left out: re-saving lyrics already on disk changes nothing.
+    /// </summary>
+    internal static List<string> FilesChangedBySave(string audioPath, string synced)
+    {
+        var changed = new List<string>();
+        var isWordLevel = LyricsFormatDetector.Detect(null, synced) == LyricsFormat.Elrc;
+        Check(".lyricsfile", null);
+        Check(".ttml", null);
+        Check(".elrc", isWordLevel ? synced : null);
+        Check(".lrc", isWordLevel ? LineLevelProjection(synced) : synced);
+        return changed;
+
+        void Check(string ext, string? written)
+        {
+            foreach (var path in SidecarsOnDisk(audioPath, ext))
+            {
+                try
+                {
+                    if (written is not null && Comparable(File.ReadAllText(path)) == Comparable(written)) continue;
+                }
+                catch { /* unreadable: say it will be replaced */ }
+                changed.Add($"“{Path.GetFileName(path)}”");
+            }
+        }
+
+        static string Comparable(string text) =>
+            text.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
+    }
+
+    /// <summary>
+    /// The files beside <paramref name="audioPath"/> named like it with extension
+    /// <paramref name="ext"/> in any letter case, as they are on disk. The lyrics page also reads
+    /// ".TTML", ".Elrc" and the like; on a case-sensitive file system (Linux) a save that only
+    /// looked for the lower-case name left an upper-case one standing to hide it, and on Windows
+    /// the prompt named "Song.ttml" for a file called "Song.TTML".
+    /// </summary>
+    internal static List<string> SidecarsOnDisk(string audioPath, string ext)
+    {
+        var found = new List<string>();
+        try
+        {
+            var dir = Path.GetDirectoryName(audioPath);
+            var stem = Path.GetFileNameWithoutExtension(audioPath);
+            if (string.IsNullOrEmpty(dir) || string.IsNullOrEmpty(stem) || !Directory.Exists(dir)) return found;
+            foreach (var file in Directory.EnumerateFiles(dir, stem + ".*"))
+                if (string.Equals(Path.GetFileNameWithoutExtension(file), stem, StringComparison.Ordinal)
+                    && string.Equals(Path.GetExtension(file), ext, StringComparison.OrdinalIgnoreCase))
+                    found.Add(file);
+        }
+        catch { /* folder unreadable: nothing found */ }
+        return found;
     }
 
     /// <summary>Removes the app's own lyrics artefacts for the track and clears its fields.</summary>
@@ -118,7 +189,7 @@ public sealed class LyricsWriter
         var path = track.FilePath;
         if (!string.IsNullOrWhiteSpace(path))
         {
-            foreach (var ext in new[] { ".elrc", ".lrc" })
+            foreach (var ext in new[] { ".ttml", ".elrc", ".lrc" })
             {
                 var sidecar = Path.ChangeExtension(path, ext);
                 if (!_registry.Contains(sidecar)) continue;

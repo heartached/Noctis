@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             x:Class="Noctis.Views.QueueToastView"
+             x:DataType="vm:QueueToastViewModel"
+             IsHitTestVisible="False"
+             Focusable="False"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Bottom">
+    <!-- "Added to Queue" / "Playing Next" confirmation above the playback island. Never
+         hit-tested or focusable, so it can't take a click or the keyboard from the page.
+         The motion is code-behind (QueueToastView.axaml.cs): the pill rises and fades in,
+         the accent badge pops, the tick strokes in; a repeat add pulses the badge. -->
+    <UserControl.Styles>
+        <!-- Tick stroke-in: the 8-unit dash (dash units are multiples of StrokeThickness;
+             the tick is ~6.5 units long) slides from fully offset (only the gap over the
+             path) to 0 (the dash covers it), so the stroke grows from the short arm's tip. -->
+        <Style Selector="Path.queue-tick">
+            <Setter Property="StrokeDashOffset" Value="8" />
+        </Style>
+        <Style Selector="Path.queue-tick.draw">
+            <Style.Animations>
+                <Animation Duration="0:0:0.34" Delay="0:0:0.12" FillMode="Both" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%"><Setter Property="StrokeDashOffset" Value="8" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="StrokeDashOffset" Value="0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Border x:Name="Pill"
+            IsVisible="False"
+            Opacity="0"
+            MaxWidth="440"
+            Background="{DynamicResource IslandBackground}"
+            BorderBrush="{DynamicResource IslandBorder}"
+            BorderThickness="1"
+            CornerRadius="999"
+            Padding="6,6,18,6"
+            BoxShadow="0 6 20 0 #33000000"
+            RenderTransformOrigin="50%,100%">
+        <Grid ColumnDefinitions="Auto,*">
+            <Border x:Name="Badge"
+                    Width="26" Height="26"
+                    CornerRadius="13"
+                    Background="{DynamicResource AccentColorBrush}"
+                    VerticalAlignment="Center"
+                    RenderTransformOrigin="50%,50%">
+                <Path x:Name="Tick"
+                      Classes="queue-tick"
+                      Width="26" Height="26"
+                      Stretch="None"
+                      Data="M 7.6,13.3 L 11.1,16.7 L 18.6,9.1"
+                      Stroke="{DynamicResource AccentForegroundBrush}"
+                      StrokeThickness="2.4"
+                      StrokeLineCap="Round"
+                      StrokeJoin="Round"
+                      StrokeDashArray="8,8" />
+            </Border>
+            <StackPanel Grid.Column="1"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center">
+                <TextBlock Text="{Binding Headline}"
+                           FontSize="12.5"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource IslandForeground}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Detail}"
+                           FontSize="12"
+                           Foreground="{DynamicResource IslandForegroundSecondary}"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

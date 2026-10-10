@@ -56,7 +56,7 @@
     <Grid RowDefinitions="*">
 
         <!-- Collage background: quiet charcoal with a subtle radial lift (collage mode only) -->
-        <Panel Grid.Row="0" IsHitTestVisible="False" IsVisible="{Binding IsCollageMode}">
+        <Panel x:Name="CollageBackground" Grid.Row="0" IsHitTestVisible="False" IsVisible="False">
             <Border>
                 <Border.Background>
                     <RadialGradientBrush GradientOrigin="50%,40%" Center="50%,40%" RadiusX="70%" RadiusY="70%">
@@ -72,7 +72,7 @@
              code-behind points the hidden one at the new cover and swaps their opacities,
              and the Opacity transitions crossfade them (CrossfadeBackground). Both decode
              at 768 so they share the centre card's ArtworkCache entry. -->
-        <Panel Grid.Row="0" IsHitTestVisible="False" IsVisible="{Binding !IsCollageMode}">
+        <Panel x:Name="BlurredBackground" Grid.Row="0" IsHitTestVisible="False">
             <ctrl:CachedImage x:Name="BackgroundArtA"
                               DecodeWidth="768"
                               Stretch="UniformToFill"
@@ -108,7 +108,10 @@
             <Border x:Name="BackgroundOverlay" Background="#000000" Opacity="0.45" />
         </Panel>
 
-        <!-- Main content: carousel + text stacked vertically -->
+        <!-- Main content: carousel + text stacked vertically. The four layouts (CollageViewbox,
+             CarouselHost, StageGrid, EmptyState) and the two backgrounds have no IsVisible
+             bindings: the code-behind shows them so a layout switch can morph old into new
+             (SwitchLayout / CoverFlowLayoutMorph). -->
         <Grid Grid.Row="0" Margin="0,24,0,12">
 
             <!-- ══ Static album-art collage (decorative; library artwork, fully non-interactive) ══
@@ -117,14 +120,15 @@
                  left edge (so they line up), columns get larger toward the centre and smaller
                  toward the edges. Slots fill from the now-playing track outward through UpNext.
                  IsHitTestVisible=False → no cover is clickable, hoverable or selectable. -->
-            <Viewbox Stretch="Uniform"
+            <Viewbox x:Name="CollageViewbox"
+                     Stretch="Uniform"
                      MaxWidth="1900" MaxHeight="760"
                      IsHitTestVisible="False" Margin="24,24,24,140"
-                     IsVisible="{Binding IsCollageMode}">
+                     IsVisible="False">
                 <Canvas Width="1410" Height="540">
 
                     <!-- ═══ Centre column (200): now-playing + next ═══ -->
-                    <Border Canvas.Left="604" Canvas.Top="62" Width="200" Height="200" CornerRadius="6" ClipToBounds="True"
+                    <Border x:Name="CollageCenterCover" Canvas.Left="604" Canvas.Top="62" Width="200" Height="200" CornerRadius="6" ClipToBounds="True"
                             BoxShadow="0 8 22 0 #5E000000"
                             IsVisible="{Binding CenterTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Panel>
@@ -480,8 +484,7 @@
                   VerticalAlignment="Center"
                   Height="420"
                   Margin="0,-24,0,-12"
-                  Background="Transparent"
-                  IsVisible="{Binding ShowCarousel}">
+                  Background="Transparent">
                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center"
                       ClipToBounds="False">
 
@@ -526,7 +529,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding OffPreviousArtworkPath}"
                                         Title="{Binding OffPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffPreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding OffPreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding OffPreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding OffPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -536,7 +539,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding EdgePreviousArtworkPath}"
                                         Title="{Binding EdgePreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgePreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding EdgePreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding EdgePreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding EdgePreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -546,7 +549,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding FarPreviousArtworkPath}"
                                         Title="{Binding FarPreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarPreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding FarPreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding FarPreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding FarPreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -556,7 +559,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding PreviousArtworkPath}"
                                         Title="{Binding PreviousTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding PreviousTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding PreviousTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding PreviousTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -590,7 +593,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding NextArtworkPath}"
                                         Title="{Binding NextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding NextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding NextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding NextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -600,7 +603,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding FarNextArtworkPath}"
                                         Title="{Binding FarNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding FarNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding FarNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding FarNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -610,7 +613,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding EdgeNextArtworkPath}"
                                         Title="{Binding EdgeNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding EdgeNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding EdgeNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding EdgeNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -620,7 +623,7 @@
                                         ArtworkSize="300"
                                         ArtworkPath="{Binding OffNextArtworkPath}"
                                         Title="{Binding OffNextTrack.Title, FallbackValue=''}"
-                                        Artist="{Binding OffNextTrack.Artist, FallbackValue=''}"
+                                        Artist="{Binding OffNextTrack.ArtistDisplay, FallbackValue=''}"
                                         IsExplicit="{Binding OffNextTrack.IsExplicit, FallbackValue=False}"
                                         IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
@@ -683,7 +686,7 @@
                  drops the text under the pile below ~1040px (see OnSizeChanged). -->
             <Grid x:Name="StageGrid"
                   ColumnDefinitions="Auto,*" RowDefinitions="*,Auto"
-                  IsVisible="{Binding ShowCascade}">
+                  IsVisible="False">
 
                 <Viewbox x:Name="PileViewbox"
                          Grid.Row="0" Grid.Column="0" Grid.RowSpan="2"
@@ -859,10 +862,11 @@
             </Grid>
 
             <!-- Empty state when nothing is playing -->
-            <StackPanel HorizontalAlignment="Center"
+            <StackPanel x:Name="EmptyState"
+                        HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8"
-                        IsVisible="{Binding ShowEmptyState}">
+                        IsVisible="False">
                 <TextBlock Text="{loc:T CoverFlow.NothingPlaying}"
                            FontSize="20"
                            Opacity="0.4"

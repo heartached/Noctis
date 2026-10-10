@@ -8,9 +8,12 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Controls;
 using Noctis.Converters;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -66,6 +69,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
+    public MenuItem DontScrobble { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     public MenuItem OpenWith { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
@@ -83,14 +87,34 @@ public sealed class TrackContextMenuBuilder
 
     public ContextMenu Menu { get; private set; } = null!;
 
+    // ── v2 layout (10-09 redesign, opt-in via Build(..., v2: true)) ──
+
+    /// <summary>True when this menu was built with the v2 layout.</summary>
+    public bool IsV2 { get; private set; }
+    /// <summary>v2: the Play / Shuffle / Play Next / Add to Queue tiles that replace those four rows.</summary>
+    public Button QuickPlay { get; private set; } = null!;
+    public Button QuickShuffle { get; private set; } = null!;
+    public Button QuickPlayNext { get; private set; } = null!;
+    public Button QuickAddToQueue { get; private set; } = null!;
+    /// <summary>v2: inline five-star row (replaces the Rate ▸ submenu; <see cref="Rate"/> is its item).</summary>
+    public MenuV2Rating? Rating { get; private set; }
+    /// <summary>v2: "Tools ▸" holding Convert, ReplayGain, Spectrogram, Send to Folder, Open With, Don't Scrobble.</summary>
+    public MenuItem Tools { get; private set; } = null!;
+
     /// <summary>
     /// Builds the context menu. Call once per view lifetime.
     /// </summary>
     /// <param name="removeHeader">Label for the last item (e.g. "Remove from Library" or "Remove from Playlist").</param>
     /// <param name="removeIconUri">Asset URI for the remove icon, or null to use the TrashIcon resource.</param>
     /// <param name="resourceHost">Control used to resolve resources (e.g. icons).</param>
-    public ContextMenu Build(string removeHeader, string? removeIconUri, Control resourceHost)
+    /// <param name="v2">Build the redesigned (10-09) layout: header, quick tiles, grouped rows, Tools ▸.</param>
+    /// <param name="removeIsDanger">Red Remove row; null = infer from an English "Remove from…" header.</param>
+    public ContextMenu Build(string removeHeader, string? removeIconUri, Control resourceHost, bool v2 = false, bool? removeIsDanger = null)
     {
+        if (v2)
+            return BuildV2(removeHeader, resourceHost,
+                removeIsDanger ?? removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase));
+
         Menu = new ContextMenu();
         var items = Menu.Items;
 
@@ -217,6 +241,10 @@ public sealed class TrackContextMenuBuilder
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
 
+        // Don't Scrobble This Song (static command; header and visibility set per Bind).
+        DontScrobble = new MenuItem { IsVisible = false };
+        items.Add(DontScrobble);
+
         // Send to Folder (MusicBee's Send To → Folder): copies the selection to a drive/folder.
         SendToFolder = new MenuItem { Header = "Send to Folder…", IsVisible = false };
         SendToFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
@@ -259,6 +287,131 @@ public sealed class TrackContextMenuBuilder
     }
 
     /// <summary>
+    /// The v2 layout. Every named item of the classic menu still exists with the same role,
+    /// so <see cref="Bind"/> wires both layouts the same way; Play / Shuffle / Play Next /
+    /// Add to Queue and the Rate ▸ entries are kept off-menu as the source the tiles and the
+    /// star row copy their command from. Groups: [header] [tiles] · [playlist, favorite,
+    /// rating, badge] · [view album/artist, radio, snooze] · [metadata, lyrics ▸, video ▸] ·
+    /// [folder, tools ▸] · [plugins] · [remove]. Separators between empty groups collapse.
+    /// </summary>
+    private ContextMenu BuildV2(string removeHeader, Control host, bool removeIsDanger)
+    {
+        IsV2 = true;
+        Menu = new ContextMenu();
+        Menu.Classes.Add(MenuV2.MenuClass);
+        var items = Menu.Items;
+
+        // Off-menu sources for the tiles (Bind sets their command + parameter).
+        Play = new MenuItem();
+        Shuffle = new MenuItem();
+        PlayNext = new MenuItem();
+        AddToQueue = new MenuItem();
+        for (var i = 0; i <= 5; i++) _rateItems[i] = new MenuItem();
+
+        QuickPlay = MenuV2.Tile(host, Menu, "MenuLinePlay", Loc.T("LibraryAlbums.Play"));
+        QuickShuffle = MenuV2.Tile(host, Menu, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
+        QuickPlayNext = MenuV2.Tile(host, Menu, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
+        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+        items.Add(MenuV2.TileRow(QuickPlay, QuickShuffle, QuickPlayNext, QuickAddToQueue));
+
+        items.Add(new Separator());
+        AddToPlaylist = MenuV2.Row(host, Loc.T("LibraryAlbums.AddPlaylist"), "MenuLinePlaylistAdd");
+        items.Add(AddToPlaylist);
+        Favorite = MenuV2.Row(host, Loc.T("LibraryAlbums.Favorites"), "MenuLineHeart");
+        items.Add(Favorite);
+        Unfavorite = MenuV2.Row(host, Loc.T("LibraryAlbums.RemoveFromFavorites"), "MenuLineHeart");
+        MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
+        items.Add(Unfavorite);
+        Rating = new MenuV2Rating(host, Menu);
+        Rate = Rating.Item;
+        Rate.IsVisible = false;
+        items.Add(Rate);
+        Badge = MenuV2.Row(host, Loc.T("Menu.Badge"), "MenuLineBadge", visible: false);
+        items.Add(Badge);
+
+        _viewSeparator = new Separator();
+        items.Add(_viewSeparator);
+        ViewAlbum = MenuV2.Row(host, Loc.T("Favorites.ViewAlbum"), "MenuLineAlbum", visible: false);
+        items.Add(ViewAlbum);
+        ViewArtist = MenuV2.Row(host, Loc.T("PlaybackBar.ViewArtistTip"), "MenuLineArtist", visible: false);
+        items.Add(ViewArtist);
+        StartRadio = MenuV2.Row(host, Loc.T("Menu.StartRadio"), "MenuLineRadio", visible: false);
+        items.Add(StartRadio);
+        SnoozeForMonth = MenuV2.Row(host, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
+        items.Add(SnoozeForMonth);
+
+        items.Add(new Separator());
+        Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
+        items.Add(Metadata);
+        Lyrics = MenuV2.Row(host, Loc.T("Tab.Lyrics"), "MenuLineLyrics");
+        SearchLyrics = new MenuItem { Header = Loc.T("Lyrics.SearchLyrics") };
+        Lyrics.Items.Add(SearchLyrics);
+        FetchLyrics = new MenuItem { Header = Loc.T("Menu.FetchLyrics"), IsVisible = false };
+        Lyrics.Items.Add(FetchLyrics);
+        LyricsStudio = new MenuItem { Header = Loc.T("Menu.LyricsStudio"), IsVisible = false };
+        Lyrics.Items.Add(LyricsStudio);
+        RemoveLyrics = new MenuItem { Header = Loc.T("PlaybackBar.RemoveLyrics"), IsVisible = false };
+        RemoveLyrics.Classes.Add("danger");
+        Lyrics.Items.Add(RemoveLyrics);
+        items.Add(Lyrics);
+        LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
+        LyricsBackgroundChoose = new MenuItem { Header = Loc.T("Menu.ChooseSongVideo"), Command = LyricsBackgroundOverrides.ChooseForTrackCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundChoose);
+        LyricsBackgroundClear = new MenuItem { Header = Loc.T("AlbumDetail.UseDefaultVideo"), Command = LyricsBackgroundOverrides.ClearForTrackCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundClear);
+        items.Add(LyricsBackground);
+
+        items.Add(new Separator());
+        ShowFolder = MenuV2.Row(host, Loc.T("LibraryAlbums.ShowFolder"), "MenuLineFolder");
+        items.Add(ShowFolder);
+        Tools = MenuV2.Row(host, Loc.T("Favorites.Tools"), "MenuLineTools");
+        Tools.Classes.Add(MenuV2.AutoHideClass);
+        Convert = MenuV2.Row(host, Loc.T("Favorites.ConvertFile"), "MenuLineConvert", visible: false);
+        Tools.Items.Add(Convert);
+        ScanReplayGain = MenuV2.Row(host, Loc.T("LibraryAlbums.ScanReplayGain"), "MenuLineReplayGain", visible: false);
+        Tools.Items.Add(ScanReplayGain);
+        Spectrogram = MenuV2.Row(host, Loc.T("Favorites.Spectrogram"), "MenuLineSpectrogram");
+        Spectrogram.Command = SpectrogramLauncher.OpenCommand;
+        Tools.Items.Add(Spectrogram);
+        SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
+        Tools.Items.Add(SendToFolder);
+        OpenWith = MenuV2.Row(host, "Open File With", "MenuLineOpenWith");
+        Tools.Items.Add(OpenWith);
+        DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
+        Tools.Items.Add(DontScrobble);
+        items.Add(Tools);
+
+        // Plugin commands are inserted after this separator on each Bind.
+        _pluginSeparator = new Separator();
+        items.Add(_pluginSeparator);
+
+        items.Add(new Separator());
+        Remove = MenuV2.Row(host, removeHeader, "MenuLineTrash");
+        if (removeIsDanger)
+            Remove.Classes.Add("danger");
+        items.Add(Remove);
+
+        // A view may hide or relabel entries after Bind (smart playlists hide Remove):
+        // settle the separators and Tools ▸ again right before the menu shows.
+        Menu.Opening += (_, _) => MenuV2.RefreshLayout(Menu.Items);
+        return Menu;
+    }
+
+    /// <summary>v2 extras of a Bind: tiles, stars, then collapse empty groups.</summary>
+    private void BindV2(Track track, ICommand? rateCommand)
+    {
+        MenuV2.Sync(QuickPlay, Play);
+        MenuV2.Sync(QuickShuffle, Shuffle);
+        MenuV2.Sync(QuickPlayNext, PlayNext);
+        MenuV2.Sync(QuickAddToQueue, AddToQueue);
+
+        if (rateCommand != null)
+            Rating!.Bind(rateCommand, track);
+
+        MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    /// <summary>
     /// Binds track data and commands to the menu. Call before showing.
     /// </summary>
     public void Bind(
@@ -287,13 +440,15 @@ public sealed class TrackContextMenuBuilder
         ICommand? badgeCommand = null,
         IReadOnlyList<string>? badgeNames = null,
         ICommand? viewAlbumCommand = null,
-        ICommand? viewArtistCommand = null)
+        ICommand? viewArtistCommand = null,
+        Func<string, string?>? artistPhotoSource = null)
     {
         Menu.DataContext = track;
 
-        // View Album / View Artist (optional).
+        // View Album / View Artist (optional). A photo source (opt-in, per open) puts each
+        // artist's round picture beside their name in View Artist ▸.
         BindViewAlbum(track, viewAlbumCommand);
-        BindViewArtist(track, viewArtistCommand);
+        BindViewArtist(track, viewArtistCommand, artistPhotoSource);
         _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible;
 
         // Badge ▸ (optional). Rebuilt per bind: the names come from what the library holds now.
@@ -320,13 +475,13 @@ public sealed class TrackContextMenuBuilder
             if (Badge.Items.Count > 0) Badge.Items.Add(new Separator());
             Badge.Items.Add(new MenuItem
             {
-                Header = "New badge…",
+                Header = IsV2 ? Loc.T("Menu.NewBadge") : "New badge…",
                 Command = badgeCommand,
                 CommandParameter = new BadgeRequest(track, BadgeRequest.NewBadge),
             });
             var remove = new MenuItem
             {
-                Header = "Remove badge",
+                Header = IsV2 ? Loc.T("Menu.RemoveBadge") : "Remove badge",
                 IsVisible = track.HasBadge,
                 Command = badgeCommand,
                 CommandParameter = new BadgeRequest(track, null),
@@ -357,6 +512,8 @@ public sealed class TrackContextMenuBuilder
         LyricsBackgroundChoose.CommandParameter = track;
         LyricsBackgroundClear.CommandParameter = track;
         LyricsBackgroundClear.IsVisible = LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForTrack(track));
+
+        ScrobbleMenu.BindTrack(DontScrobble, track);
 
         // Play
         Play.Header = "Play";
@@ -455,6 +612,9 @@ public sealed class TrackContextMenuBuilder
         Remove.CommandParameter = track;
 
         BindPluginCommands(track);
+
+        if (IsV2)
+            BindV2(track, rateCommand);
     }
 
     /// <summary>Rebuilds the plugin entries for this open. A plugin that throws here is contained by the host.</summary>
@@ -514,19 +674,69 @@ public sealed class TrackContextMenuBuilder
 
     /// <summary>
     /// One credited artist opens directly; several become a submenu with one entry per
-    /// name, like the album and lyrics pages' per-artist links.
+    /// name, like the album and lyrics pages' per-artist links. With a photo source each
+    /// entry also gets the artist's round picture (placeholder until the lookup lands).
     /// </summary>
-    private void BindViewArtist(Track track, ICommand? command)
+    private void BindViewArtist(Track track, ICommand? command, Func<string, string?>? artistPhotoSource)
     {
         ViewArtist.Items.Clear();
+        var generation = ++_artistAvatarGeneration;
+        ArtistAvatarsLoaded = Task.CompletedTask;
         var names = command != null ? CreditedArtists(track) : Array.Empty<string>();
         ViewArtist.IsVisible = names.Count > 0;
         var single = names.Count == 1;
         ViewArtist.Command = single ? command : null;
         ViewArtist.CommandParameter = single ? names[0] : null;
         if (names.Count < 2) return;
-        foreach (var name in names)
-            ViewArtist.Items.Add(new MenuItem { Header = name, Command = command, CommandParameter = name });
+        var photos = artistPhotoSource != null ? new CachedImage[names.Count] : null;
+        for (var i = 0; i < names.Count; i++)
+        {
+            var item = new MenuItem { Header = names[i], Command = command, CommandParameter = names[i] };
+            if (photos != null)
+                item.Icon = MenuV2.ArtistAvatar(out photos[i]);
+            ViewArtist.Items.Add(item);
+        }
+        if (photos != null)
+            ArtistAvatarsLoaded = LoadArtistAvatarsAsync(generation, names, photos, artistPhotoSource!);
+    }
+
+    /// <summary>Bumped on every Bind, so a lookup still running for the previous track drops its result.</summary>
+    private int _artistAvatarGeneration;
+
+    /// <summary>The current Bind's artist-picture lookup (tests await it).</summary>
+    internal Task ArtistAvatarsLoaded { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// Looks the pictures up off the UI thread (cache files only: the source never downloads),
+    /// then hands each path to its row's <see cref="CachedImage"/>, which decodes through the
+    /// shared artwork cache and holds the bitmap only while the submenu is on screen.
+    /// </summary>
+    private async Task LoadArtistAvatarsAsync(int generation, IReadOnlyList<string> names,
+        CachedImage[] photos, Func<string, string?> source)
+    {
+        string?[] paths;
+        try
+        {
+            paths = await Task.Run(() => names.Select(name =>
+            {
+                try { return source(name); }
+                catch { return null; } // an unreadable cache folder just means a placeholder
+            }).ToArray());
+        }
+        catch { return; }
+
+        void Apply()
+        {
+            if (generation != _artistAvatarGeneration) return;
+            for (var i = 0; i < photos.Length; i++)
+            {
+                photos[i].SourcePath = paths[i];
+                photos[i].IsVisible = !string.IsNullOrEmpty(paths[i]);
+            }
+        }
+
+        if (Dispatcher.UIThread.CheckAccess()) Apply();
+        else await Dispatcher.UIThread.InvokeAsync(Apply);
     }
 
     /// <summary>The track's credited artists, split with the separators set in Settings →

@@ -73,9 +73,14 @@ public partial class PlaybackBarView : UserControl
     // stale Thumb state or stray pointer moves from triggering seeks.
     private bool _isSeekDragging;
     private bool _isVolumeDragging;
-    private const double VolumeThumbSize = 12;
-    private const double VolumeSliderVisualWidth = 84;
+    // Matches VolumeThumb's Width/Height in the XAML (compact pill, 10-08).
+    private const double VolumeThumbSize = 14;
+    private const int VolumeStep = 5;
     private readonly TranslateTransform _volumeThumbTransform = new();
+    private readonly VolumeWheelAccumulator _volumeWheel = new();
+    // The pop-up was opened / driven from the keyboard while the speaker button holds focus:
+    // the pointer is nowhere near it, so the hover-close must not fire (see Reevaluate…).
+    private bool _volumeKeyboardHold;
 
     // Island edge-resize drag state (persistent bar only; the lyrics-page copy is fixed).
     // The reference visual is the TopLevel: the bar itself is Center-aligned and
@@ -108,16 +113,36 @@ public partial class PlaybackBarView : UserControl
         SeekSlider.SizeChanged += (_, _) => UpdateSeekSliderVisual();
         DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
-        // Handle volume slider interaction to show/hide percentage badge
+        // Volume slider: our own drag (Tunnel, ahead of the Slider's internals), as the seek bar.
         VolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnVolumeSliderPressed, RoutingStrategies.Tunnel);
         VolumeSlider.AddHandler(InputElement.PointerMovedEvent, OnVolumeSliderMoved, RoutingStrategies.Tunnel);
         VolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnVolumeSliderReleased, RoutingStrategies.Tunnel);
         VolumeSlider.PointerCaptureLost += OnVolumeSliderCaptureLost;
         VolumeThumb.RenderTransform = _volumeThumbTransform;
 
-        // Track volume changes to update percentage badge position
+        // Track volume changes (drag, wheel, keys, and outside writers: shortcuts, the mini
+        // player, the Local API, MPRIS) to move the fill/thumb and the % readout.
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
+        UpdateVolumeReadout();
+
+        // Keyboard: arrows on the focused speaker button step the volume; Esc closes the pop-up.
+        // Tunnel so the keys are ours before any directional focus handling sees them.
+        VolumeButton.AddHandler(InputElement.KeyDownEvent, OnVolumeButtonKeyDown, RoutingStrategies.Tunnel);
+        VolumeButton.LostFocus += OnVolumeButtonLostFocus;
+
+        // Hidden pose first, transitions after, so nothing animates at construction.
+        SetVolumeFlyoutRevealed(false);
+        var reveal = new CubicBezierEase(0.2, 0.8, 0.2, 1); // quick start, soft settle — both ways
+        VolumeFlyoutContent.Transitions = new Avalonia.Animation.Transitions
+        {
+            new Avalonia.Animation.DoubleTransition { Property = GlassPanel.FadeProperty, Duration = VolumeFlyoutRevealDuration, Easing = reveal },
+            new Avalonia.Animation.TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = VolumeFlyoutRevealDuration, Easing = reveal },
+        };
+        VolumePill.Transitions = new Avalonia.Animation.Transitions
+        {
+            new Avalonia.Animation.DoubleTransition { Property = Visual.OpacityProperty, Duration = VolumeFlyoutRevealDuration, Easing = reveal },
+        };
 
         // GitHub #96: bar tooltips sit above their button (Placement=Top, the #52 fix) —
         // exactly where the slider popup opens, and the tooltip's native window draws over
@@ -231,10 +256,16 @@ public partial class PlaybackBarView : UserControl
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
         DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
+        UpdateVolumeMuteLook();
     }
+
+    private void UpdateVolumeMuteLook() => UpdateVolumeSliderVisual();
 
     private void OnObservedPlayerViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PlayerViewModel.IsMuted))
+            UpdateVolumeMuteLook();
+
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) ||
             e.PropertyName == nameof(PlayerViewModel.TrackTitleMarqueeEnabled))
         {
@@ -764,6 +795,7 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.Property == Slider.ValueProperty)
         {
+            UpdateVolumeReadout();
             UpdateVolumeSliderVisual();
         }
         else if (e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
@@ -855,9 +887,24 @@ public partial class PlaybackBarView : UserControl
     }
 
     // Clicking the album-art thumbnail toggles the compact always-on-top mini player window.
+    // The art toggles the Mini Player on a completed click (press AND release over it),
+    // not on press: a press that turned into a drag, or slid off the art, used to open it.
+    private bool _albumArtPressed;
+
     private void OnAlbumArtPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        _albumArtPressed = true;
+        e.Handled = true;
+    }
+
+    private void OnAlbumArtReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_albumArtPressed || e.InitialPressMouseButton != MouseButton.Left) return;
+        _albumArtPressed = false;
+        if (sender is not Control art) return;
+        var p = e.GetPosition(art);
+        if (p.X < 0 || p.Y < 0 || p.X > art.Bounds.Width || p.Y > art.Bounds.Height) return;
 
         if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
         {
@@ -873,47 +920,125 @@ public partial class PlaybackBarView : UserControl
             mainWindow.ToggleMiniPlayer();
     }
 
-    private void ShowVolumeBubble(bool show)
+    // The pill's live readout. Fed from the slider (TwoWay-bound to PlayerViewModel.Volume),
+    // so every writer — drag, wheel, keys, shortcuts, mini player, Local API — shows here.
+    private void UpdateVolumeReadout() =>
+        VolumeReadout.Text = $"{(int)Math.Round(VolumeSlider.Value)}%";
+
+    private void SetVolumeDragging(bool dragging)
     {
-        if (show) UpdateVolumeBubble();
-        VolumeBubble.Opacity = show ? 1 : 0;
+        _isVolumeDragging = dragging;
+        VolumePill.Classes.Set("dragging", dragging);
     }
 
-    // Keep the % bubble centered above the thumb (clamped to the flyout edges).
-    private void UpdateVolumeBubble()
+    /// <summary>
+    /// Wheel → volume notches. A mouse notch is a delta of 1.0, but precision touchpads and
+    /// free-spinning / hi-res wheels report fractions (0.1–0.25) at a high rate, and the old
+    /// "any delta = ±5" rule turned one small swipe into 0→100. Fractions now accumulate to a
+    /// whole notch, while the first event of a gesture (after a pause or a direction change)
+    /// always moves one step, so a single slow notch that reports a fraction is never lost.
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal sealed class VolumeWheelAccumulator
     {
-        var value = (int)Math.Round(VolumeSlider.Value);
-        VolumeBubbleText.Text = $"{value}%";
-        var frac = Math.Clamp(VolumeSlider.Value / Math.Max(1, VolumeSlider.Maximum), 0, 1);
-        var thumbCenter = frac * (VolumeSliderVisualWidth - VolumeThumbSize) + VolumeThumbSize / 2;
-        // Measure the TEXT, not the bubble Border: setting Text only invalidates
-        // the TextBlock's own measure, so Measure() on the still-valid Border is
-        // a cached no-op and the clamp used the previous value's width — which
-        // let wider readouts like "100%" hang past the popup edge and clip.
-        VolumeBubbleText.Measure(Size.Infinity);
-        // 16 = bubble Padding (7+7) + BorderThickness (1+1).
-        var bubbleWidth = VolumeBubbleText.DesiredSize.Width + 16;
-        var layerWidth = VolumeBubbleLayer.Bounds.Width > 0 ? VolumeBubbleLayer.Bounds.Width : 102;
-        // 9 = flyout border (1) + pill padding (8) offsets the slider inside the pill.
-        // 2px edge inset: at exactly layerWidth the border sits on the popup's last
-        // pixel and gets shaved on fractional display scales.
-        var left = 9 + thumbCenter - bubbleWidth / 2;
-        Canvas.SetLeft(VolumeBubble, Math.Clamp(left, 2, Math.Max(2, layerWidth - bubbleWidth - 2)));
+        internal const ulong GesturePauseMs = 250;
+        // Cap per event: an accelerated burst (macOS can report 3+ lines at once) moves at
+        // most two steps instead of leaping.
+        private const int MaxNotchesPerEvent = 2;
+        private double _pending;
+        private int _lastSign;
+        private ulong _lastTimestamp;
+
+        public int Add(double delta, ulong timestamp)
+        {
+            if (delta == 0 || double.IsNaN(delta)) return 0;
+            var sign = Math.Sign(delta);
+            var fresh = _lastSign == 0 || sign != _lastSign ||
+                        timestamp < _lastTimestamp || timestamp - _lastTimestamp > GesturePauseMs;
+            _lastSign = sign;
+            _lastTimestamp = timestamp;
+            if (fresh) _pending = 0;
+
+            _pending += delta;
+            var notches = (int)Math.Truncate(_pending);
+            if (notches == 0)
+            {
+                if (!fresh) return 0;
+                _pending = 0; // the gesture's first step is free; fractions after it accumulate
+                return sign;
+            }
+            _pending -= notches;
+            return Math.Clamp(notches, -MaxNotchesPerEvent, MaxNotchesPerEvent);
+        }
     }
 
     private void OnVolumeWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (DataContext is not PlayerViewModel vm) return;
-        var step = e.Delta.Y > 0 ? 5 : e.Delta.Y < 0 ? -5 : 0;
-        if (step == 0) return;
+        if (DataContext is not PlayerViewModel vm || e.Delta.Y == 0) return;
+        // Handled even when the fraction has not reached a notch yet: it is still ours.
+        e.Handled = true;
+        var notches = _volumeWheel.Add(e.Delta.Y, e.Timestamp);
+        if (notches != 0) StepVolume(vm, notches * VolumeStep);
+    }
+
+    /// <summary>Wheel and arrow keys: unmute (adjusting while muted means "let me hear it"),
+    /// step within 0..100, flush to the player, and show the pop-up. Also reopens while the
+    /// exit fade is running (still IsOpen, but the exit timer is about to unmap it).</summary>
+    private void StepVolume(PlayerViewModel vm, int delta)
+    {
         vm.UnmuteForAdjust();
-        vm.Volume = Math.Clamp(vm.Volume + step, 0, 100);
+        vm.Volume = Math.Clamp(vm.Volume + delta, 0, 100);
         vm.CommitVolume();
-        // Also reopen while the exit fade is running (still IsOpen, but the exit timer
-        // is about to unmap it) — the user is actively adjusting the volume.
         if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null) OpenVolumeFlyout();
+    }
+
+    private void OnVolumeButtonKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None) return; // Ctrl/⌘+↑/↓ are the global shortcuts
+        int delta;
+        switch (e.Key)
+        {
+            case Key.Enter:
+                // Click follows from the button itself (opens, then mutes); just remember the
+                // pop-up is keyboard-driven so it is not hover-closed out from under the user.
+                _volumeKeyboardHold = true;
+                return;
+            case Key.Escape:
+                if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null) return;
+                _volumeKeyboardHold = false;
+                CloseVolumeFlyout();
+                e.Handled = true;
+                return;
+            case Key.Up:
+            case Key.Right:
+                delta = VolumeStep;
+                break;
+            case Key.Down:
+            case Key.Left:
+                delta = -VolumeStep;
+                break;
+            default:
+                return;
+        }
+        _volumeKeyboardHold = true;
+        if (DataContext is PlayerViewModel vm) StepVolume(vm, delta);
         e.Handled = true;
     }
+
+    // Focus moved on (Tab, a click elsewhere): a keyboard-held pop-up closes like a hovered one.
+    private void OnVolumeButtonLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (!_volumeKeyboardHold) return;
+        _volumeKeyboardHold = false;
+        ReevaluateVolumeFlyoutHover();
+    }
+
+    private bool IsVolumeKeyboardHeld => _volumeKeyboardHold && VolumeButton.IsFocused;
+
+    /// <summary>Test hooks (InternalsVisibleTo Noctis.Tests): a hover-close is pending / the
+    /// exit fade is running.</summary>
+    internal bool IsVolumeFlyoutCloseArmed => _volumeFlyoutCloseTimer != null;
+    internal bool IsVolumeFlyoutExiting => _volumeFlyoutExitTimer != null;
 
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -927,15 +1052,13 @@ public partial class PlaybackBarView : UserControl
         if (_volumeFlyoutExitTimer != null)
         {
             CancelVolumeFlyoutExit();
-            VolumeFlyoutContent.Opacity = 1.0;
-            SetVolumeFlyoutOffset(0);
+            SetVolumeFlyoutRevealed(true);
         }
 
-        _isVolumeDragging = true;
+        SetVolumeDragging(true);
         (DataContext as PlayerViewModel)?.UnmuteForAdjust();
         e.Pointer.Capture(slider);
         slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
-        ShowVolumeBubble(true);
         e.Handled = true;
     }
 
@@ -949,8 +1072,7 @@ public partial class PlaybackBarView : UserControl
             // popup unmapped mid-drag). End the drag now — a latched-true
             // _isVolumeDragging would make ScheduleVolumeFlyoutClose a no-op forever,
             // leaving the flyout stuck open on this and every future open.
-            _isVolumeDragging = false;
-            ShowVolumeBubble(false);
+            SetVolumeDragging(false);
             (DataContext as PlayerViewModel)?.CommitVolume();
             ReevaluateVolumeFlyoutHover(e);
             return;
@@ -964,12 +1086,11 @@ public partial class PlaybackBarView : UserControl
     {
         if (_isVolumeDragging)
         {
-            _isVolumeDragging = false;
+            SetVolumeDragging(false);
             e.Pointer.Capture(null);
             e.Handled = true;
         }
 
-        ShowVolumeBubble(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
         // The drag suppressed any hover-close; now that it's over, close if the
         // cursor ended up away from the icon and popup. Pass the event so the
@@ -983,8 +1104,7 @@ public partial class PlaybackBarView : UserControl
     {
         if (!_isVolumeDragging) return;
 
-        _isVolumeDragging = false;
-        ShowVolumeBubble(false);
+        SetVolumeDragging(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
         // Abnormal end of drag: there is no reliable pointer position here and
         // IsPointerOver may be stale (capture pinned it to the slider chain). If the
@@ -1009,12 +1129,50 @@ public partial class PlaybackBarView : UserControl
             VolumeThumb,
             _volumeThumbTransform,
             VolumeThumbSize,
-            enabledBackgroundOpacity: 0.4,
-            disabledBackgroundOpacity: 0.25);
+            // Rest track = IslandIconFill at this strength: a soft fill like the Settings
+            // pill fields (#1C white), visible on every island colour, accent only for the level.
+            enabledBackgroundOpacity: 0.18,
+            disabledBackgroundOpacity: 0.12);
 
-        if (_isVolumeDragging)
-            UpdateVolumeBubble();
+        if (_observedPlayerViewModel?.IsMuted == true)
+            ApplyVolumeMutedLayout();
     }
+
+    /// <summary>
+    /// Muted: the level stays visible (unmuting restores it) but dims, in the dimmed layout
+    /// PillSliderVisualHelper gives a disabled slider — the fill stops at the thumb and the rest
+    /// track starts past it, square ends tucked onto the circle — because a dimmed thumb is
+    /// see-through: the overlapping enabled layout showed the fill and track through it (seen
+    /// in a real-Skia render, 10-08; Opacity on the Canvas reaches each child separately). The
+    /// slider itself stays enabled so dragging still unmutes. The next enabled pass restores
+    /// the bars' own corners (the helper keeps them).
+    /// </summary>
+    private void ApplyVolumeMutedLayout()
+    {
+        var width = VolumeSlider.Bounds.Width;
+        if (width <= 0) return;
+        var radius = VolumeThumbSize / 2;
+        var trackWidth = Math.Max(0, width - VolumeThumbSize);
+        var range = VolumeSlider.Maximum - VolumeSlider.Minimum;
+        var fraction = range <= 0 ? 0 : Math.Clamp((VolumeSlider.Value - VolumeSlider.Minimum) / range, 0, 1);
+        var fillWidth = trackWidth * fraction;
+        var half = Math.Min(VolumeTrackFill.Height / 2, radius);
+        var tuck = radius - Math.Sqrt(radius * radius - half * half) + 0.15;
+
+        VolumeTrackFill.Width = Math.Max(0, fillWidth - radius + tuck);
+        Canvas.SetLeft(VolumeTrackFill, radius);
+        VolumeTrackBackground.Width = Math.Max(0, trackWidth - fillWidth - radius + tuck);
+        Canvas.SetLeft(VolumeTrackBackground, fillWidth + VolumeThumbSize - tuck);
+        var r = VolumeTrackFill.Height / 2;
+        VolumeTrackFill.CornerRadius = new CornerRadius(r, 0, 0, r);
+        VolumeTrackBackground.CornerRadius = new CornerRadius(0, r, r, 0);
+
+        VolumeTrackFill.Opacity = VolumeMutedStrength;
+        VolumeThumb.Opacity = VolumeMutedStrength;
+        VolumeTrackBackground.Opacity = 0.12;
+    }
+
+    private const double VolumeMutedStrength = 0.45;
 
     private static double GetVolumeFromPointer(Slider slider, Point position)
     {
@@ -1052,9 +1210,20 @@ public partial class PlaybackBarView : UserControl
     // Breathing room to the host's edges, matching the 8px margins the side panels use.
     private const double IslandEdgeMargin = 8;
     private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
-    // Matches the slowest entrance/exit transition on VolumeFlyoutContent (Y = 0.18s) so the
-    // popup stays alive long enough for the slide-down + fade-out to finish before it unmaps.
-    private static readonly TimeSpan VolumeFlyoutExitDuration = TimeSpan.FromMilliseconds(190);
+    // One duration and one curve for show AND hide: a reversal mid-flight (close while still
+    // opening, reopen during the exit) simply retargets the running transitions from wherever
+    // they are, with no curve swap that could restart them from an end value.
+    private static readonly TimeSpan VolumeFlyoutRevealDuration = TimeSpan.FromMilliseconds(180);
+    // The exit transition plus a frame or two of slack, so the popup unmaps only after the
+    // fade + drop has finished (a DispatcherTimer lands on the ~15.6 ms timer grid).
+    private static readonly TimeSpan VolumeFlyoutExitDuration = TimeSpan.FromMilliseconds(200);
+
+    // Constant literals, so no culture can format them (GitHub #79 was a culture-formatted
+    // translateX). Same operation list in both, so the transition interpolates each part.
+    private static readonly Avalonia.Media.Transformation.TransformOperations VolumeFlyoutShownTransform =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px) scale(1)");
+    private static readonly Avalonia.Media.Transformation.TransformOperations VolumeFlyoutHiddenTransform =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(6px) scale(0.92)");
 
     private DispatcherTimer? _volumeFlyoutCloseTimer;
     private DispatcherTimer? _volumeFlyoutExitTimer;
@@ -1077,22 +1246,47 @@ public partial class PlaybackBarView : UserControl
     private void OpenVolumeFlyout()
     {
         CancelVolumeFlyoutClose();
+        // Reopened during the exit fade: the pop-up is still mapped and part-way down, so
+        // turn it around from where it is. (This used to re-set the hidden pose first and
+        // reveal a frame later, so the half-faded pill dipped further before coming back.)
+        var reviving = VolumeFlyout.IsOpen;
         CancelVolumeFlyoutExit();
-        // Start just below the final position, then ease upward as it fades in.
-        VolumeFlyoutContent.Opacity = 0;
-        SetVolumeFlyoutOffset(6);
-        VolumeFlyout.IsOpen = true;
-        UpdateVolumeSliderVisual();
-        Dispatcher.UIThread.Post(() =>
+        if (reviving)
         {
-            VolumeFlyoutContent.Opacity = 1.0;
-            SetVolumeFlyoutOffset(0);
-        }, DispatcherPriority.Render);
+            SetVolumeFlyoutRevealed(true);
+        }
+        else
+        {
+            // Start in the hidden pose (it already is, from construction or the last close),
+            // map, and reveal on the next render pass so the transitions have a first frame.
+            SetVolumeFlyoutRevealed(false);
+            VolumeFlyout.IsOpen = true;
+            UpdateVolumeSliderVisual();
+            Dispatcher.UIThread.Post(() =>
+            {
+                // A close that landed before this pass owns the pose now: revealing here
+                // flashed the pill back to full strength while its exit timer unmapped it.
+                if (VolumeFlyout.IsOpen && _volumeFlyoutExitTimer == null)
+                    SetVolumeFlyoutRevealed(true);
+            }, DispatcherPriority.Render);
+        }
         // The popup only ever closes off pointer-exit of the icon/popup (or the
         // post-drag reevaluation). If it was opened without the cursor anywhere near
         // — keyboard activation of the icon button fires Click too — no exit will
-        // ever come, so re-check once the open settles and arm the hover-close then.
+        // ever come, so re-check once the open settles and arm the hover-close then
+        // (unless the keyboard is driving it: see IsVolumeKeyboardHeld).
         Dispatcher.UIThread.Post(() => ReevaluateVolumeFlyoutHover(), DispatcherPriority.Input);
+    }
+
+    /// <summary>Shown: full strength, resting on its anchor. Hidden: faded out, 6px lower and
+    /// at 92 %, scaled about its bottom edge (toward the speaker button). The frost fades on
+    /// GlassPanel.Fade, not Opacity — the GPU backend does not apply an opacity layer to the
+    /// custom blur — and the content fades on its own Opacity.</summary>
+    private void SetVolumeFlyoutRevealed(bool shown)
+    {
+        VolumeFlyoutContent.Fade = shown ? 1 : 0;
+        VolumePill.Opacity = shown ? 1 : 0;
+        VolumeFlyoutContent.RenderTransform = shown ? VolumeFlyoutShownTransform : VolumeFlyoutHiddenTransform;
     }
 
     private void CloseVolumeFlyout()
@@ -1100,10 +1294,9 @@ public partial class PlaybackBarView : UserControl
         CancelVolumeFlyoutClose();
         if (!VolumeFlyout.IsOpen) return;
 
-        // Reverse of the open animation: slide back down + fade out, then unmap the popup
+        // Reverse of the open animation: drop + shrink + fade out, then unmap the popup
         // once the transition has finished (setting IsOpen=false immediately would snap it shut).
-        VolumeFlyoutContent.Opacity = 0;
-        SetVolumeFlyoutOffset(6);
+        SetVolumeFlyoutRevealed(false);
 
         CancelVolumeFlyoutExit();
         _volumeFlyoutExitTimer = new DispatcherTimer { Interval = VolumeFlyoutExitDuration };
@@ -1121,29 +1314,30 @@ public partial class PlaybackBarView : UserControl
         _volumeFlyoutExitTimer = null;
     }
 
-    private void SetVolumeFlyoutOffset(double y)
-    {
-        if (VolumeFlyoutContent.RenderTransform is TranslateTransform transform)
-            transform.Y = y;
-    }
-
     // Pointer leaves the icon or the popup → schedule a close.
     // A brief grace period lets the cursor cross the small gap between the icon and the popup
     // without dismissing — if it re-enters either, we cancel the pending close.
+    // The pointer arriving means the mouse has taken over from the keyboard.
     private void OnVolumeButtonPointerExited(object? sender, PointerEventArgs e)
     {
         if (VolumeFlyout.IsOpen)
             ScheduleVolumeFlyoutClose();
     }
 
-    private void OnVolumeButtonPointerEntered(object? sender, PointerEventArgs e) =>
+    private void OnVolumeButtonPointerEntered(object? sender, PointerEventArgs e)
+    {
+        _volumeKeyboardHold = false;
         CancelVolumeFlyoutClose();
+    }
 
     private void OnVolumeFlyoutPointerExited(object? sender, PointerEventArgs e) =>
         ScheduleVolumeFlyoutClose();
 
-    private void OnVolumeFlyoutPointerEntered(object? sender, PointerEventArgs e) =>
+    private void OnVolumeFlyoutPointerEntered(object? sender, PointerEventArgs e)
+    {
+        _volumeKeyboardHold = false;
         CancelVolumeFlyoutClose();
+    }
 
     private void ScheduleVolumeFlyoutClose()
     {
@@ -1170,7 +1364,11 @@ public partial class PlaybackBarView : UserControl
 
         if (e is null)
         {
-            if (VolumeButton.IsPointerOver || VolumeFlyoutContent.IsPointerOver) return;
+            // Keyboard-driven (Enter / arrows on the focused speaker button): the pointer is
+            // elsewhere by definition. This used to arm the hover-close right after a keyboard
+            // open, so the pop-up vanished ~140 ms after Enter. It now lasts while the button
+            // keeps focus; Esc, Tab away or the mouse taking over closes it as usual.
+            if (VolumeButton.IsPointerOver || VolumeFlyoutContent.IsPointerOver || IsVolumeKeyboardHeld) return;
         }
         else if (IsPointerOverVolumeUi(e))
         {

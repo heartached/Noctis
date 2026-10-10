@@ -13,6 +13,9 @@
          Lyrics Studio page (LyricsStudioView), which hides the header and draws its own. -->
 
     <UserControl.Styles>
+        <!-- The pill pop-ups' field and card classes (pill-field, pill-well, pill-popover), so the
+             Studio uses the same filled pills on the sidebar page as inside its pop-up. -->
+        <StyleInclude Source="avares://Noctis.UI/Assets/PillDialog.axaml" />
         <Style Selector="Border.queue-row">
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="CornerRadius" Value="10" />
@@ -62,13 +65,12 @@
                 <Setter Property="Margin" Value="0,8,0,0" />
             </Style>
         </ContainerQuery>
-        <!-- Shift all lines as one segmented pill: [− 0.1s +], the Settings rim around two round
-             steps that wash on hover. -->
+        <!-- Shift all lines as one segmented pill: [− 0.1s +], a filled pill (the Settings
+             boxes' fill since 10-08, no rim) around two round steps that wash on hover. -->
         <Style Selector="Border.nudge-pill">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="2" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
@@ -86,10 +88,10 @@
             <Setter Property="Cursor" Value="Hand" />
         </Style>
         <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#22FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
         <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#33FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
         <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
@@ -243,31 +245,8 @@
         <Style Selector="Button.word-toggle:pointerover PathIcon.words-chevron, Button.word-toggle.open PathIcon.words-chevron">
             <Setter Property="Opacity" Value="1" />
         </Style>
-        <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
-             mid-grey, layout-rounded. The Fluent templates restyle the border on hover/focus/press,
-             so the template parts are pinned too. Neutral buttons opt in via .pill-outline. -->
-        <!-- Model / Language pills: the Settings "System language" pill — the same 1.5px
-             translucent mid-grey rim SettingsView pins on every ComboBox (#99A0A0A8, hover
-             included, accent while open), rounded full, with pill dropdown items. -->
-        <Style Selector="ComboBox.pill">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <Style Selector="ComboBox.pill:pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-        </Style>
-        <Style Selector="ComboBox.pill:focus /template/ Border#Background, ComboBox.pill:dropdownopen /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-        <!-- Options dropdown: same rim and fill as the two pills beside it. Fluent paints a
-             Button's chrome on the presenter, so hover/press are pinned there. No zoom on
-             hover or press (user ask 09-19): the app-wide Button:pointerover scale is undone. -->
         <!-- One button size across the Studio (09-23): every toolbar, review and lyrics-box
-             button is this pill; .accent-btn / .pill-outline only change its fill and rim. -->
+             button is this pill; .accent-btn / .pill-outline only change its fill. -->
         <Style Selector="Button.studio-btn">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="16,7" />
@@ -280,75 +259,79 @@
         <Style Selector="Button.studio-btn:pointerover, Button.studio-btn:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <!-- Format chips (toolbar): the Choose songs picker's chips, accent while chosen. -->
-        <Style Selector="ToggleButton.format-chip">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="Padding" Value="16,7" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
+        <!-- Format (toolbar): the Choose songs picker's segmented pill, the pill pop-ups' recipe
+             (Create Smart Playlist's Match All / Any). Segments, not toggle chips: a click on the
+             chosen side keeps it (a chip un-toggled and switched the format, 10-08). -->
+        <Style Selector="RadioButton.studio-seg">
+            <Setter Property="MinHeight" Value="27" />
+            <Setter Property="MinWidth" Value="56" />
+            <Setter Property="Padding" Value="14,0" />
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="SegFill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="ToggleButton.format-chip /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-            <Setter Property="CornerRadius" Value="999" />
+        <Style Selector="RadioButton.studio-seg:pointerover">
+            <Setter Property="Opacity" Value="0.85" />
         </Style>
-        <Style Selector="ToggleButton.format-chip:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}" />
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Style Selector="RadioButton.studio-seg:checked">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <Style Selector="ToggleButton.format-chip:checked /template/ ContentPresenter,
-                         ToggleButton.format-chip:checked:pointerover /template/ ContentPresenter,
-                         ToggleButton.format-chip:checked:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        <!-- A run is going: the format is fixed; both sides dim. -->
+        <Style Selector="RadioButton.studio-seg:disabled">
+            <Setter Property="Opacity" Value="0.35" />
         </Style>
-        <Style Selector="ToggleButton.format-chip:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
+        <!-- Settings: a quiet filled pill like its neighbours (pill-outline). No zoom on hover or
+             press (user ask 09-19): the app-wide Button:pointerover scale is undone. -->
         <Style Selector="Button.studio-options">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="MinHeight" Value="0" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="Background" Value="{DynamicResource ComboBoxBackground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
-        <Style Selector="Button.studio-options:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                         Button.studio-options:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="Background" Value="{DynamicResource ComboBoxBackgroundPointerOver}" />
+        <Style Selector="Button.studio-options:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+        <Style Selector="Button.studio-options:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
         </Style>
         <Style Selector="Button.studio-options:pointerover, Button.studio-options:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <!-- Chromeless presenter for the Options flyout (MetadataWindow search-pop recipe):
-             the card inside draws the chrome. -->
+        <!-- Chromeless presenter for the Settings popover (the Find online pop-overs' recipe):
+             the pill-popover card inside draws the chrome; the padding is its shadow's room.
+             The card's shadow (0 10 30, PillDialog.axaml) needs ~20 px above, ~30 at the sides and
+             ~40 below: a uniform 12 cut it off in straight lines, so it read as a square box
+             (owner 10-09). The flyout's offsets keep the card where the 12 px padding put it. -->
         <Style Selector="FlyoutPresenter.studio-options-pop">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="12" />
+            <Setter Property="Padding" Value="32,24,32,40" />
         </Style>
-        <Style Selector="ComboBox.pill /template/ Border#Background">
-            <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <Style Selector="ComboBox.pill /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBoxItem">
-            <Setter Property="Margin" Value="4,1" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="CornerRadius" Value="999" />
-        </Style>
-        <Style Selector="ComboBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999" />
+        <Style Selector="TextBlock.studio-pop-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="4,0,0,0" />
         </Style>
         <!-- Queue rows: artist in the accent like the island, title with the island's hover wash. -->
         <Style Selector="Border.title-hover">
@@ -361,13 +344,34 @@
         <Style Selector="Border.title-hover:pointerover">
             <Setter Property="Background" Value="#22FFFFFF" />
         </Style>
+        <!-- The Studio's neutral pill (Stop, Choose songs, Import file, Preview, …). The class name
+             is from when it wore the Settings 1.5px rim; since 10-08 it is the filled pill the
+             Settings boxes and the pill pop-ups use (pill-secondary's tones): no rim, a wash on
+             hover, a dip on press. Fluent paints a Button's chrome on its presenter, so every
+             state is pinned there. -->
         <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.pill-outline:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.pill-outline:disabled">
+            <Setter Property="Opacity" Value="0.5" />
         </Style>
         <!-- Round X close, the Settings sheet's recipe (SettingsView Button.settings-close). -->
         <Style Selector="Button.dialog-close">
@@ -413,7 +417,7 @@
             </StackPanel>
             <Button Grid.Column="1" Classes="dialog-close" Command="{Binding CloseCommand}"
                     ToolTip.Tip="{loc:T Settings.CloseTip}" VerticalAlignment="Top" Margin="12,0,0,0">
-                <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
+                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="24" Height="24" Margin="-6" StrokeThickness="1.75" />
             </Button>
         </Grid>
 
@@ -458,38 +462,43 @@
             </Border>
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                 <TextBlock Grid.Column="0" Text="{loc:T LyricsStudio.Format}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <ToggleButton Classes="format-chip" Content="{loc:T LyricsStudioPicker.WordTimings}"
-                                  IsChecked="{Binding WordTimings}" IsEnabled="{Binding !IsRunning}" />
-                    <ToggleButton Classes="format-chip" Content="{loc:T LyricsStudioPicker.LineTimings}"
-                                  IsChecked="{Binding LineTimings}" IsEnabled="{Binding !IsRunning}" />
-                </StackPanel>
+                <!-- One setting, two sides: the Choose songs picker's segmented pill. -->
+                <Border Grid.Column="1" Classes="pill-well" CornerRadius="999" Padding="3" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton x:Name="WordTimingsSegment" Classes="studio-seg" Content="{loc:T LyricsStudioPicker.WordTimings}"
+                                     IsChecked="{Binding WordTimings}" IsEnabled="{Binding !IsRunning}" />
+                        <RadioButton x:Name="LineTimingsSegment" Classes="studio-seg" Content="{loc:T LyricsStudioPicker.LineTimings}"
+                                     IsChecked="{Binding LineTimings}" IsEnabled="{Binding !IsRunning}" />
+                    </StackPanel>
+                </Border>
                 <!-- Settings: the language and run options behind one popover (09-23). -->
-                <Button Grid.Column="2" Classes="studio-btn studio-options" Margin="8,0,0,0">
+                <Button x:Name="StudioSettingsButton" Grid.Column="2" Classes="studio-btn studio-options" Margin="8,0,0,0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="{loc:T LyricsStudio.Settings}" VerticalAlignment="Center" />
                         <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" Opacity="0.7" VerticalAlignment="Center" />
                     </StackPanel>
                     <Button.Flyout>
+                        <!-- The drop-down motion the Find online pop-overs use (DropDownFlyoutMotion). -->
                         <Flyout Placement="BottomEdgeAlignedLeft" ShowMode="Standard" FlyoutPresenterClasses="studio-options-pop"
+                                HorizontalOffset="-20" VerticalOffset="-12"
                                 helpers:DropDownFlyoutMotion.Enable="True">
-                            <!-- Sized to its longest option (a fixed 360 clipped "· Experimental"). -->
-                            <Border CornerRadius="16" Padding="18,14" MinWidth="360"
-                                    Background="{DynamicResource ComboBoxDropDownBackground}"
-                                    BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}" BorderThickness="1"
-                                    BoxShadow="0 10 30 0 #90000000">
+                            <!-- The pill pop-over card (the editor's search pop-ups): the dialog card's fill
+                                 and rim. Sized to its longest option (a fixed 360 clipped "· Experimental"). -->
+                            <Border x:Name="StudioSettingsCard" Classes="pill-popover" Padding="18,16" MinWidth="360">
                                 <StackPanel Spacing="12">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="{loc:T LyricsStudio.Language}" FontSize="11" Opacity="0.55" />
-                                        <ComboBox Classes="pill" HorizontalAlignment="Stretch" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" />
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="studio-pop-label" Text="{loc:T LyricsStudio.Language}" />
+                                        <ComboBox x:Name="StudioLanguageBox" Classes="pill-field" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}" />
                                     </StackPanel>
-                                    <Border Height="1" Background="#14FFFFFF" />
+                                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.6" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding SkipAlreadyTimed}" Content="{loc:T LyricsStudio.SkipAlreadyTimed}"
                                               ToolTip.Tip="{loc:T LyricsStudio.SkipAlreadyTimedTip}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding OnlineLyrics}" Content="{loc:T LyricsStudio.OnlineLyrics}"
                                               ToolTip.Tip="{loc:T LyricsStudio.OnlineLyricsTip}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding EmbedTags}" Content="{loc:T LyricsStudioSettings.EmbedTags}"
                                               ToolTip.Tip="{loc:T LyricsStudioSettings.EmbedTagsHint}" />
+                                    <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding SaveTtml}" Content="{loc:T LyricsStudioSettings.SaveTtml}"
+                                              ToolTip.Tip="{loc:T LyricsStudioSettings.SaveTtmlHint}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding TranscribeOnly}" Content="{loc:T LyricsStudio.TranscribeOnly}"
                                               ToolTip.Tip="{loc:T LyricsStudio.TranscribeOnlyTip}" />
                                 </StackPanel>
@@ -685,9 +694,9 @@
                                 <TextBlock Text="{loc:T LyricsStudio.Align}" />
                             </Button>
                         </Grid>
-                        <TextBox Text="{Binding Selected.DraftText}" AcceptsReturn="True" TextWrapping="Wrap"
-                                 PlaceholderText="{loc:T LyricsStudio.PasteWatermark}" VerticalContentAlignment="Top"
-                                 CornerRadius="12" Padding="12,10" FontSize="13"
+                        <!-- The pill pop-ups' multi-line box: filled, no rim at rest, the accent ring while typing. -->
+                        <TextBox x:Name="LyricsBox" Classes="pill-area" Text="{Binding Selected.DraftText}" AcceptsReturn="True" TextWrapping="Wrap"
+                                 PlaceholderText="{loc:T LyricsStudio.PasteWatermark}" FontSize="13"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto" IsEnabled="{Binding !IsRunning}" />
                     </DockPanel>
 
@@ -725,14 +734,14 @@
                                                 <MenuFlyout Placement="BottomEdgeAlignedRight" helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                                     <MenuItem Header="{loc:T LyricsStudio.Skip}" Command="{Binding SkipCommand}">
                                                         <MenuItem.Icon>
-                                                            <PathIcon Data="{StaticResource NextIcon}" Width="14" Height="14" />
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSkip}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                     <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
                                                               IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
                                                               ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">
                                                         <MenuItem.Icon>
-                                                            <PathIcon Data="{StaticResource MicIcon}" Width="14" Height="14" />
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineMic}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
                                                 </MenuFlyout>

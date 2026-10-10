@@ -139,7 +139,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         // Read before the snapshot: a scan ending in between errs toward "partial", and
         // the authoritative publish that follows refreshes again.
         var partial = _library.IsPublishingPartial;
-        var tracks = _library.Tracks.ToList();
+        // AllTracks: a hidden folder stays in the tree (dimmed) so it can be shown again.
+        var tracks = _library.AllTracks.ToList();
+        var hidden = _library.HiddenFolders.ToArray();
         // Tracks added on their own (GitHub #108) show under their own folder.
         var roots = FolderTreeBuilder.WithAddedFileFolders(settings.MusicFolders,
             tracks.Where(t => t.AddedIndividually).Select(t => t.FilePath));
@@ -170,7 +172,10 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         }
 
         foreach (var root in forest)
+        {
             RestoreExpansion(root, expansion);
+            MarkHidden(root, hidden, parentHidden: false);
+        }
 
         RootNodes.Clear();
         foreach (var root in forest)
@@ -269,7 +274,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     private static void Collect(FolderNode node, List<Track> sink)
     {
-        sink.AddRange(node.DirectTracks);
+        // A hidden folder's tracks are out of the library everywhere, this pane included.
+        if (!node.IsInHiddenFolder)
+            sink.AddRange(node.DirectTracks);
         foreach (var child in node.Children)
             Collect(child, sink);
     }
@@ -287,6 +294,14 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
             node.IsExpanded = isExpanded;
         foreach (var child in node.Children)
             RestoreExpansion(child, map);
+    }
+
+    private static void MarkHidden(FolderNode node, IReadOnlyList<string> hidden, bool parentHidden)
+    {
+        node.IsHiddenFromLibrary = hidden.Any(f => FolderPathMatch.IsSame(f, node.FullPath));
+        node.IsInHiddenFolder = parentHidden || node.IsHiddenFromLibrary;
+        foreach (var child in node.Children)
+            MarkHidden(child, hidden, node.IsInHiddenFolder);
     }
 
     private static FolderNode? FindNode(IReadOnlyList<FolderNode> forest, string fullPath)
@@ -361,10 +376,8 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     [RelayCommand]
     private void PlayNodeNext(FolderNode node)
     {
-        var tracks = CollectTracks(node);
-        // Add in reverse order so they play in folder order when inserted up front.
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        // AddNextRange keeps folder order when the batch goes in up front.
+        _player.AddNextRange(CollectTracks(node), node.DisplayName);
     }
 
     [RelayCommand]
@@ -372,7 +385,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        _player.AddRangeToQueue(tracks);
+        _player.AddRangeToQueue(tracks, node.DisplayName);
     }
 
     [RelayCommand]
@@ -381,6 +394,17 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+    }
+
+    /// <summary>"Hide from Library" / "Show in Library" (Discord, Luwi 10-03): hides every
+    /// track under the folder from the rest of the app without removing anything. A folder
+    /// hidden only through a parent is shown again from that parent.</summary>
+    [RelayCommand]
+    private async Task ToggleNodeHidden(FolderNode node)
+    {
+        if (node == null) return;
+        if (node.IsInHiddenFolder && !node.IsHiddenFromLibrary) return;
+        await _library.SetFolderHiddenAsync(node.FullPath, !node.IsHiddenFromLibrary);
     }
 
     [RelayCommand]

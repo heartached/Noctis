@@ -323,6 +323,9 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     [RelayCommand] private void ToggleShelfLayout() => IsShelfGrid = !IsShelfGrid;
 
+    /// <summary>Whether <paramref name="folder"/> is still readable; see IFolderPicker.HasAccess.</summary>
+    public bool HasAccess(string folder) => _picker.HasAccess(folder);
+
     [RelayCommand]
     private async Task AddFolderAsync()
     {

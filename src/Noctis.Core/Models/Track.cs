@@ -870,13 +870,13 @@ public partial class Track : ObservableObject
 
     /// <summary>
     /// Artist text to show in list views. When ShowComposerInAllViews is set and a Composer exists,
-    /// returns "Artist — Composer". Falls back to raw Artist otherwise.
+    /// returns "Artist — Composer". Separators read as commas (<see cref="ArtistCredit.Display"/>).
     /// </summary>
     [JsonIgnore]
     public string ArtistDisplay =>
         ShowComposerInAllViews && !string.IsNullOrWhiteSpace(Composer)
-            ? $"{Artist} \u2014 {Composer}"
-            : Artist;
+            ? $"{ArtistCredit.Display(Artist)} \u2014 {Composer}"
+            : ArtistCredit.Display(Artist);
 
     /// <summary>
     /// Title text to show in list views. When UseWorkAndMovement is set and a Work/Movement exists,
@@ -899,5 +899,7 @@ public partial class Track : ObservableObject
         }
     }
 
-    public override string ToString() => $"{Artist} - {Title}";
+    /// <summary>"Title, Artist" as the row shows them. A track list row's accessible name
+    /// falls back to its item's ToString(), so screen readers read the song, not the type.</summary>
+    public override string ToString() => $"{TitleDisplay}, {ArtistDisplay}";
 }

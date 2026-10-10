@@ -152,7 +152,8 @@ internal sealed class WasapiGainOutput : IDisposable
             using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             var mix = device.AudioClient.MixFormat;
             Diag($"device mix format: {mix.Encoding} {mix.SampleRate}Hz {mix.Channels}ch {mix.BitsPerSample}bit");
-            rate = mix.SampleRate;
+            // Shared mode converts to the mix rate itself; LibVLC can't deliver above AmemRate.Max.
+            rate = AmemRate.Fit(mix.SampleRate);
             channels = mix.Channels >= 2 ? 2 : 1; // render stereo (or mono); LibVLC downmixes
         }
         catch (Exception ex)

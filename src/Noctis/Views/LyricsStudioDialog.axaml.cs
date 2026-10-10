@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Noctis.ViewModels;
@@ -6,6 +7,11 @@ namespace Noctis.Views;
 
 public partial class LyricsStudioDialog : Window
 {
+    private readonly LyricsStudioViewModel? _vm;
+    /// <summary>The Studio's own Close ran (round X, Esc, or on the window's behalf below).</summary>
+    private bool _vmClosed;
+    private bool _windowClosed;
+
     public LyricsStudioDialog()
     {
         InitializeComponent();
@@ -17,7 +23,33 @@ public partial class LyricsStudioDialog : Window
         // leaves this owner-bound prompt in place. Tap-mode keys live in the panel.
         vm.Confirm = message => ConfirmationDialog.ShowAsync(this, message);
         DataContext = vm;
-        vm.Closed += (_, _) => Close();
+        _vm = vm;
+        vm.Closed += OnStudioClosed;
+    }
+
+    /// <summary>The Studio is done (drafts kept, run stopped): close; PillDialogHost animates it out.</summary>
+    private void OnStudioClosed(object? sender, EventArgs e)
+    {
+        _vmClosed = true;
+        if (!_windowClosed) Close();
+    }
+
+    /// <summary>
+    /// Closed by the window itself (Alt+F4) rather than the round X or Esc: the Studio's own
+    /// Close still runs — it stops a run (which otherwise went on unseen with the speech model
+    /// loaded) and keeps the open song's draft.
+    /// </summary>
+    protected override void OnClosed(EventArgs e)
+    {
+        _windowClosed = true;
+        base.OnClosed(e);
+        if (_vm is not { } vm) return;
+        if (!_vmClosed)
+        {
+            _vmClosed = true;
+            vm.CloseCommand.Execute(null);
+        }
+        vm.Closed -= OnStudioClosed;
     }
 
     /// <summary>

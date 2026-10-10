@@ -213,16 +213,7 @@ public partial class SettingsViewModel : ViewModelBase
         _syncingCommunityPlugins = true;
         try { CommunityPluginsEnabled = Plugins?.CommunityPluginsEnabled ?? false; }
         finally { _syncingCommunityPlugins = false; }
-        OnPropertyChanged(nameof(ShowPluginsOffNotice));
     }
-
-    /// <summary>"Plugins are off" above the installed list: only while community plugins are off
-    /// and something they would run (a code plugin) is installed. Content packs work either way.</summary>
-    public bool ShowPluginsOffNotice => Plugins is { CommunityPluginsEnabled: false } host && host.Plugins.Any(p => p.IsCodePlugin);
-
-    /// <summary>The notice's Turn on button: the same as flipping the switch, confirmation included.</summary>
-    [RelayCommand]
-    private void TurnOnCommunityPlugins() => CommunityPluginsEnabled = true;
 
     /// <summary>The first-enable approval: what the plugin declares, and what that does and does not mean.</summary>
     internal async Task<bool> ConfirmEnablePluginAsync(LoadedPlugin plugin)
@@ -879,6 +870,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Per-song / per-album clips ("track:{id}" / "album:{id}" → copied file); see
     /// Helpers.LyricsBackgroundOverrides for the menus that fill it.</summary>
     private Dictionary<string, string> _lyricsBackgroundOverrides = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>"Don't scrobble" keys (Helpers.ScrobbleExclusionKeys); see AppSettings.ScrobbleExcludedKeys.</summary>
+    private HashSet<string> _scrobbleExclusions = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Freeze the lyrics background video while playback is paused.</summary>
     [ObservableProperty] private bool _lyricsBackgroundPausesWithPlayback;
 
@@ -1036,6 +1029,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _artistSortAscending = true;
     [ObservableProperty] private string _foldersSortMode = "default";
     [ObservableProperty] private string _artistReleaseSortMode = "newest";
+    [ObservableProperty] private bool _artistSimilarExpanded = true;
+    [ObservableProperty] private bool _albumOtherVersionsExpanded = true;
+    [ObservableProperty] private bool _albumMoreByExpanded = true;
 
     partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1048,6 +1044,9 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnArtistSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnFoldersSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnArtistReleaseSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSimilarExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumOtherVersionsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumMoreByExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Home section collapse state ──
     //
@@ -1310,8 +1309,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Local-network web remote (phone control page). Off by default.</summary>
     [ObservableProperty] private bool _webRemoteEnabled;
 
-    /// <summary>Display URL for the running remote, or empty when off.</summary>
-    [ObservableProperty] private string _webRemoteUrl = string.Empty;
+    /// <summary>Display URL for the running remote. Kept (not cleared) after the remote is
+    /// turned off, so the card folds shut with its contents instead of emptying first;
+    /// <see cref="IsWebRemoteCardOpen"/> is what hides it.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsWebRemoteCardOpen))]
+    private string _webRemoteUrl = string.Empty;
+
+    /// <summary>Drives the card's fold: on, and either running or showing why it failed.</summary>
+    public bool IsWebRemoteCardOpen => WebRemoteEnabled && WebRemoteUrl.Length > 0;
 
     /// <summary>QR code for <see cref="WebRemoteUrl"/>, or null when the remote is off
     /// or failed to start. Saves typing the address on the phone (Discord request).</summary>
@@ -1389,6 +1394,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_settingsLoaded) _ = SaveAsync();
         UpdateWebRemoteState();
+        OnPropertyChanged(nameof(IsWebRemoteCardOpen));
     }
 
     private void UpdateWebRemoteState()
@@ -1436,13 +1442,12 @@ public partial class SettingsViewModel : ViewModelBase
         }
         else
         {
+            // URL, display URL and QR stay as they were: the card is folding shut around
+            // them (IsWebRemoteCardOpen), and clearing them here emptied it before the
+            // fold could play. The next start overwrites all three.
             _webRemote?.Stop();
-            WebRemoteUrl = string.Empty;
-            WebRemoteDisplayUrl = string.Empty;
-            WebRemoteStartFailed = false;
             _webRemotePhoneSeenGeneration++; // cancel any pending quiet-window reset
             WebRemotePhoneSeen = false;
-            SetWebRemoteQr(null);
         }
     }
 
@@ -1471,7 +1476,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _localApiError = string.Empty;
 
     public bool LocalApiRunning => LocalApiBoundPort > 0;
-    public string LocalApiBaseUrl => LocalApiBoundPort > 0 ? $"http://127.0.0.1:{LocalApiBoundPort}/api/v1" : string.Empty;
+
+    /// <summary>Last port bound this session. The address keeps reading it after Stop, so the
+    /// card folds shut with its contents instead of the address line blanking first.</summary>
+    private int _localApiShownPort;
+    public string LocalApiBaseUrl => _localApiShownPort > 0 ? $"http://127.0.0.1:{_localApiShownPort}/api/v1" : string.Empty;
     /// <summary>Always-masked preview on the button row; Show glides the full token open
     /// below it, so the row (and its buttons) never re-flows.</summary>
     public string LocalApiTokenDisplay => LocalApiToken.Length < 8
@@ -1481,6 +1490,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnLocalApiBoundPortChanged(int value)
     {
+        if (value > 0) _localApiShownPort = value;
         OnPropertyChanged(nameof(LocalApiRunning));
         OnPropertyChanged(nameof(LocalApiBaseUrl));
     }
@@ -1513,6 +1523,7 @@ public partial class SettingsViewModel : ViewModelBase
                     catch (SocketException) { _localApi.Start(0, token); } // port taken: any free one, recorded in the file
                 }
                 LocalApiTokens.WriteState(token, _localApi.Port, running: true);
+                if (!LocalApiRunning) LocalApiTokenRevealed = false; // opens masked, every time
                 LocalApiToken = token;
                 LocalApiBoundPort = _localApi.Port;
                 LocalApiError = string.Empty;
@@ -1537,7 +1548,6 @@ public partial class SettingsViewModel : ViewModelBase
         var wasRunning = _localApi?.IsRunning == true;
         _localApi?.Stop();
         LocalApiBoundPort = 0;
-        LocalApiTokenRevealed = false;
         if (wasRunning && LocalApiToken.Length > 0)
         {
             try { LocalApiTokens.WriteState(LocalApiToken, port: null, running: false); }
@@ -1579,6 +1589,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    /// <summary>Background Blur behind pop-ups and the Settings sheet, 0–1, far left = off.
+    /// Mirrors <see cref="AppSettings.BackgroundBlurAmount"/>; applied live through BackdropSnapshot.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BackgroundBlurLabel))]
+    private double _backgroundBlurAmount = AppSettings.BackgroundBlurAmountDefault;
+    /// <summary>The slider's readout: "Off" at the far left, else a percent like the opacity sliders.</summary>
+    public string BackgroundBlurLabel => BackgroundBlurAmount < AppSettings.BackgroundBlurOffBelow
+        ? Loc.T("Settings.BackgroundBlurOff")
+        : BackgroundBlurAmount.ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>The backdrop radius for a slider amount: 0 (off) at the far left, else a
+    /// share of BackdropSnapshot.MaxBlurRadius (the default 10% is radius 1).</summary>
+    internal static double BackdropRadiusFor(double amount) =>
+        amount < AppSettings.BackgroundBlurOffBelow ? 0 : amount * Noctis.Controls.BackdropSnapshot.MaxBlurRadius;
     /// <summary>Opacity of the track box inside the player bar. Mirrors
     /// <see cref="AppSettings.PlaybackBarTrackBoxOpacity"/>.</summary>
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
@@ -1898,9 +1922,26 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
     [ObservableProperty] private string _listenBrainzToken = "";
     [ObservableProperty] private string _listenBrainzUsername = "";
-    [ObservableProperty] private bool _isListenBrainzConnected;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
+    private bool _isListenBrainzConnected;
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
     [ObservableProperty] private string _listenBrainzError = "";
+    /// <summary>Typed API URL for a self-hosted ListenBrainz-compatible server; blank = official.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
+    private string _listenBrainzApiUrl = "";
+
+    /// <summary>"SERVER" line on the connected card: the custom server's address, empty for the official one.</summary>
+    public string ListenBrainzServerDisplay
+    {
+        get
+        {
+            if (!IsListenBrainzConnected) return "";
+            var url = ListenBrainzService.NormalizeApiUrl(ListenBrainzApiUrl);
+            return url == null || url == ListenBrainzService.DefaultApiUrl ? "" : url;
+        }
+    }
 
     // ── Media server ──
     // The editable fields below are typing state; the authoritative connected
@@ -1951,7 +1992,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
 
-    // OrganizeFilesViewModel writes both of these back here when its dialog closes, but
+    // OrganizeFilesViewModel writes both of these back here when Apply runs, but
     // nothing persisted them — unlike every other setting they had no change handler, so
     // they only reached disk if some unrelated save happened to run afterwards. Killing
     // the process before that lost the user's organize template.
@@ -2008,6 +2049,25 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Persistent include/exclude scan rules.</summary>
     public ObservableCollection<FolderRule> FolderRules { get; } = new();
+
+    /// <summary>Folders hidden from the library from the Folders view (mirrors
+    /// <see cref="ILibraryService.HiddenFolders"/>), each with a Show button here.</summary>
+    public ObservableCollection<string> HiddenLibraryFolders { get; } = new();
+
+    public bool HasHiddenLibraryFolders => HiddenLibraryFolders.Count > 0;
+
+    private void SyncHiddenLibraryFolders()
+    {
+        var current = _library.HiddenFolders;
+        if (current.SequenceEqual(HiddenLibraryFolders)) return;
+        HiddenLibraryFolders.Clear();
+        foreach (var folder in current)
+            HiddenLibraryFolders.Add(folder);
+        OnPropertyChanged(nameof(HasHiddenLibraryFolders));
+    }
+
+    [RelayCommand]
+    private Task ShowHiddenFolder(string folder) => _library.SetFolderHiddenAsync(folder, hidden: false);
 
     /// <summary>Formatted display of the current media folder path.</summary>
     public string MediaFolderDisplay => MusicFolders.Count > 0
@@ -2192,6 +2252,11 @@ public partial class SettingsViewModel : ViewModelBase
         // pressing Refresh to fix silent playback learned nothing. Remember the roots;
         // RunScanCoreAsync turns them into the status line once ScanAsync returns.
         _library.ScanAborted += (_, roots) => _scanAbortedRoots = roots;
+
+        // Hiding/showing a folder (Folders view) republishes the library; the list is in
+        // memory, so this is a cheap compare on every other LibraryUpdated.
+        SyncHiddenLibraryFolders();
+        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(SyncHiddenLibraryFolders);
 
         _library.MusicFoldersChanged += (_, folders) =>
         {
@@ -2477,6 +2542,9 @@ public partial class SettingsViewModel : ViewModelBase
             _lyricsBackgroundOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (key, path) in _settings.LyricsBackgroundMediaOverrides ?? new Dictionary<string, string>())
                 if (!string.IsNullOrEmpty(path) && File.Exists(path)) _lyricsBackgroundOverrides[key] = path;
+            _scrobbleExclusions = new HashSet<string>(
+                (_settings.ScrobbleExcludedKeys ?? new List<string>()).Where(k => !string.IsNullOrWhiteSpace(k)),
+                StringComparer.OrdinalIgnoreCase);
             LyricsBackgroundPausesWithPlayback = _settings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = _settings.MusicVideosEnabled;
             MusicVideoRoundedCorners = _settings.MusicVideoRoundedCorners;
@@ -2520,6 +2588,9 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistSortAscending = _settings.ArtistSortAscending;
             FoldersSortMode = _settings.FoldersSortMode;
             ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
+            ArtistSimilarExpanded = _settings.ArtistSimilarExpanded;
+            AlbumOtherVersionsExpanded = _settings.AlbumOtherVersionsExpanded;
+            AlbumMoreByExpanded = _settings.AlbumMoreByExpanded;
             HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
             HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
             HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
@@ -2529,6 +2600,8 @@ public partial class SettingsViewModel : ViewModelBase
             HomeLastPlayedExpanded = _settings.HomeLastPlayedExpanded;
             HomeShowHeavyRotation = _settings.HomeShowHeavyRotation;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
+            BackgroundBlurAmount = Math.Clamp(_settings.BackgroundBlurAmount, 0, 1);
+            Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(BackgroundBlurAmount);
             PlaybackBarTrackBoxOpacity = Math.Clamp(_settings.PlaybackBarTrackBoxOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
@@ -2635,6 +2708,8 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzScrobblingEnabled = _settings.ListenBrainzScrobblingEnabled;
             ListenBrainzToken = _settings.ListenBrainzToken;
             ListenBrainzUsername = _settings.ListenBrainzUsername;
+            ListenBrainzApiUrl = _settings.ListenBrainzApiUrl;
+            _listenBrainz?.SetApiUrl(_settings.ListenBrainzApiUrl);
             if (_listenBrainz != null && !string.IsNullOrEmpty(_settings.ListenBrainzToken))
             {
                 _listenBrainz.Configure(_settings.ListenBrainzToken);
@@ -2936,6 +3011,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
         _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsBackgroundMediaOverrides = new Dictionary<string, string>(_lyricsBackgroundOverrides);
+        _settings.ScrobbleExcludedKeys = _scrobbleExclusions.Count > 0 ? _scrobbleExclusions.ToList() : null;
         _settings.LyricsBackgroundPausesWithPlayback = LyricsBackgroundPausesWithPlayback;
         _settings.MusicVideosEnabled = MusicVideosEnabled;
         _settings.MusicVideoRoundedCorners = MusicVideoRoundedCorners;
@@ -2976,6 +3052,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.FoldersSortMode = FoldersSortMode;
         _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
+        _settings.ArtistSimilarExpanded = ArtistSimilarExpanded;
+        _settings.AlbumOtherVersionsExpanded = AlbumOtherVersionsExpanded;
+        _settings.AlbumMoreByExpanded = AlbumMoreByExpanded;
         _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
         _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
         _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;
@@ -2985,6 +3064,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeLastPlayedExpanded = HomeLastPlayedExpanded;
         _settings.HomeShowHeavyRotation = HomeShowHeavyRotation;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _settings.BackgroundBlurAmount = Math.Clamp(BackgroundBlurAmount, 0, 1);
         _settings.PlaybackBarTrackBoxOpacity = Math.Clamp(PlaybackBarTrackBoxOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
@@ -3043,6 +3123,8 @@ public partial class SettingsViewModel : ViewModelBase
         // connected (validated) token is stored.
         _settings.ListenBrainzToken = IsListenBrainzConnected ? (ListenBrainzToken ?? string.Empty) : string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+        // Not a secret, so it is kept even while disconnected (logout leaves the server in place).
+        _settings.ListenBrainzApiUrl = ListenBrainzApiUrl?.Trim() ?? string.Empty;
 
         // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
         // stored list is rebuilt from the connected state on every save (the on-disk
@@ -3970,6 +4052,21 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
+    partial void OnBackgroundBlurAmountChanged(double value)
+    {
+        var clamped = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : AppSettings.BackgroundBlurAmountDefault;
+        if (clamped != value)
+        {
+            BackgroundBlurAmount = clamped;
+            return;
+        }
+
+        // Live: an open Settings sheet re-blurs its backdrop as the thumb moves, the next
+        // pop-up uses the new strength.
+        Noctis.Controls.BackdropSnapshot.BlurRadius = BackdropRadiusFor(value);
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
+    }
+
     partial void OnPlaybackBarTrackBoxOpacityChanged(double value)
     {
         var clamped = Math.Clamp(value, 0, 1);
@@ -4153,6 +4250,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyArtistGrouping()
     {
         var before = ArtistCredit.Version;
+        var joinBefore = ArtistCredit.JoinText;
         ArtistCredit.Configure(ArtistGroupModes.Parse(ArtistGroupMode), ArtistTagSeparators);
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -4161,6 +4259,26 @@ public partial class SettingsViewModel : ViewModelBase
         // which every grid already listens to; the status line just acknowledges.
         _library.NotifyMetadataChanged();
         SetScanStatus("Regrouping artists…", autoClear: true);
+        // GitHub #117: multi-value artist tags were stored joined with the old join text,
+        // which may no longer split; re-read those tracks in the background.
+        if (!string.Equals(joinBefore, ArtistCredit.JoinText, StringComparison.Ordinal))
+            _ = ApplyArtistCreditJoinToLibraryAsync();
+    }
+
+    private async Task ApplyArtistCreditJoinToLibraryAsync()
+    {
+        try
+        {
+            var changed = await _library.ApplyArtistCreditJoinAsync();
+            if (changed > 0)
+                SetScanStatus(changed == 1
+                    ? "Artist credits updated on 1 track."
+                    : $"Artist credits updated on {changed:N0} tracks.", autoClear: true);
+        }
+        catch (Exception)
+        {
+            // Non-fatal: the next start repeats the pass.
+        }
     }
 
     // Guards the status line against a superseded flip finishing after a newer one.
@@ -4344,6 +4462,22 @@ public partial class SettingsViewModel : ViewModelBase
         _ = Task.Run(() => { try { File.Delete(path); } catch { } });
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>True when Last.fm or ListenBrainz scrobbling is on; the "don't scrobble"
+    /// menu entries only show then.</summary>
+    public bool IsAnyScrobblingEnabled => LastFmScrobblingEnabled || ListenBrainzScrobblingEnabled;
+
+    public bool IsScrobbleExcluded(string key) => _scrobbleExclusions.Contains(key);
+
+    /// <summary>True when the track, its album or one of its artists is set to not scrobble.</summary>
+    public bool IsScrobbleExcluded(Track track) => ScrobbleExclusionKeys.IsExcluded(_scrobbleExclusions, track);
+
+    public void SetScrobbleExcluded(string key, bool excluded)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        var changed = excluded ? _scrobbleExclusions.Add(key) : _scrobbleExclusions.Remove(key);
+        if (changed && _settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnNowPlayingArtworkStyleChanged(string value)
@@ -4582,6 +4716,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        RefreshOfficialPluginStates();
         OnPropertyChanged(nameof(PluginsFolderTip));
     }
 
@@ -5154,6 +5289,12 @@ public partial class SettingsViewModel : ViewModelBase
         _listenBrainz?.Configure(value);
     }
 
+    partial void OnListenBrainzApiUrlChanged(string value)
+    {
+        // Applied to the service on Connect, which validates it first.
+        ListenBrainzError = "";
+    }
+
     [RelayCommand]
     private async Task TestListenBrainz()
     {
@@ -5165,9 +5306,21 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
 
+        // GitHub #118: validate against the configured server (blank = official).
+        var apiUrl = ListenBrainzService.NormalizeApiUrl(ListenBrainzApiUrl);
+        if (apiUrl == null)
+        {
+            ListenBrainzError = Loc.T("Settings.ListenBrainzUrlInvalid");
+            ListenBrainzStatusText = "Not connected";
+            return;
+        }
+        // Show the URL that is actually used; the official one goes back to blank.
+        ListenBrainzApiUrl = apiUrl == ListenBrainzService.DefaultApiUrl ? "" : apiUrl;
+
         ListenBrainzError = "";
         ListenBrainzStatusText = "Validating...";
         _listenBrainz.Configure(ListenBrainzToken);
+        _listenBrainz.SetApiUrl(apiUrl);
         var username = await _listenBrainz.ValidateTokenAsync();
         if (!string.IsNullOrEmpty(username))
         {
@@ -5184,7 +5337,13 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsListenBrainzConnected = false;
             ListenBrainzUsername = "";
-            ListenBrainzError = "Token invalid or network error.";
+            ListenBrainzError = _listenBrainz.LastValidationError switch
+            {
+                ListenBrainzValidationError.InvalidToken => Loc.T("Settings.ListenBrainzTokenRejected"),
+                ListenBrainzValidationError.Unreachable => Loc.T("Settings.ListenBrainzUnreachable"),
+                ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
+                _ => "Token invalid or network error.",
+            };
             ListenBrainzStatusText = "Not connected";
         }
     }
@@ -5784,7 +5943,6 @@ public partial class SettingsViewModel : ViewModelBase
         // over the same collection plus a redundant tracks.Count subtraction.
         long totalBytes = 0;
         long totalDurationTicks = 0;
-        long totalPlays = 0;
         int losslessCount = 0;
         int hiResCount = 0;
         int likedCount = 0;
@@ -5793,7 +5951,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             totalBytes += t.FileSize;
             totalDurationTicks += t.Duration.Ticks;
-            totalPlays += t.PlayCount;
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
             if (t.IsFavorite) likedCount++;
@@ -5804,7 +5961,13 @@ public partial class SettingsViewModel : ViewModelBase
         // computed from the play log — see ListeningStatsCalculator.
         var listening = ListeningStatsCalculator.Compute(events, tracksById);
 
-        var (topArtists, topAlbums) = ComputeTopPlayed(tracks, albums);
+        // Plays, time listened and the top lists come from the same all-time report as the
+        // Statistics page and the Wrap (the play log, each play placed on its library track,
+        // plays cut off within seconds left out). They used to add up each track's PlayCount,
+        // which a re-added library resets: this tab said 60 plays while the page and the Wrap
+        // counted 2,081 on the owner's dev profile (10-09).
+        var report = ListeningReportBuilder.Build(events, new PlayEventResolver(tracks), ListeningPeriod.AllTime);
+        var (topArtists, topAlbums) = TopPlayed(report);
 
         var pct = tracks.Count > 0 ? (double)losslessCount / tracks.Count : 0;
         return new LibraryStatsResult(
@@ -5813,8 +5976,8 @@ public partial class SettingsViewModel : ViewModelBase
             TotalAlbums: albums.Count,
             TotalFileSize: FormatLibrarySize(totalBytes),
             TotalListeningTime: FormatDuration(TimeSpan.FromTicks(totalDurationTicks)),
-            TotalPlays: FormatCount(totalPlays),
-            TimeListened: FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks)),
+            TotalPlays: FormatCount(report.Plays),
+            TimeListened: FormatDuration(TimeSpan.FromTicks(report.ListenedTicks)),
             AvgTrackLength: listening.AvgListenedTrackLengthTicks > 0
                 ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
                 : tracks.Count > 0
@@ -5856,53 +6019,21 @@ public partial class SettingsViewModel : ViewModelBase
         _ = RefreshRemovedTracksAsync();
     }
 
-    private static (List<StatItem> Artists, List<StatItem> Albums) ComputeTopPlayed(
-        IReadOnlyList<Track> tracks, IReadOnlyList<Album> allAlbums)
+    private static (List<StatItem> Artists, List<StatItem> Albums) TopPlayed(ListeningReport report)
     {
-        var artists = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
-            .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g =>
+        static List<StatItem> Top(IReadOnlyList<ListeningRank> ranks)
+        {
+            var items = ranks.Take(5).Select(r => new StatItem
             {
-                // long: an int Sum throws on overflow (play counts arrive from synced devices).
-                var plays = g.Sum(t => (long)t.PlayCount);
-                return new StatItem
-                {
-                    Label = g.Key,
-                    SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
-                    Value = (int)Math.Min(plays, int.MaxValue),
-                    ValueLabel = $"{plays} plays"
-                };
-            })
-            .Where(i => i.Value > 0)
-            .OrderByDescending(i => i.Value)
-            .Take(5)
-            .ToList();
-        ApplyRanks(artists);
-
-        var albumsById = allAlbums.ToDictionary(a => a.Id);
-        var albums = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Album))
-            .GroupBy(t => t.AlbumId)
-            .Select(g =>
-            {
-                albumsById.TryGetValue(g.Key, out var album);
-                var plays = g.Sum(t => (long)t.PlayCount);
-                return new StatItem
-                {
-                    Label = album?.Name ?? g.First().Album,
-                    SubLabel = album?.Artist ?? g.First().Artist,
-                    Value = (int)Math.Min(plays, int.MaxValue),
-                    ValueLabel = $"{plays} plays"
-                };
-            })
-            .Where(i => i.Value > 0)
-            .OrderByDescending(i => i.Value)
-            .Take(5)
-            .ToList();
-        ApplyRanks(albums);
-
-        return (artists, albums);
+                Label = r.Name,
+                SubLabel = r.Subtitle,
+                Value = r.Plays,
+                ValueLabel = StatisticsViewModel.PlaysLabel(r.Plays),
+            }).ToList();
+            ApplyRanks(items);
+            return items;
+        }
+        return (Top(report.TopArtists), Top(report.TopAlbums));
     }
 
     private static void ApplyRanks(List<StatItem> items)
@@ -6619,6 +6750,7 @@ public partial class SettingsViewModel : ViewModelBase
             ExternalOpenAppPath = defaultSettings.ExternalOpenAppPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            BackgroundBlurAmount = defaultSettings.BackgroundBlurAmount;
             PlaybackBarTrackBoxOpacity = defaultSettings.PlaybackBarTrackBoxOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;
@@ -6728,7 +6860,9 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
             ListenBrainzStatusText = "Not connected";
+            ListenBrainzApiUrl = "";
             _listenBrainz?.Logout();
+            _listenBrainz?.SetApiUrl(null);
 
             // Media server — drop the connection (SyncToSettings would otherwise
             // re-persist the stale one over the freshly defaulted file).

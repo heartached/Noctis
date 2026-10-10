@@ -162,7 +162,7 @@ public class LyricsStudioPickerViewModelTests
         vm.SearchText = "fantas";
         await vm.SearchRefresh;
         vm.ToggleSelectCommand.Execute(vm.Results.First(r => !r.IsAlbum));
-        Assert.Equal("2 songs selected", vm.SelectionText);
+        Assert.Equal("2 selected", vm.SelectionText);
 
         vm.LineTimings = true;
         Assert.False(vm.WordTimings);

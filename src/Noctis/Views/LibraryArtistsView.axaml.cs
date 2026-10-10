@@ -1,10 +1,14 @@
 using System.IO;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -24,12 +28,109 @@ public partial class LibraryArtistsView : UserControl
         DataContextChanged += OnDataContextChanged;
     }
 
-    private async void OnChangeArtistImageClick(object? sender, RoutedEventArgs e)
+    // ── Artist tiles: one shared v2 menu (10-09 redesign), bound to the tile on open ──
+    // Replaces the per-tile XAML ContextMenu (built for every realized tile): same entries,
+    // now with line icons and Remove Picture last in red.
+
+    private ArtistTileMenu? _artistMenu;
+    /// <summary>Culture the menu's strings were read in (they are read once, at build).</summary>
+    private string? _artistMenuCulture;
+    private Control? _menuOwner;
+
+    private void OnArtistTileContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        // async void: an escaped exception would crash the app.
+        if (sender is Button tile && OpenArtistMenu(tile))
+            e.Handled = true;
+    }
+
+    private bool OpenArtistMenu(Button tile)
+    {
+        if (tile.DataContext is not Artist artist) return false;
+        if (DataContext is not LibraryArtistsViewModel) return false;
+
+        // Rebuilt after a live language switch so the menu follows it.
+        if (_artistMenu == null || _artistMenuCulture != Loc.Instance.Culture.Name)
+        {
+            if (_artistMenu?.Menu.IsOpen == true) _artistMenu.Menu.Close();
+            _artistMenuCulture = Loc.Instance.Culture.Name;
+            _artistMenu = new ArtistTileMenu(this,
+                toggleFavorite: new RelayCommand<Artist>(a => { if (a != null) ToggleFavoriteArtist(a); }),
+                chooseImage: new RelayCommand<Artist>(a => { if (a != null) _ = ChangeArtistImageAsync(a); }),
+                findImage: new RelayCommand<Artist>(a => { if (a != null) _ = SearchArtistImageAsync(a); }),
+                removeImage: new RelayCommand<Artist>(a => { if (a != null) RemoveArtistImage(a); }));
+        }
+        _artistMenu.Bind(artist);
+
+        var menu = _artistMenu.Menu;
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(menu);
+        MenuOpenAnimation.CloseNow(menu);
+        // Detach from the previous owner so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_menuOwner != null && !ReferenceEquals(_menuOwner, tile))
+            _menuOwner.ContextMenu = null;
+        if (menu.Parent is Control prev && !ReferenceEquals(prev, tile))
+            prev.ContextMenu = null;
+        _menuOwner = tile;
+        tile.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(tile);
+        return true;
+    }
+
+    /// <summary>
+    /// The artist tile's v2 menu: [Set as Favorite / Remove from Favorites] ·
+    /// [Choose from File, Find Picture Online] · [Remove Picture]. No quick tiles: the
+    /// Artists page has no artist-wide play commands.
+    /// </summary>
+    internal sealed class ArtistTileMenu
+    {
+        public ContextMenu Menu { get; } = new();
+        public MenuItem Favorite { get; }
+        public MenuItem Unfavorite { get; }
+        public MenuItem ChooseImage { get; }
+        public MenuItem FindImage { get; }
+        public MenuItem RemoveImage { get; }
+
+        public ArtistTileMenu(Control host, ICommand toggleFavorite, ICommand chooseImage, ICommand findImage, ICommand removeImage)
+        {
+            Menu.Classes.Add(MenuV2.MenuClass);
+            var items = Menu.Items;
+            items.Add(Favorite = MenuV2.Row(host, Loc.T("LibraryArtists.SetAsFavorite"), "MenuLineHeart"));
+            items.Add(Unfavorite = MenuV2.Row(host, Loc.T("LibraryArtists.RemoveFromFavorites"), "MenuLineHeart"));
+            MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
+            items.Add(new Separator());
+            items.Add(ChooseImage = MenuV2.Row(host, Loc.T("LibraryArtists.ChooseFromFile"), "MenuLineImage"));
+            items.Add(FindImage = MenuV2.Row(host, Loc.T("LibraryArtists.FindPictureOnline"), "MenuLineSearch"));
+            items.Add(new Separator());
+            RemoveImage = MenuV2.Row(host, Loc.T("LibraryArtists.RemovePicture"), "MenuLineTrash");
+            RemoveImage.Classes.Add("danger");
+            items.Add(RemoveImage);
+
+            Favorite.Command = Unfavorite.Command = toggleFavorite;
+            ChooseImage.Command = chooseImage;
+            FindImage.Command = findImage;
+            RemoveImage.Command = removeImage;
+        }
+
+        public void Bind(Artist artist)
+        {
+            Menu.DataContext = artist;
+            foreach (var item in new[] { Favorite, Unfavorite, ChooseImage, FindImage, RemoveImage })
+                item.CommandParameter = artist;
+            Favorite.IsVisible = !artist.IsFavorite;
+            Unfavorite.IsVisible = artist.IsFavorite;
+            RemoveImage.IsVisible = !string.IsNullOrEmpty(artist.ImagePath);
+            MenuV2.RefreshLayout(Menu.Items);
+        }
+    }
+
+    private async Task ChangeArtistImageAsync(Artist artist)
+    {
+        // Fire-and-forget from the menu: an escaped exception would go unobserved.
         try
         {
-            if (sender is not Control control || control.DataContext is not Artist artist) return;
             if (DataContext is not LibraryArtistsViewModel vm) return;
 
             var topLevel = TopLevel.GetTopLevel(this);
@@ -72,12 +173,10 @@ public partial class LibraryArtistsView : UserControl
         }
     }
 
-    private async void OnSearchArtistImageClick(object? sender, RoutedEventArgs e)
+    private async Task SearchArtistImageAsync(Artist artist)
     {
-        // async void: an escaped exception would crash the app.
         try
         {
-            if (sender is not Control control || control.DataContext is not Artist artist) return;
             if (DataContext is LibraryArtistsViewModel vm)
                 await vm.SearchArtistImageAsync(artist);
         }
@@ -87,16 +186,14 @@ public partial class LibraryArtistsView : UserControl
         }
     }
 
-    private void OnRemoveArtistImageClick(object? sender, RoutedEventArgs e)
+    private void RemoveArtistImage(Artist artist)
     {
-        if (sender is not Control control || control.DataContext is not Artist artist) return;
         if (DataContext is LibraryArtistsViewModel vm)
             vm.RemoveArtistImage(artist);
     }
 
-    private void OnToggleFavoriteArtistClick(object? sender, RoutedEventArgs e)
+    private void ToggleFavoriteArtist(Artist artist)
     {
-        if (sender is not Control control || control.DataContext is not Artist artist) return;
         if (DataContext is LibraryArtistsViewModel vm)
             vm.ToggleFavoriteArtist(artist);
     }
@@ -161,9 +258,25 @@ public partial class LibraryArtistsView : UserControl
         }
     }
 
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        UpdateGridColumns(e.NewSize.Width);
+    }
+
+    /// <summary>DockPanel margin (16 + 2) plus the vertical scrollbar's gutter.</summary>
+    private const double GridChromeWidth = 30;
+
+    private void UpdateGridColumns(double viewWidth)
+    {
+        if (viewWidth > 0 && DataContext is LibraryArtistsViewModel vm)
+            vm.UpdateGridColumns(viewWidth - GridChromeWidth);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        UpdateGridColumns(Bounds.Width);
 
         // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)

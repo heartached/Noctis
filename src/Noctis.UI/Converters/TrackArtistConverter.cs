@@ -14,7 +14,7 @@ public class TrackArtistConverter : IValueConverter
     {
         if (value is not Track track) return string.Empty;
 
-        return string.IsNullOrWhiteSpace(track.Artist) ? string.Empty : track.Artist;
+        return string.IsNullOrWhiteSpace(track.Artist) ? string.Empty : ArtistCredit.Display(track.Artist);
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

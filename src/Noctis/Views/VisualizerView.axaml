@@ -86,7 +86,7 @@
                                IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <Run Text="{Binding Player.CurrentTrack.Title}" FontWeight="SemiBold"/>
                         <Run Text="  —  " Foreground="#8CFFFFFF"/>
-                        <Run Text="{Binding Player.CurrentTrack.Artist}" Foreground="#B3FFFFFF"/>
+                        <Run Text="{Binding Player.CurrentTrack.ArtistDisplay}" Foreground="#B3FFFFFF"/>
                     </TextBlock>
                     <TextBlock Text="{loc:T Visualizer.Empty}" FontSize="13" Foreground="#B3FFFFFF"
                                IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"/>

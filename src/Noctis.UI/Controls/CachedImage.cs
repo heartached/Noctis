@@ -501,8 +501,19 @@ public class CachedImage : Image
                 isCurrentGeneration = generation == _loadGeneration;
             }
 
-            if (isCurrentGeneration)
-                SetSource(bitmap, path);
+            // The decode's own hold, which kept an eviction from disposing the bitmap while this
+            // waited for the UI thread: SetSource took the control's hold, a stale result lets go.
+            // In a finally so a throwing SetSource can't strand the hold (the cover would never
+            // be evicted).
+            try
+            {
+                if (isCurrentGeneration)
+                    SetSource(bitmap, path);
+            }
+            finally
+            {
+                ArtworkCache.Release(bitmap);
+            }
         }
         catch (Exception ex)
         {
@@ -516,7 +527,8 @@ public class CachedImage : Image
     /// A wheel glide realizes a row of tiles every few frames, so misses queue faster than
     /// the pool drains them. A tile scrolled past before its turn skips the decode instead
     /// of paying for a cover nobody will see, and decodes run below normal priority so, when
-    /// they saturate the cores, the UI and render threads still get theirs.
+    /// they saturate the cores, the UI and render threads still get theirs. The bitmap comes back
+    /// <see cref="ArtworkCache.Acquire"/>d; the caller releases it.
     /// </summary>
     internal Bitmap? DecodeInBackground(string path, int decodeWidth, int generation, bool exact = false)
     {
@@ -530,7 +542,7 @@ public class CachedImage : Image
         try
         {
             thread.Priority = ThreadPriority.BelowNormal;
-            return ArtworkCache.LoadAndCache(path, decodeWidth, exact);
+            return ArtworkCache.LoadAndCache(path, decodeWidth, exact, acquire: true);
         }
         finally
         {

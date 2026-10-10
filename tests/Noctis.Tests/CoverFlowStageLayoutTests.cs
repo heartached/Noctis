@@ -60,6 +60,9 @@ public class CoverFlowStageLayoutTests
 
         Assert.Equal(936, pile.Width, 3); // 900 + 24 + 12 page insets; 62% of 1600 (992) does not cap it
         Assert.Equal(pile.Width, pile.Height, 3);
+        // Its edges are the page's, so it does not clip on its own (a layout morph scales the
+        // layer, and a Viewbox clip would show as a box in mid-air).
+        Assert.False(pile.ClipToBounds);
     }
 
     [AvaloniaFact]
@@ -72,6 +75,7 @@ public class CoverFlowStageLayoutTests
 
         Assert.Equal(1200 * 0.62, pile.Width, 3);
         Assert.Equal(pile.Width, pile.Height, 3);
+        Assert.True(pile.ClipToBounds); // shorter than the page: keeps its own edges
     }
 
     [AvaloniaFact]
@@ -84,6 +88,7 @@ public class CoverFlowStageLayoutTests
 
         Assert.Equal(540, pile.Width, 3); // 60% of the height wins over width-32
         Assert.Equal(pile.Width, pile.Height, 3);
+        Assert.True(pile.ClipToBounds); // stacked over the text: must not spill onto it
     }
 
     [AvaloniaFact]

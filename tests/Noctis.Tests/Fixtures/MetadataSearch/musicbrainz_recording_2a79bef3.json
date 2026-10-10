@@ -1,0 +1,616 @@
+{
+ "artist-credit": [
+  {
+   "name": "Jack Harlow",
+   "artist": {
+    "sort-name": "Harlow, Jack",
+    "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+    "genres": [
+     {
+      "count": 2,
+      "id": "52faa157-6bad-4d86-a0ab-d4dec7d2513c",
+      "name": "hip hop",
+      "disambiguation": ""
+     },
+     {
+      "disambiguation": "",
+      "name": "pop rap",
+      "id": "da2fc3b4-b97d-491a-ac0f-8a731bee7237",
+      "count": 1
+     }
+    ],
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "type": "Person",
+    "name": "Jack Harlow",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "joinphrase": ""
+  }
+ ],
+ "video": false,
+ "disambiguation": "",
+ "first-release-date": "2022-05-05",
+ "title": "Talk of the Town",
+ "length": 82927,
+ "genres": [],
+ "isrcs": [
+  "USAT22203479",
+  "USAT22203492"
+ ],
+ "relations": [
+  {
+   "target-type": "artist",
+   "source-credit": "",
+   "begin": null,
+   "type": "instrument",
+   "attributes": [
+    "keyboard"
+   ],
+   "attribute-credits": {},
+   "end": null,
+   "artist": {
+    "id": "b6211627-0089-4142-b7d1-57d56d1def42",
+    "sort-name": "Chahayed, Rogét",
+    "name": "Rogét Chahayed",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "target-credit": "",
+   "direction": "backward",
+   "ended": false,
+   "attribute-values": {},
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461",
+   "attribute-ids": {
+    "keyboard": "95b0c3d2-9606-4ef5-a019-9b7437f3adda"
+   }
+  },
+  {
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "instrument",
+   "end": null,
+   "artist": {
+    "type": "Person",
+    "name": "Rogét Chahayed",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Chahayed, Rogét",
+    "id": "b6211627-0089-4142-b7d1-57d56d1def42",
+    "disambiguation": "",
+    "country": "US"
+   },
+   "attributes": [
+    "piano"
+   ],
+   "attribute-credits": {},
+   "attribute-ids": {
+    "piano": "b3eac5f9-7859-4416-ac39-7154e2e8d348"
+   },
+   "target-credit": "",
+   "direction": "backward",
+   "attribute-values": {},
+   "ended": false,
+   "type-id": "59054b12-01ac-43ee-a618-285fd397e461"
+  },
+  {
+   "target-type": "artist",
+   "source-credit": "",
+   "begin": null,
+   "type": "mix",
+   "attributes": [],
+   "end": null,
+   "artist": {
+    "disambiguation": "",
+    "country": "US",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Nickie Jon Pabón",
+    "type": "Person",
+    "id": "eb5aa19f-b9fd-42ff-894e-8e2d3a472ec8",
+    "sort-name": "Pabón, Nickie Jon"
+   },
+   "direction": "backward",
+   "target-credit": "",
+   "attribute-values": {},
+   "type-id": "3e3102e1-1896-4f50-b5b2-dd9824e46efe",
+   "ended": false,
+   "attribute-ids": {}
+  },
+  {
+   "attribute-ids": {
+    "assistant": "8c4196b1-7053-4b16-921a-f22b2898ed44"
+   },
+   "attribute-values": {},
+   "type-id": "3e3102e1-1896-4f50-b5b2-dd9824e46efe",
+   "ended": false,
+   "direction": "backward",
+   "target-credit": "",
+   "artist": {
+    "disambiguation": "engineer",
+    "country": "CL",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "name": "Ignacio Portales",
+    "type": "Person",
+    "sort-name": "Portales, Ignacio",
+    "id": "b5df3062-7b6d-4f1e-bb6c-6351808ac53b"
+   },
+   "end": null,
+   "attributes": [
+    "assistant"
+   ],
+   "type": "mix",
+   "begin": null,
+   "source-credit": "",
+   "target-type": "artist"
+  },
+  {
+   "type": "mix",
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "attribute-ids": {},
+   "target-credit": "",
+   "direction": "backward",
+   "ended": false,
+   "attribute-values": {},
+   "type-id": "3e3102e1-1896-4f50-b5b2-dd9824e46efe",
+   "end": null,
+   "artist": {
+    "type-id": null,
+    "type": null,
+    "name": "Teezio",
+    "id": "3b75ade4-ac86-4a26-b079-c4c6140e86b7",
+    "sort-name": "Teezio",
+    "disambiguation": "",
+    "country": null
+   },
+   "attributes": []
+  },
+  {
+   "target-type": "artist",
+   "begin": null,
+   "source-credit": "",
+   "type": "producer",
+   "attributes": [],
+   "artist": {
+    "country": "US",
+    "disambiguation": "Louisville, Kentucky-based music producer",
+    "id": "4bb87982-fa80-4fcc-a23f-a21161a9b8dc",
+    "sort-name": "2forwOyNE",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "type": "Person",
+    "name": "2forwOyNE"
+   },
+   "end": null,
+   "ended": false,
+   "attribute-values": {},
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "direction": "backward",
+   "target-credit": "",
+   "attribute-ids": {}
+  },
+  {
+   "end": null,
+   "artist": {
+    "id": "b6211627-0089-4142-b7d1-57d56d1def42",
+    "sort-name": "Chahayed, Rogét",
+    "name": "Rogét Chahayed",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": "",
+   "direction": "backward",
+   "attribute-values": {},
+   "ended": false,
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "producer"
+  },
+  {
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "producer",
+   "artist": {
+    "sort-name": "Harlow, Jack",
+    "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+    "name": "Jack Harlow",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "country": "US",
+    "disambiguation": ""
+   },
+   "end": null,
+   "attributes": [],
+   "attribute-ids": {},
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "attribute-values": {},
+   "ended": false,
+   "direction": "backward",
+   "target-credit": ""
+  },
+  {
+   "type-id": "5c0ceac3-feb4-41f0-868d-dc06f6e27fc0",
+   "attribute-values": {},
+   "ended": false,
+   "target-credit": "Angel \"BabeTruth\" Lopez",
+   "direction": "backward",
+   "attribute-ids": {},
+   "attributes": [],
+   "artist": {
+    "disambiguation": "Timbaland production team member",
+    "country": "US",
+    "name": "Angel Lopez",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "id": "e84d6cff-398c-488b-9210-8ad7578f96ce",
+    "sort-name": "Lopez, Angel"
+   },
+   "end": null,
+   "type": "producer",
+   "target-type": "artist",
+   "source-credit": "",
+   "begin": null
+  },
+  {
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "programming",
+   "end": null,
+   "artist": {
+    "country": "US",
+    "disambiguation": "Timbaland production team member",
+    "sort-name": "Lopez, Angel",
+    "id": "e84d6cff-398c-488b-9210-8ad7578f96ce",
+    "type": "Person",
+    "name": "Angel Lopez",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "attributes": [],
+   "attribute-ids": {},
+   "target-credit": "Angel \"BabeTruth\" Lopez",
+   "direction": "backward",
+   "attribute-values": {},
+   "type-id": "36c50022-44e0-488d-994b-33f11d20301e",
+   "ended": false
+  },
+  {
+   "end": null,
+   "artist": {
+    "country": "US",
+    "disambiguation": "",
+    "id": "eb5aa19f-b9fd-42ff-894e-8e2d3a472ec8",
+    "sort-name": "Pabón, Nickie Jon",
+    "name": "Nickie Jon Pabón",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "attributes": [],
+   "attribute-ids": {},
+   "direction": "backward",
+   "target-credit": "",
+   "attribute-values": {},
+   "type-id": "a01ee869-80a8-45ef-9447-c59e91aa7926",
+   "ended": false,
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "recording"
+  },
+  {
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist",
+   "type": "samples from artist",
+   "end": null,
+   "artist": {
+    "disambiguation": "Haitian rapper, musician and actor",
+    "country": "US",
+    "name": "Wyclef Jean",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+    "sort-name": "Jean, Wyclef",
+    "id": "4f29ecd7-21a5-4c03-b9ba-d0cfe9488f8c"
+   },
+   "attributes": [],
+   "attribute-ids": {},
+   "direction": "backward",
+   "target-credit": "",
+   "attribute-values": {},
+   "ended": false,
+   "type-id": "83f72956-2007-4bca-8a97-0ae539cca99d"
+  },
+  {
+   "attribute-ids": {},
+   "target-credit": "",
+   "direction": "backward",
+   "attribute-values": {},
+   "ended": false,
+   "type-id": "0fdbe3c6-7700-4a31-ae54-b53f06ae1cfa",
+   "end": null,
+   "artist": {
+    "country": "US",
+    "disambiguation": "",
+    "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+    "sort-name": "Harlow, Jack",
+    "name": "Jack Harlow",
+    "type": "Person",
+    "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+   },
+   "attributes": [],
+   "type": "vocal",
+   "source-credit": "",
+   "begin": null,
+   "target-type": "artist"
+  },
+  {
+   "target-type": "work",
+   "begin": null,
+   "source-credit": "",
+   "type": "performance",
+   "attributes": [],
+   "work": {
+    "languages": [
+     "eng"
+    ],
+    "language": "eng",
+    "id": "3f837d6e-91dd-47a8-b5d5-745dc09c9732",
+    "relations": [
+     {
+      "type": "writer",
+      "source-credit": "",
+      "begin": null,
+      "target-type": "artist",
+      "attribute-ids": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-values": {},
+      "ended": false,
+      "target-credit": "Dawoyne Lawson",
+      "direction": "backward",
+      "artist": {
+       "country": "US",
+       "disambiguation": "Louisville, Kentucky-based music producer",
+       "sort-name": "2forwOyNE",
+       "id": "4bb87982-fa80-4fcc-a23f-a21161a9b8dc",
+       "name": "2forwOyNE",
+       "type": "Person",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df"
+      },
+      "end": null,
+      "attributes": []
+     },
+     {
+      "attribute-ids": {},
+      "direction": "backward",
+      "target-credit": "",
+      "attribute-values": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "ended": false,
+      "end": null,
+      "artist": {
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "type": "Person",
+       "name": "Mary Brown",
+       "id": "ac2b3d52-c857-4ebf-b97b-ea7dd24e7d3d",
+       "sort-name": "Brown, Mary",
+       "disambiguation": "US R&B vocalist",
+       "country": "US"
+      },
+      "attributes": [],
+      "type": "writer",
+      "source-credit": "",
+      "begin": null,
+      "target-type": "artist"
+     },
+     {
+      "type": "writer",
+      "source-credit": "",
+      "begin": null,
+      "target-type": "artist",
+      "attribute-ids": {},
+      "target-credit": "",
+      "direction": "backward",
+      "attribute-values": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "ended": false,
+      "end": null,
+      "artist": {
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "name": "Rogét Chahayed",
+       "type": "Person",
+       "id": "b6211627-0089-4142-b7d1-57d56d1def42",
+       "sort-name": "Chahayed, Rogét",
+       "disambiguation": "",
+       "country": "US"
+      },
+      "attributes": []
+     },
+     {
+      "begin": null,
+      "source-credit": "",
+      "target-type": "artist",
+      "type": "writer",
+      "artist": {
+       "country": null,
+       "disambiguation": "New Jersey hip hop artist",
+       "id": "4faaede6-1e21-4c86-a4a6-b5dd5c129dac",
+       "sort-name": "Dougie F",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "name": "Dougie F",
+       "type": "Person"
+      },
+      "end": null,
+      "attributes": [],
+      "attribute-ids": {},
+      "attribute-values": {},
+      "ended": false,
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "direction": "backward",
+      "target-credit": "Douglas Ford"
+     },
+     {
+      "attribute-ids": {},
+      "direction": "backward",
+      "target-credit": "",
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-values": {},
+      "ended": false,
+      "end": null,
+      "artist": {
+       "id": "fe06a5aa-2be7-468d-823e-94b8de490980",
+       "sort-name": "Fusari, Rob",
+       "type": "Person",
+       "name": "Rob Fusari",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "country": "US",
+       "disambiguation": ""
+      },
+      "attributes": [],
+      "type": "writer",
+      "begin": null,
+      "source-credit": "",
+      "target-type": "artist"
+     },
+     {
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-values": {},
+      "ended": false,
+      "target-credit": "",
+      "direction": "backward",
+      "attribute-ids": {},
+      "attributes": [],
+      "artist": {
+       "disambiguation": "",
+       "country": "US",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "name": "Calvin Gaines",
+       "type": "Person",
+       "sort-name": "Gaines, Calvin",
+       "id": "6b444807-95f5-48f3-8c5f-9aa40a435ca3"
+      },
+      "end": null,
+      "type": "writer",
+      "target-type": "artist",
+      "source-credit": "",
+      "begin": null
+     },
+     {
+      "type": "writer",
+      "target-type": "artist",
+      "begin": null,
+      "source-credit": "",
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "attribute-values": {},
+      "ended": false,
+      "target-credit": "",
+      "direction": "backward",
+      "attribute-ids": {},
+      "attributes": [],
+      "artist": {
+       "disambiguation": "",
+       "country": "US",
+       "name": "Jack Harlow",
+       "type": "Person",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "id": "134cb0bc-06fa-42f7-8078-b0c858349975",
+       "sort-name": "Harlow, Jack"
+      },
+      "end": null
+     },
+     {
+      "ended": false,
+      "attribute-values": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "target-credit": "Vincent J Herbert",
+      "direction": "backward",
+      "attribute-ids": {},
+      "attributes": [],
+      "artist": {
+       "type": "Person",
+       "name": "Vincent Herbert",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "id": "631ae01f-c4f1-437b-abb6-2acfcde8728c",
+       "sort-name": "Herbert, Vincent",
+       "disambiguation": "",
+       "country": "US"
+      },
+      "end": null,
+      "type": "writer",
+      "target-type": "artist",
+      "begin": null,
+      "source-credit": ""
+     },
+     {
+      "attributes": [],
+      "artist": {
+       "id": "e84d6cff-398c-488b-9210-8ad7578f96ce",
+       "sort-name": "Lopez, Angel",
+       "type": "Person",
+       "name": "Angel Lopez",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "country": "US",
+       "disambiguation": "Timbaland production team member"
+      },
+      "end": null,
+      "attribute-values": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "ended": false,
+      "target-credit": "Jose Velazquez",
+      "direction": "backward",
+      "attribute-ids": {},
+      "target-type": "artist",
+      "begin": null,
+      "source-credit": "",
+      "type": "writer"
+     },
+     {
+      "end": null,
+      "artist": {
+       "id": "eb5aa19f-b9fd-42ff-894e-8e2d3a472ec8",
+       "sort-name": "Pabón, Nickie Jon",
+       "type": "Person",
+       "name": "Nickie Jon Pabón",
+       "type-id": "b6e035f4-3ce9-331c-97df-83397230b0df",
+       "country": "US",
+       "disambiguation": ""
+      },
+      "attributes": [],
+      "attribute-ids": {},
+      "direction": "backward",
+      "target-credit": "",
+      "ended": false,
+      "attribute-values": {},
+      "type-id": "a255bca1-b157-4518-9108-7b147dc3fc68",
+      "begin": null,
+      "source-credit": "",
+      "target-type": "artist",
+      "type": "writer"
+     }
+    ],
+    "iswcs": [],
+    "type": "Song",
+    "type-id": "f061270a-2fd6-32f1-a641-f0f8676d14e6",
+    "title": "Talk of the Town",
+    "disambiguation": "",
+    "attributes": []
+   },
+   "end": null,
+   "direction": "forward",
+   "target-credit": "",
+   "attribute-values": {},
+   "ended": false,
+   "type-id": "a3005666-a872-32c3-ad06-98af558e99b0",
+   "attribute-ids": {}
+  }
+ ],
+ "id": "2a79bef3-70f8-41a2-b385-c5ca29e819cd"
+}

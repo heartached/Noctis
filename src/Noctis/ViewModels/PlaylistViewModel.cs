@@ -40,6 +40,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public string TrackCountText => TrackCount == 1 ? "1 track" : $"{TrackCount} tracks";
     [ObservableProperty] private string _totalDuration = "";
     [ObservableProperty] private string _totalSize = "";
+
+    /// <summary>This load's copy of <see cref="Playlist.TrackAddedAt"/>: the rows' "Added" date and
+    /// NEW badge read it (PlaylistAddedConverter), falling back to the track's library date.</summary>
+    [ObservableProperty] private IReadOnlyDictionary<Guid, DateTime> _trackAddedAt = new Dictionary<Guid, DateTime>();
     [ObservableProperty] private bool _isSmartPlaylist;
     [ObservableProperty] private string? _playlistArtworkPath;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
@@ -151,7 +155,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         await _sidebar.TogglePinAsync(_playlist.Id);
         OnPropertyChanged(nameof(IsPinned));
+        OnPropertyChanged(nameof(StarTip));
     }
+
+    /// <summary>The hero star's tooltip: one button now (the artist page's zooming star), so its
+    /// text follows the state instead of two buttons swapping.</summary>
+    public string StarTip => Noctis.Localization.Loc.T(IsPinned ? "LibraryPlaylists.UnstarFromSidebar" : "LibraryPlaylists.StarSidebar");
 
     public string PlaylistColor => _playlist.Color;
 
@@ -239,6 +248,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             _library.LibraryUpdated += OnLibraryUpdated;
 
         _sidebar.PlaylistTracksChanged += OnPlaylistTracksChanged;
+        _sidebar.PlaylistEdited += OnPlaylistEdited;
     }
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
@@ -250,6 +260,29 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (playlistId == _playlist.Id)
             Dispatcher.UIThread.Post(() => LoadTracks());
+    }
+
+    /// <summary>Header values the Edit Playlist dialog can change, read from the playlist.</summary>
+    private static readonly string[] EditedHeaderProperties =
+    {
+        nameof(PlaylistColor), nameof(PlaylistCoverArtPath), nameof(HasCustomArt), nameof(HasCollageArt),
+        nameof(HasSingleArt), nameof(ShowFallbackIcon), nameof(BackdropArtPath), nameof(IsPinned),
+        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue),
+    };
+
+    /// <summary>
+    /// The Edit Playlist dialog saved this playlist, from this page or from the sidebar's menu
+    /// while the page is open. The page used to refresh only after its own Edit button, and
+    /// then not the star, the cover's visibility flags or the Updated date: a removed cover
+    /// left a blank square, a new one stayed hidden until the page was reopened.
+    /// </summary>
+    private void OnPlaylistEdited(object? sender, Guid playlistId)
+    {
+        if (playlistId != _playlist.Id) return;
+        Name = _playlist.Name;
+        PlaylistDescription = _playlist.Description ?? string.Empty;
+        foreach (var property in EditedHeaderProperties)
+            OnPropertyChanged(property);
     }
 
     /// <summary>
@@ -268,7 +301,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
 
     /// <summary>Pure view-only sort for the displayed list. Manual preserves the playlist order.</summary>
-    public static IReadOnlyList<Track> SortTracks(IReadOnlyList<Track> tracks, PlaylistSortMode mode)
+    public static IReadOnlyList<Track> SortTracks(IReadOnlyList<Track> tracks, PlaylistSortMode mode,
+        IReadOnlyDictionary<Guid, DateTime>? addedAt = null)
     {
         if (tracks == null) return Array.Empty<Track>();
         return mode switch
@@ -279,7 +313,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             PlaylistSortMode.Album => tracks.OrderBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
                                             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             PlaylistSortMode.Duration => tracks.OrderBy(t => t.Duration).ToList(),
-            PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t => t.DateAdded).ToList(),
+            // When it joined this playlist (Playlist.TrackAddedAt), else its library date.
+            PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t =>
+                addedAt != null && addedAt.TryGetValue(t.Id, out var added) ? added : t.DateAdded).ToList(),
             PlaylistSortMode.Badge => tracks
                 .OrderBy(t => !t.HasBadge)
                 .ThenBy(t => t.Badge ?? string.Empty, StringComparer.OrdinalIgnoreCase)
@@ -347,6 +383,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             var playlist = _playlist;
             var isSmart = playlist.IsSmartPlaylist;
             var trackIds = isSmart ? null : playlist.TrackIds.ToList();
+            var addedAt = new Dictionary<Guid, DateTime>(playlist.TrackAddedAt);
             var filter = _currentFilter;
             var sortMode = SortMode;
             var library = _library;
@@ -365,11 +402,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                     ? all
                     : all.Where(Noctis.Helpers.SearchQuery.Parse(filter).Matches).ToList();
 
-                return (all, SortTracks(filtered, sortMode));
+                return (all, SortTracks(filtered, sortMode, addedAt));
             });
 
             if (generation != _loadGeneration) return;
 
+            TrackAddedAt = addedAt; // before the rows, so their Added / NEW read this load's dates
             Tracks.ReplaceAll(sorted);
 
             TrackCount = Tracks.Count;
@@ -676,6 +714,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             if (displayIdx >= 0)
                 Tracks.RemoveAt(displayIdx);
             _playlist.TrackIds.Remove(t.Id);
+            if (!_playlist.TrackIds.Contains(t.Id)) _playlist.TrackAddedAt.Remove(t.Id);
         }
         _playlist.ModifiedAt = DateTime.UtcNow;
         TrackCount = Tracks.Count;
@@ -707,9 +746,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         Tracks.Move(fromIndex, toIndex);
 
         // Rebuild TrackIds to match new order
-        _playlist.TrackIds.Clear();
-        foreach (var t in Tracks)
-            _playlist.TrackIds.Add(t.Id);
+        ApplyDisplayedOrder(_playlist.TrackIds, Tracks);
         _playlist.ModifiedAt = DateTime.UtcNow;
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
@@ -740,9 +777,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             if (from > i) Tracks.Move(from, i);
         }
 
-        _playlist.TrackIds.Clear();
-        foreach (var t in Tracks)
-            _playlist.TrackIds.Add(t.Id);
+        ApplyDisplayedOrder(_playlist.TrackIds, Tracks);
         _playlist.ModifiedAt = DateTime.UtcNow;
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
@@ -751,6 +786,30 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Pure block move: <paramref name="moved"/> (in any order) is lifted out of
     /// <paramref name="list"/> and re-inserted, in its original relative order, where
     /// <paramref name="insertIndex"/> pointed before the lift.</summary>
+    /// <summary>
+    /// Writes the displayed order back into <paramref name="trackIds"/>, slot by slot: an id
+    /// that is not displayed (a track under a hidden library folder) keeps its place instead
+    /// of being dropped from the playlist by a reorder. Falls back to the displayed list when
+    /// the displayed rows don't map one-to-one onto the saved ids.
+    /// </summary>
+    internal static void ApplyDisplayedOrder(IList<Guid> trackIds, IReadOnlyList<Track> displayed)
+    {
+        var shown = new HashSet<Guid>(displayed.Select(t => t.Id));
+        var slots = trackIds.Count(shown.Contains);
+        if (slots != displayed.Count)
+        {
+            trackIds.Clear();
+            foreach (var t in displayed)
+                trackIds.Add(t.Id);
+            return;
+        }
+
+        var next = 0;
+        for (var i = 0; i < trackIds.Count; i++)
+            if (shown.Contains(trackIds[i]))
+                trackIds[i] = displayed[next++].Id;
+    }
+
     internal static List<Track> ReorderBlock(IReadOnlyList<Track> list, IReadOnlyList<Track> moved, int insertIndex)
     {
         var movedSet = new HashSet<Track>(moved);
@@ -911,12 +970,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         OnPropertyChanged(nameof(HasDescription));
         OnPropertyChanged(nameof(HasDescriptionChanges));
+        SaveDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnDescriptionEditorTextChanged(string value)
     {
         OnPropertyChanged(nameof(HasDescriptionChanges));
+        SaveDescriptionEditCommand.NotifyCanExecuteChanged();
     }
+
+    /// <summary>Raised once a description edit has been saved; the pop-up closes on it.</summary>
+    public event EventHandler? DescriptionSaved;
 
     [RelayCommand]
     private async Task OpenDescription()
@@ -952,16 +1016,25 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         IsDescriptionEditing = true;
     }
 
-    [RelayCommand]
+    /// <summary>Saves the edited description, only when the text really changed (the pop-up's
+    /// Ctrl+Enter reaches this without the Save button's disabled state; an unchanged save
+    /// would still bump the playlist's Updated date).</summary>
+    [RelayCommand(CanExecute = nameof(HasDescriptionChanges))]
     private async Task SaveDescriptionEdit()
     {
+        if (!HasDescriptionChanges) return;
         var edited = (DescriptionEditorText ?? string.Empty).Trim();
         _playlist.Description = edited;
         _playlist.ModifiedAt = DateTime.UtcNow;
+        // The header's "Updated …" line reads ModifiedAt; say it moved (as a rename does).
+        OnPropertyChanged(nameof(ModifiedDateDisplay));
+        OnPropertyChanged(nameof(ModifiedDateValue));
         PlaylistDescription = edited;
+        DescriptionEditorText = edited;
         IsDescriptionEditing = false;
         IsDescriptionOpen = false;
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
+        DescriptionSaved?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -976,16 +1049,13 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private void PlayNextAll()
     {
-        var tracks = Tracks.ToList();
-        if (tracks.Count == 0) return;
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        _player.AddNextRange(Tracks.ToList(), _playlist.Name);
     }
 
     [RelayCommand]
     private void AddAllToQueue()
     {
-        _player.AddRangeToQueue(Tracks.ToList());
+        _player.AddRangeToQueue(Tracks.ToList(), _playlist.Name);
     }
 
     /// <summary>Opens the search-driven library picker to add songs to this (manual) playlist.</summary>
@@ -999,13 +1069,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task EditPlaylist()
     {
+        // The header refreshes from the sidebar's PlaylistEdited (OnPlaylistEdited).
         await _sidebar.EditPlaylistAsync(_playlist);
-        // Refresh after edit
-        Name = _playlist.Name;
-        PlaylistDescription = _playlist.Description ?? string.Empty;
-        OnPropertyChanged(nameof(PlaylistColor));
-        OnPropertyChanged(nameof(PlaylistCoverArtPath));
-        OnPropertyChanged(nameof(BackdropArtPath));
     }
 
     [RelayCommand]
@@ -1027,6 +1092,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _sidebar.PlaylistTracksChanged -= OnPlaylistTracksChanged;
+        _sidebar.PlaylistEdited -= OnPlaylistEdited;
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }

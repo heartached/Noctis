@@ -3,6 +3,7 @@
         xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:views="using:Noctis.Views"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.LyricsStudioDialog"
         x:DataType="vm:LyricsStudioViewModel"
         Title="{loc:T LyricsStudio.Title}"
@@ -14,19 +15,12 @@
         WindowStartupLocation="CenterOwner">
 
     <!-- Per-song Lyrics Studio (right-click → Lyrics Studio). The surface itself lives in
-         LyricsStudioPanel, shared with the sidebar's Lyrics Studio page. -->
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="1000"
-                Height="720"
-                MaxHeight="900"
-                Margin="0,40"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+         LyricsStudioPanel, shared with the sidebar's Lyrics Studio page. Owner 10-08: the
+         rounded pill pop-up — PillDialogHost draws the blurred, dimmed app behind and the card,
+         and plays the shared open/close animation for every close (the round X, Esc, Alt+F4). -->
+    <controls:PillDialogHost>
+        <Grid Width="1000" Height="720">
             <views:LyricsStudioPanel />
-        </Border>
-    </Border>
+        </Grid>
+    </controls:PillDialogHost>
 </Window>

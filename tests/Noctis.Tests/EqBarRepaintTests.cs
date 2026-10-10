@@ -138,7 +138,7 @@ public class EqBarRepaintTests
             var timer = Field<DispatcherTimer>(eq, "_animTimer");
             Assert.True(timer.IsEnabled);
             Assert.Equal(EqVisualizer.FrameInterval, timer.Interval);
-            Assert.True(EqVisualizer.FrameInterval >= TimeSpan.FromMilliseconds(33)); // ~30 fps cap
+            Assert.True(EqVisualizer.FrameInterval >= TimeSpan.FromMilliseconds(30)); // ~30 fps cap (30 ms lands on Windows' 15.6 ms timer grid; 33 rounded to 47)
             win.UpdateLayout();
             Dispatcher.UIThread.RunJobs();
             layoutPasses = 0;

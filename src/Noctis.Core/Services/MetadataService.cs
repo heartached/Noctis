@@ -65,6 +65,50 @@ public class MetadataService : IMetadataService
 
     public Track? ReadTrackMetadata(string filePath) => ReadTrackMetadata(filePath, out _);
 
+    /// <summary>
+    /// The record label alone — the same <see cref="ExtendedTagIO.ReadLabel"/> lookup
+    /// <see cref="ReadTrackMetadata(string)"/> fills <see cref="Track.Label"/> with, minus
+    /// everything else that read does. Owner 10-08: the v11 label backfill used the full read
+    /// and kept the music HDD busy at 50–75 MB/s every launch — audio properties, the ffprobe
+    /// fallback and the embedded cover bytes (11–15 MB per hi-res FLAC) for one text frame.
+    /// A plain FLAC is read block-header by block-header (<see cref="ExtendedTagIO.TryReadFlacLabel"/>):
+    /// TagLib# loads every FLAC metadata block, covers included, whatever the ReadStyle. Other
+    /// formats open with ReadStyle.None (no audio properties) | PictureLazy.
+    /// Empty when the file has no label or can't be read.
+    /// </summary>
+    public string ReadLabel(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a label either.
+        if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        // FLAC: TagLib# reads every metadata block (covers included) whatever the ReadStyle,
+        // so read just the comment block; anything unusual falls through to TagLib below.
+        if (Path.GetExtension(filePath).Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacLabel(stream, out var flacLabel))
+                    return flacLabel;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide, as before.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return ExtendedTagIO.ReadLabel(file);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;
@@ -1112,7 +1156,10 @@ public class MetadataService : IMetadataService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return normalized.Length == 0 ? string.Empty : string.Join(", ", normalized);
+        // Joined with an ACTIVE separator so the values split back apart. A hard-coded ", "
+        // never split again once "," left the separators (GitHub #117), and every credit
+        // combination ("A, B", "A, B, C") became its own artist.
+        return normalized.Length == 0 ? string.Empty : string.Join(ArtistCredit.JoinText, normalized);
     }
 
     /// <summary>
@@ -1265,18 +1312,7 @@ public class MetadataService : IMetadataService
             .Any(f => artist.IndexOf(f, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
-    private static string[] SplitArtistList(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return Array.Empty<string>();
-
-        return value
-            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
+    private static string[] SplitArtistList(string value) => ArtistCredit.SplitForTag(value);
 
     private static bool IsLosslessFormat(string codec, string ext)
     {

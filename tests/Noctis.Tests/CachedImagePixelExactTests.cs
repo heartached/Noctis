@@ -68,6 +68,24 @@ public class CachedImagePixelExactTests : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>
+    /// Pumps until <paramref name="condition"/> holds: a decode runs on a below-normal pool
+    /// thread, which a busy machine can leave waiting far longer than any fixed settle time.
+    /// </summary>
+    private static async Task PumpUntil(Func<bool> condition, int budgetMs = 60000)
+    {
+        var deadline = Environment.TickCount64 + budgetMs;
+        while (!condition() && Environment.TickCount64 < deadline)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            await Task.Delay(10);
+        }
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    private static int ShownWidth(CachedImage image) => (image.Source as Bitmap)?.PixelSize.Width ?? 0;
+
     [Theory]
     [InlineData(1.00, 340)]
     [InlineData(1.25, 425)]
@@ -126,16 +144,21 @@ public class CachedImagePixelExactTests : IDisposable
         window.Show();
         await Flush();
         image.SourcePath = P("lyrics");
-        await Flush();
+        await PumpUntil(() => ShownWidth(image) == 300);
         Assert.Equal(new[] { 300 }, Requested());
 
-        // A window drag: a new size every few frames, then it stops.
+        // A window drag: a new size every frame, then it stops. Each step lays out and runs the
+        // arrange's Loaded post, which restarts the settle timer, and nothing below it: the timer
+        // (Background) can only tick once the drag is over. Awaiting a 40 ms wait per step let a
+        // busy machine pass for the size holding: a wait that came back 300 ms late decoded the
+        // size it stalled on ([300, 410, 440]).
         foreach (var size in new[] { 320, 350, 380, 410, 440 })
         {
             image.Width = image.Height = size;
-            await Flush(40);
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs(DispatcherPriority.Loaded);
         }
-        await Flush((int)CachedImage.ExactResizeDelay.TotalMilliseconds + 300);
+        await PumpUntil(() => ShownWidth(image) == 440);
 
         Assert.Equal(new[] { 300, 440 }, Requested()); // one decode for the size it settled at
         var shown = Assert.IsAssignableFrom<Bitmap>(image.Source);
@@ -143,7 +166,7 @@ public class CachedImagePixelExactTests : IDisposable
 
         // Shrinking re-decodes too: a bigger bitmap than the slot is a resample again.
         image.Width = image.Height = 260;
-        await Flush((int)CachedImage.ExactResizeDelay.TotalMilliseconds + 300);
+        await PumpUntil(() => ShownWidth(image) == 260);
         Assert.Equal(new[] { 300, 440, 260 }, Requested());
         window.Close();
     }

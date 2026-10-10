@@ -107,7 +107,7 @@ public class MobileContextSheetTests
         using var rig = MobileFixtures.MakeRig(new[] { a, b }, new[] { album });
 
         rig.Shell.OpenAlbumSheetCommand.Execute(album);
-        Assert.Equal("Favourite", rig.Shell.Sheet!.FavouriteLabel);   // not every track is a favourite yet
+        Assert.Equal("Favorite", rig.Shell.Sheet!.FavouriteLabel);   // not every track is a favourite yet
         await rig.Shell.Sheet.ToggleFavouriteCommand.ExecuteAsync(null);
 
         Assert.True(a.IsFavorite);
@@ -116,7 +116,7 @@ public class MobileContextSheetTests
         Assert.False(rig.Shell.IsSheetOpen);
 
         rig.Shell.OpenTrackSheetCommand.Execute(a);
-        Assert.Equal("Remove from Favourites", rig.Shell.Sheet!.FavouriteLabel);
+        Assert.Equal("Remove from Favorites", rig.Shell.Sheet!.FavouriteLabel);
     }
 
     [Fact]

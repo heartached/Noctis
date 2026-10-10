@@ -2,6 +2,7 @@ using System;
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Helpers;
@@ -18,6 +19,7 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
+    public MenuItem DontScrobble { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;
     public MenuItem PlayNext { get; private set; } = null!;
     public MenuItem AddToQueue { get; private set; } = null!;
@@ -34,13 +36,31 @@ public sealed class AlbumContextMenuBuilder
 
     public ContextMenu Menu { get; private set; } = null!;
 
+    // ── v2 layout (10-09 redesign, opt-in via Build(..., v2: true)) ──
+
+    /// <summary>True when this menu was built with the v2 layout.</summary>
+    public bool IsV2 { get; private set; }
+    /// <summary>v2: the Play / Shuffle / Play Next / Add to Queue tiles that replace those four rows.</summary>
+    public Button QuickPlay { get; private set; } = null!;
+    public Button QuickShuffle { get; private set; } = null!;
+    public Button QuickPlayNext { get; private set; } = null!;
+    public Button QuickAddToQueue { get; private set; } = null!;
+    /// <summary>v2: "Tools ▸" holding Convert Album, Scan ReplayGain and Don't Scrobble.</summary>
+    public MenuItem Tools { get; private set; } = null!;
+
     /// <summary>
     /// Builds the context menu. Call once per view lifetime.
     /// </summary>
     /// <param name="removeHeader">Label for the last item (e.g. "Remove from Library").</param>
     /// <param name="resourceHost">Control used to resolve resources (e.g. icons).</param>
-    public ContextMenu Build(string removeHeader, Control resourceHost)
+    /// <param name="v2">Build the redesigned (10-09) layout: header, quick tiles, grouped rows, Tools ▸.</param>
+    /// <param name="removeIsDanger">Red Remove row; null = infer from an English "Remove from…" header.</param>
+    public ContextMenu Build(string removeHeader, Control resourceHost, bool v2 = false, bool? removeIsDanger = null)
     {
+        if (v2)
+            return BuildV2(removeHeader, resourceHost,
+                removeIsDanger ?? removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase));
+
         Menu = new ContextMenu();
         var items = Menu.Items;
 
@@ -111,6 +131,10 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
 
+        // Don't Scrobble This Album (static command; header and visibility set per Bind).
+        DontScrobble = new MenuItem { IsVisible = false };
+        items.Add(DontScrobble);
+
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
@@ -123,6 +147,76 @@ public sealed class AlbumContextMenuBuilder
         Remove.Icon = new PathIcon { Width = 14, Height = 14, Data = (Geometry)resourceHost.FindResource("TrashIcon")! };
         items.Add(Remove);
 
+        return Menu;
+    }
+
+    /// <summary>
+    /// The v2 layout: [header] [tiles] · [playlist, favorite] · [metadata, description,
+    /// search lyrics, lyrics video ▸] · [folder, tools ▸] · [remove]. Same named items as the
+    /// classic menu, so <see cref="Bind"/> serves both; Play / Shuffle / Play Next / Add to
+    /// Queue stay off-menu as the source the tiles copy their command from.
+    /// </summary>
+    private ContextMenu BuildV2(string removeHeader, Control host, bool removeIsDanger)
+    {
+        IsV2 = true;
+        Menu = new ContextMenu();
+        Menu.Classes.Add(MenuV2.MenuClass);
+        var items = Menu.Items;
+
+        Play = new MenuItem();
+        Shuffle = new MenuItem();
+        PlayNext = new MenuItem();
+        AddToQueue = new MenuItem();
+
+        QuickPlay = MenuV2.Tile(host, Menu, "MenuLinePlay", Loc.T("LibraryAlbums.Play"));
+        QuickShuffle = MenuV2.Tile(host, Menu, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
+        QuickPlayNext = MenuV2.Tile(host, Menu, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
+        QuickAddToQueue = MenuV2.Tile(host, Menu, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+        items.Add(MenuV2.TileRow(QuickPlay, QuickShuffle, QuickPlayNext, QuickAddToQueue));
+
+        items.Add(new Separator());
+        AddToPlaylist = MenuV2.Row(host, Loc.T("LibraryAlbums.AddPlaylist"), "MenuLinePlaylistAdd");
+        items.Add(AddToPlaylist);
+        Favorite = MenuV2.Row(host, Loc.T("LibraryAlbums.Favorites"), "MenuLineHeart");
+        items.Add(Favorite);
+        Unfavorite = MenuV2.Row(host, Loc.T("LibraryAlbums.RemoveFromFavorites"), "MenuLineHeart");
+        MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
+        items.Add(Unfavorite);
+
+        items.Add(new Separator());
+        Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
+        items.Add(Metadata);
+        EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
+        items.Add(EditDescription);
+        SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
+        items.Add(SearchLyrics);
+        LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
+        LyricsBackgroundChoose = new MenuItem { Header = Loc.T("AlbumDetail.ChooseAlbumVideo"), Command = LyricsBackgroundOverrides.ChooseForAlbumCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundChoose);
+        LyricsBackgroundClear = new MenuItem { Header = Loc.T("AlbumDetail.UseDefaultVideo"), Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundClear);
+        items.Add(LyricsBackground);
+
+        items.Add(new Separator());
+        ShowFolder = MenuV2.Row(host, Loc.T("LibraryAlbums.ShowFolder"), "MenuLineFolder");
+        items.Add(ShowFolder);
+        Tools = MenuV2.Row(host, Loc.T("Favorites.Tools"), "MenuLineTools");
+        Tools.Classes.Add(MenuV2.AutoHideClass);
+        Convert = MenuV2.Row(host, Loc.T("LibraryAlbums.ConvertAlbum"), "MenuLineConvert", visible: false);
+        Tools.Items.Add(Convert);
+        ScanReplayGain = MenuV2.Row(host, Loc.T("LibraryAlbums.ScanReplayGain"), "MenuLineReplayGain", visible: false);
+        Tools.Items.Add(ScanReplayGain);
+        DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
+        Tools.Items.Add(DontScrobble);
+        items.Add(Tools);
+
+        items.Add(new Separator());
+        Remove = MenuV2.Row(host, removeHeader, "MenuLineTrash");
+        if (removeIsDanger)
+            Remove.Classes.Add("danger");
+        items.Add(Remove);
+
+        Menu.Opening += (_, _) => MenuV2.RefreshLayout(Menu.Items);
         return Menu;
     }
 
@@ -151,6 +245,8 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundChoose.CommandParameter = album;
         LyricsBackgroundClear.CommandParameter = album;
         LyricsBackgroundClear.IsVisible = LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForAlbum(album));
+
+        ScrobbleMenu.BindAlbum(DontScrobble, album);
 
         Play.Command = playCommand;
         Play.CommandParameter = album;
@@ -188,6 +284,15 @@ public sealed class AlbumContextMenuBuilder
 
         Remove.Command = removeCommand;
         Remove.CommandParameter = album;
+
+        if (IsV2)
+        {
+            MenuV2.Sync(QuickPlay, Play);
+            MenuV2.Sync(QuickShuffle, Shuffle);
+            MenuV2.Sync(QuickPlayNext, PlayNext);
+            MenuV2.Sync(QuickAddToQueue, AddToQueue);
+            MenuV2.RefreshLayout(Menu.Items);
+        }
     }
 
     private static void BindOptional(MenuItem item, ICommand? command, Album album)

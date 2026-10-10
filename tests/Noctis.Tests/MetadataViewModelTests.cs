@@ -23,6 +23,7 @@ public class MetadataViewModelTests
         var tracks = Album("Symphony", "Composer", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
 
         vm.UseWorkAndMovement = true;
         vm.WorkName = "Symphony No. 5";
@@ -44,6 +45,7 @@ public class MetadataViewModelTests
 
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
 
         // Mixed WorkName loads blank; never touch it. Change an unrelated field.
         vm.Comment = "edited";
@@ -62,6 +64,7 @@ public class MetadataViewModelTests
         foreach (var t in tracks) t.Year = 1982;
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         vm.Year = "";
         await vm.SaveCommand.ExecuteAsync(null);
@@ -76,6 +79,7 @@ public class MetadataViewModelTests
         var tracks = Album("Coda", "Led Zeppelin", 2);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         vm.Comment = "edited";
         await vm.SaveCommand.ExecuteAsync(null);
@@ -96,6 +100,7 @@ public class MetadataViewModelTests
 
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
 
         vm.ResetPlayCountCommand.Execute(null);
 
@@ -143,6 +148,7 @@ public class MetadataViewModelTests
 
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
 
         // Change only a Details field; never open/touch Options.
         vm.Comment = "edited";
@@ -162,6 +168,7 @@ public class MetadataViewModelTests
 
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
 
         vm.VolumeAdjust = 50;
         await vm.SaveCommand.ExecuteAsync(null);
@@ -177,6 +184,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         SetNewArtwork(vm, new byte[] { 1, 2, 3 });
         await vm.SaveCommand.ExecuteAsync(null);
@@ -196,6 +204,7 @@ public class MetadataViewModelTests
         var library = new FakeLibraryService { TrackList = album.ToList() };
         var vm = new MetadataViewModel(album[0], meta, library, p, new FakeAnimatedCoverService(),
             albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
 
         SetNewArtwork(vm, new byte[] { 9, 9 });
         await vm.SaveCommand.ExecuteAsync(null);
@@ -215,6 +224,7 @@ public class MetadataViewModelTests
         foreach (var t in tracks) t.ArtworkHash = "OLD";
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
         meta.FailArtPaths.Add(tracks[1].FilePath);
         var closed = false;
         vm.CloseRequested += (_, _) => closed = true;
@@ -237,6 +247,7 @@ public class MetadataViewModelTests
         foreach (var t in tracks) t.ArtworkHash = "OLD";
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
         meta.FailArtPaths.Add(tracks[0].FilePath);
         var closed = false;
         vm.CloseRequested += (_, _) => closed = true;
@@ -262,6 +273,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         await vm.SaveCommand.ExecuteAsync(null);
 
@@ -275,6 +287,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         SetNewAnimatedCover(vm, Path.Combine(Path.GetTempPath(), "cover.mp4"));
         await vm.SaveCommand.ExecuteAsync(null);
@@ -291,6 +304,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         vm.Genre = "Reggaeton";
         await vm.SaveCommand.ExecuteAsync(null);
@@ -306,6 +320,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 3);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         tracks[1].Title = "Renamed by the user";
         await vm.SaveCommand.ExecuteAsync(null);
@@ -321,6 +336,7 @@ public class MetadataViewModelTests
         tracks[0].PlayCount = 5;
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         vm.ResetPlayCountCommand.Execute(null);
         await vm.SaveCommand.ExecuteAsync(null);
@@ -336,6 +352,7 @@ public class MetadataViewModelTests
         var tracks = Album("A", "X", 1);
         using var p = new TestPersistenceService();
         var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
 
         vm.Rating = 4;
         await vm.SaveCommand.ExecuteAsync(null);
@@ -378,12 +395,52 @@ public class MetadataViewModelTests
         var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
             new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
             albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
 
         vm.HasStartTime = true;
         vm.StartTime = "45";
         await vm.SaveCommand.ExecuteAsync(null);
 
         Assert.Equal(45_000, album[0].StartTimeMs);
+    }
+
+    [Fact]
+    public async Task TrackScope_StopTimePastAnHour_SurvivesAnUnrelatedSave()
+    {
+        // Start/stop times were shown as m:ss.fff, which drops the hours: a 1:05:00 stop
+        // time loaded as "5:00.000", and saving any other field cut it to 5 minutes.
+        var album = Album("A", "X", 1);
+        album[0].Duration = TimeSpan.FromMinutes(70);
+        album[0].StopTimeMs = 3_900_000;
+        album[0].StartTimeMs = 3_660_000;
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(3_900_000, album[0].StopTimeMs);
+        Assert.Equal(3_660_000, album[0].StartTimeMs);
+    }
+
+    [Fact]
+    public async Task TrackScope_EnablingStopTime_DefaultsToTheFullLengthOfALongTrack()
+    {
+        var album = Album("A", "X", 1);
+        album[0].Duration = TimeSpan.FromMinutes(65);
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
+
+        vm.HasStopTime = true;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(3_900_000, album[0].StopTimeMs);
     }
 
     /// <summary>GitHub #95: user EQ presets join the Options dropdown. Names match
@@ -418,6 +475,7 @@ public class MetadataViewModelTests
         var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
             new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
             albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
 
         // Lines seeded from the plain lyrics; no synced lyrics exist yet.
         Assert.Equal(2, vm.SyncedLyricLines.Count);
@@ -442,6 +500,7 @@ public class MetadataViewModelTests
         var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
             new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
             albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
         Assert.False(vm.HasCustomSyncedLyrics);
 
         const string Lrc = "[00:01.00]first" + "\n" + "[00:05.50]second";
@@ -490,6 +549,7 @@ public class MetadataViewModelTests
             var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
                 new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
                 albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+            await vm.InitializeAsync();
 
             vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
             await vm.SaveCommand.ExecuteAsync(null);
@@ -497,6 +557,40 @@ public class MetadataViewModelTests
             Assert.Equal(Path.Combine(dir, "01 - Track 1.flac"), tracks[0].FilePath);
             Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.lrc")));
             Assert.False(File.Exists(Path.Combine(dir, "a.lrc")));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task MultiSelectRename_MovesWordTimedSidecarsWithFile()
+    {
+        // The lyrics page reads .lyricsfile and .elrc (Lyrics Studio word timings) by the
+        // song's basename too; a rename that left them behind detached them from the song.
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Album("A", "X", 2);
+            tracks[0].FilePath = Path.Combine(dir, "a.flac");
+            tracks[1].FilePath = Path.Combine(dir, "b.flac");
+            File.WriteAllText(tracks[0].FilePath, "audio");
+            File.WriteAllText(tracks[1].FilePath, "audio");
+            File.WriteAllText(Path.Combine(dir, "a.elrc"), "[00:01.00]<00:01.00>hi");
+            File.WriteAllText(Path.Combine(dir, "a.lyricsfile"), "lines: []");
+
+            using var p = new TestPersistenceService();
+            var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
+                albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+            await vm.InitializeAsync();
+
+            vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.elrc")));
+            Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.lyricsfile")));
+            Assert.False(File.Exists(Path.Combine(dir, "a.elrc")));
+            Assert.False(File.Exists(Path.Combine(dir, "a.lyricsfile")));
         }
         finally { Directory.Delete(dir, true); }
     }
@@ -522,6 +616,7 @@ public class MetadataViewModelTests
             var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
                 library, p, new FakeAnimatedCoverService(),
                 albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+            await vm.InitializeAsync();
 
             vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
             await vm.SaveCommand.ExecuteAsync(null);
@@ -564,6 +659,7 @@ public class MetadataViewModelTests
                 var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
                     new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
                     albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+                await vm.InitializeAsync();
                 vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
 
                 // Start Save on a UI-like context so its awaits resume there, as the
@@ -667,6 +763,281 @@ public class MetadataViewModelTests
         // the comparison has to run both ways or the real album ties with the strangers.
         Assert.True(ITunesArtworkService.IsLikelySameArtist(
             "Lil Nas X", "Lil Nas X feat. Billy Ray Cyrus"));
+    }
+
+    // ── Open fast: the ctor touches no files; InitializeAsync loads behind the shown window ──
+    // Owner 10-08: the window froze 230–880 ms on lyric sidecar reads in the ctor and
+    // waited 1–2 s for tag reads before showing.
+
+    [Fact]
+    public async Task Open_CtorReadsNoSidecars_InitializeAsyncLoadsLrcAndTxt()
+    {
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hi");
+        File.WriteAllText(dir.Side(".txt"), "plain words");
+        var covers = new CountingAnimatedCoverService { CoverPath = dir.Side(".mp4") };
+        var vm = dir.NewVm(new FakeMetadataService(), covers);
+
+        // Open state: in-memory Track fields only, nothing from the folder yet.
+        Assert.Equal("Song", vm.Title);
+        Assert.Equal(string.Empty, vm.SyncedLyrics);
+        Assert.Equal(string.Empty, vm.Lyrics);
+        Assert.Equal(0, covers.ResolveCalls);
+        Assert.False(vm.HasAnimatedCover);
+
+        await vm.InitializeAsync();
+
+        Assert.Equal("[00:01.00]hi", vm.SyncedLyrics);
+        Assert.True(vm.HasCustomSyncedLyrics);
+        Assert.Single(vm.SyncedLyricLines);
+        Assert.Equal("plain words", vm.Lyrics);
+        Assert.True(vm.HasCustomLyrics);
+        Assert.Equal(1, covers.ResolveCalls);
+        Assert.True(vm.HasAnimatedCover);
+        // The loaded sidecars are the baseline, not edits.
+        Assert.Equal(0, vm.ChangeCount);
+    }
+
+    [Fact]
+    public async Task Open_IsLoading_TrueUntilInitializeAsyncCompletes()
+    {
+        using var dir = new TempSongDir();
+        var vm = dir.NewVm(new FakeMetadataService(), new CountingAnimatedCoverService());
+        var raised = new List<bool>();
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.IsLoading)) raised.Add(vm.IsLoading); };
+
+        Assert.True(vm.IsLoading);
+        Assert.False(vm.SaveCommand.CanExecute(null));
+
+        await vm.InitializeAsync();
+
+        Assert.False(vm.IsLoading);
+        Assert.True(vm.SaveCommand.CanExecute(null));
+        Assert.Equal(new[] { false }, raised);
+    }
+
+    [Fact]
+    public async Task Open_SaveWhileLoading_WritesNothing()
+    {
+        using var dir = new TempSongDir();
+        var meta = new FakeMetadataService();
+        var vm = dir.NewVm(meta, new CountingAnimatedCoverService());
+        var saved = false;
+        vm.ChangesSaved += (_, _) => saved = true;
+
+        vm.Title = "Edited";
+        // ExecuteAsync bypasses CanExecute, as a key binding would.
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Song", dir.Track.Title);
+        Assert.Empty(meta.WrittenTagPaths);
+        Assert.False(saved);
+        Assert.False(File.Exists(dir.Side(".txt")));
+        Assert.False(File.Exists(dir.Side(".lrc")));
+    }
+
+    [Fact]
+    public async Task Open_LoadFails_IsLoadingEndsFalse_AndUnreadSidecarIsNeverTrashed()
+    {
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hand timed");
+        var trashed = new List<string>();
+        var vm = dir.NewVm(new FakeMetadataService { ThrowOnReadFileInfo = true },
+            new CountingAnimatedCoverService(), trashed);
+
+        await Assert.ThrowsAsync<IOException>(vm.InitializeAsync);
+        Assert.False(vm.IsLoading);
+
+        // The sidecar was never read: removing "nothing" and saving must not trash it.
+        vm.RemoveSyncedLyricsCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(trashed);
+        Assert.True(File.Exists(dir.Side(".lrc")));
+    }
+
+    [Fact]
+    public async Task Open_UnreadableLrc_IsNotTrashedOnSave_ButAReadableOneIs()
+    {
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hand timed");
+        var trashed = new List<string>();
+        var vm = dir.NewVm(new FakeMetadataService(), new CountingAnimatedCoverService(), trashed);
+
+        // Locked while the load reads it: File.Exists is true, the read throws.
+        using (new FileStream(dir.Side(".lrc"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            await vm.InitializeAsync();
+
+        Assert.Equal(string.Empty, vm.SyncedLyrics);
+        vm.RemoveSyncedLyricsCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Empty(trashed);
+        Assert.True(File.Exists(dir.Side(".lrc")));
+
+        // Control: the same removal on a sidecar that DID load trashes it.
+        var vm2 = dir.NewVm(new FakeMetadataService(), new CountingAnimatedCoverService(), trashed);
+        await vm2.InitializeAsync();
+        Assert.Equal("[00:01.00]hand timed", vm2.SyncedLyrics);
+        vm2.RemoveSyncedLyricsCommand.Execute(null);
+        await vm2.SaveCommand.ExecuteAsync(null);
+        Assert.Contains("song.lrc", trashed);
+    }
+
+    [Fact]
+    public async Task Open_EditTypedBeforeLoad_IsKeptAndCounted()
+    {
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hi");
+        File.WriteAllText(dir.Side(".txt"), "disk words");
+        using var gate = new ManualResetEventSlim();
+        var vm = dir.NewVm(new FakeMetadataService { ReadFileInfoGate = gate }, new CountingAnimatedCoverService());
+        var loading = vm.InitializeAsync(); // as the window opens: load started, held mid-read
+
+        vm.HasCustomLyrics = true; // the plain box is enabled by this switch
+        vm.Lyrics = "typed words";
+        gate.Set();
+        await loading;
+
+        // The typed plain lyrics survive the load; the untouched synced tab loads.
+        Assert.Equal("typed words", vm.Lyrics);
+        Assert.Equal("[00:01.00]hi", vm.SyncedLyrics);
+        Assert.True(vm.PlainLyricsChanged);
+        Assert.False(vm.SyncedLyricsChanged);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("typed words", File.ReadAllText(dir.Side(".txt")));
+        Assert.Equal("[00:01.00]hi", File.ReadAllText(dir.Side(".lrc")));
+    }
+
+    [Fact]
+    public async Task Open_CustomLyricsSwitchedOnBeforeLoad_ShowsAndKeepsTheTxt()
+    {
+        // Switching Custom Lyrics on before the .txt arrived must not leave the tab empty:
+        // saving that empty tab would read as "the user cleared the lyrics" and trash the .txt.
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".txt"), "disk words");
+        using var gate = new ManualResetEventSlim();
+        var vm = dir.NewVm(new FakeMetadataService { ReadFileInfoGate = gate }, new CountingAnimatedCoverService());
+        var loading = vm.InitializeAsync();
+
+        vm.HasCustomLyrics = true;
+        gate.Set();
+        await loading;
+
+        Assert.Equal("disk words", vm.Lyrics);
+        Assert.True(vm.HasCustomLyrics);
+        vm.Year = "2001";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("disk words", File.ReadAllText(dir.Side(".txt")));
+        Assert.Equal("disk words", dir.Track.Lyrics);
+    }
+
+    [Fact]
+    public async Task Open_RemoveOnEmptySyncedTabBeforeLoad_DoesNotTrashTheLoadedLrc()
+    {
+        using var dir = new TempSongDir();
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hand timed");
+        var trashed = new List<string>();
+        using var gate = new ManualResetEventSlim();
+        var vm = dir.NewVm(new FakeMetadataService { ReadFileInfoGate = gate }, new CountingAnimatedCoverService(), trashed);
+        var loading = vm.InitializeAsync();
+
+        vm.RemoveSyncedLyricsCommand.Execute(null); // nothing there yet to remove
+        gate.Set();
+        await loading;
+
+        Assert.Equal("[00:01.00]hand timed", vm.SyncedLyrics);
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Empty(trashed);
+        Assert.Equal("[00:01.00]hand timed", File.ReadAllText(dir.Side(".lrc")));
+    }
+
+    [Fact]
+    public async Task AlbumScope_OptionsOnlySave_LeavesTheFirstTracksLyricsAndTagsAlone()
+    {
+        // The album dialog has no lyric tabs, yet Save copied the first track's .txt sidecar
+        // into its Lyrics and so rewrote that file's tags (and both sidecars) on a save that
+        // needed no tag write at all — the playing file then failed with "Couldn't write tags".
+        using var dir = new TempSongDir();
+        var tracks = Album("A", "X", 2);
+        tracks[0].FilePath = dir.Side(".flac");
+        tracks[1].FilePath = Path.Combine(dir.Dir, "other.flac");
+        File.WriteAllText(dir.Side(".txt"), "disk words");
+        File.WriteAllText(dir.Side(".lrc"), "[00:01.00]hi");
+        var lrcWritten = File.GetLastWriteTimeUtc(dir.Side(".lrc"));
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
+
+        vm.SkipWhenShuffling = !vm.SkipWhenShuffling;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(meta.WrittenTagPaths);
+        Assert.Equal(string.Empty, tracks[0].Lyrics);
+        Assert.Equal(string.Empty, tracks[0].SyncedLyrics);
+        Assert.Equal(lrcWritten, File.GetLastWriteTimeUtc(dir.Side(".lrc")));
+    }
+
+    [Fact]
+    public async Task AlbumScope_RespelledEqPreset_IsNotFannedOutOnAnUnrelatedSave()
+    {
+        // SetUserEqPresets points the selection at the listed spelling ("rock" -> "Rock").
+        // The album save compared that case-sensitively to the loaded value and stamped the
+        // first track's preset over every other track's own EQ on a Comment-only save.
+        var tracks = Album("A", "X", 2);
+        tracks[0].EqPreset = "rock";
+        tracks[1].EqPreset = "Jazz";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out _, out _);
+        vm.SetUserEqPresets(Array.Empty<string>());
+        await vm.InitializeAsync();
+        Assert.Equal("Rock", vm.SelectedEqPreset);
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Jazz", tracks[1].EqPreset);
+    }
+
+    /// <summary>A song file plus sidecars in a throwaway folder.</summary>
+    private sealed class TempSongDir : IDisposable
+    {
+        public string Dir { get; } = Path.Combine(Path.GetTempPath(), $"noctis-md-open-{Guid.NewGuid():N}");
+        public Track Track { get; }
+        private readonly TestPersistenceService _persistence = new();
+
+        public TempSongDir()
+        {
+            Directory.CreateDirectory(Dir);
+            File.WriteAllText(Side(".flac"), "audio");
+            Track = new Track { Id = Guid.NewGuid(), Title = "Song", Artist = "A", Album = "B", FilePath = Side(".flac") };
+            Track.AlbumId = Track.ComputeAlbumId(Track.AlbumArtist, Track.Album);
+        }
+
+        public string Side(string ext) => Path.Combine(Dir, "song" + ext);
+
+        public MetadataViewModel NewVm(FakeMetadataService meta, IAnimatedCoverService covers, List<string>? trashed = null) =>
+            new(Track, meta, new FakeLibraryService { TrackList = new List<Track> { Track } }, _persistence, covers,
+                albumScoped: false, albumTracks: null)
+            {
+                TrashFile = p => { trashed?.Add(Path.GetFileName(p)); return true; },
+            };
+
+        public void Dispose()
+        {
+            _persistence.Dispose();
+            try { Directory.Delete(Dir, true); } catch { }
+        }
+    }
+
+    private sealed class CountingAnimatedCoverService : IAnimatedCoverService
+    {
+        public string? CoverPath { get; init; }
+        public int ResolveCalls;
+        public string? Resolve(Track track) { Interlocked.Increment(ref ResolveCalls); return CoverPath; }
+        public Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope)
+            => Task.FromResult(string.Empty);
+        public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
     }
 
     // ── Helpers ──
@@ -837,7 +1208,17 @@ public class MetadataViewModelTests
         bool IMetadataService.WriteAdvancedFields(string filePath,
             Noctis.Services.AdvancedTagIO.AdvancedFields fields,
             Noctis.Services.AdvancedTagIO.AdvancedFields original) => true;
-        public AudioFileInfo? ReadFileInfo(string filePath) => null;
+        /// <summary>Makes the window's background load fail, to test its failure path.</summary>
+        public bool ThrowOnReadFileInfo { get; init; }
+        /// <summary>Holds the background load mid-read until set, to edit "before it lands".</summary>
+        public ManualResetEventSlim? ReadFileInfoGate { get; init; }
+
+        public AudioFileInfo? ReadFileInfo(string filePath)
+        {
+            ReadFileInfoGate?.Wait(TimeSpan.FromSeconds(10));
+            if (ThrowOnReadFileInfo) throw new IOException("simulated read failure");
+            return null;
+        }
 
         /// <summary>Paths whose cover write fails, as SaveTagsAtomically reports it (false).</summary>
         public HashSet<string> FailArtPaths { get; } = new();
@@ -899,6 +1280,7 @@ public class MetadataViewModelTests
         public IReadOnlyList<string> GetBadgeNames() => Array.Empty<string>();
         public void NotifyMetadataChanged() { }
         public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default) => Task.FromResult(0);
         public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 }

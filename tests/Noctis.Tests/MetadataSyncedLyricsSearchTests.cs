@@ -138,7 +138,7 @@ public class MetadataSyncedLyricsSearchTests
 
         await vm.SearchSyncedLyricsCommand.ExecuteAsync(null);
 
-        Assert.Equal("Search failed — check your internet connection.", vm.SyncedLyricsSearchStatus);
+        Assert.Equal("Search failed — LRCLIB didn't answer (busy or offline). Try again in a moment.", vm.SyncedLyricsSearchStatus);
         Assert.False(vm.HasCustomSyncedLyrics);
     }
 }

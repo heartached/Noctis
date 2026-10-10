@@ -21,15 +21,30 @@ public static partial class TimedLyricsBuilder
     {
         var sb = new StringBuilder();
         foreach (var line in Ordered(lines))
+        {
             sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(line.Text).Append('\n');
+            AppendCompanions(sb, line);
+        }
         return sb.ToString().TrimEnd('\n');
+    }
+
+    /// <summary>A line's romaji / translation lines (GitHub #116), at its own timestamp, as plain text.</summary>
+    private static void AppendCompanions(StringBuilder sb, AlignedLine line)
+    {
+        if (line.Companions is not { Count: > 0 } companions) return;
+        foreach (var c in companions)
+            if (!string.IsNullOrWhiteSpace(c))
+                sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(c.Trim()).Append('\n');
     }
 
     public static string BuildElrc(IEnumerable<AlignedLine> lines)
     {
         var sb = new StringBuilder();
         foreach (var line in Ordered(lines))
+        {
             sb.Append('[').Append(FormatTimestamp(line.Start)).Append(']').Append(BuildElrcBody(line)).Append('\n');
+            AppendCompanions(sb, line);
+        }
         return sb.ToString().TrimEnd('\n');
     }
 
@@ -122,7 +137,146 @@ public static partial class TimedLyricsBuilder
     }
 
     public static string BuildPlain(IEnumerable<AlignedLine> lines) =>
-        string.Join('\n', Ordered(lines).Select(l => l.Text));
+        string.Join('\n', Ordered(lines).SelectMany(l => (l.Companions ?? Array.Empty<string>()).Prepend(l.Text)));
+
+    /// <summary>
+    /// TTML in Apple Music's lyrics layout, for players that read TTML and LRC but not ELRC
+    /// (Discord, nutf!xx: Light Cone): one &lt;p&gt; per line, one &lt;span&gt; per timed word with
+    /// a space between spans (the word boundary <see cref="TtmlParser"/> and Apple's own files
+    /// use), clock times hh:mm:ss.fff. A line without word timings is its text; itunes:timing
+    /// is "Word" when any line has words, else "Line". Ad-libs go in Apple's background-vocal
+    /// span (ttm:role="x-bg") by the rules the ELRC reader applies to the same text
+    /// (<see cref="EnhancedLrcParser.FoldBackgroundLines"/>): a parenthesised run inside a line
+    /// is that line's background, and a fully parenthesised word-timed line joins the line
+    /// before it — so the .ttml shows "(Yeah)" as the small row under the line, as the .elrc
+    /// does, instead of inline at full size.
+    /// </summary>
+    public static string BuildTtml(IEnumerable<AlignedLine> lines)
+    {
+        var paragraphs = new List<TtmlParagraph>();
+        foreach (var line in Ordered(lines))
+        {
+            if (line.Words.Count > 0 && paragraphs.Count > 0 && IsFullyParenthesized(line.Text))
+            {
+                paragraphs[^1].Background.AddRange(line.Words);
+                continue;
+            }
+            var (main, background) = SplitInlineBackground(line.Words);
+            paragraphs.Add(new TtmlParagraph(line, main, background));
+        }
+
+        var sb = new StringBuilder();
+        sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        sb.Append("<tt xmlns=\"http://www.w3.org/ns/ttml\" xmlns:ttm=\"http://www.w3.org/ns/ttml#metadata\"")
+          .Append(" xmlns:itunes=\"http://music.apple.com/lyric-ttml-internal\"")
+          .Append(" itunes:timing=\"").Append(paragraphs.Any(p => p.Line.Words.Count > 0) ? "Word" : "Line").Append("\">\n");
+        sb.Append("  <head><metadata/></head>\n");
+        if (paragraphs.Count == 0)
+            return sb.Append("  <body/>\n</tt>").ToString();
+
+        var ends = paragraphs.Select(p => p.End).ToList();
+        sb.Append("  <body>\n    <div begin=\"").Append(FormatTtmlTime(paragraphs[0].Line.Start))
+          .Append("\" end=\"").Append(FormatTtmlTime(ends.Max())).Append("\">\n");
+        for (var i = 0; i < paragraphs.Count; i++)
+        {
+            var (line, main, background) = paragraphs[i];
+            sb.Append("      <p begin=\"").Append(FormatTtmlTime(line.Start)).Append("\" end=\"").Append(FormatTtmlTime(ends[i]))
+              .Append("\" itunes:key=\"L").Append(i + 1).Append("\">");
+            if (line.Words.Count == 0)
+                sb.Append(XmlText(line.Text.Trim()));
+            AppendWordSpans(sb, main);
+            if (background.Count > 0)
+            {
+                if (main.Count > 0) sb.Append(' ');
+                sb.Append("<span ttm:role=\"x-bg\">");
+                AppendWordSpans(sb, background);
+                sb.Append("</span>");
+            }
+            // Romaji / translation lines (GitHub #116) as the inline layer spans TtmlParser reads.
+            if (line.Companions is { Count: > 0 } companions)
+            {
+                var (roman, translation) = LrcParser.MapCompanionLines(companions);
+                if (roman is not null)
+                    sb.Append("<span ttm:role=\"x-roman\">").Append(XmlText(roman)).Append("</span>");
+                if (translation is not null)
+                    sb.Append("<span ttm:role=\"x-translation\">").Append(XmlText(translation.Replace('\n', ' '))).Append("</span>");
+            }
+            sb.Append("</p>\n");
+        }
+        return sb.Append("    </div>\n  </body>\n</tt>").ToString();
+    }
+
+    /// <summary>One TTML &lt;p&gt;: the line, its main words and its background (ad-lib) words.</summary>
+    private sealed record TtmlParagraph(AlignedLine Line, List<AlignedWord> Main, List<AlignedWord> Background)
+    {
+        /// <summary>The line's end, its last word's end, or the end of a background folded into it; never before its start.</summary>
+        public TimeSpan End
+        {
+            get
+            {
+                var end = Line.End;
+                if (Line.Words.Count > 0 && Line.Words[^1].End > end) end = Line.Words[^1].End;
+                if (Background.Count > 0 && Background[^1].End > end) end = Background[^1].End;
+                return end < Line.Start ? Line.Start : end;
+            }
+        }
+    }
+
+    private static void AppendWordSpans(StringBuilder sb, IReadOnlyList<AlignedWord> words)
+    {
+        for (var k = 0; k < words.Count; k++)
+        {
+            var w = words[k];
+            if (k > 0) sb.Append(' ');
+            sb.Append("<span begin=\"").Append(FormatTtmlTime(w.Start)).Append("\" end=\"")
+              .Append(FormatTtmlTime(w.End < w.Start ? w.Start : w.End)).Append("\">")
+              .Append(XmlText(w.Text.Trim())).Append("</span>");
+        }
+    }
+
+    /// <summary>"(…)" with no other parenthesis inside: the ELRC reader's background-line test.</summary>
+    internal static bool IsFullyParenthesized(string text)
+    {
+        text = text.Trim();
+        if (text.Length < 2 || text[0] is not ('(' or '（') || text[^1] is not (')' or '）')) return false;
+        return !text[1..^1].Any(c => c is '(' or ')' or '（' or '）');
+    }
+
+    /// <summary>
+    /// Parenthesised word runs out of a line, as the ELRC reader splits them: the line must
+    /// keep a main word, and an unmatched "(" leaves the whole line alone.
+    /// </summary>
+    private static (List<AlignedWord> Main, List<AlignedWord> Background) SplitInlineBackground(IReadOnlyList<AlignedWord> words)
+    {
+        var main = new List<AlignedWord>();
+        var background = new List<AlignedWord>();
+        var inRun = false;
+        foreach (var w in words)
+        {
+            var visible = w.Text.Trim();
+            if (!inRun && visible.Length > 0 && visible[0] is '(' or '（') inRun = true;
+            if (inRun)
+            {
+                background.Add(w);
+                if (visible.Length > 0 && visible[^1] is ')' or '）') inRun = false;
+            }
+            else main.Add(w);
+        }
+        return inRun || main.Count == 0 || background.Count == 0
+            ? (words.ToList(), new List<AlignedWord>())
+            : (main, background);
+    }
+
+    public static string FormatTtmlTime(TimeSpan t)
+    {
+        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+        return $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}.{t.Milliseconds:000}";
+    }
+
+    private static string XmlText(string text) =>
+        text.Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
 
     private static IEnumerable<AlignedLine> Ordered(IEnumerable<AlignedLine> lines) =>
         lines.Where(l => l is not null && !string.IsNullOrWhiteSpace(l.Text)).OrderBy(l => l.Start);

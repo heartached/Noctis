@@ -1,14 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
 public partial class CreatePlaylistDialog : Window
 {
-    private bool _closing;
-
     public CreatePlaylistDialog()
     {
         InitializeComponent();
@@ -17,34 +15,30 @@ public partial class CreatePlaylistDialog : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the Add to Playlist dialog).
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-            NameTextBox.Focus();
-        }, DispatcherPriority.Loaded);
+        // The card's open animation is PillDialogHost's; just put the caret in the name.
+        Dispatcher.UIThread.Post(() => NameTextBox.Focus(), DispatcherPriority.Loaded);
     }
 
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    public async Task CloseAnimatedAsync()
+    /// <summary>
+    /// Closes the dialog. PillDialogHost turns the close into the animated one (it plays once
+    /// however many closes arrive). The caller reads the result from the view model's
+    /// PlaylistCreated event, so nothing rides on Close(result).
+    /// </summary>
+    public Task CloseAnimatedAsync()
     {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
         Close();
+        return Task.CompletedTask;
     }
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        e.Handled = true;
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
+        // Escape closes the same way Cancel does.
+        if (e.Key == Key.Escape && DataContext is CreatePlaylistDialogViewModel vm)
+        {
+            e.Handled = true;
+            vm.CancelCommand.Execute(null);
+            return;
+        }
+        base.OnKeyDown(e);
     }
 }

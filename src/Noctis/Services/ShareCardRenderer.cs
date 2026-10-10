@@ -81,9 +81,15 @@ public sealed record WrapCardSpec
     public required int TotalPlays { get; init; }
     public required double LosslessPercent { get; init; }
     public required string TopGenre { get; init; }
-    /// <summary>Most-played album's artwork — only used to tint the background.</summary>
+    /// <summary>Most-played album's artwork: the card's big cover, and its colour tints the background.</summary>
     public string? ArtworkPath { get; init; }
     public ShareCardFormat Format { get; init; } = ShareCardFormat.Square;
+    /// <summary>Most-played album's name and artist, shown with its cover. Null: the top artist leads.</summary>
+    public string? TopAlbum { get; init; }
+    public string? TopAlbumArtist { get; init; }
+    public int TopAlbumPlays { get; init; }
+    /// <summary>Covers of the top albums, most played first (the story card's strip shows 2-5).</summary>
+    public IReadOnlyList<string?> AlbumCoverPaths { get; init; } = Array.Empty<string?>();
 }
 
 /// <summary>
@@ -94,7 +100,6 @@ public sealed record WrapCardSpec
 public static class ShareCardRenderer
 {
     private const int CanvasWidth = 1080;
-    private const float Pad = 96f;               // Wrap-card content padding
     private const float CardRadius = 56f;        // frosted artwork-card corner radius
     private const float FooterHeight = 44f;      // wordmark logo height
     private const float LyricGapTop = 60f;       // gap between header and lyric block
@@ -296,7 +301,7 @@ public static class ShareCardRenderer
         float lyBottom = footerTop - LyricGapBottom;
         float avail = Math.Max(0f, lyBottom - lyTop);
 
-        var (wrapped, lyricSize, lineHeight) = FitLyrics(spec, boxContentW, avail, lyricFace);
+        var (wrapped, lyricSize, lineHeight, _) = FitLyrics(spec, boxContentW, avail, lyricFace);
         float blockH = wrapped.Count * lineHeight;
         float firstBaseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
         var rowX = new float[wrapped.Count];
@@ -336,8 +341,8 @@ public static class ShareCardRenderer
 
         float FixedH(float a) => a + gapArtTitle + titleSize + gapTitleArtist + artistSize
                                  + gapArtistLyrics + gapLyricsFooter + FooterHeight;
-        var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace);
-        float overflow = FixedH(artSize) + fit.wrapped.Count * fit.lineHeight - safeH;
+        var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace, ComfortLyricSize);
+        float overflow = FixedH(artSize) + fit.naturalRows * fit.lineHeight - safeH;
         if (overflow > 0)
         {
             // Long selections at the minimum lyric size: give the artwork's pixels to the
@@ -385,7 +390,7 @@ public static class ShareCardRenderer
 
         // ── Centered lyric rows ─────────────────────────────────────────
         float lyTop = artRect.Bottom + gapArtTitle + titleSize + gapTitleArtist + artistSize + gapArtistLyrics;
-        var (wrapped, lyricSize, lineHeight) = fit;
+        var (wrapped, lyricSize, lineHeight, _) = fit;
         float firstBaseline = lyTop + lyricSize * 0.80f;
         using var lyricMeasure = TextPaint(lyricFace, lyricSize, fg);
         var rowX = new float[wrapped.Count];
@@ -722,13 +727,24 @@ public static class ShareCardRenderer
         }
     }
 
+    /// <summary>Smallest lyric size the fit shrinks to before it drops rows.</summary>
+    private const float MinLyricSize = 28f;
+
+    /// <summary>The Poster layout's old floor: below it the artwork shrinks first.</summary>
+    private const float ComfortLyricSize = 34f;
+
     /// <summary>
     /// Greedily shrinks the lyric font (from a format-dependent base) until the wrapped
     /// block fits <paramref name="maxLyricsH"/>; returns the wrapped lines, chosen size and
     /// line height. Shared by the box-sizing and draw passes so the two always agree.
+    /// A block still too tall at <see cref="MinLyricSize"/> (eight long lines on a 1:1 card)
+    /// keeps the rows that fit and ends the last one with "…": the rows used to be drawn
+    /// whatever their height, over the wordmark and off the bottom of the image.
+    /// <c>naturalRows</c> is the row count before that cut, so the Poster layout can give
+    /// the artwork's pixels to the lyrics first.
     /// </summary>
-    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight) FitLyrics(
-        LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace)
+    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight, int naturalRows) FitLyrics(
+        LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace, float minSize = MinLyricSize)
     {
         var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
         float lyricSize = spec.Format == ShareCardFormat.Story ? 78f : 66f;
@@ -740,11 +756,33 @@ public static class ShareCardRenderer
             lyricPaint.TextSize = lyricSize;
             wrapped = WrapAll(renderLines, contentW, s => MeasureTextFallback(lyricPaint, s));
             lineHeight = lyricSize * 1.30f;
-            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34f)
+            // +0.5: the draw pass re-fits into the box the sizing pass made (avail is
+            // computed back from it), so float noise must not shrink the font a step.
+            if (wrapped.Count * lineHeight <= maxLyricsH + 0.5f || lyricSize <= minSize)
                 break;
-            lyricSize -= 3f;
+            lyricSize = Math.Max(minSize, lyricSize - 3f);
         }
-        return (wrapped, lyricSize, lineHeight);
+
+        int naturalRows = wrapped.Count;
+        int fits = Math.Max(1, (int)Math.Floor((maxLyricsH + 0.5f) / lineHeight));
+        if (wrapped.Count > fits)
+        {
+            wrapped = wrapped.Take(fits).ToList();
+            var (lastText, lastLine) = wrapped[^1];
+            float Measure(string s) => MeasureTextFallback(lyricPaint, s);
+            var marked = lastText.TrimEnd() + "…";
+            if (Measure(marked) > contentW)
+            {
+                marked = "…";
+                for (int len = lastText.Length - 1; len > 0; len--)
+                {
+                    var candidate = lastText[..len].TrimEnd() + "…";
+                    if (Measure(candidate) <= contentW) { marked = candidate; break; }
+                }
+            }
+            wrapped[^1] = (marked, lastLine);
+        }
+        return (wrapped, lyricSize, lineHeight, naturalRows);
     }
 
     private const int VibrantCacheMax = 300;
@@ -886,15 +924,19 @@ public static class ShareCardRenderer
     }
 
     /// <summary>
-    /// Renders a Noctis Wrap recap card: brand header, period, top-artist and
-    /// top-song columns, then a 2×2 stats grid (minutes, top genre, plays, lossless).
+    /// Renders a Noctis Wrap recap card, Last.fm-report style: brand + period, the most-played
+    /// album as a big cover with its name, minutes listened, top artists and songs, a stats
+    /// strip and the wordmark. The 9:16 story adds a strip of the next four album covers.
+    /// The background is a gradient of the top album's cover colour, as before.
     /// </summary>
     public static byte[] RenderWrapCard(WrapCardSpec spec)
     {
         int w = CanvasWidth;
-        int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
+        bool story = spec.Format == ShareCardFormat.Story;
+        int h = story ? 1920 : 1080;
 
-        using var art = LoadArtwork(spec.ArtworkPath);
+        var heroPath = spec.ArtworkPath ?? (spec.AlbumCoverPaths.Count > 0 ? spec.AlbumCoverPaths[0] : null);
+        using var art = LoadArtwork(heroPath);
         var bg = DeriveBackground(art);
         bool darkText = UseDarkText(bg.Red, bg.Green, bg.Blue);
         var fg = darkText ? new SKColor(0x12, 0x12, 0x12) : SKColors.White;
@@ -916,57 +958,195 @@ public static class ShareCardRenderer
 
         using var boldFace = ResolveTypeface(bold: true);
         using var regularFace = ResolveTypeface(bold: false);
-        float contentW = w - Pad * 2;
 
-        // Fixed content metrics; the story format centers the same block vertically.
-        const float brandSize = 30, periodSize = 96, colHeaderSize = 28, entrySize = 34,
-            entryLine = 52, statLabelSize = 22, statValueSize = 56;
-        float colsH = colHeaderSize + 28 + 5 * entryLine;
-        float statsH = 2 * (statLabelSize + 8 + statValueSize + 26);
-        float blockH = brandSize + 18 + periodSize + 44 + colsH + 44 + statsH + 36 + FooterHeight;
+        // The hero: the top album, or (no album could be placed) the top artist.
+        var hasAlbum = !string.IsNullOrWhiteSpace(spec.TopAlbum);
+        var heroLabel = hasAlbum
+            ? spec.TopAlbumPlays > 0 ? $"TOP ALBUM  ·  {WrapPlays(spec.TopAlbumPlays)}" : "TOP ALBUM"
+            : "TOP ARTIST";
+        var heroName = SanitizeForRender(hasAlbum ? spec.TopAlbum : spec.TopArtists.FirstOrDefault());
+        var heroSub = SanitizeForRender(hasAlbum ? spec.TopAlbumArtist : null);
 
-        float y = spec.Format == ShareCardFormat.Story
-            ? Math.Max(Pad, (h - blockH) / 2f)
-            : Math.Max(Pad / 2f, (h - blockH) / 2f);
-
-        using (var brandPaint = TextPaint(boldFace, brandSize, fgSubtle))
-        {
-            brandPaint.TextSkewX = 0;
-            canvas.DrawText("N O C T I S   W R A P", Pad, y + brandSize, brandPaint);
-        }
-        using (var periodPaint = TextPaint(boldFace, periodSize, fg))
-        {
-            canvas.DrawText(spec.PeriodLabel, Pad, y + brandSize + 18 + periodSize, periodPaint);
-        }
-
-        // ── Two top-list columns ────────────────────────────────────────
-        float colsTop = y + brandSize + 18 + periodSize + 44;
-        float colW = (contentW - 48) / 2f;
-        DrawWrapColumn(canvas, boldFace, regularFace, "TOP ARTISTS", spec.TopArtists,
-            Pad, colsTop, colW, colHeaderSize, entrySize, entryLine, fg, fgSubtle);
-        DrawWrapColumn(canvas, boldFace, regularFace, "TOP SONGS", spec.TopTracks,
-            Pad + colW + 48, colsTop, colW, colHeaderSize, entrySize, entryLine, fg, fgSubtle);
-
-        // ── 2×2 stats grid ──────────────────────────────────────────────
-        float statsTop = colsTop + colsH + 44;
-        float cellH = statLabelSize + 8 + statValueSize + 26;
-        DrawWrapStat(canvas, boldFace, regularFace, "MINUTES LISTENED",
-            spec.TotalMinutes.ToString("N0"), Pad, statsTop, colW, statLabelSize, statValueSize, fg, fgSubtle);
-        DrawWrapStat(canvas, boldFace, regularFace, "TOP GENRE",
-            spec.TopGenre, Pad + colW + 48, statsTop, colW, statLabelSize, statValueSize, fg, fgSubtle);
-        DrawWrapStat(canvas, boldFace, regularFace, "TRACKS PLAYED",
-            spec.TotalPlays.ToString("N0"), Pad, statsTop + cellH, colW, statLabelSize, statValueSize, fg, fgSubtle);
-        DrawWrapStat(canvas, boldFace, regularFace, "LOSSLESS",
-            $"{spec.LosslessPercent:0}%", Pad + colW + 48, statsTop + cellH, colW, statLabelSize, statValueSize, fg, fgSubtle);
-
-        DrawWordmark(canvas, boldFace, fg, Pad, statsTop + statsH + 36);
+        if (story)
+            DrawWrapStory(canvas, spec, art, w, h, fg, fgSubtle, boldFace, regularFace, heroLabel, heroName, heroSub);
+        else
+            DrawWrapSquare(canvas, spec, art, w, h, fg, fgSubtle, boldFace, regularFace, heroLabel, heroName, heroSub);
 
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
     }
 
-    private static void DrawWrapColumn(SKCanvas canvas, SKTypeface boldFace, SKTypeface regularFace,
+    /// <summary>English, like the rest of the card's labels.</summary>
+    private static string WrapPlays(int plays) =>
+        plays == 1 ? "1 PLAY" : plays.ToString("N0", CultureInfo.InvariantCulture) + " PLAYS";
+
+    /// <summary>1:1 — header, cover + album text + minutes, two top-5 columns, stats strip, wordmark.</summary>
+    private static void DrawWrapSquare(SKCanvas canvas, WrapCardSpec spec, SKBitmap? art, int w, int h,
+        SKColor fg, SKColor fgSubtle, SKTypeface boldFace, SKTypeface regularFace,
+        string heroLabel, string heroName, string heroSub)
+    {
+        const float pad = 80f;
+        float contentW = w - pad * 2;
+
+        float y = 72f;
+        DrawWrapHeader(canvas, spec.PeriodLabel, pad, y, 26f, 76f, fg, fgSubtle, boldFace, centered: false, w);
+        y += 26f + 12f + 76f + 36f;
+
+        // ── Hero: cover on the left, album and minutes on the right ──
+        const float cover = 300f;
+        var coverRect = new SKRect(pad, y, pad + cover, y + cover);
+        DrawArtworkTile(canvas, art, coverRect, 28f, fg);
+
+        float tx = pad + cover + 40f, tw = w - pad - tx;
+        using (var label = TextPaint(boldFace, 22f, fgSubtle))
+            DrawTextFallback(canvas, Ellipsize(heroLabel, tw, s => MeasureTextFallback(label, s)), tx, y + 22f, label);
+
+        float nameBase = y + 22f + 18f + 44f;
+        using (var name = TextPaint(boldFace, 44f, fg))
+        {
+            var lines = WrapText(heroName, tw, s => MeasureTextFallback(name, s));
+            if (lines.Count > 2)
+                lines = new List<string> { lines[0], Ellipsize(string.Join(" ", lines.Skip(1)), tw, s => MeasureTextFallback(name, s)) };
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DrawTextFallback(canvas, lines[i], tx, nameBase, name);
+                if (i < lines.Count - 1) nameBase += 52f;
+            }
+        }
+        if (heroSub.Length > 0)
+        {
+            using var sub = TextPaint(regularFace, 28f, fgSubtle);
+            DrawTextFallback(canvas, Ellipsize(heroSub, tw, s => MeasureTextFallback(sub, s)), tx, nameBase + 42f, sub);
+        }
+
+        // Minutes listened, sitting on the cover's bottom edge.
+        float valueBase = coverRect.Bottom - 4f;
+        using (var value = TextPaint(boldFace, 64f, fg))
+            canvas.DrawText(spec.TotalMinutes.ToString("N0", CultureInfo.InvariantCulture), tx, valueBase, value);
+        using (var minutesLabel = TextPaint(regularFace, 20f, fgSubtle))
+            canvas.DrawText("MINUTES LISTENED", tx, valueBase - 64f - 10f, minutesLabel);
+        y = coverRect.Bottom + 48f;
+
+        // ── Top artists / top songs ──
+        float colW = (contentW - 48f) / 2f;
+        DrawWrapColumn(canvas, boldFace, "TOP ARTISTS", spec.TopArtists, pad, y, colW, 24f, 29f, 44f, fg, fgSubtle);
+        DrawWrapColumn(canvas, boldFace, "TOP SONGS", spec.TopTracks, pad + colW + 48f, y, colW, 24f, 29f, 44f, fg, fgSubtle);
+        y += 24f + 22f + 29f + 4 * 44f + 34f;
+
+        // ── Stats strip ──
+        float cellW = (contentW - 2 * 32f) / 3f;
+        DrawWrapStat(canvas, boldFace, regularFace, "TRACKS PLAYED", spec.TotalPlays.ToString("N0", CultureInfo.InvariantCulture),
+            pad, y, cellW, 20f, 40f, fg, fgSubtle);
+        DrawWrapStat(canvas, boldFace, regularFace, "TOP GENRE", spec.TopGenre,
+            pad + cellW + 32f, y, cellW, 20f, 40f, fg, fgSubtle);
+        DrawWrapStat(canvas, boldFace, regularFace, "LOSSLESS", $"{spec.LosslessPercent:0}%",
+            pad + 2 * (cellW + 32f), y, cellW, 20f, 40f, fg, fgSubtle);
+
+        DrawWordmark(canvas, boldFace, fg, pad, h - 68f - FooterHeight);
+    }
+
+    /// <summary>9:16 — centred header and big cover, album text, a strip of the next four
+    /// covers, a stats row, the two top-5 columns, wordmark.</summary>
+    private static void DrawWrapStory(SKCanvas canvas, WrapCardSpec spec, SKBitmap? art, int w, int h,
+        SKColor fg, SKColor fgSubtle, SKTypeface boldFace, SKTypeface regularFace,
+        string heroLabel, string heroName, string heroSub)
+    {
+        const float pad = 96f;
+        float contentW = w - pad * 2;
+
+        float y = 120f;
+        DrawWrapHeader(canvas, spec.PeriodLabel, pad, y, 30f, 96f, fg, fgSubtle, boldFace, centered: true, w);
+        y += 30f + 12f + 96f + 50f;
+
+        const float cover = 520f;
+        var coverRect = new SKRect((w - cover) / 2f, y, (w + cover) / 2f, y + cover);
+        DrawArtworkTile(canvas, art, coverRect, 40f, fg);
+        y = coverRect.Bottom + 50f;
+
+        using (var label = TextPaint(boldFace, 24f, fgSubtle))
+            DrawCentered(canvas, Ellipsize(heroLabel, contentW, s => MeasureTextFallback(label, s)), w, y, label);
+        y += 14f + 50f;
+        using (var name = TextPaint(boldFace, 50f, fg))
+        {
+            var lines = WrapText(heroName, contentW, s => MeasureTextFallback(name, s));
+            if (lines.Count > 2)
+                lines = new List<string> { lines[0], Ellipsize(string.Join(" ", lines.Skip(1)), contentW, s => MeasureTextFallback(name, s)) };
+            for (int i = 0; i < lines.Count; i++)
+            {
+                DrawCentered(canvas, lines[i], w, y, name);
+                if (i < lines.Count - 1) y += 58f;
+            }
+        }
+        if (heroSub.Length > 0)
+        {
+            y += 44f;
+            using var sub = TextPaint(regularFace, 30f, fgSubtle);
+            DrawCentered(canvas, Ellipsize(heroSub, contentW, s => MeasureTextFallback(sub, s)), w, y, sub);
+        }
+        y += 50f;
+
+        // ── The next four albums as a cover strip ──
+        var more = spec.AlbumCoverPaths.Skip(1).Take(4).ToList();
+        if (more.Count > 0)
+        {
+            const float gap = 24f;
+            float tile = (contentW - 3 * gap) / 4f;
+            float x = pad + (contentW - (more.Count * tile + (more.Count - 1) * gap)) / 2f;
+            foreach (var path in more)
+            {
+                using var thumb = LoadArtwork(path);
+                DrawArtworkTile(canvas, thumb, new SKRect(x, y, x + tile, y + tile), 20f, fg);
+                x += tile + gap;
+            }
+            y += tile + 46f;
+        }
+
+        // ── Stats row ──
+        float cellW = (contentW - 2 * 32f) / 3f;
+        DrawWrapStat(canvas, boldFace, regularFace, "MINUTES", spec.TotalMinutes.ToString("N0", CultureInfo.InvariantCulture),
+            pad, y, cellW, 22f, 52f, fg, fgSubtle);
+        DrawWrapStat(canvas, boldFace, regularFace, "TRACKS PLAYED", spec.TotalPlays.ToString("N0", CultureInfo.InvariantCulture),
+            pad + cellW + 32f, y, cellW, 22f, 52f, fg, fgSubtle);
+        DrawWrapStat(canvas, boldFace, regularFace, "TOP GENRE", spec.TopGenre,
+            pad + 2 * (cellW + 32f), y, cellW, 22f, 52f, fg, fgSubtle);
+        y += 22f + 8f + 52f + 48f;
+
+        // ── Top artists / top songs ──
+        float colW = (contentW - 48f) / 2f;
+        DrawWrapColumn(canvas, boldFace, "TOP ARTISTS", spec.TopArtists, pad, y, colW, 26f, 32f, 50f, fg, fgSubtle);
+        DrawWrapColumn(canvas, boldFace, "TOP SONGS", spec.TopTracks, pad + colW + 48f, y, colW, 26f, 32f, 50f, fg, fgSubtle);
+
+        using (var wordmarkPaint = TextPaint(boldFace, 38, fg))
+        {
+            float wordmarkW = FooterHeight + 14 + MeasureTextFallback(wordmarkPaint, "Noctis");
+            DrawWordmark(canvas, boldFace, fg, (w - wordmarkW) / 2f, h - 90f - FooterHeight);
+        }
+    }
+
+    private static void DrawWrapHeader(SKCanvas canvas, string period, float x, float y, float brandSize, float periodSize,
+        SKColor fg, SKColor fgSubtle, SKTypeface boldFace, bool centered, int w)
+    {
+        using var brand = TextPaint(boldFace, brandSize, fgSubtle);
+        using var periodPaint = TextPaint(boldFace, periodSize, fg);
+        const string brandText = "N O C T I S   W R A P";
+        var periodText = Ellipsize(SanitizeForRender(period), w - 2 * x, s => MeasureTextFallback(periodPaint, s));
+        if (centered)
+        {
+            DrawCentered(canvas, brandText, w, y + brandSize, brand);
+            DrawCentered(canvas, periodText, w, y + brandSize + 12f + periodSize, periodPaint);
+        }
+        else
+        {
+            canvas.DrawText(brandText, x, y + brandSize, brand);
+            DrawTextFallback(canvas, periodText, x, y + brandSize + 12f + periodSize, periodPaint);
+        }
+    }
+
+    private static void DrawCentered(SKCanvas canvas, string text, int w, float baseline, SKPaint paint) =>
+        DrawTextFallback(canvas, text, (w - MeasureTextFallback(paint, text)) / 2f, baseline, paint);
+
+    private static void DrawWrapColumn(SKCanvas canvas, SKTypeface boldFace,
         string header, IReadOnlyList<string> entries, float x, float y, float width,
         float headerSize, float entrySize, float entryLine, SKColor fg, SKColor fgSubtle)
     {
@@ -975,12 +1155,13 @@ public static class ShareCardRenderer
 
         using var rankPaint = TextPaint(boldFace, entrySize, fgSubtle);
         using var namePaint = TextPaint(boldFace, entrySize, fg);
-        float baseline = y + headerSize + 28 + entrySize;
+        float rankW = entrySize * 1.3f;
+        float baseline = y + headerSize + 22f + entrySize;
         for (int i = 0; i < Math.Min(5, entries.Count); i++)
         {
             canvas.DrawText($"{i + 1}", x, baseline, rankPaint);
-            var name = Ellipsize(entries[i], width - 44, s => namePaint.MeasureText(s));
-            canvas.DrawText(name, x + 44, baseline, namePaint);
+            var name = Ellipsize(SanitizeForRender(entries[i]), width - rankW, s => MeasureTextFallback(namePaint, s));
+            DrawTextFallback(canvas, name, x + rankW, baseline, namePaint);
             baseline += entryLine;
         }
     }
@@ -992,8 +1173,12 @@ public static class ShareCardRenderer
         using var labelPaint = TextPaint(regularFace, labelSize, fgSubtle);
         canvas.DrawText(label, x, y + labelSize, labelPaint);
         using var valuePaint = TextPaint(boldFace, valueSize, fg);
-        var fitted = Ellipsize(value, width, s => valuePaint.MeasureText(s));
-        canvas.DrawText(fitted, x, y + labelSize + 8 + valueSize, valuePaint);
+        // A long genre ("Hip-Hop/Rap") shrinks to fit before it is cut.
+        var text = SanitizeForRender(value);
+        while (valuePaint.TextSize > valueSize * 0.6f && MeasureTextFallback(valuePaint, text) > width)
+            valuePaint.TextSize -= 2f;
+        var fitted = Ellipsize(text, width, s => MeasureTextFallback(valuePaint, s));
+        DrawTextFallback(canvas, fitted, x, y + labelSize + 8f + valueSize, valuePaint);
     }
 
     private static SKPaint TextPaint(SKTypeface face, float size, SKColor color) => new()

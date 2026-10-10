@@ -26,4 +26,12 @@ public interface IPlayHistoryService
 
     /// <summary>Writes any pending events to disk immediately.</summary>
     Task FlushAsync();
+
+    /// <summary>
+    /// Points logged plays at the new ids of moved tracks (a track's id is derived from its
+    /// path, so Organize Files and renames change it), as the playlists already are. Without
+    /// it every moved song's history lost its album, genre and length in the statistics.
+    /// The default does nothing (test doubles).
+    /// </summary>
+    void RemapTrackIds(IReadOnlyDictionary<Guid, Guid> remap) { }
 }

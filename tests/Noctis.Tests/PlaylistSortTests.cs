@@ -24,6 +24,34 @@ public class PlaylistSortTests
     }
 
     [Fact]
+    public void SortTracks_RecentlyAdded_UsesWhenItJoinedThePlaylist_ElseTheLibraryDate()
+    {
+        var tracks = Sample();
+        // Cherry has the oldest library date but was just added to this playlist.
+        var addedAt = new Dictionary<Guid, DateTime> { [tracks[0].Id] = new DateTime(2026, 10, 5) };
+
+        var result = PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.RecentlyAdded, addedAt);
+
+        Assert.Equal(new[] { "Cherry", "Apple", "Banana" }, result.Select(t => t.Title));
+        Assert.Equal(new[] { "Apple", "Banana", "Cherry" },
+            PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.RecentlyAdded).Select(t => t.Title));
+    }
+
+    [Fact]
+    public void PlaylistAddedConverter_NewBadge_FollowsThePlaylistDate_AndTheSetting()
+    {
+        var c = new Noctis.Converters.PlaylistAddedConverter();
+        var id = Guid.NewGuid();
+        var oldLibraryDate = DateTime.UtcNow.AddDays(-30);
+        var map = new Dictionary<Guid, DateTime> { [id] = DateTime.UtcNow };
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+        Assert.Equal(true, c.Convert(new object?[] { id, oldLibraryDate, map, true }, typeof(bool), "new", culture));
+        Assert.Equal(false, c.Convert(new object?[] { id, oldLibraryDate, map, false }, typeof(bool), "new", culture));
+        Assert.Equal(false, c.Convert(new object?[] { Guid.NewGuid(), oldLibraryDate, map, true }, typeof(bool), "new", culture));
+    }
+
+    [Fact]
     public void SortTracks_Title_SortsAlphabetically()
     {
         var result = PlaylistViewModel.SortTracks(Sample(), PlaylistSortMode.Title);

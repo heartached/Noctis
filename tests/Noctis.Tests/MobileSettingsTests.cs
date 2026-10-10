@@ -192,6 +192,30 @@ public class MobileSettingsTests
         Assert.Equal("Noctis 9.9.9", page.VersionText);
     }
 
+    /// <summary>S23 2026-10-05: the folder's grant was dropped and every song failed with a bare
+    /// "Source error"; Settings now names the folder whose access was lost.</summary>
+    [AvaloniaFact]
+    public async Task AFolderWithoutAccess_SaysSo()
+    {
+        const string tones = "content://com.android.externalstorage.documents/tree/primary%3AMusic%2FTones";
+        const string beats = "content://com.android.externalstorage.documents/tree/primary%3AMusic%2FBeats";
+        var picker = new MobileFixtures.NoPicker();
+        picker.Lost.Add(beats);
+        using var rig = MobileFixtures.MakeRig(picker: picker, seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MusicFolders.Add(tones);
+            s.MusicFolders.Add(beats);
+            await p.SaveSettingsAsync(s);
+        });
+
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        var page = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+        await page.Loaded;
+
+        Assert.Equal(new[] { "Music/Tones", "Music/Beats (access lost: add it again)" }, page.FolderLabels);
+    }
+
     [AvaloniaFact]
     public async Task ProfileButton_OpensSettings_WithReadableFolders()
     {

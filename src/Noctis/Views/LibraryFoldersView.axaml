@@ -22,6 +22,29 @@
              away and back (TreeViewItem containers are recreated each visit). -->
         <Style Selector="TreeViewItem" x:DataType="m:FolderNode">
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <!-- Screen readers read the row as "Bruno Mars, 172 songs" (empty otherwise). -->
+            <Setter Property="AutomationProperties.Name" Value="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}" />
+        </Style>
+        <!-- Expand/collapse chevron: the sidebar folders' stroked arrow, one right-pointing
+             glyph that FoldingTreeViewItem turns 0-90deg with the fold (Fluent swaps two
+             filled glyphs, which can't turn). Drawn symmetric about the 12px box's centre
+             (x 3.5-8.5, y 1-11), so it sits on the row's centre line and turns in place. -->
+        <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent">
+                        <Path Data="M 3.5,1 L 8.5,6 L 3.5,11"
+                              Stroke="{TemplateBinding Foreground}"
+                              StrokeThickness="1.8"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Opacity="0.8" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="StackPanel.hidden-folder">
+            <Setter Property="Opacity" Value="0.45" />
         </Style>
         <!-- Row background moves off the ListBoxItem onto the inner row-body Border so
              the hover box and the now-playing box are one element and cannot drift apart.
@@ -90,19 +113,29 @@
             <!-- AutoScrollToSelectedItem off: rows are wider than the pane (long folder
                  names), so the default scroll-into-view on click yanked the horizontal
                  scrollbar to the right. The clicked row is already visible anyway. -->
-            <TreeView x:Name="FolderTree"
+            <!-- FoldingTreeView: folders fold open and shut like the sidebar's playlist
+                 folders instead of snapping. -->
+            <controls:FoldingTreeView x:Name="FolderTree"
                       ItemsSource="{Binding RootNodes}"
                       SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                       AutoScrollToSelectedItem="False">
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate x:DataType="m:FolderNode" ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <!-- Hidden from Library (right-click menu): dimmed, and the folder the
+                             user hid carries a "Hidden" tag so it is easy to find again. -->
+                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                    Classes.hidden-folder="{Binding IsInHiddenFolder}">
                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding TotalTrackCount, StringFormat='({0})'}" Opacity="0.6" />
+                            <TextBlock Text="{loc:T LibraryFolders.HiddenTag}"
+                                       FontSize="11"
+                                       Opacity="0.8"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsHiddenFromLibrary}" />
                         </StackPanel>
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
-            </TreeView>
+            </controls:FoldingTreeView>
         </Border>
 
         <!-- Right pane: header + track list -->
@@ -128,6 +161,11 @@
                            FontSize="12"
                            Opacity="0.55"
                            IsVisible="{Binding FolderSummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="{loc:T LibraryFolders.HiddenFolderNote}"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Opacity="0.55"
+                           IsVisible="{Binding SelectedNode.IsInHiddenFolder, FallbackValue=False}" />
             </StackPanel>
 
             <ListBox x:Name="TrackList"
@@ -209,6 +247,7 @@
                                         Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                         Cursor="Hand" HorizontalAlignment="Right" VerticalAlignment="Center"
                                         Margin="16,0,0,0"
+                                        helpers:ArtistCreditLink.IsEnabled="True"
                                         Command="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).ViewArtistCommand}"
                                         CommandParameter="{Binding Artist}">
                                     <TextBlock Text="{Binding ArtistDisplay}"

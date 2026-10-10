@@ -47,11 +47,39 @@ public partial class CoverFlowView : UserControl
     /// so one flick is one skip, not a burst).</summary>
     internal bool IsSliding { get; private set; }
 
+    // ── Layout switch (Carousel / Cascade / Collage / empty) ────────────────────
+    // The four arrangements are sibling layers; the code-behind owns their visibility
+    // (no IsVisible bindings) so a switch can keep both old and new alive while it morphs
+    // them (CoverFlowLayoutMorph). Index = LayerCollage..LayerEmpty.
+    internal const int LayerCollage = 0, LayerCarousel = 1, LayerCascade = 2, LayerEmpty = 3;
+    private readonly Control[] _layers;
+    private readonly MatrixTransform[] _layerTransforms = new MatrixTransform[4];
+    private readonly LayerPose[] _layerPose = new LayerPose[4];
+    private readonly LayerPose[] _morphFrom = new LayerPose[4];
+    private readonly LayerPose[] _morphTo = new LayerPose[4];
+    private readonly bool[] _morphing = new bool[4];
+    private int _layoutTarget = -1;
+    private long _morphStartTicks;
+    private bool _morphFrameQueued;
+
+    /// <summary>True while a layout switch is animating.</summary>
+    internal bool IsMorphing { get; private set; }
+
+    /// <summary>The layer the page is showing or switching to (-1 before a view model arrives).</summary>
+    internal int LayoutTarget => _layoutTarget;
+
     public CoverFlowView()
     {
         InitializeComponent();
         BuildCarousel();
         BuildCascade();
+        _layers = new Control[] { CollageViewbox, CarouselHost, StageGrid, EmptyState };
+        for (var i = 0; i < _layers.Length; i++)
+        {
+            _layerTransforms[i] = new MatrixTransform();
+            _layers[i].RenderTransformOrigin = RelativePoint.TopLeft;
+            _layerPose[i] = LayerPose.Rest;
+        }
         DataContextChanged += OnDataContextChanged;
         ActualThemeVariantChanged += OnThemeVariantChanged;
     }
@@ -67,6 +95,7 @@ public partial class CoverFlowView : UserControl
         base.OnDetachedFromVisualTree(e);
         // Land the slide: no frame will come while we are off-screen.
         if (IsSliding) FinishSlide();
+        if (IsMorphing) FinishLayoutMorph();
     }
 
     private void BuildCarousel()
@@ -198,13 +227,221 @@ public partial class CoverFlowView : UserControl
             _vm.CarouselShifted += OnCarouselShifted;
             _vm.PropertyChanged += OnViewModelPropertyChanged;
             CrossfadeBackground(_vm.CenterArtworkPath);
+            // A new page (or view model) shows its layout at once; only switches animate.
+            _layoutTarget = TargetLayerOf(_vm);
+            FinishLayoutMorph();
         }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CoverFlowViewModel.CenterArtworkPath))
-            CrossfadeBackground(_vm?.CenterArtworkPath);
+        switch (e.PropertyName)
+        {
+            case nameof(CoverFlowViewModel.CenterArtworkPath):
+                CrossfadeBackground(_vm?.CenterArtworkPath);
+                break;
+            // Layout and HasQueue both notify these; the first one already carries the final
+            // state and the rest find the target unchanged.
+            case nameof(CoverFlowViewModel.IsCollageMode):
+            case nameof(CoverFlowViewModel.ShowCarousel):
+            case nameof(CoverFlowViewModel.ShowCascade):
+            case nameof(CoverFlowViewModel.ShowEmptyState):
+                if (_vm != null) SwitchLayout(TargetLayerOf(_vm));
+                break;
+        }
+    }
+
+    private static int TargetLayerOf(CoverFlowViewModel vm) =>
+        vm.IsCollageMode ? LayerCollage
+        : vm.ShowCarousel ? LayerCarousel
+        : vm.ShowCascade ? LayerCascade
+        : LayerEmpty;
+
+    // ── Layout switch ──────────────────────────────────────────────────────────
+
+    /// <summary>Morph from whatever is on screen (mid-switch included) to layer
+    /// <paramref name="target"/>. Every layer starts from its current pose, so a switch
+    /// that interrupts another carries on smoothly instead of jumping or stacking.</summary>
+    internal void SwitchLayout(int target)
+    {
+        if (target == _layoutTarget) return;
+        var hadTarget = _layoutTarget >= 0;
+        _layoutTarget = target;
+        if (!hadTarget || TopLevel.GetTopLevel(this) is null || !IsEffectivelyVisible)
+        {
+            FinishLayoutMorph();
+            return;
+        }
+
+        // The incoming layer joins invisible so it can be laid out and measured.
+        var incoming = _layers[target];
+        var joining = !incoming.IsVisible;
+        if (joining)
+        {
+            _layerPose[target] = LayerPose.Rest with { Opacity = 0 };
+            ApplyLayerPose(target);
+            incoming.IsVisible = true;
+        }
+        UpdateLayout();
+
+        var heroIn = HeroRectInParent(target);
+
+        // The outgoing layer the eye is on: the most opaque one still showing.
+        var primary = -1;
+        for (var i = 0; i < _layers.Length; i++)
+            if (i != target && _layers[i].IsVisible
+                && (primary < 0 || _layerPose[i].Opacity > _layerPose[primary].Opacity))
+                primary = i;
+
+        for (var i = 0; i < _layers.Length; i++)
+        {
+            _morphing[i] = _layers[i].IsVisible;
+            if (!_morphing[i]) continue;
+            _morphFrom[i] = _layerPose[i];
+            var offset = (Vector)_layers[i].Bounds.Position;
+            if (i == target)
+            {
+                if (joining)
+                {
+                    // Start with our cover exactly where the outgoing cover is on screen now.
+                    var heroOut = primary >= 0 ? HeroRectOnScreen(primary) : null;
+                    _morphFrom[i] = heroIn is { } hi && heroOut is { } ho
+                        ? CoverFlowLayoutMorph.Map(hi.Translate(-offset), ho.Translate(-offset), 0)
+                        : CoverFlowLayoutMorph.ScaleAbout(_layers[i].Bounds.Size, CoverFlowLayoutMorph.FallbackScale, 0);
+                }
+                _morphTo[i] = LayerPose.Rest;
+            }
+            else
+            {
+                // Carry our cover onto the incoming layout's cover while fading out; with
+                // no shared cover, just fade where we are.
+                var heroOld = HeroRectInParent(i);
+                _morphTo[i] = heroOld is { } ro && heroIn is { } ri
+                    ? CoverFlowLayoutMorph.Map(ro.Translate(-offset), ri.Translate(-offset), 0)
+                    : _layerPose[i] with { Opacity = 0 };
+            }
+        }
+
+        // Incoming on top so it covers the outgoing layer before that one fades away.
+        for (var i = 0; i < _layers.Length; i++)
+            _layers[i].ZIndex = i == target ? 1 : 0;
+        // Only the destination takes clicks and wheel.
+        CarouselHost.IsHitTestVisible = target == LayerCarousel;
+        StageGrid.IsHitTestVisible = target == LayerCascade;
+
+        _morphStartTicks = Stopwatch.GetTimestamp();
+        IsMorphing = true;
+        ApplyMorphFrame(0);
+        QueueMorphFrame();
+    }
+
+    private void QueueMorphFrame()
+    {
+        if (_morphFrameQueued) return;
+        if (TopLevel.GetTopLevel(this) is not { } top) { FinishLayoutMorph(); return; }
+        _morphFrameQueued = true;
+        top.RequestAnimationFrame(OnMorphFrame);
+    }
+
+    private void OnMorphFrame(TimeSpan _)
+    {
+        _morphFrameQueued = false;
+        if (!IsMorphing) return;
+        var elapsed = (Stopwatch.GetTimestamp() - _morphStartTicks) / (double)Stopwatch.Frequency;
+        var t = elapsed / CoverFlowLayoutMorph.Duration.TotalSeconds;
+        if (t >= 1)
+        {
+            FinishLayoutMorph();
+            return;
+        }
+        ApplyMorphFrame(t);
+        QueueMorphFrame();
+    }
+
+    /// <summary>Advance the layout switch to linear progress <paramref name="t"/> (0..1).
+    /// Internal so tests can step it.</summary>
+    internal void ApplyMorphFrame(double t)
+    {
+        for (var i = 0; i < _layers.Length; i++)
+        {
+            if (!_morphing[i]) continue;
+            _layerPose[i] = CoverFlowLayoutMorph.Interpolate(_morphFrom[i], _morphTo[i], t);
+            ApplyLayerPose(i);
+        }
+        ApplyBackgrounds();
+    }
+
+    /// <summary>Land the switch: only the target layer visible, untransformed, opaque.</summary>
+    internal void FinishLayoutMorph()
+    {
+        IsMorphing = false;
+        if (_layoutTarget < 0) return;
+        for (var i = 0; i < _layers.Length; i++)
+        {
+            _morphing[i] = false;
+            _layerPose[i] = LayerPose.Rest;
+            ApplyLayerPose(i);
+            _layers[i].ZIndex = 0;
+            _layers[i].IsVisible = i == _layoutTarget;
+        }
+        CarouselHost.IsHitTestVisible = true;
+        StageGrid.IsHitTestVisible = true;
+        ApplyBackgrounds();
+    }
+
+    private void ApplyLayerPose(int i)
+    {
+        var pose = _layerPose[i];
+        var layer = _layers[i];
+        layer.Opacity = pose.Opacity;
+        if (pose.HasTransform)
+        {
+            _layerTransforms[i].Matrix = pose.Matrix;
+            if (!ReferenceEquals(layer.RenderTransform, _layerTransforms[i]))
+                layer.RenderTransform = _layerTransforms[i];
+        }
+        else if (layer.RenderTransform != null)
+        {
+            layer.RenderTransform = null;
+        }
+    }
+
+    /// <summary>The Collage sits on a flat charcoal; the others on the blurred cover. The
+    /// blur fades out as far as the Collage fades in (charcoal underneath, so never a gap),
+    /// and is not rendered at all while the Collage is all there is.</summary>
+    private void ApplyBackgrounds()
+    {
+        var collage = _layers[LayerCollage].IsVisible ? _layerPose[LayerCollage].Opacity : 0;
+        CollageBackground.IsVisible = collage > 0;
+        BlurredBackground.Opacity = 1 - collage;
+        BlurredBackground.IsVisible = collage < 1;
+    }
+
+    /// <summary>The layer's playing cover in the layers' shared parent, as laid out (the
+    /// layer's own morph transform excluded); null when the layer shows none.</summary>
+    private Rect? HeroRectInParent(int layer)
+    {
+        Visual? hero = layer switch
+        {
+            LayerCollage => CollageCenterCover,
+            LayerCarousel => CenterCard.FindControl<Panel>("ArtworkPanel") ?? (Visual)CenterCard,
+            LayerCascade => CascadeCenterCover,
+            _ => null,
+        };
+        var host = _layers[layer];
+        if (hero is null || !hero.IsEffectivelyVisible || hero.Bounds.Width < 1) return null;
+        if (hero.TransformToVisual(host) is not { } m) return null;
+        var local = new Rect(hero.Bounds.Size).TransformToAABB(m);
+        if (local.Width < 1) return null;
+        return local.Translate((Vector)host.Bounds.Position);
+    }
+
+    /// <summary>Where the layer's playing cover is on screen right now (morph transform included).</summary>
+    private Rect? HeroRectOnScreen(int layer)
+    {
+        if (HeroRectInParent(layer) is not { } r) return null;
+        var offset = (Vector)_layers[layer].Bounds.Position;
+        return _layerPose[layer].Apply(r.Translate(-offset)).Translate(offset);
     }
 
     // ── Slide ──────────────────────────────────────────────────────────────────
@@ -406,11 +643,17 @@ public partial class CoverFlowView : UserControl
             return;
         }
 
+        var fullHeight = height + PageInsetTop + PageInsetBottom;
         var side = stacked
             ? Math.Max(200, Math.Min(width - 32, height * 0.6))
-            : Math.Max(200, Math.Min(height + PageInsetTop + PageInsetBottom, width * PileMaxWidthShare));
+            : Math.Max(200, Math.Min(fullHeight, width * PileMaxWidthShare));
         PileViewbox.Width = side;
         PileViewbox.Height = side;
+        // A full-height square beside the text has the page's own edges (the page clips the
+        // cards running off it), so the Viewbox's clip only cut the playing cover's shadow at
+        // its right edge — and while a layout switch scales the layer it showed as a hard box
+        // in mid-air. Smaller squares (stacked, or capped by width) keep their clip.
+        PileViewbox.ClipToBounds = stacked || side < fullHeight - 0.5;
     }
 
     private void OnThemeVariantChanged(object? sender, EventArgs e)

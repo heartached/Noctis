@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.AudioAnalysis;
@@ -11,7 +12,7 @@ using Noctis.Services.AudioAnalysis;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// Drives the Spectrogram window: decodes + analyses the track off the UI thread, then
+/// Drives the Spectrogram pop-up: decodes + analyses the track off the UI thread, then
 /// composes the plot with frequency / time axes and a dB scale (Spek layout) into one
 /// image the view shows. The axis text colour comes from the view (theme resource).
 /// </summary>
@@ -26,57 +27,121 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
     private const int TopPad = 10;
     private const int BottomAxis = 30;
 
+    /// <summary>The decode + STFT step: ffmpeg path, track, columns, progress, token.
+    /// <see cref="SpectrogramRenderer.ComputeAsync"/> in the app; tests swap in a fake.</summary>
+    internal delegate Task<SpectrogramData> Analyzer(
+        string ffmpegPath, Track track, int columns, IProgress<double> progress, CancellationToken ct);
+
+    private static readonly Analyzer DefaultAnalyzer = (ffmpeg, track, columns, progress, ct) =>
+        SpectrogramRenderer.ComputeAsync(ffmpeg, track.FilePath, track.SampleRate, track.Duration, columns, progress, ct);
+
     private readonly Track _track;
     private readonly IAudioConverterService _converter;
+    private readonly Analyzer _analyze;
     private readonly CancellationTokenSource _cts = new();
+    private bool _started;
+    private bool _disposed;
 
     public string Title => string.IsNullOrWhiteSpace(_track.Title) ? Path.GetFileName(_track.FilePath) : _track.Title;
-    public string Subtitle => string.IsNullOrWhiteSpace(_track.Album) ? _track.Artist : $"{_track.Artist} · {_track.Album}";
 
-    /// <summary>"FLAC · 44.1 kHz · 16-bit · 3:12" — the stream line Spek prints above the plot.</summary>
-    public string InfoLine
-    {
-        get
-        {
-            var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(_track.Codec)) parts.Add(_track.Codec.ToUpperInvariant());
-            if (_track.SampleRate > 0) parts.Add($"{_track.SampleRate / 1000.0:0.#} kHz");
-            if (_track.BitsPerSample > 0) parts.Add($"{_track.BitsPerSample}-bit");
-            if (_track.Bitrate > 0) parts.Add($"{_track.Bitrate} kbps");
-            if (_track.Duration > TimeSpan.Zero) parts.Add(FormatTime(_track.Duration));
-            parts.Add($"FFT {SpectrogramRenderer.FftSize} · Hann");
-            return string.Join(" · ", parts);
-        }
-    }
+    /// <summary>"Artist · Album", leaving out whichever part is blank (an untagged file used
+    /// to read " · Album" with a dangling separator).</summary>
+    public string Subtitle => string.Join(" · ",
+        new[] { _track.Artist, _track.Album }.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()));
+
+    /// <summary>The stream facts as short chips: format, sample rate, bit depth, bitrate,
+    /// duration — each only when known.</summary>
+    public IReadOnlyList<string> TechChips { get; }
+
+    /// <summary>How the plot is made, de-emphasised in the footer (was the tail of the
+    /// header's one run-on info line).</summary>
+    public string AnalysisCaption => Loc.T("Spectrogram.AnalysisCaption", SpectrogramRenderer.FftSize);
 
     [ObservableProperty] private IImage? _image;
     [ObservableProperty] private bool _isBusy = true;
+    [ObservableProperty] private bool _isReady;
     [ObservableProperty] private double _progress;
-    [ObservableProperty] private string _status = "Decoding…";
+    [ObservableProperty] private string _progressText = Loc.T("Spectrogram.AnalyzingAudio");
     [ObservableProperty] private bool _hasError;
+    [ObservableProperty] private string _errorText = string.Empty;
+
+    /// <summary>No duration to measure against (some streams, broken headers): the decoder
+    /// never reports a fraction (SpectrogramRenderer only reports when it knows the expected
+    /// length), so the bar runs indeterminate instead of sitting at 0 %.</summary>
+    public bool IsProgressIndeterminate => _track.Duration <= TimeSpan.Zero;
 
     /// <summary>Set by the view before <see cref="RunAsync"/>: theme text brush for the axes.</summary>
     public IBrush AxisForeground { get; set; } = Brushes.White;
 
+    /// <summary>True once the analysis was cancelled (close by any route).</summary>
+    internal bool IsCancelled => _cts.IsCancellationRequested;
+
     public event EventHandler? Closed;
 
     public SpectrogramViewModel(Track track, IAudioConverterService converter)
+        : this(track, converter, null) { }
+
+    internal SpectrogramViewModel(Track track, IAudioConverterService converter, Analyzer? analyze)
     {
         _track = track;
         _converter = converter;
+        _analyze = analyze ?? DefaultAnalyzer;
+        TechChips = BuildChips(track);
+    }
+
+    internal static IReadOnlyList<string> BuildChips(Track track)
+    {
+        var chips = new List<string>();
+        var format = ShortFormat(track.Codec, track.FilePath);
+        if (format.Length > 0) chips.Add(format);
+        if (track.SampleRate > 0)
+            chips.Add((track.SampleRate / 1000.0).ToString("0.#", CultureInfo.CurrentCulture) + " kHz");
+        if (track.BitsPerSample > 0) chips.Add($"{track.BitsPerSample}-bit");
+        if (track.Bitrate > 0) chips.Add($"{track.Bitrate} kbps");
+        if (track.Duration > TimeSpan.Zero) chips.Add(FormatTime(track.Duration));
+        return chips;
+    }
+
+    /// <summary>
+    /// The codec as a chip word: TagLib's description is long ("MPEG-4 Audio (alac)", "Flac
+    /// Audio", "MPEG Version 1 Audio, Layer 3"), so the common ones collapse to their usual
+    /// name and anything else keeps its own text. Blank falls back to the file extension.
+    /// </summary>
+    internal static string ShortFormat(string? codec, string? filePath)
+    {
+        var raw = (codec ?? string.Empty).Trim();
+        if (raw.Length == 0)
+            return (Path.GetExtension(filePath ?? string.Empty) ?? string.Empty).TrimStart('.').ToUpperInvariant();
+        var lower = raw.ToLowerInvariant();
+        if (lower.Contains("alac") || lower.Contains("apple lossless")) return "ALAC";
+        if (lower.Contains("flac")) return "FLAC";
+        if (lower.Contains("layer 3") || lower == "mp3") return "MP3";
+        if (lower.Contains("opus")) return "Opus";
+        if (lower.Contains("vorbis")) return "Vorbis";
+        if (lower.Contains("aac") || lower.Contains("mp4a")) return "AAC"; // TagLib: "MPEG-4 Audio (mp4a)"
+        // "Something (xyz)": the bracketed codec is the useful part.
+        var open = raw.LastIndexOf('(');
+        var close = raw.LastIndexOf(')');
+        if (open >= 0 && close > open + 1) return raw.Substring(open + 1, close - open - 1).Trim().ToUpperInvariant();
+        return raw.Length <= 12 ? raw.ToUpperInvariant() : raw;
     }
 
     public async Task RunAsync()
     {
+        if (_started || _disposed) return;
+        _started = true;
+        // Read once: Dispose may dispose the source while this is still running.
+        var ct = _cts.Token;
+
         var ffmpeg = _converter.GetFfmpegPath();
         if (ffmpeg == null)
         {
-            Fail("ffmpeg is required for the spectrogram. Point Noctis at ffmpeg in Settings (ffmpeg path) and try again.");
+            Fail(Loc.T("Spectrogram.NeedsFfmpeg"));
             return;
         }
         if (string.IsNullOrWhiteSpace(_track.FilePath) || !File.Exists(_track.FilePath))
         {
-            Fail("The file could not be found on disk.");
+            Fail(Loc.T("Spectrogram.FileMissing"));
             return;
         }
 
@@ -84,36 +149,51 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
         {
             var progress = new Progress<double>(p =>
             {
+                if (ct.IsCancellationRequested || !IsBusy) return;
                 Progress = p * 100;
-                Status = p < 0.98 ? $"Decoding… {p * 100:0}%" : "Rendering…";
+                ProgressText = Loc.T("Spectrogram.AnalyzingPercent", Math.Floor(p * 100));
             });
-            var data = await Task.Run(() => SpectrogramRenderer.ComputeAsync(
-                ffmpeg, _track.FilePath, _track.SampleRate, _track.Duration, PlotWidth, progress, _cts.Token));
-            if (_cts.IsCancellationRequested) return;
+            var data = await Task.Run(() => _analyze(ffmpeg, _track, PlotWidth, progress, ct), ct);
+            ct.ThrowIfCancellationRequested();
 
-            var plot = await Task.Run(() => SpectrogramRenderer.Paint(data, PlotHeight), _cts.Token);
-            Image = Compose(data, plot);
-            Status = string.Empty;
+            // Decode done: the bar fills and says so while the plot is painted.
+            Progress = 100;
+            ProgressText = Loc.T("Spectrogram.Drawing");
+
+            // The painted plot is only drawn into the composed image, then released (it was
+            // never disposed, ~1.9 MB of native bitmap per open).
+            using var plot = await Task.Run(() => SpectrogramRenderer.Paint(data, PlotHeight), ct);
+            // Closed while painting: don't compose an image nobody will see or dispose.
+            ct.ThrowIfCancellationRequested();
+            var composed = Compose(data, plot);
+            if (ct.IsCancellationRequested || _disposed)
+            {
+                composed.Dispose();
+                return;
+            }
+            Image = composed;
             IsBusy = false;
+            IsReady = true;
         }
         catch (OperationCanceledException)
         {
-            // Window closed mid-analysis.
+            // Closed mid-analysis.
         }
         catch (Exception ex)
         {
-            Fail("Analysis failed: " + ex.Message);
+            if (!ct.IsCancellationRequested)
+                Fail(Loc.T("Spectrogram.Failed", ex.Message));
         }
     }
 
     private void Fail(string message)
     {
+        ErrorText = message;
         HasError = true;
         IsBusy = false;
-        Status = message;
     }
 
-    /// <summary>Total size of the composed image; the view sizes the card from it.</summary>
+    /// <summary>Total size of the composed image; the view sizes the plot frame from it.</summary>
     public static Size ComposedSize => new(LeftAxis + PlotWidth + RightScale, TopPad + PlotHeight + BottomAxis);
 
     private RenderTargetBitmap Compose(SpectrogramData data, WriteableBitmap plot)
@@ -193,17 +273,30 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
     private static string FormatTime(TimeSpan t)
         => t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"m\:ss");
 
+    /// <summary>Stops the analysis (kills ffmpeg through the token) without closing. The view
+    /// calls it as soon as a close starts, so nothing keeps decoding while the card animates out.</summary>
+    public void Cancel()
+    {
+        if (_disposed) return;
+        _cts.Cancel();
+    }
+
     [RelayCommand]
     private void Close()
     {
-        _cts.Cancel();
+        Cancel();
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _cts.Cancel();
         _cts.Dispose();
-        (Image as IDisposable)?.Dispose();
+        // Unhook from the view before freeing the bitmap it shows.
+        var image = Image;
+        Image = null;
+        (image as IDisposable)?.Dispose();
     }
 }

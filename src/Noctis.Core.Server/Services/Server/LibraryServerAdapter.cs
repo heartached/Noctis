@@ -127,8 +127,12 @@ public sealed class LibraryServerAdapter : IServerLibrary
         if (!string.IsNullOrWhiteSpace(name)) playlist.Name = name.Trim();
         foreach (var index in removeIndexes.Distinct().OrderByDescending(i => i))
             if (index >= 0 && index < playlist.TrackIds.Count) playlist.TrackIds.RemoveAt(index);
+        var now = DateTime.UtcNow;
         playlist.TrackIds.AddRange(add);
-        playlist.ModifiedAt = DateTime.UtcNow;
+        foreach (var trackId in add) playlist.TrackAddedAt[trackId] = now;
+        foreach (var gone in playlist.TrackAddedAt.Keys.Where(k => !playlist.TrackIds.Contains(k)).ToList())
+            playlist.TrackAddedAt.Remove(gone);
+        playlist.ModifiedAt = now;
         await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
         await NotifyPlaylists().ConfigureAwait(false);
         return true;

@@ -1,20 +1,31 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
+/// <summary>
+/// The playlist's description pop-up: the same design as <see cref="AlbumDescriptionDialog"/>
+/// (rounded pill pop-up, blurred app behind, cover + name + fact chips, one filled editor).
+/// Save closes it (the view model's DescriptionSaved); Cancel, Esc and Alt+F4 drop the edit.
+/// </summary>
 public partial class PlaylistDescriptionDialog : Window
 {
-    private bool _closing;
+    private PlaylistViewModel? _vm;
+    private bool _saved;
 
     public PlaylistDescriptionDialog()
     {
         InitializeComponent();
+        // Ctrl+Enter anywhere in the card saves (tunnel: never a new line; stopped by
+        // PillDialogHost while the close plays).
+        CardRoot.AddHandler(KeyDownEvent, OnCardKeyDown, RoutingStrategies.Tunnel);
+        DescriptionEditor.TextChanged += (_, _) => UpdateFooter();
     }
 
     public PlaylistDescriptionDialog(PlaylistViewModel vm) : this()
@@ -22,57 +33,101 @@ public partial class PlaylistDescriptionDialog : Window
         DataContext = vm;
     }
 
-    protected override void OnOpened(EventArgs e)
+    protected override void OnDataContextChanged(EventArgs e)
     {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the Create Playlist dialog).
-        Dispatcher.UIThread.Post(() =>
+        base.OnDataContextChanged(e);
+        if (_vm != null)
         {
-            DialogOverlay.Opacity = 1;
-            DescriptionCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
+            _vm.DescriptionSaved -= OnSaved;
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+        _vm = DataContext as PlaylistViewModel;
+        if (_vm != null)
+        {
+            _vm.DescriptionSaved += OnSaved;
+            _vm.PropertyChanged += OnViewModelPropertyChanged;
+        }
+        FactChips.ItemsSource = DescriptionDialogs.PlaylistChips(_vm);
+        UpdateFooter();
     }
 
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    private async Task CloseAnimatedAsync()
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DescriptionCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
+        switch (e.PropertyName)
+        {
+            case nameof(PlaylistViewModel.TrackCount):
+            case nameof(PlaylistViewModel.TotalDuration):
+            case nameof(PlaylistViewModel.TotalSize):
+                FactChips.ItemsSource = DescriptionDialogs.PlaylistChips(_vm);
+                break;
+            case nameof(PlaylistViewModel.PlaylistDescription):
+                UpdateFooter();
+                break;
+        }
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        // Before base.OnOpened: PillDialogHost reads ContentReady in the Opened event.
+        DialogHost.ContentReady = DescriptionDialogs.WhenImagesShown(
+            SingleCover, Collage1, Collage2, Collage3, Collage4, CustomCover);
+        base.OnOpened(e);
+        if (_vm?.IsDescriptionEditing == true)
+            Dispatcher.UIThread.Post(() => DescriptionDialogs.FocusAtEnd(DescriptionEditor), DispatcherPriority.Loaded);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_vm != null)
+        {
+            _vm.DescriptionSaved -= OnSaved;
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            // Closed without saving: drop the edit.
+            if (!_saved && !_vm.SaveDescriptionEditCommand.IsRunning)
+                _vm.CancelDescriptionEditCommand.Execute(null);
+        }
+        base.OnClosed(e);
+    }
+
+    private void OnSaved(object? sender, EventArgs e)
+    {
+        _saved = true;
         Close();
     }
 
-    private async void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void UpdateFooter()
     {
-        // async void: an escaped exception would crash the app.
-        try { await CloseAnimatedAsync(); }
-        catch { Close(); }
+        var text = DescriptionEditor.Text ?? string.Empty;
+        CountText.Text = DescriptionDialogs.FormatCount(text, removesOnSave: _vm?.HasDescription == true);
+        ClearButton.IsVisible = text.Length > 0;
     }
 
-    private async void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnClearClick(object? sender, RoutedEventArgs e)
     {
-        // Light-dismiss: a click on the dimmed backdrop closes the dialog — unless an
-        // edit is in progress with unsaved changes, which a stray click must not discard.
-        e.Handled = true;
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (DataContext is PlaylistViewModel vm &&
-            vm.IsDescriptionEditing && vm.HasDescriptionChanges) return;
-        // async void: an escaped exception would crash the app.
-        try { await CloseAnimatedAsync(); }
-        catch { Close(); }
+        DescriptionEditor.Clear();
+        DescriptionEditor.Focus();
     }
 
-    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnCancelClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnCardKeyDown(object? sender, KeyEventArgs e)
     {
+        if (!DescriptionDialogs.IsSaveGesture(e)) return;
         e.Handled = true;
+        var save = _vm?.SaveDescriptionEditCommand;
+        if (save?.CanExecute(null) == true) save.Execute(null);
     }
 
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        e.Handled = true;
+        // Esc closes like Cancel (the host animates it out); not while a save is in flight.
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
+        {
+            e.Handled = true;
+            if (_vm?.SaveDescriptionEditCommand.IsRunning != true) Close();
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     public static async Task ShowAsync(PlaylistViewModel vm)

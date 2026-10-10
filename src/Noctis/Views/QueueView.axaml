@@ -4,6 +4,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:helpers="using:Noctis.Helpers"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.QueueView"
              x:DataType="vm:QueueViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -65,17 +66,15 @@
                     Margin="0,0,0,24"
                     IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
-                    <Border Grid.Column="0"
-                            Width="16" Height="16"
-                            Margin="0,0,12,0"
-                            VerticalAlignment="Center"
-                            Opacity="0.6"
-                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                        <Border.OpacityMask>
-                            <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
-                        </Border.OpacityMask>
-                    </Border>
+                    <!-- Now-playing mark: the island's own filled play glyph as a vector (was
+                         a 512px Play ICON.png mask, soft at 16px). -->
+                    <PathIcon Grid.Column="0"
+                              Data="{StaticResource PlayIcon}"
+                              Width="14" Height="14"
+                              Margin="1,0,13,0"
+                              VerticalAlignment="Center"
+                              Opacity="0.6"
+                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Player.CurrentTrack.Title}"
@@ -94,7 +93,7 @@
                                            Opacity="0.9" />
                             </Border>
                         </Grid>
-                        <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
+                        <TextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay}"
                                    FontSize="12"
                                    Opacity="0.6"
                                    TextTrimming="CharacterEllipsis" />
@@ -182,10 +181,11 @@
                         ToolTip.Tip="{loc:T Queue.SaveCurrentQueueAsTip}"
                         IsVisible="{Binding !!UpNext.Count}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
-                        <PathIcon Data="{StaticResource PlaylistsIcon}"
-                                  Width="13" Height="13"
-                                  Opacity="0.6"
-                                  VerticalAlignment="Center" />
+                        <!-- Same glyph as the menus' "Add to Playlist" (a new playlist from the queue). -->
+                        <controls:LineIcon Data="{StaticResource MenuLinePlaylistAdd}"
+                                           Width="14" Height="14"
+                                           Opacity="0.6"
+                                           VerticalAlignment="Center" />
                         <TextBlock Text="{loc:T Queue.SaveAsPlaylist}"
                                    FontSize="12"
                                    Opacity="0.6"
@@ -194,21 +194,19 @@
                 </Button>
                 <Button Grid.Column="2"
                         Command="{Binding ClearQueueCommand}"
+                        AutomationProperties.Name="{loc:T Queue.Clear}"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="6,3"
                         Cursor="Hand"
                         IsVisible="{Binding !!UpNext.Count}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
-                        <Border Width="14" Height="14"
-                                VerticalAlignment="Center"
-                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                Opacity="0.6"
-                                RenderOptions.BitmapInterpolationMode="HighQuality">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis.UI/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
+                        <!-- Vector line icon (was the 512px Clear Queue ICON.png mask). Dynamic:
+                             IconsPages.axaml is merged at the app level. -->
+                        <controls:LineIcon Data="{DynamicResource PageLineQueueClear}"
+                                           Width="14" Height="14"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.6" />
                         <TextBlock Text="{loc:T Queue.Clear}"
                                    FontSize="12"
                                    Opacity="0.6"

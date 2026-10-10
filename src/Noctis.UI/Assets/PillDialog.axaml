@@ -1,0 +1,335 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Noctis.Controls">
+    <!--
+        "Rounded pill" pop-up design (owner 10-08: rounded pill design from their reference,
+        metadata window first). Loaded by PillDialogHost itself, so everything here is in
+        scope for whatever a host wraps; another pop-up can also include this file directly
+        to use the field/button classes without the host.
+
+        Opt-in classes (nothing here restyles a control that doesn't carry one):
+          TextBox / ComboBox / AutoCompleteBox .pill-field   filled pill input, accent ring on focus
+          TextBox.pill-area                                  the same, for multi-line boxes
+          Button.pill-primary                                solid accent fill
+          Button.pill-secondary                              quiet filled pill (Cancel)
+          Border.pill-popover                                a small card over the dialog (search pop-ups)
+    -->
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- The filled field tones (PillFieldBackground*) live app-wide in Styles.axaml
+                     and the theme overlays, shared with the Settings page's pill boxes. -->
+                <ResourceDictionary x:Key="Dark">
+                    <!-- 1px rim: brighter along the top edge, as light catching the card. -->
+                    <LinearGradientBrush x:Key="PillDialogRimBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#38FFFFFF" />
+                        <GradientStop Offset="0.25" Color="#14FFFFFF" />
+                        <GradientStop Offset="1" Color="#0AFFFFFF" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="PillDialogRimBrush" Color="#14000000" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Dim over the blurred app: light, the blur does most of the separating.
+                 Same strength as the plain overlay the other pop-ups use. -->
+            <SolidColorBrush x:Key="PillDialogScrimBrush" Color="#50000000" />
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- ── Host: blurred backdrop + dim, then the floating card ── -->
+    <Style Selector="controls|PillDialogHost">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+        <Setter Property="CornerRadius" Value="30" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <!-- Faded as one layer; PillDialogHost fills the image with the owner snapshot. -->
+                    <Panel x:Name="PART_BackdropLayer" IsHitTestVisible="False">
+                        <Image x:Name="PART_Backdrop"
+                               Stretch="Fill"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                        <Border Background="{DynamicResource PillDialogScrimBrush}" />
+                    </Panel>
+
+                    <Panel x:Name="PART_Card"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center">
+                        <!-- Fill + shadow on their own Border: a clipping Border would clip
+                             its own shadow too. -->
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                BoxShadow="0 24 64 0 #8C000000, 0 2 10 0 #40000000" />
+                        <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                ClipToBounds="True">
+                            <ContentPresenter x:Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Padding="{TemplateBinding Padding}" />
+                        </Border>
+                        <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                BorderThickness="1"
+                                BorderBrush="{DynamicResource PillDialogRimBrush}"
+                                IsHitTestVisible="False" />
+                    </Panel>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- ── Filled well: a panel in the fields' tone (lyrics previews, an empty artwork box).
+         A class rather than the brush key in the view, because the key only exists inside
+         a host (theme-coverage tests resolve view keys at app level). ── -->
+    <Style Selector="Border.pill-well">
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        <Setter Property="CornerRadius" Value="20" />
+    </Style>
+
+    <!-- ── Pop-over card: a search pop-up floating over the dialog (the editor's artwork and
+         animated artwork search). The dialog card's own fill and rim, a tighter radius for its
+         size, and a shadow that fits the flyout's padding (owner 10-08: same UI + animation
+         for search metadata). ── -->
+    <Style Selector="Border.pill-popover">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PillDialogRimBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="BoxShadow" Value="0 10 30 0 #90000000" />
+    </Style>
+
+    <!-- ── Filled pill text fields ── -->
+    <!-- The 1.5px border is always there (transparent at rest) so focus only recolours it
+         and nothing shifts by a pixel. -->
+    <Style Selector="TextBox.pill-field, TextBox.pill-area">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.pill-area">
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="Padding" Value="18,14" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+    <Style Selector="TextBox.pill-field /template/ Border#PART_BorderElement">
+        <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="TextBox.pill-area /template/ Border#PART_BorderElement">
+        <Setter Property="CornerRadius" Value="20" />
+    </Style>
+    <Style Selector="TextBox.pill-field /template/ Border#PART_BorderElement, TextBox.pill-area /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+    </Style>
+    <Style Selector="TextBox.pill-field:pointerover /template/ Border#PART_BorderElement, TextBox.pill-area:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+    </Style>
+    <Style Selector="TextBox.pill-field:focus /template/ Border#PART_BorderElement, TextBox.pill-area:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+    </Style>
+    <Style Selector="TextBox.pill-field:focus-within /template/ Border#PART_BorderElement, TextBox.pill-area:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+    </Style>
+    <!-- Greyed out when disabled (e.g. start/stop time whose checkbox is unticked); the
+         fill stays the resting tone instead of Fluent's disabled grey box. -->
+    <Style Selector="TextBox.pill-field:disabled, TextBox.pill-area:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="TextBox.pill-field:disabled /template/ Border#PART_BorderElement, TextBox.pill-area:disabled /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+    </Style>
+
+    <!-- AutoCompleteBox: the same look on its inner TextBox. -->
+    <Style Selector="AutoCompleteBox.pill-field">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="AutoCompleteBox.pill-field /template/ TextBox#PART_TextBox">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+    </Style>
+    <Style Selector="AutoCompleteBox.pill-field /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+    </Style>
+    <Style Selector="AutoCompleteBox.pill-field /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+    </Style>
+    <Style Selector="AutoCompleteBox.pill-field /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+    </Style>
+
+    <!-- ── Filled pill ComboBox ── -->
+    <Style Selector="ComboBox.pill-field">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="ComboBox.pill-field /template/ Border#Background">
+        <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="ComboBox.pill-field /template/ Border#HighlightBackground">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:pointerover /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:pressed /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:dropdownopen /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:focus-visible /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:disabled /template/ Border#Background">
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+    </Style>
+    <Style Selector="ComboBox.pill-field:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <!-- The drop-down list joins the rounded language too. -->
+    <Style Selector="ComboBox.pill-field /template/ Border#PopupBorder">
+        <Setter Property="CornerRadius" Value="18" />
+    </Style>
+    <!-- Its rows are inset, fully rounded pills (owner 10-08: the converter's Format / Quality
+         lists showed Fluent's square rows; "rounded pill just like the media kind"). This used
+         to live only in MetadataWindow.axaml, so every other pill-field ComboBox missed it. The
+         side margin plus Fluent's 4px list margin keeps each pill clear of the 18px rim.
+         Colours stay Fluent's, so the selected row reads in both themes. -->
+    <Style Selector="ComboBox.pill-field ComboBoxItem">
+        <Setter Property="Margin" Value="4,1" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="ComboBox.pill-field ComboBoxItem /template/ ContentPresenter">
+        <Setter Property="CornerRadius" Value="999" />
+    </Style>
+
+    <!-- ── Primary pill button: solid accent fill ── -->
+    <!-- Owner 10-08: "make sure the save button matches the accent color bro not gradient".
+         The fill is the accent itself (AccentColorBrush, DynamicResource so a new accent pick
+         repaints it), no sheen or gradient on top; the label stays AccentForegroundBrush
+         (black on pale accents such as the Dark theme's silver) and the border
+         AccentBorderBrush (visible only for a white accent on the Light theme). Hover/press
+         darken to AccentColorBrushDark1 like the Settings pop-ups' accent buttons, and the
+         app-wide Button:pressed scale(0.96) adds the press. Own template: just the fill and
+         the label, so Fluent's state chrome has nothing to paint over. -->
+    <Style Selector="Button.pill-primary">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="22,0" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="PillFill"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        ClipToBounds="True">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Background="Transparent"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.pill-primary:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+    </Style>
+    <Style Selector="Button.pill-primary:pressed">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+    </Style>
+    <!-- Fluent's hover/press/disabled states paint PART_ContentPresenter; keep it clear so
+         only the fill above shows. -->
+    <Style Selector="Button.pill-primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.pill-primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.pill-primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.pill-primary:disabled">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+
+    <!-- ── Secondary pill button: quiet fill, same tone as the fields ── -->
+    <Style Selector="Button.pill-secondary">
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="22,0" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.pill-secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="Button.pill-secondary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+</Styles>

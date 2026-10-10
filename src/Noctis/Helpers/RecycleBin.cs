@@ -95,8 +95,15 @@ public static class RecycleBin
             // for the drive); declining leaves the item and reports false.
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_WANTNUKEWARNING | FOF_SILENT | FOF_NOERRORUI,
         };
+        var started = Stopwatch.GetTimestamp();
         var result = SHFileOperation(ref op);
         declined = WasDeclined(result, op.fAnyOperationsAborted);
+        // A failure, or a call held open (the nuke-warning prompt waits for an answer), goes
+        // to the session log: Remove from Library stays greyed while a removal is in here.
+        var ms = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (result != 0 || op.fAnyOperationsAborted || ms > 1000)
+            Noctis.Services.DebugLog.Write("Library",
+                $"recycle result={result}, aborted={op.fAnyOperationsAborted}, ms={ms}, path={fullPath}");
         return result == 0 && !op.fAnyOperationsAborted;
     }
 

@@ -72,7 +72,7 @@ public static class MusicBrainzApi
         var names = arr.EnumerateArray()
             .Select(a => GetString(a, "name"))
             .Where(n => !string.IsNullOrWhiteSpace(n));
-        return string.Join(", ", names);
+        return string.Join(Noctis.Models.ArtistCredit.JoinText, names);
     }
 
     private static (string Album, int? Year) FirstRelease(JsonElement rec)

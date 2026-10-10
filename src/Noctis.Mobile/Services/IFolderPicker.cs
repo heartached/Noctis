@@ -9,4 +9,8 @@ namespace Noctis.Mobile.Services;
 public interface IFolderPicker
 {
     Task<string?> PickFolderAsync();
+
+    /// <summary>Whether the app can still read <paramref name="folder"/> (Android: its persisted
+    /// grant still exists). Picking the folder again restores a lost one.</summary>
+    bool HasAccess(string folder) => true;
 }

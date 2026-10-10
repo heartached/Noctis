@@ -97,6 +97,7 @@ public static class ArtistCredit
                 return;
             _separators = normalized;
             _splitRegex = BuildSplitRegex(normalized);
+            _displayRegex = null;
             _groupMode = mode;
             Interlocked.Increment(ref _version);
         }
@@ -135,6 +136,80 @@ public static class ArtistCredit
         if (separators.Contains(";")) return "; ";
         if (separators.Contains("/")) return " / ";
         return " " + separators[0] + " ";
+    }
+
+    /// <summary>
+    /// A credit as it is SHOWN: active symbol separators ("Rihanna; Drake", "A / B") read as
+    /// the join text ("Rihanna, Drake"); the tag itself is never rewritten. Word separators
+    /// ("feat.") stay as written, and a "/" with no space on either side is left alone so a
+    /// name like "AC/DC" keeps its slash. The result splits back into the same names, so a
+    /// click on the shown text still resolves per artist (ArtistCreditSpans). Discord (Luwi,
+    /// 2026-10-03): the semicolons looked technical in rows and tiles.
+    /// </summary>
+    public static string Display(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
+        Regex? regex;
+        string join;
+        lock (Gate)
+        {
+            regex = _displayRegex ??= BuildDisplayRegex(_separators);
+            join = JoinTextFor(_separators);
+        }
+        if (regex == null) return value;
+        return regex.Replace(value, m =>
+        {
+            // Untouched when the match is already the join ("A, B") or a tight slash ("AC/DC").
+            if (m.Value == join) return m.Value;
+            if (m.Value == "/") return m.Value;
+            return join;
+        }).Trim();
+    }
+
+    private static Regex? _displayRegex;
+
+    /// <summary>
+    /// Splits a credit into the separate values written back to a file's artist tag: on the
+    /// active SYMBOL separators only, with the same rule as <see cref="Display"/> (a tight
+    /// "/" stays inside a name like "AC/DC"). Word separators are not split: "A feat. B" is
+    /// one credit as tagged and must stay one frame for other players. GitHub #117: this used
+    /// to split on a hard-coded "," and ";", so saving "Earth, Wind &amp; Fire" wrote two
+    /// performers even with "," removed from the separators.
+    /// </summary>
+    public static string[] SplitForTag(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Array.Empty<string>();
+
+        Regex? regex;
+        lock (Gate) regex = _displayRegex ??= BuildDisplayRegex(_separators);
+
+        var parts = new List<string>();
+        var start = 0;
+        if (regex != null)
+        {
+            foreach (Match m in regex.Matches(value))
+            {
+                if (m.Value == "/") continue;
+                parts.Add(value[start..m.Index]);
+                start = m.Index + m.Length;
+            }
+        }
+        parts.Add(value[start..]);
+
+        return parts
+            .Select(v => v.Trim())
+            .Where(v => v.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static Regex? BuildDisplayRegex(IReadOnlyList<string> separators)
+    {
+        var symbols = separators.Where(s => !char.IsLetterOrDigit(s[0]) && !char.IsLetterOrDigit(s[^1])).ToArray();
+        if (symbols.Length == 0) return null;
+        var alternation = string.Join("|", symbols.OrderByDescending(s => s.Length).Select(Regex.Escape));
+        return new Regex(@"\s*(?:" + alternation + @")\s*", RegexOptions.CultureInvariant | RegexOptions.Compiled);
     }
 
     /// <summary>Splits a credit into its distinct trimmed names using the active separators.</summary>

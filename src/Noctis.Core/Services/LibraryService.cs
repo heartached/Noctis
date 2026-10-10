@@ -27,8 +27,19 @@ public class LibraryService : ILibraryService
     private readonly ISqliteLibraryIndexService _sqliteIndex;
     private readonly IAuditTrailService _auditTrail;
 
+    // The whole scanned set — persisted, rescanned and journaled as before. Hidden folders
+    // only narrow what Tracks/Albums/Artists/GetTrackById publish (VisibleTracks).
     private List<Track> _tracks = new();
     private List<Album> _albums = new();
+
+    // AppSettings.HiddenLibraryFolders, loaded in LoadAsync and replaced (never mutated) by
+    // SetFolderHiddenAsync, so a reader always sees one consistent array.
+    private string[] _hiddenFolders = Array.Empty<string>();
+
+    // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
+    // from (both are swapped, never edited in place), so Tracks costs one filter per change.
+    private sealed record VisibleSnapshot(List<Track> Source, string[] Hidden, List<Track> Visible);
+    private volatile VisibleSnapshot? _visible;
     private List<Artist> _artists = new();
 
     // Lookup tables for fast ID resolution
@@ -65,7 +76,9 @@ public class LibraryService : ILibraryService
     // serializes its own calls. Imports (ImportFilesAsync) take it too.
     private readonly SemaphoreSlim _scanGate = new(1, 1);
 
-    public IReadOnlyList<Track> Tracks => _tracks;
+    public IReadOnlyList<Track> Tracks => VisibleTracks(_tracks);
+    public IReadOnlyList<Track> AllTracks => _tracks;
+    public IReadOnlyList<string> HiddenFolders => _hiddenFolders;
     public IReadOnlyList<Album> Albums => _albums;
     public IReadOnlyList<Artist> Artists => _artists;
 
@@ -191,8 +204,10 @@ public class LibraryService : ILibraryService
         // Developer Mode: names each new/changed file right before TagLib opens it (#97).
         var tagOpen = new CappedBreadcrumb("Scan", "tags: open");
 
-        // Snapshot the current track index for read-only access during parallel scan
-        var trackIndexSnapshot = _trackIndex;
+        // Snapshot the current track index for read-only access during parallel scan.
+        // Hidden folders included: matched against the visible index only, their files
+        // came back as new tracks with no favorite or play count.
+        var trackIndexSnapshot = AllTrackIndex();
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -713,6 +728,10 @@ public class LibraryService : ILibraryService
     // in-flight pass so rapid on/off flips can't interleave writes.
     private readonly object _mergeFeatApplyLock = new();
     private CancellationTokenSource? _mergeFeatApplyCts;
+
+    // Serializes artist-join re-read passes (startup + each separator edit): a queued pass
+    // starts from the join the previous one recorded, so none re-reads against a stale one.
+    private readonly SemaphoreSlim _artistJoinGate = new(1, 1);
 
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
@@ -1355,6 +1374,66 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// <paramref name="all"/> minus the tracks under a hidden folder; the same list when
+    /// nothing is hidden. Cached per (list, hidden set) — see <see cref="_visible"/>.
+    /// </summary>
+    private List<Track> VisibleTracks(List<Track> all)
+    {
+        var hidden = _hiddenFolders;
+        if (hidden.Length == 0) return all;
+        var cached = _visible;
+        if (cached != null && ReferenceEquals(cached.Source, all) && ReferenceEquals(cached.Hidden, hidden))
+            return cached.Visible;
+        var visible = all.Where(t => !FolderPathMatch.IsInOrSameAsAny(t.FilePath, hidden)).ToList();
+        _visible = new VisibleSnapshot(all, hidden, visible);
+        return visible;
+    }
+
+    public async Task SetFolderHiddenAsync(string folderPath, bool hidden)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath)) return;
+
+        var current = _hiddenFolders;
+        var isHidden = current.Any(f => FolderPathMatch.IsSame(f, folderPath));
+        if (isHidden == hidden) return;
+
+        var updated = hidden
+            ? current.Append(folderPath).ToArray()
+            : current.Where(f => !FolderPathMatch.IsSame(f, folderPath)).ToArray();
+        _hiddenFolders = updated;
+        DebugLog.Write("Library", $"folder {(hidden ? "hidden" : "shown")}: {folderPath} ({updated.Length} hidden)");
+
+        // Load-modify-save like ExcludeFilePathsAndCleanFoldersAsync: SettingsViewModel
+        // re-bases on the file before each save and never writes this key, so it survives.
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            settings.HiddenLibraryFolders = updated.ToList();
+            await _persistence.SaveSettingsAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Saving hidden folders failed: {ex.Message}");
+        }
+
+        await RebuildIndexesAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Every known track by id, hidden folders included — what a scan or a file move must
+    /// match against. <see cref="_trackIndex"/> covers the visible tracks only, so it IS
+    /// the full index whenever nothing is hidden.
+    /// </summary>
+    private Dictionary<Guid, Track> AllTrackIndex()
+    {
+        if (_hiddenFolders.Length == 0) return _trackIndex;
+        var all = new Dictionary<Guid, Track>(_tracks.Count);
+        foreach (var t in _tracks) all.TryAdd(t.Id, t);
+        return all;
+    }
+
     public Track? GetTrackById(Guid id)
     {
         _trackIndex.TryGetValue(id, out var track);
@@ -1582,12 +1661,13 @@ public class LibraryService : ILibraryService
         if (moves == null || moves.Count == 0) return remap;
 
         var changed = false;
+        var known = AllTrackIndex(); // a move inside a hidden folder is still a move
         foreach (var (oldPath, newPath) in moves)
         {
             if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
 
             var oldId = ComputeFileId(oldPath);
-            if (!_trackIndex.TryGetValue(oldId, out var track)) continue;
+            if (!known.TryGetValue(oldId, out var track)) continue;
 
             track.FilePath = newPath;
             try
@@ -1731,6 +1811,10 @@ public class LibraryService : ILibraryService
     /// persisted settings, so tests await it before restoring them. Internal for tests.</summary>
     internal Task BackgroundInit { get; private set; } = Task.CompletedTask;
 
+    /// <summary>The v11 label pass (<see cref="RunLabelBackfillAsync"/>), started at the end of
+    /// <see cref="BackgroundInit"/> when it is pending. Internal for tests.</summary>
+    internal Task LabelBackfill { get; private set; } = Task.CompletedTask;
+
     public async Task LoadAsync()
     {
         // Startup calls this from the UI thread. The persistence layer awaits without
@@ -1741,6 +1825,10 @@ public class LibraryService : ILibraryService
         // read, parse, journal overlay and index-cache parse all run on the pool and
         // only the LibraryUpdated fan-out below returns to the UI thread.
         var tracks = await Task.Run(() => _persistence.LoadLibraryAsync());
+
+        // Before any index is built or restored: they cover the visible tracks only.
+        await Task.Run(LoadHiddenFoldersAsync);
+
         if (tracks != null && tracks.Count > 0)
         {
             _tracks = tracks;
@@ -1774,12 +1862,22 @@ public class LibraryService : ILibraryService
                         LibraryUpdated?.Invoke(this, EventArgs.Empty);
                     }
 
+                    // GitHub #117: credits stored with a join the separators no longer
+                    // split (", " with "," removed) are re-read once. A no-op while the
+                    // recorded join matches the active one.
+                    await ApplyArtistCreditJoinAsync();
+
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
                     // any interruption or unreadable file left an album artless for
                     // good — rescans skip unchanged files by mtime and never retry.
                     // Cheap when every album already has art (one probe per album).
                     await BackfillMissingArtworkAsync(_shutdownCts.Token);
+
+                    // Last and on its own task: the v11 label pass can take many minutes on a
+                    // hard disk and nothing above should wait for it.
+                    if (_labelBackfillPending)
+                        LabelBackfill = Task.Run(RunLabelBackfillAsync);
                 }
                 catch (Exception ex)
                 {
@@ -1810,6 +1908,21 @@ public class LibraryService : ILibraryService
                 DebugLog.Write("Library", $"SQLite index init failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[LibraryService] SQLite index init failed: {ex.Message}");
             }
+        }
+    }
+
+    private async Task LoadHiddenFoldersAsync()
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            _hiddenFolders = settings.HiddenLibraryFolders
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .ToArray();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Loading hidden folders failed: {ex.Message}");
         }
     }
 
@@ -2110,7 +2223,9 @@ public class LibraryService : ILibraryService
 
     private async Task RebuildIndexesCoreAsync(bool persistCache)
     {
-        var tracks = _tracks;
+        // Albums, artists and the id lookup are built from the visible tracks only, so a
+        // hidden folder's songs vanish from every view that reads them.
+        var tracks = VisibleTracks(_tracks);
         var persistence = _persistence;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
@@ -2382,10 +2497,10 @@ public class LibraryService : ILibraryService
         if (settings.MetadataSchemaVersion < 10)
             didBackfillMetadata |= await BackfillTrackArtworkAsync(_tracks);
 
-        // v11: the record label (Track.Label, the phone album page's footer) is read by the
-        // scan now. A rescan skips unchanged files, so existing libraries would never get it.
-        if (settings.MetadataSchemaVersion < 11)
-            didBackfillMetadata |= await BackfillLabelAsync(_tracks);
+        // v11 (the record label) is not run here: it opens most of the library, so it runs
+        // last, on its own, resumably — see RunLabelBackfillAsync. Owner 10-08: inline, it
+        // held the cover heal and the artist-join pass behind a pass that never finished.
+        _labelBackfillPending = settings.MetadataSchemaVersion < LabelSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -2393,15 +2508,23 @@ public class LibraryService : ILibraryService
         if (_shutdownCts.IsCancellationRequested)
             return didBackfillMetadata;
 
-        settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
-
-        try
+        // Everything up to the label pass is done; that pass stamps v11 itself once it ends.
+        var stamp = _labelBackfillPending ? LabelSchemaVersion - 1 : CurrentMetadataSchemaVersion;
+        if (settings.MetadataSchemaVersion < stamp)
         {
-            await _persistence.SaveSettingsAsync(settings);
-        }
-        catch
-        {
-            // Non-fatal: explicit backfill still applies for this session.
+            try
+            {
+                // Re-load rather than save the snapshot taken before the backfills: they can
+                // run for minutes, and writing that snapshot back reverted every setting saved
+                // meanwhile (a removed track's exclusion — the next scan re-imported it).
+                var fresh = await _persistence.LoadSettingsAsync();
+                fresh.MetadataSchemaVersion = Math.Max(fresh.MetadataSchemaVersion, stamp);
+                await _persistence.SaveSettingsAsync(fresh);
+            }
+            catch
+            {
+                // Non-fatal: explicit backfill still applies for this session.
+            }
         }
 
         if (didBackfillMetadata)
@@ -2698,57 +2821,236 @@ public class LibraryService : ILibraryService
         return changedCount > 0;
     }
 
+    // The schema version the label pass stamps once it has checked every file.
+    private const int LabelSchemaVersion = 11;
+    // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the pass last.
+    private bool _labelBackfillPending;
+    // A progress line in the session log every this many files.
+    private const int LabelBackfillLogInterval = 250;
+
+    /// <summary>
+    /// Pause between files in the label pass, so a foreground read queued behind it (playback,
+    /// the metadata window, lyrics) gets the disk instead of waiting out a long run of reads.
+    /// Internal for tests.
+    /// </summary>
+    internal static TimeSpan LabelBackfillPause = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>
+    /// The label pass's resume log in the data folder, append-only so a checkpoint is one short
+    /// write and a hard kill loses at most the line being written:
+    /// <c>L\t{track id}\t{label}\t$</c> for each label found, <c>C\t{path}\t$</c> for the last
+    /// file checked (files are walked in ordinal path order). Text fields are URI-escaped,
+    /// which also escapes '\t' and '$'; a line without its closing '$' was torn and is ignored.
+    /// Deleted once the pass completes.
+    /// </summary>
+    private string LabelBackfillProgressPath => Path.Combine(_persistence.DataDirectory, "label-backfill.progress");
+
     /// <summary>
     /// One-time v11 migration: the record label for tracks indexed before it was read. Local
-    /// files are re-read in place (like <see cref="BackfillReleaseDateAndCopyrightAsync"/>).
+    /// files are re-read in place, but only for the label (<see cref="IMetadataService.ReadLabel"/>),
+    /// one file at a time with a pause between them, on its own background task after the rest
+    /// of startup. Owner 10-08: v11 label backfill kept the music HDD busy at 50–75 MB/s every
+    /// launch and never finished — a full tag + cover read of nearly every file (most files
+    /// simply have no label) in parallel, which seek-thrashed the disk and queued every other
+    /// read behind it, and was all-or-nothing, so quitting started it over from zero next
+    /// launch. Progress now survives a restart (<see cref="LabelBackfillProgressPath"/>): a file
+    /// that turned out to have no label counts as checked too and is never read again.
     /// The phone's files live behind Android's document tree (content://), which only a scan
     /// through its file source can open, so those are marked instead: clearing the stored
     /// modification stamp makes the next scan treat them as changed and re-read them once,
     /// keeping their user state like any re-tagged file. Streamed desktop songs and tracks
-    /// that already have a label are left alone.
+    /// that already have a label are left alone. Stamps v11 only once every file is checked.
     /// </summary>
-    private async Task<bool> BackfillLabelAsync(List<Track> tracks)
+    private async Task RunLabelBackfillAsync()
     {
-        var unlabelled = tracks.Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)).ToList();
-        if (unlabelled.Count == 0) return false;
-
-        var changedCount = 0;
-        foreach (var track in unlabelled.Where(t => t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)))
+        var token = _shutdownCts.Token;
+        var progressPath = LabelBackfillProgressPath;
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var snapshot = _tracks;
+        StreamWriter? progress = null;
+        try
         {
-            track.LastModified = default;
-            changedCount++;
-        }
+            var byId = new Dictionary<Guid, Track>(snapshot.Count);
+            foreach (var t in snapshot) byId.TryAdd(t.Id, t);
 
-        var local = unlabelled.Where(t => File.Exists(t.FilePath)).ToList();
-        if (local.Count > 0)
-        {
-            await Task.Run(() =>
+            // Labels found by an interrupted pass, and where it stopped.
+            var found = new Dictionary<Guid, string>();
+            string? resumeAfter = null;
+            try
             {
-                Parallel.ForEach(
-                    local,
-                    new ParallelOptions
+                if (File.Exists(progressPath))
+                {
+                    foreach (var line in File.ReadLines(progressPath))
                     {
-                        MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
-                        CancellationToken = _shutdownCts.Token
-                    },
-                    track =>
+                        var parts = line.Split('\t');
+                        if (parts[^1] != "$") continue;
+                        if (parts.Length == 3 && parts[0] == "C")
+                            resumeAfter = Uri.UnescapeDataString(parts[1]);
+                        else if (parts.Length == 4 && parts[0] == "L" && Guid.TryParse(parts[1], out var id))
+                            found[id] = Uri.UnescapeDataString(parts[2]);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Unreadable log: start over — a re-read is only slower, never wrong.
+                DebugLog.Write("Library", $"label backfill: progress file unreadable, starting over: {ex.Message}");
+                found.Clear();
+                resumeAfter = null;
+            }
+
+            var resumed = 0;
+            foreach (var (id, label) in found)
+            {
+                if (byId.TryGetValue(id, out var t) && string.IsNullOrWhiteSpace(t.Label))
+                {
+                    t.Label = label;
+                    resumed++;
+                }
+            }
+
+            var pending = snapshot
+                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
+                            && !t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase)
+                            && (resumeAfter == null || string.CompareOrdinal(t.FilePath, resumeAfter) > 0))
+                .OrderBy(t => t.FilePath, StringComparer.Ordinal)
+                .ToList();
+
+            DebugLog.Write("Library",
+                $"label backfill: start — {pending.Count:N0} file(s) to check" +
+                (resumeAfter != null ? $", resumed ({found.Count:N0} label(s) from the last run, {resumed:N0} applied)" : ""));
+
+            try
+            {
+                progress = new StreamWriter(new FileStream(progressPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+                { AutoFlush = true, NewLine = "\n" };
+            }
+            catch (Exception ex)
+            {
+                // No resume log (read-only profile): the pass still runs, it just can't resume.
+                DebugLog.Write("Library", $"label backfill: progress file unavailable: {ex.Message}");
+            }
+
+            var checkedCount = 0;
+            var labelled = 0;
+            string? lastChecked = null;
+            try
+            {
+                foreach (var track in pending)
+                {
+                    if (token.IsCancellationRequested) break;
+
+                    if (File.Exists(track.FilePath))
                     {
-                        try
+                        var label = _metadata.ReadLabel(track.FilePath);
+                        if (!string.IsNullOrWhiteSpace(label))
                         {
-                            var label = _metadata.ReadTrackMetadata(track.FilePath)?.Label;
-                            if (string.IsNullOrWhiteSpace(label)) return;
                             track.Label = label;
-                            Interlocked.Increment(ref changedCount);
+                            found[track.Id] = label;
+                            labelled++;
+                            WriteProgress("L", track.Id.ToString(), label);
                         }
-                        catch
-                        {
-                            // Non-fatal: skip tracks that can't be read.
-                        }
-                    });
-            });
+                    }
+
+                    checkedCount++;
+                    lastChecked = track.FilePath;
+                    if (checkedCount % LabelBackfillLogInterval == 0)
+                    {
+                        WriteProgress("C", lastChecked);
+                        DebugLog.Write("Library",
+                            $"label backfill: {checkedCount:N0}/{pending.Count:N0} checked, {labelled:N0} label(s) found");
+                    }
+
+                    try { await Task.Delay(LabelBackfillPause, token); }
+                    catch (OperationCanceledException) { break; }
+                }
+
+                if (token.IsCancellationRequested)
+                {
+                    // Labels already found are in the log (written as found); the next launch
+                    // re-applies them and continues after the last file checked.
+                    if (lastChecked != null)
+                        WriteProgress("C", lastChecked);
+                    DebugLog.Write("Library",
+                        $"label backfill: cancelled at shutdown after {checkedCount:N0}/{pending.Count:N0} " +
+                        $"({labelled:N0} label(s) found); resumes next launch");
+                    return;
+                }
+            }
+            finally
+            {
+                progress?.Dispose();
+            }
+
+            // A scan during the pass may have swapped in fresh Track instances; put every label
+            // found on the live ones before saving.
+            foreach (var t in _tracks)
+            {
+                if (string.IsNullOrWhiteSpace(t.Label) && found.TryGetValue(t.Id, out var label))
+                    t.Label = label;
+            }
+
+            var phone = _tracks
+                .Where(t => string.IsNullOrWhiteSpace(t.Label) && !string.IsNullOrWhiteSpace(t.FilePath)
+                            && t.FilePath.StartsWith("content://", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var t in phone) t.LastModified = default;
+
+            if (found.Count > 0 || phone.Count > 0)
+            {
+                await SaveAsync();
+                if (phone.Count > 0)
+                {
+                    try { await _sqliteIndex.UpsertTracksAsync(phone); }
+                    catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+                }
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+
+            try
+            {
+                var fresh = await _persistence.LoadSettingsAsync();
+                if (fresh.MetadataSchemaVersion < LabelSchemaVersion)
+                {
+                    fresh.MetadataSchemaVersion = LabelSchemaVersion;
+                    await _persistence.SaveSettingsAsync(fresh);
+                }
+                File.Delete(progressPath);
+            }
+            catch (Exception ex)
+            {
+                // Next launch repeats the pass from the log; already-labelled tracks are skipped.
+                DebugLog.Write("Library", $"label backfill: could not record completion: {ex.Message}");
+            }
+
+            DebugLog.Write("Library",
+                $"label backfill: done — {checkedCount:N0} file(s) checked, {labelled:N0} label(s) found" +
+                (resumed > 0 ? $" (+{resumed:N0} from the last run)" : "") +
+                (phone.Count > 0 ? $", {phone.Count:N0} phone track(s) marked for re-scan" : "") +
+                $", {System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds:0.0} s");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"label backfill failed: {ex.Message}");
         }
 
-        return changedCount > 0;
+        // Appends one log line. After a failed write nothing more is logged: a later cursor
+        // line must never skip past a label that didn't make it to the file.
+        void WriteProgress(string kind, string field, string? label = null)
+        {
+            if (progress == null) return;
+            try
+            {
+                progress.WriteLine(label == null
+                    ? $"{kind}\t{Uri.EscapeDataString(field)}\t$"
+                    : $"{kind}\t{field}\t{Uri.EscapeDataString(label)}\t$");
+            }
+            catch
+            {
+                try { progress.Dispose(); } catch { }
+                progress = null;
+            }
+        }
     }
 
     /// <summary>
@@ -2916,6 +3218,155 @@ public class LibraryService : ILibraryService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _artistJoinGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+
+        try
+        {
+            AppSettings settings;
+            try { settings = await _persistence.LoadSettingsAsync(); }
+            catch { return 0; }
+
+            var join = ArtistCredit.JoinText;
+            if (string.Equals(settings.ArtistCreditJoin, join, StringComparison.Ordinal))
+                return 0;
+
+            // Any join an earlier build or an interrupted pass could have stored, not just the
+            // recorded one: a pass cut short by shutdown leaves some tracks on its join. A
+            // false positive ("Earth, Wind & Fire" as one tag value) costs one tag re-read
+            // that restores the same credit.
+            var stale = new[] { settings.ArtistCreditJoin, ", ", "; ", " / " }
+                .Where(j => !string.IsNullOrEmpty(j) && !string.Equals(j, join, StringComparison.Ordinal))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            bool HasStaleJoin(string? value) =>
+                !string.IsNullOrEmpty(value) && stale.Any(j => value.Contains(j, StringComparison.Ordinal));
+
+            var snapshot = _tracks.ToList();
+            var changed = new List<Track>();
+            var movedTracks = new List<(Guid TrackId, Guid From, Guid To)>();
+
+            // Same shape as the merge-featured un-merge pass: only Artist / AlbumArtist are
+            // taken from the re-read, so favorites, play counts, ratings and lyrics stay.
+            // Server-backed sources have no readable file; their next sync rebuilds them.
+            await Task.Run(() =>
+            {
+                var candidates = snapshot
+                    .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
+                                (HasStaleJoin(t.Artist) || HasStaleJoin(t.AlbumArtist)))
+                    .ToList();
+                if (candidates.Count == 0) return;
+
+                try
+                {
+                    Parallel.ForEach(
+                        candidates,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                            CancellationToken = token
+                        },
+                        track =>
+                        {
+                            try
+                            {
+                                var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                if (refreshed == null) return;
+                                var artistChanged = !string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal);
+                                var albumArtistChanged = !string.Equals(refreshed.AlbumArtist, track.AlbumArtist, StringComparison.Ordinal);
+                                if (!artistChanged && !albumArtistChanged) return;
+
+                                lock (changed)
+                                {
+                                    if (artistChanged)
+                                        track.Artist = refreshed.Artist;
+                                    if (albumArtistChanged)
+                                    {
+                                        var oldAlbumId = track.AlbumId;
+                                        track.AlbumArtist = refreshed.AlbumArtist;
+                                        track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);
+                                        if (track.AlbumId != oldAlbumId)
+                                            movedTracks.Add((track.Id, oldAlbumId, track.AlbumId));
+                                    }
+                                    changed.Add(track);
+                                }
+                            }
+                            catch
+                            {
+                                // Non-fatal: keep the stored credit for unreadable files.
+                            }
+                        });
+                }
+                catch (OperationCanceledException) { }
+            }, CancellationToken.None);
+
+            // The album artist is part of the album's key: carry its cached cover (and the
+            // animated ones) over, as the metadata editor does when an edit re-keys an album.
+            // Copied, not moved — tracks of the album that kept the old key still use it.
+            // Runs even when cancelled: the re-keyed tracks are no longer candidates.
+            foreach (var (trackId, from, to) in movedTracks)
+            {
+                if (to == Track.UnknownAlbumBucketId) continue;
+                CopyIfMissing(_persistence.GetArtworkPath(from), _persistence.GetArtworkPath(to));
+                foreach (var ext in new[] { ".mp4", ".webm" })
+                {
+                    CopyIfMissing(_persistence.GetAnimatedCoverPath(from, null, ext), _persistence.GetAnimatedCoverPath(to, null, ext));
+                    CopyIfMissing(_persistence.GetAnimatedCoverPath(from, trackId, ext), _persistence.GetAnimatedCoverPath(to, trackId, ext));
+                }
+            }
+
+            // Superseded by shutdown: skip persistence like the merge-featured pass; the
+            // exit flush saves the JSON, and the join stays unrecorded so the next start
+            // finishes the pass.
+            if (token.IsCancellationRequested)
+                return changed.Count;
+
+            if (changed.Count > 0)
+            {
+                await RebuildIndexesAsync();
+                await SaveAsync();
+                try { await _sqliteIndex.UpsertTracksAsync(changed); }
+                catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+
+            try
+            {
+                var fresh = await _persistence.LoadSettingsAsync();
+                fresh.ArtistCreditJoin = join;
+                await _persistence.SaveSettingsAsync(fresh);
+            }
+            catch
+            {
+                // Non-fatal: the next start repeats the (idempotent) pass.
+            }
+
+            return changed.Count;
+        }
+        finally
+        {
+            _artistJoinGate.Release();
+        }
+
+        static void CopyIfMissing(string from, string to)
+        {
+            try
+            {
+                if (File.Exists(from) && !File.Exists(to))
+                    File.Copy(from, to);
+            }
+            catch
+            {
+                // Non-fatal: the missing-artwork heal re-extracts the cover.
+            }
+        }
+    }
+
     private static int EstimateBitrateKbps(long fileSizeBytes, TimeSpan duration)
     {
         if (fileSizeBytes <= 0 || duration.TotalSeconds <= 0)
@@ -3078,7 +3529,10 @@ public class LibraryService : ILibraryService
         try
         {
             var cache = await _persistence.LoadIndexCacheAsync();
-            if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != _tracks.Count)
+            // The cache holds the visible set it was built from (RebuildIndexesCoreAsync), so
+            // validating against today's visible set also catches a changed hidden list.
+            var tracks = VisibleTracks(_tracks);
+            if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != tracks.Count)
                 return false;
 
             // The artist list is only valid for the grouping it was built under; a
@@ -3094,7 +3548,6 @@ public class LibraryService : ILibraryService
             // successful, non-stale rebuild. Track.AlbumArtworkPath is a plain property
             // (no change notification) and nothing reads these indexes until LoadAsync
             // raises LibraryUpdated, so the off-thread writes are safe.
-            var tracks = _tracks;
             List<Album>? newAlbums = null;
             Dictionary<Guid, Track>? newTrackIndex = null;
             Dictionary<Guid, Album>? newAlbumIndex = null;

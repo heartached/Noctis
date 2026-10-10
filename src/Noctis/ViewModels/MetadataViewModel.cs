@@ -401,7 +401,7 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false, AutoMatchCoordinator? autoMatch = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false, Services.MetadataSearch.IMetadataSearchService? metadataSearch = null)
     {
         _track = track;
         _metadata = metadata;
@@ -410,7 +410,9 @@ public partial class MetadataViewModel : ViewModelBase
         _animatedCovers = animatedCovers;
         _itunes = itunes;
         _lrcLib = lrcLib;
-        _autoMatch = autoMatch;
+        // Null-safe: until the search engine is registered (or in a build without it) the
+        // panel shows "Search unavailable" instead of the old silent no-op.
+        _metadataSearch = metadataSearch ?? App.Services?.GetService<Services.MetadataSearch.IMetadataSearchService>();
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
         _multiSelect = multiSelect;
@@ -424,67 +426,68 @@ public partial class MetadataViewModel : ViewModelBase
         FullFilePath = _track.FilePath;
         FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
         Copyright = _track.Copyright;
-        LoadAnimatedCover();
+        // The animated cover, the lyric sidecars and the rename-preview conflict checks all
+        // probe the track's folder; InitializeAsync does them off the UI thread (owner 10-08:
+        // metadata window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag
+        // reads before showing). The ctor only copies in-memory Track state.
+        SeedArtworkFromLibrary();
+        // Seeded, or multi-select (never shows a cover): the window has its cover already.
+        if (_multiSelect || ArtworkPreview != null) _coverShown.TrySetResult();
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
-
-        if (_multiSelect)
-            RebuildRenamePreview();
 
         CaptureLoadedTagSignatures();
         CaptureChangeBaseline();
     }
 
     /// <summary>
+    /// True from construction until <see cref="InitializeAsync"/> has applied the
+    /// file-backed state (sidecar lyrics, advanced tags, artwork, animated cover, File
+    /// tab), on success or failure. The window is shown while this is true, so Save is
+    /// disabled: it would otherwise write lyrics/advanced state that was never loaded.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isLoading = true;
+
+    // Fields the user edited after the window opened but before InitializeAsync landed;
+    // non-null only while the loaded values are being applied. Those fields keep the edit
+    // instead of being overwritten under the user's cursor.
+    private HashSet<string>? _editedWhileLoading;
+
+    private bool KeepsEdit(string name) => _editedWhileLoading?.Contains(name) == true;
+
+    /// <summary>
     /// Loads everything that opens or decodes files — two TagLib parses (file info,
-    /// advanced tags) and the cached-cover read + decode — off the UI thread. Awaited
-    /// before the window is shown so artwork and tag fields are already populated on
-    /// open; the ctor only sets in-memory state. Every file read inside is individually
-    /// guarded (ReadFileInfo catches internally, the rest are try/catch'd here), so
-    /// this never throws into the open path.
+    /// advanced tags), the cached-cover read + decode, the .lrc/.txt lyric sidecars, the
+    /// animated-cover probe and the rename-preview conflict checks — off the UI thread.
+    /// Started right before the window is shown, not awaited first (owner 10-08: metadata
+    /// window froze 230–880 ms on lyric sidecar reads and waited 1–2 s for tag reads
+    /// before showing), so the window opens with the in-memory Track fields and the
+    /// file-backed ones fill in when this lands. Every file read inside is individually
+    /// guarded, and <see cref="IsLoading"/> always ends false, even if something throws.
     /// </summary>
     public async Task InitializeAsync()
     {
-        var (info, artwork, artworkSize, advanced) = await Task.Run(() =>
+        IsLoading = true;
+        // What the window shows as the load starts (after AddUserEqPresets has respelled the
+        // preset). Anything that differs when the load lands was typed by the user meanwhile.
+        CaptureChangeBaseline();
+        HashSet<string>? edited = null;
+        string? loadedCustomTagsBaseline = null;
+        var trackSynced = _track.SyncedLyrics;
+        var trackPlain = _track.Lyrics;
+        var renamePattern = RenamePattern;
+        // The cover first, in its own task (owner 10-08: cover shows late in the metadata
+        // window). It comes from the app's cover cache, but it used to wait behind the TagLib
+        // parse of the audio file below, which takes 1–2 s on a busy or cold hard disk.
+        var cover = Task.Run(LoadCachedCover);
+        // Task.Run never throws synchronously: a failing read faults `load`, and the finally
+        // below still ends IsLoading.
+        var load = Task.Run(() =>
         {
             var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
-
-            // Multi-select can span albums; don't show one album's art as if shared.
-            Bitmap? artworkBitmap = null;
-            Avalonia.PixelSize? artworkSize = null;
-            if (!_multiSelect)
-            {
-                var artPath = DisplayedArtworkPath();
-
-                // The persisted cache file is the source of truth for "does this album
-                // have a cover in Noctis." If the user removed it, cachedData is null
-                // on purpose. We must not silently fall back to extracting from the
-                // audio file's embedded tag here — every track in the album still has
-                // its own embedded copy, and WriteAlbumArt() during Remove can fail
-                // silently for any one of them (file locked, AV, etc.), causing the
-                // removed cover to come right back. Library scans/imports handle
-                // initial extraction-to-cache; the dialog must not re-do that work.
-                byte[]? cachedData = null;
-                if (File.Exists(artPath))
-                {
-                    try { cachedData = File.ReadAllBytes(artPath); } catch { }
-                }
-
-                if (cachedData != null && cachedData.Length > 0)
-                {
-                    try
-                    {
-                        // Decode at display size — the preview renders at ~240px; a
-                        // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
-                        using var ms = new MemoryStream(cachedData);
-                        artworkBitmap = Bitmap.DecodeToWidth(ms, 512);
-                        // The chip reports the real cover, not this 512-wide preview.
-                        artworkSize = SkiaArtworkDecoder.ReadPixelSize(cachedData);
-                    }
-                    catch { }
-                }
-            }
 
             AdvancedTagIO.AdvancedFields? advancedFields = null;
             if (!_albumScoped)
@@ -493,20 +496,245 @@ public partial class MetadataViewModel : ViewModelBase
                 catch { /* Non-fatal — advanced fields are best-effort */ }
             }
 
-            return (fileInfo, artworkBitmap, artworkSize, advancedFields);
+            // The album/multi-select dialog shows no lyrics and saves none: skip the reads.
+            var lrc = ReadLyricSidecar(_track.FilePath, ".lrc", !_albumScoped && string.IsNullOrWhiteSpace(trackSynced));
+            var txt = ReadLyricSidecar(_track.FilePath, ".txt", !_albumScoped && string.IsNullOrWhiteSpace(trackPlain));
+
+            string? animated = null;
+            try { animated = _animatedCovers.Resolve(_track); }
+            catch { /* best effort, like the other probes */ }
+
+            List<RenamePreview>? renamePreviews = null;
+            if (_multiSelect)
+            {
+                try { renamePreviews = BuildRenamePreviews(renamePattern); }
+                catch { }
+            }
+
+            return (fileInfo, advancedFields, lrc, txt, animated, renamePreviews);
         });
+        var coverApplied = false;
+        try
+        {
+            // The cover lands as soon as it is decoded, usually long before the tag read.
+            // Both are applied here, one after the other, never from two threads at once.
+            if (await Task.WhenAny(cover, load) == cover)
+            {
+                ApplyLoadedCover(await cover);
+                coverApplied = true;
+            }
+            var loaded = await load;
 
-        ApplyFileInfo(info);
-        ApplyArtwork(artwork, artworkSize);
-        ShowsOwnTrackArtwork = artwork != null && !_albumScoped && !_multiSelect
-            && File.Exists(_persistence.GetTrackArtworkPath(_track.Id));
-        if (advanced != null)
-            ApplyAdvancedFields(advanced);
+            edited = TrackedFields.Select(f => f.Name)
+                .Where(name => !Equals(ReadTracked(name), _changeBaseline.GetValueOrDefault(name)))
+                .ToHashSet();
+            var customTagsEdited = CustomTagsSignature() != _customTagsBaseline;
+            _editedWhileLoading = edited;
 
-        // The advanced tags and artwork above are the last loaded state; anything the
-        // user types from here on is a change worth showing in the rail and footer.
-        CaptureChangeBaseline();
+            ApplyFileInfo(loaded.fileInfo);
+            if (loaded.advancedFields != null)
+            {
+                ApplyAdvancedFields(loaded.advancedFields, mergeCustomTags: customTagsEdited);
+                if (customTagsEdited)
+                    loadedCustomTagsBaseline = CustomTagsSignature(
+                        loaded.advancedFields.CustomTags.Select(kv => (kv.Key, kv.Value)));
+            }
+
+            var (synced, plain) = ResolveLyrics(trackSynced, loaded.lrc.Text, trackPlain, loaded.txt.Text);
+            ApplyLyrics(synced, plain, loaded.lrc.Unreadable, loaded.txt.Unreadable);
+
+            // A cover the user picked or removed while this was in flight wins.
+            if (_newAnimatedCoverSource == null && !_animatedCoverRemoved)
+            {
+                AnimatedCoverPath = loaded.animated;
+                HasAnimatedCover = !string.IsNullOrEmpty(AnimatedCoverPath);
+            }
+
+            // A pattern typed meanwhile already rebuilt the preview for itself.
+            if (loaded.renamePreviews != null && RenamePattern == renamePattern)
+            {
+                RenamePreviews.Clear();
+                foreach (var p in loaded.renamePreviews) RenamePreviews.Add(p);
+            }
+        }
+        finally
+        {
+            _editedWhileLoading = null;
+            // Slower than the tag read, or the tag read failed: the cover still lands.
+            // LoadCachedCover never throws.
+            if (!coverApplied) ApplyLoadedCover(await cover);
+            // The loaded state is the baseline; a field the user typed into before it landed
+            // keeps its pre-load baseline, so the edit still counts in the footer.
+            CaptureChangeBaseline(keep: edited);
+            if (loadedCustomTagsBaseline != null)
+            {
+                _customTagsBaseline = loadedCustomTagsBaseline;
+                RecomputeChanges();
+            }
+            IsLoading = false;
+        }
     }
+
+    /// <summary>
+    /// Reads a lyric sidecar beside the audio file, only when the Track field it backs is
+    /// empty (<paramref name="needed"/>). <c>Unreadable</c> reports a read that THREW, which
+    /// Save treats as "never delete this sidecar".
+    /// </summary>
+    private static (string? Text, bool Unreadable) ReadLyricSidecar(string audioPath, string extension, bool needed)
+    {
+        if (!needed) return (null, false);
+        try
+        {
+            var path = Path.ChangeExtension(audioPath, extension);
+            return (File.Exists(path) ? File.ReadAllText(path) : null, false);
+        }
+        catch
+        {
+            return (null, true);
+        }
+    }
+
+    // ── Cover at open (owner 10-08: cover shows late in the metadata window) ────────
+    // The window opens at once with the library's own decoded thumbnail of this cover when
+    // there is one (no I/O); LoadCachedCover then decodes the cached cover file at 512 px in
+    // its own task and replaces it, without waiting on the audio file's tag reads.
+
+    /// <summary>What <see cref="LoadCachedCover"/> read: the 512-wide preview, the cover's real
+    /// size, and whether it is this track's own cover rather than its album's.</summary>
+    private readonly record struct LoadedCover(Bitmap? Bitmap, Avalonia.PixelSize? Size, bool OwnArtwork);
+
+    /// <summary>The library's thumbnail the preview is showing, borrowed from
+    /// <see cref="ArtworkCache"/>: the grid draws the same bitmap, so this editor releases it
+    /// (<see cref="DisposePreview"/>) and never disposes it.</summary>
+    private Bitmap? _sharedPreview;
+    private bool _sharedPreviewHeld;
+
+    private readonly TaskCompletionSource _coverShown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// Completes once the editor shows the cover it opens with: at construction when the
+    /// library's thumbnail was seeded (or for multi-select, which shows none), otherwise when
+    /// <see cref="LoadCachedCover"/> has landed (a cover, or none). The window's
+    /// <c>PillDialogHost</c> holds its fade-in on this (owner 10-08: with no thumbnail to seed
+    /// from, the card faded in over an empty cover well, then the 85–145 ms decode popped in).
+    /// </summary>
+    internal Task CoverShown => _coverShown.Task;
+
+    /// <summary>Reads and decodes the cached cover file. Runs on a pool thread; never throws.</summary>
+    private LoadedCover LoadCachedCover()
+    {
+        // Multi-select can span albums; don't show one album's art as if shared.
+        if (_multiSelect) return default;
+        try
+        {
+            var artPath = DisplayedArtworkPath();
+
+            // The persisted cache file is the source of truth for "does this album
+            // have a cover in Noctis." If the user removed it, cachedData is null
+            // on purpose. We must not silently fall back to extracting from the
+            // audio file's embedded tag here — every track in the album still has
+            // its own embedded copy, and WriteAlbumArt() during Remove can fail
+            // silently for any one of them (file locked, AV, etc.), causing the
+            // removed cover to come right back. Library scans/imports handle
+            // initial extraction-to-cache; the dialog must not re-do that work.
+            byte[]? cachedData = null;
+            if (File.Exists(artPath))
+            {
+                try { cachedData = File.ReadAllBytes(artPath); } catch { }
+            }
+            if (cachedData == null || cachedData.Length == 0) return default;
+
+            // Decode at display size — the preview renders at ~240px; a
+            // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
+            using var ms = new MemoryStream(cachedData);
+            var bitmap = Bitmap.DecodeToWidth(ms, 512);
+            // The chip reports the real cover, not this 512-wide preview.
+            var size = SkiaArtworkDecoder.ReadPixelSize(cachedData);
+            // DisplayedArtworkPath picks the track's own cover only when it exists.
+            var own = !_albumScoped && artPath == _persistence.GetTrackArtworkPath(_track.Id);
+            return new LoadedCover(bitmap, size, own);
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    /// <summary>Shows the cover <see cref="LoadCachedCover"/> read. A cover the user picked or
+    /// removed while it loaded wins; no cover file means no cover, even over a seeded thumbnail.</summary>
+    private void ApplyLoadedCover(LoadedCover cover)
+    {
+        try
+        {
+            if (_newArtworkData != null || _artworkRemoved)
+            {
+                cover.Bitmap?.Dispose();
+                return;
+            }
+            var old = ArtworkPreview;
+            ShowsOwnTrackArtwork = cover.Bitmap != null && cover.OwnArtwork;
+            _artworkSourceSize = cover.Size;
+            ArtworkPreview = cover.Bitmap;
+            HasArtwork = cover.Bitmap != null;
+            if (!ReferenceEquals(old, cover.Bitmap)) DisposePreview(old);
+        }
+        finally
+        {
+            _coverShown.TrySetResult();
+        }
+    }
+
+    /// <summary>
+    /// Shows the library's already-decoded thumbnail of this cover, if <see cref="ArtworkCache"/>
+    /// holds one, so the window opens with its cover instead of a placeholder. Memory only:
+    /// <see cref="Track.AlbumArtworkPath"/> is the path the library views draw for this track
+    /// (its own cover, or its album's); the album editor shows the album's. Not a change:
+    /// the change count reads the staged artwork, not the preview.
+    /// </summary>
+    private void SeedArtworkFromLibrary()
+    {
+        if (_multiSelect) return;
+        var path = _albumScoped ? _persistence.GetArtworkPath(_track.AlbumId) : _track.AlbumArtworkPath;
+        if (string.IsNullOrEmpty(path)) return;
+        // TryGetAnyWidth skips the requested bucket itself, so ask for that first.
+        var bmp = ArtworkCache.TryGet(path, 512) ?? ArtworkCache.TryGetAnyWidth(path, 512);
+        if (bmp == null) return;
+        // Held while shown, so an eviction from the cache can't dispose it under the window.
+        ArtworkCache.Acquire(bmp);
+        _sharedPreview = bmp;
+        _sharedPreviewHeld = true;
+        ShowsOwnTrackArtwork = !_albumScoped && path == _persistence.GetTrackArtworkPath(_track.Id);
+        ArtworkPreview = bmp;
+        HasArtwork = true;
+    }
+
+    /// <summary>Frees a preview this editor no longer shows: the borrowed library thumbnail
+    /// goes back to the cache (which disposes it once nothing else draws it), anything else
+    /// this editor decoded is disposed.</summary>
+    private void DisposePreview(Bitmap? bitmap)
+    {
+        if (bitmap == null) return;
+        if (ReferenceEquals(bitmap, _sharedPreview))
+        {
+            ReleaseSharedPreview();
+            return;
+        }
+        bitmap.Dispose();
+    }
+
+    private void ReleaseSharedPreview()
+    {
+        if (!_sharedPreviewHeld) return;
+        _sharedPreviewHeld = false;
+        ArtworkCache.Release(_sharedPreview);
+    }
+
+    /// <summary>The cover's real size: the decoded source's, or the bitmap's own when it was
+    /// decoded full size. Unknown (null) while the borrowed thumbnail stands in — its size is
+    /// a grid decode width, not the cover's.</summary>
+    private Avalonia.PixelSize? ShownArtworkSize => ArtworkPreview is { } bmp
+        ? _artworkSourceSize ?? (ReferenceEquals(bmp, _sharedPreview) ? null : bmp.PixelSize)
+        : null;
 
     // ── Change tracking (rail dots + footer summary) ─────────────────────────
     // A snapshot of every editable field is taken once the dialog is fully loaded;
@@ -590,10 +818,12 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    private void CaptureChangeBaseline()
+    /// <param name="keep">Fields whose existing baseline stays (edited before the load landed).</param>
+    private void CaptureChangeBaseline(IReadOnlySet<string>? keep = null)
     {
         foreach (var (name, _) in TrackedFields)
-            _changeBaseline[name] = ReadTracked(name);
+            if (keep == null || !keep.Contains(name) || !_changeBaseline.ContainsKey(name))
+                _changeBaseline[name] = ReadTracked(name);
         _customTagsBaseline = CustomTagsSignature();
         if (!_customTagsHooked)
         {
@@ -611,8 +841,10 @@ public partial class MetadataViewModel : ViewModelBase
 
     private object? ReadTracked(string name) => GetType().GetProperty(name)!.GetValue(this);
 
-    private string CustomTagsSignature() =>
-        string.Join("", CustomTags.Select(t => t.Key + "" + t.Value));
+    private string CustomTagsSignature() => CustomTagsSignature(CustomTags.Select(t => (t.Key, t.Value)));
+
+    private static string CustomTagsSignature(IEnumerable<(string Key, string Value)> tags) =>
+        string.Join("", tags.Select(t => t.Key + "" + t.Value));
 
     private void OnCustomTagsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -643,6 +875,8 @@ public partial class MetadataViewModel : ViewModelBase
                 perSection[(int)section]++;
         }
         if (_resetPlayCountPending) perSection[(int)MetadataSection.Details]++;
+        // Per-track values staged by a Find online apply (album editor): one change per track.
+        perSection[(int)MetadataSection.Details] += _stagedTrackChanges.Count;
         if (CustomTagsSignature() != _customTagsBaseline) perSection[(int)MetadataSection.Advanced]++;
         if (_newArtworkData != null || _artworkRemoved) perSection[(int)MetadataSection.Artwork]++;
         if (_newAnimatedCoverSource != null || _animatedCoverRemoved) perSection[(int)MetadataSection.AnimatedArtwork]++;
@@ -733,158 +967,8 @@ public partial class MetadataViewModel : ViewModelBase
         t.Rating, t.IsDisliked,
         t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty);
 
-    // ── Search metadata (tag lookup → before/after review) ──────────────────
-    // One button matches the track (or every track of an album) via
-    // AutoMatchCoordinator, then shows a per-field "old → new" review. Applying
-    // ticked rows writes into the live edit fields; nothing persists until Save.
-    private readonly AutoMatchCoordinator? _autoMatch;
-
-    [ObservableProperty] private bool _isSearchingMetadata;
-    [ObservableProperty] private bool _isSearchMetadataOpen;
-    [ObservableProperty] private string _searchMetadataStatus = string.Empty;
-
-    /// <summary>Reviewable field changes from the last search (one row per differing field).</summary>
-    public ObservableCollection<MetadataChangeRow> MetadataChanges { get; } = new();
-
-    // Album-scoped per-track matches, staged until the user applies + saves.
-    private readonly Dictionary<Track, TagSuggestion> _albumMatches = new();
-    private bool _albumPerTrackApproved;
-
-    public bool HasSearchMetadataStatus => !string.IsNullOrWhiteSpace(SearchMetadataStatus);
-
-    /// <summary>The standalone status line hides while the review panel is open (the panel shows the status as its subtitle).</summary>
-    public bool ShowSearchMetadataStatusRow => HasSearchMetadataStatus && !IsSearchMetadataOpen;
-
-    partial void OnSearchMetadataStatusChanged(string value)
-    {
-        OnPropertyChanged(nameof(HasSearchMetadataStatus));
-        OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
-    }
-
-    partial void OnIsSearchMetadataOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
-
-    /// <summary>Search button shows for single tracks and whole albums, but not arbitrary multi-select.</summary>
-    public bool ShowSearchMetadata => !_multiSelect;
-
-    [RelayCommand]
-    private async Task SearchMetadata()
-    {
-        if (_autoMatch == null) { SearchMetadataStatus = "Search metadata unavailable."; return; }
-        if (IsSearchingMetadata) return;
-
-        IsSearchingMetadata = true;
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = "Searching";
-        MetadataChanges.Clear();
-        _albumMatches.Clear();
-        _albumPerTrackApproved = false;
-
-        try
-        {
-            if (_albumScoped && _albumTracks is { Count: > 0 })
-                await SearchAlbumMetadataAsync();
-            else
-                await SearchSingleTrackMetadataAsync();
-        }
-        catch (Exception ex)
-        {
-            SearchMetadataStatus = $"Search failed: {ex.Message}";
-        }
-        finally
-        {
-            IsSearchingMetadata = false;
-        }
-    }
-
-    private async Task SearchSingleTrackMetadataAsync()
-    {
-        var hit = await _autoMatch!.MatchAsync(_track);
-        if (hit is null) { SearchMetadataStatus = "No metadata found online for this track."; return; }
-
-        AddRow("title", Title, hit.Title, v => Title = v);
-        AddRow("artist", Artist, hit.Artist, v => Artist = v);
-        AddRow("album", Album, hit.Album, v => Album = v);
-        AddRow("album artist", AlbumArtist, hit.AlbumArtist, v => AlbumArtist = v);
-        AddRow("year", Year, hit.Year?.ToString(), v => Year = v);
-        AddRow("genre", Genre, hit.Genre, v => Genre = v);
-        AddRow("track #", TrackNumber, hit.TrackNumber?.ToString(), v => TrackNumber = v);
-        AddRow("track count", TrackCount, hit.TrackCount?.ToString(), v => TrackCount = v);
-        AddRow("disc #", DiscNumber, hit.DiscNumber?.ToString(), v => DiscNumber = v);
-        AddRow("bpm", Bpm, hit.Bpm?.ToString(), v => Bpm = v);
-        AddRow("isrc", Isrc, hit.Isrc, v => Isrc = v);
-
-        if (MetadataChanges.Count > 0)
-        {
-            IsSearchMetadataOpen = true;
-            SearchMetadataStatus = MetadataChanges.Count == 1
-                ? "Found 1 change — untick anything you don't want."
-                : $"Found {MetadataChanges.Count} changes — untick anything you don't want.";
-        }
-        else
-        {
-            // A match was found, but every field already agrees with it.
-            SearchMetadataStatus = "Tags already match the online data — nothing to update.";
-        }
-    }
-
-    private async Task SearchAlbumMetadataAsync()
-    {
-        TagSuggestion? representative = null;
-        int matched = 0;
-
-        // Match each track individually so per-track titles/numbers are correct.
-        foreach (var t in _albumTracks!)
-        {
-            var hit = await _autoMatch!.MatchAsync(t);
-            if (hit is null) continue;
-            _albumMatches[t] = hit;
-            representative ??= hit;
-            matched++;
-        }
-
-        if (matched == 0) { SearchMetadataStatus = "No metadata found online for this album."; return; }
-
-        // Shared (album-wide) fields are reviewed as rows and fanned out on Save.
-        AddRow("album", Album, representative!.Album, v => Album = v);
-        AddRow("album artist", AlbumArtist, representative.AlbumArtist, v => AlbumArtist = v);
-        AddRow("year", Year, representative.Year?.ToString(), v => Year = v);
-        AddRow("genre", Genre, representative.Genre, v => Genre = v);
-
-        var sharedCount = MetadataChanges.Count;
-        IsSearchMetadataOpen = true;
-        SearchMetadataStatus =
-            $"Matched {matched} of {_albumTracks!.Count} tracks. " +
-            (sharedCount > 0 ? "Review album fields below." : "Apply to update per-track titles & numbers.");
-    }
-
-    private void AddRow(string field, string? oldValue, string? newValue, Action<string> setter)
-    {
-        var row = MetadataChangeRow.TryCreate(field, oldValue, newValue, () => setter(newValue!.Trim()));
-        if (row != null) MetadataChanges.Add(row);
-    }
-
-    [RelayCommand]
-    private void ApplySearchMetadata()
-    {
-        foreach (var row in MetadataChanges)
-            row.ApplyIfChecked();
-
-        // Album per-track matches are applied to each Track during Save.
-        _albumPerTrackApproved = _albumScoped;
-
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = "Applied. Click Save to keep.";
-    }
-
-    [RelayCommand]
-    private void CloseSearchMetadata()
-    {
-        IsSearchMetadataOpen = false;
-        SearchMetadataStatus = string.Empty;
-        MetadataChanges.Clear();
-        _albumMatches.Clear();
-        _albumPerTrackApproved = false;
-    }
+    // ── Search metadata ── lives in MetadataViewModel.Search.cs (owner 10-08: Search
+    // metadata revamp): the Find online panel, its field mapping, apply and undo.
 
     // Opens the Spotify-style share card for the current lyrics (plain, else synced
     // with timestamps stripped). Reuses the existing LyricShareDialog.
@@ -1018,7 +1102,7 @@ public partial class MetadataViewModel : ViewModelBase
     public bool ShowMixedHint => _albumTracks is { Count: > 1 };
 
     /// <summary>"3000 × 3000" chip on the Artwork tab; empty while there is no cover.</summary>
-    public string ArtworkDimensions => ArtworkPreview is { } bmp && (_artworkSourceSize ?? bmp.PixelSize) is var s
+    public string ArtworkDimensions => ShownArtworkSize is { } s
         ? $"{s.Width} × {s.Height}"
         : string.Empty;
 
@@ -1054,18 +1138,30 @@ public partial class MetadataViewModel : ViewModelBase
     private void RebuildRenamePreview()
     {
         RenamePreviews.Clear();
-        if (!_multiSelect || _albumTracks == null) return;
+        foreach (var preview in BuildRenamePreviews(RenamePattern))
+            RenamePreviews.Add(preview);
+    }
+
+    /// <summary>
+    /// The first rows of the rename preview. Touches the disk (a File.Exists per row for
+    /// the conflict flag), so the initial build runs in InitializeAsync's background load.
+    /// </summary>
+    private List<RenamePreview> BuildRenamePreviews(string pattern)
+    {
+        var previews = new List<RenamePreview>();
+        if (!_multiSelect || _albumTracks == null) return previews;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in _albumTracks.Take(8))
         {
-            var newPath = ComputeRenamedPath(t, out var conflict, seen);
-            RenamePreviews.Add(new RenamePreview
+            var newPath = ComputeRenamedPath(t, out var conflict, seen, pattern);
+            previews.Add(new RenamePreview
             {
                 OriginalName = Path.GetFileName(t.FilePath),
                 NewName = newPath != null ? Path.GetFileName(newPath) : "(empty pattern)",
                 Conflict = conflict,
             });
         }
+        return previews;
     }
 
     private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null,
@@ -1155,33 +1251,77 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Writes each track's staged per-track match (title, track #, disc #, bpm) onto that Track,
-    /// so the album Save loop persists them. Only runs when the user applied a "Search metadata"
-    /// album result. Shared fields (album/artist/year/genre) are handled by ApplyAlbumScopedDetails.
-    /// </summary>
-    private void ApplyAlbumPerTrackMatches()
-    {
-        if (!_albumPerTrackApproved || _albumMatches.Count == 0) return;
-
-        foreach (var (t, hit) in _albumMatches)
-        {
-            if (!string.IsNullOrWhiteSpace(hit.Title)) t.Title = hit.Title;
-            if (hit.TrackNumber is > 0) t.TrackNumber = hit.TrackNumber.Value;
-            if (hit.DiscNumber is > 0) t.DiscNumber = hit.DiscNumber.Value;
-            if (hit.Bpm is > 0) t.Bpm = hit.Bpm.Value;
-        }
-    }
-
     private readonly ITunesArtworkService? _itunes;
     private readonly ILrcLibService? _lrcLib;
     [ObservableProperty] private bool _isSearchingSyncedLyrics;
     [ObservableProperty] private string _syncedLyricsSearchStatus = string.Empty;
 
-    private void LoadAnimatedCover()
+    /// <summary>
+    /// Picks what the Plain and Timestamp tabs show from the Track fields and the sidecar
+    /// texts (null = not read / absent). A sidecar only fills a Track field that is empty.
+    /// Plain must NEVER contain timestamps; if a legacy track stored synced text in Lyrics,
+    /// it moves to synced and plain is derived from it.
+    /// </summary>
+    private static (string Synced, string Plain) ResolveLyrics(string? trackSynced, string? lrcText, string? trackPlain, string? txtText)
     {
-        AnimatedCoverPath = _animatedCovers.Resolve(_track);
-        HasAnimatedCover = !string.IsNullOrEmpty(AnimatedCoverPath);
+        var syncedFromTrack = string.IsNullOrWhiteSpace(trackSynced) && lrcText != null ? lrcText : trackSynced;
+        var plainFromTrack = string.IsNullOrWhiteSpace(trackPlain) && txtText != null ? txtText : trackPlain;
+
+        // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
+        // and derive plain from it.
+        if (LyricsTextHelper.ContainsTimestamps(plainFromTrack))
+        {
+            if (string.IsNullOrWhiteSpace(syncedFromTrack))
+                syncedFromTrack = plainFromTrack;
+            plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
+        }
+
+        // Synced lyrics must actually contain timestamps. Some legacy/sidecar data
+        // can put plain text into SyncedLyrics or .lrc; keep that out of the synced tab.
+        if (!LyricsTextHelper.ContainsTimestamps(syncedFromTrack))
+        {
+            if (string.IsNullOrWhiteSpace(plainFromTrack))
+                plainFromTrack = syncedFromTrack;
+            syncedFromTrack = string.Empty;
+        }
+
+        return (syncedFromTrack ?? string.Empty, plainFromTrack ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Sets the lyric fields and what Save compares them against. A sidecar we failed to
+    /// READ must never be deleted on save. Previously any transient failure (file locked,
+    /// AV scan, permission blip, network share hiccup) left the field empty, and the save
+    /// path read that emptiness as "the user cleared the lyrics" and hard-deleted a
+    /// hand-timed .lrc the app cannot regenerate — triggered by something as innocuous as
+    /// fixing a typo in the Year.
+    /// Called again when InitializeAsync lands: a lyric field the user already edited while
+    /// the load was in flight (KeepsEdit) stays as typed, while the loaded text still becomes
+    /// the "loaded" reference, so Save sees the edit as a change against what is on disk.
+    /// Only the edited field is kept: switching Custom Lyrics on before the .txt arrived
+    /// must still show (and on Save keep) that .txt, not save an empty tab that trashes it.
+    /// </summary>
+    private void ApplyLyrics(string synced, string plain, bool syncedUnreadable, bool plainUnreadable)
+    {
+        _syncedSidecarUnreadable = syncedUnreadable;
+        _plainSidecarUnreadable = plainUnreadable;
+
+        var keepSynced = KeepsEdit(nameof(SyncedLyrics));
+        if (!keepSynced)
+        {
+            SyncedLyrics = synced;
+            // "Remove" on a synced tab that was still empty removed nothing; the loaded .lrc
+            // is not the user's to have removed.
+            _syncedLyricsRemovedByUser = false;
+        }
+        if (!KeepsEdit(nameof(Lyrics))) Lyrics = plain;
+        // A Custom Lyrics switch the user flipped stays flipped (on: the loaded text shows
+        // in the now-enabled box; off: the lyrics are being removed on purpose).
+        if (!KeepsEdit(nameof(HasCustomLyrics))) HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
+        if (!KeepsEdit(nameof(HasCustomSyncedLyrics))) HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
+        _loadedSyncedLyrics = synced;
+        _loadedPlainLyrics = plain;
+        if (!keepSynced) RebuildSyncedLinesFromText();
     }
 
     private void LoadFromTrack()
@@ -1221,71 +1361,14 @@ public partial class MetadataViewModel : ViewModelBase
         IsDisliked = _track.IsDisliked;
 
         // Lyrics — synced from Track.SyncedLyrics or .lrc sidecar; plain from Track.Lyrics or .txt sidecar.
-        // Plain tab must NEVER contain timestamps; if a legacy track stored synced text in Lyrics, strip it.
-        // A sidecar we failed to READ must never be deleted on save. Previously any
-        // transient failure here (file locked, AV scan, permission blip, network share
-        // hiccup) left the field empty, and the save path read that emptiness as "the
-        // user cleared the lyrics" and hard-deleted a hand-timed .lrc the app cannot
-        // regenerate — triggered by something as innocuous as fixing a typo in the Year.
-        _syncedSidecarUnreadable = false;
-        _plainSidecarUnreadable = false;
-
-        var syncedFromTrack = _track.SyncedLyrics;
-        if (string.IsNullOrWhiteSpace(syncedFromTrack))
-        {
-            try
-            {
-                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-                if (File.Exists(lrcPath))
-                    syncedFromTrack = File.ReadAllText(lrcPath);
-            }
-            catch
-            {
-                _syncedSidecarUnreadable = true;
-            }
-        }
-
-        var plainFromTrack = _track.Lyrics;
-        if (string.IsNullOrWhiteSpace(plainFromTrack))
-        {
-            try
-            {
-                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-                if (File.Exists(txtPath))
-                    plainFromTrack = File.ReadAllText(txtPath);
-            }
-            catch
-            {
-                _plainSidecarUnreadable = true;
-            }
-        }
-
-        // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
-        // and derive plain from it.
-        if (LyricsTextHelper.ContainsTimestamps(plainFromTrack))
-        {
-            if (string.IsNullOrWhiteSpace(syncedFromTrack))
-                syncedFromTrack = plainFromTrack;
-            plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
-        }
-
-        // Synced lyrics must actually contain timestamps. Some legacy/sidecar data
-        // can put plain text into SyncedLyrics or .lrc; keep that out of the synced tab.
-        if (!LyricsTextHelper.ContainsTimestamps(syncedFromTrack))
-        {
-            if (string.IsNullOrWhiteSpace(plainFromTrack))
-                plainFromTrack = syncedFromTrack;
-            syncedFromTrack = string.Empty;
-        }
-
-        SyncedLyrics = syncedFromTrack ?? string.Empty;
-        Lyrics = plainFromTrack ?? string.Empty;
-        HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
-        HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
-        _loadedSyncedLyrics = SyncedLyrics;
-        _loadedPlainLyrics = Lyrics;
-        _syncedLyricsRemovedByUser = false;
-        RebuildSyncedLinesFromText();
+        // Only the in-memory Track fields here: the sidecars sit next to the audio (often on a
+        // spinning disk) and InitializeAsync reads them off the UI thread. Until it has, a
+        // sidecar this dialog would consult counts as unreadable, so nothing can trash one it
+        // never saw (Save is disabled while loading anyway; this holds even if load fails).
+        var (synced, plain) = ResolveLyrics(_track.SyncedLyrics, null, _track.Lyrics, null);
+        ApplyLyrics(synced, plain,
+            syncedUnreadable: string.IsNullOrWhiteSpace(_track.SyncedLyrics),
+            plainUnreadable: string.IsNullOrWhiteSpace(_track.Lyrics));
 
         // Options
         SkipWhenShuffling = _track.SkipWhenShuffling;
@@ -1300,12 +1383,12 @@ public partial class MetadataViewModel : ViewModelBase
         MediaKind = string.IsNullOrEmpty(_track.MediaKind) ? "Music" : _track.MediaKind;
         HasStartTime = _track.StartTimeMs > 0;
         StartTime = _track.StartTimeMs > 0
-            ? TimeSpan.FromMilliseconds(_track.StartTimeMs).ToString(@"m\:ss\.fff")
+            ? FormatTime(TimeSpan.FromMilliseconds(_track.StartTimeMs))
             : "0:00.000";
         HasStopTime = _track.StopTimeMs > 0;
         StopTime = _track.StopTimeMs > 0
-            ? TimeSpan.FromMilliseconds(_track.StopTimeMs).ToString(@"m\:ss\.fff")
-            : _track.Duration.ToString(@"m\:ss\.fff");
+            ? FormatTime(TimeSpan.FromMilliseconds(_track.StopTimeMs))
+            : FormatTime(_track.Duration);
         VolumeAdjust = _track.VolumeAdjust;
         SelectedEqPreset = string.IsNullOrEmpty(_track.EqPreset) ? "None" : _track.EqPreset;
     }
@@ -1343,16 +1426,6 @@ public partial class MetadataViewModel : ViewModelBase
         return lower.Contains("alac") || lower.Contains("apple lossless")
             ? "ALAC"
             : normalized;
-    }
-
-    private void ApplyArtwork(Bitmap? artwork, Avalonia.PixelSize? sourceSize)
-    {
-        if (artwork == null) return;
-        // Don't clobber an artwork add/remove the user made while the load was in flight.
-        if (_newArtworkData != null || _artworkRemoved) return;
-        _artworkSourceSize = sourceSize;
-        ArtworkPreview = artwork;
-        HasArtwork = true;
     }
 
     private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
@@ -1402,7 +1475,7 @@ public partial class MetadataViewModel : ViewModelBase
             _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
             ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
-            oldArt?.Dispose();
+            DisposePreview(oldArt);
             HasArtwork = true;
         }
         catch { }
@@ -1572,7 +1645,7 @@ public partial class MetadataViewModel : ViewModelBase
             _artworkSourceSize = null; // decoded full size: the bitmap IS the source size
             ShowsOwnTrackArtwork = false; // a picked cover applies album-wide
             ArtworkPreview = new Bitmap(ms);
-            oldArt?.Dispose();
+            DisposePreview(oldArt);
             HasArtwork = true;
             ArtworkSearchStatus = "Applied. Click Save to keep.";
             IsArtworkSearchOpen = false;
@@ -1777,6 +1850,37 @@ public partial class MetadataViewModel : ViewModelBase
         string.IsNullOrWhiteSpace(_track.SyncedLyrics) &&
         !_syncedSidecarUnreadable;
 
+    /// <summary>Moves a lyrics sidecar to the OS trash; replaceable in tests (as on LyricsWriter).</summary>
+    internal Func<string, bool> TrashFile { get; init; } = Helpers.RecycleBin.TryMoveToTrash;
+
+    /// <summary>The synced lyrics being saved differ from the ones this dialog loaded (searched, imported, edited, shifted).</summary>
+    private bool SyncedLyricsWereChanged =>
+        !string.IsNullOrWhiteSpace(_track.SyncedLyrics) &&
+        !string.Equals(NormalizeNewlines(_track.SyncedLyrics).Trim(), NormalizeNewlines(_loadedSyncedLyrics).Trim(), StringComparison.Ordinal);
+
+    private static string NormalizeNewlines(string? text) =>
+        (text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+
+    /// <summary>
+    /// The lyrics page reads .lyricsfile, .ttml and .elrc before .lrc. Synced lyrics changed or
+    /// removed here went into the .lrc only, so a Lyrics Studio .elrc (or a .ttml) beside the song
+    /// kept showing the old lyrics and the edit looked lost. Called only on a real change or
+    /// removal — a Year fix must not cost a song its word timings. To the trash, like the .lrc.
+    /// </summary>
+    private void TrashSidecarsAboveLrc(string trackPath)
+    {
+        foreach (var ext in new[] { ".lyricsfile", ".ttml", ".elrc" })
+            foreach (var path in Services.Lyrics.LyricsWriter.SidecarsOnDisk(trackPath, ext))
+            {
+                try
+                {
+                    if (TrashFile(path))
+                        AppWrittenSidecarRegistry.Default.Remove(path);
+                }
+                catch { /* best effort, as the .lrc write */ }
+            }
+    }
+
     /// <summary>True when the user cleared plain lyrics that were genuinely loaded.</summary>
     private bool PlainLyricsWereRemoved =>
         !string.IsNullOrWhiteSpace(_loadedPlainLyrics) &&
@@ -1977,14 +2081,23 @@ public partial class MetadataViewModel : ViewModelBase
         SyncedLyricsSearchStatus = "Searching…";
         try
         {
-            var result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds);
+            // An error on /get (LRCLIB answers 503 "busy" there while /search works — live
+            // check 10-05) falls through to /search; only both failing is an error.
+            LrcLibResult? result = null;
+            LyricsProviderException? getError = null;
+            try { result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds); }
+            catch (LyricsProviderException ex) { getError = ex; }
             if (result == null || !result.HasSyncedLyrics)
             {
                 // /search is fuzzy — validate against the edited tags and the track's
                 // duration so a different song's lyrics can't be picked up.
-                var alts = await _lrcLib.SearchLyricsAsync(Artist, Title);
+                List<LrcLibResult> alts;
+                try { alts = await _lrcLib.SearchLyricsAsync(Artist, Title); }
+                catch (LyricsProviderException) when (getError is not null) { throw getError; }
                 result = LyricsSearchSelector.PickFromSearchResults(
                     alts, Artist, Title, _track.Duration.TotalSeconds, requireSynced: true);
+                // Nothing from /search after a /get error is not "no lyrics": /get might have had them.
+                if (result is null && getError is not null) throw getError;
             }
 
             if (result?.SyncedLyrics is { Length: > 0 } synced)
@@ -2002,8 +2115,9 @@ public partial class MetadataViewModel : ViewModelBase
         catch (LyricsProviderException)
         {
             // Network failure / timeout / provider outage — not "no lyrics", and the
-            // raw exception text ("The request was canceled…") helps nobody.
-            SyncedLyricsSearchStatus = "Search failed — check your internet connection.";
+            // raw exception text ("The request was canceled…") helps nobody. Not "check your
+            // internet connection" either: a busy LRCLIB (503) on an online machine said that.
+            SyncedLyricsSearchStatus = "Search failed — LRCLIB didn't answer (busy or offline). Try again in a moment.";
         }
         catch (Exception ex)
         {
@@ -2173,7 +2287,7 @@ public partial class MetadataViewModel : ViewModelBase
         var oldArt = ArtworkPreview;
         _artworkSourceSize = null;
         ArtworkPreview = null;
-        oldArt?.Dispose();
+        DisposePreview(oldArt);
         HasArtwork = false;
         _newArtworkData = null;
         _artworkRemoved = true;
@@ -2271,9 +2385,16 @@ public partial class MetadataViewModel : ViewModelBase
         return (".jpg", new FilePickerFileType("JPEG Image") { Patterns = new[] { "*.jpg", "*.jpeg" } });
     }
 
-    [RelayCommand]
+    private bool CanSave() => !IsLoading;
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
+        // ExecuteAsync and key bindings skip CanExecute. Saving before InitializeAsync has
+        // applied the sidecar lyrics and advanced tags would write state that was never
+        // loaded (an empty plain field read as "the user cleared the lyrics").
+        if (IsLoading) return;
+
         // Surface a "Saving…" state on the button while the (potentially slow) file
         // writes run; the work itself lives in SaveInternalAsync. try/finally so the
         // spinner always clears even if a write throws.
@@ -2329,7 +2450,7 @@ public partial class MetadataViewModel : ViewModelBase
             // Album-scoped: fan out only the Details fields the user actually
             // changed to every album track (per-track values are preserved).
             ApplyAlbumScopedDetails();
-            ApplyAlbumPerTrackMatches();
+            ApplyStagedTrackChanges();
         }
 
         // Apply a staged play-count reset (kept pending so Cancel discards it).
@@ -2342,15 +2463,21 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
-        // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
-        var plainToWrite = HasCustomLyrics
-            ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
-            : string.Empty;
-        var syncedToWrite = HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics)
-            ? SyncedLyrics
-            : string.Empty;
-        _track.Lyrics = plainToWrite;
-        _track.SyncedLyrics = syncedToWrite;
+        // Apply Lyrics (plain + synced) — defensively strip timestamps from plain.
+        // Single-track only: the album/multi-select dialog has no lyric tabs, and applying
+        // the first track's sidecar text here changed its Lyrics, so an Options-only album
+        // save rewrote that file's tags and sidecars (failing outright on the playing file).
+        if (!_albumScoped)
+        {
+            var plainToWrite = HasCustomLyrics
+                ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
+                : string.Empty;
+            var syncedToWrite = HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics)
+                ? SyncedLyrics
+                : string.Empty;
+            _track.Lyrics = plainToWrite;
+            _track.SyncedLyrics = syncedToWrite;
+        }
 
         // Apply Options
         _track.SkipWhenShuffling = SkipWhenShuffling;
@@ -2382,7 +2509,9 @@ public partial class MetadataViewModel : ViewModelBase
             bool startChg = startMs != _loadedStartTimeMs;
             bool stopChg = stopMs != _loadedStopTimeMs;
             bool volumeChg = VolumeAdjust != _loadedVolumeAdjust;
-            bool eqChg = eqVal != _loadedEqPreset;
+            // Case-insensitive like preset lookup: SetUserEqPresets respells the selection to
+            // the listed name ("rock" -> "Rock"), which is not a change worth fanning out.
+            bool eqChg = !string.Equals(eqVal, _loadedEqPreset, StringComparison.OrdinalIgnoreCase);
 
             foreach (var t in _albumTracks)
             {
@@ -2484,34 +2613,48 @@ public partial class MetadataViewModel : ViewModelBase
             _track.IsExplicit = advFields.ItunesAdvisory == 1;
         }
 
-        // Write synced lyrics to sidecar .lrc file.
+        // Write synced lyrics to sidecar .lrc file (single-track only, as above).
         // Deletion is gated on an explicit user removal and never happens when the
         // sidecar failed to load — and it goes to the trash, not File.Delete, so a
         // mistake is recoverable.
-        try
+        if (!_albumScoped)
         {
-            var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-            if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
-                await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
-            else if (SyncedLyricsWereRemoved && File.Exists(lrcPath))
-                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(lrcPath));
+            try
+            {
+                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
+                if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
+                {
+                    await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
+                    if (SyncedLyricsWereChanged)
+                        await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+                }
+                else if (SyncedLyricsWereRemoved)
+                {
+                    if (File.Exists(lrcPath))
+                        await Task.Run(() => TrashFile(lrcPath));
+                    await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+                }
+            }
+            catch { /* Best effort — sidecar write is non-fatal */ }
         }
-        catch { /* Best effort — sidecar write is non-fatal */ }
 
         // Write plain lyrics to sidecar .txt file.
         // Only write when the plain text actually changed: LoadFromTrack fills this
         // field from the *embedded* tag when no .txt exists, so an unconditional write
         // created a new file in the user's music folder after editing an unrelated field.
-        try
+        if (!_albumScoped)
         {
-            var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-            var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal);
-            if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
-                await File.WriteAllTextAsync(txtPath, _track.Lyrics);
-            else if (PlainLyricsWereRemoved && File.Exists(txtPath))
-                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
+            try
+            {
+                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
+                var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal);
+                if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
+                    await File.WriteAllTextAsync(txtPath, _track.Lyrics);
+                else if (PlainLyricsWereRemoved && File.Exists(txtPath))
+                    await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
+            }
+            catch { /* Best effort — sidecar write is non-fatal */ }
         }
-        catch { /* Best effort — sidecar write is non-fatal */ }
 
         // Handle artwork changes. Artwork is per-album in Noctis (the persisted
         // PNG is keyed by AlbumId and every track carries its own embedded copy),
@@ -2678,6 +2821,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (renamed.Count > 0)
             {
                 var remap = await _library.RelocateTracksAsync(renamed);
+                App.Services?.GetService<IPlayHistoryService>()?.RemapTrackIds(remap);
                 if (App.Services?.GetService<MainWindowViewModel>() is { } main)
                     await main.Sidebar.ApplyTrackIdRemapAsync(remap);
             }
@@ -2741,11 +2885,15 @@ public partial class MetadataViewModel : ViewModelBase
 
     partial void OnSaveErrorMessageChanged(string value) => OnPropertyChanged(nameof(HasSaveError));
 
-    /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.ttml/.txt) with it —
-    /// lyrics resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
+    // Every lyric sidecar the lyrics page and Lyrics Studio find by the song's basename;
+    // .elrc and .lyricsfile (word timings) were missing, so a rename left them behind.
+    private static readonly string[] RenamedSidecarExtensions = { ".lrc", ".elrc", ".lyricsfile", ".ttml", ".txt" };
+
+    /// <summary>Moves a renamed track's same-basename lyric sidecars with it — lyrics
+    /// resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
     private static void MoveLyricSidecars(string oldPath, string newPath)
     {
-        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        foreach (var ext in RenamedSidecarExtensions)
         {
             try
             {
@@ -2765,7 +2913,7 @@ public partial class MetadataViewModel : ViewModelBase
     {
         if (watcher == null) return;
         var paths = new List<string> { oldPath, newPath };
-        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
+        foreach (var ext in RenamedSidecarExtensions)
         {
             paths.Add(Path.ChangeExtension(oldPath, ext));
             paths.Add(Path.ChangeExtension(newPath, ext));
@@ -2778,6 +2926,13 @@ public partial class MetadataViewModel : ViewModelBase
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Start/stop time text. m:ss.fff alone drops the hours (TimeSpan's "m" is the minutes
+    /// component), so a 1:05:00 stop time showed as "5:00.000" and any save cut it to 5 min.
+    /// </summary>
+    private static string FormatTime(TimeSpan time) =>
+        time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss\.fff") : time.ToString(@"m\:ss\.fff");
 
     /// <summary>Parses a time string like "1:23.456", "12:34.567", or "1:02:03.456" to milliseconds.</summary>
     private static long ParseTimeToMs(string time)
@@ -2816,33 +2971,38 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── Advanced Details ──
 
-    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields)
+    /// <param name="mergeCustomTags">The user added custom tags while the load was in
+    /// flight: keep them and put the file's tags in front, instead of replacing the list.</param>
+    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields, bool mergeCustomTags = false)
     {
         try
         {
             _originalAdvancedFields = fields;
 
-            TitleSort = fields.TitleSort;
-            ArtistSort = fields.ArtistSort;
-            AlbumSort = fields.AlbumSort;
-            AlbumArtistSort = fields.AlbumArtistSort;
-            ComposerSort = fields.ComposerSort;
+            // Editable fields the user already typed into while loading keep the edit
+            // (KeepsEdit is only ever true during InitializeAsync's apply).
+            if (!KeepsEdit(nameof(TitleSort))) TitleSort = fields.TitleSort;
+            if (!KeepsEdit(nameof(ArtistSort))) ArtistSort = fields.ArtistSort;
+            if (!KeepsEdit(nameof(AlbumSort))) AlbumSort = fields.AlbumSort;
+            if (!KeepsEdit(nameof(AlbumArtistSort))) AlbumArtistSort = fields.AlbumArtistSort;
+            if (!KeepsEdit(nameof(ComposerSort))) ComposerSort = fields.ComposerSort;
 
-            Performer = fields.Performer;
-            Conductor = fields.Conductor;
-            Lyricist = fields.Lyricist;
-            Publisher = fields.Publisher;
-            EncodedBy = fields.EncodedBy;
+            if (!KeepsEdit(nameof(Performer))) Performer = fields.Performer;
+            if (!KeepsEdit(nameof(Conductor))) Conductor = fields.Conductor;
+            if (!KeepsEdit(nameof(Lyricist))) Lyricist = fields.Lyricist;
+            if (!KeepsEdit(nameof(Publisher))) Publisher = fields.Publisher;
+            if (!KeepsEdit(nameof(EncodedBy))) EncodedBy = fields.EncodedBy;
 
-            Isrc = fields.Isrc;
-            CatalogNumber = fields.CatalogNumber;
-            Barcode = fields.Barcode;
+            if (!KeepsEdit(nameof(Isrc))) Isrc = fields.Isrc;
+            if (!KeepsEdit(nameof(CatalogNumber))) CatalogNumber = fields.CatalogNumber;
+            if (!KeepsEdit(nameof(Barcode))) Barcode = fields.Barcode;
 
-            SelectedAdvisory = fields.ItunesAdvisory switch { 1 => "Explicit", 2 => "Clean", _ => "None" };
-            Language = fields.Language;
-            Mood = fields.Mood;
-            AdvDescription = fields.Description;
-            AdvReleaseDate = fields.ReleaseDate;
+            if (!KeepsEdit(nameof(SelectedAdvisory)))
+                SelectedAdvisory = fields.ItunesAdvisory switch { 1 => "Explicit", 2 => "Clean", _ => "None" };
+            if (!KeepsEdit(nameof(Language))) Language = fields.Language;
+            if (!KeepsEdit(nameof(Mood))) Mood = fields.Mood;
+            if (!KeepsEdit(nameof(AdvDescription))) AdvDescription = fields.Description;
+            if (!KeepsEdit(nameof(AdvReleaseDate))) AdvReleaseDate = fields.ReleaseDate;
 
             Encoder = fields.Encoder;
             ReplayGainTrackGain = fields.ReplayGainTrackGain;
@@ -2850,9 +3010,15 @@ public partial class MetadataViewModel : ViewModelBase
             ReplayGainAlbumGain = fields.ReplayGainAlbumGain;
             ReplayGainAlbumPeak = fields.ReplayGainAlbumPeak;
 
-            CustomTags.Clear();
+            if (!mergeCustomTags) CustomTags.Clear();
+            var at = 0;
             foreach (var kv in fields.CustomTags)
-                CustomTags.Add(new CustomTagItem { Key = kv.Key, Value = kv.Value });
+            {
+                // A key the user already added while loading keeps the user's value.
+                if (mergeCustomTags && CustomTags.Skip(at).Any(t => string.Equals(t.Key, kv.Key, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                CustomTags.Insert(at++, new CustomTagItem { Key = kv.Key, Value = kv.Value });
+            }
         }
         catch { /* Non-fatal — advanced fields are best-effort */ }
     }

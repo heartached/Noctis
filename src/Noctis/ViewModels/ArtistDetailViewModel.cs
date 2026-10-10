@@ -309,9 +309,34 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [ObservableProperty] private bool _isSimilarLoading;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowNoSimilar))]
+    [NotifyPropertyChangedFor(nameof(ShowOverviewSimilar))]
     private bool _similarLoaded;
     public bool HasSimilar => SimilarArtists.Count > 0;
     public bool ShowNoSimilar => SimilarLoaded && !HasSimilar;
+
+    /// <summary>
+    /// The Overview's Similar Artists section folded to its header (Luwi, Discord 10-04:
+    /// "visually distracting when one isn't looking for similar artists"). One setting for
+    /// every artist page (<see cref="SettingsViewModel.ArtistSimilarExpanded"/>). A folded
+    /// section skips the Deezer fetch until it is opened (or the Similar tab is).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowOverviewSimilar))]
+    private bool _isOverviewSimilarExpanded = true;
+
+    /// <summary>Shows the section once it has tiles — and, while folded before any fetch,
+    /// shows the bare header too: nothing is known yet, and it is the only way to unfold.</summary>
+    public bool ShowOverviewSimilar =>
+        HasOverviewSimilar || (!IsOverviewSimilarExpanded && !SimilarLoaded && _similar != null);
+
+    partial void OnIsOverviewSimilarExpandedChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistSimilarExpanded = value;
+        if (value) _ = LoadSimilarAsync();
+    }
+
+    [RelayCommand]
+    private void ToggleSimilarSection() => IsOverviewSimilarExpanded = !IsOverviewSimilarExpanded;
 
     // ── Tile sizing ──
     private const double TileLabelHeight = 64;
@@ -348,6 +373,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _sidebar = sidebar;
         _info = info;
         _similar = similar;
+        IsOverviewSimilarExpanded = settings?.ArtistSimilarExpanded ?? true;
 
         Artist = library.Artists.FirstOrDefault(a => string.Equals(a.Name, ArtistName, StringComparison.OrdinalIgnoreCase))
                  ?? new Artist { Id = LibraryService.ComputeArtistId(ArtistName), Name = ArtistName };
@@ -357,7 +383,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         ResolveImage();
         _ = LoadFansAsync();
         _ = LoadAboutAsync();
-        _ = LoadSimilarAsync(); // the Overview carries a Similar Artists row, so load on open
+        // The Overview carries a Similar Artists row, so load on open — unless it is folded.
+        if (IsOverviewSimilarExpanded) _ = LoadSimilarAsync();
 
         // A scan's progressive fill publishes only the tracks found SO FAR every 1.5 s, so
         // rebuilding on it shrank the lists mid-scan and re-ran Classify each time; the
@@ -520,6 +547,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             // The tab sort is shared by every artist page: a pick made on another page
             // while this one sat in history applies on the way back.
             if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
+            if (value && _settings != null) IsOverviewSimilarExpanded = _settings.ArtistSimilarExpanded;
         }
     }
 
@@ -802,7 +830,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         }
     }
 
-    // ── Similar artists (fetched once, the first time the tab opens) ──
+    // ── Similar artists (fetched once: on open, or when the folded section or the tab opens) ──
 
     private async Task LoadSimilarAsync()
     {
@@ -920,15 +948,14 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void PlayNextAll()
     {
-        // Insert in reverse so the first track ends up first after the current one.
-        var tracks = GetAllTracks();
-        for (var i = tracks.Count - 1; i >= 0; i--) _player.AddNext(tracks[i]);
+        // One batch (keeps order, one queue confirmation) rather than one AddNext per track.
+        _player.AddNextRange(GetAllTracks(), ArtistName);
     }
 
     [RelayCommand]
     private void AddAllToQueue()
     {
-        foreach (var t in GetAllTracks()) _player.AddToQueue(t);
+        _player.AddRangeToQueue(GetAllTracks(), ArtistName);
     }
 
     [RelayCommand]

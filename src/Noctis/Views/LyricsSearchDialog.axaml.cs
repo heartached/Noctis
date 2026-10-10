@@ -1,51 +1,39 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
 public partial class LyricsSearchDialog : Window
 {
-    private bool _closing;
+    /// <summary>Room kept above and below the card when the window is shorter than it.</summary>
+    private const double CardWindowMargin = 48;
 
     public LyricsSearchDialog()
     {
         InitializeComponent();
+        // The card is a fixed 560 px so picking another source never resizes it; a short
+        // window (the main window's MinHeight is 500) caps it instead of cutting it off.
+        // MaxHeight wins over Height in layout, so the rows just get less room.
+        SizeChanged += (_, e) => CardContent.MaxHeight = Math.Max(0, e.NewSize.Height - CardWindowMargin);
     }
 
     public LyricsSearchDialog(LyricsSearchViewModel vm) : this()
     {
         DataContext = vm;
-        vm.Closed += (_, _) => _ = CloseAnimatedAsync();
-    }
-
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale transitions
-        // animate it (same pattern as RemoveFromLibraryDialog and the Settings modal).
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-        }, DispatcherPriority.Loaded);
-    }
-
-    private async Task CloseAnimatedAsync()
-    {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
+        // Owner 10-08: Search Lyrics in the pill dialog. PillDialogHost turns this into the
+        // animated close. Nothing is returned through Close(result) (the deferred close would
+        // lose it): Use Lyrics hands the pick to the lyrics page through the view model's
+        // apply callback before it raises Closed.
+        vm.Closed += (_, _) => Close();
+        // Alt+F4 closes the window without the view model's Close: stop the search anyway,
+        // so it doesn't keep asking every source after the dialog is gone.
+        Closed += (_, _) => vm.StopSearch();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        // Escape closes the same way the header X does (and cancels a running search).
+        // Escape is Cancel (and cancels a running search).
         if (e.Key == Key.Escape && DataContext is LyricsSearchViewModel vm)
         {
             e.Handled = true;

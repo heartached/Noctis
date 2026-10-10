@@ -19,8 +19,31 @@ public partial class PlaylistImportViewModel : ViewModelBase
     private PlaylistImportPreview? _preview;
     private CancellationTokenSource? _analyzeCts;
 
+    private static string L(string key) => Localization.Loc.T(key);
+    private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
+
+    /// <summary>One entry of the preview list: a title, its artist under it, and whether the
+    /// library has it (the row's Found / Missing chip).</summary>
+    public sealed record ImportRow(string Title, string Artist, bool IsMatched)
+    {
+        public bool HasArtist => Artist.Length > 0;
+
+        /// <summary>Splits the service's "Artist – Title" label for the two-line row.</summary>
+        public static ImportRow From(string label, bool matched)
+        {
+            var at = label.IndexOf(" – ", StringComparison.Ordinal);
+            return at > 0
+                ? new ImportRow(label[(at + 3)..], label[..at], matched)
+                : new ImportRow(label, string.Empty, matched);
+        }
+    }
+
     [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private string _statusMessage = "Choose an export file or paste a Deezer or TIDAL link.";
+    /// <summary>Busy reading/fetching and matching (not creating or signing in): the list area
+    /// shows its loading skeleton.</summary>
+    [ObservableProperty] private bool _isAnalyzing;
+    /// <summary>Footer status. Empty until something happens: the start panel says what to do.</summary>
+    [ObservableProperty] private string _statusMessage = string.Empty;
     /// <summary>Pasted share link (Deezer or TIDAL playlist/album).</summary>
     [ObservableProperty] private string _linkText = string.Empty;
     public bool CanImportLink => !IsBusy && IsImportableLink(LinkText);
@@ -44,8 +67,19 @@ public partial class PlaylistImportViewModel : ViewModelBase
     [ObservableProperty] private int _matchedCount;
     [ObservableProperty] private int _missingCount;
     [ObservableProperty] private bool _hasMissing;
+    /// <summary>The playlist was created: the footer's Cancel reads Done.</summary>
+    [ObservableProperty] private bool _isCreated;
 
     public ObservableCollection<string> MissingTracks { get; } = new();
+
+    /// <summary>Every entry of the preview, missing ones first (they are what needs a look).
+    /// Replaced whole per analysis so a long playlist is one list change, not one per row.</summary>
+    [ObservableProperty] private IReadOnlyList<ImportRow> _rows = Array.Empty<ImportRow>();
+
+    /// <summary>Nothing loaded and nothing loading: the drop / formats panel shows.</summary>
+    public bool ShowStart => !HasPreview && !IsAnalyzing;
+
+    public string CancelLabel => IsCreated ? L("Import.Done") : L("Metadata.Cancel");
 
     public event EventHandler? Closed;
 
@@ -54,6 +88,10 @@ public partial class PlaylistImportViewModel : ViewModelBase
         _service = service;
         _tidal = tidal;
     }
+
+    partial void OnHasPreviewChanged(bool value) => OnPropertyChanged(nameof(ShowStart));
+    partial void OnIsAnalyzingChanged(bool value) => OnPropertyChanged(nameof(ShowStart));
+    partial void OnIsCreatedChanged(bool value) => OnPropertyChanged(nameof(CancelLabel));
 
     partial void OnLinkTextChanged(string value)
     {
@@ -101,32 +139,31 @@ public partial class PlaylistImportViewModel : ViewModelBase
     {
         if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Finish signing in to TIDAL in your browser…";
+        StatusMessage = L("Import.StatusTidalWaiting");
         bool ok;
         try { ok = await _tidal.LoginAsync(); }
         finally { IsBusy = false; }
 
         if (!ok)
         {
-            StatusMessage = "TIDAL sign-in didn't complete. Try again.";
+            StatusMessage = L("Import.StatusTidalFailed");
             return;
         }
         ShowLinkHelp(null, null, null);
         if (CanImportLink) await ImportLink();
-        else StatusMessage = "Signed in to TIDAL. Paste a TIDAL playlist link to import it.";
+        else StatusMessage = L("Import.StatusTidalSignedIn");
     }
 
     private void OfferTidalSignIn()
     {
-        StatusMessage = "Sign in to TIDAL to import this link.";
-        ShowLinkHelp("TIDAL playlists are read with your own TIDAL account. Sign in once in your browser; Noctis only asks to read playlists.",
-            "Sign in to TIDAL", null, tidalSignIn: true);
+        StatusMessage = L("Import.StatusTidalNeeded");
+        ShowLinkHelp(L("Import.TidalHelp"), L("Import.TidalSignIn"), null, tidalSignIn: true);
     }
     partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(CanImportLink));
 
     /// <summary>Called by the dialog after the user picks a file.</summary>
     public Task LoadFileAsync(string path)
-        => AnalyzeAsync("Reading and matching…", "No tracks found in that file.", "Could not read file",
+        => AnalyzeAsync(L("Import.StatusMatching"), L("Import.StatusEmptyFile"), "Import.StatusReadFailed",
             ct => _service.AnalyzeAsync(path, ct));
 
     [RelayCommand]
@@ -134,19 +171,23 @@ public partial class PlaylistImportViewModel : ViewModelBase
     {
         if (!CanImportLink) return Task.CompletedTask;
         var service = TidalPlaylistLink.TryParse(LinkText, out _, out _) ? "TIDAL" : "Deezer";
-        return AnalyzeAsync($"Fetching from {service} and matching…", $"That {service} link has no tracks (private, or removed).",
-            "Could not fetch link", ct => _service.AnalyzeLinkAsync(LinkText, ct));
+        return AnalyzeAsync(L("Import.StatusFetching", service), L("Import.StatusEmptyLink", service),
+            "Import.StatusFetchFailed", ct => _service.AnalyzeLinkAsync(LinkText, ct));
     }
 
-    private async Task AnalyzeAsync(string busyMessage, string emptyMessage, string errorPrefix,
+    /// <param name="errorKey">Format key taking the exception message as {0}.</param>
+    private async Task AnalyzeAsync(string busyMessage, string emptyMessage, string errorKey,
         Func<CancellationToken, Task<PlaylistImportPreview>> analyze)
     {
         if (IsBusy) return;
         IsBusy = true;
+        IsAnalyzing = true;
         StatusMessage = busyMessage;
         MissingTracks.Clear();
+        Rows = Array.Empty<ImportRow>();
         HasPreview = false;
         CanCreate = false;
+        IsCreated = false;
 
         _analyzeCts?.Cancel();
         _analyzeCts?.Dispose();
@@ -161,10 +202,13 @@ public partial class PlaylistImportViewModel : ViewModelBase
             MissingCount = preview.MissingLabels.Count;
             HasMissing = MissingCount > 0;
             foreach (var m in preview.MissingLabels) MissingTracks.Add(m);
+            Rows = preview.MissingLabels.Select(m => ImportRow.From(m, matched: false))
+                .Concat(preview.MatchedLabels.Select(m => ImportRow.From(m, matched: true)))
+                .ToList();
             HasPreview = preview.TotalEntries > 0;
             CanCreate = MatchedCount > 0;
             StatusMessage = HasPreview
-                ? $"{MatchedCount} matched · {MissingCount} missing of {preview.TotalEntries}"
+                ? L("Import.StatusResult", MatchedCount, preview.TotalEntries)
                 : emptyMessage;
         }
         catch (OperationCanceledException)
@@ -177,10 +221,11 @@ public partial class PlaylistImportViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"{errorPrefix}: {ex.Message}";
+            StatusMessage = L(errorKey, ex.Message);
         }
         finally
         {
+            IsAnalyzing = false;
             IsBusy = false;
         }
     }
@@ -190,7 +235,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
     {
         if (IsBusy || _preview is null || _preview.MatchedTrackIds.Count == 0) return;
         IsBusy = true;
-        StatusMessage = "Creating playlist…";
+        StatusMessage = L("Import.StatusCreating");
 
         await _service.CreateAsync(PlaylistName, _preview.MatchedTrackIds);
 
@@ -200,8 +245,11 @@ public partial class PlaylistImportViewModel : ViewModelBase
 
         CanCreate = false;
         IsBusy = false;
-        StatusMessage = $"Created \"{PlaylistName}\" with {_preview.MatchedTrackIds.Count} track"
-            + (_preview.MatchedTrackIds.Count == 1 ? "." : "s.");
+        IsCreated = true;
+        var count = _preview.MatchedTrackIds.Count;
+        StatusMessage = count == 1
+            ? L("Import.StatusCreatedOne", PlaylistName)
+            : L("Import.StatusCreated", PlaylistName, count);
     }
 
     [RelayCommand]

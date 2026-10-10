@@ -17,9 +17,12 @@ public enum DropAction { PlayOrQueue, Import, AddToLibrary, NewPlaylist, AddToPl
 /// </summary>
 public partial class DropOverlay : UserControl
 {
-    /// <summary>"Add to queue": three list lines with a plus (GitHub #90).</summary>
-    private static readonly Geometry QueueIconData = Geometry.Parse(
-        "M3 5h13v2H3z M3 10h13v2H3z M3 15h8v2H3z M17 12h2v4h4v2h-4v4h-2v-4h-4v-2h4z");
+    /// <summary>
+    /// "Add to queue" (GitHub #90): the menus' Add to Queue line icon. The list with a plus
+    /// it used to draw is the menus' Add to Playlist glyph (the third zone).
+    /// </summary>
+    private Geometry? QueueIconData =>
+        this.TryFindResource("MenuLineQueue", out var res) && res is Geometry g ? g : _playIconData;
 
     /// <summary>The play glyph from the XAML, kept so the icon can switch back to it.</summary>
     private Geometry? _playIconData;

@@ -1,7 +1,8 @@
-﻿<Styles xmlns="https://github.com/avaloniaui"
+<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helpers="using:Noctis.Helpers"
-        xmlns:controls="using:Noctis.Controls">
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:loc="using:Noctis.Localization">
 
     <!--
         Global style overrides for the Noctis music player.
@@ -43,6 +44,16 @@
                     <Color x:Key="AppMainBackgroundColor">#252525</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#0AFFFFFF" />
+                    <!-- Context menu v2 (ContextMenu.v2): translucent so every dark theme background shows through. -->
+                    <SolidColorBrush x:Key="MenuV2BorderBrush" Color="#17FFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2SeparatorBrush" Color="#14FFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2HoverBrush" Color="#14FFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2IconBrush" Color="#A6FFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2SecondaryBrush" Color="#8CFFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2TileBrush" Color="#0DFFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2TileHoverBrush" Color="#1FFFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2TilePressedBrush" Color="#29FFFFFF" />
+                    <SolidColorBrush x:Key="MenuV2DangerHoverBrush" Color="#24E74856" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#252525</Color>
@@ -103,6 +114,11 @@
                     <!-- Settings hover shade: every clickable button in Settings (and the dialogs
                          it opens) darkens in place on hover, the way the accent buttons do. -->
                     <SolidColorBrush x:Key="SettingsButtonHoverBrush" Color="#33000000" />
+                    <!-- Filled pill fields (metadata editor, Settings): a soft lift off the card
+                         instead of an outline. Classes in PillDialog.axaml / SettingsView. -->
+                    <SolidColorBrush x:Key="PillFieldBackground" Color="#1CFFFFFF" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#14FFFFFF" />
 
                     <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
                     <SolidColorBrush x:Key="GlassPillBackground" Color="#26FFFFFF" />
@@ -184,6 +200,16 @@
                     <Color x:Key="AppMainBackgroundColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#08000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#08000000" />
+                    <!-- Context menu v2 (ContextMenu.v2): translucent so every light theme background shows through. -->
+                    <SolidColorBrush x:Key="MenuV2BorderBrush" Color="#17000000" />
+                    <SolidColorBrush x:Key="MenuV2SeparatorBrush" Color="#12000000" />
+                    <SolidColorBrush x:Key="MenuV2HoverBrush" Color="#0F000000" />
+                    <SolidColorBrush x:Key="MenuV2IconBrush" Color="#99000000" />
+                    <SolidColorBrush x:Key="MenuV2SecondaryBrush" Color="#8C000000" />
+                    <SolidColorBrush x:Key="MenuV2TileBrush" Color="#0A000000" />
+                    <SolidColorBrush x:Key="MenuV2TileHoverBrush" Color="#17000000" />
+                    <SolidColorBrush x:Key="MenuV2TilePressedBrush" Color="#21000000" />
+                    <SolidColorBrush x:Key="MenuV2DangerHoverBrush" Color="#1FE74856" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#FFFFFF</Color>
@@ -244,6 +270,10 @@
                     <!-- Settings hover shade: every clickable button in Settings (and the dialogs
                          it opens) darkens in place on hover, the way the accent buttons do. -->
                     <SolidColorBrush x:Key="SettingsButtonHoverBrush" Color="#14000000" />
+                    <!-- Filled pill fields (metadata editor, Settings). -->
+                    <SolidColorBrush x:Key="PillFieldBackground" Color="#0F000000" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundPointerOver" Color="#17000000" />
+                    <SolidColorBrush x:Key="PillFieldBackgroundFocused" Color="#08000000" />
 
                     <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
                     <SolidColorBrush x:Key="GlassPillBackground" Color="#18000000" />
@@ -625,38 +655,66 @@
         <Setter Property="Opacity" Value="0"/>
     </Style>
 
-    <!-- Context Menu / MenuFlyout popup chrome -->
-    <Style Selector="ContextMenu">
-        <Setter Property="CornerRadius" Value="16" />
+    <!-- ═══ Menus: the v2 look, app-wide (owner 10-09: "apply it everywhere") ═══
+         One card for every right-click ContextMenu, every MenuFlyout (its MenuFlyoutPresenter)
+         and every submenu: radius 18 (submenus 16), 1px hairline border, padding 6, 248..330
+         wide, 32px rows with a pill hover, inset hairline separators, red danger rows and muted
+         16px line icons (Path.mv2-icon: Helpers/MenuV2.cs, MenuLine* in Icons.axaml).
+         The "v2" class the menu builders add (MenuV2.MenuClass) is kept as an alias only:
+         nothing is scoped to it any more, so a menu looks the same with or without it.
+         No drop shadow: the popup window is sized to the card, so a BoxShadow would be
+         clipped, and a transparent margin for it would swallow light-dismiss clicks.
+         Liquid Glass island menus swap the card for a GlassPanel (PlaybackBarView's
+         MenuFlyoutPresenter.glass-menu); the rows, separators and icons below still apply. -->
+    <Style Selector="ContextMenu, MenuFlyoutPresenter">
+        <Setter Property="CornerRadius" Value="18" />
         <Setter Property="Padding" Value="6" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MenuV2BorderBrush}" />
+        <Setter Property="MinWidth" Value="248" />
+        <Setter Property="MaxWidth" Value="330" />
         <!-- Constraint adjustment must stay enabled (default FlipY/SlideY etc.): with "None",
              menus opened near the bottom of the screen extend past the edge and get clipped. -->
         <!-- Match the active theme (Midnight/Gray/custom), not the generic dark/light variant. -->
         <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-        <!-- Rise-up + fade open/close (applies to every right-click menu app-wide). -->
+        <!-- Every menu grows out of the click that opened it and settles its rows in (Pop), and
+             closes with that motion reversed: right-click menus always, MenuFlyouts when they set
+             MenuOpenAnimation.EnableFlyoutClose. Pop is set before Enable: the open run reads it. -->
+        <Setter Property="(helpers:MenuOpenAnimation.Pop)" Value="True" />
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
+        <!-- Lay rows out at the card width (no sideways scrolling), so a long translated label
+             trims inside MaxWidth instead of widening the content past the card. -->
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <Style Selector="ContextMenu /template/ Border">
-        <Setter Property="CornerRadius" Value="16" />
+    <!-- NOTE: the Fluent templates write several of these parts from resources, and a
+         template value outranks a style setter (BindingPriority.Template < Style), so plain
+         setters on them are silently ignored. helpers:MenuChrome applies those as local
+         values instead (see Helpers/MenuChrome.cs). -->
+    <!-- The flyout card's padding is the template's FlyoutBorderThemePadding (0), not its Padding. -->
+    <Style Selector="MenuFlyoutPresenter /template/ Border#LayoutRoot">
+        <Setter Property="(helpers:MenuChrome.Padding)" Value="6" />
     </Style>
-    <Style Selector="MenuFlyoutPresenter">
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="Padding" Value="6" />
-        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-        <!-- Rise-up + fade on open (3-dots MenuFlyout close is enabled on each MenuFlyout). -->
+    <!-- Rows start right at the card padding (the template's MenuFlyoutScrollerMargin is 0,4). -->
+    <Style Selector="ContextMenu /template/ ItemsPresenter#PART_ItemsPresenter, MenuFlyoutPresenter /template/ ItemsPresenter#PART_ItemsPresenter, MenuItem /template/ Popup ItemsPresenter#PART_ItemsPresenter">
+        <Setter Property="(helpers:MenuChrome.Margin)" Value="0" />
+    </Style>
+    <!-- No sideways scrolling: the ContextMenu and submenu templates leave their ScrollViewer's
+         HorizontalScrollBarVisibility to its theme (a style wins); the MenuFlyoutPresenter
+         template binds it to the presenter's attached value, set above. -->
+    <Style Selector="ContextMenu /template/ ScrollViewer, MenuItem /template/ Popup ScrollViewer">
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+    <!-- Submenu cards (Tools ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card and fade +
+         slide out of it instead of popping in. OffsetX is set before Enable: the open run
+         reads OffsetX when Enable is applied. -->
+    <Style Selector="MenuItem /template/ Popup > Border">
+        <Setter Property="MinWidth" Value="200" />
+        <!-- Background / border / radius / 300 cap (MenuChrome.SubmenuCard) and padding: the
+             template writes those from the Fluent MenuFlyoutPresenter* resources. -->
+        <Setter Property="(helpers:MenuChrome.SubmenuCard)" Value="True" />
+        <Setter Property="(helpers:MenuChrome.Padding)" Value="6" />
+        <Setter Property="(helpers:MenuOpenAnimation.OffsetX)" Value="-8" />
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
-    </Style>
-    <Style Selector="MenuFlyoutPresenter /template/ Border">
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-    </Style>
-    <Style Selector="MenuItem /template/ Border#PART_Popup">
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-    </Style>
-    <Style Selector="MenuItem /template/ Popup Border">
-        <Setter Property="CornerRadius" Value="16" />
-        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
     </Style>
 
     <!-- Tooltip popup chrome (matches the pill-rounded card look used by menus) -->
@@ -670,50 +728,6 @@
         <Setter Property="CornerRadius" Value="14" />
     </Style>
 
-    <!-- Full-width separators in context menus and menu flyouts -->
-    <Style Selector="ContextMenu Separator">
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="Padding" Value="0" />
-    </Style>
-    <Style Selector="MenuFlyoutPresenter Separator">
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="Padding" Value="0" />
-    </Style>
-
-    <!-- Menu Item smooth animations (no opacity transition to prevent shake) -->
-    <Style Selector="MenuItem">
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.07">
-                    <BrushTransition.Easing>
-                        <CubicEaseOut/>
-                    </BrushTransition.Easing>
-                </BrushTransition>
-            </Transitions>
-        </Setter>
-    </Style>
-
-    <!-- Submenu (nested MenuItem) instant appearance -->
-    <Style Selector="MenuItem /template/ Popup">
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.02">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Setter>
-    </Style>
-
-    <!-- Destructive menu items: semantically red, not themed by accent -->
-    <Style Selector="MenuItem.danger">
-        <Setter Property="Foreground" Value="#E74856" />
-        <Setter Property="Margin" Value="2,5,2,1" />
-    </Style>
-    <Style Selector="MenuItem.danger PathIcon">
-        <Setter Property="Foreground" Value="#E74856" />
-    </Style>
 
     <!-- Solid red pill (dialog Close buttons): keeps the same red on hover/press
          instead of falling back to the theme's pointerover background. -->
@@ -761,16 +775,156 @@
         <Setter Property="Foreground" Value="#E74856" />
     </Style>
 
-    <!-- Compact menu items + pill-shaped hover highlight (applied to ALL MenuItems
-         so right-click ContextMenus, MenuFlyouts, and nested submenu items match). -->
+    <!-- Menu rows (every ContextMenu, MenuFlyout and submenu): 32px, pill-shaped (999)
+         hover / keyboard / open-submenu highlight. No hover transition: menus answer the
+         pointer at once (the old 70 ms Background tween ran on MenuItem.Background, which
+         nothing changes — the highlight lives on the template's PART_LayoutRoot). -->
     <Style Selector="MenuItem">
-        <Setter Property="Padding" Value="11,4,4,4" />
-        <Setter Property="MinHeight" Value="30" />
-        <Setter Property="Margin" Value="2,1" />
+        <Setter Property="Padding" Value="10,0,10,0" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="FontSize" Value="13.5" />
     </Style>
     <Style Selector="MenuItem /template/ Border#PART_LayoutRoot">
         <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}" />
+    </Style>
+    <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}" />
+    </Style>
+    <Style Selector="MenuItem:open /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuV2HoverBrush}" />
+    </Style>
+    <Style Selector="MenuItem /template/ ContentControl#PART_IconPresenter">
+        <Setter Property="Margin" Value="0,0,11,0" />
+    </Style>
+    <!-- Long (translated) labels end in an ellipsis at the card's MaxWidth; the chevron stays. -->
+    <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="MenuItem /template/ TextBlock#PART_InputGestureText">
+        <Setter Property="Foreground" Value="{DynamicResource MenuV2SecondaryBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="MenuItem /template/ Path#PART_ChevronPath">
+        <Setter Property="Fill" Value="{DynamicResource MenuV2IconBrush}" />
+        <Setter Property="Margin" Value="16,0,0,0" />
+        <Setter Property="Width" Value="5" />
+        <Setter Property="Height" Value="9" />
+    </Style>
+    <!-- Inset hairline separators (top level and inside submenus). -->
+    <Style Selector="ContextMenu Separator, MenuFlyoutPresenter Separator, MenuItem Separator">
+        <Setter Property="Margin" Value="8,5" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource MenuV2SeparatorBrush}" />
+    </Style>
+    <!-- Destructive rows: semantically red, not themed by accent, with a red-tinted hover. -->
+    <Style Selector="MenuItem.danger">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <Style Selector="MenuItem.danger PathIcon">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <Style Selector="MenuItem.danger:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuV2DangerHoverBrush}" />
+    </Style>
+    <Style Selector="MenuItem.danger:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuV2DangerHoverBrush}" />
+    </Style>
+    <Style Selector="MenuItem.danger:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <!-- Line icons (MenuV2.LineIcon): muted stroke; red on the destructive row. -->
+    <Style Selector="Path.mv2-icon">
+        <Setter Property="Stroke" Value="{DynamicResource MenuV2IconBrush}" />
+    </Style>
+    <!-- The same icons in XAML menus: <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLine…}"/>
+         (16px, 1.5px stroke, like MenuV2.LineIcon). -->
+    <Style Selector="controls|LineIcon.mv2-icon">
+        <Setter Property="Foreground" Value="{DynamicResource MenuV2IconBrush}" />
+    </Style>
+    <!-- State checkmark (sort / filter / speed / timer menus): in the label colour, like a
+         lit rating star, rather than the muted action-icon grey. -->
+    <Style Selector="controls|LineIcon.mv2-icon.mv2-check">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="MenuItem.danger controls|LineIcon.mv2-icon">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <Style Selector="controls|LineIcon.mv2-icon.mv2-fav">
+        <Setter Property="Foreground" Value="#E74856" />
+        <Setter Property="Fill" Value="#E74856" />
+    </Style>
+    <Style Selector="MenuItem.danger Path.mv2-icon">
+        <Setter Property="Stroke" Value="#E74856" />
+    </Style>
+    <Style Selector="Path.mv2-icon.mv2-fav">
+        <Setter Property="Stroke" Value="#E74856" />
+        <Setter Property="Fill" Value="#E74856" />
+    </Style>
+    <!-- "Unstar from Sidebar": the star filled in the accent, like the playlist page's starred
+         star (owner 10-09: a pinned playlist's star reads as on). -->
+    <Style Selector="Path.mv2-icon.mv2-pinned">
+        <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <!-- Quick-action tiles (Play / Shuffle / Play Next / Queue). -->
+    <Style Selector="Button.mv2-tile">
+        <Setter Property="Background" Value="{DynamicResource MenuV2TileBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="2,6,2,6" />
+        <Setter Property="Margin" Value="3" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mv2-tile:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+    <Style Selector="Button.mv2-tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuV2TileHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="Button.mv2-tile:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuV2TilePressedBrush}" />
+    </Style>
+    <Style Selector="Button.mv2-tile:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MenuV2TileBrush}" />
+    </Style>
+    <Style Selector="Button.mv2-tile:disabled">
+        <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="Button.mv2-tile TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MenuV2SecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.mv2-tile Path.mv2-icon">
+        <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <!-- Inline rating row: five star buttons (+ clear), Finder-tags style. -->
+    <Style Selector="Button.mv2-star">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="3,4" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mv2-star:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.mv2-star:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.mv2-star.lit Path.mv2-icon">
+        <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
 
     <!-- Sidebar styling -->
@@ -1088,11 +1242,15 @@
             </Transitions>
         </Setter>
     </Style>
+    <!-- Icon-only: named for screen readers / UI Automation, which otherwise read the
+         content's type name ("Avalonia.Controls.Panel"). -->
     <Style Selector="Button.tile-play">
         <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="AutomationProperties.Name" Value="{loc:T Main.PlayTip}" />
     </Style>
     <Style Selector="Button.tile-more">
         <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="AutomationProperties.Name" Value="{loc:T Main.OptionsTip}" />
     </Style>
     <Style Selector="Button.album-tile:pointerover Button.tile-play, Button.album-tile:pointerover Button.tile-more">
         <Setter Property="Opacity" Value="1" />

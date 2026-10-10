@@ -64,10 +64,10 @@
                         <ItemsControl Name="FolderList" ItemsSource="{Binding FolderLabels}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="x:String">
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4">
-                                        <PathIcon Data="{DynamicResource FolderIcon}" Width="16" Height="16" />
-                                        <TextBlock Text="{Binding}" />
-                                    </StackPanel>
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4">
+                                        <PathIcon Data="{DynamicResource FolderIcon}" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,8,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" />
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

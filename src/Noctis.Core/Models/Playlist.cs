@@ -23,6 +23,16 @@ public class Playlist
     /// <summary>Ordered list of track IDs. Resolved against the library at load time.</summary>
     public List<Guid> TrackIds { get; set; } = new();
 
+    /// <summary>When a track was added to THIS playlist (UTC): the "Added" column, the NEW badge
+    /// and the Recently Added sort read it. Only additions to an existing playlist are stamped
+    /// (a new playlist's tracks are not all "new"); a track without an entry, and every track of
+    /// a playlist saved before this existed, falls back to its library DateAdded.</summary>
+    public Dictionary<Guid, DateTime> TrackAddedAt { get; set; } = new();
+
+    /// <summary>This playlist's added date for <paramref name="trackId"/>, else <paramref name="libraryDateAdded"/>.</summary>
+    public DateTime AddedDateFor(Guid trackId, DateTime libraryDateAdded)
+        => TrackAddedAt.TryGetValue(trackId, out var added) ? added : libraryDateAdded;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
 

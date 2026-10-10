@@ -11,10 +11,10 @@ public sealed class ArchivedWrap
     public WrapStats Stats { get; set; } = new();
 
     /// <summary>
-    /// Earliest event in the log this snapshot was built from. The live log is capped at
-    /// 10,000 events, so a user whose first Wrap open came after last year had already
-    /// been partially trimmed used to have the incomplete numbers frozen as the permanent
-    /// record, with nothing recorded to say so. Null for snapshots written before this
+    /// Earliest event in the log this snapshot was built from. The live log is capped
+    /// (10,000 events before 10-09 2026, 250,000 since), so a user whose first Wrap open came
+    /// after last year had already been partially trimmed used to have the incomplete numbers
+    /// frozen as the permanent record, with nothing recorded to say so. Null for snapshots written before this
     /// field existed — those are treated as unknown coverage and never replaced silently.
     /// </summary>
     public DateTime? SourceLogStartUtc { get; set; }
@@ -41,15 +41,15 @@ public interface IWrapArchiveService
     bool IsYearComplete(int year);
 
     /// <summary>Freeze any completed past year that has play data but isn't archived yet,
-    /// before the 10k-event play log trims those events away.</summary>
+    /// before the capped play log trims those events away.</summary>
     void EnsureArchived(IReadOnlyList<PlayHistoryEvent> events,
                         IReadOnlyDictionary<Guid, Track> tracksById, int currentYear);
 }
 
 /// <summary>
 /// JSON-file-backed archive of yearly Wrap recaps under the Noctis data directory.
-/// The live play log caps at 10,000 events, so finished years are snapshotted here
-/// to survive long-term.
+/// The live play log is capped (PlayHistoryService.MaxEvents), so finished years are
+/// snapshotted here to survive long-term.
 /// </summary>
 public sealed class WrapArchiveService : IWrapArchiveService
 {
@@ -102,7 +102,7 @@ public sealed class WrapArchiveService : IWrapArchiveService
             if (events.Count == 0) return;
 
             // How far back the live log still reaches. Everything before this was trimmed
-            // by the 10k cap, so a year whose January 1st is after this point can only be
+            // by the cap, so a year whose January 1st is after this point can only be
             // snapshotted partially.
             var logStartUtc = events.Min(e => e.PlayedAtUtc);
 

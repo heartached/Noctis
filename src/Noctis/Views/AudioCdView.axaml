@@ -3,6 +3,7 @@
              xmlns:loc="using:Noctis.Localization"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.AudioCdView"
              x:DataType="vm:AudioCdViewModel">
     <Grid RowDefinitions="Auto,*" Margin="16,8,8,0">
@@ -68,13 +69,25 @@
                             <ContextMenu>
                                 <MenuItem Header="{loc:T AudioCd.Play}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackCommand}"
-                                          CommandParameter="{Binding}"/>
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="{loc:T AudioCd.PlayNext}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).PlayTrackNextCommand}"
-                                          CommandParameter="{Binding}"/>
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="{loc:T AudioCd.AddQueue}"
                                           Command="{Binding $parent[UserControl].((vm:AudioCdViewModel)DataContext).AddTrackToQueueCommand}"
-                                          CommandParameter="{Binding}"/>
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </Grid.ContextMenu>
                         <TextBlock Grid.Column="0" Text="{Binding TrackNumber}" FontSize="13" Opacity="0.45"

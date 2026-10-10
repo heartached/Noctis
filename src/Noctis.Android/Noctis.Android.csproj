@@ -94,6 +94,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Media3's FFmpeg audio extension (androidx/media 1.11.0, Apache-2.0) over an LGPL FFmpeg
+         built with only the ALAC decoder: most phones (the owner's S23 included) ship no
+         audio/alac MediaCodec. Not bound (Libs/FfmpegMetadata.xml): DefaultRenderersFactory finds FfmpegAudioRenderer by
+         reflection, Media3AudioPlayer asks FfmpegLibrary through JNI. Built by
+         scripts/android/build-ffmpeg-decoder.sh; notice in Libs/FFMPEG-NOTICE.txt. -->
+    <AndroidLibrary Include="Libs\media3-decoder-ffmpeg-1.11.0.aar" />
+    <TransformFile Include="Libs\FfmpegMetadata.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Noctis.Core\Noctis.Core.csproj" />
     <ProjectReference Include="..\Noctis.UI\Noctis.UI.csproj" />
     <ProjectReference Include="..\Noctis.Mobile\Noctis.Mobile.csproj" />

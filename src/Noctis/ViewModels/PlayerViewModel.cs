@@ -466,6 +466,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
     [ObservableProperty] private bool _canShareLyrics;
+    /// <summary>The lyrics page shows synced online lyrics of a local file (GitHub #115).</summary>
+    [ObservableProperty] private bool _canSaveLyricsToFile;
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -484,8 +486,10 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _openLyricsBackgroundColor;
     private Action? _removeLyrics;
     private Action? _shareLyrics;
+    private Action? _saveLyrics;
 
-    public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
+    /// <summary>Also the play/pause button's accessible name (AccessibleNames), so localized.</summary>
+    public string PlayPauseTooltip => Localization.Loc.T(State == PlaybackState.Playing ? "PlaybackBar.Pause" : "PlaybackBar.Play");
 
     /// <summary>True when playback is actively playing (not paused or stopped).</summary>
     public bool IsPlaying => State == PlaybackState.Playing;
@@ -605,6 +609,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Subscribe to queue changes to update HasContent (skipped during batch updates)
         UpNext.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
         History.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
+        // HasContent is raised after every queue/history change, batch ones included.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(HasContent) or nameof(RepeatMode) or nameof(CurrentTrack))
+                NextCommand.NotifyCanExecuteChanged();
+        };
 
         // Sync volume to audio player
         _audioPlayer.Volume = _volume;
@@ -670,19 +680,28 @@ public partial class PlayerViewModel : ViewModelBase
         State = PlaybackState.Paused;
     }
 
-    [RelayCommand]
+    /// <summary>
+    /// Whether Next has anywhere to go. Also the command's CanExecute, so the bar and mini
+    /// player Next buttons dim at the end of the queue: they stayed lit and silently did
+    /// nothing (Discord, Andre 10-03: 33 presses of "Next | queueLen=0"). Execute() does not
+    /// consult it, so hotkeys, media keys and the APIs still land in <see cref="Next"/>.
+    /// </summary>
+    private bool CanGoNext() =>
+        // The repeat-all wrap lives inside AdvanceQueueCore, so returning on an empty
+        // UpNext made it unreachable from a user skip: with Repeat All on and the last
+        // track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were all
+        // silent no-ops, and only a natural track end wrapped.
+        UpNext.Count > 0 ||
+        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || History.Count > 0));
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
+        DebugLogger.Info(DebugLogger.Category.Playback, "Next",
+            $"queueLen={UpNext.Count}, shuffle={IsShuffleEnabled}, repeat={RepeatMode}");
         CancelAutoMixTransition("user skipped");
 
-        // The repeat-all wrap lives inside AdvanceQueueCore, so returning here on an
-        // empty UpNext made it unreachable from a user skip: with Repeat All on and the
-        // last track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were
-        // all silent no-ops, and only a natural track end wrapped.
-        var canWrap = RepeatMode == RepeatMode.All &&
-                      (_repeatCycleTracks.Count > 0 || History.Count > 0);
-        if (UpNext.Count == 0 && !canWrap) return;
+        if (!CanGoNext()) return;
 
         // A user skip before the halfway point counts as a skip in the play log. A play
         // not counted yet has no log event, and RecordSkip would mark an earlier play of
@@ -1124,6 +1143,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void ShareCurrentTrackLyrics() => _shareLyrics?.Invoke();
 
+    [RelayCommand]
+    private void SaveCurrentTrackLyrics() => _saveLyrics?.Invoke();
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -1137,17 +1159,21 @@ public partial class PlayerViewModel : ViewModelBase
         bool isSyncedActive,
         bool isPlainActive,
         bool isSyncedAvailable,
-        bool canShare)
+        bool canShare,
+        Action? saveLyrics = null,
+        bool canSaveLyrics = false)
     {
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
         _removeLyrics = removeLyrics;
         _shareLyrics = shareLyrics;
+        _saveLyrics = saveLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
         CanShareLyrics = canShare;
+        CanSaveLyricsToFile = canSaveLyrics;
         IsLyricsPageActive = true;
     }
 
@@ -1161,23 +1187,26 @@ public partial class PlayerViewModel : ViewModelBase
         _openLyricsBackgroundColor = null;
         _removeLyrics = null;
         _shareLyrics = null;
+        _saveLyrics = null;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;
         IsLyricsSyncedAvailable = false;
         CanShareLyrics = false;
+        CanSaveLyricsToFile = false;
     }
 
     /// <summary>
     /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
     /// or synced-availability changes, to keep the menu's checkmarks accurate.
     /// </summary>
-    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare)
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare, bool canSaveLyrics = false)
     {
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
         CanShareLyrics = canShare;
+        CanSaveLyricsToFile = canSaveLyrics;
     }
 
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>
@@ -1364,6 +1393,20 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(tracks, startIndex, unshuffled: null);
 
     /// <summary>
+    /// A song row double-clicked in a list. With Shuffle on it plays that song, then the rest of
+    /// the list shuffled, and Shuffle stays on. ReplaceQueueAndPlay queued only the rows below and
+    /// turned Shuffle off, so the last row left Next with nothing to play (Discord, Andre 10-07:
+    /// last song in Songs, "but it's on Shuffle"). With Shuffle off it plays the list in order.
+    /// </summary>
+    public void PlayFromRow(IList<Track> tracks, int index)
+    {
+        if (IsShuffleEnabled && index >= 0 && index < tracks.Count)
+            PlayShuffled(tracks, first: tracks[index], avoidRecentlyPlayed: true);
+        else
+            ReplaceQueueAndPlay(tracks, index);
+    }
+
+    /// <summary>
     /// Plays <paramref name="track"/> as the whole queue, opened at <paramref name="start"/>: the
     /// engine opens the file there (the one-shot start a restored session resumes with) instead
     /// of being seeked once playing. A <see cref="SeekTo"/> sent right after a start reaches
@@ -1469,8 +1512,39 @@ public partial class PlayerViewModel : ViewModelBase
         PlayTrack(tracks[startIndex]);
     }
 
+    /// <summary>
+    /// Raised once per user "Add to Queue" / "Play Next" (one track or a whole batch), so the
+    /// main window can confirm it (<see cref="QueueToastViewModel"/>). Restore, shuffle,
+    /// reorder and autoplay edit <see cref="UpNext"/> directly and never raise it; callers
+    /// that are not a user's own add in this window pass <c>announce: false</c>.
+    /// </summary>
+    public event EventHandler<QueueAddedEventArgs>? TracksQueued;
+
+    private void AnnounceQueued(IList<Track> tracks, string? sourceName, bool playNext)
+    {
+        if (tracks.Count == 0) return;
+        TracksQueued?.Invoke(this, new QueueAddedEventArgs(tracks.Count, tracks[0], sourceName, playNext));
+    }
+
     /// <summary>Inserts a track at the front of the UpNext queue ("Play Next").</summary>
-    public void AddNext(Track track)
+    public void AddNext(Track track, bool announce = true)
+    {
+        AddNextCore(track);
+        if (announce) AnnounceQueued(new[] { track }, null, playNext: true);
+    }
+
+    /// <summary>"Play Next" for a batch: inserts <paramref name="tracks"/> at the front of
+    /// UpNext keeping their order, with ONE <see cref="TracksQueued"/> for the lot.</summary>
+    /// <param name="sourceName">Album / playlist / folder name the confirmation shows.</param>
+    public void AddNextRange(IList<Track> tracks, string? sourceName = null, bool announce = true)
+    {
+        if (tracks.Count == 0) return;
+        // Each insert lands at the front: go backwards so the batch keeps its order.
+        for (var i = tracks.Count - 1; i >= 0; i--) AddNextCore(tracks[i]);
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: true);
+    }
+
+    private void AddNextCore(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddNext", $"track={track.Title}");
         CancelAutoMixTransition("queue changed");
@@ -1486,17 +1560,20 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
-    public void AddToQueue(Track track)
+    public void AddToQueue(Track track, bool announce = true)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
         UpNext.Add(track);
         if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
+        if (announce) AnnounceQueued(new[] { track }, null, playNext: false);
     }
 
-    /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch.</summary>
-    public void AddRangeToQueue(IList<Track> tracks)
+    /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch,
+    /// with ONE <see cref="TracksQueued"/> for the lot.</summary>
+    /// <param name="sourceName">Album / playlist / folder name the confirmation shows.</param>
+    public void AddRangeToQueue(IList<Track> tracks, string? sourceName = null, bool announce = true)
     {
         if (tracks.Count == 0) return;
         DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
@@ -1510,6 +1587,7 @@ public partial class PlayerViewModel : ViewModelBase
             OnPropertyChanged(nameof(HasContent));
         }
         if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -2402,6 +2480,8 @@ public partial class PlayerViewModel : ViewModelBase
         var prepared = _autoMixPreparedSnapshot;
         _autoMixPreparedSnapshot = null;
 
+        RecordSkipOnReplace();
+
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
@@ -2538,6 +2618,7 @@ public partial class PlayerViewModel : ViewModelBase
             return;
         }
         _isAdvancingQueue = true;
+        _endingByPlayback = reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix or QueueAdvanceReason.Error;
         try
         {
             AdvanceQueueCore(reason);
@@ -2545,7 +2626,28 @@ public partial class PlayerViewModel : ViewModelBase
         finally
         {
             _isAdvancingQueue = false;
+            _endingByPlayback = false;
         }
+    }
+
+    /// <summary>True while the queue moves on by itself (the song ended, AutoMix, a playback
+    /// error): the song being left was not skipped. See <see cref="RecordSkipOnReplace"/>.</summary>
+    private bool _endingByPlayback;
+
+    /// <summary>
+    /// A song the user leaves in its first half is a skip in the play log, however they left
+    /// it: Next (which marks it itself), Previous, or picking another song. Only Next marked it
+    /// before, so with "Count a play after: Immediately" a double-click on another song left the
+    /// first one a full play: on the owner's main profile 2,655 of 4,800 logged plays were cut
+    /// off within 30 s (10-09). Not when the song ended by itself, failed, or was stopped, and
+    /// not for a play that isn't counted yet (it has no log event, GitHub #101).
+    /// </summary>
+    private void RecordSkipOnReplace()
+    {
+        if (_endingByPlayback || CurrentTrack is not { } leaving || _playCountPending) return;
+        if (State is not (PlaybackState.Playing or PlaybackState.Paused)) return;
+        if (PositionFraction >= 0.5) return;
+        _playHistory?.RecordSkip(leaving);
     }
 
     private bool _allowExplicitContent = true;

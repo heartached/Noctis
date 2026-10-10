@@ -107,6 +107,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
+
+    /// <summary>What the description popup reads: the full text, else the short one (the
+    /// popup used to bind the full text only and showed nothing when just the short existed).</summary>
+    public string AlbumDescriptionDialogText =>
+        !string.IsNullOrWhiteSpace(AlbumDescriptionFull) ? AlbumDescriptionFull : AlbumDescription;
+    public bool HasAlbumDescriptionDialogText => !string.IsNullOrWhiteSpace(AlbumDescriptionDialogText);
     public bool HasAlbumDescriptionOverflow =>
         !string.IsNullOrWhiteSpace(AlbumDescription) &&
         (
@@ -136,6 +142,39 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     public bool HasOtherVersions => OtherVersions.Count > 0;
     public bool HasMoreByArtist => MoreByArtist.Count > 0;
+
+    /// <summary>"Other Versions" / "More By" fold state, shared by every album (Settings keeps it).</summary>
+    public bool IsOtherVersionsExpanded
+    {
+        get => _settings?.AlbumOtherVersionsExpanded ?? _otherVersionsExpanded;
+        set
+        {
+            if (value == IsOtherVersionsExpanded) return;
+            if (_settings != null) _settings.AlbumOtherVersionsExpanded = value;
+            else _otherVersionsExpanded = value;
+            OnPropertyChanged();
+        }
+    }
+    private bool _otherVersionsExpanded = true;
+
+    public bool IsMoreByExpanded
+    {
+        get => _settings?.AlbumMoreByExpanded ?? _moreByExpanded;
+        set
+        {
+            if (value == IsMoreByExpanded) return;
+            if (_settings != null) _settings.AlbumMoreByExpanded = value;
+            else _moreByExpanded = value;
+            OnPropertyChanged();
+        }
+    }
+    private bool _moreByExpanded = true;
+
+    [RelayCommand]
+    private void ToggleOtherVersionsSection() => IsOtherVersionsExpanded = !IsOtherVersionsExpanded;
+
+    [RelayCommand]
+    private void ToggleMoreBySection() => IsMoreByExpanded = !IsMoreByExpanded;
     public string MoreByArtistTitle => $"More By {Album?.Artist}";
 
     /// <summary>Tracks grouped by disc number for multi-disc display.</summary>
@@ -297,22 +336,30 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     partial void OnAlbumDescriptionChanged(string value)
     {
+        OnPropertyChanged(nameof(AlbumDescriptionDialogText));
+        OnPropertyChanged(nameof(HasAlbumDescriptionDialogText));
         OnPropertyChanged(nameof(HasAlbumDescription));
+        OnPropertyChanged(nameof(ShowAddAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnAlbumDescriptionFullChanged(string value)
     {
         // Keep visibility binding stable even if only one payload variant is available.
+        OnPropertyChanged(nameof(AlbumDescriptionDialogText));
+        OnPropertyChanged(nameof(HasAlbumDescriptionDialogText));
         OnPropertyChanged(nameof(HasAlbumDescription));
         OnPropertyChanged(nameof(HasAlbumDescriptionOverflow));
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnAlbumDescriptionEditorTextChanged(string value)
     {
         OnPropertyChanged(nameof(HasAlbumDescriptionChanges));
+        SaveAlbumDescriptionEditCommand.NotifyCanExecuteChanged();
     }
 
     private async Task LoadAlbumDescriptionAsync()
@@ -328,22 +375,37 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
             var snippet = !string.IsNullOrWhiteSpace(summary) ? summary : full;
             var fullText = !string.IsNullOrWhiteSpace(full) ? full : summary;
+            // The editor follows the lookup while it still holds what was shown before it:
+            // "Edit Description" can open before the lookup lands, and an untouched (empty)
+            // editor then counted as a change — Save lit up and wrote an empty override that
+            // erased the album's description. Text the user typed is never replaced.
+            var editorUntouched = string.Equals(
+                (AlbumDescriptionEditorText ?? string.Empty).Trim(),
+                AlbumDescriptionDialogText.Trim(),
+                StringComparison.Ordinal);
             if (!string.IsNullOrWhiteSpace(snippet))
                 AlbumDescription = snippet;
             if (!string.IsNullOrWhiteSpace(fullText))
                 AlbumDescriptionFull = fullText;
-            if (!IsAlbumDescriptionEditing)
-            {
-                AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
-                    ? AlbumDescriptionFull
-                    : AlbumDescription;
-            }
+            if (editorUntouched)
+                AlbumDescriptionEditorText = AlbumDescriptionDialogText;
         }
         catch
         {
             // Fail silently by design.
         }
+        finally
+        {
+            IsAlbumDescriptionLoaded = true;
+        }
     }
+
+    /// <summary>The description lookup finished (found or not). "Add a description" waits for it,
+    /// so it never flashes on an album whose text is still on its way.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowAddAlbumDescription))]
+    private bool _isAlbumDescriptionLoaded;
+
+    public bool ShowAddAlbumDescription => IsAlbumDescriptionLoaded && !HasAlbumDescription;
 
     /// <summary>Resolves this album's animated cover from its first track (sidecar or managed cache).</summary>
     private string? ResolveAlbumAnimatedCover()
@@ -565,7 +627,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Stable picks: sample once per (artist, albumId) and reuse on subsequent
         // rebuilds (e.g. metadata save → LibraryUpdated) so the section doesn't
         // reshuffle while the user is viewing the same album.
-        var key = $"{currentArtist} {currentId}";
+        var key = $"{currentArtist}\0{currentId}";
         var poolById = pool.ToDictionary(a => a.Id);
         List<Album> picks;
         if (_moreByArtistKey == key && _moreByArtistOrder != null)
@@ -633,7 +695,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _groupedDiscNumbers = Tracks.Select(t => t.DiscNumber).ToArray();
         DiscGroups.Clear();
         var pending = new List<(ObservableCollection<Track> Target, List<Track> Remainder)>();
-        foreach (var g in Tracks.GroupBy(t => t.DiscNumber).OrderBy(g => g.Key))
+        // Disc 0 (untagged) is disc 1, as in InAlbumOrder and the library's album sort: a
+        // separate "Disc 0" group sat above disc 1 while play order ran 1, 2, … across both,
+        // so Play on a row there skipped the disc-1 rows shown below it.
+        foreach (var g in Tracks.GroupBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber).OrderBy(g => g.Key))
         {
             var all = g.ToList();
             var visible = new ObservableCollection<Track>(all.Take(TrackRealizeChunk));
@@ -801,9 +866,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         IsAlbumDescriptionEditing = true;
     }
 
-    [RelayCommand]
+    /// <summary>Raised once a description edit has been saved; the pop-up closes on it.</summary>
+    public event EventHandler? AlbumDescriptionSaved;
+
+    /// <summary>Saves the edited description. Only when the text really changed: the pop-up's
+    /// Ctrl+Enter reaches this without the Save button's disabled state, and saving the shown
+    /// Last.fm text unchanged would pin it as the user's own override.</summary>
+    [RelayCommand(CanExecute = nameof(HasAlbumDescriptionChanges))]
     private async Task SaveAlbumDescriptionEdit()
     {
+        if (!HasAlbumDescriptionChanges) return;
         var edited = (AlbumDescriptionEditorText ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(edited))
         {
@@ -817,9 +889,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             await _lastFm.SetAlbumDescriptionOverrideAsync(Album.Artist, Album.Name, edited);
             AlbumDescription = edited;
             AlbumDescriptionFull = edited;
+            AlbumDescriptionEditorText = edited;
         }
 
         IsAlbumDescriptionEditing = false;
+        AlbumDescriptionSaved?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -843,23 +917,24 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
-    /// <summary>Star click on a row or Rate ▸ in its menu.</summary>
-    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(new[] { track }, stars);
+    /// <summary>Star click on a row or Rate ▸ in its menu. Rates the whole Ctrl-selection when
+    /// the row is in it, like the Songs and playlist pages (it used to rate the one row).</summary>
+    public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(SelectionOr(track), stars);
 
     [RelayCommand]
     private Task RateTrack(RateRequest request) => RateAsync(request.Track, request.Stars);
 
     [RelayCommand]
-    private Task FetchLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: false);
+    private Task FetchLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(TakeSelectionOr(track), remove: false);
 
     [RelayCommand]
-    private Task RemoveLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(new[] { track }, remove: true);
+    private Task RemoveLyrics(Track track) => MetadataHelper.OpenBulkLyricsDialog(TakeSelectionOr(track), remove: true);
 
     [RelayCommand]
-    private Task OpenLyricsStudio(Track track) => MetadataHelper.OpenLyricsStudio(new[] { track });
+    private Task OpenLyricsStudio(Track track) => MetadataHelper.OpenLyricsStudio(TakeSelectionOr(track));
 
     [RelayCommand]
-    private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(new[] { track });
+    private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(TakeSelectionOr(track));
 
     /// <summary>Whole album → folder / Lyrics Studio (header menu).</summary>
     [RelayCommand]
@@ -877,7 +952,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
-        _player.AddRangeToQueue(InAlbumOrder(Tracks));
+        _player.AddRangeToQueue(InAlbumOrder(Tracks), Album.Name);
 
         var generation = ++_albumAddedGeneration;
         AlbumAddedToQueue = true;
@@ -892,6 +967,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
     private List<Track> SelectionOr(Track track) =>
         CtrlSelectedTracks.Contains(track) ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+
+    /// <summary><see cref="SelectionOr"/>, then the selection is used up (as the bulk actions do).</summary>
+    private List<Track> TakeSelectionOr(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        return tracks;
+    }
 
     [RelayCommand]
     private async Task OpenMetadata(Track track)
@@ -953,9 +1036,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        track.IsFavorite = !track.IsFavorite;
-        await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged(new[] { track });
+        // The whole Ctrl-selection when the row is in it, all set the way the clicked
+        // row's entry reads ("Favorites" / "Remove from Favorites").
+        var tracks = TakeSelectionOr(track);
+        var newState = !track.IsFavorite;
+        foreach (var t in tracks)
+            t.IsFavorite = newState;
+        await _library.SaveTrackUserStateAsync(tracks);
+        _library.NotifyFavoritesChanged(tracks);
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
@@ -978,7 +1066,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        await _sidebar.CreatePlaylistWithTrackAsync(track);
+        await _sidebar.CreatePlaylistWithTracksAsync(TakeSelectionOr(track));
     }
 
     [RelayCommand]
@@ -991,11 +1079,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track }))
+        var tracks = SelectionOr(track);
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        var idx = Tracks.IndexOf(track);
-        if (idx >= 0)
-            Tracks.RemoveAt(idx);
+        CtrlSelectedTracks.Clear();
+        foreach (var removed in tracks)
+        {
+            var idx = Tracks.IndexOf(removed);
+            if (idx >= 0)
+                Tracks.RemoveAt(idx);
+        }
     }
 
     [RelayCommand]
@@ -1077,17 +1170,15 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayNextRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        // Insert in reverse so playback order matches album order.
-        var tracks = InAlbumOrder(album.Tracks);
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        // AddNextRange keeps album order when the batch goes in up front.
+        _player.AddNextRange(InAlbumOrder(album.Tracks), album.Name);
     }
 
     [RelayCommand]
     private void AddRelatedAlbumToQueue(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(InAlbumOrder(album.Tracks));
+        _player.AddRangeToQueue(InAlbumOrder(album.Tracks), album.Name);
     }
 
     [RelayCommand]

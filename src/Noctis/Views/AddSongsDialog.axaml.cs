@@ -1,91 +1,91 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media.Transformation;
-using Avalonia.Threading;
 
 namespace Noctis.Views;
 
+/// <summary>
+/// Add Songs in the rounded pill pop-up (PillDialogHost: the blurred app behind and the shared
+/// open/close animation). Every close — Cancel, Add, Esc, Alt+F4 — is a plain Close() the host
+/// turns into the animated one, played once.
+/// </summary>
 public partial class AddSongsDialog : Window
 {
-    private bool _closing;
-
     public AddSongsDialog()
     {
         InitializeComponent();
     }
 
-    protected override void OnOpened(EventArgs e)
+    /// <summary>
+    /// Closes the dialog. PillDialogHost turns the close into the animated one (it plays once
+    /// however many closes arrive). The caller reads the pick from the view model's SongsChosen
+    /// event, so nothing rides on Close(result).
+    /// </summary>
+    public Task CloseAnimatedAsync()
     {
-        base.OnOpened(e);
-        // Settle to the open state on the next frame so the fade/scale
-        // transitions animate it (same pattern as the Create Playlist dialog).
-        Dispatcher.UIThread.Post(() =>
-        {
-            DialogOverlay.Opacity = 1;
-            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
-            SearchBox.Focus();
-        }, DispatcherPriority.Loaded);
+        Close();
+        return Task.CompletedTask;
     }
 
-    /// <summary>Plays the fade/scale close animation, then closes the window.</summary>
-    public async Task CloseAnimatedAsync()
+    /// <summary>Esc closes like Cancel.</summary>
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        if (_closing) return;
-        _closing = true;
-        DialogOverlay.Opacity = 0;
-        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
-        await Task.Delay(200);
-        Close();
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            Close();
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     /// <summary>
-    /// Caps the title's MaxWidth to the cell width minus the explicit badge, so long
-    /// titles ellipsize while the badge keeps hugging the title (Auto,Auto columns
-    /// measure text unconstrained, which otherwise overflows the row).
+    /// The search box does not take the caret on open (a focused pill field wears the accent
+    /// ring, which read as an outline on a box nobody had touched), so typing anywhere else in
+    /// the dialog starts the search instead of going nowhere. Whitespace is left alone: Space on
+    /// a focused row ticks it.
     /// </summary>
-    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once
-    /// per cell and stashed in Tag: LayoutUpdated fires after EVERY window layout pass,
-    /// and a template cell's children never change (recycling reuses the same Grid).</summary>
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        if (!e.Handled && !string.IsNullOrWhiteSpace(e.Text) && !SearchBox.IsFocused)
+        {
+            e.Handled = true;
+            SearchBox.Focus();
+            SearchBox.Text = (SearchBox.Text ?? string.Empty) + e.Text;
+            SearchBox.CaretIndex = SearchBox.Text.Length;
+            return;
+        }
+        base.OnTextInput(e);
+    }
+
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once per cell and
+    /// stashed in Tag: LayoutUpdated fires after every window layout pass and a cell's children never
+    /// change (a recycled row keeps its cell and only swaps the data).</summary>
     private sealed record TitleCellChildren(TextBlock Title, Border? ExplicitBadge);
 
+    /// <summary>
+    /// A row's title cell is an Auto,Auto grid so the E badge hugs the title; Auto columns measure
+    /// unbounded, so the title's MaxWidth is capped to the cell minus the badge here and
+    /// TextTrimming does the rest. A cell not laid out is left alone.
+    /// </summary>
     private void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
     {
-        if (sender is not Grid titleCell)
-            return;
-
-        if (titleCell.Tag is not TitleCellChildren children)
+        if (sender is not Grid cell || !cell.IsEffectivelyVisible || cell.Bounds.Width <= 0) return;
+        if (cell.Tag is not TitleCellChildren children)
         {
-            var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
-            if (title == null)
-                return;
-
-            children = new TitleCellChildren(title, titleCell.Children.OfType<Border>().FirstOrDefault());
-            titleCell.Tag = children;
+            var title = cell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title is null) return;
+            children = new TitleCellChildren(title, cell.Children.OfType<Border>().FirstOrDefault());
+            cell.Tag = children;
         }
 
-        var reservedBadgeWidth = 0.0;
-
-        if (children.ExplicitBadge?.IsVisible == true)
+        var reserved = 0.0;
+        if (children.ExplicitBadge is { IsVisible: true } badge)
         {
-            var badgeMargin = children.ExplicitBadge.Margin;
-            var badgeWidth = children.ExplicitBadge.Bounds.Width > 0
-                ? children.ExplicitBadge.Bounds.Width
-                : children.ExplicitBadge.DesiredSize.Width;
-            reservedBadgeWidth = badgeWidth + badgeMargin.Left + badgeMargin.Right;
+            var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
+            reserved = width + badge.Margin.Left + badge.Margin.Right;
         }
-
-        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedBadgeWidth);
-        if (Math.Abs(children.Title.MaxWidth - maxTitleWidth) > 0.5)
-            children.Title.MaxWidth = maxTitleWidth;
-    }
-
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        e.Handled = true;
-    }
-
-    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
-    {
-        e.Handled = true;
+        var max = Math.Max(0, cell.Bounds.Width - reserved);
+        if (Math.Abs(children.Title.MaxWidth - max) > 0.5)
+            children.Title.MaxWidth = max;
     }
 }

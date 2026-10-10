@@ -166,6 +166,9 @@ public sealed class GaplessSink : IDisposable
         DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkOpened",
             $"elapsedMs={Stopwatch.GetElapsedTime(openStart).TotalMilliseconds:0}, {DescribeFormats(mix)}, " +
             $"output={(NullWavePlayer.SilentMode ? "null" : "wasapi")}");
+        // Straight to the session log, whatever Developer Mode says: a report of choppy audio
+        // needs the device rate, and Ardhito's 10-08 log only let it be inferred from the gaps.
+        DebugLog.Write("Audio", $"engine output: {DescribeFormats(mix)}");
         // Never let the callback throw: an unhandled Timer exception kills the process.
         _deviceWatch = new Timer(_ =>
         {
@@ -190,10 +193,12 @@ public sealed class GaplessSink : IDisposable
     /// endpoint such as a Bluetooth hands-free "Headset": every track would stay downmixed and
     /// band-limited until restart, even after moving to stereo speakers. Always stereo, and 48 kHz
     /// below 44.1 kHz; shared mode's AUTOCONVERTPCM (NAudio passes it) matrixes and resamples for
-    /// such a device, while a normal device keeps its own rate.
+    /// such a device, while a normal device keeps its own rate. Above <see cref="AmemRate.Max"/>
+    /// the rate is halved into range (a 384 kHz device runs the engine at 192 kHz): LibVLC's
+    /// callbacks deliver the wrong amount of audio there (see <see cref="AmemRate"/>).
     /// </summary>
     internal static (int SampleRate, int Channels) EngineFormat(int mixSampleRate) =>
-        (mixSampleRate < 44100 ? 48000 : Math.Min(mixSampleRate, 384000), 2);
+        (mixSampleRate < 44100 ? 48000 : AmemRate.Fit(mixSampleRate), 2);
 
     // ── Multi-channel upmix (Settings → Audio) ──
     // Read at output creation, so a change takes effect through the same rebuild

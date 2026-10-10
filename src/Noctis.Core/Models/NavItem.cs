@@ -22,4 +22,8 @@ public partial class NavItem : ObservableObject
 
     /// <summary>If this is a playlist nav item, stores the playlist ID.</summary>
     public Guid? PlaylistId { get; set; }
+
+    /// <summary>The label. A sidebar row's accessible name falls back to its item's
+    /// ToString(), so screen readers read "Home" or the playlist's name, not the type.</summary>
+    public override string ToString() => Label;
 }

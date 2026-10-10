@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="using:Noctis.Localization"
+        xmlns:loc="using:Noctis.Localization"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.OrganizeFilesDialog"
         x:DataType="vm:OrganizeFilesViewModel"
         Title="{loc:T OrganizeFiles.OrganizeFiles}"
@@ -13,145 +14,136 @@
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Pill outline shared with Settings (SettingsView "(not set)" box): 1.5px translucent
-             mid-grey, layout-rounded. The Fluent templates restyle the border on hover/focus/press,
-             so the template parts are pinned too. Neutral buttons opt in via .pill-outline. -->
-        <Style Selector="TextBox">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+        <!-- Header "Undo last" pill: the editor's header "Find online" pill. BorderThickness is
+             set on the button itself: pill-secondary, loaded by the host and so nearer the
+             button, sets it to 0 (the same goes for the chips' sizes below). -->
+        <Style Selector="Button.of-header-action">
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
+        <Style Selector="TextBlock.of-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
         </Style>
-        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
+        <Style Selector="TextBlock.of-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
         </Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-            <Setter Property="BorderThickness" Value="1.5" />
-        </Style>
-        <Style Selector="Button.pill-outline">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-            <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="UseLayoutRounding" Value="True" />
-        </Style>
-        <Style Selector="Button.pill-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.pill-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#99A0A0A8" />
-        </Style>
-        <!-- Round header X (same look as the Settings header close). -->
-        <Style Selector="Button.dialog-close">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="CornerRadius" Value="17" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
-        </Style>
-        <Style Selector="Button.dialog-close:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
-        <!-- Quiet secondary actions in the sticky bar: no fill, no border, dims until hovered.
-             The Fluent template paints a hover fill on the presenter, so pin it transparent. -->
-        <Style Selector="Button.text-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Opacity" Value="0.7" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="Button.text-btn:pointerover">
-            <Setter Property="Opacity" Value="1" />
-        </Style>
-        <Style Selector="Button.text-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Opacity" Value="1" />
+        <!-- Files already where the pattern puts them recede; the ones that move stand out. -->
+        <Style Selector="Border.of-row.in-place">
+            <Setter Property="Opacity" Value="0.45" />
         </Style>
     </Window.Styles>
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
-                Width="720"
-                MaxHeight="820"
-                Margin="0,50"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-            <DockPanel>
-                <!-- Header: centred title + one-line description, round X at the top-right. -->
-                <Panel DockPanel.Dock="Top" Margin="24,18,18,8">
-                    <StackPanel Spacing="2" Margin="34,2,34,0">
-                        <TextBlock Text="{loc:T OrganizeFiles.OrganizeFiles}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="{loc:T OrganizeFiles.RenameMoveFilesInto}"
-                                   FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Classes="dialog-close" Command="{Binding CloseCommand}"
-                            ToolTip.Tip="{loc:T Common.Close}"
-                            HorizontalAlignment="Right" VerticalAlignment="Top">
-                        <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" />
-                    </Button>
-                </Panel>
+    <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor / Find Metadata, with the
+         blurred app behind. PillDialogHost draws the blurred, dimmed owner, the card with its
+         shadow, and plays the open/close animation (every close path — Close, Esc, the view
+         model's Closed, Alt+F4 — animates out once). MaxHeight, not Height: the card shrinks
+         with a short window and stays bounded so the preview list virtualizes. -->
+    <controls:PillDialogHost>
 
-                <!-- Sticky bar: count on the left, quiet Undo, one primary on the right. -->
-                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16"
-                        Background="#09FFFFFF"
-                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
-                                   FontSize="13" Opacity="0.8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Content="{loc:T OrganizeFiles.UndoLast}" Command="{Binding UndoLastCommand}"
-                                IsEnabled="{Binding CanUndo}" Classes="text-btn"
-                                VerticalAlignment="Center" Margin="12,0,8,0" />
-                        <Button Grid.Column="2" Content="{loc:T OrganizeFiles.Apply}" Command="{Binding ApplyCommand}"
-                                IsEnabled="{Binding HasApplicableMoves}"
-                                Padding="22,10"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentButtonBackground}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                FontWeight="SemiBold"
-                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
-                    </Grid>
+    <Grid Width="680" MaxHeight="720" RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- Header: title, one-line purpose, Undo last where the editor has Find online. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*,Auto">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <controls:LineIcon x:Name="HeaderIcon" Data="{DynamicResource LineOrganizeFiles}" Width="22" Height="22" Opacity="0.6"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
-                <!-- Form stays pinned at the top; only the preview list scrolls, so the
-                     mouse wheel always works on one predictable scroll region. -->
-                <StackPanel DockPanel.Dock="Top" Margin="24,4,24,0" Spacing="12">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T OrganizeFiles.FolderPattern}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                        <TextBox Text="{Binding Pattern}" Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}"
-                                 CornerRadius="999" Padding="14,8" />
-                        <TextBlock Text="{loc:T OrganizeFiles.TokensAlbumArtistArtistAlbum}"
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T OrganizeFiles.DestinationFolderBlankFirst}" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                        <TextBox Text="{Binding TargetRoot}" Watermark="{loc:T OrganizeFiles.FirstMediaFolder}"
-                                 CornerRadius="999" Padding="14,8" />
-                    </StackPanel>
-
-                    <Button Content="{loc:T OrganizeFiles.UpdatePreview}" Command="{Binding PreviewCommand}"
-                            Classes="pill-outline" HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
-
-                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-
-                    <TextBlock Text="{loc:T OrganizeFiles.Preview}" FontSize="13" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T OrganizeFiles.OrganizeFiles}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="{loc:T OrganizeFiles.RenameMoveFilesInto}"
+                               FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
+                <Button Grid.Column="3"
+                        Classes="pill-secondary of-header-action"
+                        BorderThickness="1.5"
+                        MinHeight="36"
+                        Padding="16,0"
+                        FontSize="12.5"
+                        VerticalAlignment="Center"
+                        Content="{loc:T OrganizeFiles.UndoLast}"
+                        Command="{Binding UndoLastCommand}"
+                        IsEnabled="{Binding CanUndo}" />
+            </Grid>
+        </Border>
+
+        <!-- 1. Pattern (tag chips add a token at the caret; the accent line is a live example)
+             2. Destination. Pinned at the top: only the preview list below scrolls. -->
+        <StackPanel Grid.Row="1" Margin="28,18,28,0" Spacing="14">
+            <StackPanel Spacing="6">
+                <TextBlock Classes="of-label" Text="{loc:T OrganizeFiles.FolderPattern}" />
+                <TextBox x:Name="PatternBox"
+                         Classes="pill-field"
+                         Text="{Binding Pattern}"
+                         Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}" />
+                <ItemsControl x:Name="TokenChips" ItemsSource="{Binding Tokens}" Margin="4,0,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemSpacing="6" LineSpacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OrganizeFilesViewModel+PatternToken">
+                            <!-- Not focusable: the pattern keeps the caret the chip inserts at. -->
+                            <Button Classes="pill-secondary"
+                                    Content="{Binding Label}"
+                                    Tag="{Binding Token}"
+                                    Focusable="False"
+                                    MinHeight="28"
+                                    Padding="12,0"
+                                    FontSize="12"
+                                    FontWeight="Normal"
+                                    ToolTip.Tip="{loc:T OrganizeFiles.InsertToken}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,2,0,0"
+                            Background="Transparent"
+                            ToolTip.Tip="{loc:T OrganizeFiles.SampleTip}"
+                            IsVisible="{Binding SampleTarget, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="→" FontSize="12.5" Opacity="0.45" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SampleTarget}" FontSize="12.5"
+                               Foreground="{DynamicResource AccentColorBrush}"
+                               TextTrimming="CharacterEllipsis" MaxWidth="590" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+                <TextBlock Classes="of-label" Text="{loc:T OrganizeFiles.Destination}" />
+                <TextBox Classes="pill-field"
+                         Text="{Binding TargetRoot}"
+                         Watermark="{loc:T OrganizeFiles.FirstMediaFolder}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 3. Preview: every planned move in one filled well. -->
+        <Grid Grid.Row="2" Margin="28,18,28,12" RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBlock Grid.Column="0" Classes="of-label" Text="{loc:T OrganizeFiles.Preview}"
+                           VerticalAlignment="Center" Margin="4,0,0,0" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        MinHeight="30"
+                        Padding="14,0"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Content="{loc:T OrganizeFiles.UpdatePreview}"
+                        Command="{Binding PreviewCommand}" />
+            </Grid>
+
+            <Border Grid.Row="1" Classes="pill-well" ClipToBounds="True" MinHeight="120">
+                <!-- Right padding is the overlay scrollbar's lane, so it never sits on a chip. -->
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="24,2,24,8">
+                              Padding="8,8,16,8">
                     <ItemsControl ItemsSource="{Binding Rows}">
                         <!-- Virtualized: Rows holds one entry per local library track (skips
-                             included), so opening the tool or pressing Update Preview on a
-                             large library built every row's Border + DockPanel + 3 TextBlock
-                             tree on the UI thread. -->
+                             included), so a large library built every row on the UI thread. -->
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <VirtualizingStackPanel />
@@ -159,16 +151,19 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:OrganizeFilesViewModel+OrganizeRow">
-                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                                <Border Classes="of-row" Classes.in-place="{Binding IsInPlace}"
+                                        Padding="12,7">
                                     <DockPanel>
                                         <Border DockPanel.Dock="Right" VerticalAlignment="Center"
-                                                Background="#22FFFFFF" CornerRadius="999"
+                                                Classes="pill-well" CornerRadius="999"
                                                 Padding="10,3" Margin="12,0,0,0">
-                                            <TextBlock Text="{Binding ActionText}" FontSize="11" Opacity="0.85" />
+                                            <TextBlock Text="{Binding ActionText}" FontSize="11" Opacity="0.8" />
                                         </Border>
-                                        <StackPanel Spacing="1" Margin="0,0,8,0">
-                                            <TextBlock Text="{Binding SourceName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding TargetRelative}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{Binding SourceName}" FontSize="12.5" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding TargetRelative}" FontSize="11.5" Opacity="0.6"
+                                                       TextTrimming="CharacterEllipsis"
                                                        ToolTip.Tip="{Binding TargetRelativeFull}" />
                                         </StackPanel>
                                     </DockPanel>
@@ -177,7 +172,31 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer: count on the left, Close / Apply on the right (the editor's Cancel / Save). -->
+        <Border Grid.Row="3"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="of-status" Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                <Button Grid.Column="1"
+                        Classes="pill-secondary"
+                        Content="{loc:T OrganizeFiles.Close}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="108"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="2"
+                        Classes="pill-primary"
+                        Content="{loc:T OrganizeFiles.Apply}"
+                        Command="{Binding ApplyCommand}"
+                        IsEnabled="{Binding HasApplicableMoves}"
+                        MinWidth="108" />
+            </Grid>
         </Border>
-    </Border>
+    </Grid>
+    </controls:PillDialogHost>
 </Window>

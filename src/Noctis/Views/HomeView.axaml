@@ -22,6 +22,7 @@
              so the command is invoked from the code-behind instead of Button.Command. -->
                         <DataTemplate x:Key="ChartRowTemplate" x:DataType="m:TopSongRow">
                             <Button Classes="browse-item home-chart-row"
+                                    AutomationProperties.Name="{Binding Track, Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                     helpers:DragFileBehavior.EnableFileDrag="True"
                                     ContextRequested="OnChartRowContextRequested"
                                     DoubleTapped="OnChartRowDoubleTapped">
@@ -54,6 +55,25 @@
                                                                       Stretch="UniformToFill"
                                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                       IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <!-- Hover Play / Pause over the art, as on the artist page's Top Songs. -->
+                                                <Button Classes="art-play-overlay"
+                                                        Background="#66000000"
+                                                        BorderThickness="0"
+                                                        Padding="0"
+                                                        CornerRadius="4"
+                                                        HorizontalAlignment="Stretch"
+                                                        VerticalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"
+                                                        Cursor="Hand"
+                                                        ToolTip.Tip="{loc:T LibrarySongs.PlayFromHereTip}"
+                                                        Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).TogglePlayChartRowCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Panel>
+                                                        <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !Track.IsCurrentlyPlaying}"><Path Data="{StaticResource PlayIcon}" /></Viewbox>
+                                                        <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding Track.IsCurrentlyPlaying}"><Path Data="{StaticResource PauseIcon}" /></Viewbox>
+                                                    </Panel>
+                                                </Button>
                                             </Panel>
                                         </Border>
                                         <!-- Left-aligned grid: the star column shrinks to the title's
@@ -89,7 +109,7 @@
                                         </Grid>
                                         <TextBlock Grid.Column="3"
                                                    Classes="chart-artist"
-                                                   Text="{Binding Track.Artist}"
+                                                   Text="{Binding Track.ArtistDisplay}"
                                                    FontSize="13"
                                                    Opacity="0.7"
                                                    VerticalAlignment="Center"
@@ -144,6 +164,15 @@
         </Style>
         <Style Selector="Button.home-history-pill:pointerover">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
+        </Style>
+
+        <!-- The hero's Resume / Pause reads the label it shows (screen readers otherwise read
+             its content's type name, "Avalonia.Controls.StackPanel"). -->
+        <Style Selector="Button.continue-resume">
+            <Setter Property="AutomationProperties.Name" Value="{loc:T Home.Resume}"/>
+        </Style>
+        <Style Selector="Button.continue-resume.playing">
+            <Setter Property="AutomationProperties.Name" Value="{loc:T Home.Pause}"/>
         </Style>
 
         <!-- Rank numerals for the chart rows: plain white on both charts (09-13; the
@@ -204,6 +233,10 @@
         <Style Selector="Button.section-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+        <!-- Section headers fold, they don't zoom: no app-wide hover / press scale (10-05). -->
+        <Style Selector="Button.section-toggle:pointerover, Button.section-toggle:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
 
         <!-- Disclosure chevron: the thin ComboBox glyph, pointing right when folded and
              rotating down when open. The
@@ -211,8 +244,18 @@
              RenderTransform throws at startup. The resting rotation is set here rather
              than on the element, because a local value on the PathIcon would win over
              the .expanded style and the chevron would never turn. -->
-        <Style Selector="Button.section-toggle PathIcon.section-chevron">
-            <Setter Property="Opacity" Value="0.4"/>
+        <!-- The chevron sits in the sidebar folder's grey rounded box (28px, radius 8, #22808080),
+             so every foldable section header reads like a playlist folder (user ask 10-05). -->
+        <Style Selector="Border.section-chevron-box">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="#22808080"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.section-toggle Path.section-chevron">
+            <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="Opacity" Value="0.8"/>
             <Setter Property="RenderTransform" Value="rotate(-90deg)"/>
             <Setter Property="Transitions">
                 <Transitions>
@@ -225,11 +268,11 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.section-toggle.expanded PathIcon.section-chevron">
+        <Style Selector="Button.section-toggle.expanded Path.section-chevron">
             <Setter Property="RenderTransform" Value="rotate(0deg)"/>
         </Style>
-        <Style Selector="Button.section-toggle:pointerover PathIcon.section-chevron">
-            <Setter Property="Opacity" Value="0.85"/>
+        <Style Selector="Button.section-toggle:pointerover Path.section-chevron">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
         <!-- Most Listened To chart rows: full-width pills, one track per row -->
@@ -262,6 +305,28 @@
         </Style>
         <Style Selector="Button.home-chart-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
+        </Style>
+        <!-- Chart row art Play / Pause (artist page Top Songs recipe): hidden until the row is hovered. -->
+        <Style Selector="Button.art-play-overlay">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.home-chart-row:pointerover Button.art-play-overlay">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.art-play-overlay:pointerover, Button.art-play-overlay:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.art-play-overlay:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#80000000"/>
+        </Style>
+        <Style Selector="Button.art-play-overlay Path">
+            <Setter Property="Fill" Value="White"/>
+            <Setter Property="Stretch" Value="Uniform"/>
         </Style>
         <!-- Rows, not buttons: no press zoom (the app-wide Button:pressed scale). -->
         <Style Selector="Button.home-chart-row:pressed, Button.home-rail-track:pressed, Button.home-rail-album:pressed, Button.home-rail-card:pressed">
@@ -427,13 +492,14 @@
                                            Opacity="0.72"
                                            TextTrimming="CharacterEllipsis"
                                            MaxLines="1">
-                                    <Run Text="{Binding ContinueTrack.Artist, FallbackValue=''}" />
+                                    <Run Text="{Binding ContinueTrack.ArtistDisplay, FallbackValue=''}" />
                                     <Run Text="{Binding ContinueDetail}" />
                                 </TextBlock>
                             </StackPanel>
 
                             <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="8" MinWidth="128">
-                                <Button Classes="accent-btn"
+                                <Button Classes="accent-btn continue-resume"
+                                        Classes.playing="{Binding IsContinuePlaying}"
                                         Background="{DynamicResource AccentButtonBackground}"
                                         BorderThickness="0"
                                         Padding="16,8"
@@ -503,8 +569,12 @@
                                 <TextBlock Text="{loc:T Home.TopArtists}"
                                            FontSize="22"
                                            FontWeight="Bold" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                         </Button>
                         <controls:CollapsibleContent IsOpen="{Binding IsTopArtistsExpanded}" Lift="10" Motion="Glide">
@@ -521,6 +591,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:Artist">
                                         <Button Background="Transparent" BorderThickness="0" Padding="6"
+                                                AutomationProperties.Name="{Binding Name}"
                                                 Margin="0,2,18,2" Cursor="Hand"
                                                 Width="172"
                                                 HorizontalContentAlignment="Center"
@@ -602,8 +673,12 @@
                                 <TextBlock Text="{loc:T Home.MostPlayed}"
                                            FontSize="22"
                                            FontWeight="Bold" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                         </Button>
 
@@ -630,8 +705,12 @@
                                 <TextBlock Text="{loc:T Home.LastPlayed}"
                                            FontSize="22"
                                            FontWeight="Bold" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                         </Button>
                         <controls:CollapsibleContent IsOpen="{Binding IsLastPlayedExpanded}" Lift="10" Motion="Glide">
@@ -660,8 +739,12 @@
                             <TextBlock Text="{loc:T Home.Albums}"
                                        FontSize="22"
                                        FontWeight="Bold" />
-                            <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                      Width="12" Height="12" VerticalAlignment="Center" />
+                            <Border Classes="section-chevron-box">
+                                <Path Classes="section-chevron"
+                                      Width="28" Height="28"
+                                      Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                      StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                            </Border>
                         </StackPanel>
                     </Button>
                     <controls:CollapsibleContent IsOpen="{Binding IsRecentlyPlayedExpanded}" Lift="10" Motion="Glide">
@@ -677,6 +760,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Album">
                                     <Button Classes="album-tile home-album-tile"
+                                            AutomationProperties.Name="{Binding Name}"
                                             Margin="2"
                                             Padding="2"
                                             VerticalAlignment="Top"
@@ -778,8 +862,12 @@
                             ToolTip.Tip="{loc:T Home.HideShowSectionTip}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="{Binding TimeRotationTitle}" FontSize="22" FontWeight="Bold" />
-                            <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                      Width="12" Height="12" VerticalAlignment="Center" />
+                            <Border Classes="section-chevron-box">
+                                <Path Classes="section-chevron"
+                                      Width="28" Height="28"
+                                      Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                      StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                            </Border>
                         </StackPanel>
                     </Button>
                     <controls:CollapsibleContent IsOpen="{Binding IsTimeRotationExpanded}" Lift="10" Motion="Glide">
@@ -793,6 +881,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnTimeRotationContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTimeRotationCommand}"
                                             CommandParameter="{Binding}">
@@ -813,7 +902,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>
@@ -832,8 +921,12 @@
                         <StackPanel Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{loc:T Home.HeavyRotation}" FontSize="22" FontWeight="Bold" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Home.RepeatThesePastTwo}" FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Left" />
@@ -850,6 +943,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnHeavyRotationContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayHeavyRotationCommand}"
                                             CommandParameter="{Binding}">
@@ -870,7 +964,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>
@@ -889,8 +983,12 @@
                         <StackPanel Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{loc:T Home.RecentlyRediscovered}" FontSize="22" FontWeight="Bold" />
-                                <PathIcon Classes="section-chevron" Data="{StaticResource ChevronDownThinIcon}"
-                                          Width="12" Height="12" VerticalAlignment="Center" />
+                                <Border Classes="section-chevron-box">
+                                    <Path Classes="section-chevron"
+                                          Width="28" Height="28"
+                                          Data="M 9,11.5 L 14,16.5 L 19,11.5"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Home.BackEarsAfterLong}" FontSize="12" Opacity="0.5"
                                        HorizontalAlignment="Left" />
@@ -907,6 +1005,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Track">
                                     <Button Classes="browse-item home-history-pill"
+                                            AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                             ContextRequested="OnRediscoveredContextRequested"
                                             Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayRediscoveredCommand}"
                                             CommandParameter="{Binding}">
@@ -927,7 +1026,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                                <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                <TextBlock Text="{Binding ArtistDisplay}" FontSize="11" Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             </StackPanel>
                                         </Grid>

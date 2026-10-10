@@ -10,7 +10,7 @@ using Noctis.Services.LyricsStudio;
 namespace Noctis.ViewModels;
 
 /// <summary>Lyrics Studio choices the user changes inside the dialog; persisted by Settings.</summary>
-public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true);
+public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true, bool SaveTtml = false);
 
 public sealed record SpeechLanguageOption(string Code, string Name)
 {
@@ -63,6 +63,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [ObservableProperty] private bool _embedTags;
     /// <summary>Songs with no lyrics: fetch the plain text online (LRCLIB) so the model only has to time it.</summary>
     [ObservableProperty] private bool _onlineLyrics;
+    /// <summary>Also save a .ttml next to the song: players that read TTML and LRC but not ELRC get the word timings (Discord: Light Cone).</summary>
+    [ObservableProperty] private bool _saveTtml;
 
     // ── Model state ──
     [ObservableProperty] private bool _isModelInstalled;
@@ -165,7 +167,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     };
     public string ReviewConfidenceText => Selected?.Result is { } r
         ? (r.Source == LyricsStudioSource.ExistingFile ? string.Empty : $"{Math.Round(r.Confidence * 100)}% heard · ")
-          + $"{r.Lines.Count} lines · saves {(WordTimings ? "ELRC" : "LRC")}"
+          + $"{r.Lines.Count} lines · saves {(WordTimings ? "ELRC" : "LRC")}{(SaveTtml ? " + TTML" : string.Empty)}"
         : string.Empty;
     public bool ReviewIsTranscription => Selected?.Result?.Source == LyricsStudioSource.Transcription;
     public bool CanSave => Selected is { Status: StudioStatus.Ready or StudioStatus.Loaded } && ReviewLines.Count > 0;
@@ -262,6 +264,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _skipAlreadyTimed = s.LyricsStudioSkipAlreadyTimed;
         _embedTags = s.LyricsStudioEmbedTags;
         _onlineLyrics = s.LyricsStudioOnlineLyrics;
+        _saveTtml = s.LyricsStudioSaveTtml;
         _loadingPrefs = false;
         Clock = () => _clock.Elapsed;
 
@@ -326,6 +329,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
     partial void OnSkipAlreadyTimedChanged(bool value) => PersistPrefs();
     partial void OnEmbedTagsChanged(bool value) => PersistPrefs();
     partial void OnOnlineLyricsChanged(bool value) => PersistPrefs();
+    partial void OnSaveTtmlChanged(bool value)
+    {
+        PersistPrefs();
+        OnPropertyChanged(nameof(ReviewConfidenceText));
+    }
     partial void OnIsRunningChanged(bool value)
     {
         RaiseStartState();
@@ -454,7 +462,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics, SaveTtml)); }
         catch { /* preferences are a convenience */ }
     }
 
@@ -859,6 +867,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
                         continue;
                     }
                     if (pasted is not null) result = result with { Source = LyricsStudioSource.PastedLyrics };
+                    // Timed from the song's own lyrics: their romaji / translation lines ride along.
+                    else if (item.Existing is { } source)
+                        result = result with { Lines = ExistingLyricsLoader.CarryCompanions(source.Lines, result.Lines) };
                     item.Result = result;
                     item.Status = StudioStatus.Ready;
                     _drafts?.Save(item.Track.Id, LyricsStudioDraft.From(result));
@@ -948,11 +959,15 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var lines = ReviewLines.Select(l => l.ToAlignedLine()).Where(l => l.Text.Length > 0).ToList();
         var plain = TimedLyricsBuilder.BuildPlain(lines);
         var synced = WordTimings ? TimedLyricsBuilder.BuildElrc(lines) : TimedLyricsBuilder.BuildLrc(lines);
+        // Same timings as the ELRC/LRC: word spans with word timings on, line-level otherwise.
+        var ttml = SaveTtml
+            ? TimedLyricsBuilder.BuildTtml(WordTimings ? lines : lines.Select(l => l with { Words = Array.Empty<AlignedWord>() }))
+            : null;
         var embed = EmbedTags;
         try
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
-            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true));
+            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml));
             // What was written, edits included: reopening the saved song showed the result from
             // before the edits (drafts stop at Save, so nothing else carried them).
             item.Result = item.Result! with { Lines = lines };
@@ -961,12 +976,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.Existing = null;
             item.RefreshExistingFormat();
             // ELRC with no word timed yet is written as plain LRC; say what actually landed.
-            var format = !WordTimings ? "line timings (LRC)"
-                : lines.Any(l => l.Words.Count > 0) ? "word timings (ELRC)"
+            var format = !WordTimings ? (ttml is null ? "line timings (LRC)" : "line timings (LRC + TTML)")
+                : lines.Any(l => l.Words.Count > 0) ? (ttml is null ? "word timings (ELRC)" : "word timings (ELRC + TTML)")
                 : "line timings (LRC) · no words timed yet";
-            item.StatusText = outcome.KeptForeignSidecar ? $"Saved · {format} · old .lrc kept, couldn't move it to the recycle bin"
-                : !outcome.SidecarWritten ? $"Saved · {format} · no .lrc written"
-                : outcome.ReplacedForeignSidecar ? $"Saved · {format} · old .lrc moved to the recycle bin"
+            item.StatusText = outcome.KeptForeignSidecar ? $"Saved · {format} · an old lyrics file was kept, couldn't move it to the recycle bin"
+                : !outcome.SidecarWritten ? $"Saved · {format} · no lyrics file written"
+                : outcome.ReplacedForeignSidecar ? $"Saved · {format} · old lyrics file moved to the recycle bin"
                 : $"Saved · {format}";
             _savedCount++;
             OnPropertyChanged(nameof(SummaryText));
@@ -1035,16 +1050,18 @@ public partial class LyricsStudioViewModel : ViewModelBase
         catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.PreviewFailed", ex.Message); }
     }
 
-    /// <summary>The .elrc / .lrc files a save of this song would replace (names only, for the prompt).</summary>
+    /// <summary>
+    /// The lyrics files a save of this song would replace (names only, for the prompt): .elrc
+    /// and .lrc, and the .ttml and LRCGET .lyricsfile the lyrics page reads before them — a save
+    /// replaces those too, or they would hide it (it used to leave them and say nothing).
+    /// </summary>
     internal static List<string> ExistingLyricsFiles(Track track)
     {
         var found = new List<string>();
         if (string.IsNullOrWhiteSpace(track.FilePath)) return found;
-        foreach (var ext in new[] { ".elrc", ".lrc" })
-        {
-            var path = Path.ChangeExtension(track.FilePath, ext);
-            try { if (File.Exists(path)) found.Add($"“{Path.GetFileName(path)}”"); } catch { }
-        }
+        foreach (var ext in new[] { ".lyricsfile", ".ttml", ".elrc", ".lrc" })
+            foreach (var path in LyricsWriter.SidecarsOnDisk(track.FilePath, ext))
+                found.Add($"“{Path.GetFileName(path)}”");
         return found;
     }
 

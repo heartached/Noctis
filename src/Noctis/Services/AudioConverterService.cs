@@ -307,7 +307,12 @@ public sealed class AudioConverterService : IAudioConverterService
                 ? $"{track.Title} ({options.Format.ToUpperInvariant()})"
                 : null;
 
+            var existedBefore = File.Exists(outPath);
             var (ok, error) = await RunFfmpegAsync(ffmpeg, track.FilePath, outPath, options, titleOverride, ct);
+            // A cancelled or failed run leaves ffmpeg's half-written output behind (10-08).
+            // Remove it — but only a file this run created: with Overwrite on, a failure can
+            // happen before ffmpeg touches an existing file, and that one must survive.
+            if (!ok && !existedBefore) await DeletePartialOutputAsync(outPath);
             progress.Report(new ConvertProgress
             {
                 Track = track,
@@ -360,6 +365,25 @@ public sealed class AudioConverterService : IAudioConverterService
         catch
         {
             // Non-fatal: the file is still valid with ffmpeg's copied tags.
+        }
+    }
+
+    /// <summary>Best-effort removal of a half-written output. ffmpeg was just killed, so its
+    /// handle may take a moment to close: a couple of short retries, then give up quietly.</summary>
+    internal static async Task DeletePartialOutputAsync(string path)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Not CancellationToken-bound: this runs because the run was cancelled.
+                await Task.Delay(100);
+            }
         }
     }
 

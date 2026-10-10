@@ -74,7 +74,7 @@ public static class AppPaths
             {
                 "settings.json", "library.json", "library.db", "library.db-wal",
                 "library.db-shm", "playlists.json", "queue.json", "indexes.json",
-                "play_history.json"
+                "play_history.json", "play_history.recent.json"
             })
             {
                 var src = Path.Combine(releaseRoot, name);

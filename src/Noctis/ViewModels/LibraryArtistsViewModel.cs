@@ -15,8 +15,30 @@ namespace Noctis.ViewModels;
 /// </summary>
 public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisposable
 {
-    /// <summary>Number of portrait columns per virtualized grid row.</summary>
+    /// <summary>Most portrait columns per virtualized grid row (a wide window).</summary>
     public const int ArtistsPerRow = 7;
+
+    /// <summary>Width one portrait tile needs: the 190px disc plus its 4px side margins.</summary>
+    public const double TileWidth = 198;
+
+    /// <summary>Portraits per row for the current width (<see cref="ComputeColumns"/>). Seven
+    /// fixed columns overflowed below ~1390px and the discs drew over each other.</summary>
+    [ObservableProperty] private int _gridColumns = ArtistsPerRow;
+
+    /// <summary>As many whole tiles as <paramref name="usableWidth"/> holds, 1..<see cref="ArtistsPerRow"/>.</summary>
+    internal static int ComputeColumns(double usableWidth)
+        => Math.Clamp((int)(usableWidth / TileWidth), 1, ArtistsPerRow);
+
+    /// <summary>Re-chunks the rows when the view's usable width changes the column count.</summary>
+    public void UpdateGridColumns(double usableWidth)
+    {
+        if (!double.IsFinite(usableWidth) || usableWidth <= 0) return;
+        var columns = ComputeColumns(usableWidth);
+        if (columns == GridColumns) return;
+        GridColumns = columns;
+        if (_isActive) ApplyFilter(_currentFilter);
+        else _isDirty = true;
+    }
 
     private readonly ILibraryService _library;
     private readonly FavoriteArtistsService _favoriteArtists = new();
@@ -262,9 +284,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         var sortMode = SortMode;
         var ascending = SortAscending;
         var ignoredWords = _sortIgnoredWords;
+        var columns = GridColumns;
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var rows = BuildRows(artists, query, sortMode, ascending, ignoredWords);
+            var rows = BuildRows(artists, query, sortMode, ascending, ignoredWords, columns);
             if (Volatile.Read(ref _rebuildGeneration) == generation)
                 Dispatcher.UIThread.Post(() =>
                 {
@@ -283,7 +306,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// <paramref name="ignoredWords"/> are leading words the name key skips (GitHub #99).
     /// </summary>
     internal static List<ArtistRow> BuildRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
-        IReadOnlyList<string>? ignoredWords = null)
+        IReadOnlyList<string>? ignoredWords = null, int columns = ArtistsPerRow)
     {
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
@@ -308,7 +331,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ArtistRow? row = null;
         foreach (var artist in filtered)
         {
-            if (row == null || row.Artists.Count == ArtistsPerRow)
+            if (row == null || row.Artists.Count >= columns)
             {
                 row = new ArtistRow();
                 rows.Add(row);

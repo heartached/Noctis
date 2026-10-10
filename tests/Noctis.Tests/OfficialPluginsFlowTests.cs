@@ -86,6 +86,12 @@ public class OfficialPluginsFlowTests : IDisposable
         Assert.Equal(OfficialPluginState.Installed, item.State);
         Assert.False(item.CanClick);
         Assert.False(item.IsBusy);
+
+        // Managed on its official row (its switch replaces the "Installed" label), not under Custom Category.
+        Assert.Same(plugin, item.Installed);
+        Assert.False(item.ShowButton);
+        Assert.Empty(m.Vm.CustomPlugins);
+        Assert.True(m.Vm.HasNoCustomPlugins);
     }
 
     [AvaloniaFact]

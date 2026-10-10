@@ -241,6 +241,9 @@ public class PlayCountThresholdTests : IDisposable
         var a = Trk("a");
         var b = Trk("b");
         Start(rig, a); // counted at the start: the earlier, full play of `a`
+        // Heard past halfway, so it is a full play: leaving a song in its first half is a
+        // skip however it is left (SkipOnReplaceTests), and at 0:00 this one would be.
+        Listen(rig, 0, 100);
 
         rig.Settings.PlayCountThresholdPercent = 50;
         Start(rig, a, b);

@@ -1,0 +1,7 @@
+<metadata>
+  <!-- The app never calls the FFmpeg extension from C# (DefaultRenderersFactory loads it by
+       reflection, Media3AudioPlayer reaches FfmpegLibrary through JNI), and the generated
+       bindings do not compile (abstract members of DecoderAudioRenderer/BaseRenderer), so
+       bind nothing from it. The AAR's Java classes and native libraries are still packaged. -->
+  <remove-node path="/api/package[@name='androidx.media3.decoder.ffmpeg']" />
+</metadata>

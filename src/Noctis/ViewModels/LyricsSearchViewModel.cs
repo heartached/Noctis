@@ -153,9 +153,13 @@ public partial class LyricsSearchViewModel : ViewModelBase
     [RelayCommand]
     private void Close()
     {
-        _searchCts?.Cancel();
+        StopSearch();
         Closed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Cancels a running search without closing: the dialog calls it however it
+    /// closes (Alt+F4 never goes through <see cref="CloseCommand"/>).</summary>
+    internal void StopSearch() => _searchCts?.Cancel();
 }
 
 /// <summary>One source's answer in the Search Lyrics list.</summary>

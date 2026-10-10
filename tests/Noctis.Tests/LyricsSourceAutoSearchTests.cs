@@ -136,11 +136,50 @@ public class LyricsSourceAutoSearchTests
 
     // ── Format ranking ──
 
+    private const string WordLyricsfile = """
+        version: '1.0'
+        lines:
+        - text: hi there
+          start_ms: 1000
+          words:
+          - text: 'hi '
+            start_ms: 1000
+          - text: there
+            start_ms: 1400
+        """;
+    private const string LineLyricsfile = """
+        version: '1.0'
+        lines:
+        - text: hi there
+          start_ms: 1000
+          end_ms: 2000
+        """;
+
+    /// <summary>
+    /// Live check 10-05 ("The Bees Knees"): every LRCLIB result had a line-only Lyricsfile, so the
+    /// picker labelled them "Word-synced" and auto picked LRCLIB as best over Kugou's real word
+    /// timings. A source with real word timings must win over a line-only Lyricsfile.
+    /// </summary>
+    [Fact]
+    public void LineOnlyLyricsfile_IsLineSynced_AndLosesToRealWordTimings()
+    {
+        var lrclib = Result(synced: Lrc);
+        lrclib.Lyricsfile = LineLyricsfile;
+        lrclib.HasWordSync = false;
+        var kugou = Result(synced: Elrc);
+
+        Assert.False(lrclib.HasWordSyncedLyricsfile);
+        Assert.True(LyricsSearchSelector.FormatRank(kugou) > LyricsSearchSelector.FormatRank(lrclib));
+    }
+
     [Fact]
     public void FormatRank_WordSyncedOverLineSyncedOverPlain()
     {
         Assert.Equal(LyricsSearchSelector.WordSyncedRank, LyricsSearchSelector.FormatRank(Result(synced: Elrc)));
-        Assert.Equal(LyricsSearchSelector.WordSyncedRank, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = "lines: []" }));
+        Assert.Equal(LyricsSearchSelector.WordSyncedRank, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = WordLyricsfile }));
+        // LRCLIB sends a Lyricsfile with line-synced results too: it only times lines (10-05).
+        Assert.Equal(2, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = LineLyricsfile, HasWordSync = false }));
+        Assert.Equal(2, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = "lines: []" }));
         Assert.Equal(2, LyricsSearchSelector.FormatRank(Result(synced: Lrc)));
         Assert.Equal(1, LyricsSearchSelector.FormatRank(Result(plain: "just words")));
         Assert.Equal(0, LyricsSearchSelector.FormatRank(new LrcLibResult()));

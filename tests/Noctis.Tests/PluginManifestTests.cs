@@ -26,8 +26,8 @@ public class PluginManifestTests
               "platforms": ["windows", "LINUX"],
               "permissions": ["playback.control", "playback.read", "library.read", "network"],
               "settings": [
-                { "key": "greeting", "label": "Greeting", "type": "string", "default": "hi" },
-                { "key": "loud", "type": "bool", "default": true },
+                { "key": "greeting", "label": "Greeting", "type": "string", "default": "hi", "placeholder": " Say hi " },
+                { "key": "loud", "type": "bool", "default": true, "placeholder": "ignored" },
                 { "key": "count", "label": "Count", "type": "number", "default": 3, "min": 1, "max": 10 },
                 { "key": "mode", "label": "Mode", "type": "choice", "choices": ["a", "b"], "default": "b" },
               ],
@@ -51,6 +51,8 @@ public class PluginManifestTests
 
         Assert.Equal(4, m.Settings.Count);
         Assert.Equal(("greeting", PluginSettingType.String, "hi"), (m.Settings[0].Key, m.Settings[0].Type, m.Settings[0].Default));
+        Assert.Equal("Say hi", m.Settings[0].Placeholder);
+        Assert.Null(m.Settings[1].Placeholder); // text boxes only
         Assert.Equal("loud", m.Settings[1].Label); // label defaults to the key
         Assert.Equal("true", m.Settings[1].Default);
         Assert.Equal("3", m.Settings[2].Default);

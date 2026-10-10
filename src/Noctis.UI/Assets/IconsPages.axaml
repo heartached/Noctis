@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══ Page line icons (10-09) ═══
+         Drawn for Noctis by hand, same rules as the "Menu line icons" block in Icons.axaml:
+         open strokes on a 24 grid, no fill, drawn with round caps/joins at 2.25 grid units
+         (1.5px at 16px) by controls:LineIcon or MenuV2.LineIcon. Each one is a meaning the
+         menus had no glyph for, so no shape here stands for two actions. Before adding a
+         key, reuse any MenuLine* (Icons.axaml, IconsMenuExtra.axaml) or Line* (IconsLine.axaml)
+         that already means the action (Import = MenuLineImport, Back to Full View =
+         MenuLineExpand). Vector only: the same pixels on Windows, macOS and Linux (no PNG
+         mask, no icon font). -->
+
+    <!-- Clear the whole queue: shortening list lines beside one big x across them (replaces
+         Clear Queue ICON.png). Not MenuLineQueueRemove, whose small x on the last line is
+         Remove from Queue (one track). -->
+    <StreamGeometry x:Key="PageLineQueueClear">M4.5 6h8M4.5 12h5.5M4.5 18h3.5M14 8.5l6.5 7M20.5 8.5l-6.5 7</StreamGeometry>
+
+    <!-- Switch to the other lyrics source: two vertical arrows passing each other
+         (the horizontal pair, MenuLineConvert, is Convert) -->
+    <StreamGeometry x:Key="PageLineSwapSource">M8 19.5V4.5M4.5 8L8 4.5L11.5 8M16 4.5v15M12.5 16l3.5 3.5l3.5-3.5</StreamGeometry>
+
+    <!-- Follow / jump back to the current line: a locate crosshair -->
+    <StreamGeometry x:Key="PageLineFollow">M12 18.5a6.5 6.5 0 1 0 0-13a6.5 6.5 0 0 0 0 13ZM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M12 12h.01</StreamGeometry>
+
+    <!-- Listening recap (Noctis Wrap): a portrait story card with rising bars -->
+    <StreamGeometry x:Key="PageLineRecap">M7 3.5h10A1.5 1.5 0 0 1 18.5 5v14a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5ZM9 16.5v-2.5M12 16.5V9.5M15 16.5v-4.5</StreamGeometry>
+
+    <!-- Add to Library: stacked cards with a plus -->
+    <StreamGeometry x:Key="PageLineLibraryAdd">M8 3.5h10A1.5 1.5 0 0 1 19.5 5v10A1.5 1.5 0 0 1 18 16.5H8A1.5 1.5 0 0 1 6.5 15V5A1.5 1.5 0 0 1 8 3.5ZM3.5 7.5V19A1.5 1.5 0 0 0 5 20.5h11.5M13 7v6M10 10h6</StreamGeometry>
+</ResourceDictionary>

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Noctis.Services;
@@ -16,7 +17,21 @@ public partial class ReplayGainScannerDialog : Window
     public ReplayGainScannerDialog(ReplayGainScannerViewModel vm) : this()
     {
         DataContext = vm;
+        // PillDialogHost turns this into the animated close; nothing is returned through
+        // Close(result), so the deferred close loses nothing.
         vm.Closed += (_, _) => Close();
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        // Escape is Cancel: it stops a running scan first, and closes when idle.
+        if (e.Key == Key.Escape && DataContext is ReplayGainScannerViewModel vm)
+        {
+            e.Handled = true;
+            vm.CancelCommand.Execute(null);
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     private async void OnAddFilesClick(object? sender, RoutedEventArgs e)
@@ -26,7 +41,7 @@ public partial class ReplayGainScannerDialog : Window
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Add files to scan",
+                Title = Localization.Loc.T("ReplayGainScanner.AddFiles"),
                 AllowMultiple = true,
                 FileTypeFilter = new[]
                 {

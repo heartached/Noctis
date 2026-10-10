@@ -29,6 +29,8 @@ public partial class AlbumDetailView : UserControl
     // list: the shared Unknown-Album bucket froze the app for minutes and ran
     // it out of memory at WAV-rip library scale. Same pattern as LibrarySongsView.
     private TrackContextMenuBuilder? _menuBuilder;
+    /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
+    private string? _menuCulture;
     private ListBoxItem? _menuOwnerItem;
 
     public AlbumDetailView()
@@ -246,12 +248,21 @@ public partial class AlbumDetailView : UserControl
 
     private ContextMenu GetOrCreateTrackMenu()
     {
-        if (_menuBuilder != null) return _menuBuilder.Menu;
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_menuBuilder != null && _menuCulture == culture) return _menuBuilder.Menu;
+        // A live language switch while this page is open: rebuild so the menu follows it.
+        if (_menuBuilder != null)
+        {
+            DetachMenuFromOwner();
+            _menuBuilder = null;
+        }
 
         if (DataContext is not AlbumDetailViewModel) return new ContextMenu();
 
+        // v2 layout (10-09 redesign): header, quick tiles, grouped rows, Tools ▸.
         _menuBuilder = new TrackContextMenuBuilder();
-        return _menuBuilder.Build("Remove from Library", null, this);
+        _menuCulture = culture;
+        return _menuBuilder.Build(Noctis.Localization.Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
     }
 
     private void BindTrackMenuToTrack(Track track)
@@ -279,14 +290,21 @@ public partial class AlbumDetailView : UserControl
             fetchLyricsCommand: vm.FetchLyricsCommand,
             lyricsStudioCommand: vm.OpenLyricsStudioCommand,
             removeLyricsCommand: vm.RemoveLyricsCommand,
-            sendToFolderCommand: vm.SendToFolderCommand);
+            sendToFolderCommand: vm.SendToFolderCommand,
+            // Featured artists: View Artist (a submenu when the song credits several).
+            viewArtistCommand: vm.ViewArtistFromTrackCommand);
     }
 
-    /// <summary>Click on a row's stars rates that track.</summary>
+    /// <summary>Click on a row's stars rates that track (or the Ctrl-selection it is in). The
+    /// live selection is handed over first: the view model's copy is the one taken when a
+    /// menu last opened, and rating from it would hit rows no longer selected.</summary>
     private void OnRowRated(object? sender, int stars)
     {
         if (sender is Noctis.Controls.RatingStars control && control.DataContext is Track track && DataContext is AlbumDetailViewModel vm)
+        {
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
             _ = vm.RateAsync(track, stars);
+        }
     }
 
     private void DetachMenuFromOwner()
@@ -314,8 +332,7 @@ public partial class AlbumDetailView : UserControl
 
         BindTrackMenuToTrack(track);
         var menu = GetOrCreateTrackMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;
@@ -348,14 +365,76 @@ public partial class AlbumDetailView : UserControl
         e.Handled = true;
     }
 
-    // Close any menu still open from a previous rapid right-click so menus
-    // don't stack on top of each other.
-    private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e)
-        => ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+    // ── Related albums (Other Versions / More By): one shared v2 album menu ──
+    // Replaces the per-tile XAML ContextMenu: same Related* commands and parameters.
 
+    private AlbumContextMenuBuilder? _relatedMenuBuilder;
+    /// <summary>Culture the related-album menu's strings were read in (read once, at Build).</summary>
+    private string? _relatedMenuCulture;
+    private Control? _relatedMenuOwner;
+
+    private void OnRelatedAlbumContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is Button tile && OpenRelatedAlbumMenu(tile))
+            e.Handled = true;
+    }
+
+    private bool OpenRelatedAlbumMenu(Button tile)
+    {
+        if (tile.DataContext is not Album album) return false;
+        if (DataContext is not AlbumDetailViewModel vm) return false;
+
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_relatedMenuBuilder == null || _relatedMenuCulture != culture)
+        {
+            _relatedMenuCulture = culture;
+            _relatedMenuBuilder = new AlbumContextMenuBuilder();
+            _relatedMenuBuilder.Build(Noctis.Localization.Loc.T("LibraryAlbums.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
+        }
+
+        _relatedMenuBuilder.Bind(
+            album,
+            playCommand: vm.PlayRelatedAlbumCommand,
+            shuffleCommand: vm.ShuffleRelatedAlbumCommand,
+            playNextCommand: vm.PlayNextRelatedAlbumCommand,
+            addToQueueCommand: vm.AddRelatedAlbumToQueueCommand,
+            addToPlaylistCommand: vm.AddRelatedAlbumToNewPlaylistCommand,
+            toggleFavoritesCommand: vm.ToggleRelatedAlbumFavoritesCommand,
+            openMetadataCommand: vm.OpenRelatedAlbumMetadataCommand,
+            showInExplorerCommand: vm.ShowRelatedAlbumInExplorerCommand,
+            removeCommand: vm.RemoveRelatedAlbumFromLibraryCommand,
+            convertCommand: vm.ConvertRelatedAlbumCommand,
+            scanReplayGainCommand: vm.ScanRelatedAlbumReplayGainCommand);
+
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        var menu = _relatedMenuBuilder.Menu;
+        ContextMenuCoordinator.NotifyOpening(menu);
+        MenuOpenAnimation.CloseNow(menu);
+        // Detach from the previous owner so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_relatedMenuOwner != null && !ReferenceEquals(_relatedMenuOwner, tile))
+            _relatedMenuOwner.ContextMenu = null;
+        if (menu.Parent is Control prev && !ReferenceEquals(prev, tile))
+            prev.ContextMenu = null;
+        _relatedMenuOwner = tile;
+        tile.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(tile);
+        return true;
+    }
+
+    /// <summary>Tile hover dots: the same menu a right-click on the tile opens, bound afresh.</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Helpers.AlbumTile.OpenMenu(sender);
+        for (var c = sender as Control; c != null; c = c.Parent as Control)
+        {
+            if (c is Button tile && tile.Classes.Contains("album-tile"))
+            {
+                OpenRelatedAlbumMenu(tile);
+                break;
+            }
+        }
         e.Handled = true;
     }
 

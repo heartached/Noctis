@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.DropOverlay"
              IsVisible="False"
              IsHitTestVisible="False"
@@ -50,7 +51,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="RenderTransform" Value="scale(1.06)" />
         </Style>
-        <Style Selector="Border.drop-zone PathIcon">
+        <Style Selector="Border.drop-zone controls|LineIcon">
             <Setter Property="Width" Value="26" />
             <Setter Property="Height" Value="26" />
             <Setter Property="HorizontalAlignment" Value="Center" />
@@ -73,7 +74,7 @@
             <Setter Property="MaxLines" Value="2" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
-        <Style Selector="Border.drop-zone.active PathIcon">
+        <Style Selector="Border.drop-zone.active controls|LineIcon">
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         </Style>
         <Style Selector="Border.drop-zone.active TextBlock">
@@ -95,8 +96,9 @@
             <!-- "Import dropped files" on. 09-24: the icon and text sit on the island's fill
                  (they were drawn straight over the page and collided with whatever was under
                  the pointer), in the user's accent (a StaticResource froze the pre-accent
-                 red), and the import arrow is a filled glyph (the old stroke-only path
-                 rendered nothing in a PathIcon). -->
+                 red). 10-09: the zone glyphs are the app's line icons (LineIcon strokes them;
+                 a PathIcon would fill an open stroke), the same shapes the menus use for
+                 Play / Add to Queue / Add to Playlist. -->
             <Border x:Name="ImportCard"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -106,10 +108,10 @@
                     BorderBrush="#22FFFFFF"
                     BorderThickness="1">
                 <StackPanel Spacing="8">
-                    <PathIcon Data="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"
-                              Width="32" Height="32"
-                              HorizontalAlignment="Center"
-                              Foreground="{DynamicResource AccentColorBrush}" />
+                    <controls:LineIcon Data="{StaticResource MenuLineImport}"
+                                       Width="32" Height="32"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource AccentColorBrush}" />
                     <TextBlock Text="{loc:T Main.DropFilesImport}"
                                FontSize="14" FontWeight="SemiBold"
                                Foreground="{DynamicResource IslandForeground}"
@@ -134,25 +136,23 @@
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Border x:Name="PlayZone" Classes="drop-zone">
                         <StackPanel VerticalAlignment="Top" Spacing="5">
-                            <PathIcon x:Name="PlayZoneIcon" Data="{StaticResource PlayIcon}" Margin="0,0,0,5" />
+                            <controls:LineIcon x:Name="PlayZoneIcon" Data="{StaticResource MenuLinePlay}" Margin="0,0,0,5" />
                             <TextBlock x:Name="PlayZoneTitle" Classes="zone-title" Text="{loc:T Main.DropZonePlay}" />
                             <TextBlock Classes="zone-hint" Text="{loc:T Main.DropZonePlayHint}" />
                         </StackPanel>
                     </Border>
                     <Border x:Name="LibraryZone" Classes="drop-zone">
                         <StackPanel VerticalAlignment="Top" Spacing="5">
-                            <!-- Stacked squares with a plus (Material "library_add"). -->
-                            <PathIcon Data="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"
-                                      Margin="0,0,0,5" />
+                            <!-- Stacked cards with a plus. -->
+                            <controls:LineIcon Data="{DynamicResource PageLineLibraryAdd}" Margin="0,0,0,5" />
                             <TextBlock Classes="zone-title" Text="{loc:T Main.DropZoneLibrary}" />
                             <TextBlock Classes="zone-hint" Text="{loc:T Main.DropZoneLibraryHint}" />
                         </StackPanel>
                     </Border>
                     <Border x:Name="PlaylistZone" Classes="drop-zone">
                         <StackPanel VerticalAlignment="Top" Spacing="5">
-                            <!-- List lines with a note (Material "queue_music"). -->
-                            <PathIcon Data="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
-                                      Margin="0,0,0,5" />
+                            <!-- The menus' Add to Playlist glyph (list with a plus). -->
+                            <controls:LineIcon Data="{StaticResource MenuLinePlaylistAdd}" Margin="0,0,0,5" />
                             <TextBlock Classes="zone-title" Text="{loc:T Main.DropZonePlaylist}" />
                             <TextBlock x:Name="PlaylistZoneName" Classes="zone-hint" MaxLines="1" />
                         </StackPanel>

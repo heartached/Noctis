@@ -27,6 +27,8 @@ public partial class LibrarySongsView : UserControl
     // tabs back to the page. See MultiSelectHelper's "Data-tracked variants".
     private readonly HashSet<Track> _selectedTracks = new();
     private TrackContextMenuBuilder? _menuBuilder;
+    /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
+    private string? _menuCulture;
     private ListBoxItem? _menuOwnerItem;
 
     public LibrarySongsView()
@@ -86,12 +88,21 @@ public partial class LibrarySongsView : UserControl
 
     private ContextMenu GetOrCreateContextMenu()
     {
-        if (_menuBuilder != null) return _menuBuilder.Menu;
+        var culture = Noctis.Localization.Loc.Instance.Culture.Name;
+        if (_menuBuilder != null && _menuCulture == culture) return _menuBuilder.Menu;
+        // A live language switch while this page is open: rebuild so the menu follows it.
+        if (_menuBuilder != null)
+        {
+            DetachMenuFromOwner();
+            _menuBuilder = null;
+        }
 
         if (DataContext is not LibrarySongsViewModel) return new ContextMenu();
 
+        // v2 layout (10-09 redesign): quick tiles, grouped rows, Tools ▸.
         _menuBuilder = new TrackContextMenuBuilder();
-        return _menuBuilder.Build("Remove from Library", null, this);
+        _menuCulture = culture;
+        return _menuBuilder.Build(Noctis.Localization.Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
     }
 
     private void BindContextMenuToTrack(Track track)
@@ -176,8 +187,7 @@ public partial class LibrarySongsView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;

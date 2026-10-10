@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -101,10 +102,12 @@ public partial class HomeView : UserControl
         MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
     }
 
-    // ── Context menus (shared builders, same menus as Songs/Playlist views) ──
+    // ── Context menus (shared builders, v2 layout as on the Albums and album pages) ──
 
     private TrackContextMenuBuilder? _trackMenuBuilder;
     private AlbumContextMenuBuilder? _albumMenuBuilder;
+    /// <summary>Culture each menu's strings were read in (they are read once, at Build).</summary>
+    private string? _trackMenuCulture, _albumMenuCulture;
     private Control? _menuOwner;
 
     // Most Played and Last Played share one row template; the row says which list it is in.
@@ -122,12 +125,14 @@ public partial class HomeView : UserControl
         vm.PlayChartRowCommand.Execute(item);
     }
 
+    // Most Played / Last Played show artist pictures in View Artist ▸ (owner 10-09); the
+    // rails below keep plain names for now.
     private void OnChartRowContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (IsLastPlayedRow(sender as Control))
-            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand);
+            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand, artistPhotos: true);
         else
-            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand);
+            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand, artistPhotos: true);
     }
 
 
@@ -141,14 +146,16 @@ public partial class HomeView : UserControl
         => OpenTrackMenu(sender, e, static vm => vm.PlayRediscoveredCommand, static vm => vm.ShuffleRediscoveredCommand);
 
     private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
+        bool artistPhotos = false)
     {
-        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand))
+        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand, artistPhotos))
             e.Handled = true;
     }
 
     private bool OpenTrackMenu(Control? owner,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
+        bool artistPhotos)
     {
         if (owner == null) return false;
         // Top-song rows wrap their Track in a TopSongRow for rank/bar display.
@@ -161,10 +168,12 @@ public partial class HomeView : UserControl
         if (track == null) return false;
         if (DataContext is not HomeViewModel vm) return false;
 
-        if (_trackMenuBuilder == null)
+        // v2 layout (10-09 redesign); rebuilt after a live language switch so it follows it.
+        if (_trackMenuBuilder == null || _trackMenuCulture != Loc.Instance.Culture.Name)
         {
+            _trackMenuCulture = Loc.Instance.Culture.Name;
             _trackMenuBuilder = new TrackContextMenuBuilder();
-            _trackMenuBuilder.Build("Remove from Library", null, this);
+            _trackMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), null, this, v2: true, removeIsDanger: true);
         }
 
         _trackMenuBuilder.Bind(
@@ -184,7 +193,8 @@ public partial class HomeView : UserControl
             startRadioCommand: vm.StartRadioCommand,
             snoozeCommand: vm.SnoozeForMonthCommand,
             viewAlbumCommand: vm.ViewAlbumFromTrackCommand,
-            viewArtistCommand: vm.ViewArtistCommand);
+            viewArtistCommand: vm.ViewArtistCommand,
+            artistPhotoSource: artistPhotos ? vm.CachedArtistPhoto : null);
 
         OpenMenu(_trackMenuBuilder.Menu, owner);
         return true;
@@ -192,19 +202,25 @@ public partial class HomeView : UserControl
 
     private void OnRecentAlbumContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (sender is not Control owner) return;
+        if (sender is Control owner && OpenAlbumMenu(owner))
+            e.Handled = true;
+    }
+
+    private bool OpenAlbumMenu(Control owner)
+    {
         // The rail's featured card sits on the page VM and carries its Album in Tag.
         var album = owner.DataContext as Album ?? owner.Tag as Album;
-        if (album == null) return;
-        if (DataContext is not HomeViewModel vm) return;
+        if (album == null) return false;
+        if (DataContext is not HomeViewModel vm) return false;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
         vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
 
-        if (_albumMenuBuilder == null)
+        if (_albumMenuBuilder == null || _albumMenuCulture != Loc.Instance.Culture.Name)
         {
+            _albumMenuCulture = Loc.Instance.Culture.Name;
             _albumMenuBuilder = new AlbumContextMenuBuilder();
-            _albumMenuBuilder.Build("Remove from Library", this);
+            _albumMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
         }
 
         _albumMenuBuilder.Bind(
@@ -223,7 +239,7 @@ public partial class HomeView : UserControl
             searchLyricsCommand: vm.SearchLyricsAlbumCommand);
 
         OpenMenu(_albumMenuBuilder.Menu, owner);
-        e.Handled = true;
+        return true;
     }
 
     private void OpenMenu(ContextMenu menu, Control owner)
@@ -231,8 +247,7 @@ public partial class HomeView : UserControl
         // Close any menu still open from a previous rapid right-click so menus
         // don't stack on top of each other.
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         // Detach from the previous owner so Open() doesn't throw
         // "Cannot show ContextMenu on a different control".
@@ -304,10 +319,18 @@ public partial class HomeView : UserControl
         }
     }
 
-    /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>
+    /// <summary>Tile hover dots: the same menu a right-click on the tile opens, bound
+    /// afresh (the tile may still hold the shared menu from an older language or album).</summary>
     private void OnTileMoreClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Helpers.AlbumTile.OpenMenu(sender);
+        for (var c = sender as Control; c != null; c = c.Parent as Control)
+        {
+            if (c is Button tile && tile.Classes.Contains("album-tile"))
+            {
+                OpenAlbumMenu(tile);
+                break;
+            }
+        }
         e.Handled = true;
     }
 }

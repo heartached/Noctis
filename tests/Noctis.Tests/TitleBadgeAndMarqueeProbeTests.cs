@@ -179,7 +179,13 @@ public class TitleBadgeAndMarqueeProbeTests
         Assert.Equal(1, audio.PlayedPaths.Count - before);
         Assert.Equal(a.Title, player.CurrentTrack?.Title);
         Assert.Equal(0, opened);
-        Assert.NotNull(tile.ContextMenu); // what the dots button opens (AlbumTile.OpenMenu)
+        // The dots button opens the shared v2 playlist menu (10-09), attached to this tile on open.
+        more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Pump(2);
+        Assert.NotNull(tile.ContextMenu);
+        Assert.True(tile.ContextMenu!.IsOpen);
+        Assert.Contains("v2", tile.ContextMenu.Classes);
+        tile.ContextMenu.Close();
         win.Close();
     }
 

@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.ViewModels;
 using Noctis.Views;
@@ -45,7 +46,7 @@ public class PlaylistBannerLayoutProbeTests
     { Id = Guid.NewGuid(), Title = title, Artist = artist, AlbumArtist = artist, Album = album, AlbumId = Guid.NewGuid(), Duration = TimeSpan.FromSeconds(200), FilePath = "C:/m/" + title + ".mp3" };
 
     [AvaloniaFact]
-    public async Task Banner_Hero_List_And_Rail_Geometry_And_StarToggle()
+    public void Banner_Hero_List_And_Rail_Geometry_NoStar()
     {
         EnsureAppStyles();
         var lib = new FakeLibraryService();
@@ -105,11 +106,11 @@ public class PlaylistBannerLayoutProbeTests
             var pt = p.TranslatePoint(new Point(0, 0), win)!.Value;
             _o.WriteLine($"glass pill top={pt.Y:0.##} height={p.Bounds.Height:0.##} width={p.Bounds.Width:0.##}");
         }
-        Assert.Equal(3, pills.Count);
+        Assert.Equal(2, pills.Count); // Sort + options
         Assert.Single(pills.Select(p => Math.Round(p.Bounds.Height, 1)).Distinct());
         Assert.Single(pills.Select(p => Math.Round(p.TranslatePoint(new Point(0, 0), win)!.Value.Y, 1)).Distinct());
-        Assert.Equal(2, stars.Count);
-        Assert.Equal(1, stars.Count(s => s.IsVisible));
+        // Owner 10-09: no star in the hero; starring is in the Edit Playlist pop-up.
+        Assert.Empty(stars);
 
         // Body: list column then the 292px rail on the right, holding Featured Artists + Suggested.
         var list = view.FindControl<ListBox>("TrackList")!;
@@ -124,19 +125,6 @@ public class PlaylistBannerLayoutProbeTests
         Assert.Equal(win.Width, rp.X + rail.Bounds.Width, 1); // flush right
         Assert.True(lp.X + list.Bounds.Width <= rp.X + 0.5, "list ends before the rail");
         Assert.Equal(2, itemsInRail); // Featured Artists + Suggested
-
-        // Star toggles the sidebar pin and swaps which pill shows.
-        var visibleStar = stars.First(s => s.IsVisible);
-        var star = visibleStar.TranslatePoint(new Point(visibleStar.Bounds.Width / 2, visibleStar.Bounds.Height / 2), win)!.Value;
-        Assert.False(vm.IsPinned);
-        win.MouseMove(star); Pump(2);
-        win.MouseDown(star, MouseButton.Left); Pump(1);
-        win.MouseUp(star, MouseButton.Left); Pump(2); await Task.Delay(50); Pump(4);
-        _o.WriteLine($"after star click: IsPinned={vm.IsPinned} playlist.IsPinned={playlist.IsPinned} visible={string.Join(",", stars.Select(s => s.IsVisible))}");
-        Assert.True(playlist.IsPinned);
-        Assert.True(vm.IsPinned);
-        Assert.False(visibleStar.IsVisible);
-        Assert.True(stars.First(s => !ReferenceEquals(s, visibleStar)).IsVisible);
         win.Close();
     }
 }

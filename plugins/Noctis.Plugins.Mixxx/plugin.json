@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.mixxx",
   "name": "Mixxx",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Noctis",
   "description": "Imports the BPM and key from your Mixxx library.",
   "type": "dotnet",
@@ -12,6 +12,7 @@
   "permissions": ["library.read", "library.write.analysis", "menu.commands", "notifications"],
   "settings": [
     { "key": "databasePath", "label": "Mixxx library file (mixxxdb.sqlite)", "type": "string", "default": "",
+      "placeholder": "Default Mixxx location",
       "description": "Leave empty to use Mixxx's usual location on this computer. A folder works too." },
     { "key": "overwrite", "label": "Replace BPM and key Noctis already has", "type": "bool", "default": false,
       "description": "Off: only tracks without a BPM or key get Mixxx's." }

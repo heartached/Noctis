@@ -38,7 +38,7 @@ public class AvatarBadgeProbeTests
             var x = view.GetLogicalDescendants().OfType<Button>().Single(b => b.Classes.Contains("avatar-x"));
             var wrap = x.GetVisualAncestors().OfType<Panel>().First(p => p.Classes.Contains("avatar-wrap"));
             var badge = wrap.GetLogicalDescendants().OfType<Border>().Single(b => b.Classes.Contains("avatar-badge"));
-            var icon = x.GetVisualDescendants().OfType<PathIcon>().Single();
+            var icon = x.GetVisualDescendants().OfType<Noctis.Controls.LineIcon>().Single(); // the shared line X (was a filled PathIcon)
             var tl = icon.TranslatePoint(new Point(0, 0), x)!.Value;
             var left = tl.X; var right = x.Bounds.Width - (tl.X + icon.Bounds.Width);
             var top = tl.Y; var bottom = x.Bounds.Height - (tl.Y + icon.Bounds.Height);

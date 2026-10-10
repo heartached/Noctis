@@ -57,7 +57,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     public bool IsArtist => Artist != null;
 
     public bool IsFavourite => Tracks.Count > 0 && Tracks.All(t => t.IsFavorite);
-    public string FavouriteLabel => IsFavourite ? "Remove from Favourites" : "Favourite";
+    public string FavouriteLabel => IsFavourite ? "Remove from Favorites" : "Favorite";
 
     /// <summary>Anything can be pinned to Library → Pinned: albums, artists, playlists and songs.</summary>
     public bool CanPin => Album != null || Playlist != null || Artist != null || Track != null;

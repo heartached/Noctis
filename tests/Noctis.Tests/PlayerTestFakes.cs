@@ -140,7 +140,11 @@ internal sealed class FakeLibraryService : ILibraryService
         foreach (var a in Albums) a.NotifyFavoriteStateChanged();
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
-    public Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating) => Task.CompletedTask;
+    public Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating)
+    {
+        foreach (var t in tracks) t.Rating = Math.Clamp(rating, 0, 5);
+        return Task.CompletedTask;
+    }
     public Task SetTracksBadgeAsync(IReadOnlyList<Track> tracks, string? badge)
     {
         foreach (var t in tracks) t.Badge = string.IsNullOrWhiteSpace(badge) ? null : badge.Trim();
@@ -152,6 +156,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public int MetadataChangedCount { get; private set; }
     public void NotifyMetadataChanged() => MetadataChangedCount++;
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
 }
 

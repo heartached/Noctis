@@ -24,7 +24,7 @@
                 BoxShadow="0 16 50 0 #60000000">
             <Panel>
                 <Border Background="#333344">
-                    <TextBlock Text="&#x266B;" FontSize="60" Foreground="#555566"
+                    <TextBlock Text="&#x266A;" FontSize="60" Foreground="#555566"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <Image Source="{Binding #Root.FallbackSource}"
@@ -78,7 +78,7 @@
                         <Border CornerRadius="1000" ClipToBounds="True" Background="#333344"
                                 BoxShadow="0 12 36 0 #66000000">
                             <Panel>
-                                <TextBlock Text="&#x266B;" FontSize="60" Foreground="#555566"
+                                <TextBlock Text="&#x266A;" FontSize="60" Foreground="#555566"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <Image Source="{Binding #Root.FallbackSource}"
                                        Stretch="UniformToFill"
@@ -230,7 +230,7 @@
                         BoxShadow="0 10 30 0 #70000000">
                     <Panel>
                         <Border Background="#333344">
-                            <TextBlock Text="&#x266B;" FontSize="48" Foreground="#555566"
+                            <TextBlock Text="&#x266A;" FontSize="48" Foreground="#555566"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Image Source="{Binding #Root.FallbackSource}"
@@ -285,7 +285,7 @@
                         BorderBrush="#33FFFFFF" BorderThickness="1">
                     <Panel>
                         <Border Background="#333344">
-                            <TextBlock Text="&#x266B;" FontSize="30" Foreground="#555566"
+                            <TextBlock Text="&#x266A;" FontSize="30" Foreground="#555566"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Image Source="{Binding #Root.FallbackSource}"

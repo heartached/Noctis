@@ -7,8 +7,23 @@ namespace Noctis.Services;
 /// </summary>
 public interface ILibraryService
 {
-    /// <summary>All tracks in the library.</summary>
+    /// <summary>All tracks in the library, minus those under a hidden folder
+    /// (<see cref="HiddenFolders"/>). Albums, artists and <see cref="GetTrackById"/> follow it.</summary>
     IReadOnlyList<Track> Tracks { get; }
+
+    /// <summary>Every track, hidden folders included — for the Folders view (which must keep
+    /// showing a hidden folder so it can be shown again) and file bookkeeping.</summary>
+    IReadOnlyList<Track> AllTracks => Tracks;
+
+    /// <summary>Folders hidden from the library (AppSettings.HiddenLibraryFolders).</summary>
+    IReadOnlyList<string> HiddenFolders => Array.Empty<string>();
+
+    /// <summary>
+    /// Hides (or shows again) every track under <paramref name="folderPath"/>, at any depth.
+    /// Nothing is deleted or rescanned: the setting is saved, the indexes rebuild from the
+    /// tracks already in memory and <see cref="LibraryUpdated"/> fires.
+    /// </summary>
+    Task SetFolderHiddenAsync(string folderPath, bool hidden) => Task.CompletedTask;
 
     /// <summary>All albums, aggregated from tracks.</summary>
     IReadOnlyList<Album> Albums { get; }
@@ -175,6 +190,16 @@ public interface ILibraryService
     /// A newer flip cancels an in-flight pass. Returns the number of tracks changed.
     /// </summary>
     Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default);
+
+    /// <summary>
+    /// GitHub #117: multi-value artist tags are stored joined with ArtistCredit.JoinText, which
+    /// follows the separators. When the join recorded in AppSettings.ArtistCreditJoin differs
+    /// from the active one, re-reads the artist tags of local tracks whose credit carries a
+    /// stale join (a rescan reuses unchanged files, so it never would), then records the new
+    /// join. User state is untouched: only Artist / AlbumArtist (and AlbumId) change.
+    /// Passes run one at a time. Returns the number of tracks changed.
+    /// </summary>
+    Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Extracts and caches covers for indexed albums that have none (embedded tag art

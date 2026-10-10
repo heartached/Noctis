@@ -370,16 +370,14 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayNextAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var tracks = album.Tracks.ToList();
-        for (int i = tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(tracks[i]);
+        _player.AddNextRange(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
     private void AddAlbumToQueue(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -591,6 +589,24 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     }
 
     // ── Shared helpers ──────────────────────────────────────────
+
+    private Action<Track>? _searchLyricsAction;
+    public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
+
+    /// <summary>Track menu: Lyrics ▸ Search Lyrics (as on Home and the Albums page).</summary>
+    [RelayCommand]
+    private void SearchLyricsTrack(Track track)
+    {
+        if (track != null) _searchLyricsAction?.Invoke(track);
+    }
+
+    /// <summary>Album menu: Search Lyrics for the album's first song (as on Home).</summary>
+    [RelayCommand]
+    private void SearchLyricsAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        _searchLyricsAction?.Invoke(album.Tracks[0]);
+    }
 
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;

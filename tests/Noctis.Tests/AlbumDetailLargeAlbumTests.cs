@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -198,11 +199,14 @@ public class AlbumDetailLargeAlbumTests
         Assert.NotNull(menu);
         Assert.True(menu!.IsOpen, "shared track menu should be open after ContextRequested");
 
-        // Same item set the per-row XAML menu had (16 items; optional ones are
-        // visible because AlbumDetailView passes every optional command).
+        // The v2 menu (10-09): context header + quick tiles, then the grouped rows; the
+        // optional entries are visible because AlbumDetailView passes every optional command.
+        Assert.Contains("v2", menu.Classes);
         var items = menu.Items.OfType<MenuItem>().ToList();
         Assert.True(items.Count >= 14, $"expected the full track menu, got {items.Count} items");
-        Assert.Equal("Play", items.First().Header as string);
+        // First tile = Play, run on the clicked row.
+        Assert.Same(item.DataContext, menu.GetLogicalDescendants().OfType<Button>()
+            .First(b => b.Classes.Contains("mv2-tile")).CommandParameter);
         var remove = items.Last();
         Assert.Equal("Remove from Library", remove.Header as string);
         Assert.Contains("danger", remove.Classes);

@@ -6,29 +6,32 @@ namespace Noctis.Services;
 /// Orchestrates text-based track identification. Pure URL/parsing logic lives in
 /// <see cref="MusicBrainzApi"/> / <see cref="DeezerApi"/>; this service owns the side effects:
 /// the HTTP calls and rate limiting. Deezer (keyless, fast, reliable for mainstream music) is
-/// tried first, with MusicBrainz as the fallback. All work runs off the UI thread (callers await
-/// it from a background context).
+/// tried first, with MusicBrainz as the fallback when Deezer has no strong match. All work runs
+/// off the UI thread (callers await it from a background context).
 /// </summary>
 public sealed class MetadataFinderService : IMetadataFinderService
 {
-    private readonly HttpClient _http;
+    /// <summary>A Deezer best hit under this similarity is no answer: MusicBrainz is asked too.
+    /// (It used to be skipped whenever Deezer returned anything at all.)</summary>
+    public const double StrongMatch = 0.75;
+
     private readonly Func<AppSettings> _settings;
     private readonly DeezerMetadataService _deezer;
-
-    // MusicBrainz asks for <= 1 request/second. A single gate keeps us well-behaved.
-    private readonly SemaphoreSlim _rateGate = new(1, 1);
-    private DateTime _lastRequestUtc = DateTime.MinValue;
+    // Shared MusicBrainz pacer + a User-Agent with the project URL (MusicBrainz throttles
+    // agents without contact info; the app-wide client sends a bare "Noctis/1.0").
+    private readonly MetadataSearch.ProviderHttp _musicBrainz;
 
     public MetadataFinderService(HttpClient http, Func<AppSettings> settings, DeezerMetadataService deezer)
     {
-        _http = http;
         _settings = settings;
         _deezer = deezer;
+        _musicBrainz = new MetadataSearch.ProviderHttp(http, MetadataSearch.RequestPacer.MusicBrainz);
     }
 
     public async Task<IReadOnlyList<TagSuggestion>> IdentifyAsync(Track track, CancellationToken ct = default)
     {
         var settings = _settings();
+        var results = new List<TagSuggestion>();
 
         // 1. Deezer text search — primary source (keyless, fast, reliable for popular music).
         if (settings.DeezerEnabled)
@@ -40,55 +43,37 @@ public sealed class MetadataFinderService : IMetadataFinderService
                 // Deezer's API gives no relevance score — compute a real confidence
                 // against the track's current tags so callers can rank and gate on
                 // it (raw API order auto-applied wrong-track tags at "0%").
-                if (hits.Count > 0)
-                    return hits
-                        .Select(h => h with
-                        {
-                            Confidence = FuzzyTrackMatcher.TagSimilarity(track.Title, track.PrimaryArtist, h.Title, h.Artist)
-                        })
-                        .OrderByDescending(h => h.Confidence)
-                        .ToList();
+                results.AddRange(Rescore(track, hits));
             }
             catch (OperationCanceledException) { throw; }
             catch { /* fall through to MusicBrainz */ }
         }
 
-        // 2. MusicBrainz text search — fallback. The album is normalized (edition suffixes
-        //    stripped) so deluxe/anniversary releases still match a canonical recording.
-        if (settings.MusicBrainzEnabled)
+        // 2. MusicBrainz text search — when Deezer has no convincing answer. The album is
+        //    normalized (edition suffixes stripped) so deluxe/anniversary releases still match a
+        //    canonical recording.
+        if (settings.MusicBrainzEnabled && (results.Count == 0 || results.Max(r => r.Confidence) < StrongMatch))
         {
             try
             {
                 var album = AlbumTitleNormalizer.Normalize(track.Album);
                 var url = MusicBrainzApi.BuildRecordingSearchUrl(track.PrimaryArtist, track.Title, album);
-                var json = await GetAsync(url, ct).ConfigureAwait(false);
-                var hits = MusicBrainzApi.ParseRecordingSearch(json);
-                if (hits.Count > 0) return hits;
+                var json = await _musicBrainz.GetStringAsync(url, ct).ConfigureAwait(false) ?? string.Empty;
+                // MusicBrainz's "score" is search relevance (100 for a compilation that merely
+                // contains the title), not similarity: rescore like Deezer, or the bulk finder
+                // auto-applies any hit at "100%".
+                results.AddRange(Rescore(track, MusicBrainzApi.ParseRecordingSearch(json)));
             }
             catch (OperationCanceledException) { throw; }
             catch { /* no source produced a match */ }
         }
 
-        return Array.Empty<TagSuggestion>();
+        return results.OrderByDescending(h => h.Confidence).ToList();
     }
 
-    private async Task<string> GetAsync(string url, CancellationToken ct)
-    {
-        await _rateGate.WaitAsync(ct).ConfigureAwait(false);
-        try
+    private static IEnumerable<TagSuggestion> Rescore(Track track, IEnumerable<TagSuggestion> hits)
+        => hits.Select(h => h with
         {
-            var since = DateTime.UtcNow - _lastRequestUtc;
-            if (since < TimeSpan.FromSeconds(1))
-                await Task.Delay(TimeSpan.FromSeconds(1) - since, ct).ConfigureAwait(false);
-
-            using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
-            _lastRequestUtc = DateTime.UtcNow;
-            resp.EnsureSuccessStatusCode();
-            return await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            _rateGate.Release();
-        }
-    }
+            Confidence = FuzzyTrackMatcher.TagSimilarity(track.Title, track.PrimaryArtist, h.Title, h.Artist)
+        });
 }

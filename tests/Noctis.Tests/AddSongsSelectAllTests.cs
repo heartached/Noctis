@@ -104,7 +104,7 @@ public class AddSongsSelectAllTests
         Assert.Equal("Select all", vm.SelectAllText);
 
         vm.ToggleSelectAllCommand.Execute(null);
-        Assert.Equal("Deselect all", vm.SelectAllText);
+        Assert.Equal("Clear", vm.SelectAllText);
     }
 
     // ── truncated searches ───────────────────────────────────────────
@@ -141,7 +141,7 @@ public class AddSongsSelectAllTests
         vm.ToggleSelectAllCommand.Execute(null);
 
         Assert.Equal(113, vm.SelectedCount);
-        Assert.Equal("Add 113", vm.AddButtonText);
+        Assert.Equal("Add (113)", vm.AddButtonText);
 
         IReadOnlyList<Track>? chosen = null;
         vm.SongsChosen += (_, tracks) => chosen = tracks;
@@ -161,14 +161,14 @@ public class AddSongsSelectAllTests
         Assert.Equal("Select all 113", vm.SelectAllText);
 
         vm.ToggleSelectAllCommand.Execute(null);
-        Assert.Equal("Deselect all", vm.SelectAllText);
+        Assert.Equal("Clear", vm.SelectAllText);
     }
 
     [Fact]
     public async Task TickingEveryVisibleRow_WithMatchesLeftOver_IsNotSelectAll()
     {
         // The 100 on screen are all ticked but 13 matches are not — the button must
-        // still offer the rest instead of flipping to "Deselect all".
+        // still offer the rest instead of flipping to "Clear".
         var vm = MakeVm(Band(113));
 
         vm.SearchText = "Brites";
