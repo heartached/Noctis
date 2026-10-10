@@ -826,8 +826,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         await RefreshTimeAwareRowsAsync();
     }
 
+    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
     [RelayCommand]
-    private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+    private Task SnoozeAlbumForMonth(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        return _player.SnoozeTracksForMonthAsync(tracks);
+    }
 
     /// <summary>Fires when the user wants to view a track's album.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
