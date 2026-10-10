@@ -360,28 +360,113 @@ public class MetadataViewModelTests
         Assert.Contains(tracks[0].FilePath, meta.WrittenTagPaths);
     }
 
-    // ── Genre: off-list values (from a metadata search) must be displayable ──
+    // ── Genre: free text (GitHub #123) ──
 
     [Fact]
-    public void Genre_SetToValueOutsideBuiltInList_IsAddedToGenreOptions()
+    public void Genre_OffListValue_KeepsGenre_WithoutPollutingTheSuggestions()
     {
-        // A genre applied from an online search (e.g. Deezer's "Rap/Hip Hop") isn't in the
-        // built-in list. The ComboBox can only display a value present in GenreOptions, so the
-        // VM must add it — otherwise the box shows its placeholder ("Mixed") and the applied
-        // genre looks like it never took.
+        // The genre box is editable now: an off-list value (typed, or Deezer's "Rap/Hip Hop"
+        // from an online search) shows as its text. Adding every value to the suggestions, as
+        // the read-only ComboBox needed, would list each keystroke ("R", "Ra", "Rap", …).
         var album = Album("A", "X", 1);
         using var p = new TestPersistenceService();
         var meta = new FakeMetadataService();
         var library = new FakeLibraryService { TrackList = album.ToList() };
         var vm = new MetadataViewModel(album[0], meta, library, p, new FakeAnimatedCoverService(),
             albumScoped: false, albumTracks: null);
+        var before = vm.GenreOptions.ToList();
 
-        Assert.DoesNotContain("Rap/Hip Hop", vm.GenreOptions);
-
+        vm.Genre = "R";
+        vm.Genre = "Ra";
         vm.Genre = "Rap/Hip Hop";
 
-        Assert.Contains("Rap/Hip Hop", vm.GenreOptions);
         Assert.Equal("Rap/Hip Hop", vm.Genre);
+        Assert.Equal(before, vm.GenreOptions);
+    }
+
+    [Fact]
+    public void GenreOptions_HoldLibraryGenres_AndBuiltIns_DedupedCaseInsensitively()
+    {
+        var album = Album("A", "X", 2);
+        album[0].Genre = "Hyperpop";
+        var other = Album("B", "Y", 3);
+        other[0].Genre = "  hyperpop ";   // same genre, other spelling: listed once
+        other[1].Genre = "rock";          // case variant of the built-in "Rock": listed once
+        other[2].Genre = "Shoegaze";
+        using var p = new TestPersistenceService();
+        var library = new FakeLibraryService { TrackList = album.Concat(other).ToList() };
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(), library, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+
+        var options = vm.GenreOptions.ToList();
+        Assert.Contains("Hyperpop", options);       // the edited track's spelling wins
+        Assert.Contains("Shoegaze", options);       // a library genre outside the built-in list
+        Assert.Contains("Jazz", options);           // the built-in list is still offered
+        Assert.Single(options, o => o.Equals("hyperpop", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(options, o => o.Equals("rock", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(options, o => o.Length == 0 || o != o.Trim());
+        Assert.Equal(options.OrderBy(o => o, StringComparer.CurrentCultureIgnoreCase), options);
+    }
+
+    [Fact]
+    public async Task TrackScope_TypedNewGenre_IsSavedTrimmed()
+    {
+        var album = Album("A", "X", 1);
+        album[0].Genre = "Pop";
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var vm = new MetadataViewModel(album[0], meta, new FakeLibraryService { TrackList = album.ToList() }, p,
+            new FakeAnimatedCoverService(), albumScoped: false, albumTracks: null);
+        await vm.InitializeAsync();
+
+        vm.Genre = "  Bedroom Pop  ";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Bedroom Pop", album[0].Genre);
+        Assert.Contains(album[0].FilePath, meta.WrittenTagPaths);
+    }
+
+    [Fact]
+    public async Task AlbumScope_TypedNewGenre_GoesToEveryTrack_AndAPickedOneStillWorks()
+    {
+        var tracks = Album("A", "X", 3);
+        tracks[0].Genre = "Rock"; tracks[1].Genre = "Pop"; tracks[2].Genre = "Rock"; // "Mixed"
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+        await vm.InitializeAsync();
+        Assert.Equal(string.Empty, vm.Genre);
+
+        vm.Genre = " Math Rock ";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.All(tracks, t => Assert.Equal("Math Rock", t.Genre));
+        Assert.Equal(3, meta.WrittenTagPaths.Distinct().Count());
+
+        // A suggestion picked from the list saves the same way.
+        using var p2 = new TestPersistenceService();
+        var vm2 = NewAlbumVm(tracks, p2, out _, out _);
+        await vm2.InitializeAsync();
+        vm2.Genre = vm2.GenreOptions.First(g => g == "Jazz");
+        await vm2.SaveCommand.ExecuteAsync(null);
+        Assert.All(tracks, t => Assert.Equal("Jazz", t.Genre));
+    }
+
+    [Fact]
+    public async Task AlbumScope_MixedGenreLeftBlank_IsNotOverwritten()
+    {
+        // Whitespace typed into a "Mixed" genre box trims to nothing: no change, each track
+        // keeps its own genre.
+        var tracks = Album("A", "X", 2);
+        tracks[0].Genre = "Rock"; tracks[1].Genre = "Pop";
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out _, out _);
+        await vm.InitializeAsync();
+
+        vm.Genre = "   ";
+        vm.Year = "1999";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Rock", tracks[0].Genre);
+        Assert.Equal("Pop", tracks[1].Genre);
     }
 
     // ── Options: start/stop time parsing ──

@@ -90,16 +90,6 @@ public partial class MetadataViewModel : ViewModelBase
 
     partial void OnHasArtworkChanged(bool value) => OnPropertyChanged(nameof(ShowAlbumArtPlaceholderText));
 
-    // The genre ComboBox can only display a value that exists in GenreOptions. A genre applied at
-    // runtime (e.g. "Rap/Hip Hop" from a Deezer metadata search) isn't in the built-in list, so
-    // without this the ComboBox would show no selection and fall back to its "Mixed" placeholder
-    // even though Genre is set. Inserting the value keeps the box in sync with the applied genre.
-    partial void OnGenreChanged(string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value) && !GenreOptions.Contains(value))
-            GenreOptions.Insert(0, value);
-    }
-
     // ── Rename-by-pattern (multi-select only) ──
     [ObservableProperty] private bool _applyRename;
     [ObservableProperty] private string _renamePattern = "%tracknumber2% - %title%";
@@ -325,10 +315,12 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Genre list bound to the genre ComboBox — includes the track's current genre (and any
-    /// genre applied later, e.g. from a metadata search) when it's not in the built-in list, so the
-    /// ComboBox can actually display it instead of falling back to its placeholder. Observable so
-    /// runtime additions reach the bound ComboBox.</summary>
+    /// <summary>Suggestions for the editable genre box: the edited track(s)' genres, every genre
+    /// already in the library and the built-in list, trimmed, deduped case-insensitively (first
+    /// spelling wins) and sorted. The box takes any typed text (GitHub #123, 2026-10-10), so a
+    /// new genre is saved like a picked one and is suggested from the library from then on; an
+    /// off-list value (typed, or applied by a metadata search) shows as the box's text, so it is
+    /// no longer inserted here (that would add every keystroke).</summary>
     public ObservableCollection<string> GenreOptions { get; } = new();
 
     /// <summary>Available genres for the genre dropdown.</summary>
@@ -344,6 +336,30 @@ public partial class MetadataViewModel : ViewModelBase
         "Soundtrack", "Techno", "Trance", "Trap", "Turkish Alternative",
         "Unclassifiable", "Urbano latino", "World", "Worldwide"
     };
+
+    /// <summary>Fills <see cref="GenreOptions"/> (see there). The edited tracks go first so
+    /// their own spelling is the one listed.</summary>
+    private void BuildGenreOptions()
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var list = new List<string>();
+        void Add(string? genre)
+        {
+            var g = genre?.Trim();
+            if (!string.IsNullOrEmpty(g) && seen.Add(g)) list.Add(g);
+        }
+
+        Add(_track.Genre);
+        if (_albumTracks != null)
+            foreach (var t in _albumTracks) Add(t.Genre);
+        if (_library != null)
+            foreach (var t in _library.Tracks) Add(t.Genre);
+        foreach (var g in AvailableGenres) Add(g);
+        list.Sort(StringComparer.CurrentCultureIgnoreCase);
+
+        GenreOptions.Clear();
+        foreach (var g in list) GenreOptions.Add(g);
+    }
 
     /// <summary>Available media kinds for the Options tab dropdown.</summary>
     public static string[] AvailableMediaKinds => Track.AvailableMediaKinds;
@@ -1195,7 +1211,9 @@ public partial class MetadataViewModel : ViewModelBase
         bool albumArtistChg = AlbumFieldChanged(nameof(AlbumArtist), AlbumArtist);
         bool composerChg = AlbumFieldChanged(nameof(Composer), Composer);
         bool groupingChg = AlbumFieldChanged(nameof(Grouping), Grouping);
-        bool genreChg = AlbumFieldChanged(nameof(Genre), Genre);
+        // A typed genre is saved trimmed (GitHub #123, 2026-10-10).
+        var genre = (Genre ?? string.Empty).Trim();
+        bool genreChg = AlbumFieldChanged(nameof(Genre), genre);
         bool yearChg = AlbumFieldChanged(nameof(Year), Year);
         bool trackNumberChg = AlbumFieldChanged(nameof(TrackNumber), TrackNumber);
         bool trackCountChg = AlbumFieldChanged(nameof(TrackCount), TrackCount);
@@ -1230,7 +1248,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (albumChg) t.Album = Album;
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
-            if (genreChg) t.Genre = Genre;
+            if (genreChg) t.Genre = genre;
             if (yearChg) t.Year = yearVal;
             if (trackNumberChg) t.TrackNumber = trackNumberVal;
             if (trackCountChg) t.TrackCount = trackCountVal;
@@ -1332,11 +1350,7 @@ public partial class MetadataViewModel : ViewModelBase
         AlbumArtist = _track.AlbumArtist;
         Album = _track.Album;
         // Build the genre options before assigning Genre so the ComboBox can bind the current value.
-        GenreOptions.Clear();
-        if (!string.IsNullOrWhiteSpace(_track.Genre) && !AvailableGenres.Contains(_track.Genre))
-            GenreOptions.Add(_track.Genre);
-        foreach (var g in AvailableGenres)
-            GenreOptions.Add(g);
+        BuildGenreOptions();
         Genre = _track.Genre;
         Composer = _track.Composer;
         TrackNumber = _track.TrackNumber > 0 ? _track.TrackNumber.ToString() : string.Empty;
@@ -2420,7 +2434,7 @@ public partial class MetadataViewModel : ViewModelBase
             _track.Artist = Artist;
             _track.AlbumArtist = AlbumArtist;
             _track.Album = Album;
-            _track.Genre = Genre;
+            _track.Genre = (Genre ?? string.Empty).Trim(); // typed genres save trimmed (GitHub #123)
             _track.Composer = Composer;
             _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
             _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;

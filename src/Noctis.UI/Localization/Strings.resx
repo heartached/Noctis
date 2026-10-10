@@ -1332,6 +1332,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.ShowComposerAllViews" xml:space="preserve"><value>Show composer in all views</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Grouping" xml:space="preserve"><value>grouping</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Genre" xml:space="preserve"><value>genre</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.GenreTip" xml:space="preserve"><value>Pick a genre or type a new one</value><comment>ToolTip.Tip in MetadataWindow.axaml (genre box)</comment></data>
   <data name="Metadata.Year" xml:space="preserve"><value>year</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Track" xml:space="preserve"><value>track</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Disc" xml:space="preserve"><value>disc</value><comment>Text in MetadataWindow.axaml</comment></data>
