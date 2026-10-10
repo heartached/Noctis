@@ -314,6 +314,9 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayNextTrack(Track track) => _player.AddNext(track);
 
     [RelayCommand]
+    private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+
+    [RelayCommand]
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
 
     [RelayCommand]

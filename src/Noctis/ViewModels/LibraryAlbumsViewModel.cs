@@ -1090,6 +1090,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
 
     [RelayCommand]
+    private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+
+    [RelayCommand]
     private async Task AddTrackToNewPlaylist(Track track)
     {
         await _sidebar.CreatePlaylistWithTrackAsync(track);

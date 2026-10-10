@@ -1267,13 +1267,21 @@ public partial class PlayerViewModel : ViewModelBase
     /// Hides a track from shuffle and radio for 30 days (Apple Music-style "suggest less"
     /// but temporary). Reversible from Settings. App-only state — no file tag is written.
     /// </summary>
-    private const int SnoozeDurationDays = 30;
+    internal const int SnoozeDurationDays = 30;
 
     [RelayCommand]
     private async Task SnoozeForMonth(Track? track)
     {
         if (track == null) return;
         await _library.SetTracksSnoozedAsync(new[] { track }, DateTime.UtcNow.AddDays(SnoozeDurationDays));
+    }
+
+    /// <summary>Album menus: snoozes every track of the album for a month (same path as one track).</summary>
+    [RelayCommand]
+    private async Task SnoozeAlbumForMonth(Album? album)
+    {
+        if (album?.Tracks is not { Count: > 0 } tracks) return;
+        await _library.SetTracksSnoozedAsync(tracks.ToList(), DateTime.UtcNow.AddDays(SnoozeDurationDays));
     }
 
     [RelayCommand]

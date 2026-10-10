@@ -404,7 +404,8 @@ public partial class AlbumDetailView : UserControl
             showInExplorerCommand: vm.ShowRelatedAlbumInExplorerCommand,
             removeCommand: vm.RemoveRelatedAlbumFromLibraryCommand,
             convertCommand: vm.ConvertRelatedAlbumCommand,
-            scanReplayGainCommand: vm.ScanRelatedAlbumReplayGainCommand);
+            scanReplayGainCommand: vm.ScanRelatedAlbumReplayGainCommand,
+            snoozeCommand: vm.SnoozeRelatedAlbumForMonthCommand);
 
         // Close any menu still open from a previous rapid right-click so menus
         // don't stack on top of each other.

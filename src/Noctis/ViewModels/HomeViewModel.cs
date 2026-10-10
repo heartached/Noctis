@@ -811,6 +811,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
+    [RelayCommand]
+    private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+
     /// <summary>Fires when the user wants to view a track's album.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
 

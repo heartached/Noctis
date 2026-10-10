@@ -236,7 +236,8 @@ public partial class HomeView : UserControl
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+            searchLyricsCommand: vm.SearchLyricsAlbumCommand,
+            snoozeCommand: vm.SnoozeAlbumForMonthCommand);
 
         OpenMenu(_albumMenuBuilder.Menu, owner);
         return true;

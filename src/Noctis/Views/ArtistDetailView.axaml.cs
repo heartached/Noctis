@@ -219,7 +219,8 @@ public partial class ArtistDetailView : UserControl
             removeCommand: albumsVm.RemoveFromLibraryCommand,
             convertCommand: albumsVm.ConvertAlbumCommand,
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand);
+            searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand,
+            snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

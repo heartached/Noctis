@@ -420,6 +420,16 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ApplyFilter(_currentFilter);
     }
 
+    /// <summary>Artist tile menu: snoozes every track the artist's page plays for a month.</summary>
+    [RelayCommand]
+    private Task SnoozeArtistForMonth(Artist? artist)
+    {
+        if (artist == null) return Task.CompletedTask;
+        var (releases, _, songs) = ArtistDetailViewModel.Classify(_library.Albums, artist.Name);
+        return _library.SetTracksSnoozedAsync(ArtistDetailViewModel.PlayableTracks(releases, songs),
+            DateTime.UtcNow.AddDays(PlayerViewModel.SnoozeDurationDays));
+    }
+
     /// <summary>Whether the artist is favourited — the artist page reads the same
     /// in-memory set this grid stamps its tiles from, so the two never disagree.</summary>
     public bool IsFavoriteArtist(string? artistName) => _favoriteArtists.IsFavorite(artistName);

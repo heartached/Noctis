@@ -843,6 +843,11 @@
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="{loc:T Menu.Snooze}" Command="{Binding SnoozeArtistForMonthCommand}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSnooze}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <!-- Don't Scrobble This Artist: binds itself on open (ScrobbleMenu.Entry) -->
                                         <MenuItem helpers:ScrobbleMenu.Entry="artist">
                                             <MenuItem.Icon>
