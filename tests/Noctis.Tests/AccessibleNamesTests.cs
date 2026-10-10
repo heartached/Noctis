@@ -343,7 +343,8 @@ public class AccessibleNamesTests
             await PumpUntil(() => ButtonsWith(view, "song-row").Count >= tracks.Count);
             Pump(window);
 
-            var tabs = ButtonsWith(view, "page-tab").Select(NameOf).ToList();
+            // Live Albums / Compilations (GitHub #122) are hidden for an artist with none.
+            var tabs = ButtonsWith(view, "page-tab").Where(b => b.IsVisible).Select(NameOf).ToList();
             Assert.Equal(new[]
             {
                 Loc.T("ArtistDetail.Overview"), Loc.T("ArtistDetail.Albums"), Loc.T("ArtistDetail.SinglesEPs"),

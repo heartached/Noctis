@@ -232,6 +232,12 @@
                                     <MenuItem Header="{loc:T Main.EPs}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="ep">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
                                     </MenuItem>
+                                    <MenuItem Header="{loc:T Main.LiveAlbums}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="live">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter='Live Albums'}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T Main.Compilations}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="compilation">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Compilations}"/></MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="{loc:T Main.Other}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="other">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>
                                     </MenuItem>
@@ -270,6 +276,12 @@
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.EPs}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="ep">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=EPs}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.LiveAlbums}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="live">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter='Live Albums'}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.Compilations}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="compilation">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Compilations}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Other}" Command="{Binding ReleaseTypeFilterCommand}" CommandParameter="other">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ReleaseTypeFilterLabel, Converter={StaticResource StringEquals}, ConverterParameter=Other}"/></MenuItem.Icon>

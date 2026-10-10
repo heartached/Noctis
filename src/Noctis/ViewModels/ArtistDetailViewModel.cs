@@ -18,7 +18,8 @@ namespace Noctis.ViewModels;
 /// <summary>
 /// The artist page (redesign 2026-09-13, reference mockup "design 4"): a hero header
 /// (portrait, genre kicker, name, facts, Play / Shuffle / favourite / options) over a
-/// tab strip — <b>Overview</b>, <b>Albums</b>, <b>Singles &amp; EPs</b>, <b>Songs</b>,
+/// tab strip — <b>Overview</b>, <b>Albums</b>, <b>Singles &amp; EPs</b>, <b>Live Albums</b> and
+/// <b>Compilations</b> (only when the artist has any, GitHub #122), <b>Songs</b>,
 /// <b>Similar Artists</b>.
 /// <list type="bullet">
 /// <item>Overview: <b>Popular</b> (top five by play count) | <b>Latest Release</b> |
@@ -74,6 +75,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private int _songsGeneration;
     private int _albumsGeneration;
     private int _singlesGeneration;
+    private int _liveGeneration;
+    private int _compilationsGeneration;
     private bool _similarRequested;
 
     // Unfiltered results; the observable collections below hold the searched/filtered view.
@@ -141,17 +144,21 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         : System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(GenreKicker.ToLowerInvariant());
     public bool HasGenreFact => GenreFact.Length > 0;
 
-    // ── Tabs: "overview" / "albums" / "singles" / "songs" / "similar" ──
+    // ── Tabs: "overview" / "albums" / "singles" / "live" / "compilations" / "songs" / "similar" ──
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTabOverview))]
     [NotifyPropertyChangedFor(nameof(IsTabAlbums))]
     [NotifyPropertyChangedFor(nameof(IsTabSingles))]
+    [NotifyPropertyChangedFor(nameof(IsTabLive))]
+    [NotifyPropertyChangedFor(nameof(IsTabCompilations))]
     [NotifyPropertyChangedFor(nameof(IsTabSongs))]
     [NotifyPropertyChangedFor(nameof(IsTabSimilar))]
     private string _selectedTab = "overview";
     public bool IsTabOverview => SelectedTab == "overview";
     public bool IsTabAlbums => SelectedTab == "albums";
     public bool IsTabSingles => SelectedTab == "singles";
+    public bool IsTabLive => SelectedTab == "live";
+    public bool IsTabCompilations => SelectedTab == "compilations";
     public bool IsTabSongs => SelectedTab == "songs";
     public bool IsTabSimilar => SelectedTab == "similar";
     /// <summary>Raised after a tab switch so the view can scroll the new tab to its top.</summary>
@@ -172,15 +179,25 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// "has any" flags read the full lists, so the header never shows a partial number.</summary>
     public BulkObservableCollection<Album> AlbumReleases { get; } = new();
     public BulkObservableCollection<Album> SingleReleases { get; } = new();
+    /// <summary>Live Albums / Compilations tabs (GitHub #122, 2026-10-10): split out of
+    /// the Albums tab, filled the same way.</summary>
+    public BulkObservableCollection<Album> LiveReleases { get; } = new();
+    public BulkObservableCollection<Album> CompilationReleases { get; } = new();
     private List<Album> _tabAlbums = new();
     private List<Album> _tabSingles = new();
+    private List<Album> _tabLive = new();
+    private List<Album> _tabCompilations = new();
     /// <summary>The lists the tab grids were last filled from (null once cleared).</summary>
     private List<Album>? _albumsFilled;
     private List<Album>? _singlesFilled;
+    private List<Album>? _liveFilled;
+    private List<Album>? _compilationsFilled;
     /// <summary>Overview rows: the newest four (eight when the other row is empty), or
     /// every match while searching.</summary>
     public ObservableCollection<Album> OverviewAlbums { get; } = new();
     public ObservableCollection<Album> OverviewSingles { get; } = new();
+    public ObservableCollection<Album> OverviewLive { get; } = new();
+    public ObservableCollection<Album> OverviewCompilations { get; } = new();
     public ObservableCollection<Album> AppearsOn { get; } = new();
     public ObservableCollection<SimilarArtistRow> SimilarArtists { get; } = new();
     /// <summary>The Overview's Similar Artists row: the first <see cref="MaxOverviewSimilar"/>.</summary>
@@ -195,6 +212,14 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     public bool HasSingles => _tabSingles.Count > 0;
     public bool HasOverviewAlbums => OverviewAlbums.Count > 0;
     public bool HasOverviewSingles => OverviewSingles.Count > 0;
+    public bool HasLive => _tabLive.Count > 0;
+    public bool HasCompilations => _tabCompilations.Count > 0;
+    public bool HasOverviewLive => OverviewLive.Count > 0;
+    public bool HasOverviewCompilations => OverviewCompilations.Count > 0;
+    /// <summary>The Live Albums / Compilations tabs only appear for an artist who has any,
+    /// searched or not (a search that hides them all leaves the tab with "No releases match").</summary>
+    public bool ShowLiveTab => _allReleases.Any(a => a.ReleaseType == ReleaseType.Live);
+    public bool ShowCompilationsTab => _allReleases.Any(a => a.ReleaseType == ReleaseType.Compilation);
     public bool HasAppearsOn => AppearsOn.Count > 0;
     public bool HasAllSongs => AllSongs.Count > 0;
     /// <summary>Overview layout: a row alone spans both columns and shows eight tiles.</summary>
@@ -203,6 +228,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     public int OverviewSingleColumns => GridColumns;
     public int AlbumCount => _tabAlbums.Count;
     public int SingleCount => _tabSingles.Count;
+    public int LiveCount => _tabLive.Count;
+    public int CompilationCount => _tabCompilations.Count;
 
     // ── Albums / Singles & EPs tab sort (GitHub #100) ──
     /// <summary>"newest" (the page's order since the redesign), "oldest" or "name". One
@@ -483,12 +510,15 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         return top?.Key.ToUpperInvariant();
     }
 
-    /// <summary>Splits releases into the Albums tab (anything that is not a single or EP)
-    /// and the Singles &amp; EPs tab.</summary>
+    /// <summary>Splits releases into the Albums tab (anything that is not a single, EP, live
+    /// album or compilation), the Singles &amp; EPs tab, and the Live Albums / Compilations
+    /// tabs (GitHub #122, 2026-10-10; they sat in the Albums tab before).</summary>
     internal static IEnumerable<Album> FilterReleases(IEnumerable<Album> releases, string filter) => filter switch
     {
-        "albums" => releases.Where(a => a.ReleaseType is not (ReleaseType.Single or ReleaseType.EP)),
+        "albums" => releases.Where(a => a.ReleaseType is not (ReleaseType.Single or ReleaseType.EP or ReleaseType.Live or ReleaseType.Compilation)),
         "singles" => releases.Where(a => a.ReleaseType is ReleaseType.Single or ReleaseType.EP),
+        "live" => releases.Where(a => a.ReleaseType == ReleaseType.Live),
+        "compilations" => releases.Where(a => a.ReleaseType == ReleaseType.Compilation),
         _ => releases,
     };
 
@@ -633,20 +663,30 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var matching = _allReleases.Where(a => AlbumMatches(a, q)).ToList();
         var albums = FilterReleases(matching, "albums").ToList();
         var singles = FilterReleases(matching, "singles").ToList();
+        var live = FilterReleases(matching, "live").ToList();
+        var compilations = FilterReleases(matching, "compilations").ToList();
 
         ReplaceAlbums(Releases, matching);
         _tabAlbums = SortReleases(albums, ReleaseSortMode);
         _tabSingles = SortReleases(singles, ReleaseSortMode);
+        _tabLive = SortReleases(live, ReleaseSortMode);
+        _tabCompilations = SortReleases(compilations, ReleaseSortMode);
         if (IsTabAlbums) FillTabAlbums();
         else { _albumsFilled = null; ++_albumsGeneration; AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabSingles) FillTabSingles();
         else { _singlesFilled = null; ++_singlesGeneration; SingleReleases.ReplaceAll(Array.Empty<Album>()); }
+        if (IsTabLive) FillTabLive();
+        else { _liveFilled = null; ++_liveGeneration; LiveReleases.ReplaceAll(Array.Empty<Album>()); }
+        if (IsTabCompilations) FillTabCompilations();
+        else { _compilationsFilled = null; ++_compilationsGeneration; CompilationReleases.ReplaceAll(Array.Empty<Album>()); }
 
         // One full-width row of each on the Overview: the newest GridColumns releases.
         var albumCap = searching ? 0 : GridColumns;
         var singleCap = searching ? 0 : GridColumns;
         ReplaceAlbums(OverviewAlbums, OverviewRow(albums, albumCap).ToList());
         ReplaceAlbums(OverviewSingles, OverviewRow(singles, singleCap).ToList());
+        ReplaceAlbums(OverviewLive, OverviewRow(live, singleCap).ToList());
+        ReplaceAlbums(OverviewCompilations, OverviewRow(compilations, singleCap).ToList());
 
         ReplaceAlbums(AppearsOn, _allAppearsOn.Where(a => AlbumMatches(a, q)).ToList());
 
@@ -660,11 +700,24 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(HasSingles));
         OnPropertyChanged(nameof(HasOverviewAlbums));
         OnPropertyChanged(nameof(HasOverviewSingles));
+        OnPropertyChanged(nameof(HasLive));
+        OnPropertyChanged(nameof(HasCompilations));
+        OnPropertyChanged(nameof(HasOverviewLive));
+        OnPropertyChanged(nameof(HasOverviewCompilations));
+        OnPropertyChanged(nameof(ShowLiveTab));
+        OnPropertyChanged(nameof(ShowCompilationsTab));
         OnPropertyChanged(nameof(HasAppearsOn));
         OnPropertyChanged(nameof(OverviewAlbumColumns));
         OnPropertyChanged(nameof(OverviewSingleColumns));
         OnPropertyChanged(nameof(AlbumCount));
         OnPropertyChanged(nameof(SingleCount));
+        OnPropertyChanged(nameof(LiveCount));
+        OnPropertyChanged(nameof(CompilationCount));
+
+        // A rescan that drops the artist's last live album / compilation hides its tab;
+        // don't leave the page on a tab with no button.
+        if ((IsTabLive && !ShowLiveTab) || (IsTabCompilations && !ShowCompilationsTab))
+            SelectedTab = "overview";
     }
 
     /// <summary>The ranking the Songs list was last filled from (null once cleared).</summary>
@@ -704,10 +757,28 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         StreamingFill.Into(SingleReleases, _tabSingles, generation, () => _singlesGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
     }
 
+    private void FillTabLive()
+    {
+        if (_liveFilled != null && SameAlbums(_liveFilled, _tabLive)) return;
+        _liveFilled = _tabLive;
+        var generation = ++_liveGeneration;
+        StreamingFill.Into(LiveReleases, _tabLive, generation, () => _liveGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
+    }
+
+    private void FillTabCompilations()
+    {
+        if (_compilationsFilled != null && SameAlbums(_compilationsFilled, _tabCompilations)) return;
+        _compilationsFilled = _tabCompilations;
+        var generation = ++_compilationsGeneration;
+        StreamingFill.Into(CompilationReleases, _tabCompilations, generation, () => _compilationsGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
+    }
+
     partial void OnSelectedTabChanged(string value)
     {
         if (IsTabAlbums) FillTabAlbums();
         if (IsTabSingles) FillTabSingles();
+        if (IsTabLive) FillTabLive();
+        if (IsTabCompilations) FillTabCompilations();
         if (IsTabSongs && AllSongs.Count == 0) FillAllSongs();
         if (IsTabSimilar) _ = LoadSimilarAsync();
         TabChanged?.Invoke(this, EventArgs.Empty);
@@ -1036,7 +1107,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     [RelayCommand]
     private void SelectTab(string? tab)
-        => SelectedTab = tab is "albums" or "singles" or "songs" or "similar" ? tab : "overview";
+        => SelectedTab = tab is "albums" or "singles" or "live" or "compilations" or "songs" or "similar" ? tab : "overview";
 
     [RelayCommand]
     private void ToggleFavorite()
