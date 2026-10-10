@@ -414,6 +414,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
+        TrackContextMenuBuilder.ArtistPhotoSource = name => HomeViewModel.CachedArtistPhoto(name, _library, _artistImageService);
         Plugins.NotificationRequested += (_, notice) =>
             TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, $"{notice.PluginName}: {notice.Message}", TimeSpan.FromSeconds(4));
         // LoadAll walks the plugins folder, loads assemblies and reflects over their

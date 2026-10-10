@@ -26,9 +26,10 @@ using Path = Avalonia.Controls.Shapes.Path;
 namespace Noctis.Tests;
 
 /// <summary>
-/// View Artist ▸ on Home's Most Played / Last Played rows shows each credited artist's round
-/// picture (owner 10-09). Opt-in per open through Bind(artistPhotoSource:), so every other
-/// menu keeps plain names; an artist with no cached picture gets the Artists page placeholder.
+/// View Artist ▸ shows each credited artist's round picture (owner 10-09 on Home's charts,
+/// 10-10 in every track menu: a Bind without its own source uses
+/// TrackContextMenuBuilder.ArtistPhotoSource); an artist with no cached picture gets the
+/// Artists page placeholder.
 /// </summary>
 public class MenuArtistAvatarTests
 {
@@ -86,15 +87,26 @@ public class MenuArtistAvatarTests
 
     // ── Builder ──
 
+    /// <summary>Owner 10-10: a menu that passes no source of its own (album page, Favorites,
+    /// Home rails) takes the app-wide one, so every View Artist ▸ shows the pictures.</summary>
     [AvaloniaFact]
-    public void WithoutAPhotoSource_ArtistRowsStayPlainNames()
+    public async Task WithoutItsOwnSource_TheAppWideSourceIsUsed()
     {
-        var b = BuildMenu();
-        Bind(b, T("Silk Sonic, Bruno Mars, Anderson .Paak"), new RelayCommand<string>(_ => { }), photos: null);
+        var previous = TrackContextMenuBuilder.ArtistPhotoSource;
+        TrackContextMenuBuilder.ArtistPhotoSource = name => name == "Bruno Mars" ? "C:/art/bruno.jpg" : null;
+        try
+        {
+            var b = BuildMenu();
+            Bind(b, T("Silk Sonic, Bruno Mars, Anderson .Paak"), new RelayCommand<string>(_ => { }), photos: null);
+            await b.ArtistAvatarsLoaded;
+            Dispatcher.UIThread.RunJobs();
 
-        var rows = ArtistRows(b);
-        Assert.Equal(3, rows.Count);
-        Assert.All(rows, r => Assert.Null(r.Icon));
+            var rows = ArtistRows(b);
+            Assert.Equal(3, rows.Count);
+            Assert.Equal("C:/art/bruno.jpg", Photo(rows[1]).SourcePath);
+            Assert.Null(Photo(rows[0]).SourcePath);
+        }
+        finally { TrackContextMenuBuilder.ArtistPhotoSource = previous; }
     }
 
     [AvaloniaFact]
@@ -168,10 +180,6 @@ public class MenuArtistAvatarTests
         Assert.Equal("C:/art/daft.jpg", Photo(rows[0]).SourcePath);
         Assert.Null(Photo(rows[1]).SourcePath);
         Assert.All(oldRows, r => Assert.Null(Photo(r).SourcePath));
-
-        // Re-bound without a source (another Home section): plain names again.
-        Bind(b, T("Silk Sonic, Bruno Mars"), new RelayCommand<string>(_ => { }), photos: null);
-        Assert.All(ArtistRows(b), r => Assert.Null(r.Icon));
     }
 
     [AvaloniaFact]
@@ -286,7 +294,7 @@ public class MenuArtistAvatarTests
             menu.Close();
         }
 
-        // A rail (Heavy Rotation) shares the builder but did not opt in: plain names.
+        // A rail (Heavy Rotation) shows the pictures too (owner 10-10: every View Artist ▸).
         var railOwner = new Border { DataContext = a };
         var railWin = new Window { Content = railOwner };
         railWin.Show();
@@ -296,7 +304,7 @@ public class MenuArtistAvatarTests
         var railMenu = railOwner.ContextMenu!;
         var railArtist = railMenu.Items.OfType<MenuItem>().Single(i => i.Header as string == "View Artist");
         Assert.Equal(3, railArtist.Items.Count);
-        Assert.All(railArtist.Items.OfType<MenuItem>(), i => Assert.Null(i.Icon));
+        Assert.All(railArtist.Items.OfType<MenuItem>(), i => Assert.Contains("mv2-avatar", Assert.IsType<Border>(i.Icon).Classes));
         railMenu.Close();
         railWin.Close();
         win.Close();

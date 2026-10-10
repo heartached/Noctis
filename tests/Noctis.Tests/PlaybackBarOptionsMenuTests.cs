@@ -91,6 +91,8 @@ public class PlaybackBarOptionsMenuTests
             var names = viewArtist.Items.OfType<MenuItem>().ToList();
             Assert.Equal(new[] { "Rihanna", "Drake" }, names.Select(n => n.Header));
             Assert.All(names, n => Assert.Same(player.ViewArtistNamedCommand, n.Command));
+            // Each name carries its round picture slot, as in the other track menus (owner 10-10).
+            Assert.All(names, n => Assert.Contains("mv2-avatar", Assert.IsType<Border>(n.Icon).Classes));
         }
         finally { menu.Hide(); win.Close(); }
     }

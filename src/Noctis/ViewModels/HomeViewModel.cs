@@ -704,13 +704,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// shows the placeholder). Cache files only, never a download; safe off the UI thread
     /// (the track menus' View Artist ▸ calls it from a worker).
     /// </summary>
-    internal string? CachedArtistPhoto(string name)
+    internal string? CachedArtistPhoto(string name) => CachedArtistPhoto(name, _library, _artistImages);
+
+    /// <summary>The same lookup without a Home page: every track menu's View Artist ▸
+    /// (TrackContextMenuBuilder.ArtistPhotoSource) and the player menu use it.</summary>
+    internal static string? CachedArtistPhoto(string name, ILibraryService library, ArtistImageService? images)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         var trimmed = name.Trim();
-        var artist = _library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+        var artist = library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
                      ?? new Artist { Id = ComputeArtistId(trimmed), Name = trimmed };
-        return StatisticsViewModel.CachedArtistPhoto(artist, _artistImages);
+        return StatisticsViewModel.CachedArtistPhoto(artist, images);
     }
 
     private static Guid ComputeArtistId(string artistName)

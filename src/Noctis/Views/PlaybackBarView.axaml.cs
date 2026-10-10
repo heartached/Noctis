@@ -1698,9 +1698,45 @@ public partial class PlaybackBarView : UserControl
         var single = names.Count == 1;
         item.Command = single ? vm.ViewArtistNamedCommand : null;
         item.CommandParameter = single ? names[0] : null;
+        var generation = ++_artistAvatarGeneration;
         if (names.Count < 2) return;
-        foreach (var name in names)
-            item.Items.Add(new MenuItem { Header = name, Command = vm.ViewArtistNamedCommand, CommandParameter = name });
+        // Each artist's round picture, as in the other track menus (owner 10-10).
+        var photos = new CachedImage[names.Count];
+        for (var i = 0; i < names.Count; i++)
+            item.Items.Add(new MenuItem
+            {
+                Header = names[i], Command = vm.ViewArtistNamedCommand, CommandParameter = names[i],
+                Icon = MenuV2.ArtistAvatar(out photos[i]),
+            });
+        if (TrackContextMenuBuilder.ArtistPhotoSource is { } source)
+            ArtistAvatarsLoaded = LoadArtistAvatarsAsync(generation, names, photos, source);
+    }
+
+    private int _artistAvatarGeneration;
+
+    /// <summary>The current open's artist-picture lookup (tests await it).</summary>
+    internal Task ArtistAvatarsLoaded { get; private set; } = Task.CompletedTask;
+
+    // Cache files only, off the UI thread; a later open drops this one's result.
+    private async Task LoadArtistAvatarsAsync(int generation, IReadOnlyList<string> names,
+        CachedImage[] photos, Func<string, string?> source)
+    {
+        string?[] paths;
+        try
+        {
+            paths = await Task.Run(() => names.Select(name =>
+            {
+                try { return source(name); }
+                catch { return null; }
+            }).ToArray());
+        }
+        catch { return; }
+        if (generation != _artistAvatarGeneration) return;
+        for (var i = 0; i < photos.Length; i++)
+        {
+            photos[i].SourcePath = paths[i];
+            photos[i].IsVisible = !string.IsNullOrEmpty(paths[i]);
+        }
     }
 
     private void OnLyricsButtonClick(object? sender, RoutedEventArgs e)
