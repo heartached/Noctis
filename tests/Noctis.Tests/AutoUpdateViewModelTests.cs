@@ -249,6 +249,58 @@ public class AutoUpdateViewModelTests : IDisposable
         Assert.Contains("installs the next time", vm.UpdateStatusText);
     }
 
+    /// <summary>While a download runs, the "Check for updates" pill must not come back: it was shown
+    /// next to the progress (IsUpdateAvailable drops when the download starts) and a click on it
+    /// cancelled the download through the shared token.</summary>
+    [AvaloniaFact]
+    public async Task ManualDownload_HidesTheCheckPill_AndACheckCannotCancelIt()
+    {
+        var api = new FakeGitHub("v99.0.0") { HangInstaller = true };
+        var vm = await CreateAsync(api, autoOn: false);
+
+        var run = vm.DownloadUpdateCommand.ExecuteAsync(null);
+        await PumpUntil(() => api.InstallerRequests == 1);
+
+        Assert.True(vm.IsDownloadingUpdate);
+        Assert.False(vm.ShowCheckForUpdatesButton);
+
+        await vm.CheckForUpdateCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.IsDownloadingUpdate); // still running
+
+        vm.CancelUpdateCommand.Execute(null);
+        await run;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(vm.IsDownloadingUpdate);
+        Assert.True(vm.ShowCheckForUpdatesButton);
+    }
+
+    /// <summary>A progress report already queued on the UI thread when Cancel lands must not
+    /// overwrite "Download cancelled." with a stale "Downloading…" line afterwards.</summary>
+    [AvaloniaFact]
+    public async Task ProgressQueuedBeforeCancel_DoesNotOverwriteTheCancelledState()
+    {
+        var head = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var api = new FakeGitHub("v99.0.0") { PartialThenHang = true, HeadGate = head };
+        var vm = await CreateAsync(api, autoOn: false);
+
+        var run = vm.DownloadUpdateCommand.ExecuteAsync(null);
+        await PumpUntil(() => api.InstallerRequests == 1);
+        for (var i = 0; i < 20; i++) { Dispatcher.UIThread.RunJobs(); await Task.Delay(5); }
+
+        // Hold the UI thread: the first bytes' progress report queues behind it, then Cancel lands.
+        head.SetResult();
+        Thread.Sleep(500);
+        vm.CancelUpdateCommand.Execute(null);
+        Thread.Sleep(300);
+        await run;
+        for (var i = 0; i < 20; i++) { Dispatcher.UIThread.RunJobs(); await Task.Delay(5); }
+
+        Assert.False(vm.IsDownloadingUpdate);
+        Assert.Equal("Download cancelled.", vm.UpdateStatusText);
+        Assert.Equal(0, vm.DownloadProgress); // the late 30 % report was dropped, not applied
+    }
+
     private sealed class NoOpPlayHistoryService : IPlayHistoryService
     {
         public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
@@ -269,6 +321,10 @@ public class AutoUpdateViewModelTests : IDisposable
         public TaskCompletionSource? Gate;
         /// <summary>SHA256SUMS lists a different hash for the installer.</summary>
         public bool WrongHash;
+        /// <summary>Send the first bytes of the installer, then hold the body until it is cancelled.</summary>
+        public bool PartialThenHang;
+        /// <summary>With <see cref="PartialThenHang"/>: the first bytes wait for this.</summary>
+        public TaskCompletionSource? HeadGate;
 
         private string AssetName => $"Noctis-{tag}-Setup.exe";
 
@@ -288,12 +344,47 @@ public class AutoUpdateViewModelTests : IDisposable
                 Interlocked.Increment(ref InstallerRequests);
                 if (HangInstaller) await Task.Delay(Timeout.Infinite, ct);
                 if (Gate is not null) await Gate.Task.WaitAsync(ct);
+                if (PartialThenHang)
+                {
+                    var partial = new StreamContent(new PartialThenHangStream(Payload[..10], HeadGate));
+                    partial.Headers.ContentLength = Payload.Length;
+                    return Ok(partial);
+                }
                 return Ok(new ByteArrayContent(Payload));
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
         private static HttpResponseMessage Ok(HttpContent content) => new(HttpStatusCode.OK) { Content = content };
+
+        /// <summary>Returns <paramref name="head"/> on the first read, then waits for cancellation.</summary>
+        private sealed class PartialThenHangStream(byte[] head, TaskCompletionSource? gate) : Stream
+        {
+            private bool _sent;
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public override void Flush() { }
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+            {
+                if (!_sent)
+                {
+                    if (gate is not null) await gate.Task.WaitAsync(ct).ConfigureAwait(false);
+                    _sent = true;
+                    head.CopyTo(buffer);
+                    return head.Length;
+                }
+                await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+                return 0;
+            }
+        }
 
         private string ReleasesJson() => JsonSerializer.Serialize(new[]
         {

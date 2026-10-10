@@ -189,6 +189,32 @@
         <Style Selector="Button.red-pill:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#C73E4C"/>
         </Style>
+        <!-- About update states: whatever appears (pill, label, status line) eases in instead of
+             popping. Opacity only, keyed on [IsVisible=True] like the spinner, so each state change
+             plays it once and the pill's own hover scale/brush stay untouched. -->
+        <Style Selector=":is(Control).update-fade[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:0.22" FillMode="Backward">
+                    <Animation.Easing><CubicEaseOut/></Animation.Easing>
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- Download pill: same size and shape as the update pill; the accent fill glides under the label. -->
+        <Style Selector="Border.update-download-pill">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Width" Value="152"/>
+            <Setter Property="Height" Value="28"/>
+        </Style>
+        <Style Selector="TextBlock.update-status-text">
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+        <Style Selector="TextBlock.update-status-text.error">
+            <Setter Property="Foreground" Value="#FF6B78"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
 
         <!-- Circular loading spinner: a rotating arc shown during background work -->
         <Style Selector="Ellipse.loading-spinner">
@@ -6091,16 +6117,53 @@
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                    IsVisible="{Binding IsUpToDate}"/>
                                     </Panel>
-                                    <TextBlock Text="{Binding CheckForUpdatesButtonText}"
-                                               FontSize="12" Foreground="White"
-                                               VerticalAlignment="Center"/>
+                                    <!-- "Checking..." in its own block so each label change eases in. -->
+                                    <Panel VerticalAlignment="Center">
+                                        <TextBlock Classes="update-fade" Text="{Binding CheckForUpdatesButtonText}"
+                                                   FontSize="12" Foreground="White"
+                                                   IsVisible="{Binding !IsCheckingForUpdate}"/>
+                                        <TextBlock Classes="update-fade" Text="{Binding CheckForUpdatesButtonText}"
+                                                   FontSize="12" Foreground="White"
+                                                   IsVisible="{Binding IsCheckingForUpdate}"/>
+                                    </Panel>
                                 </StackPanel>
+                            </Button>
+
+                            <!-- Download in progress: the pill becomes a progress bar. The accent fill
+                                 glides toward each report on the frame clock (SmoothProgressBar), sweeps
+                                 while the download is starting, and fills while the file is verified. -->
+                            <Border Classes="update-download-pill update-fade"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsDownloadingUpdate}">
+                                <Panel>
+                                    <controls:SmoothProgressBar Value="{Binding DownloadFraction}"
+                                                                IsIndeterminate="{Binding IsDownloadStarting}"
+                                                                TrackBrush="#26FFFFFF"
+                                                                FillBrush="{DynamicResource AccentColorBrush}"/>
+                                    <Grid ColumnDefinitions="*,Auto" Margin="14,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DownloadPillText}"
+                                                   FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DownloadPercentText}"
+                                                   FontSize="12" FontWeight="SemiBold" Foreground="White"
+                                                   VerticalAlignment="Center"/>
+                                        <Ellipse Grid.Column="1" Classes="loading-spinner update-fade" Stroke="White"
+                                                 VerticalAlignment="Center"
+                                                 IsVisible="{Binding IsDownloadVerifying}"/>
+                                    </Grid>
+                                </Panel>
+                            </Border>
+                            <Button Command="{Binding CancelUpdateCommand}"
+                                    Classes="pill update-fade"
+                                    Padding="16,6"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsDownloadingUpdate}">
+                                <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12" />
                             </Button>
 
                             <!-- Update Available button (replaces Check when a new release is detected).
                                  In-app installer path: Inno install (incl. winget/Chocolatey). -->
                             <Button Command="{Binding DownloadUpdateCommand}"
-                                    Classes="pill red-pill"
+                                    Classes="pill red-pill update-fade"
                                     VerticalAlignment="Center"
                                     Padding="16,6"
                                     Background="#E74856"
@@ -6112,7 +6175,7 @@
                             <!-- Scoop / portable copies can't safely run the in-app installer;
                                  open the GitHub release instead and surface the update command. -->
                             <Button Command="{Binding OpenLatestReleaseCommand}"
-                                    Classes="pill red-pill"
+                                    Classes="pill red-pill update-fade"
                                     VerticalAlignment="Center"
                                     Padding="16,6"
                                     Background="#E74856"
@@ -6124,7 +6187,7 @@
 
                             <!-- Postpone a queued automatic install by 24 h (auto-update only) -->
                             <Button Command="{Binding PostponeAutoInstallCommand}"
-                                    Classes="pill"
+                                    Classes="pill update-fade"
                                     Padding="16,6"
                                     VerticalAlignment="Center"
                                     IsVisible="{Binding ShowPostponeButton}">
@@ -6133,7 +6196,7 @@
 
                             <!-- Install & Restart button (replaces Update when ready) -->
                             <Button Command="{Binding InstallUpdateCommand}"
-                                    Classes="pill red-pill"
+                                    Classes="pill red-pill update-fade"
                                     VerticalAlignment="Center"
                                     Padding="16,6"
                                     Background="#E74856"
@@ -6143,12 +6206,22 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Update status area -->
-                    <StackPanel Orientation="Horizontal" Spacing="12"
+                    <!-- Update status area (failures in red behind a "!" badge) -->
+                    <StackPanel Classes="update-fade" Orientation="Horizontal" Spacing="12"
                                 IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock Text="{Binding UpdateStatusText}"
-                                   FontSize="12" Opacity="0.7"
-                                   VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                            <Border Width="14" Height="14" CornerRadius="7" Background="#E74856"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding UpdateStatusIsError}">
+                                <TextBlock Text="!" FontSize="10" FontWeight="Bold" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Classes="update-status-text"
+                                       Classes.error="{Binding UpdateStatusIsError}"
+                                       Text="{Binding UpdateStatusText}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
                         <!-- After an automatic update: the release notes on GitHub -->
                         <Button Command="{Binding OpenLatestReleaseCommand}"
                                 Classes="pill"
@@ -6156,21 +6229,6 @@
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding ShowWhatsNew}">
                             <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
-                        </Button>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="12"
-                                IsVisible="{Binding IsDownloadingUpdate}">
-                        <ProgressBar Minimum="0" Maximum="100"
-                                     Value="{Binding DownloadProgress}"
-                                     Height="4" CornerRadius="2"
-                                     VerticalAlignment="Center"
-                                     MinWidth="200" />
-                        <Button Command="{Binding CancelUpdateCommand}"
-                                Classes="pill"
-                                Padding="16,6"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12" />
                         </Button>
                     </StackPanel>
 

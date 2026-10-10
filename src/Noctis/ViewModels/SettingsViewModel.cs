@@ -2103,6 +2103,14 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsPrereleaseBuild => UpdateService.IsPrereleaseBuild;
 
     [ObservableProperty] private string _updateStatusText = "";
+    /// <summary>The status line reports a failure (red, with a "!" badge). Any new text clears it.</summary>
+    [ObservableProperty] private bool _updateStatusIsError;
+    partial void OnUpdateStatusTextChanged(string value) => UpdateStatusIsError = false;
+    private void ShowUpdateError(string text)
+    {
+        UpdateStatusText = text;
+        UpdateStatusIsError = true;
+    }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CheckForUpdatesButtonText))]
     private bool _isCheckingForUpdate;
@@ -2118,8 +2126,27 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowManualUpdateButton))]
     [NotifyPropertyChangedFor(nameof(ShowUpdateBadge))]
     private bool _isUpdateAvailable;
-    [ObservableProperty] private bool _isDownloadingUpdate;
-    [ObservableProperty] private double _downloadProgress;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    [NotifyPropertyChangedFor(nameof(IsDownloadStarting))]
+    private bool _isDownloadingUpdate;
+    /// <summary>0-100. The About download pill glides toward it (SmoothProgressBar).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DownloadFraction))]
+    [NotifyPropertyChangedFor(nameof(IsDownloadStarting))]
+    [NotifyPropertyChangedFor(nameof(DownloadPillText))]
+    [NotifyPropertyChangedFor(nameof(DownloadPercentText))]
+    [NotifyPropertyChangedFor(nameof(IsDownloadVerifying))]
+    private double _downloadProgress;
+
+    public double DownloadFraction => Math.Clamp(DownloadProgress / 100.0, 0, 1);
+    /// <summary>No bytes yet (asking GitHub for the asset, connecting): the pill sweeps instead.
+    /// Gated on IsDownloadingUpdate so it flips (and starts the sweep) once the pill is shown.</summary>
+    public bool IsDownloadStarting => IsDownloadingUpdate && DownloadProgress <= 0;
+    /// <summary>All bytes in: the SHA-256 check still runs before Install &amp; Restart.</summary>
+    public bool IsDownloadVerifying => DownloadProgress >= 100;
+    public string DownloadPillText => DownloadProgress <= 0 ? "Starting..." : IsDownloadVerifying ? "Verifying..." : "Downloading";
+    public string DownloadPercentText => DownloadProgress <= 0 || IsDownloadVerifying ? "" : $"{Math.Floor(DownloadProgress):0}%"; // 99.7 is not "100%" yet
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
@@ -2156,7 +2183,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>A verified download may be queued: auto-update is on and the release is on the chosen channel.</summary>
     private bool MayQueue(UpdateInfo update) => AutoUpdateActive && (IncludePrereleaseUpdates || !update.IsPrerelease);
 
-    public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
+    /// <summary>Hidden while downloading too: the download pill takes its place (and a Check
+    /// there used to cancel the download through the shared token).</summary>
+    public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall && !IsDownloadingUpdate;
 
     /// <summary>Label for the Check-for-Updates pill, reflecting progress/result inline:
     /// "Checking..." while polling, "Up to date" once a check found nothing newer,
@@ -7046,7 +7075,8 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task CheckForUpdateAsync()
     {
-        if (_updateService is null || IsCheckingForUpdate) return;
+        // Never while downloading: the check would cancel the download through _updateCts.
+        if (_updateService is null || IsCheckingForUpdate || IsDownloadingUpdate) return;
 
         // Reset state. IsUpToDate is deliberately NOT cleared here: re-checking while
         // the pill still read "✓ Up to date" snapped it to accent, then "Checking…",
@@ -7104,13 +7134,13 @@ public partial class SettingsViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             IsUpToDate = false;
-            UpdateStatusText = "Update check timed out. Try again later.";
+            ShowUpdateError("Update check timed out. Try again later.");
             _ = ClearUpdateStatusAfterDelay();
         }
         catch (Exception ex)
         {
             IsUpToDate = false;
-            UpdateStatusText = "Couldn't check for updates. Try again later.";
+            ShowUpdateError("Couldn't check for updates. Try again later.");
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex);
         }
@@ -7148,6 +7178,7 @@ public partial class SettingsViewModel : ViewModelBase
         _updateCts = cts;
         var token = cts.Token;
         var update = known;
+        var live = true; // progress reports apply only while this run is the current one
 
         try
         {
@@ -7164,15 +7195,23 @@ public partial class SettingsViewModel : ViewModelBase
             if (automatic)
                 DebugLog.Write("Updater", $"Auto-update: downloading {update.TagName} ({update.InstallerSize} bytes).");
 
+            // The percentage lives on the download pill; the line below just names the release.
+            UpdateStatusText = $"Downloading {update.TagName} in the background.";
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>
                 {
+                    // A report still queued when this run ended (cancel, failure) or was replaced
+                    // must not write over the newer state.
+                    if (!live || token.IsCancellationRequested || !ReferenceEquals(_updateCts, cts)) return;
+                    p = double.IsFinite(p) ? Math.Clamp(p, 0, 100) : 0;
+                    // Every network chunk reports; a fraction-of-a-percent change is not worth a re-layout.
+                    if (p < 100 && Math.Abs(p - DownloadProgress) < 0.25) return;
                     DownloadProgress = p;
-                    UpdateStatusText = $"Downloading update... {p:F0}%";
                 }));
 
             _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
                 update, progress, token, requireChecksums: true);
+            live = false;
 
             UpdateStatusText = "Update ready to install.";
             if (MayQueue(update))
@@ -7206,20 +7245,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("corrupted"))
         {
-            UpdateStatusText = "Download corrupted. Try again.";
+            ShowUpdateError("Download corrupted. Try again.");
             _ = ClearUpdateStatusAfterDelay();
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("SHA-256"))
         {
-            UpdateStatusText = "Update failed verification.";
+            ShowUpdateError("Update failed verification.");
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex.Message);
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: true);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            // The user (Cancel / Check), the toggle or leaving the pre-release channel stopped it:
+            // The user (Cancel), the toggle or leaving the pre-release channel stopped it:
             // not a failure to back off from.
             UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
@@ -7239,13 +7278,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            UpdateStatusText = "Download failed. Try again.";
+            ShowUpdateError("Download failed. Try again.");
             _ = ClearUpdateStatusAfterDelay();
             DebugLog.Write("Updater", ex);
             if (automatic) RecordAutoDownloadFailure(update, ex, hard: false);
         }
         finally
         {
+            live = false;
             IsDownloadingUpdate = false;
             _autoDownloadRunning = false;
             _autoDownloadPrerelease = false;
@@ -7280,7 +7320,9 @@ public partial class SettingsViewModel : ViewModelBase
         LatestVersionTag = update.TagName;
         IsLatestPrerelease = update.IsPrerelease;
         IsUpdateAvailable = true;
+        var isError = UpdateStatusIsError;
         UpdateStatusText += " Use the Update button.";
+        UpdateStatusIsError = isError;
     }
 
     /// <summary>
@@ -7472,7 +7514,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         else
         {
-            UpdateStatusText = "Couldn't start installer. Download manually from GitHub.";
+            ShowUpdateError("Couldn't start installer. Download manually from GitHub.");
             IsReadyToInstall = false;
         }
     }
