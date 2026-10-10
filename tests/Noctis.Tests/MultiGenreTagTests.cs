@@ -123,9 +123,10 @@ public class MultiGenreTagTests : IDisposable
         return path;
     }
 
-    private static async Task<(MetadataViewModel Vm, Track Track)> OpenEditor(string path)
+    private static async Task<(MetadataViewModel Vm, Track Track)> OpenEditor(string path, string? libraryGenre = null)
     {
         var track = new MetadataService().ReadTrackMetadata(path)!;
+        if (libraryGenre != null) track.Genre = libraryGenre; // a row from before the fix
         var lib = new FakeLibraryService();
         lib.TrackList.Add(track);
         var vm = new MetadataViewModel(track, new MetadataService(), lib, new TestPersistenceService(),
@@ -244,7 +245,99 @@ public class MultiGenreTagTests : IDisposable
         Assert.Equal(string.Empty, track.Genre);
     }
 
+    /// <summary>The user cuts "Rock; Pop" down to "Rock": a real edit, written even though the
+    /// result is the file's first genre.</summary>
+    [Theory]
+    [InlineData("flac")]
+    [InlineData("mp3")]
+    [InlineData("m4a")]
+    public async Task EditorSave_ReducedToTheFirstGenre_IsWritten(string format)
+    {
+        var path = Create(format, "Rock", "Pop");
+        var (vm, track) = await OpenEditor(path);
+        Assert.Equal("Rock; Pop", vm.Genre);
+
+        vm.Genre = "Rock";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+        Assert.Equal(new[] { "Rock" }, Genres(path));
+        Assert.Equal("Rock", track.Genre);
+    }
+
+    /// <summary>A library row from before the fix holds "Rock" only; the editor shows the
+    /// file's full list, an untouched save keeps it, and an edit starts from it.</summary>
+    [Fact]
+    public async Task Editor_StaleLibraryRow_ShowsTheFilesGenres()
+    {
+        var path = Create("flac", "Rock", "Pop");
+        var (vm, track) = await OpenEditor(path, libraryGenre: "Rock");
+        Assert.Equal("Rock; Pop", vm.Genre);
+
+        vm.Title = "Renamed";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { "Rock", "Pop" }, Genres(path));
+        Assert.Equal("Rock; Pop", track.Genre);
+
+        (vm, track) = await OpenEditor(path, libraryGenre: "Rock");
+        vm.Genre = "Rock";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { "Rock" }, Genres(path));
+    }
+
+    [Fact]
+    public async Task AlbumEditor_ReducedToTheFirstGenre_IsWrittenToEveryTrack()
+    {
+        var paths = new[] { Create("flac", "Rock", "Pop"), Create("mp3", "Rock", "Pop") };
+        var svc = new MetadataService();
+        var tracks = paths.Select(p => svc.ReadTrackMetadata(p)!).ToList();
+        foreach (var t in tracks) { t.Album = "Album"; t.AlbumArtist = "Artist"; }
+        var lib = new FakeLibraryService();
+        lib.TrackList.AddRange(tracks);
+        var vm = new MetadataViewModel(tracks[0], svc, lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks);
+        await vm.InitializeAsync();
+        Assert.Equal("Rock; Pop", vm.Genre);
+
+        vm.Genre = "Rock";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+        foreach (var p in paths) Assert.Equal(new[] { "Rock" }, Genres(p));
+    }
+
     // ── Save through other writers (lyrics, ratings, converter) ──
+
+    /// <summary>Outside the editor a row holding only some of the file's genres (or none)
+    /// never shrinks the file's list.</summary>
+    [Theory]
+    [InlineData("Pop")]
+    [InlineData("pop; ROCK")]
+    [InlineData("")]
+    public void WriteTrackMetadata_RowWithFewerGenres_KeepsEveryGenre(string rowGenre)
+    {
+        var path = Create("flac", "Rock", "Pop", "Jazz");
+        var svc = new MetadataService();
+        var track = svc.ReadTrackMetadata(path)!;
+        track.Genre = rowGenre;
+        track.Lyrics = "la la";
+
+        Assert.True(svc.WriteTrackMetadata(track));
+        Assert.Equal(new[] { "Rock", "Pop", "Jazz" }, RawGenres(path));
+    }
+
+    /// <summary>A row whose genres the file lacks (a new download, a converted copy) still
+    /// writes them.</summary>
+    [Fact]
+    public void WriteTrackMetadata_NewGenreOutsideTheFile_IsStillWritten()
+    {
+        var path = Create("flac");
+        var svc = new MetadataService();
+        var track = svc.ReadTrackMetadata(path)!;
+        track.Genre = "Rock; Pop";
+        Assert.True(svc.WriteTrackMetadata(track));
+        Assert.Equal(new[] { "Rock", "Pop" }, RawGenres(path));
+    }
 
     /// <summary>A library row read before multi-genre support holds only the file's first
     /// genre. Lyrics/rating saves pass that row to WriteTrackMetadata; it must not shrink the

@@ -533,7 +533,13 @@ public class MetadataService : IMetadataService
 
     public bool WriteTrackMetadata(Track track) => WriteTrackMetadata(track, track.FilePath, null);
 
+    public bool WriteTrackMetadata(Track track, bool genreEdited)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited);
+
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
+        => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
+
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
         return SaveTagsAtomically(targetFilePath, file =>
         {
@@ -545,14 +551,15 @@ public class MetadataService : IMetadataService
             tag.Album = track.Album;
             // The model holds every genre joined with "; " (GitHub #123 follow-up, 2026-10-10);
             // each one is written as its own value. Rewritten only when the list changed, so an
-            // ordinary save leaves the file's genre field exactly as it was. A library row read
-            // before multi-genre support holds just the file's first genre: a lyrics or rating
-            // save of that row must not shrink the file's list to it.
+            // ordinary save leaves the file's genre field exactly as it was. Outside an editor
+            // genre edit, a row holding only some of the file's genres (one read before
+            // multi-genre support keeps just the first) must not shrink the file's list: a
+            // lyrics or rating save would silently drop the rest.
             var newGenres = Track.SplitGenres(track.Genre);
             var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
-            var staleFirstGenreRow = newGenres.Length == 1 && fileGenres.Length > 1
-                                     && string.Equals(newGenres[0], fileGenres[0], StringComparison.Ordinal);
-            if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !staleFirstGenreRow)
+            var wouldOnlyDropGenres = !genreEdited && fileGenres.Length > newGenres.Length
+                                      && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
+            if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)
                 tag.Genres = newGenres;
             tag.Track = (uint)Math.Max(0, track.TrackNumber);
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
@@ -804,7 +811,8 @@ public class MetadataService : IMetadataService
                 Duration = duration,
                 FileSize = fileInfo.Length,
                 DateModified = fileInfo.LastWriteTime,
-                DateAdded = fileInfo.CreationTime
+                DateAdded = fileInfo.CreationTime,
+                Genre = Track.JoinGenres(file.Tag.Genres),
             };
         }
         catch

@@ -549,6 +549,7 @@ public partial class MetadataViewModel : ViewModelBase
             _editedWhileLoading = edited;
 
             ApplyFileInfo(loaded.fileInfo);
+            ApplyFileGenre(loaded.fileInfo?.Genre, edited);
             if (loaded.advancedFields != null)
             {
                 ApplyAdvancedFields(loaded.advancedFields, mergeCustomTags: customTagsEdited);
@@ -1429,6 +1430,27 @@ public partial class MetadataViewModel : ViewModelBase
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
     }
+
+    /// <summary>
+    /// Shows the file's genres when the library row disagrees: a row read before multi-genre
+    /// support holds only the first one (GitHub #123 follow-up, 2026-10-10). The edit then
+    /// starts from the full list, and cutting it down counts as a genre edit. Single-track
+    /// editor only; a genre typed while loading wins.
+    /// </summary>
+    private void ApplyFileGenre(string? fileGenre, HashSet<string> edited)
+    {
+        if (_albumScoped || fileGenre == null || edited.Contains(nameof(Genre))) return;
+        if (string.Equals(fileGenre, Track.NormalizeGenre(_track.Genre), StringComparison.Ordinal)) return;
+        Genre = fileGenre;
+        if (_loadedTagSignatures.TryGetValue(_track, out var loaded))
+            _loadedTagSignatures[_track] = loaded with { Genre = fileGenre };
+    }
+
+    /// <summary>True when this save changed <paramref name="track"/>'s genre list from what
+    /// the editor loaded (see <see cref="IMetadataService.WriteTrackMetadata(Track, bool)"/>).</summary>
+    private bool GenreEdited(Track track)
+        => _loadedTagSignatures.TryGetValue(track, out var loaded)
+           && !string.Equals(Track.NormalizeGenre(loaded.Genre), Track.NormalizeGenre(track.Genre), StringComparison.Ordinal);
 
     private static string FormatCodecForFileTab(string codec)
     {
@@ -2564,7 +2586,7 @@ public partial class MetadataViewModel : ViewModelBase
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
-                    if (!_metadata.WriteTrackMetadata(t)
+                    if (!_metadata.WriteTrackMetadata(t, GenreEdited(t))
                         || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath)))
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
@@ -2597,7 +2619,8 @@ public partial class MetadataViewModel : ViewModelBase
         else if (NeedsTagWrite(_track))
         {
             var clearYear = YearWasCleared(_track);
-            var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track)
+            var genreEdited = GenreEdited(_track);
+            var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track, genreEdited)
                                           && (!clearYear || _metadata.ClearYear(_track.FilePath)));
             if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
         }

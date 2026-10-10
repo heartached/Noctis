@@ -61,6 +61,15 @@ public interface IMetadataService
     bool WriteTrackMetadata(Track track);
 
     /// <summary>
+    /// <see cref="WriteTrackMetadata(Track)"/> from the metadata editor. <paramref name="genreEdited"/>
+    /// says the user changed the genre in this save: then the list is written as typed, even
+    /// when it drops some of the file's genres. Every other writer (lyrics, ratings, the
+    /// converter) never shrinks the file's genre list (GitHub #123 follow-up, 2026-10-10).
+    /// The default ignores the flag so test stubs keep compiling.
+    /// </summary>
+    bool WriteTrackMetadata(Track track, bool genreEdited) => WriteTrackMetadata(track);
+
+    /// <summary>
     /// Writes <paramref name="track"/>'s tags to a specific file (which may differ from
     /// the track's own path — e.g. a converted copy). When <paramref name="titleOverride"/>
     /// is set it replaces the title (e.g. "Song (WAV)").
