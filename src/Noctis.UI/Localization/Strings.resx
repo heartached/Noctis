@@ -549,7 +549,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.UseEmbeddedArtwork" xml:space="preserve"><value>Use Embedded Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UseArtworkEmbeddedFile" xml:space="preserve"><value>Use artwork embedded in file tags for album covers.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SnoozedTracks" xml:space="preserve"><value>Snoozed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Hidden from shuffle and radio until their snooze expires.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Hidden from shuffle, radio and Home suggestions until their snooze expires.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve"><value>No snoozed tracks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UnSnooze" xml:space="preserve"><value>Un-snooze</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RemovedTracks" xml:space="preserve"><value>Removed Tracks</value><comment>Text in SettingsView.axaml</comment></data>

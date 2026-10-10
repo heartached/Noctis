@@ -157,6 +157,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until)
     {
         SnoozeCalls.Add((tracks.ToList(), until));
+        foreach (var t in tracks) t.SnoozedUntil = until;
         return Task.CompletedTask;
     }
     public int MetadataChangedCount { get; private set; }

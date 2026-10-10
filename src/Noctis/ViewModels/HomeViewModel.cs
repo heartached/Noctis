@@ -558,8 +558,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         // Dedupe rows against Most Listened To and each other so every row
         // shows tracks the user hasn't already seen further up the page.
         var exclude = TopSongs.Select(t => t.Id).ToHashSet();
+        var tracks = _library.Tracks;
         var (timeIds, heavyIds, rediscoveredIds) = await Task.Run(() =>
         {
+            // These rows are suggestions, and a snoozed song is hidden from suggestions
+            // (owner 10-10). Excluded before ranking so the next candidate takes its slot.
+            foreach (var t in tracks)
+                if (t.IsSnoozed) exclude.Add(t.Id);
             var heavy = HomeRowsBuilder.BuildHeavyRotation(events, now, exclude: exclude);
             exclude.UnionWith(heavy);
             var time = HomeRowsBuilder.BuildTimeOfDayRotation(events, now, exclude: exclude);
@@ -812,8 +817,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
+    // Snooze raises no library event, so the loaded suggestion rows drop the song here
+    // (owner 10-10: snoozed songs still showed on Home). Other views rebuild on visit.
     [RelayCommand]
-    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+    private async Task SnoozeForMonth(Track track)
+    {
+        await _player.SnoozeForMonthCommand.ExecuteAsync(track);
+        await RefreshTimeAwareRowsAsync();
+    }
 
     [RelayCommand]
     private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
