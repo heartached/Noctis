@@ -185,5 +185,13 @@ public class ThemeDerivationTests
         // reads on a light pill (a white one vanished there).
         var remainder = ((SolidColorBrush)dict["IslandTrackBoxSliderUnfilled"]).Color;
         Assert.Equal(mode == "Light" ? Colors.Black.R : Colors.White.R, remainder.R);
+
+        // Outline ring + Track Box fill follow the same polarity: the built-in white on a dark
+        // pill, dark on a light one.
+        var polarity = mode == "Light" ? Colors.Black : Colors.White;
+        Assert.Equal(WithAlpha(polarity, 0x40), ((SolidColorBrush)dict["IslandOutlineBrush"]).Color);
+        Assert.Equal(polarity, Assert.IsType<Color>(dict["IslandTrackBoxColor"]));
     }
+
+    private static Color WithAlpha(Color c, byte a) => Color.FromArgb(a, c.R, c.G, c.B);
 }

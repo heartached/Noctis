@@ -155,6 +155,10 @@ public static class ThemeDerivation
             ["IslandAlbumArtPlaceholder"]  = new SolidColorBrush(WithAlpha(overlayColor, 0x33)),
             ["IslandExplicitBadge"]        = new SolidColorBrush(WithAlpha(overlayColor, 0x88)),
             ["IslandTrackBoxSliderUnfilled"] = new SolidColorBrush(WithAlpha(overlayColor, 0x2E)),
+            // Outline ring + Track Box fill: white on a dark pill (the built-in look), dark on
+            // a light one, where white vanished.
+            ["IslandOutlineBrush"]         = new SolidColorBrush(WithAlpha(overlayColor, 0x40)),
+            ["IslandTrackBoxColor"]        = overlayColor,
             ["IslandIconAccent"]           = new SolidColorBrush(accent),
         };
 

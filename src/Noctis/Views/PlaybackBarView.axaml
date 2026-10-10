@@ -519,7 +519,7 @@
              curve enough width to read at the same strength as the edges. -->
         <Border x:Name="IslandBorder"
                 Classes="island"
-                BorderBrush="#40FFFFFF"
+                BorderBrush="{DynamicResource IslandOutlineBrush}"
                 BorderThickness="1.5"
                 CornerRadius="999"
                 Padding="12,0,12,0"
@@ -935,14 +935,15 @@
                        the card's full width so its ends are trimmed by the bottom corners
                        and the line reads as coming out of the card's sides, like the
                        reference LCD. Everything else stays clear of the edges. -->
-                  <!-- Fill: white at a user-set opacity (Settings → Player Island → Track Box
-                       Opacity, default 7%); 0 hides the card entirely. -->
+                  <!-- Fill: IslandTrackBoxColor (white; a light derived theme's is dark) at a
+                       user-set opacity (Settings → Player Island → Track Box Opacity, default
+                       7%); 0 hides the card entirely. -->
                   <Border x:Name="TrackInfoBox"
                           Height="41"
                           CornerRadius="10"
                           ClipToBounds="True">
                     <Border.Background>
-                      <SolidColorBrush Color="#FFFFFF" Opacity="{Binding IslandTrackBoxOpacity}"/>
+                      <SolidColorBrush Color="{DynamicResource IslandTrackBoxColor}" Opacity="{Binding IslandTrackBoxOpacity}"/>
                     </Border.Background>
                   <Grid RowDefinitions="*,6">
                   <!-- Art nearly fills the card (34px, 1px from the top, 3px in from the

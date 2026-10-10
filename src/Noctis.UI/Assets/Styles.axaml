@@ -150,6 +150,12 @@
                          render byte-identically; the new overlays give them real palettes. -->
                     <SolidColorBrush x:Key="AppWindowBackgroundBrush" Color="#252525" />
                     <Color x:Key="IslandBackgroundColor">#202020</Color>
+                    <!-- The pill's outline ring and Track Box fill colour (its opacity is the
+                         user's Track Box Opacity). Built-ins keep the white literals; derived
+                         themes flip them to the text polarity so a light pill still shows both
+                         (Discord, Mistery 2026-10-10). -->
+                    <SolidColorBrush x:Key="IslandOutlineBrush" Color="#40FFFFFF" />
+                    <Color x:Key="IslandTrackBoxColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="PrimaryTextBrush" Color="White" />
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="TertiaryTextBrush" Color="#4DFFFFFF" />
@@ -305,6 +311,8 @@
                          and multi-select values stay the dark-tuned literals they were. -->
                     <SolidColorBrush x:Key="AppWindowBackgroundBrush" Color="#FFFFFF" />
                     <Color x:Key="IslandBackgroundColor">#202020</Color>
+                    <SolidColorBrush x:Key="IslandOutlineBrush" Color="#40FFFFFF" />
+                    <Color x:Key="IslandTrackBoxColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="PrimaryTextBrush" Color="Black" />
                     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="TertiaryTextBrush" Color="#4DFFFFFF" />

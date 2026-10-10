@@ -1358,7 +1358,7 @@
             Margin="0,0,0,16"
             Height="44"
             CornerRadius="999"
-            BorderBrush="#40FFFFFF"
+            BorderBrush="{DynamicResource IslandOutlineBrush}"
             BorderThickness="1.5"
             ZIndex="30">
         <controls:GlassPanel CornerRadius="999" BlurRadius="14">

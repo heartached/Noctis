@@ -124,6 +124,8 @@
     <!-- Playback Island -->
     <SolidColorBrush x:Key="IslandBackground" Color="#E6303440" />
     <Color x:Key="IslandBackgroundColor">#303440</Color>
+    <SolidColorBrush x:Key="IslandOutlineBrush" Color="#40FFFFFF" />
+    <Color x:Key="IslandTrackBoxColor">#FFFFFF</Color>
     <SolidColorBrush x:Key="IslandBorder" Color="#33FFFFFF" />
     <SolidColorBrush x:Key="IslandForeground" Color="#F1F2F6" />
     <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#BBBFCC" />
