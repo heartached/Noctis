@@ -1097,8 +1097,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
 
+    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
     [RelayCommand]
-    private void SnoozeAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+    private Task SnoozeAlbumForMonth(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        return _player.SnoozeTracksForMonthAsync(tracks);
+    }
 
     [RelayCommand]
     private async Task AddTrackToNewPlaylist(Track track)

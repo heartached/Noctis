@@ -835,8 +835,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
+    /// <summary>The row, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
     [RelayCommand]
-    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+    private Task SnoozeForMonth(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        return _player.SnoozeTracksForMonthAsync(tracks);
+    }
 
     [RelayCommand]
     private void ShuffleAll()

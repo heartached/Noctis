@@ -1284,6 +1284,17 @@ public partial class PlayerViewModel : ViewModelBase
         await _library.SetTracksSnoozedAsync(tracks.ToList(), DateTime.UtcNow.AddDays(SnoozeDurationDays));
     }
 
+    /// <summary>Menus acting on a Ctrl-selection (owner 10-10): one snooze write for the whole
+    /// batch, each track once (an album and one of its songs can be selected together).</summary>
+    internal Task SnoozeTracksForMonthAsync(IEnumerable<Track> tracks)
+    {
+        var seen = new HashSet<Guid>();
+        var batch = tracks.Where(t => t != null && seen.Add(t.Id)).ToList();
+        return batch.Count == 0
+            ? Task.CompletedTask
+            : _library.SetTracksSnoozedAsync(batch, DateTime.UtcNow.AddDays(SnoozeDurationDays));
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentTrackFavorite()
     {
