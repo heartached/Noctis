@@ -74,7 +74,7 @@ public partial class Track : ObservableObject
     /// <summary>Lazily cached normalized search key for Genre (GitHub #107 combined search).</summary>
     [JsonIgnore] public string SearchGenreKey => _searchGenreKey ??= Helpers.SearchText.Normalize(_genre);
 
-    /// <summary>Genre tag value.</summary>
+    /// <summary>Genre tag value: every genre in the file, joined with <see cref="GenreSeparator"/>.</summary>
     public string Genre
     {
         get => _genre;
@@ -571,6 +571,32 @@ public partial class Track : ObservableObject
             return performer;
         return "Unknown Artist";
     }
+
+    /// <summary>
+    /// Joins a file's genres into <see cref="Genre"/>. GitHub #123 follow-up, 2026-10-10: the
+    /// reader kept only the first of several genres (Vorbis GENRE x2, ID3v2.4 TCON, M4A ©gen)
+    /// and the editor wrote one back, dropping the rest. "; " is what users already typed
+    /// for several genres; "/" is not a separator — it is part of names like "Hip-Hop/Rap".
+    /// </summary>
+    public const string GenreSeparator = "; ";
+
+    /// <summary>The single genres in <paramref name="value"/>: split on ';', trimmed, blanks
+    /// dropped, de-duplicated case-insensitively (first spelling wins).</summary>
+    public static string[] SplitGenres(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+    /// <summary>Tag genre values as one <see cref="Genre"/> string (see <see cref="SplitGenres"/>).</summary>
+    public static string JoinGenres(IEnumerable<string?>? values)
+        => values == null
+            ? string.Empty
+            : string.Join(GenreSeparator, SplitGenres(string.Join(";", values.Where(v => v != null))));
+
+    /// <summary>Typed genre text in the stored form: "rock ;Pop;" → "rock; Pop".</summary>
+    public static string NormalizeGenre(string? value) => string.Join(GenreSeparator, SplitGenres(value));
 
     /// <summary>
     /// Generates a deterministic album ID from AlbumArtist and Album name.

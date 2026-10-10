@@ -264,7 +264,7 @@ public class MetadataService : IMetadataService
             Artist = artist,
             AlbumArtist = albumArtist,
             Album = album,
-            Genre = tag.FirstGenre ?? string.Empty,
+            Genre = Track.JoinGenres(tag.Genres), // every genre, not just the first (GitHub #123 follow-up)
             TrackNumber = (int)tag.Track,
             TrackCount = (int)tag.TrackCount,
             DiscNumber = tag.Disc > 0 ? (int)tag.Disc : 1,
@@ -543,13 +543,17 @@ public class MetadataService : IMetadataService
             tag.Performers = SplitArtistList(track.Artist);
             tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
             tag.Album = track.Album;
-            // The model holds a single genre (FirstGenre on read). Rewrite only
-            // when it actually changed, so an ordinary save of an untouched track
-            // doesn't collapse a file's multi-value genre list to one entry.
-            var newGenre = string.IsNullOrWhiteSpace(track.Genre) ? null : track.Genre;
-            var currentFirstGenre = tag.Genres is { Length: > 0 } existingGenres ? existingGenres[0] : null;
-            if (!string.Equals(newGenre, currentFirstGenre, StringComparison.Ordinal))
-                tag.Genres = newGenre == null ? Array.Empty<string>() : new[] { newGenre };
+            // The model holds every genre joined with "; " (GitHub #123 follow-up, 2026-10-10);
+            // each one is written as its own value. Rewritten only when the list changed, so an
+            // ordinary save leaves the file's genre field exactly as it was. A library row read
+            // before multi-genre support holds just the file's first genre: a lyrics or rating
+            // save of that row must not shrink the file's list to it.
+            var newGenres = Track.SplitGenres(track.Genre);
+            var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
+            var staleFirstGenreRow = newGenres.Length == 1 && fileGenres.Length > 1
+                                     && string.Equals(newGenres[0], fileGenres[0], StringComparison.Ordinal);
+            if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !staleFirstGenreRow)
+                tag.Genres = newGenres;
             tag.Track = (uint)Math.Max(0, track.TrackNumber);
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);

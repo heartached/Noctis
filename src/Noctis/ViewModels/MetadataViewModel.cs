@@ -343,10 +343,11 @@ public partial class MetadataViewModel : ViewModelBase
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var list = new List<string>();
+        // A multi-genre track ("Rock; Pop") offers each genre, not the combination.
         void Add(string? genre)
         {
-            var g = genre?.Trim();
-            if (!string.IsNullOrEmpty(g) && seen.Add(g)) list.Add(g);
+            foreach (var g in Track.SplitGenres(genre))
+                if (seen.Add(g)) list.Add(g);
         }
 
         Add(_track.Genre);
@@ -1211,8 +1212,8 @@ public partial class MetadataViewModel : ViewModelBase
         bool albumArtistChg = AlbumFieldChanged(nameof(AlbumArtist), AlbumArtist);
         bool composerChg = AlbumFieldChanged(nameof(Composer), Composer);
         bool groupingChg = AlbumFieldChanged(nameof(Grouping), Grouping);
-        // A typed genre is saved trimmed (GitHub #123, 2026-10-10).
-        var genre = (Genre ?? string.Empty).Trim();
+        // A typed genre is saved trimmed (GitHub #123, 2026-10-10), several as "Rock; Pop".
+        var genre = Track.NormalizeGenre(Genre);
         bool genreChg = AlbumFieldChanged(nameof(Genre), genre);
         bool yearChg = AlbumFieldChanged(nameof(Year), Year);
         bool trackNumberChg = AlbumFieldChanged(nameof(TrackNumber), TrackNumber);
@@ -2434,7 +2435,7 @@ public partial class MetadataViewModel : ViewModelBase
             _track.Artist = Artist;
             _track.AlbumArtist = AlbumArtist;
             _track.Album = Album;
-            _track.Genre = (Genre ?? string.Empty).Trim(); // typed genres save trimmed (GitHub #123)
+            _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
             _track.Composer = Composer;
             _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
             _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;

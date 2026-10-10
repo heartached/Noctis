@@ -302,11 +302,13 @@ public static class WrapStatsBuilder
             })
             .ToList();
 
+        // A play of a multi-genre track ("Rock; Pop") counts for each of its genres; shares
+        // stay out of the plays that have a genre at all (GitHub #123 follow-up, 2026-10-10).
         var genreGroups = resolved
-            .Where(t => !string.IsNullOrWhiteSpace(t.Genre))
-            .GroupBy(t => t.Genre.Trim(), StringComparer.OrdinalIgnoreCase)
+            .SelectMany(t => Track.SplitGenres(t.Genre))
+            .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var taggedPlays = genreGroups.Sum(g => g.Count());
+        var taggedPlays = resolved.Count(t => !string.IsNullOrWhiteSpace(t.Genre));
         var topGenres = genreGroups
             .OrderByDescending(g => g.Count())
             .Take(TopCount)
