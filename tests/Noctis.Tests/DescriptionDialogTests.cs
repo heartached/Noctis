@@ -385,6 +385,40 @@ public class DescriptionDialogTests
     }
 
     [AvaloniaFact]
+    public void BothDialogs_ScrollBar_SitsAtThePillsRightEdge_TextKeepsItsInset()
+    {
+        // Owner 10-09: the editor's scroll bar sat 18px inside the pill (the template's Padding
+        // wraps the ScrollViewer); it now hugs the pill's right edge while the text keeps 18px.
+        EnsureAppStyles();
+        var longText = string.Join("\n\n", Enumerable.Repeat("A long paragraph that wraps across the editor several times over.", 20));
+
+        var albumVm = AlbumPage(SlowLastFm.Loaded(longText), NewAlbum());
+        var (albumWin, albumHost) = OpenAlbumDialog(albumVm, forEditing: false);
+        try { AssertEdgeScrollBar(albumWin, albumHost); }
+        finally { CloseNow(albumWin); }
+
+        var (playlistVm, _, _) = PlaylistPage(longText);
+        var (playlistWin, playlistHost) = OpenPlaylistDialog(playlistVm, forEditing: false);
+        try { AssertEdgeScrollBar(playlistWin, playlistHost); }
+        finally { CloseNow(playlistWin); }
+    }
+
+    private static void AssertEdgeScrollBar(Window win, PillDialogHost host)
+    {
+        Assert.True(PumpUntil(() => CardSettledOpen(host)), "open animation never settled");
+        var editor = win.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "DescriptionEditor");
+        var parts = editor.GetVisualDescendants().ToList();
+        var chrome = parts.OfType<Border>().First(b => b.Name == "PART_BorderElement");
+        var bar = parts.OfType<Avalonia.Controls.Primitives.ScrollBar>().Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+        var text = parts.OfType<Avalonia.Controls.Presenters.TextPresenter>().Single(t => t.Name == "PART_TextPresenter");
+        Assert.True(bar.IsVisible, "long text should need the scroll bar");
+
+        double RightGap(Visual v) => chrome.Bounds.Width - v.TranslatePoint(new Point(v.Bounds.Width, 0), chrome)!.Value.X;
+        Assert.InRange(RightGap(bar), 0, 6.01);      // at the pill's edge (1.5 border + 4 padding)
+        Assert.InRange(RightGap(text), 17.9, 20);    // text inset unchanged (18 + border)
+    }
+
+    [AvaloniaFact]
     public void AlbumDialog_OpenedToEdit_CaretInEditor_EnterIsANewLine_CtrlEnterSavesOnce_AndCloses()
     {
         EnsureAppStyles();

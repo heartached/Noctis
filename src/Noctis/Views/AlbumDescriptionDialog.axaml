@@ -41,6 +41,13 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="AcceptsReturn" Value="True" />
         </Style>
+        <!-- Scroll bar at the pill's right edge (owner 10-09): the template's Padding wraps the
+             ScrollViewer, so the editor's right Padding is only 4 (set on the TextBox: the
+             pill-area style from PillDialogHost sits nearer and would win over a setter here)
+             and the text keeps its 18 through this margin (4 + 14). -->
+        <Style Selector="TextBox.desc-editor /template/ TextPresenter#PART_TextPresenter, TextBox.desc-editor /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Margin" Value="0,0,14,0" />
+        </Style>
         <!-- Clear: a quiet text action beside the count, not a third pill. -->
         <Style Selector="Button.desc-clear">
             <Setter Property="Background" Value="Transparent" />
@@ -148,6 +155,7 @@
             <TextBox x:Name="DescriptionEditor"
                      Classes="pill-area desc-editor"
                      Text="{Binding AlbumDescriptionEditorText}"
+                     Padding="18,14,4,14"
                      Watermark="{loc:T DescriptionDialog.AlbumPlaceholder}"
                      Height="300"
                      ScrollViewer.VerticalScrollBarVisibility="Auto" />
