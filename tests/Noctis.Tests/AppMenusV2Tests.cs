@@ -141,11 +141,20 @@ public class AppMenusV2Tests
     }
 
     [AvaloniaFact]
-    public void Hover_IsThePillHighlight_OnTheTemplateRoot_RedOnDanger()
+    public async Task Hover_IsThePillHighlight_OnTheTemplateRoot_RedOnDanger()
     {
         var (menu, item, danger, _, sub, win) = OpenContextMenu();
         try
         {
+            // Let the open's row settle-in (MenuOpenAnimation.Pop) land: it lends each row a short
+            // fade/rise transition and then hands the row back with none.
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (item.Transitions is { Count: > 0 } && sw.ElapsedMilliseconds < 2000)
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(8);
+            }
             var before = item.Background;
             ((IPseudoClasses)item.Classes).Add(":pointerover");
             ((IPseudoClasses)danger.Classes).Add(":pointerover");

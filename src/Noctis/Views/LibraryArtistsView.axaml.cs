@@ -65,8 +65,7 @@ public partial class LibraryArtistsView : UserControl
         // Close any menu still open from a previous rapid right-click so menus
         // don't stack on top of each other.
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
         // Detach from the previous owner so Open() doesn't throw
         // "Cannot show ContextMenu on a different control".
         if (_menuOwner != null && !ReferenceEquals(_menuOwner, tile))

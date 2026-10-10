@@ -677,8 +677,10 @@
              menus opened near the bottom of the screen extend past the edge and get clipped. -->
         <!-- Match the active theme (Midnight/Gray/custom), not the generic dark/light variant. -->
         <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-        <!-- Rise-up + fade on open (every menu); MenuFlyouts also close with it when they set
-             MenuOpenAnimation.EnableFlyoutClose. -->
+        <!-- Every menu grows out of the click that opened it and settles its rows in (Pop), and
+             closes with that motion reversed: right-click menus always, MenuFlyouts when they set
+             MenuOpenAnimation.EnableFlyoutClose. Pop is set before Enable: the open run reads it. -->
+        <Setter Property="(helpers:MenuOpenAnimation.Pop)" Value="True" />
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
         <!-- Lay rows out at the card width (no sideways scrolling), so a long translated label
              trims inside MaxWidth instead of widening the content past the card. -->

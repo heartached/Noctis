@@ -266,7 +266,7 @@ public class ContextMenuV2Tests
     }
 
     [AvaloniaFact]
-    public void QuickTileClick_ClosesTheMenu()
+    public async Task QuickTileClick_ClosesTheMenu()
     {
         var b = Build(v2: true);
         BindAll(b, T(), new TrackCommands(Required.Concat(Optional).ToArray()), optional: false);
@@ -279,6 +279,11 @@ public class ContextMenuV2Tests
         Assert.True(b.Menu.IsOpen);
 
         b.QuickPlayNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        // Menus close with a 150 ms shrink + fade (MenuOpenAnimation.Pop), inert while it runs;
+        // a yielding pump lets its DispatcherTimer finish the close.
+        Assert.False(b.Menu.IsHitTestVisible);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (b.Menu.IsOpen && sw.ElapsedMilliseconds < 2000) { Dispatcher.UIThread.RunJobs(); await Task.Delay(8); }
         Assert.False(b.Menu.IsOpen);
         win.Close();
     }

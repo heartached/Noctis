@@ -576,8 +576,7 @@ public partial class PlaylistView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;

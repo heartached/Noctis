@@ -160,8 +160,7 @@ public partial class LibraryFoldersView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;
@@ -204,8 +203,7 @@ public partial class LibraryFoldersView : UserControl
             toggleHiddenCommand: vm.ToggleNodeHiddenCommand);
 
         var menu = _folderMenuBuilder.Menu;
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         // Opened directly (never assigned to a control's ContextMenu property) so
         // recycled TreeViewItems can't auto-open a menu bound to a stale node.

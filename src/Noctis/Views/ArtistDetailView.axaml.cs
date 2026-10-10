@@ -285,8 +285,7 @@ public partial class ArtistDetailView : UserControl
     private void OpenMenu(ContextMenu menu, Control owner, PlacementMode placement)
     {
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         if (_menuOwner != null && !ReferenceEquals(_menuOwner, owner))
             _menuOwner.ContextMenu = null;

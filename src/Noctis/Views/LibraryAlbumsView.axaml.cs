@@ -141,8 +141,7 @@ public partial class LibraryAlbumsView : UserControl
         // Close any menu still open from a previous rapid right-click so menus
         // don't stack on top of each other.
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         // Detach from the previous owner so Open() doesn't throw
         // "Cannot show ContextMenu on a different control".
@@ -167,11 +166,13 @@ public partial class LibraryAlbumsView : UserControl
 
     private void OnAlbumTileContextRequested(object? sender, ContextRequestedEventArgs e)
     {
-        if (sender is Button tile && OpenAlbumMenu(tile))
+        if (sender is Button tile && OpenAlbumMenu(tile,
+                e.TryGetPosition(tile, out var at) ? tile.PointToScreen(at) : null))
             e.Handled = true;
     }
 
-    private bool OpenAlbumMenu(Button tile)
+    /// <param name="anchor">Screen point the menu grows out of (the click), or null.</param>
+    private bool OpenAlbumMenu(Button tile, PixelPoint? anchor)
     {
         if (tile.DataContext is not Album album) return false;
         if (DataContext is not LibraryAlbumsViewModel vm) return false;
@@ -185,7 +186,10 @@ public partial class LibraryAlbumsView : UserControl
             _albumMenuCulture = Loc.Instance.Culture.Name;
             _albumMenuBuilder = new AlbumContextMenuBuilder();
             _albumMenuBuilder.Build(Loc.T("LibraryAlbums.RemoveFromLibrary"), this, v2: true, removeIsDanger: true);
+            // Trial (10-09): this menu alone opens with the "pop" motion instead of the rise-up.
+            MenuOpenAnimation.SetPop(_albumMenuBuilder.Menu, true);
         }
+        MenuOpenAnimation.SetPopAnchor(_albumMenuBuilder.Menu, anchor);
 
         _albumMenuBuilder.Bind(
             album,
@@ -347,7 +351,9 @@ public partial class LibraryAlbumsView : UserControl
         {
             if (c is Button tile && tile.Classes.Contains("album-tile"))
             {
-                OpenAlbumMenu(tile);
+                // Grow out of the dots button's centre.
+                var dots = sender as Control;
+                OpenAlbumMenu(tile, dots?.PointToScreen(new Point(dots.Bounds.Width / 2, dots.Bounds.Height / 2)));
                 break;
             }
         }

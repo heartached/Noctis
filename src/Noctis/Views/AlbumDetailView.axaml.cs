@@ -332,8 +332,7 @@ public partial class AlbumDetailView : UserControl
 
         BindTrackMenuToTrack(track);
         var menu = GetOrCreateTrackMenu();
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
 
         DetachMenuFromOwner();
         _menuOwnerItem = item;
@@ -411,8 +410,7 @@ public partial class AlbumDetailView : UserControl
         // don't stack on top of each other.
         var menu = _relatedMenuBuilder.Menu;
         ContextMenuCoordinator.NotifyOpening(menu);
-        if (menu.IsOpen)
-            menu.Close();
+        MenuOpenAnimation.CloseNow(menu);
         // Detach from the previous owner so Open() doesn't throw
         // "Cannot show ContextMenu on a different control".
         if (_relatedMenuOwner != null && !ReferenceEquals(_relatedMenuOwner, tile))
