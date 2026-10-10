@@ -721,6 +721,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="ArtistDetail.Popular" xml:space="preserve"><value>Top Songs</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.Albums" xml:space="preserve"><value>Albums</value><comment>Content in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SinglesEPs" xml:space="preserve"><value>Singles &amp; EPs</value><comment>Content in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.LiveAlbums" xml:space="preserve"><value>Live Albums</value><comment>Tab and Overview section in ArtistDetailView.axaml (GitHub #122)</comment></data>
+  <data name="ArtistDetail.Compilations" xml:space="preserve"><value>Compilations</value><comment>Tab and Overview section in ArtistDetailView.axaml (GitHub #122)</comment></data>
   <data name="ArtistDetail.NoReleasesMatch" xml:space="preserve"><value>No releases match.</value><comment>Text in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SortNewest" xml:space="preserve"><value>Newest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.SortOldest" xml:space="preserve"><value>Oldest first</value><comment>Albums / Singles &amp; EPs tab Sort menu item and pill label ("Sort: {0}") in ArtistDetailView.axaml</comment></data>
@@ -1151,6 +1153,8 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Main.Albums" xml:space="preserve"><value>Albums</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.Singles" xml:space="preserve"><value>Singles</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.EPs" xml:space="preserve"><value>EPs</value><comment>Header in MainWindow.axaml</comment></data>
+  <data name="Main.LiveAlbums" xml:space="preserve"><value>Live Albums</value><comment>Header in MainWindow.axaml (Albums Type filter, GitHub #122)</comment></data>
+  <data name="Main.Compilations" xml:space="preserve"><value>Compilations</value><comment>Header in MainWindow.axaml (Albums Type filter, GitHub #122)</comment></data>
   <data name="Main.Other" xml:space="preserve"><value>Other</value><comment>Header in MainWindow.axaml</comment></data>
   <data name="Main.FilterByAudioQualityTip" xml:space="preserve"><value>Filter by audio quality</value><comment>ToolTip.Tip in MainWindow.axaml</comment></data>
   <data name="Main.Lossless" xml:space="preserve"><value>Lossless</value><comment>Content in MainWindow.axaml</comment></data>

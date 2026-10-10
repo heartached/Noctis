@@ -54,6 +54,51 @@ public class ArtistDetailViewMountTests
         return album;
     }
 
+    /// <summary>GitHub #122: a live album and a compilation get their own tab and Overview
+    /// row ("Live Albums" / "Compilations"), the tile caption reads "Live Album · 2003",
+    /// and each tab's grid realizes its tiles.</summary>
+    [AvaloniaFact]
+    public void ArtistPage_LiveAlbumsAndCompilations_GetTheirOwnTabsAndRows()
+    {
+        EnsureAppStyles();
+        var live = MakeAlbum("Alive", "Chase Atlantic", 2003, 12);
+        foreach (var t in live.Tracks) { t.ReleaseType = ReleaseType.Live; t.ReleaseTypeFromTag = true; }
+        var hits = MakeAlbum("Hits", "Chase Atlantic", 2004, 15);
+        foreach (var t in hits.Tracks) { t.ReleaseType = ReleaseType.Compilation; t.ReleaseTypeFromTag = true; }
+        var lib = new FakeLibraryService();
+        ((List<Album>)lib.Albums).AddRange(new[] { MakeAlbum("Phases", "Chase Atlantic", 2019, 12), live, hits });
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new ArtistDetailViewModel("Chase Atlantic", lib, player);
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var tabs = view.GetVisualDescendants().OfType<Button>()
+            .Where(b => b.Classes.Contains("page-tab") && b.IsVisible)
+            .Select(b => Avalonia.Automation.AutomationProperties.GetName(b)).ToList();
+        Assert.Equal(new[] { "Overview", "Albums", "Singles & EPs", "Live Albums", "Compilations", "Songs", "Similar Artists" }, tabs);
+
+        var overview = view.FindControl<StackPanel>("OverviewPanel")!;
+        var overviewTexts = overview.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+        Assert.Contains("Live Albums", overviewTexts);
+        Assert.Contains("Compilations", overviewTexts);
+        Assert.Contains("Live Album · 2003", overviewTexts);
+
+        vm.SelectTabCommand.Execute("live");
+        Dispatcher.UIThread.RunJobs();
+        var livePanel = view.FindControl<StackPanel>("LivePanel")!;
+        Assert.True(livePanel.IsVisible);
+        Assert.Contains(livePanel.GetVisualDescendants().OfType<Control>().Select(c => c.DataContext), d => d is Album { Name: "Alive" });
+
+        vm.SelectTabCommand.Execute("compilations");
+        Dispatcher.UIThread.RunJobs();
+        var compPanel = view.FindControl<StackPanel>("CompilationsPanel")!;
+        Assert.True(compPanel.IsVisible);
+        Assert.Contains(compPanel.GetVisualDescendants().OfType<Control>().Select(c => c.DataContext), d => d is Album { Name: "Hits" });
+        win.Close();
+    }
+
     [AvaloniaFact]
     public void ArtistPage_MountsWithHeroPopularAndReleases()
     {
@@ -86,7 +131,8 @@ public class ArtistDetailViewMountTests
         // Tab strip (09-13 redesign, design 4): Overview selected, the rest plain.
         foreach (var tab in new[] { "Overview", "Albums", "Singles & EPs", "Songs", "Similar Artists" })
             Assert.Contains(tab, texts);
-        var tabs = view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("page-tab")).ToList();
+        // Live Albums / Compilations tabs (GitHub #122) stay hidden for an artist with none.
+        var tabs = view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("page-tab") && b.IsVisible).ToList();
         Assert.Equal(5, tabs.Count);
         Assert.Single(tabs.Where(t => t.Classes.Contains("selected")));
 

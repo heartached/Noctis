@@ -351,13 +351,16 @@ public class Album : ObservableObject
     };
 
     /// <summary>Title-case kind for tile captions on the artist page ("Album · 2024",
-    /// "Single", "EP", "Live album"); the kicker keeps its upper-case form.</summary>
+    /// "Single", "EP", "Live Album"); the kicker keeps its upper-case form. Every word is
+    /// capitalised: "Live album" read as a typo next to the other title-case captions
+    /// (GitHub #122, 2026-10-10).</summary>
     public string ReleaseKindTitle
     {
         get
         {
             var label = ReleaseKindLabel;
-            return label == "EP" ? label : char.ToUpperInvariant(label[0]) + label[1..].ToLowerInvariant();
+            if (label == "EP") return label;
+            return string.Join(' ', label.Split(' ').Select(w => char.ToUpperInvariant(w[0]) + w[1..].ToLowerInvariant()));
         }
     }
 

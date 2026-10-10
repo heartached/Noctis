@@ -378,11 +378,11 @@ internal static class ExtendedTagIO
             return overrideParsed;
         }
 
-        var primary = ReadCustomString(file, ReleaseTypeKey);
+        var primary = ReadCustomStringValues(file, ReleaseTypeKey);
         if (!string.IsNullOrWhiteSpace(primary) && TryParseReleaseTypeList(primary, out var parsedPrimary))
             return parsedPrimary;
 
-        var mb = ReadCustomString(file, MusicBrainzAlbumTypeKey);
+        var mb = ReadCustomStringValues(file, MusicBrainzAlbumTypeKey);
         if (!string.IsNullOrWhiteSpace(mb) && TryParseReleaseTypeList(mb, out var parsedMb))
             return parsedMb;
 
@@ -651,6 +651,23 @@ internal static class ExtendedTagIO
                 return text;
         }
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Like <see cref="ReadCustomString"/>, but every value of a multi-valued field, joined
+    /// with "; ". Picard writes a release type of "album" + "live" as two RELEASETYPE Vorbis
+    /// comments (or one null-separated ID3v2.4 TXXX); reading only the first value left a
+    /// tagged live album or compilation a plain Album (GitHub #122, 2026-10-10).
+    /// </summary>
+    private static string ReadCustomStringValues(TagFile file, string key)
+    {
+        if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3
+            && UserTextInformationFrame.Get(id3, key, false) is { Text: { Length: > 1 } texts })
+            return string.Join("; ", texts.Where(t => !string.IsNullOrWhiteSpace(t)));
+        if (file.GetTag(TagTypes.Xiph, false) is XiphComment xiph
+            && xiph.GetField(key) is { Length: > 1 } values)
+            return string.Join("; ", values.Where(v => !string.IsNullOrWhiteSpace(v)));
+        return ReadCustomString(file, key);
     }
 
     private static void WriteCustomString(TagFile file, string key, string? value)

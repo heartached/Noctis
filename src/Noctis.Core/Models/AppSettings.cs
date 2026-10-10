@@ -424,7 +424,8 @@ public class AppSettings
     /// newest first instead of chronologically.</summary>
     public bool AlbumSortNewestFirst { get; set; }
 
-    /// <summary>Albums grid release Type filter: "album", "single", "ep", "other", or ""
+    /// <summary>Albums grid release Type filter: "album", "single", "ep", "live",
+    /// "compilation" (GitHub #122), "other", or ""
     /// for All. Unknown values load as All.</summary>
     public string AlbumReleaseTypeFilter { get; set; } = "";
 
