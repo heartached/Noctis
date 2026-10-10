@@ -61,6 +61,20 @@
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         </Style>
+        <!-- Discord (Mistery, 10-10): every song is on this playlist already. Muted and not
+             pickable (nothing to hover or click), as the Add Songs picker's in-playlist rows.
+             Not IsEnabled=False: Fluent's disabled button paints a grey box over the row. -->
+        <Style Selector="Button.atp-row.on-playlist">
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="Button.atp-row.on-playlist Border.atp-cover">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="Button.atp-row.on-playlist StackPanel.atp-text">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
     </Window.Styles>
 
     <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor and Create New Playlist,
@@ -131,76 +145,79 @@
                 <StackPanel Spacing="8" IsVisible="{Binding HasPlaylists}">
                     <TextBlock Classes="atp-label" Text="{loc:T AddToPlaylist.Playlists}" />
                     <ScrollViewer x:Name="PlaylistScroller" MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="PlaylistList" ItemsSource="{Binding Playlists}">
+                        <ItemsControl x:Name="PlaylistList" ItemsSource="{Binding Rows}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Spacing="6" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="m:PlaylistNavItem">
+                                <DataTemplate x:DataType="vm:AddToPlaylistRow">
                                     <Button Classes="atp-row"
+                                            Classes.on-playlist="{Binding IsAlreadyOnPlaylist}"
                                             Command="{Binding $parent[Window].((vm:AddToPlaylistDialogViewModel)DataContext).SelectPlaylistCommand}"
-                                            CommandParameter="{Binding}">
+                                            CommandParameter="{Binding Playlist}">
                                         <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                                             <!-- Playlist artwork (matches the sidebar thumbnail). -->
                                             <Border Grid.Column="0"
+                                                    Classes="atp-cover"
                                                     Width="40" Height="40"
                                                     CornerRadius="10"
                                                     ClipToBounds="True"
                                                     Margin="0,0,12,0">
                                                 <Panel>
-                                                    <Border Background="{Binding Color, Converter={StaticResource HexColorConverter}}" />
+                                                    <Border Background="{Binding Playlist.Color, Converter={StaticResource HexColorConverter}}" />
                                                     <Border Width="16" Height="16"
                                                             HorizontalAlignment="Center" VerticalAlignment="Center"
                                                             Background="{DynamicResource SecondaryTextBrush}"
                                                             RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                            IsVisible="{Binding ShowFallbackIcon}">
+                                                            IsVisible="{Binding Playlist.ShowFallbackIcon}">
                                                         <Border.OpacityMask><StaticResource ResourceKey="IconMaskPlaylist" /></Border.OpacityMask>
                                                     </Border>
                                                     <!-- DecodeWidth 128 matches the sidebar's playlist thumbs so both
                                                          surfaces share one warm cache bucket. -->
-                                                    <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                    <ctrl:CachedImage SourcePath="{Binding Playlist.Art1}"
                                                                       DecodeWidth="128"
                                                                       Stretch="UniformToFill"
-                                                                      IsVisible="{Binding HasSingleArt}" />
+                                                                      IsVisible="{Binding Playlist.HasSingleArt}" />
                                                     <Grid RowDefinitions="*,*"
                                                           ColumnDefinitions="*,*"
-                                                          IsVisible="{Binding HasCollageArt}">
+                                                          IsVisible="{Binding Playlist.HasCollageArt}">
                                                         <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
-                                                                          SourcePath="{Binding Art1}"
+                                                                          SourcePath="{Binding Playlist.Art1}"
                                                                           DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
-                                                                          SourcePath="{Binding Art2}"
+                                                                          SourcePath="{Binding Playlist.Art2}"
                                                                           DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
-                                                                          SourcePath="{Binding Art3}"
+                                                                          SourcePath="{Binding Playlist.Art3}"
                                                                           DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
-                                                                          SourcePath="{Binding Art4}"
+                                                                          SourcePath="{Binding Playlist.Art4}"
                                                                           DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                     </Grid>
-                                                    <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                    <ctrl:CachedImage SourcePath="{Binding Playlist.CoverArtPath}"
                                                                       DecodeWidth="128"
                                                                       Stretch="UniformToFill"
-                                                                      IsVisible="{Binding HasCustomArt}" />
+                                                                      IsVisible="{Binding Playlist.HasCustomArt}" />
                                                 </Panel>
                                             </Border>
-                                            <!-- Name, and the Playlists page's "16 tracks · 54 min" line. -->
-                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Label}"
+                                            <!-- Name, and the Playlists page's "16 tracks · 54 min" line
+                                                 (plus "· Already on playlist" when it has the songs). -->
+                                            <StackPanel Grid.Column="1" Classes="atp-text" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Playlist.Label}"
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding MetaText}"
+                                                <TextBlock Text="{Binding SubtitleText}"
                                                            FontSize="12"
                                                            Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis"
-                                                           IsVisible="{Binding MetaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                           IsVisible="{Binding SubtitleText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </StackPanel>
                                         </Grid>
                                     </Button>
