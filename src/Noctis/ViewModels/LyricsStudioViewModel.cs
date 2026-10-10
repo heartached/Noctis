@@ -696,6 +696,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
             if (!await ConfirmAsync($"Re-sync will replace the timings shown for “{current.Title}” with a fresh run of Lullaby.\n\nNothing is written to disk until you press Save lyrics."))
                 return;
             Requeue(current);
+            // The user's own lyrics (pasted, typed, a corrected transcript) are re-timed as the
+            // review shows them now, edits included: Re-sync used to time the lyrics box, or the
+            // song's .lrc the user had replaced (Discord, Mistery 2026-10-10).
+            if (current.BeforeRerun?.Result is { Source: LyricsStudioSource.PastedLyrics } shown)
+                current.SourceOverride = shown.Lines.Select(l => l.Text).ToList();
             items.Add(current);
         }
         await RunAsync(items);

@@ -191,6 +191,56 @@ public class LyricsStudioClearLyricsTests : IDisposable
         Assert.Equal(LyricsStudioSource.ExistingLyrics, vm.Queue[0].Result!.Source);
     }
 
+    [AvaloniaFact]
+    public async Task Resync_OfTheUsersLyrics_TimesTheReviewAsEdited()
+    {
+        var track = WrongMatch(out _);
+        var engine = Echo(_tmp);
+        var vm = Studio(engine, null, track);
+        vm.Confirm = _ => Task.FromResult(true);
+        vm.Selected = vm.Queue[0];
+        await vm.ClearLyricsCommand.ExecuteAsync(null);
+        vm.Selected!.DraftText = "my first line\nmy second line";
+        await vm.AlignDraftCommand.ExecuteAsync(null);
+
+        vm.ReviewLines[0].Text = "my first line fixed";
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, engine.Options.Count);
+        Assert.Equal(new[] { "my first line fixed", "my second line" }, engine.Options[1].SourceLines);
+        Assert.Equal(new[] { "my first line fixed", "my second line" }, vm.ReviewLines.Select(l => l.Text));
+    }
+
+    [AvaloniaFact]
+    public async Task Resync_AfterTranscribeInsteadAndAlign_TimesTheCorrectedText_NotTheSongsLrc()
+    {
+        var track = WrongMatch(out _);
+        var heard = new[]
+        {
+            new RecognizedWord("right", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1.4), 0.9f),
+            new RecognizedWord("words", TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(2), 0.9f),
+        };
+        var engine = Echo(_tmp);
+        var echo = engine.Handler;
+        engine.Handler = (t, o) => o.ForceTranscription
+            ? new LyricsStudioResult(t, TranscriptLines.Group(heard), LyricsStudioSource.Transcription, 0.5, "en", heard.Length, heard)
+            : echo(t, o);
+        var vm = Studio(engine, null, track);
+        vm.Confirm = _ => Task.FromResult(true);
+        vm.Selected = vm.Queue[0];
+        Assert.Equal(Status.Loaded, vm.Queue[0].Status);
+
+        await vm.RedoAsTranscriptionCommand.ExecuteAsync(null);
+        vm.Queue[0].DraftText = "right words";
+        await vm.AlignDraftCommand.ExecuteAsync(null);
+        Assert.Equal(Status.Ready, vm.Queue[0].Status);
+
+        await vm.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, engine.Options.Count);
+        Assert.Equal(new[] { "right words" }, engine.Options[1].SourceLines);
+    }
+
     private sealed class FakeEngine : ILyricsStudioEngine
     {
         public List<LyricsStudioOptions> Options { get; } = new();
