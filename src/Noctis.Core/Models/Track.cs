@@ -598,6 +598,24 @@ public partial class Track : ObservableObject
     /// <summary>Typed genre text in the stored form: "rock ;Pop;" → "rock; Pop".</summary>
     public static string NormalizeGenre(string? value) => string.Join(GenreSeparator, SplitGenres(value));
 
+    /// <summary>True when <paramref name="value"/> holds any of <paramref name="genres"/>
+    /// (case-insensitive). Allocation-free: Autoplay and radio call it for every library track.</summary>
+    public static bool SharesGenre(string[] genres, string? value)
+    {
+        if (genres.Length == 0 || string.IsNullOrEmpty(value)) return false;
+        var rest = value.AsSpan();
+        while (true)
+        {
+            var cut = rest.IndexOf(';');
+            var part = (cut < 0 ? rest : rest[..cut]).Trim();
+            if (part.Length > 0)
+                foreach (var g in genres)
+                    if (part.Equals(g, StringComparison.OrdinalIgnoreCase)) return true;
+            if (cut < 0) return false;
+            rest = rest[(cut + 1)..];
+        }
+    }
+
     /// <summary>
     /// Generates a deterministic album ID from AlbumArtist and Album name.
     /// </summary>

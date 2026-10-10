@@ -155,8 +155,10 @@ internal static class DescriptionDialogs
         var chips = new List<string>();
         if (album is null) return chips;
         if (album.Year > 0) chips.Add(album.Year.ToString(CultureInfo.InvariantCulture));
-        if (!string.IsNullOrWhiteSpace(album.Genre) && !string.Equals(album.Genre.Trim(), "Unknown", StringComparison.OrdinalIgnoreCase))
-            chips.Add(album.Genre.Trim());
+        // One chip per genre of a multi-genre album ("Rock; Pop", GitHub #123 follow-up).
+        foreach (var genre in Track.SplitGenres(album.Genre))
+            if (!string.Equals(genre, "Unknown", StringComparison.OrdinalIgnoreCase))
+                chips.Add(genre);
         chips.Add(SongsText(album.TrackCount));
         if (!string.IsNullOrEmpty(album.AudioQualityBadge)) chips.Add(album.AudioQualityBadge);
         if (album.HasLabelName) chips.Add(album.LabelName);

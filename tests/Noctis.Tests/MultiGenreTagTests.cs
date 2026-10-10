@@ -406,6 +406,49 @@ public class MultiGenreTagTests : IDisposable
     }
 
     [Fact]
+    public void Autoplay_GenreTier_MatchesAnySharedGenre()
+    {
+        var seed = new Track { Title = "seed", Artist = "S", Genre = "Rock; Pop" };
+        var rock = new Track { Title = "r", Artist = "X", Genre = "rock" };
+        var pop = new Track { Title = "p", Artist = "Y", Genre = "Jazz; Pop" };
+        var jazz = new Track { Title = "j", Artist = "Z", Genre = "Jazz" };
+
+        var picks = new AutoplayService().PickSimilar(seed, new[] { seed, rock, pop, jazz }, 10, new HashSet<Guid>());
+
+        Assert.Equal(new[] { "p", "r" }, picks.Select(t => t.Title).OrderBy(t => t));
+    }
+
+    [Fact]
+    public void Radio_SameGenreScore_MatchesAnySharedGenre()
+    {
+        var seed = new Track { Title = "seed", Artist = "S", AlbumArtist = "S", Genre = "Rock; Pop" };
+        var pop = new Track { Title = "p", Artist = "Y", AlbumArtist = "Y", Genre = "Pop" };
+        var jazz = new Track { Title = "j", Artist = "Z", AlbumArtist = "Z", Genre = "Jazz" };
+
+        var picks = new RadioService().BuildSimilar(seed, new[] { seed, pop, jazz }, 10, new HashSet<Guid>());
+
+        Assert.Equal(new[] { pop }, picks);
+    }
+
+    [Fact]
+    public void OrganizeGenreToken_UsesTheFirstGenre()
+    {
+        var track = new Track { Title = "Song", Genre = "Rock; Pop", FilePath = Path.Combine(_dir, "in", "a.flac") };
+        var root = Path.Combine(_dir, "out");
+
+        var move = Assert.Single(FileOrganizePlanner.Plan(new[] { track }, "{Genre}/{Title}", root, _ => false));
+
+        Assert.Equal(Path.Combine(root, "Rock", "Song.flac"), move.TargetPath);
+    }
+
+    [Fact]
+    public void AlbumChips_ShowEachGenre()
+    {
+        var album = new Album { Name = "A", Genre = "Rock; Pop", TrackCount = 2 };
+        Assert.Equal(new[] { "Rock", "Pop", "2 songs" }, Noctis.Views.DescriptionDialogs.AlbumChips(album));
+    }
+
+    [Fact]
     public void ArtistDominantGenre_CountsEachGenre()
     {
         var songs = new[]

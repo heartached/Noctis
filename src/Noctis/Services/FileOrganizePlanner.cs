@@ -115,7 +115,8 @@ public static class FileOrganizePlanner
         .Replace("{TrackNo}", track.TrackNumber > 0 ? track.TrackNumber.ToString("00") : "00")
         .Replace("{DiscNo}", track.DiscNumber > 0 ? track.DiscNumber.ToString() : "1")
         .Replace("{Year}", track.Year > 0 ? track.Year.ToString() : string.Empty)
-        .Replace("{Genre}", track.Genre ?? string.Empty);
+        // The first genre: a folder named "Rock; Pop" is no genre folder (GitHub #123 follow-up).
+        .Replace("{Genre}", Track.SplitGenres(track.Genre).FirstOrDefault() ?? string.Empty);
 
     private static string Nz(string? v, string fallback) => string.IsNullOrWhiteSpace(v) ? fallback : v.Trim();
 
