@@ -1690,7 +1690,7 @@
                              own fill, a soft drop shadow for lift, and with Liquid Glass on a
                              frost tinted at Glass Opacity exactly like the island menus. Inside:
                              a compact slider (owner 10-08/10-10 "make it smaller": 4px track,
-                             12px thumb, 24px tall) and a live % readout, so the old floating
+                             10px thumb, 22px tall) and a live % readout, so the old floating
                              drag-only bubble is gone. Reveal and hide (fade + 6px rise +
                              0.92→1 scale from the bottom edge) are code-built transitions — see
                              SetVolumeFlyoutRevealed.
@@ -1729,20 +1729,20 @@
                                 <Grid x:Name="VolumePill"
                                       Classes.muted="{Binding IsMuted}"
                                       Background="Transparent"
-                                      Height="24"
-                                      Margin="10,0,8,0"
+                                      Height="22"
+                                      Margin="9,0,7,0"
                                       ColumnDefinitions="Auto,Auto">
-                                    <!-- Track and thumb centred on the pill's 12px mid line; the
+                                    <!-- Track and thumb centred on the pill's 11px mid line; the
                                          Slider spans the full 30px height so the thinner track keeps
-                                         a full-height hit strip. VolumeThumbSize (code-behind) = 12. -->
+                                         a full-height hit strip. VolumeThumbSize (code-behind) = 10. -->
                                     <Grid x:Name="VolumeTrackHost"
                                           Grid.Column="0"
-                                          Width="76"
-                                          Height="24"
+                                          Width="64"
+                                          Height="22"
                                           VerticalAlignment="Center">
                                         <Canvas x:Name="VolumeVisual"
-                                                Width="76"
-                                                Height="24"
+                                                Width="64"
+                                                Height="22"
                                                 ClipToBounds="False"
                                                 IsHitTestVisible="False">
                                             <!-- Quiet rest track: the island's icon colour at low strength
@@ -1751,22 +1751,22 @@
                                                     Height="4"
                                                     CornerRadius="2"
                                                     Background="{DynamicResource IslandIconFill}"
-                                                    Canvas.Top="10"/>
+                                                    Canvas.Top="9"/>
                                             <Border x:Name="VolumeTrackFill"
                                                     Height="4"
                                                     CornerRadius="2"
                                                     Background="{DynamicResource IslandSliderFilled}"
-                                                    Canvas.Top="10"/>
+                                                    Canvas.Top="9"/>
                                             <!-- The host carries the X translate (code-behind); the dot
                                                  inside carries the hover / drag growth, so the two
                                                  transforms never fight over one property. -->
                                             <Panel x:Name="VolumeThumb"
-                                                   Width="12"
-                                                   Height="12"
+                                                   Width="10"
+                                                   Height="10"
                                                    Canvas.Top="6">
                                                 <Border x:Name="VolumeThumbDot"
-                                                        Width="12"
-                                                        Height="12"
+                                                        Width="10"
+                                                        Height="10"
                                                         CornerRadius="999"
                                                         Background="{DynamicResource IslandSliderFilled}"
                                                         BoxShadow="0 1 3 0 #59000000"/>
@@ -1775,8 +1775,8 @@
                                         <Slider Classes="volume-horizontal"
                                                 Value="{Binding Volume, Mode=TwoWay}"
                                                 Minimum="0" Maximum="100"
-                                                Width="76"
-                                                Height="24"
+                                                Width="64"
+                                                Height="22"
                                                 VerticalAlignment="Center"
                                                 Margin="0"
                                                 x:Name="VolumeSlider"/>
@@ -1784,8 +1784,8 @@
                                     <!-- Live level. Fixed width so "5%" → "100%" never resizes the pill. -->
                                     <TextBlock x:Name="VolumeReadout"
                                                Grid.Column="1"
-                                               Width="28"
-                                               Margin="5,0,0,0"
+                                               Width="26"
+                                               Margin="4,0,0,0"
                                                VerticalAlignment="Center"
                                                TextAlignment="Center"
                                                FontSize="10"

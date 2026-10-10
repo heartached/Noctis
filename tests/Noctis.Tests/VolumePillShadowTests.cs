@@ -151,10 +151,10 @@ public class VolumePillShadowTests
         var thumb = bar.FindControl<Panel>("VolumeThumb")!;
         var dot = bar.FindControl<Border>("VolumeThumbDot")!;
 
-        // Owner 10-10 "smaller so it looks more aesthetic": 24px pill, 76px track, 4px bar, 12px thumb.
-        Assert.True(pill.Bounds.Height <= 24, $"pill {pill.Bounds.Height}px tall");
-        Assert.True(slider.Bounds.Width <= 76, $"track {slider.Bounds.Width}px long");
-        Assert.True(track.Height <= 4 && thumb.Width <= 12, "thinner track, smaller thumb");
+        // Owner 10-10 "smaller so it looks more aesthetic": 22px pill, 64px track, 4px bar, 10px thumb.
+        Assert.True(pill.Bounds.Height <= 22, $"pill {pill.Bounds.Height}px tall");
+        Assert.True(slider.Bounds.Width <= 64, $"track {slider.Bounds.Width}px long");
+        Assert.True(track.Height <= 4 && thumb.Width <= 10, "thinner track, smaller thumb");
         Assert.Equal(pill.Bounds.Height, slider.Bounds.Height);
         Assert.Equal(thumb.Width, dot.Width);
 

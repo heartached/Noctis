@@ -74,7 +74,7 @@ public partial class PlaybackBarView : UserControl
     private bool _isSeekDragging;
     private bool _isVolumeDragging;
     // Matches VolumeThumb's Width/Height in the XAML (compact pill, 10-08).
-    private const double VolumeThumbSize = 12;
+    private const double VolumeThumbSize = 10;
     private const int VolumeStep = 5;
     private readonly TranslateTransform _volumeThumbTransform = new();
     private readonly VolumeWheelAccumulator _volumeWheel = new();
