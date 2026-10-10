@@ -1127,11 +1127,10 @@ public sealed class PluginHost
             }
         }
 
-        try { Directory.Move(staging, target); }
-        catch (Exception ex)
+        if (!PluginInstaller.TryMoveDirectory(staging, target, out var moveError))
         {
             PluginInstaller.TryDeleteDirectory(staging);
-            return new PluginInstallResult(PluginInstallOutcome.Failed, "Could not move the plugin into place: " + ex.Message);
+            return new PluginInstallResult(PluginInstallOutcome.Failed, "Could not move the plugin into place: " + moveError);
         }
 
         var plugin = LoadFrom(target);
