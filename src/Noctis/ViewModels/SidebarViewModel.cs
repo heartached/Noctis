@@ -1049,6 +1049,17 @@ public partial class SidebarViewModel : ViewModelBase
     public Task CreatePlaylistWithTracksAsync(IList<Track> tracks)
         => OpenAddToPlaylistAsync(tracks);
 
+    /// <summary>The Add to Playlist dialog's view model for these tracks; each row says when the
+    /// playlist has them already (Discord, Mistery 10-10). Internal for tests
+    /// (InternalsVisibleTo Noctis.Tests).</summary>
+    internal AddToPlaylistDialogViewModel CreateAddToPlaylistViewModel(IList<Track> tracks)
+    {
+        var trackIdsOf = new Dictionary<Guid, List<Guid>>();
+        foreach (var p in Playlists) trackIdsOf.TryAdd(p.Id, p.TrackIds);
+        return new AddToPlaylistDialogViewModel(PlaylistItems, tracks.Count,
+            tracks.Select(t => t.Id), id => trackIdsOf.GetValueOrDefault(id));
+    }
+
     /// <summary>
     /// Shows the combined "Add to Playlist" dialog: the user can pick an existing
     /// playlist (tracks added immediately) or inline-create a new one (tracks added
@@ -1058,7 +1069,7 @@ public partial class SidebarViewModel : ViewModelBase
     {
         if (tracks == null || tracks.Count == 0) return;
 
-        var dialogVm = new AddToPlaylistDialogViewModel(PlaylistItems, tracks.Count);
+        var dialogVm = CreateAddToPlaylistViewModel(tracks);
         var dialog = new AddToPlaylistDialog { DataContext = dialogVm };
 
         Guid? selectedExistingId = null;

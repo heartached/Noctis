@@ -645,6 +645,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AddToPlaylist.Name" xml:space="preserve"><value>Name</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.Description" xml:space="preserve"><value>Description</value><comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment></data>
   <data name="AddToPlaylist.Optional" xml:space="preserve"><value>Optional</value><comment>Watermark of the description field in the create pane of AddToPlaylistDialog.axaml</comment></data>
+  <data name="AddToPlaylist.AlreadyOnPlaylist" xml:space="preserve"><value>Already on playlist</value><comment>Appended to a playlist row's "67 tracks · 3 hr 17 min" line in AddToPlaylistDialog when every song being added is in that playlist already (the row is greyed out)</comment></data>
+  <data name="AddToPlaylist.SomeAlreadyOnPlaylist" xml:space="preserve"><value>{0:N0} already on playlist</value><comment>Appended to a playlist row's "67 tracks · 3 hr 17 min" line in AddToPlaylistDialog when some of the songs being added are in that playlist already; {0} = how many</comment></data>
 
   <!-- AlbumDescriptionDialog.axaml (auto-migrated) -->
   <data name="AlbumDescription.AlbumDescription" xml:space="preserve"><value>Album Description</value><comment>Title in AlbumDescriptionDialog.axaml</comment></data>
