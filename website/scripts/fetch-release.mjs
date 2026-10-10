@@ -93,7 +93,8 @@ try {
     if (batch.length < 100) break;
   }
 
-  const published = all.filter((r) => !r.draft);
+  // Plugin releases (plugin-<name>-v<version>) are not app builds.
+  const published = all.filter((r) => !r.draft && !r.tag_name.startsWith('plugin-'));
 
   /**
    * LATEST MEANS NEWEST STABLE. Never a pre-release, and never a draft.

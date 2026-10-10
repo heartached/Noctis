@@ -209,9 +209,12 @@ try {
    *
    * Sorted by published_at, not list order: /releases comes back by created_at,
    * which puts a long-drafted release in the wrong place.
+   *
+   * Official plugin releases (plugin-<name>-v<version>, see plugins/PUBLISHING.md)
+   * are not app versions and stay out of the history.
    */
   const releases = all
-    .filter((r) => !r.draft && r.published_at)
+    .filter((r) => !r.draft && r.published_at && !r.tag_name.startsWith('plugin-'))
     .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
     .map((r) => ({
       // Tag names flow into HTML and into element ids — plain version tokens only.
