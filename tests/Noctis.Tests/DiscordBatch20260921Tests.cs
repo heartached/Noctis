@@ -62,6 +62,22 @@ public class DiscordBatch20260921Tests
         Assert.Contains("IsVisible=\"{Binding !IsShuffleEnabled}\"", section);
     }
 
+    // ── Lyrics / Queue glyphs turn accent while open (Discord, Luwi 2026-10-10) ──
+
+    [Theory]
+    [InlineData("Click=\"OnLyricsButtonClick\"", "IsLyricsPageActive")]
+    [InlineData("Command=\"{Binding ShowQueueCommand}\"", "IsQueuePopupOpen")]
+    public void IslandLyricsAndQueue_GlyphTurnsAccent_WhenOpen_LikeRepeat(string anchor, string flag)
+    {
+        var xaml = ReadView("PlaybackBarView.axaml");
+        var button = xaml.IndexOf(anchor, StringComparison.Ordinal);
+        Assert.True(button > 0, anchor + " button must exist");
+        var section = xaml.Substring(button, xaml.IndexOf("</Button>", button, StringComparison.Ordinal) - button);
+        Assert.Contains("Foreground=\"{DynamicResource AccentColorBrush}\"", section);
+        Assert.Contains("IsVisible=\"{Binding " + flag + "}\"", section);
+        Assert.Contains("IsVisible=\"{Binding !" + flag + "}\"", section);
+    }
+
     // ── Drag & drop from the Folders page (Discord, Luwi) ──
 
     [Fact]

@@ -1584,12 +1584,24 @@
                         </Viewbox>
                     </Button>
 
-                    <!-- Lyrics button -->
+                    <!-- Lyrics and Queue: while their page / panel is open, the same faint accent
+                         square and accent glyph as Repeat and Shuffle (Discord, Luwi 2026-10-10:
+                         "Show icons in Accent Color when corresponding panels are opened"). -->
                     <Button Classes="secondary-btn"
                             Click="OnLyricsButtonClick"
                             ToolTip.Tip="{loc:T PlaybackBar.LyricsTip}"
                             Width="34" Height="34">
-                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineLyrics}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding IsLyricsPageActive}" />
+                            <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineLyrics}" Foreground="{DynamicResource IslandIconFill}"
+                                               IsVisible="{Binding !IsLyricsPageActive}" />
+                            <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineLyrics}" Foreground="{DynamicResource AccentColorBrush}"
+                                               IsVisible="{Binding IsLyricsPageActive}" />
+                        </Panel>
                     </Button>
 
                     <!-- Queue button -->
@@ -1598,7 +1610,17 @@
                             Tag="QueueToggle"
                             ToolTip.Tip="{loc:T PlaybackBar.QueueTip}"
                             Width="34" Height="34">
-                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineQueue}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding IsQueuePopupOpen}" />
+                            <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineQueue}" Foreground="{DynamicResource IslandIconFill}"
+                                               IsVisible="{Binding !IsQueuePopupOpen}" />
+                            <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineQueue}" Foreground="{DynamicResource AccentColorBrush}"
+                                               IsVisible="{Binding IsQueuePopupOpen}" />
+                        </Panel>
                     </Button>
 
                     <!-- Volume control: clicking the icon opens a small slider popup above it.
