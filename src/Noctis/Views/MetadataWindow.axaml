@@ -594,12 +594,17 @@
                             <!-- Genre | Year -->
                             <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" Margin="0,0,0,16">
                                 <TextBlock Text="{loc:T Metadata.Genre}" FontSize="12" Opacity="0.5" />
+                                <!-- Editable: pick a suggestion or type a new genre (GitHub #123,
+                                     2026-10-10). Only Text is bound: a typed off-list genre
+                                     leaves SelectedItem null, which must not clear Genre. -->
                                 <ComboBox x:Name="GenreCombo"
                                           Classes="pill-field"
                                           FontWeight="Normal"
+                                          IsEditable="True"
                                           ItemsSource="{Binding GenreOptions}"
-                                          SelectedItem="{Binding Genre}"
+                                          Text="{Binding Genre, Mode=TwoWay}"
                                           PlaceholderText="{Binding GenreWatermark}"
+                                          ToolTip.Tip="{loc:T Metadata.GenreTip}"
                                           HorizontalAlignment="Stretch" />
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4" Margin="0,0,0,16">
