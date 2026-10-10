@@ -17,6 +17,7 @@ public class MenuPopAnimationTests
 {
     private static (Window window, Border owner, ContextMenu menu) OpenPopMenu(System.Func<Border, PixelPoint?> anchor)
     {
+        MenuOpenAnimation.ForgetLastPress();
         var owner = new Border { Width = 400, Height = 300 };
         var window = new Window { Content = owner, Width = 400, Height = 300 };
         window.Show();

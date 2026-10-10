@@ -133,6 +133,9 @@ public static class MenuOpenAnimation
     private static long _lastPressAt;
     private const long PressAnchorMaxAgeMs = 1500;
 
+    /// <summary>Tests: drop the remembered press so an earlier test's click doesn't anchor this menu.</summary>
+    internal static void ForgetLastPress() => _lastPressAt = 0;
+
     private static readonly AttachedProperty<long> LastRunProperty =
         AvaloniaProperty.RegisterAttached<Control, long>("LastRun", typeof(MenuOpenAnimation));
 
