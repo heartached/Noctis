@@ -534,13 +534,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
 
                 // A setting changed from the open sheet (theme, Liquid Glass, accent,
-                // language…) repaints the app under it: retake the blurred backdrop once
-                // things settle. No-op while Settings is closed (no snapshot up). Progress
-                // streams (scan, downloads) change nothing visible under the blur.
+                // language…) repaints the app under it: retake the blurred backdrop right
+                // after that renders, so it keeps up with the sheet (owner 10-09). No-op while
+                // Settings is closed (no snapshot up). Progress streams (scan, downloads)
+                // change nothing visible under the blur.
                 _settingsBackdropRefreshHandler = (_, e) =>
                 {
                     if (e.PropertyName?.EndsWith("Progress", StringComparison.Ordinal) != true)
-                        _settingsScrim?.ScheduleRefresh();
+                        _settingsScrim?.RefreshSoon();
                 };
                 vm.Settings.PropertyChanged += _settingsBackdropRefreshHandler;
 

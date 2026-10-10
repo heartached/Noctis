@@ -8,6 +8,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
+using Avalonia.Threading;
 using Noctis.Services;
 
 namespace Noctis.Controls;
@@ -40,7 +41,8 @@ public class BlurredBackdrop : Panel
     public static readonly TimeSpan SnapshotWaitBudget = TimeSpan.FromMilliseconds(150);
 
     /// <summary>Quiet time after the last resize / <see cref="ScheduleRefresh"/> before the
-    /// snapshot is retaken, so a window drag retakes it once, not per step.</summary>
+    /// snapshot is retaken, so a window drag retakes it once, not per step. A setting changed
+    /// from the sheet doesn't wait for it (<see cref="RefreshSoon"/>).</summary>
     internal static readonly TimeSpan RefreshDelay = TimeSpan.FromMilliseconds(250);
 
     /// <summary>Snapshot fade-in / dim change when the snapshot lands while the layer is
@@ -72,6 +74,9 @@ public class BlurredBackdrop : Panel
     public Visual? Target { get; set; }
 
     private readonly Image _image;
+    /// <summary>The snapshot a retake replaced, held under the new one while it fades in.</summary>
+    private readonly Image _fadingOut;
+    private Bitmap? _fadingBitmap;
     private readonly Border _dim;
     private readonly Transitions _imageFade;
     private readonly Transitions _dimFade;
@@ -106,12 +111,20 @@ public class BlurredBackdrop : Panel
             Opacity = 0,
         };
         RenderOptions.SetBitmapInterpolationMode(_image, BitmapInterpolationMode.MediumQuality);
+        _fadingOut = new Image
+        {
+            Stretch = Stretch.Fill,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        RenderOptions.SetBitmapInterpolationMode(_fadingOut, BitmapInterpolationMode.MediumQuality);
         _dim = new Border();
         _dim.Bind(Border.BackgroundProperty, this.GetObservable(DimProperty));
+        Children.Add(_fadingOut);
         Children.Add(_image);
         Children.Add(_dim);
         // A light/dark switch repaints the whole app under the sheet.
-        ActualThemeVariantChanged += (_, _) => ScheduleRefresh();
+        ActualThemeVariantChanged += (_, _) => RefreshSoon();
 
         _imageFade = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
         _dimFade = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
@@ -121,12 +134,15 @@ public class BlurredBackdrop : Panel
     public bool HasSnapshot => _snapshot != null;
     internal Bitmap? Snapshot => _snapshot;
     internal Image SnapshotImage => _image;
+    internal Image FadingImage => _fadingOut;
     internal Border DimLayer => _dim;
     /// <summary>True while a retake is scheduled (tests).</summary>
     internal bool IsRefreshPending => _refreshPending;
     /// <summary>The radius the shown snapshot was blurred at, and how many live re-blurs ran (tests).</summary>
     internal double ShownRadius { get; private set; }
     internal int ReblurCount { get; private set; }
+    /// <summary>How many snapshots were taken and shown (tests).</summary>
+    internal int CaptureCount { get; private set; }
 
     /// <summary>
     /// Call when the sheet starts to open: takes the snapshot unless one is still up (a
@@ -186,8 +202,14 @@ public class BlurredBackdrop : Panel
         _snapshot = bitmap;
         _source = source;
         ShownRadius = radius;
-        _image.Source = bitmap;
-        old?.Dispose();
+        CaptureCount++;
+        if (old != null && !_blurHidden && IsEffectivelyVisible && Opacity > 0)
+            CrossfadeFrom(old);
+        else
+        {
+            _image.Source = bitmap;
+            old?.Dispose();
+        }
         if (first || _blurHidden)
         {
             // Showing already (the dim went up before the snapshot): cross-fade from the
@@ -199,6 +221,31 @@ public class BlurredBackdrop : Panel
         // The slider moved while this was being taken: catch up on the new source.
         if (ShownRadius != BackdropSnapshot.BlurRadius) OnBlurRadiusChanged(this, EventArgs.Empty);
         return true;
+    }
+
+    /// <summary>A retake while the sheet is up: the new snapshot fades in over the old one
+    /// (both opaque, so the mix never shows the app or the dim through), which is then freed.
+    /// A retake landing mid-fade drops the older one at once.</summary>
+    private void CrossfadeFrom(Bitmap old)
+    {
+        _fadingOut.Source = old;
+        _fadingBitmap?.Dispose();
+        _fadingBitmap = old;
+        _image.Transitions = null;
+        _image.Opacity = 0;
+        _image.Source = _snapshot;
+        _image.Transitions = _imageFade;
+        _image.Opacity = 1;
+        _ = FreeFadedAsync(old);
+    }
+
+    private async Task FreeFadedAsync(Bitmap old)
+    {
+        await Task.Delay(CrossfadeDuration + TimeSpan.FromMilliseconds(60));
+        if (!ReferenceEquals(_fadingBitmap, old)) return; // replaced or released meanwhile
+        _fadingOut.Source = null;
+        _fadingBitmap = null;
+        old.Dispose();
     }
 
     /// <summary>The blurred snapshot under the lighter dim, or (slider at Off) faded out under
@@ -268,6 +315,9 @@ public class BlurredBackdrop : Panel
         _image.Source = null;
         _snapshot?.Dispose();
         _snapshot = null;
+        _fadingOut.Source = null;
+        _fadingBitmap?.Dispose();
+        _fadingBitmap = null;
         _source = null;
         _reblurBuffer = null;
         _blurHidden = false;
@@ -281,15 +331,37 @@ public class BlurredBackdrop : Panel
     {
         if (_snapshot is null) return;
         _refreshPending = true;
-        _ = RefreshAfterQuietAsync(++_refreshStamp);
+        _ = RefreshAfterQuietAsync(++_refreshStamp, soon: false);
+    }
+
+    /// <summary>Retakes the snapshot once the current change has rendered, without
+    /// <see cref="RefreshDelay"/> (owner 10-09: a theme or Liquid Glass switch from the sheet
+    /// left the app under it on the old look for a beat). The calls of one burst (every flag
+    /// a theme switch raises) make one retake, which cross-fades in.</summary>
+    public void RefreshSoon()
+    {
+        if (_snapshot is null) return;
+        _refreshPending = true;
+        _ = RefreshAfterQuietAsync(++_refreshStamp, soon: true);
     }
 
     /// <summary>Task.Delay (resumed on the UI thread) as PillDialogHost's deferred close,
-    /// rather than a DispatcherTimer.</summary>
-    private async Task RefreshAfterQuietAsync(int stamp)
+    /// rather than a DispatcherTimer. Soon: a Background-priority hop instead, which runs
+    /// after the rest of the current job and the render it queued (the theme is applied after
+    /// the flags that ask for the retake), so the snapshot is of the new look.</summary>
+    private async Task RefreshAfterQuietAsync(int stamp, bool soon)
     {
-        await Task.Delay(RefreshDelay);
+        if (soon)
+            await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Background);
+        else
+            await Task.Delay(RefreshDelay);
         if (stamp != _refreshStamp) return;
+        // A capture already running started before this change: let it land, then retake.
+        if (_capture is { IsCompleted: false } running)
+        {
+            await running;
+            if (stamp != _refreshStamp) return;
+        }
         _refreshPending = false;
         if (_snapshot != null) await CaptureAsync();
     }

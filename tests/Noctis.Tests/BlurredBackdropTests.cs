@@ -206,4 +206,103 @@ public class BlurredBackdropTests
         }
         finally { Close(backdrop); win.Close(); }
     }
+
+    /// <summary>Owner 10-09: a theme or Liquid Glass switch from the sheet lagged behind it —
+    /// the app under the sheet stayed on the old theme for the resize debounce plus a
+    /// capture. A setting change retakes right after the next render instead.</summary>
+    [AvaloniaFact]
+    public void RefreshSoon_WhileOpen_RetakesWithoutTheQuietWait()
+    {
+        var (win, _, backdrop) = Build();
+        try
+        {
+            Open(backdrop);
+            Assert.True(PumpUntil(() => backdrop.HasSnapshot, 3000));
+            var first = backdrop.Snapshot!;
+            var captures = backdrop.CaptureCount;
+
+            var sw = Stopwatch.StartNew();
+            // A burst (every flag a theme switch raises) is one retake.
+            for (var i = 0; i < 5; i++) backdrop.RefreshSoon();
+            Assert.True(PumpUntil(() => !ReferenceEquals(backdrop.Snapshot, first), 3000), "never retaken");
+            Assert.True(sw.Elapsed < BlurredBackdrop.RefreshDelay, $"retaken after {sw.ElapsedMilliseconds} ms");
+            PumpUntil(() => false, 100);
+            Assert.Equal(captures + 1, backdrop.CaptureCount);
+            Assert.False(backdrop.IsRefreshPending);
+        }
+        finally { Close(backdrop); win.Close(); }
+    }
+
+    /// <summary>A Light ↔ Dark theme raises ActualThemeVariantChanged on the backdrop too; that
+    /// must not push the retake back onto the resize debounce.</summary>
+    [AvaloniaFact]
+    public void ThemeVariantSwitch_WhileOpen_RetakesWithoutTheQuietWait()
+    {
+        var (win, _, backdrop) = Build();
+        try
+        {
+            Open(backdrop);
+            Assert.True(PumpUntil(() => backdrop.HasSnapshot, 3000));
+            var first = backdrop.Snapshot!;
+
+            var sw = Stopwatch.StartNew();
+            backdrop.RefreshSoon();
+            win.RequestedThemeVariant = ThemeVariant.Light;
+            Assert.True(PumpUntil(() => !ReferenceEquals(backdrop.Snapshot, first), 3000), "never retaken");
+            Assert.True(sw.Elapsed < BlurredBackdrop.RefreshDelay, $"retaken after {sw.ElapsedMilliseconds} ms");
+        }
+        finally { Close(backdrop); win.Close(); }
+    }
+
+    /// <summary>A retake while the sheet is up cross-fades: the old snapshot stays under the
+    /// new one as it fades in, then is let go.</summary>
+    [AvaloniaFact]
+    public void Retake_WhileShowing_CrossFadesFromTheOldSnapshot()
+    {
+        var (win, _, backdrop) = Build();
+        try
+        {
+            Open(backdrop);
+            Assert.True(PumpUntil(() => backdrop.HasSnapshot, 3000));
+            PumpUntil(() => false, 300); // the open's own fade settles
+            var first = backdrop.Snapshot!;
+
+            backdrop.RefreshSoon();
+            Assert.True(PumpUntil(() => !ReferenceEquals(backdrop.Snapshot, first), 3000), "never retaken");
+            Assert.Same(first, backdrop.FadingImage.Source);
+            Assert.NotNull(backdrop.SnapshotImage.Transitions);
+
+            Assert.True(PumpUntil(() => backdrop.FadingImage.Source is null, 2000), "old snapshot never let go");
+            Assert.Equal(1, backdrop.SnapshotImage.Opacity, 3);
+        }
+        finally { Close(backdrop); win.Close(); }
+    }
+
+    /// <summary>The retake sees a change made in the same job as the request (the theme is
+    /// applied after the flags that request it), not the frame before it.</summary>
+    [AvaloniaFact]
+    public void RefreshSoon_CatchesAChangeMadeInTheSameJob()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        var (win, layer, backdrop) = Build(Brushes.White);
+        try
+        {
+            Open(backdrop);
+            Assert.True(PumpUntil(() => backdrop.HasSnapshot, 3000));
+            var first = backdrop.Snapshot!;
+
+            backdrop.RefreshSoon();
+            foreach (var child in ((StackPanel)layer.Children[0]).Children)
+                ((Border)child).Background = Brushes.Black;
+            Assert.True(PumpUntil(() => !ReferenceEquals(backdrop.Snapshot, first), 3000), "never retaken");
+
+            var px = Pixels(backdrop.Snapshot!);
+            long sum = 0;
+            int n = 0;
+            for (var i = 0; i + 3 < px.Length; i += 4) { sum += px[i + 1]; n++; }
+            Assert.True(sum / (double)n < 0.2 * 255, $"mean green {sum / (double)n:F0} (old white frame)");
+        }
+        finally { Close(backdrop); win.Close(); }
+    }
 }
