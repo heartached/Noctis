@@ -1,7 +1,8 @@
 {
-  "total": 13643,
+  "total": 13644,
   "byRelease": {
-    "v1.5.9": 818,
+    "v1.6.0": 0,
+    "v1.5.9": 819,
     "v1.5.8": 469,
     "v1.5.7": 360,
     "lullaby-v1": 104,
@@ -61,73 +62,73 @@
     "v1.0.1": 22,
     "v1.0.0": 11
   },
-  "latestVersion": "1.5.9",
-  "latestTag": "v1.5.9",
-  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.5.9",
-  "publishedAt": "2026-10-02T11:17:04Z",
-  "releaseCount": 59,
+  "latestVersion": "1.6.0",
+  "latestTag": "v1.6.0",
+  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.6.0",
+  "publishedAt": "2026-10-10T12:34:43Z",
+  "releaseCount": 60,
   "stars": 270,
   "openIssues": 12,
   "assets": {
     "windowsInstaller": {
-      "name": "Noctis-v1.5.9-Setup.exe",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-v1.5.9-Setup.exe",
-      "size": 152405346,
-      "downloads": 455
+      "name": "Noctis-v1.6.0-Setup.exe",
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-v1.6.0-Setup.exe",
+      "size": 153167638,
+      "downloads": 0
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-windows-x64.zip",
-      "size": 300461448,
-      "downloads": 37
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-windows-x64.zip",
+      "size": 301572411,
+      "downloads": 0
     },
     "macosArm": {
       "name": "Noctis-osx-arm64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-osx-arm64.dmg",
-      "size": 206822346,
-      "downloads": 39
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-osx-arm64.dmg",
+      "size": 208495010,
+      "downloads": 0
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-osx-x64.dmg",
-      "size": 210391047,
-      "downloads": 12
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-osx-x64.dmg",
+      "size": 211673302,
+      "downloads": 0
     },
     "linuxAppImage": {
       "name": "Noctis-x86_64.AppImage",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-x86_64.AppImage",
-      "size": 213957112,
-      "downloads": 101
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-x86_64.AppImage",
+      "size": 216607224,
+      "downloads": 0
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-linux-arm64.tar.gz",
-      "size": 143956535,
-      "downloads": 9
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-linux-arm64.tar.gz",
+      "size": 146363304,
+      "downloads": 0
     },
     "linuxTar": {
       "name": "Noctis-linux-x64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/Noctis-linux-x64.tar.gz",
-      "size": 155379010,
-      "downloads": 19
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/Noctis-linux-x64.tar.gz",
+      "size": 158146127,
+      "downloads": 0
     },
     "checksums": {
       "name": "SHA256SUMS",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.5.9/SHA256SUMS",
-      "size": 1001,
-      "downloads": 126
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.6.0/SHA256SUMS",
+      "size": 990,
+      "downloads": 0
     }
   },
   "sizes": {
-    "windowsInstaller": "145 MB",
-    "windowsPortable": "287 MB",
-    "macosArm": "197 MB",
-    "macosIntel": "201 MB",
-    "linuxAppImage": "204 MB",
-    "linuxArm": "137 MB",
-    "linuxTar": "148 MB",
+    "windowsInstaller": "146 MB",
+    "windowsPortable": "288 MB",
+    "macosArm": "199 MB",
+    "macosIntel": "202 MB",
+    "linuxAppImage": "207 MB",
+    "linuxArm": "140 MB",
+    "linuxTar": "151 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-10-10T12:26:08.870Z",
+  "updatedAt": "2026-10-10T12:35:16.311Z",
   "degraded": false
 }
