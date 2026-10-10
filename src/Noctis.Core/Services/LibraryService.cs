@@ -1663,12 +1663,21 @@ public class LibraryService : ILibraryService
         var changed = false;
         var relocated = new List<Track>();
         var known = AllTrackIndex(); // a move inside a hidden folder is still a move
+        Dictionary<string, Track>? byPath = null;
         foreach (var (oldPath, newPath) in moves)
         {
             if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
 
-            var oldId = ComputeFileId(oldPath);
-            if (!known.TryGetValue(oldId, out var track)) continue;
+            // By the path's id first. A track whose stored id isn't its path's hash (a foreign
+            // or hand-edited library.json) missed here, and the file moved while the library
+            // kept the old path (GitHub #121, 2026-10-10): then find it by its path.
+            if (!known.TryGetValue(ComputeFileId(oldPath), out var track))
+            {
+                byPath ??= BuildPathIndex();
+                if (!byPath.TryGetValue(oldPath, out track)) continue;
+            }
+            // Remapped from the id playlists and the play log actually hold.
+            var oldId = track.Id;
 
             track.FilePath = newPath;
             try
@@ -1707,6 +1716,14 @@ public class LibraryService : ILibraryService
         await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return remap;
+
+        Dictionary<string, Track> BuildPathIndex()
+        {
+            var index = new Dictionary<string, Track>(PathComparison.Comparer);
+            foreach (var t in _tracks)
+                if (!string.IsNullOrEmpty(t.FilePath)) index.TryAdd(t.FilePath, t);
+            return index;
+        }
     }
 
     /// <summary>
