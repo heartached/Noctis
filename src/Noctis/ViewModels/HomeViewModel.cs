@@ -1079,6 +1079,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
     }
 
+    /// <summary>GitHub #121: the album (or the Ctrl-selection it is in) → Send to Folder.</summary>
+    [RelayCommand]
+    private async Task SendAlbumToFolder(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenSendToFolderDialog(tracks);
+    }
+
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {

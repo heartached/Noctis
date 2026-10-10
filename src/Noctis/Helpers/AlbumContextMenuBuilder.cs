@@ -34,6 +34,8 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
+    /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
+    public MenuItem SendToFolder { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
@@ -144,6 +146,10 @@ public sealed class AlbumContextMenuBuilder
         ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
 
+        SendToFolder = new MenuItem { Header = Loc.T("SendTo.Title"), IsVisible = false };
+        SendToFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
+        items.Add(SendToFolder);
+
         items.Add(new Separator());
 
         Remove = new MenuItem { Header = removeHeader };
@@ -210,6 +216,9 @@ public sealed class AlbumContextMenuBuilder
         items.Add(ShowFolder);
         Tools = MenuV2.Row(host, Loc.T("Favorites.Tools"), "MenuLineTools");
         Tools.Classes.Add(MenuV2.AutoHideClass);
+        // GitHub #121: in Tools ▸ like the song menu's Send to Folder.
+        SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
+        Tools.Items.Add(SendToFolder);
         Convert = MenuV2.Row(host, Loc.T("LibraryAlbums.ConvertAlbum"), "MenuLineConvert", visible: false);
         Tools.Items.Add(Convert);
         ScanReplayGain = MenuV2.Row(host, Loc.T("LibraryAlbums.ScanReplayGain"), "MenuLineReplayGain", visible: false);
@@ -303,6 +312,16 @@ public sealed class AlbumContextMenuBuilder
             MenuV2.Sync(QuickAddToQueue, AddToQueue);
             MenuV2.RefreshLayout(Menu.Items);
         }
+    }
+
+    /// <summary>
+    /// GitHub #121 (2026-10-10): Send to Folder for the album (hidden when null). Separate from
+    /// <see cref="Bind"/> so views opt in one line each; call it after Bind.
+    /// </summary>
+    public void BindSendToFolder(Album album, ICommand? sendToFolderCommand)
+    {
+        BindOptional(SendToFolder, sendToFolderCommand, album);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
     private static void BindOptional(MenuItem item, ICommand? command, Album album)

@@ -1661,6 +1661,7 @@ public class LibraryService : ILibraryService
         if (moves == null || moves.Count == 0) return remap;
 
         var changed = false;
+        var relocated = new List<Track>();
         var known = AllTrackIndex(); // a move inside a hidden folder is still a move
         foreach (var (oldPath, newPath) in moves)
         {
@@ -1688,10 +1689,18 @@ public class LibraryService : ILibraryService
             track.PrepareLyricsForIdChange();
             track.Id = newId;
             if (oldId != newId) remap[oldId] = newId;
+            relocated.Add(track);
             changed = true;
         }
 
         if (!changed) return remap;
+
+        // GitHub #121 (2026-10-10): a track moved out of every music folder (Send to Folder ›
+        // Move to a USB stick, Organize Files to another root) is reached by no folder walk
+        // now; unmarked, the next full scan dropped it with its plays and playlist places.
+        // Marked like a file added on its own (GitHub #108).
+        try { MarkAddedIndividually(relocated, await _persistence.LoadSettingsAsync()); }
+        catch { /* settings unreadable: the move itself still stands */ }
 
         await RebuildIndexesAsync();
         await SaveAsync();

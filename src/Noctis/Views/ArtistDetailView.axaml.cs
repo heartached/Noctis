@@ -221,6 +221,7 @@ public partial class ArtistDetailView : UserControl
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
             searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand,
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
+        _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

@@ -61,6 +61,7 @@ public partial class LibraryArtistsView : UserControl
                 snoozeArtist: new RelayCommand<Artist>(a => { if (a != null) SnoozeArtistForMonth(a); }));
         }
         _artistMenu.Bind(artist);
+        _artistMenu.BindSendToFolder(artist, (DataContext as LibraryArtistsViewModel)?.SendArtistToFolderCommand); // GitHub #121
 
         var menu = _artistMenu.Menu;
         // Close any menu still open from a previous rapid right-click so menus
@@ -94,6 +95,7 @@ public partial class LibraryArtistsView : UserControl
         public MenuItem ChooseImage { get; }
         public MenuItem FindImage { get; }
         public MenuItem RemoveImage { get; }
+        public MenuItem SendToFolder { get; }
 
         public ArtistTileMenu(Control host, ICommand toggleFavorite, ICommand chooseImage, ICommand findImage, ICommand removeImage, ICommand snoozeArtist)
         {
@@ -107,6 +109,9 @@ public partial class LibraryArtistsView : UserControl
             items.Add(new Separator());
             items.Add(ChooseImage = MenuV2.Row(host, Loc.T("LibraryArtists.ChooseFromFile"), "MenuLineImage"));
             items.Add(FindImage = MenuV2.Row(host, Loc.T("LibraryArtists.FindPictureOnline"), "MenuLineSearch"));
+            // GitHub #121: the artist's songs → Send to Folder (bound by BindSendToFolder).
+            items.Add(new Separator());
+            items.Add(SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false));
             items.Add(new Separator());
             RemoveImage = MenuV2.Row(host, Loc.T("LibraryArtists.RemovePicture"), "MenuLineTrash");
             RemoveImage.Classes.Add("danger");
@@ -127,6 +132,15 @@ public partial class LibraryArtistsView : UserControl
             Favorite.IsVisible = !artist.IsFavorite;
             Unfavorite.IsVisible = artist.IsFavorite;
             RemoveImage.IsVisible = !string.IsNullOrEmpty(artist.ImagePath);
+            MenuV2.RefreshLayout(Menu.Items);
+        }
+
+        /// <summary>GitHub #121: Send to Folder for the artist (hidden when null). Call after Bind.</summary>
+        public void BindSendToFolder(Artist artist, ICommand? command)
+        {
+            SendToFolder.Command = command;
+            SendToFolder.CommandParameter = artist;
+            SendToFolder.IsVisible = command != null;
             MenuV2.RefreshLayout(Menu.Items);
         }
     }

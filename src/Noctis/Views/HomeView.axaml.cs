@@ -238,6 +238,7 @@ public partial class HomeView : UserControl
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
             searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
+        _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
 
         OpenMenu(_albumMenuBuilder.Menu, owner);
         return true;

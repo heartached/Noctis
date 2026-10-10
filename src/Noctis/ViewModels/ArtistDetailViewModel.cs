@@ -990,8 +990,17 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// feature appearances; de-duplicated.</summary>
     internal List<Track> GetAllTracks() => PlayableTracks(_allReleases, _allSongs);
 
+    /// <summary><see cref="GetAllTracks"/> for an artist with no page open (the Artists grid's
+    /// Send to Folder, GitHub #121).</summary>
+    internal static List<Track> AllTracksOf(IReadOnlyList<Album> allAlbums, string artistName)
+    {
+        var (releases, _, songs) = Classify(allAlbums, artistName);
+        return PlayableTracks(releases, songs);
+    }
+
     /// <summary>The tracks an artist page plays: each release's tracks in disc/track order, then the
-    /// songs credited to the artist, de-duplicated. Shared with the Artists page's snooze.</summary>
+    /// songs credited to the artist, de-duplicated. Shared with the Artists page's snooze and
+    /// Send to Folder.</summary>
     internal static List<Track> PlayableTracks(IEnumerable<Album> releases, IEnumerable<Track> songs)
     {
         var tracks = new List<Track>();
@@ -1008,6 +1017,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private Task SnoozeArtistForMonth() =>
         _library.SetTracksSnoozedAsync(GetAllTracks(), DateTime.UtcNow.AddDays(PlayerViewModel.SnoozeDurationDays));
+
+    /// <summary>GitHub #121: every song of the artist → Send to Folder (copy or move).</summary>
+    [RelayCommand]
+    private Task SendArtistToFolder() => MetadataHelper.OpenSendToFolderDialog(GetAllTracks());
 
     [RelayCommand]
     private void PlayAll()
