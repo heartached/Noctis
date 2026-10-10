@@ -109,6 +109,40 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The file's genres (<see cref="Track.Genre"/> form) without a full read: the
+    /// FLAC comment block alone, otherwise TagLib with lazy pictures, like <see cref="ReadLabel"/>.</summary>
+    public string ReadGenres(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a genre either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacGenres(stream, out var flacGenres))
+                    return flacGenres;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return Track.JoinGenres(file.Tag.Genres);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;
@@ -264,7 +298,7 @@ public class MetadataService : IMetadataService
             Artist = artist,
             AlbumArtist = albumArtist,
             Album = album,
-            Genre = tag.FirstGenre ?? string.Empty,
+            Genre = Track.JoinGenres(tag.Genres), // every genre, not just the first (GitHub #123 follow-up)
             TrackNumber = (int)tag.Track,
             TrackCount = (int)tag.TrackCount,
             DiscNumber = tag.Disc > 0 ? (int)tag.Disc : 1,
@@ -533,7 +567,13 @@ public class MetadataService : IMetadataService
 
     public bool WriteTrackMetadata(Track track) => WriteTrackMetadata(track, track.FilePath, null);
 
+    public bool WriteTrackMetadata(Track track, bool genreEdited)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited);
+
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
+        => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
+
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
         return SaveTagsAtomically(targetFilePath, file =>
         {
@@ -543,13 +583,18 @@ public class MetadataService : IMetadataService
             tag.Performers = SplitArtistList(track.Artist);
             tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
             tag.Album = track.Album;
-            // The model holds a single genre (FirstGenre on read). Rewrite only
-            // when it actually changed, so an ordinary save of an untouched track
-            // doesn't collapse a file's multi-value genre list to one entry.
-            var newGenre = string.IsNullOrWhiteSpace(track.Genre) ? null : track.Genre;
-            var currentFirstGenre = tag.Genres is { Length: > 0 } existingGenres ? existingGenres[0] : null;
-            if (!string.Equals(newGenre, currentFirstGenre, StringComparison.Ordinal))
-                tag.Genres = newGenre == null ? Array.Empty<string>() : new[] { newGenre };
+            // The model holds every genre joined with "; " (GitHub #123 follow-up, 2026-10-10);
+            // each one is written as its own value. Rewritten only when the list changed, so an
+            // ordinary save leaves the file's genre field exactly as it was. Outside an editor
+            // genre edit, a row holding only some of the file's genres (one read before
+            // multi-genre support keeps just the first) must not shrink the file's list: a
+            // lyrics or rating save would silently drop the rest.
+            var newGenres = Track.SplitGenres(track.Genre);
+            var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
+            var wouldOnlyDropGenres = !genreEdited && fileGenres.Length > newGenres.Length
+                                      && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
+            if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)
+                tag.Genres = newGenres;
             tag.Track = (uint)Math.Max(0, track.TrackNumber);
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);
@@ -800,7 +845,8 @@ public class MetadataService : IMetadataService
                 Duration = duration,
                 FileSize = fileInfo.Length,
                 DateModified = fileInfo.LastWriteTime,
-                DateAdded = fileInfo.CreationTime
+                DateAdded = fileInfo.CreationTime,
+                Genre = Track.JoinGenres(file.Tag.Genres),
             };
         }
         catch

@@ -17,11 +17,11 @@ public sealed class AutoplayService : IAutoplayService
         if (count <= 0 || library.Count == 0)
             return Array.Empty<Track>();
 
-        // Genre tier: whole-string compare, trimmed + case-insensitive — the same
-        // convention WrapStatsBuilder uses to group genres (nothing in the app
-        // splits multi-genre strings, so "Rock; Alternative" is one genre here too).
-        var genre = seed.Genre.AsSpan().Trim();
-        var pool = genre.Length > 0 ? CollectGenreMatches(genre, seed, library, exclude) : null;
+        // Genre tier: a track sharing any of the seed's genres, trimmed + case-insensitive —
+        // "Rock; Pop" matches Rock and Pop tracks, split the way WrapStatsBuilder counts
+        // genres (GitHub #123 follow-up, 2026-10-10).
+        var genres = Track.SplitGenres(seed.Genre);
+        var pool = genres.Length > 0 ? CollectGenreMatches(genres, seed, library, exclude) : null;
 
         // Artist tier: only when the seed has no genre or the genre pool came up empty.
         if (pool == null || pool.Count == 0)
@@ -47,7 +47,7 @@ public sealed class AutoplayService : IAutoplayService
     }
 
     private static List<Track> CollectGenreMatches(
-        ReadOnlySpan<char> genre, Track seed, IReadOnlyList<Track> library, ISet<Guid> exclude)
+        string[] genres, Track seed, IReadOnlyList<Track> library, ISet<Guid> exclude)
     {
         var pool = new List<Track>();
         var now = DateTime.UtcNow;
@@ -56,7 +56,7 @@ public sealed class AutoplayService : IAutoplayService
             var t = library[i];
             if (!IsEligible(t, seed, exclude, now))
                 continue;
-            if (genre.Equals(t.Genre.AsSpan().Trim(), StringComparison.OrdinalIgnoreCase))
+            if (Track.SharesGenre(genres, t.Genre))
                 pool.Add(t);
         }
         return pool;

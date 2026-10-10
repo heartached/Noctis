@@ -500,9 +500,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// for the hero kicker; ties break alphabetically. Null when nothing is tagged.</summary>
     internal static string? DominantGenre(IEnumerable<Track> songs)
     {
+        // Each genre of a multi-genre song counts (GitHub #123 follow-up).
         var top = songs
-            .Select(t => t.Genre?.Trim() ?? string.Empty)
-            .Where(g => g.Length > 0)
+            .SelectMany(t => Track.SplitGenres(t.Genre))
             .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count())
             .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)

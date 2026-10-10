@@ -47,7 +47,7 @@ public class MetadataTagRoundTripTests : IDisposable
         var svc = new MetadataService();
         var track = svc.ReadTrackMetadata(path);
         Assert.NotNull(track);
-        Assert.Equal("Rock", track!.Genre); // model reads FirstGenre
+        Assert.Equal("Rock; Jazz", track!.Genre); // every genre (GitHub #123 follow-up)
 
         // Ordinary save with the genre untouched must keep both values.
         Assert.True(svc.WriteTrackMetadata(track));

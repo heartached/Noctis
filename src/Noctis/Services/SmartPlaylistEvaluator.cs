@@ -134,7 +134,10 @@ public static class SmartPlaylistEvaluator
             RuleField.Title => EvaluateString(track.Title ?? "", rule),
             RuleField.Artist => EvaluateString(track.Artist ?? "", rule),
             RuleField.Album => EvaluateString(track.Album ?? "", rule),
-            RuleField.Genre => EvaluateString(track.Genre ?? "", rule),
+            // A multi-genre track ("Rock; Pop", GitHub #123 follow-up) matches "is Pop" too.
+            RuleField.Genre => EvaluateString(track.Genre ?? "", rule)
+                               || (rule.Operator != RuleOperator.DoesNotContain
+                                   && Track.SplitGenres(track.Genre).Any(g => EvaluateString(g, rule))),
             RuleField.Composer => EvaluateString(track.Composer ?? "", rule),
             RuleField.Codec => EvaluateString(track.Codec ?? "", rule),
             RuleField.Year => EvaluateNumeric(track.Year, rule),
