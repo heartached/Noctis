@@ -737,6 +737,13 @@
                                                             <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSkip}"/>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
+                                                    <!-- Wrong lyrics (a same-titled song's): dump them and paste your own (Discord, Mistery 2026-10-10). -->
+                                                    <MenuItem Header="{loc:T LyricsStudio.ClearLyrics}" Command="{Binding ClearLyricsCommand}"
+                                                              IsEnabled="{Binding !IsRunning}" ToolTip.Tip="{loc:T LyricsStudio.ClearLyricsTip}">
+                                                        <MenuItem.Icon>
+                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
                                                     <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
                                                               IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
                                                               ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">

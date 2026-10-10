@@ -2390,6 +2390,12 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="LyricsStudio.Redo" xml:space="preserve"><value>Transcribe instead · Experimental</value><comment>Review "…" menu item</comment></data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve"><value>Ignore these lyrics and let Lullaby write down what is sung. Sung vocals often transcribe poorly; you fix the words before they are aligned.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Skip" xml:space="preserve"><value>Skip</value><comment>Review "…" menu item</comment></data>
+  <data name="LyricsStudio.ClearLyrics" xml:space="preserve"><value>Clear lyrics</value><comment>Review "…" menu item: drop the lyrics on screen and paste your own</comment></data>
+  <data name="LyricsStudio.ClearLyricsTip" xml:space="preserve"><value>Wrong lyrics? Clear them and paste or type the right ones; Lullaby then times yours. Nothing changes on disk until you save.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
+  <data name="LyricsStudio.ClearLyricsConfirm" xml:space="preserve"><value>Clear the lyrics shown for “{0}”?
+
+The lines and their timings are dropped and an empty lyrics box opens for your own lyrics. Nothing changes on disk until you press Save lyrics.</value><comment>Confirm before Clear lyrics ({0} = song title)</comment></data>
+  <data name="LyricsStudio.ClearedStatus" xml:space="preserve"><value>Cleared · paste your lyrics, then Align</value><comment>Song status after Clear lyrics</comment></data>
   <data name="LyricsStudio.MoreTip" xml:space="preserve"><value>More</value><comment>Tooltip on the review's "…" button (Skip, Transcribe instead)</comment></data>
   <data name="LyricsStudio.Format" xml:space="preserve"><value>Format</value><comment>Toolbar label before the ELRC / LRC chips</comment></data>
   <data name="LyricsStudio.Settings" xml:space="preserve"><value>Settings</value><comment>Toolbar popover: language, run options</comment></data>
