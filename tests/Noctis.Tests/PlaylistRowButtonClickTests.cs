@@ -136,4 +136,39 @@ public class PlaylistRowButtonClickTests
         Assert.Equal(new[] { name }, OpenedArtists);
         win.Close();
     }
+
+    /// <summary>Discord (Luwi, 2026-10-10): the hover box went around "Rihanna, Drake" as one.
+    /// Hovering a name paints the box behind that name only; leaving the credit removes it.</summary>
+    [AvaloniaTheory]
+    [InlineData("Rihanna")]
+    [InlineData("Drake")]
+    public async Task ArtistLink_Hover_BoxesOnlyTheNameUnderThePointer(string name)
+    {
+        var (win, _, row, _, _) = await Mount();
+        var credit = row.GetVisualDescendants().OfType<Noctis.Controls.HighlightTextBlock>()
+            .First(t => t.DisplayText == "Rihanna, Drake");
+        var button = credit.FindAncestorOfType<Button>()!;
+        var presenter = button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+            .First(p => p.Name == "PART_ContentPresenter");
+        var start = credit.DisplayText.IndexOf(name, StringComparison.Ordinal);
+        var nameLeft = credit.TextLayout.HitTestTextPosition(start).X;
+        var nameRight = credit.TextLayout.HitTestTextPosition(start + name.Length).X;
+        var point = credit.TranslatePoint(new Point(nameLeft + 2, credit.Bounds.Height / 2), win)!.Value;
+
+        win.MouseMove(point, RawInputModifiers.None);
+        Pump();
+
+        var brush = Assert.IsType<Avalonia.Media.DrawingBrush>(presenter.Background);
+        var box = ((Avalonia.Media.DrawingGroup)brush.Drawing!).Children
+            .OfType<Avalonia.Media.GeometryDrawing>().Last().Geometry!.Bounds;
+        var creditLeft = credit.TranslatePoint(default, presenter)!.Value.X;
+        Assert.Equal(creditLeft + nameLeft, box.Left, 1);
+        Assert.Equal(nameRight - nameLeft, box.Width, 1);
+        Assert.True(box.Width < credit.Bounds.Width - 10, "the box must not span the whole credit");
+
+        win.MouseMove(new Point(5, 5), RawInputModifiers.None);
+        Pump();
+        Assert.IsNotType<Avalonia.Media.DrawingBrush>(presenter.Background);
+        win.Close();
+    }
 }

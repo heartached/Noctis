@@ -1454,6 +1454,13 @@
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
     </Style>
 
+    <!-- Artist credit links (ArtistCreditLink): the hover/press box sits behind the one name
+         under the pointer, so the credit as a whole must not zoom or shrink (Discord, Luwi
+         2026-10-10: the box went around "Bonobo, Jordan Rakei" together). -->
+    <Style Selector="Button.artist-credit-link:pointerover, Button.artist-credit-link:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+
     <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome.
          Default border so accent-filled pills stay visible when the accent matches the page background
          (e.g. white accent on light theme). Buttons that explicitly opt out — typically transparent
