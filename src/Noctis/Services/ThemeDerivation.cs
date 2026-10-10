@@ -142,7 +142,11 @@ public static class ThemeDerivation
 
             // ── Playback Island ──
             ["IslandBackground"]           = new SolidColorBrush(WithAlpha(islandBase, 0xF0)),
-            ["IslandForeground"]           = new SolidColorBrush(islandFg),
+            // The pill itself paints this Color (PlaybackBarView's fill + Liquid Glass tint,
+            // idle island); without it the base #202020 grey stayed on a teal theme (Discord,
+            // Mistery 2026-10-10).
+            ["IslandBackgroundColor"]      = islandBase,
+            ["IslandForeground"]          = new SolidColorBrush(islandFg),
             ["IslandForegroundSecondary"]  = new SolidColorBrush(islandFgSecondary),
             ["IslandForegroundTertiary"]   = new SolidColorBrush(islandFgTertiary),
             ["IslandIconFill"]             = new SolidColorBrush(islandFg),
@@ -150,6 +154,7 @@ public static class ThemeDerivation
             ["IslandSliderUnfilled"]       = new SolidColorBrush(Mix(islandBase, overlayColor, 0.22)),
             ["IslandAlbumArtPlaceholder"]  = new SolidColorBrush(WithAlpha(overlayColor, 0x33)),
             ["IslandExplicitBadge"]        = new SolidColorBrush(WithAlpha(overlayColor, 0x88)),
+            ["IslandTrackBoxSliderUnfilled"] = new SolidColorBrush(WithAlpha(overlayColor, 0x2E)),
             ["IslandIconAccent"]           = new SolidColorBrush(accent),
         };
 

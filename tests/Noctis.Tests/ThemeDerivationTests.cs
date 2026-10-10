@@ -156,4 +156,34 @@ public class ThemeDerivationTests
             ThemeDerivation.ContrastRatio(islandBgOpaque, islandFg) >= 4.5,
             $"island foreground contrast too low for {mainBg}");
     }
+
+    // The pill paints the IslandBackgroundColor Color (PlaybackBarView's GlassPanel fill, also
+    // the Liquid Glass tint), not the IslandBackground brush. A derived theme that left it out
+    // kept the base #202020 grey island on a teal theme (Discord, Mistery 2026-10-10).
+    [AvaloniaTheory]
+    [MemberData(nameof(ReadabilityPalettes))]
+    [InlineData("Dark", "#0E2A2B", "#12332F", "#3DDC84")] // dark teal + green ("FUTURE PAST")
+    public void Derive_IslandFillColour_FollowsTheThemeSurface(string mode, string mainBg, string sidebarBg, string accent)
+    {
+        var dict = ThemeDerivation.Derive(new Noctis.Models.CustomThemeDefinition
+        {
+            BaseMode = mode,
+            MainBackgroundHex = mainBg,
+            SidebarBackgroundHex = sidebarBg,
+            AccentHex = accent,
+        });
+
+        Assert.True(dict.TryGetValue("IslandBackgroundColor", out var raw), "IslandBackgroundColor not derived");
+        var fill = Assert.IsType<Color>(raw);
+        var main = Color.Parse(mainBg);
+        Assert.Equal(Color.FromRgb(main.R, main.G, main.B), fill);
+
+        var icon = ((SolidColorBrush)dict["IslandIconFill"]).Color;
+        Assert.True(ThemeDerivation.ContrastRatio(fill, icon) >= 4.5, $"island icon contrast too low on {mainBg}");
+
+        // The seek line's remainder is a faint overlay of the text polarity, so it still
+        // reads on a light pill (a white one vanished there).
+        var remainder = ((SolidColorBrush)dict["IslandTrackBoxSliderUnfilled"]).Color;
+        Assert.Equal(mode == "Light" ? Colors.Black.R : Colors.White.R, remainder.R);
+    }
 }
