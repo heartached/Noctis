@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.astro/
+.logo-diff.png
+.DS_Store
+*.log
+.env
+.env.production

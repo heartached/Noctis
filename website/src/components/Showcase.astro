@@ -1,0 +1,191 @@
+---
+import Screenshot from './Screenshot.astro';
+import CoverFlow from './CoverFlow.astro';
+
+/**
+ * "Choose the view that suits you." A fan of three library screenshots in 3D,
+ * the centre one forward and flat, the outer ones turned in towards it and
+ * pushed back. Below 900px the fan is a horizontal, snapping row instead.
+ *
+ * Per-card geometry is written inline as custom properties rather than
+ * computed from an index in CSS, so it works without abs() support.
+ */
+const cards = [
+  { name: 'showcase-left', label: 'Home' },
+  { name: 'showcase-main', label: 'Lyrics' },
+  { name: 'showcase-right', label: 'Cascade' },
+] as const;
+
+const mid = Math.floor(cards.length / 2);
+const geometry = cards.map((c, i) => {
+  const d = i - mid;
+  const a = Math.abs(d);
+  return {
+    ...c,
+    style: `--x:${d * 36}%; --z:${-a * 170}px; --ry:${-d * 17}deg; --y:${a * 7}%; --zi:${10 - a}`,
+    center: d === 0,
+  };
+});
+---
+
+<section class="section showcase" id="showcase" aria-labelledby="showcase-title">
+  <div class="container">
+    <header class="sec-head" data-reveal>
+      <h2 class="h2" id="showcase-title">Choose the view that suits you.</h2>
+      <p class="lede">
+        Home, Songs, Albums, Artists, Folders, Playlists and Favourites, plus Cover Flow and
+        full-screen lyrics.
+      </p>
+    </header>
+  </div>
+
+  <div class="fan" data-reveal>
+    {geometry.map((c) => (
+      <figure class="fan__card" style={c.style} data-center={c.center ? '' : undefined}>
+        <Screenshot
+          name={c.name}
+          sizes="(min-width: 900px) 560px, 80vw"
+          class="fan__shot"
+        />
+        <figcaption class="fan__label">{c.label}</figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <p class="fan__caption" data-reveal>Seven library views. One window.</p>
+
+  <div class="showcase__shelf">
+    <CoverFlow />
+  </div>
+</section>
+
+<style>
+  .showcase {
+    overflow: clip;
+  }
+
+  /* --- The fan ------------------------------------------------------------ */
+
+  .fan {
+    position: relative;
+    height: clamp(300px, 34vw, 440px);
+    perspective: 1800px;
+    perspective-origin: 50% 40%;
+  }
+
+  .fan__card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: clamp(300px, 46vw, 580px);
+    margin: 0;
+    border: 1px solid color-mix(in srgb, var(--ink-0) 12%, transparent);
+    border-radius: 20px;
+    background: var(--bg-1);
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+    z-index: var(--zi);
+    transform: translate(-50%, -50%) translateX(var(--x)) translateY(var(--y))
+      translateZ(var(--z)) rotateY(var(--ry));
+    transform-style: preserve-3d;
+    transition: transform var(--t-slow) var(--ease);
+  }
+
+  /* The outer cards sit in shade; the centre one is lit. */
+  .fan__card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--bg-0);
+    opacity: 0.42;
+    pointer-events: none;
+    transition: opacity var(--t-slow) var(--ease);
+  }
+
+  .fan__card[data-center]::after {
+    opacity: 0;
+  }
+
+  .fan__card :global(img) {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1100 / 593;
+    object-fit: cover;
+  }
+
+  .fan__label {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    padding: var(--s-3) var(--s-4);
+    background: linear-gradient(to top, rgb(0 0 0 / 0.75), transparent);
+    color: #fff;
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    opacity: 0;
+    transition: opacity var(--t-base) var(--ease);
+  }
+
+  @media (hover: hover) {
+    .fan__card:hover {
+      transform: translate(-50%, -50%) translateX(var(--x)) translateY(calc(var(--y) - 3%))
+        translateZ(calc(var(--z) + 60px)) rotateY(var(--ry));
+    }
+
+    .fan__card:hover::after {
+      opacity: 0;
+    }
+
+    .fan__card:hover .fan__label {
+      opacity: 1;
+    }
+  }
+
+  .fan__caption {
+    margin-top: clamp(1.5rem, 3vw, 2.5rem);
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .showcase__shelf {
+    margin-top: clamp(3.5rem, 7vw, 6rem);
+  }
+
+  /* --- Narrow: a snapping row ---------------------------------------------- */
+
+  @media (max-width: 899.98px) {
+    .fan {
+      display: flex;
+      gap: var(--s-4);
+      height: auto;
+      padding-inline: var(--gutter);
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      perspective: none;
+    }
+
+    .fan::-webkit-scrollbar {
+      display: none;
+    }
+
+    .fan__card {
+      position: static;
+      flex: none;
+      width: min(80vw, 520px);
+      transform: none;
+      scroll-snap-align: center;
+      border-radius: 16px;
+    }
+
+    .fan__card::after {
+      display: none;
+    }
+
+    .fan__label {
+      opacity: 1;
+    }
+  }
+</style>

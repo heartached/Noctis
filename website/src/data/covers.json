@@ -1,0 +1,461 @@
+[
+  {
+    "slug": "bad",
+    "title": "Bad",
+    "artist": "Michael Jackson",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/bad-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/bad-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/bad-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/bad-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "espresso",
+    "title": "Espresso",
+    "artist": "Sabrina Carpenter",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/espresso-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/espresso-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/espresso-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/espresso-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "carter-v",
+    "title": "Tha Carter V",
+    "artist": "Lil Wayne",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/carter-v-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/carter-v-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/carter-v-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/carter-v-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "eternal-sunshine",
+    "title": "eternal sunshine",
+    "artist": "Ariana Grande",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/eternal-sunshine-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/eternal-sunshine-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/eternal-sunshine-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/eternal-sunshine-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "death-race-for-love",
+    "title": "Death Race for Love",
+    "artist": "Juice WRLD",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/death-race-for-love-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/death-race-for-love-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/death-race-for-love-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/death-race-for-love-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "un-verano-sin-ti",
+    "title": "Un Verano Sin Ti",
+    "artist": "Bad Bunny",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/un-verano-sin-ti-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/un-verano-sin-ti-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/un-verano-sin-ti-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/un-verano-sin-ti-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "thriller",
+    "title": "Thriller",
+    "artist": "Michael Jackson",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/thriller-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/thriller-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/thriller-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/thriller-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "guts",
+    "title": "GUTS",
+    "artist": "Olivia Rodrigo",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/guts-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/guts-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/guts-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/guts-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "take-care",
+    "title": "Take Care",
+    "artist": "Drake",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/take-care-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/take-care-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/take-care-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/take-care-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "714ever",
+    "title": "714EVER",
+    "artist": "Yung Pinch",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/714ever-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/714ever-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/714ever-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/714ever-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "goodbye-good-riddance",
+    "title": "Goodbye & Good Riddance",
+    "artist": "Juice WRLD",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/goodbye-good-riddance-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/goodbye-good-riddance-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/goodbye-good-riddance-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/goodbye-good-riddance-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "revival",
+    "title": "Revival",
+    "artist": "Selena Gomez",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/revival-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/revival-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/revival-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/revival-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "question-mark",
+    "title": "?",
+    "artist": "XXXTENTACION",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/question-mark-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/question-mark-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/question-mark-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/question-mark-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "dangerous-woman",
+    "title": "Dangerous Woman",
+    "artist": "Ariana Grande",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/dangerous-woman-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/dangerous-woman-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/dangerous-woman-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/dangerous-woman-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "carter-iii",
+    "title": "Tha Carter III",
+    "artist": "Lil Wayne",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/carter-iii-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/carter-iii-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/carter-iii-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/carter-iii-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "secret-of-us",
+    "title": "The Secret of Us",
+    "artist": "Gracie Abrams",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/secret-of-us-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/secret-of-us-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/secret-of-us-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/secret-of-us-560.webp",
+        "width": 560
+      }
+    ]
+  },
+  {
+    "slug": "seventeen",
+    "title": "17",
+    "artist": "XXXTENTACION",
+    "width": 280,
+    "height": 280,
+    "avif": [
+      {
+        "src": "/covers/seventeen-280.avif",
+        "width": 280
+      },
+      {
+        "src": "/covers/seventeen-560.avif",
+        "width": 560
+      }
+    ],
+    "webp": [
+      {
+        "src": "/covers/seventeen-280.webp",
+        "width": 280
+      },
+      {
+        "src": "/covers/seventeen-560.webp",
+        "width": 560
+      }
+    ]
+  }
+]

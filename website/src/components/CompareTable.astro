@@ -1,0 +1,479 @@
+---
+import AppMark from './AppMark.astro';
+import type { AppId } from './AppMark.astro';
+
+/**
+ * Shared renderer for both comparison blocks.
+ *
+ * A cell is either a boolean (rendered as a filled/hollow circle) or a short
+ * string. Strings render as mono text with an <abbr> carrying the reason —
+ * "partial" with no explanation reads as a dodge; "partial" with a one-line
+ * justification reads as confidence.
+ */
+export interface Group {
+  heading: string;
+  rows: Row[];
+}
+
+export interface Row {
+  label: string;
+  /** One value per column, in column order. */
+  values: (boolean | { text: string; title: string })[];
+}
+
+interface Props {
+  caption: string;
+  columns: { name: string; sub?: string; highlight?: boolean; app?: AppId }[];
+  groups: Group[];
+  id: string;
+}
+
+const { caption, columns, groups, id } = Astro.props;
+---
+
+<div class="cmp__frame">
+<div class="cmp__scroll">
+  <table class="cmp" id={id} style={`--cmp-cols:${columns.length}`}>
+    <caption class="visually-hidden">{caption}</caption>
+
+    <thead>
+      <tr>
+        <th scope="col" class="cmp__corner">
+          <span class="visually-hidden">Feature</span>
+        </th>
+        {
+          columns.map((c) => (
+            <th scope="col" class="cmp__col" data-highlight={c.highlight ? '' : undefined}>
+              {c.app && (
+                <span class="cmp__col-mark">
+                  <AppMark app={c.app} />
+                </span>
+              )}
+              <span class="cmp__col-name">{c.name}</span>
+              {c.sub && <span class="cmp__col-sub mono">{c.sub}</span>}
+            </th>
+          ))
+        }
+      </tr>
+    </thead>
+
+    {
+      groups.map((g, gi) => (
+        <tbody aria-label={g.heading}>
+          {g.rows.map((row, ri) => (
+            <tr>
+              <th scope="row" class="cmp__rowhead">
+                {row.label}
+              </th>
+              {row.values.map((v, i) => (
+                <td class="cmp__cell" data-highlight={columns[i]?.highlight ? '' : undefined}>
+                  {typeof v === 'boolean' ? (
+                    <span class={`mark ${v ? 'mark--yes' : 'mark--no'}`} role="img" aria-label={v ? 'Yes' : 'No'}>
+                      {v ? (
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="m5 10.5 3.2 3.2L15 7" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                          <path d="M6.5 10h7" />
+                        </svg>
+                      )}
+                    </span>
+                  ) : (
+                    /* Not <abbr title>. The native tooltip's ~1–2s hover delay
+                       is set by the browser and cannot be shortened from CSS or
+                       JS, which is why these felt broken. This is a real
+                       element, so it appears on the first frame. */
+                    <span class="tip">
+                      <span
+                        class="cmp__partial mono tip__trigger"
+                        tabindex="0"
+                        aria-describedby={`${id}-t${gi}-${ri}-${i}`}
+                      >
+                        {v.text}
+                      </span>
+                      <span class="tip__bubble" role="tooltip" id={`${id}-t${gi}-${ri}-${i}`}>
+                        {v.title}
+                      </span>
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      ))
+    }
+  </table>
+</div>
+</div>
+
+<style>
+  /* --- Frame ---------------------------------------------------------------
+     The whole table sits on one raised card. --surface is re-pointed at the
+     card's own fill so the head and pinned row labels paint the same
+     colour as the card instead of the page black behind it. */
+
+  .cmp__frame {
+    --surface: var(--bg-1);
+    position: relative;
+    max-width: 1120px;
+    margin-inline: auto;
+    padding: clamp(var(--s-3), 2vw, var(--s-5));
+    border: 1px solid color-mix(in srgb, var(--ink-0) 8%, transparent);
+    border-radius: var(--r-card);
+    background:
+      radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--ink-0) 4%, transparent), transparent 70%),
+      var(--bg-1);
+    box-shadow: var(--shadow-card);
+  }
+
+  .cmp__scroll {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    mask-image: linear-gradient(90deg, #000 0, #000 94%, transparent 100%);
+  }
+
+  @media (min-width: 900px) {
+    .cmp__scroll {
+      mask-image: none;
+      overflow-x: visible;
+    }
+  }
+
+  .cmp {
+    --cmp-corner: clamp(180px, 28%, 300px);
+    --hl: var(--accent-500);
+    --wall: color-mix(in srgb, var(--hl) 28%, transparent);
+    width: 100%;
+    min-width: calc(180px + var(--cmp-cols) * 116px);
+    margin-inline: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    text-align: left;
+  }
+
+  .cmp__corner {
+    width: var(--cmp-corner);
+  }
+
+  /* --- Head --------------------------------------------------------------- */
+
+  .cmp thead th {
+    background: var(--surface);
+    padding: var(--s-5) var(--s-3) var(--s-4);
+    vertical-align: bottom;
+    font-weight: 600;
+  }
+
+  .cmp__col {
+    text-align: center;
+  }
+
+  .cmp__col-mark {
+    display: grid;
+    place-items: center;
+    height: 36px;
+    margin-bottom: var(--s-3);
+    color: var(--ink-0);
+  }
+
+  .cmp__col-mark :global(svg),
+  .cmp__col-mark :global(img) {
+    width: 34px;
+    height: 34px;
+    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.35));
+  }
+
+  .cmp__col-name {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1);
+  }
+
+  .cmp__col-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--step--2);
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+
+  /* --- The Noctis column ---------------------------------------------------
+     A lit column: an accent wash that is strongest at the head, hairline
+     accent walls on both sides, rounded at the head and the foot. */
+
+  .cmp__col[data-highlight],
+  .cmp__cell[data-highlight] {
+    background: color-mix(in srgb, var(--surface) 93%, var(--hl));
+    box-shadow:
+      inset 1px 0 0 var(--wall),
+      inset -1px 0 0 var(--wall);
+  }
+
+  .cmp__col[data-highlight] {
+    border-radius: 20px 20px 0 0;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--surface) 84%, var(--hl)),
+      color-mix(in srgb, var(--surface) 93%, var(--hl))
+    );
+    box-shadow:
+      inset 1px 0 0 var(--wall),
+      inset -1px 0 0 var(--wall),
+      inset 0 1px 0 color-mix(in srgb, var(--hl) 45%, transparent);
+  }
+
+  .cmp__col[data-highlight] .cmp__col-name {
+    color: var(--ink-0);
+    font-weight: 700;
+  }
+
+  .cmp tbody:last-of-type tr:last-child .cmp__cell[data-highlight] {
+    border-radius: 0 0 20px 20px;
+    box-shadow:
+      inset 1px 0 0 var(--wall),
+      inset -1px 0 0 var(--wall),
+      inset 0 -1px 0 var(--wall);
+  }
+
+  /* --- Body --------------------------------------------------------------- */
+
+  .cmp__group {
+    padding: var(--s-6) var(--s-4) var(--s-3);
+    background: var(--surface);
+    font-weight: 400;
+  }
+
+  .cmp__group .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--ink-1);
+    letter-spacing: 0.14em;
+  }
+
+  .cmp__group .eyebrow::before {
+    content: '';
+    width: 14px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent-500);
+  }
+
+  .cmp__rowhead,
+  .cmp__cell {
+    padding: var(--s-4) var(--s-3);
+    border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+    transition: background-color var(--t-instant) var(--ease);
+  }
+
+  .cmp__rowhead {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    box-shadow: inset -1px 0 0 var(--line);
+    font-weight: 500;
+    font-size: var(--step--1);
+    line-height: 1.4;
+    color: var(--ink-0);
+  }
+
+  @media (min-width: 900px) {
+    .cmp__rowhead {
+      position: static;
+      box-shadow: none;
+      padding-inline-start: var(--s-4);
+    }
+  }
+
+  .cmp__cell {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .cmp tbody tr:not(.cmp__grouprow):hover .cmp__rowhead,
+  .cmp tbody tr:not(.cmp__grouprow):hover .cmp__cell:not([data-highlight]) {
+    background: color-mix(in srgb, var(--ink-0) 3%, var(--surface));
+  }
+
+  @media (max-width: 560px) {
+    .cmp {
+      --cmp-corner: clamp(132px, 40%, 180px);
+      min-width: calc(132px + var(--cmp-cols) * 102px);
+    }
+  }
+
+  /* --- Marks ---------------------------------------------------------------
+     Three states, three weights. The Noctis yes is a lit accent disc with a
+     soft ring; every other yes is a quiet frosted disc; a no is a short dash
+     with no disc at all, so an absence reads as an absence rather than as a
+     second kind of badge. */
+
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+  }
+
+  .mark svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .mark--yes {
+    background: color-mix(in srgb, var(--ink-0) 9%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-0) 14%, transparent);
+    color: var(--ink-0);
+  }
+
+  .cmp__cell[data-highlight] .mark--yes {
+    background: linear-gradient(150deg, #ff7a86 0%, var(--accent-500) 45%, var(--accent-600) 100%);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--accent-500) 16%, transparent),
+      0 6px 18px -4px var(--accent-glow),
+      inset 0 1px 0 rgb(255 255 255 / 0.35);
+    color: #fff;
+  }
+
+  .mark--no {
+    color: color-mix(in srgb, var(--ink-2) 70%, transparent);
+  }
+
+  /* Qualified values are a quiet pill with an info dot rather than dotted-
+     underlined code: readable at a glance and obviously hoverable. */
+  .cmp__partial {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--ink-0) 5%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-0) 10%, transparent);
+    color: var(--ink-1);
+    font-size: 0.72rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    cursor: help;
+    transition:
+      background-color var(--t-instant) var(--ease),
+      color var(--t-instant) var(--ease);
+  }
+
+  .cmp__partial::after {
+    content: 'i';
+    display: inline-grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--ink-0) 12%, transparent);
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-1);
+  }
+
+  .cmp__partial:hover,
+  .cmp__partial:focus-visible {
+    background: color-mix(in srgb, var(--ink-0) 10%, transparent);
+    color: var(--ink-0);
+  }
+
+  /* --- Tooltip ------------------------------------------------------------ */
+
+  .tip {
+    position: relative;
+    display: inline-block;
+  }
+
+  .tip:hover,
+  .tip:focus-within {
+    z-index: 20;
+  }
+
+  .tip__trigger:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 3px;
+  }
+
+  .tip__bubble {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    z-index: 20;
+    translate: -50% 4px;
+    width: max-content;
+    max-width: 250px;
+    padding: var(--s-2) var(--s-3);
+    border-radius: 12px;
+    background: var(--ink-0);
+    color: var(--bg-0);
+    font-size: var(--step--2);
+    font-weight: 450;
+    line-height: 1.45;
+    text-align: left;
+    text-wrap: pretty;
+    box-shadow: var(--shadow-card);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .tip__bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    background: inherit;
+    translate: -50% -5px;
+    rotate: 45deg;
+    border-radius: 2px;
+  }
+
+  .tip__trigger:hover ~ .tip__bubble,
+  .tip__trigger:focus-visible ~ .tip__bubble {
+    opacity: 1;
+    visibility: visible;
+    translate: -50% 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tip__bubble {
+      transition:
+        opacity 120ms var(--ease-out),
+        translate 160ms var(--ease),
+        visibility 120ms;
+    }
+  }
+
+  /* --- Reveal ------------------------------------------------------------- */
+
+  @supports (animation-timeline: view()) {
+    @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+      .mark--yes {
+        animation: mark-pop var(--t-slow) var(--ease) both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 18%;
+      }
+    }
+  }
+
+  @keyframes mark-pop {
+    from {
+      transform: scale(0.4);
+      opacity: 0;
+    }
+  }
+</style>
+

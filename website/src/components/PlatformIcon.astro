@@ -1,0 +1,63 @@
+---
+/**
+ * Monochrome platform glyphs, for places where the icon sits on a filled
+ * surface and has to take the surface's colour — the hero's accent-filled
+ * download button being the only one.
+ *
+ * The full-colour vendor marks live in AppMark.astro. Do not add a `brand`
+ * mode back here: one component owns real brand artwork, this one owns UI
+ * glyphs, and Tux in particular is a painted icon rather than a path.
+ *
+ * EVERY BOX IS TIGHT TO ITS ARTWORK. All three paths are drawn inside a 24x24
+ * grid, but none of them fill it, and the Apple mark is the worst offender —
+ * its ink spans x 4.04–18.60, so a square box leaves ~19% dead space on each
+ * side. In the download button's flex row that dead space is indistinguishable
+ * from padding, and the label ends flush against its own box, so the pill looks
+ * left-heavy even though the boxes are perfectly centred. Cropping the viewBox
+ * to the measured ink makes the box and the artwork the same thing, so
+ * centring the box centres what you actually see.
+ *
+ * `ratio` is that ink measured against the original 24-unit grid, so a glyph
+ * renders at exactly the size it did when the boxes were square — the crop
+ * removes empty space, it does not resize the mark. Re-measure with a path
+ * bounding-box pass if you ever edit a `d`.
+ */
+interface Props {
+  os: 'windows' | 'macos' | 'linux';
+  size?: number;
+}
+
+const GLYPHS = {
+  windows: {
+    box: '3 3 18 18',
+    ratio: [18 / 24, 18 / 24],
+    d: 'M3 5.5 10.4 4.5v7.05H3V5.5ZM11.4 4.36 21 3v8.55h-9.6V4.36ZM3 12.55h7.4v7.05L3 18.5v-5.95ZM11.4 12.55H21V21l-9.6-1.36v-7.09Z',
+  },
+  macos: {
+    box: '4.04 2.9 14.56 17.91',
+    ratio: [14.56 / 24, 17.91 / 24],
+    d: 'M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.9-1.4-.1-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.7-2.1c.9-1.2 1.2-2.4 1.2-2.4s-2.2-.9-2.2-3.7ZM14.2 5.7c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.2Z',
+  },
+  linux: {
+    box: '4.5 2 15 19',
+    ratio: [15 / 24, 19 / 24],
+    d: 'M12 2c-2.2 0-3.7 1.8-3.7 4.3 0 1.7-.3 2.5-1.2 3.8-1.1 1.7-1.9 3.1-2.4 4.8-.4 1.5-.2 2.4.6 2.7.5.2 1 0 1.5-.6.2 1.3 1 2.4 2.1 3.1 1 .6 2.1.9 3.1.9s2.1-.3 3.1-.9c1.1-.7 1.9-1.8 2.1-3.1.5.6 1 .8 1.5.6.8-.3 1-1.2.6-2.7-.5-1.7-1.3-3.1-2.4-4.8-.9-1.3-1.2-2.1-1.2-3.8C15.7 3.8 14.2 2 12 2Z',
+  },
+} as const;
+
+const { os, size = 20 } = Astro.props;
+const glyph = GLYPHS[os];
+const [rw, rh] = glyph.ratio;
+---
+
+<svg
+  class="pico"
+  style={`--pico-w:${rw.toFixed(4)};--pico-h:${rh.toFixed(4)}`}
+  width={(size * rw).toFixed(2)}
+  height={(size * rh).toFixed(2)}
+  viewBox={glyph.box}
+  fill="currentColor"
+  aria-hidden="true"
+>
+  <path d={glyph.d} />
+</svg>

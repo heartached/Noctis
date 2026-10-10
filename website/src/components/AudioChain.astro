@@ -1,0 +1,421 @@
+---
+/**
+ * The signal path, as five numbered stage cards on a lit track, then three
+ * fact cards. Plain HTML rather than an SVG diagram: the cards can carry real
+ * type, icons and glow, the list IS the accessible content, and below 900px
+ * the same list simply turns vertical with the track running down its edge.
+ *
+ * Every stage here is verified against the app SOURCE, not the README — see
+ * src/data/verified-claims.md. LibVLC decodes, ReplayGain levels, the EQ is
+ * parametric (never "10-band"), and exclusive output is Windows-only, a
+ * qualifier that is load-bearing and so is carried on the card AND the fact.
+ */
+
+type Icon = 'file' | 'decode' | 'gain' | 'eq' | 'output';
+
+const stages: { name: string; hint: string; icon: Icon }[] = [
+  { name: 'File', hint: 'On disk', icon: 'file' },
+  { name: 'Decode', hint: 'LibVLC', icon: 'decode' },
+  { name: 'ReplayGain', hint: 'Levelling', icon: 'gain' },
+  { name: 'Parametric EQ', hint: '18 presets', icon: 'eq' },
+  { name: 'Exclusive output', hint: 'Windows only', icon: 'output' },
+];
+
+const icons: Record<Icon, string> = {
+  file: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h4',
+  decode: 'M3 12h2l2-5 3 10 3-12 3 9 2-2h3',
+  gain: 'M5 20V10M10 20V4M15 20v-7M20 20V8',
+  eq: 'M6 4v16M12 4v16M18 4v16M3.5 9h5M9.5 15h5M15.5 7h5',
+  output: 'M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12',
+};
+
+const facts = [
+  {
+    /* Deliberately NOT "bit-perfect". Verified in source: LibVLC 3.x's audio
+       callback delivers 16-bit PCM, so anything above 16 bits is truncated
+       before it reaches the exclusive sink, and the claim also breaks at any
+       volume below 100. What IS true is the sample rate and the mixer bypass. */
+    label: 'Exclusive output',
+    note: 'Windows only. Bypasses the system mixer and opens your device at the track’s own rate; 16-bit sources pass through untouched.',
+    icon: 'output' as Icon,
+  },
+  {
+    label: 'Gapless playback',
+    note: 'One album side, no seam between tracks.',
+    icon: 'decode' as Icon,
+  },
+  {
+    label: 'Crossfade and AutoMix',
+    note: 'Blend one track into the next, by hand or automatically.',
+    icon: 'eq' as Icon,
+  },
+];
+---
+
+<section class="section audio" id="audio" aria-labelledby="audio-title">
+  <div class="container">
+    <header class="sec-head" data-reveal>
+      <h2 class="h2" id="audio-title">See the whole chain</h2>
+      <p class="lede">Five stages sit between the file on your disk and your output device.</p>
+    </header>
+
+    <div class="chain" data-reveal>
+      <div class="chain__track" aria-hidden="true">
+        <span class="chain__beam"><span class="chain__dot"></span></span>
+      </div>
+
+      <ol class="chain__list">
+        {stages.map((s, i) => (
+          <li class="stage" data-last={i === stages.length - 1 ? '' : undefined}>
+            <span class="stage__top">
+              <span class="stage__n mono">{String(i + 1).padStart(2, '0')}</span>
+              <span class="stage__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d={icons[s.icon]} />
+                </svg>
+              </span>
+            </span>
+            <span class="stage__name">{s.name}</span>
+            <span class="stage__hint mono">{s.hint}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <ul class="facts" data-reveal-group>
+      {facts.map((f) => (
+        <li class="fact" data-reveal>
+          <span class="fact__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d={icons[f.icon]} />
+            </svg>
+          </span>
+          <h3 class="fact__label">{f.label}</h3>
+          <p class="fact__note">{f.note}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* --- The chain -----------------------------------------------------------
+     Five cards in a row with a track running behind them through the gaps.
+     The track is a hairline that brightens towards the output end, and a
+     single accent dot travels it — the signal moving through the stages. */
+
+  .chain {
+    position: relative;
+    --gap: clamp(14px, 2vw, 28px);
+  }
+
+  .chain__list {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chain__track {
+    position: absolute;
+    inset-inline: 10%;
+    top: 50%;
+    height: 2px;
+    translate: 0 -50%;
+    border-radius: 2px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ink-0) 10%, transparent),
+      color-mix(in srgb, var(--accent-500) 60%, transparent)
+    );
+  }
+
+  .chain__beam {
+    position: absolute;
+    inset: 0;
+  }
+
+  .chain__dot {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--accent-500);
+    box-shadow:
+      0 0 0 5px color-mix(in srgb, var(--accent-500) 20%, transparent),
+      0 0 22px 4px var(--accent-glow);
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .chain__beam {
+      animation: beam-x 6s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+    }
+
+    .chain__dot {
+      animation: beam-fade 6s linear infinite;
+    }
+  }
+
+  @keyframes beam-x {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes beam-fade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    8%,
+    88% {
+      opacity: 1;
+    }
+  }
+
+  /* --- Stage cards --------------------------------------------------------- */
+
+  .stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-4) var(--s-4) var(--s-5);
+    border: 1px solid color-mix(in srgb, var(--ink-0) 9%, transparent);
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ink-0) 5%, transparent), transparent 60%),
+      var(--bg-1);
+    box-shadow: var(--shadow-card);
+    transition:
+      transform var(--t-base) var(--ease),
+      border-color var(--t-base) var(--ease);
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .stage:hover {
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--ink-0) 18%, transparent);
+    }
+  }
+
+  .stage__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--s-4);
+  }
+
+  .stage__n {
+    font-size: var(--step--2);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+  }
+
+  .stage__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--ink-0) 7%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-0) 10%, transparent);
+    color: var(--ink-0);
+  }
+
+  .stage__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .stage__name {
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--ink-0);
+  }
+
+  .stage__hint {
+    width: fit-content;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--ink-0) 6%, transparent);
+    color: var(--ink-1);
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  /* The output stage is where the chain lands, so it carries the accent. */
+  .stage[data-last] {
+    border-color: color-mix(in srgb, var(--accent-500) 40%, transparent);
+    background:
+      radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent-500) 18%, transparent), transparent 65%),
+      var(--bg-1);
+    box-shadow:
+      var(--shadow-card),
+      0 0 0 4px color-mix(in srgb, var(--accent-500) 8%, transparent);
+  }
+
+  .stage[data-last] .stage__n {
+    color: var(--accent-text);
+  }
+
+  .stage[data-last] .stage__icon {
+    background: linear-gradient(150deg, #ff7a86, var(--accent-500) 50%, var(--accent-600));
+    box-shadow: 0 6px 16px -4px var(--accent-glow);
+    color: #fff;
+  }
+
+  .stage[data-last] .stage__hint {
+    background: color-mix(in srgb, var(--accent-500) 16%, transparent);
+    color: var(--accent-text);
+  }
+
+  /* --- Narrow: vertical ----------------------------------------------------
+     The row stacks and the track turns to run down the left edge, through
+     every card's icon column, with the dot travelling downward. */
+
+  @media (max-width: 899.98px) {
+    .chain__list {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--s-3);
+      padding-inline-start: var(--s-6);
+    }
+
+    .chain__track {
+      inset-inline: auto;
+      left: 11px;
+      top: 8%;
+      bottom: 8%;
+      width: 2px;
+      height: auto;
+      translate: 0 0;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--ink-0) 10%, transparent),
+        color-mix(in srgb, var(--accent-500) 60%, transparent)
+      );
+    }
+
+    .chain__dot {
+      top: 0;
+      left: 50%;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .chain__beam {
+        animation-name: beam-y;
+      }
+    }
+
+    .stage {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--s-2) var(--s-3);
+      padding: var(--s-3) var(--s-4);
+    }
+
+    /* A node on the track beside each card. */
+    .stage::before {
+      content: '';
+      position: absolute;
+      left: calc(var(--s-6) * -1 + 7px);
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      translate: 0 -50%;
+      border-radius: 50%;
+      background: var(--bg-0);
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ink-0) 30%, transparent);
+    }
+
+    .stage[data-last]::before {
+      box-shadow: inset 0 0 0 2px var(--accent-500);
+    }
+
+    .stage__top {
+      margin: 0;
+      flex-direction: row-reverse;
+      gap: var(--s-3);
+    }
+
+    .stage__name {
+      flex: 1;
+    }
+  }
+
+  @keyframes beam-y {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  /* --- Facts --------------------------------------------------------------- */
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--s-4);
+    margin: clamp(2rem, 4vw, 3rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fact {
+    padding: var(--s-5);
+    border: 1px solid color-mix(in srgb, var(--ink-0) 7%, transparent);
+    border-radius: 20px;
+    background: var(--bg-1);
+  }
+
+  .fact__icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: var(--s-4);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent-500) 14%, transparent);
+    color: var(--accent-text);
+  }
+
+  .fact__icon svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .fact__label {
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-0);
+  }
+
+  .fact__note {
+    margin-top: var(--s-2);
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+</style>

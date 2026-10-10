@@ -1,0 +1,171 @@
+---
+import AppMark from './AppMark.astro';
+import { platforms, type PlatformId } from '../config/site';
+import { assetUrl } from '../lib/release';
+
+/**
+ * The closing call to action: a big centred headline, then the three
+ * platform cards. All three are always shown; the visitor's platform is only
+ * promoted by ordering it first when the cards stack on small screens.
+ */
+interface Card {
+  id: PlatformId;
+  label: string;
+  spec: string;
+  asset: string;
+  alt: { asset: string; label: string };
+}
+
+const cards: Card[] = [
+  {
+    ...platforms.windows,
+    asset: 'windowsInstaller',
+    alt: { asset: 'windowsPortable', label: 'Prefer a portable zip?' },
+  },
+  {
+    ...platforms.macos,
+    asset: 'macosArm',
+    alt: { asset: 'macosIntel', label: 'On an Intel Mac? Get the x64 build' },
+  },
+  {
+    ...platforms.linux,
+    asset: 'linuxAppImage',
+    alt: { asset: 'linuxArm', label: 'On ARM64? Get the tar.gz' },
+  },
+];
+---
+
+<section class="section dl" id="download" aria-labelledby="download-title">
+  <div class="container">
+    <header class="sec-head dl__head" data-reveal>
+      <h2 class="h2" id="download-title">Put your music<br />back on your desktop.</h2>
+      <p class="lede">Free and open source, and it stays that way. No account, no trial.</p>
+    </header>
+
+    <ul class="dl__grid" role="list" data-reveal-group>
+      {cards.map((c) => (
+        <li class="dl__card" data-os={c.id} data-reveal>
+          <span class="dl__icon">
+            <AppMark app={c.id} size={40} />
+          </span>
+
+          <h3 class="dl__name">{c.label}</h3>
+          <p class="dl__spec mono">{c.spec}</p>
+
+          <a class="btn btn--primary dl__btn" href={assetUrl(c.asset)} data-asset={c.asset}>
+            Download<span class="visually-hidden"> for {c.label}</span>
+          </a>
+
+          <a class="dl__alt" href={assetUrl(c.alt.asset)} data-asset={c.alt.asset}>
+            {c.alt.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <p class="dl__note" data-reveal>MIT licence · No telemetry · Straight from GitHub Releases</p>
+  </div>
+</section>
+
+<style>
+  .dl__head {
+    max-width: 40rem;
+  }
+
+  .dl__grid {
+    display: grid;
+    gap: var(--s-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dl__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(var(--s-5), 3vw, var(--s-6));
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+    text-align: center;
+  }
+
+  .dl__icon {
+    display: grid;
+    place-items: center;
+    height: 40px;
+    margin-bottom: var(--s-5);
+    color: var(--ink-0);
+  }
+
+  .dl__icon :global(svg),
+  .dl__icon :global(img) {
+    width: 40px;
+    height: 40px;
+  }
+
+  .dl__name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-1);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .dl__spec {
+    margin-block: var(--s-2) var(--s-6);
+    color: var(--ink-2);
+    font-size: var(--step--2);
+    line-height: 1.6;
+  }
+
+  .dl__btn {
+    width: 100%;
+    margin-top: auto;
+    min-height: 50px;
+    font-weight: 600;
+  }
+
+  .dl__alt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    margin-top: var(--s-1);
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    line-height: 1.5;
+    text-decoration: none;
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  .dl__alt:hover {
+    color: var(--accent-text);
+  }
+
+  .dl__note {
+    margin-top: clamp(1.5rem, 3vw, 2.25rem);
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    text-align: center;
+  }
+
+  :global(html:not([data-os])) .dl__card[data-os='windows'],
+  :global(html[data-os='windows']) .dl__card[data-os='windows'],
+  :global(html[data-os='macos']) .dl__card[data-os='macos'],
+  :global(html[data-os='linux']) .dl__card[data-os='linux'] {
+    --dl-order: -1;
+  }
+
+  @media (max-width: 819.98px) {
+    .dl__card {
+      order: var(--dl-order, 0);
+    }
+  }
+
+  @media (min-width: 820px) {
+    .dl__grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

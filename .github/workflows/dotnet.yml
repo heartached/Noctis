@@ -1,10 +1,19 @@
 name: Build
 
+# website/ is the marketing site, built and deployed by deploy-website.yml. It
+# shares no code with the solution, so a commit that only touches it has
+# nothing for this five-platform matrix to build — including the automated
+# "refresh release data" commits, which land on main every time a download
+# count moves.
 on:
   push:
     branches: [main, cross-platform]
+    paths-ignore:
+      - 'website/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'website/**'
 
 # Least privilege. Without this the workflow inherits the repository default
 # GITHUB_TOKEN scope, which on older repos is read/write across contents, packages and

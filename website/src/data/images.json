@@ -1,0 +1,138 @@
+{
+  "home": {
+    "alt": "The Noctis home screen showing most listened tracks, top artists and recently played albums.",
+    "role": "hero",
+    "width": 1280,
+    "height": 690,
+    "avif": [
+      {
+        "src": "/shots/home-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 54427
+      },
+      {
+        "src": "/shots/home-2560.avif",
+        "width": 2560,
+        "height": 1380,
+        "bytes": 129166
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/home-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 65970
+      },
+      {
+        "src": "/shots/home-2560.webp",
+        "width": 2560,
+        "height": 1380,
+        "bytes": 172078
+      }
+    ]
+  },
+  "showcase-main": {
+    "alt": "Now playing with synced lyrics beside the album artwork.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/showcase-main-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 43487
+      },
+      {
+        "src": "/shots/showcase-main-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 99042
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/showcase-main-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 58300
+      },
+      {
+        "src": "/shots/showcase-main-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 134070
+      }
+    ]
+  },
+  "showcase-left": {
+    "alt": "The Noctis Home view with continue listening, top artists and most played.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/showcase-left-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 37814
+      },
+      {
+        "src": "/shots/showcase-left-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 100709
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/showcase-left-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 45286
+      },
+      {
+        "src": "/shots/showcase-left-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 116398
+      }
+    ]
+  },
+  "showcase-right": {
+    "alt": "The Cascade view of album artwork.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/showcase-right-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 39933
+      },
+      {
+        "src": "/shots/showcase-right-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 105620
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/showcase-right-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 53160
+      },
+      {
+        "src": "/shots/showcase-right-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 145026
+      }
+    ]
+  }
+}

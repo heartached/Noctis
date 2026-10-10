@@ -1,0 +1,14 @@
+<!-- Full-bleed variant for `purpose: maskable`. Android crops to a circle or
+     squircle, so the artwork must reach every edge and the glyph must sit
+     inside the inner 80% safe zone. The note here occupies ~51% of the canvas,
+     centred, which clears it comfortably. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#E74856"/>
+  <g fill="#FFFFFF" transform="translate(34.1 29.7) scale(0.2407)">
+    <path d="M690 866 L690 593.5 A48 48 0 0 1 728.8 546.4 L1417.5 412.1 A55 55 0 0 1 1462 448.7 L1462 715.6 Z"/>
+    <rect x="690" y="560" width="132" height="731"/>
+    <rect x="1329" y="410" width="133" height="879"/>
+    <ellipse cx="601.5" cy="1291" rx="220" ry="180"/>
+    <ellipse cx="1241.5" cy="1289" rx="220.5" ry="180"/>
+  </g>
+</svg>

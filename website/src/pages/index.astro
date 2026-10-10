@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import FormatMarquee from '../components/FormatMarquee.astro';
+import Stats from '../components/Stats.astro';
+import Showcase from '../components/Showcase.astro';
+import Features from '../components/Features.astro';
+import Lyrics from '../components/Lyrics.astro';
+import AudioChain from '../components/AudioChain.astro';
+import Compare from '../components/Compare.astro';
+import FAQ from '../components/FAQ.astro';
+import Download from '../components/Download.astro';
+import Community from '../components/Community.astro';
+
+/**
+ * One black page, every section centred on the same axis:
+ * hero → proof row → views → features → lyrics → signal chain → comparison
+ * → FAQ → download → footer.
+ */
+---
+
+<Base
+  title="Noctis - A lossless music player for Windows, macOS and Linux."
+  description="Noctis is an open source lossless music player for Windows, macOS and Linux. Gapless playback, synced lyrics, Cover Flow and full theming, with no telemetry and no analytics."
+  path="/"
+>
+  <Hero />
+  <FormatMarquee />
+  <Stats />
+  <Showcase />
+  <Lyrics />
+  <AudioChain />
+  <Compare />
+  <FAQ />
+  <Download />
+  <Community slot="footer" />
+</Base>

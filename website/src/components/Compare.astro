@@ -1,0 +1,145 @@
+---
+import CompareLocal from './CompareLocal.astro';
+import CompareStreaming from './CompareStreaming.astro';
+---
+
+<section class="section cmp-sec" id="compare" aria-labelledby="cmp-title">
+  <div class="container">
+    {/* No eyebrow. "Comparison" sat above a heading that already says the
+        section is a comparison, in a section whose anchor is #compare. */}
+    <header class="cmp-sec__head" data-reveal>
+      <h2 class="h2" id="cmp-title">Where it stands</h2>
+      <p class="lede">Every cell was checked against the source.</p>
+    </header>
+
+    {/* One table at a time, picked by a segmented control. Pure CSS off two
+        radios — no JS, native keyboard support, and with JS disabled the
+        toggle still works. The inputs sit as siblings of the panels so the
+        :checked ~ selectors below can reach both. */}
+    <input class="cmp-sec__radio visually-hidden" type="radio" name="cmp-tab" id="cmp-tab-local" checked />
+    <input class="cmp-sec__radio visually-hidden" type="radio" name="cmp-tab" id="cmp-tab-streaming" />
+
+    <div class="cmp-sec__tabs" data-reveal>
+      <label class="cmp-sec__tab" for="cmp-tab-local">vs. local players</label>
+      <label class="cmp-sec__tab" for="cmp-tab-streaming">vs. streaming</label>
+    </div>
+
+    <div class="cmp-sec__panel" data-panel="local">
+      <CompareLocal />
+    </div>
+    <div class="cmp-sec__panel" data-panel="streaming">
+      <CompareStreaming />
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Centred, unlike the rest of the page's left-aligned sections. A comparison
+     table is a symmetrical object: left-aligning a heading over a table that
+     the eye reads as centred left a wedge of dead space down the right on any
+     wide screen. The tables themselves centre in CompareTable.astro. */
+  .cmp-sec__head {
+    max-width: 46rem;
+    margin-inline: auto;
+    margin-bottom: clamp(2rem, 4vw, 3rem);
+    text-align: center;
+  }
+
+  .cmp-sec__head .lede {
+    margin-top: var(--s-4);
+    margin-inline: auto;
+  }
+
+  /* --- Segmented control ---------------------------------------------------
+     Styled like the pill buttons in base.css; the checked label takes the
+     accent the way .btn--primary does. */
+
+  /* Equal columns, so the sliding thumb below is always exactly half the
+     track and a single translateX(100%) lands it on the other option — the
+     same geometry as the theme switch knob. */
+  .cmp-sec__tabs {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    width: fit-content;
+    margin-inline: auto;
+    margin-bottom: clamp(2rem, 4vw, 3rem);
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--bg-1);
+  }
+
+  /* The thumb. The labels only change text colour; the fill that moves
+     between them is this one element. */
+  .cmp-sec__tabs::before {
+    content: '';
+    position: absolute;
+    inset-block: 4px;
+    inset-inline-start: 4px;
+    width: calc((100% - 8px) / 2);
+    border-radius: var(--r-pill);
+    background: var(--accent-500);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  #cmp-tab-streaming:checked ~ .cmp-sec__tabs::before {
+    transform: translateX(100%);
+  }
+
+  .cmp-sec__tab {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: var(--s-5);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--t-base) var(--ease);
+  }
+
+  #cmp-tab-local:checked ~ .cmp-sec__tabs .cmp-sec__tab[for='cmp-tab-local'],
+  #cmp-tab-streaming:checked ~ .cmp-sec__tabs .cmp-sec__tab[for='cmp-tab-streaming'] {
+    color: var(--on-accent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* Same throw as the theme switch knob: a little overshoot, then settle. */
+    .cmp-sec__tabs::before {
+      transition: transform var(--t-base) cubic-bezier(0.34, 1.45, 0.5, 1);
+    }
+
+    /* The incoming table rises as the radios swap panels — display:none to
+       visible restarts the animation, so every switch gets the entrance. */
+    .cmp-sec__panel {
+      animation: cmp-panel-in 400ms var(--ease);
+    }
+  }
+
+  @keyframes cmp-panel-in {
+    from {
+      opacity: 0;
+      translate: 0 10px;
+    }
+  }
+
+  /* The radios are visually hidden, so their focus ring paints on the label. */
+  #cmp-tab-local:focus-visible ~ .cmp-sec__tabs .cmp-sec__tab[for='cmp-tab-local'],
+  #cmp-tab-streaming:focus-visible ~ .cmp-sec__tabs .cmp-sec__tab[for='cmp-tab-streaming'] {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  #cmp-tab-local:checked ~ .cmp-sec__panel[data-panel='streaming'],
+  #cmp-tab-streaming:checked ~ .cmp-sec__panel[data-panel='local'] {
+    display: none;
+  }
+</style>

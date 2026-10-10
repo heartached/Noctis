@@ -1,0 +1,1181 @@
+---
+import Base from '../layouts/Base.astro';
+import Community from '../components/Community.astro';
+import BrandIcon from '../components/BrandIcon.astro';
+import { links } from '../config/site';
+
+/**
+ * The plugin system, for people who use Noctis first and developers second.
+ * Every statement here traces to the "Plugins (v1.5.3+)" block in
+ * src/data/verified-claims.md — the safety wording in particular is careful
+ * on purpose: code plugins run with full trust, and the page never says
+ * otherwise.
+ *
+ * No page script. Code samples are static <pre><code>; their copy buttons use
+ * the site-wide [data-copy] handler in src/scripts/site.ts.
+ */
+
+const toc = [
+  { id: 'ways', label: 'Three ways' },
+  { id: 'install', label: 'Install and manage' },
+  { id: 'safety', label: 'Is it safe?' },
+  { id: 'content-packs', label: 'Content packs' },
+  { id: 'local-api', label: 'Local API' },
+  { id: 'developers', label: 'For developers' },
+  { id: 'faq', label: 'FAQ' },
+];
+
+const ways = [
+  {
+    tag: 'Safest',
+    title: 'Content packs',
+    body: 'Themes, lyrics presets and languages as plain JSON files. Nothing in a pack can run.',
+    facts: ['No code runs', 'No approval needed', 'Works in restricted mode'],
+    more: 'More on content packs',
+    href: '#content-packs',
+  },
+  {
+    tag: 'In between',
+    title: 'Local API',
+    body: 'Lets apps on your PC, like a Stream Deck, an OBS overlay or a script in any language, see what’s playing and control Noctis over HTTP.',
+    facts: ['Nothing runs inside Noctis', 'Only reachable from your PC', 'Off by default'],
+    more: 'More on the Local API',
+    href: '#local-api',
+  },
+  {
+    tag: 'Most powerful',
+    title: 'Plugins',
+    body: '.NET code that adds features inside Noctis: track-menu commands, lyrics sources, visual layers, scrobble hooks.',
+    facts: ['Runs with full trust', 'You approve its permissions', 'Only install from people you trust'],
+    more: 'How to install one',
+    href: '#install',
+  },
+];
+
+const steps = [
+  { title: 'Open Settings → Plugins.', body: 'Everything plugin-related lives on this one page.' },
+  { title: 'Choose Install from file… and pick the plugin’s .zip.', body: 'Noctis checks the zip before anything is written to disk.' },
+  { title: 'Content packs are on right away. A code plugin lands switched off.', body: 'Nothing from a code plugin runs until you say so.' },
+  { title: 'To run code plugins, turn on Community plugins.', body: 'It is off by default on new installs. That is restricted mode: no third-party code loads at all.' },
+  { title: 'Switch the plugin on and review what it asks for.', body: 'Noctis shows the plugin’s permissions and asks you to approve them.' },
+  { title: 'Update by installing a newer zip of the same plugin.', body: 'Its data and settings are kept. It only asks again if the update wants new permissions.' },
+  { title: 'Remove it with the Remove button.', body: 'The plugin’s data is kept unless you tick “Also delete its data and settings”.' },
+  { title: 'Settings for a plugin are on its card.', body: 'Open plugins folder and Reload plugins are on the same page.' },
+];
+
+const permissions = [
+  { id: 'playback.control', text: 'Control playback: play, pause, skip and seek' },
+  { id: 'library.read', text: 'Search your library (titles, artists, albums, file paths, play counts)' },
+  { id: 'network', text: 'Connect to the internet' },
+  { id: 'lyrics.provider', text: 'Supply lyrics to the lyrics search' },
+  { id: 'menu.commands', text: 'Add entries to the track menu' },
+  { id: 'notifications', text: 'Show short notices' },
+];
+
+const packKinds = [
+  {
+    title: 'Themes',
+    where: 'Settings → Appearance → Themes',
+    body: 'Listed as “by <pack name>” and applied live. A theme sets a dark or light base, an optional accent and any of 38 colours. Two colours are enough; Noctis derives the rest. Your own accent colour always wins on accent surfaces.',
+  },
+  {
+    title: 'Lyrics presets',
+    where: 'Settings → Lyrics → Style presets → Apply',
+    body: 'A one-time copy of lyrics-page settings, such as line opacity, the flowing background, Kawarp strength and blur, and the visualizer style.',
+  },
+  {
+    title: 'Languages',
+    where: 'Settings → General → Language',
+    body: 'Add a language, or override strings of one Noctis already ships. Anything missing falls back to English.',
+  },
+];
+
+const capabilities = [
+  { area: 'Now playing', what: 'Current track, play/pause, position, change events', perm: null },
+  { area: 'Audio taps', what: 'Live beat pulse and spectrum', perm: null },
+  { area: 'Visual layers', what: 'A layer drawn behind the lyrics, offered in the Flowing background picker', perm: null },
+  { area: 'Scrobble hook', what: 'Called when a track counts as listened (half its length or 4 minutes)', perm: null },
+  { area: 'Settings', what: 'Settings declared in plugin.json, drawn by Noctis', perm: null },
+  { area: 'Storage', what: 'A private data folder that survives updates', perm: null },
+  { area: 'Playback control', what: 'Play, pause, next, previous, seek', perm: 'playback.control' },
+  { area: 'Library', what: 'Read-only library search', perm: 'library.read' },
+  { area: 'Lyrics', what: 'A lyrics source that joins the online lyrics search', perm: 'lyrics.provider' },
+  { area: 'Track menu', what: 'Entries in the track right-click menu', perm: 'menu.commands' },
+  { area: 'Notices', what: 'A short message in the app’s notice pill', perm: 'notifications' },
+];
+
+const faqs = [
+  {
+    q: 'Does it work on Android?',
+    a: 'No. Android doesn’t load plugins. Content packs are designed so they can work there later.',
+  },
+  {
+    q: 'Where do I find plugins?',
+    a: 'There is no in-app directory yet. Plugins are shared as zips, for example on GitHub releases, and on the Noctis Discord. A public plugin index is planned.',
+  },
+  {
+    q: 'Do I need to know how to code?',
+    a: 'Not for content packs, which are JSON files, or for the Local API, which works from any language that can make an HTTP request. Code plugins are written in C#.',
+  },
+  {
+    q: 'Will a plugin break after a Noctis update?',
+    a: 'The plugin API follows a compatibility policy: minor versions only add, so a plugin built for 1.0 runs on 1.1. Breaking changes come with a new major version, and deprecations are announced at least one minor release and three months ahead.',
+  },
+];
+
+/* Code samples live here rather than in the markup: Astro would read their
+   braces as expressions. */
+const code = {
+  theme: `{
+  "id": "dusk",
+  "name": "Dusk",
+  "base": "dark",
+  "accent": "#FF8A5B",
+  "colors": {
+    "AppMainBackground": "#17131F",
+    "AppSidebarBackground": "#1F1929"
+  }
+}`,
+  pack: `{
+  "id": "dev.example.sunset",
+  "name": "Sunset",
+  "version": "1.0.0",
+  "author": "You",
+  "type": "content",
+  "minAppVersion": "1.5.3",
+  "contents": {
+    "themes": ["themes/dusk.json"],
+    "lyricsPresets": ["lyrics/karaoke.json"],
+    "languages": ["languages/en-XA.json"]
+  }
+}`,
+  curl: `curl -H "Authorization: Bearer <token>" http://127.0.0.1:9421/api/v1/now-playing`,
+  csproj: `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Noctis.Plugins.Abstractions" Version="1.1.*" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+</Project>`,
+  cs: `using Noctis.Plugins;
+
+public sealed class HelloPlugin : INoctisPlugin
+{
+    private readonly List<IDisposable> _hooks = new();
+    public PluginInfo Info { get; } = new("dev.example.hello", "Hello", "1.0.0", "You", "Says hello.");
+
+    public void Initialize(IPluginHost host)
+    {
+        _hooks.Add(host.RegisterTrackCommand("Say hello", icon: null,
+            track => host.Notify($"Hello, {track.Artist}!")));
+    }
+
+    public void Shutdown()
+    {
+        foreach (var h in _hooks) h.Dispose();
+        _hooks.Clear();
+    }
+}`,
+  manifest: `{
+  "id": "dev.example.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "author": "You",
+  "type": "dotnet",
+  "entry": "MyPlugin.dll",
+  "apiVersion": "1.1",
+  "minAppVersion": "1.5.3",
+  "permissions": ["menu.commands", "notifications"]
+}`,
+  pack_kit: `dotnet pack src/Noctis.Plugins.Abstractions -c Release`,
+};
+
+const quickstart = [
+  { file: 'MyPlugin.csproj', body: code.csproj },
+  { file: 'HelloPlugin.cs', body: code.cs },
+  { file: 'plugin.json', body: code.manifest },
+];
+---
+
+<Base
+  title="Noctis - Plugins, content packs and the Local API."
+  description="Extend Noctis 1.5.3 and newer on Windows, macOS and Linux: install themes and language packs, connect apps through the Local API, and run plugins you trust. What each one can do, how to install them, and how safe they are."
+  path="/plugins"
+>
+  <section class="section pl" aria-labelledby="pl-title">
+    <div class="container">
+      <header class="pl__head">
+        <p class="eyebrow">Noctis 1.5.3+ · Windows, macOS, Linux</p>
+        <h1 class="display" id="pl-title">Extend <em>Noctis</em>.</h1>
+        <p class="lede pl__lede">
+          Three ways to make Noctis do more, from the safest to the most powerful. Pick the one that fits, and
+          only give code the trust it has earned.
+        </p>
+      </header>
+
+      <ol class="ways" role="list" id="ways" data-reveal-group aria-label="Three ways to extend Noctis">
+        {ways.map((w, i) => (
+          <li class="way" data-reveal>
+            <p class="way__tag mono"><span>{String(i + 1).padStart(2, '0')}</span> {w.tag}</p>
+            <h2 class="way__title">{w.title}</h2>
+            <p class="way__body">{w.body}</p>
+            <ul class="way__facts" role="list">
+              {w.facts.map((f) => <li>{f}</li>)}
+            </ul>
+            <a class="link-arrow way__more" href={w.href}>{w.more}</a>
+          </li>
+        ))}
+      </ol>
+
+      <div class="pl__layout">
+        <nav class="toc" aria-label="On this page">
+          <p class="toc__head eyebrow">On this page</p>
+          <ul class="toc__list" role="list">
+            {toc.map((t) => (
+              <li><a class="toc__link" href={`#${t.id}`}>{t.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+
+        <div class="doc">
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="install">
+            <h2 class="doc__h" id="install">Install and manage</h2>
+            <p class="doc__lede">
+              Everything happens in <strong>Settings → Plugins</strong>. The same steps cover content packs and
+              code plugins; the difference is that code waits for you to switch it on.
+            </p>
+            <ol class="steps" role="list">
+              {steps.map((s, i) => (
+                <li class="step">
+                  <span class="step__n mono" aria-hidden="true">{i + 1}</span>
+                  <div>
+                    <p class="step__title">{s.title}</p>
+                    <p class="step__body">{s.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="safety">
+            <h2 class="doc__h" id="safety">Is it safe?</h2>
+            <p class="doc__lede">The honest version: it depends on which of the three you use.</p>
+
+            <div class="callout">
+              <p class="callout__title">Code plugins run with full trust.</p>
+              <p>
+                Like any desktop app you install, a code plugin can do anything your user account can. Permissions
+                only limit what it can do <em>through Noctis</em>. They are an honest summary, not a sandbox, and
+                the approval dialog says so. Only install code plugins from people you trust.
+              </p>
+            </div>
+
+            <ul class="points" role="list">
+              <li>
+                <strong>Content packs can’t run code.</strong> Noctis refuses a pack that contains a DLL, a script or
+                XAML, and validates every file in it.
+              </li>
+              <li>
+                <strong>Restricted mode is the default.</strong> With Community plugins off, no third-party code loads
+                at all. New installs start that way. Installs that already had plugins before 1.5.3 start with it
+                on, so updating doesn’t break an existing setup.
+              </li>
+              <li>
+                <strong>A misbehaving plugin is stopped, not the app.</strong> If a plugin crashes, or holds the app
+                for more than one second, it’s stopped and marked <strong>Failed</strong>. Noctis keeps running.
+                Lyrics sources get eight seconds.
+              </li>
+              <li>
+                <strong>Off means off.</strong> Disabling or removing a plugin removes everything it registered,
+                even if the plugin forgot to clean up.
+              </li>
+              <li>
+                <strong>Zips are checked before anything is written.</strong> A malformed archive, a missing entry
+                DLL, more than 2,000 files or 256 MB, or any path that tries to escape the plugin folder rejects the
+                whole file.
+              </li>
+            </ul>
+
+            <h3 class="doc__h3">What the approval dialog shows</h3>
+            <p>
+              Reading what’s playing, the audio taps, visual layers, the scrobble hook, settings and private storage
+              need no permission. Everything else is listed when you switch a plugin on:
+            </p>
+            <div class="tbl" role="region" aria-label="Plugin permissions" tabindex="0">
+              <table>
+                <thead>
+                  <tr><th scope="col">Permission</th><th scope="col">What you’re asked to approve</th></tr>
+                </thead>
+                <tbody>
+                  {permissions.map((p) => (
+                    <tr><td><code>{p.id}</code></td><td>{p.text}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="doc__note">
+              <code>network</code> is a disclosure: plugins declare it if they go online. If an update asks for more
+              permissions than you approved, the plugin waits in <strong>Needs approval</strong> until you switch it
+              on again.
+            </p>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="content-packs">
+            <h2 class="doc__h" id="content-packs">Content packs</h2>
+            <p class="doc__lede">
+              Plain JSON, no code. A pack is on as soon as it’s installed, needs no approval or permissions, and
+              works while Community plugins is off.
+            </p>
+
+            <div class="kinds">
+              {packKinds.map((k) => (
+                <div class="kind">
+                  <h3 class="kind__title">{k.title}</h3>
+                  <p class="kind__where mono">{k.where}</p>
+                  <p class="kind__body">{k.body}</p>
+                </div>
+              ))}
+            </div>
+
+            <p>
+              If a pack is switched off while its theme is in use, Noctis falls back to the default theme.
+              Translations of Noctis itself belong on{' '}
+              <a href={links.crowdin} target="_blank" rel="noopener">Crowdin</a>; language packs are for languages
+              or variants that aren’t there yet.
+            </p>
+
+            <h3 class="doc__h3">A theme in ten lines</h3>
+            <div class="code">
+              <div class="code__bar">
+                <span class="code__file mono">themes/dusk.json</span>
+                <button class="code__copy" type="button" data-copy={code.theme} aria-label="Copy themes/dusk.json">Copy</button>
+              </div>
+              <pre tabindex="0"><code>{code.theme}</code></pre>
+            </div>
+            <p>The pack’s <code>plugin.json</code> lists what it contains:</p>
+            <div class="code">
+              <div class="code__bar">
+                <span class="code__file mono">plugin.json</span>
+                <button class="code__copy" type="button" data-copy={code.pack} aria-label="Copy the content pack plugin.json">Copy</button>
+              </div>
+              <pre tabindex="0"><code>{code.pack}</code></pre>
+            </div>
+            <p class="doc__note">
+              Allowed files: <code>.json</code>, <code>.md</code>, <code>.txt</code>, <code>.png</code>,
+              <code>.jpg</code>, <code>.jpeg</code>, <code>.webp</code>, plus LICENSE and README-style files. Anything
+              else refuses the pack. Limits: 200 files, 2 MB per file, 20 MB per pack.{' '}
+              <a href={links.contentPackDocs} target="_blank" rel="noopener">Full content pack reference</a>.
+            </p>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="local-api">
+            <h2 class="doc__h" id="local-api">Local API</h2>
+            <p class="doc__lede">
+              For apps that live outside Noctis: a stream overlay, a Stream Deck button, a script. Nothing runs
+              inside Noctis, and it’s off until you turn it on.
+            </p>
+
+            <ol class="steps steps--tight" role="list">
+              <li class="step">
+                <span class="step__n mono" aria-hidden="true">1</span>
+                <div>
+                  <p class="step__title">Turn it on in Settings → Account &amp; Devices → Local API.</p>
+                  <p class="step__body">It listens on <code>127.0.0.1</code> only, never on your network. The default port is 9421.</p>
+                </div>
+              </li>
+              <li class="step">
+                <span class="step__n mono" aria-hidden="true">2</span>
+                <div>
+                  <p class="step__title">Find the token in <code>local-api.json</code>.</p>
+                  <p class="step__body">
+                    While the API is on, Noctis writes the port, base URL and token to its data folder:
+                    <code>%APPDATA%\Noctis</code> on Windows, <code>~/.config/Noctis</code> on macOS and Linux.
+                  </p>
+                </div>
+              </li>
+              <li class="step">
+                <span class="step__n mono" aria-hidden="true">3</span>
+                <div>
+                  <p class="step__title">Send it with every request.</p>
+                  <p class="step__body">
+                    As <code>Authorization: Bearer &lt;token&gt;</code>, or as <code>?token=</code> for OBS browser
+                    sources.
+                  </p>
+                </div>
+              </li>
+            </ol>
+
+            <div class="code">
+              <div class="code__bar">
+                <span class="code__file mono">What’s playing?</span>
+                <button class="code__copy" type="button" data-copy={code.curl} aria-label="Copy the curl example">Copy</button>
+              </div>
+              <pre tabindex="0"><code>{code.curl}</code></pre>
+            </div>
+
+            <p>
+              Under <code>/api/v1</code> you’ll find status, now playing, artwork, the queue (read and add), library
+              search, the current lyrics, playback control (play, pause, next, previous, seek, volume, shuffle,
+              repeat) and a live <strong>events</strong> stream over Server-Sent Events for track changes, play
+              state, position, the queue and synced lyric lines.
+            </p>
+            <p>
+              The token is 256-bit, ten bad attempts in a minute lock requests out, and requests are protected
+              against DNS rebinding. If a token leaks, say in a stream screenshot, press
+              <strong>Regenerate token</strong>.
+            </p>
+            <p class="doc__links">
+              <a class="link-arrow" href={links.localApiDocs} target="_blank" rel="noopener">Local API reference</a>
+              <a class="link-arrow" href={links.samples} target="_blank" rel="noopener">OBS overlay and other samples</a>
+            </p>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="developers">
+            <h2 class="doc__h" id="developers">For developers</h2>
+            <p class="doc__lede">
+              A code plugin is a .NET class library targeting <code>net10.0</code> plus a <code>plugin.json</code>.
+              It builds against the plugin kit, <code>Noctis.Plugins.Abstractions</code>, API version 1.1.
+            </p>
+
+            <h3 class="doc__h3">Quick start</h3>
+            {quickstart.map((q) => (
+              <div class="code">
+                <div class="code__bar">
+                  <span class="code__file mono">{q.file}</span>
+                  <button class="code__copy" type="button" data-copy={q.body} aria-label={`Copy ${q.file}`}>Copy</button>
+                </div>
+                <pre tabindex="0"><code>{q.body}</code></pre>
+              </div>
+            ))}
+            <p class="doc__note">
+              The kit is coming to NuGet. Until then, build it from the repo with{' '}
+              <code>{code.pack_kit}</code>, or reference the project the way the samples do.
+            </p>
+
+            <h3 class="doc__h3">What the API offers</h3>
+            <div class="tbl tbl--wide" role="region" aria-label="Plugin API capabilities" tabindex="0">
+              <table>
+                <thead>
+                  <tr><th scope="col">Area</th><th scope="col">What</th><th scope="col">Permission</th></tr>
+                </thead>
+                <tbody>
+                  {capabilities.map((c) => (
+                    <tr>
+                      <th scope="row">{c.area}</th>
+                      <td>{c.what}</td>
+                      <td>{c.perm ? <code>{c.perm}</code> : <span class="tbl__none">none</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="doc__note">
+              Not possible yet: writing tags or the library, editing the queue, adding pages or sidebar entries.
+            </p>
+
+            <h3 class="doc__h3">Packaging</h3>
+            <ul class="points points--plain" role="list">
+              <li>A plugin is a <code>.zip</code> with <code>plugin.json</code> at the top, next to the DLL.</li>
+              <li>
+                Don’t ship <code>Noctis.Plugins.Abstractions.dll</code>, <code>Avalonia*.dll</code> or
+                <code>SkiaSharp*.dll</code>. Noctis provides them.
+              </li>
+              <li>
+                Each plugin loads in its own isolated context, so dependencies never clash and its folder is never
+                locked. That is for stability, not security.
+              </li>
+              <li>
+                A plugin built for a different API major version is refused. Minor versions only add, so 1.0 plugins
+                run on 1.1.
+              </li>
+            </ul>
+
+            <h3 class="doc__h3">Samples in the repo</h3>
+            <ul class="points points--plain" role="list">
+              <li><strong>Pulse Ring</strong>: a visual layer that pulses with the beat.</li>
+              <li>
+                <strong>Track Tools</strong>: a menu command, library search, a notice, a lyrics source stub, a
+                scrobble hook and declared settings.
+              </li>
+              <li>A sample <strong>content pack</strong>: two themes, a karaoke lyrics preset and a pseudo-language.</li>
+              <li>The <strong>Local API</strong> samples: an OBS overlay, a PowerShell script and curl examples.</li>
+            </ul>
+
+            <div class="cta">
+              <div class="cta__text">
+                <h3 class="cta__title">Full documentation on GitHub</h3>
+                <p>The plugin.json reference, the complete API, threading and lifecycle rules, and every Local API route.</p>
+              </div>
+              <div class="cta__actions">
+                <a class="btn cta__gh" href={links.pluginDocs} target="_blank" rel="noopener">
+                  <BrandIcon brand="github" />
+                  Plugin guide
+                </a>
+                <a class="btn btn--ghost" href={links.localApiDocs} target="_blank" rel="noopener">Local API reference</a>
+                <a class="btn btn--ghost" href={links.samples} target="_blank" rel="noopener">Samples</a>
+              </div>
+            </div>
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          <section class="doc__sec" aria-labelledby="faq">
+            <h2 class="doc__h" id="faq">FAQ</h2>
+            <div class="faq">
+              {faqs.map((f) => (
+                <details class="faq__item" name="plugins-faq">
+                  <summary class="faq__q">
+                    <span>{f.q}</span>
+                    <span class="faq__plus" aria-hidden="true"></span>
+                  </summary>
+                  <p class="faq__a">{f.a}</p>
+                </details>
+              ))}
+            </div>
+            <p class="doc__links">
+              <a class="link-arrow" href={links.discord} target="_blank" rel="noopener">Share plugins and ask for help on Discord</a>
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <Community slot="footer" />
+</Base>
+
+<style>
+  .pl {
+    padding-bottom: var(--s-8);
+  }
+
+  .pl__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-5);
+    text-align: center;
+    margin-bottom: var(--s-8);
+  }
+
+  .pl__lede {
+    text-wrap: balance;
+  }
+
+  /* --- Three ways --------------------------------------------------------- */
+
+  .ways {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-4);
+    margin: 0 0 var(--s-10);
+    padding: 0;
+    list-style: none;
+  }
+
+  .way {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+  }
+
+  .way__tag {
+    color: var(--ink-2);
+    font-size: var(--step--2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .way__tag span {
+    color: var(--accent-text);
+  }
+
+  .way__title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .way__body {
+    color: var(--ink-1);
+    text-wrap: pretty;
+  }
+
+  .way__facts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: var(--s-2) 0 0;
+    padding: var(--s-4) 0 0;
+    border-top: 1px solid var(--line);
+    list-style: none;
+    font-size: var(--step--1);
+  }
+
+  .way__facts li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+
+  .way__facts li::before {
+    content: '';
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-500);
+    transform: translateY(-2px);
+  }
+
+  /* Pushed to the card's foot so the three links line up across the row. */
+  .way__more {
+    margin-top: auto;
+    padding-top: var(--s-3);
+    font-size: var(--step--1);
+  }
+
+  /* --- Layout: sticky contents beside the doc ----------------------------- */
+
+  .pl__layout {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: var(--s-8);
+    max-width: 66rem;
+    margin-inline: auto;
+  }
+
+  .toc {
+    position: sticky;
+    top: calc(var(--header-h) + var(--s-5));
+    align-self: start;
+  }
+
+  .toc__head {
+    margin-bottom: var(--s-3);
+  }
+
+  .toc__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-left: 1px solid var(--line);
+  }
+
+  .toc__link {
+    display: block;
+    margin-left: -1px;
+    padding: var(--s-1) var(--s-4);
+    border-left: 1px solid transparent;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    text-decoration: none;
+    transition:
+      color var(--t-instant) var(--ease),
+      border-color var(--t-instant) var(--ease);
+  }
+
+  .toc__link:hover {
+    color: var(--ink-0);
+    border-left-color: var(--accent-500);
+  }
+
+  /* --- Doc body ----------------------------------------------------------- */
+
+  .doc {
+    min-width: 0;
+    color: var(--ink-1);
+  }
+
+  .doc__sec + .doc__sec {
+    margin-top: var(--s-9);
+    padding-top: var(--s-8);
+    border-top: 1px solid var(--line);
+  }
+
+  .doc__sec > * + * {
+    margin-top: var(--s-5);
+  }
+
+  .doc strong {
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+
+  .doc a:not(.btn, .link-arrow) {
+    color: var(--accent-text);
+  }
+
+  .doc__h {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .doc__h3 {
+    color: var(--ink-0);
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .doc__sec > .doc__h3 {
+    margin-top: var(--s-7);
+  }
+
+  .doc__lede {
+    font-size: var(--step-1);
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+
+  .doc__note {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .doc__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3) var(--s-6);
+  }
+
+  .doc :not(pre) > code {
+    padding: 0.1em 0.4em;
+    border-radius: 6px;
+    background: var(--bg-2);
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    overflow-wrap: anywhere;
+  }
+
+  /* --- Steps -------------------------------------------------------------- */
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--s-4);
+  }
+
+  .step__n {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-1);
+    color: var(--ink-0);
+    font-size: var(--step--1);
+  }
+
+  .step__title {
+    color: var(--ink-0);
+    font-weight: 600;
+    line-height: 1.4;
+    padding-top: 0.2rem;
+    text-wrap: pretty;
+  }
+
+  .step__body {
+    margin-top: var(--s-1);
+    text-wrap: pretty;
+  }
+
+  /* --- Safety ------------------------------------------------------------- */
+
+  .callout {
+    padding: var(--s-5) var(--s-6);
+    border: 1px solid color-mix(in srgb, var(--accent-500) 40%, var(--line));
+    border-radius: var(--r-nested);
+    background: color-mix(in srgb, var(--accent-500) 7%, var(--bg-0));
+  }
+
+  .callout__title {
+    margin-bottom: var(--s-2);
+    color: var(--ink-0);
+    font-weight: 700;
+  }
+
+  .callout em {
+    font-style: normal;
+    color: var(--ink-0);
+  }
+
+  .points {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding-inline-start: var(--s-5);
+  }
+
+  .points li {
+    text-wrap: pretty;
+  }
+
+  .points li::marker {
+    color: var(--accent-text);
+  }
+
+  .points--plain {
+    gap: var(--s-2);
+  }
+
+  /* --- Tables: scroll inside their own box on a narrow screen ------------- */
+
+  .tbl {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+  }
+
+  .tbl table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  .tbl th,
+  .tbl td {
+    padding: var(--s-3) var(--s-4);
+    text-align: left;
+    vertical-align: top;
+    border-top: 1px solid var(--line);
+  }
+
+  .tbl thead th {
+    border-top: 0;
+    background: var(--bg-1);
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+
+  .tbl tbody th {
+    color: var(--ink-0);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .tbl td code {
+    white-space: nowrap;
+  }
+
+  /* Three columns can't share a phone screen without crushing the middle
+     one to a word per line; below this width the table scrolls instead. */
+  .tbl--wide table {
+    min-width: 34rem;
+  }
+
+  .tbl__none {
+    color: var(--ink-2);
+  }
+
+  /* --- Content pack kinds ------------------------------------------------- */
+
+  .kinds {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-4);
+  }
+
+  .kind {
+    padding: var(--s-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+  }
+
+  .kind__title {
+    color: var(--ink-0);
+    font-size: var(--step-0);
+    font-weight: 700;
+  }
+
+  .kind__where {
+    margin-top: var(--s-1);
+    color: var(--accent-text);
+    font-size: var(--step--2);
+    line-height: 1.5;
+  }
+
+  .kind__body {
+    margin-top: var(--s-3);
+    font-size: var(--step--1);
+    text-wrap: pretty;
+  }
+
+  /* --- Code blocks -------------------------------------------------------- */
+
+  .code {
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+
+  .code__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .code__file {
+    color: var(--ink-2);
+    font-size: var(--step--2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .code__copy {
+    flex: none;
+    min-height: 32px;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--step--2);
+    font-weight: 500;
+    transition:
+      color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .code__copy:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 8%, transparent);
+  }
+
+  /* The site-wide copy handler sets [data-copied] for 1.4 s. */
+  .code__copy[data-copied] {
+    color: var(--ok);
+    border-color: var(--ok);
+  }
+
+  .code pre {
+    margin: 0;
+    padding: var(--s-4);
+    overflow-x: auto;
+    color: var(--ink-0);
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    line-height: 1.65;
+    tab-size: 2;
+  }
+
+  /* --- Developer CTA ------------------------------------------------------ */
+
+  .cta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    margin-top: var(--s-7);
+    padding: var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+  }
+
+  .cta__title {
+    color: var(--ink-0);
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-2);
+  }
+
+  .cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+
+  /* Same monochrome GitHub treatment as the changelog button. */
+  .cta__gh {
+    --btn-bg: var(--ink-0);
+    --btn-fg: var(--bg-0);
+    --btn-bd: transparent;
+  }
+
+  .cta__gh:hover {
+    --btn-bg: color-mix(in srgb, var(--ink-0) 88%, var(--bg-0));
+  }
+
+  .cta__gh :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* --- FAQ: the home page accordion, at doc width ------------------------- */
+
+  .faq {
+    border-top: 1px solid var(--line);
+  }
+
+  .faq__item {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .faq__q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    padding-block: var(--s-4);
+    color: var(--ink-0);
+    font-weight: 500;
+    list-style: none;
+    cursor: pointer;
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  .faq__q::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__q:hover {
+    color: var(--ink-1);
+  }
+
+  .faq__plus {
+    position: relative;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--ink-2);
+  }
+
+  .faq__plus::before,
+  .faq__plus::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background: currentColor;
+    border-radius: 1px;
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  .faq__plus::before {
+    width: 14px;
+    height: 1.5px;
+  }
+
+  .faq__plus::after {
+    width: 1.5px;
+    height: 14px;
+  }
+
+  .faq__item[open] .faq__plus::after {
+    transform: rotate(90deg);
+  }
+
+  .faq__a {
+    max-width: 60ch;
+    padding-bottom: var(--s-4);
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .faq__item[open] .faq__a {
+      animation: faq-in var(--t-base) var(--ease);
+    }
+  }
+
+  @keyframes faq-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  /* --- Responsive --------------------------------------------------------- */
+
+  @media (max-width: 960px) {
+    .ways {
+      grid-template-columns: 1fr;
+      margin-bottom: var(--s-8);
+    }
+
+    /* The contents stop being a sticky column and become a wrapped row of
+       pills above the doc. Wrapped, not scrolled, so nothing slides sideways. */
+    .pl__layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--s-7);
+    }
+
+    .toc {
+      position: static;
+    }
+
+    .toc__list {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      border-left: 0;
+    }
+
+    .toc__link {
+      margin-left: 0;
+      padding: var(--s-1) var(--s-3);
+      border: 1px solid var(--line);
+      border-radius: var(--r-pill);
+    }
+
+    .toc__link:hover {
+      border-color: var(--accent-500);
+    }
+
+    .kinds {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .way,
+    .cta {
+      padding: var(--s-5);
+    }
+
+    .callout {
+      padding: var(--s-4) var(--s-5);
+    }
+
+    .cta__actions .btn {
+      flex: 1 1 100%;
+    }
+  }
+</style>

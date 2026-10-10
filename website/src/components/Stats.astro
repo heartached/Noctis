@@ -1,0 +1,195 @@
+---
+import { release, downloadsFormatted } from '../lib/release';
+
+/**
+ * The proof row: a laurel around the download count, then five facts.
+ * Every number here is either from the release feed or from
+ * src/data/verified-claims.md.
+ */
+const stars = release.stars == null ? null : new Intl.NumberFormat('en-US').format(release.stars);
+
+const facts = [
+  { value: stars, label: 'GitHub stars', hook: 'stars' },
+  { value: '13', label: 'formats', hook: 'formats' },
+  { value: '3', label: 'platforms', hook: 'platforms' },
+  { value: 'MIT', label: 'licence' },
+  { value: '0', label: 'trackers' },
+].filter((f) => f.value != null);
+---
+
+<section class="stats" aria-label="Noctis by the numbers">
+  <div class="container">
+    <div class="stats__rule" aria-hidden="true"></div>
+
+    <div class="laurel" data-reveal>
+      <svg class="laurel__leaf" viewBox="0 0 40 96" aria-hidden="true">
+        <g fill="currentColor">
+          <path d="M34 92c-9-3-16-9-19-17 8 0 16 6 19 17Z" />
+          <path d="M30 76c-9-4-14-11-16-20 8 1 15 8 16 20Z" />
+          <path d="M28 59c-8-5-12-13-12-22 7 3 13 10 12 22Z" />
+          <path d="M28 42c-7-6-9-15-7-24 6 4 10 12 7 24Z" />
+          <path d="M31 26c-5-7-5-16-1-24 5 5 7 14 1 24Z" />
+          <path d="M18 88c-6-6-9-14-8-23 6 4 10 12 8 23Z" opacity=".7" />
+          <path d="M13 66c-5-7-6-16-3-24 6 5 8 14 3 24Z" opacity=".7" />
+          <path d="M12 45c-3-8-2-17 3-24 4 6 4 15-3 24Z" opacity=".7" />
+        </g>
+        <path d="M36 94C22 82 14 66 14 48c0-17 6-32 20-46" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+
+      <div class="laurel__body">
+        {downloadsFormatted ? (
+          <>
+            <span class="laurel__num num" data-download-total={release.total}>{downloadsFormatted}</span>
+            <span class="laurel__label">downloads</span>
+          </>
+        ) : (
+          <>
+            <span class="laurel__num">Open</span>
+            <span class="laurel__label">source</span>
+          </>
+        )}
+      </div>
+
+      <svg class="laurel__leaf laurel__leaf--r" viewBox="0 0 40 96" aria-hidden="true">
+        <g fill="currentColor">
+          <path d="M34 92c-9-3-16-9-19-17 8 0 16 6 19 17Z" />
+          <path d="M30 76c-9-4-14-11-16-20 8 1 15 8 16 20Z" />
+          <path d="M28 59c-8-5-12-13-12-22 7 3 13 10 12 22Z" />
+          <path d="M28 42c-7-6-9-15-7-24 6 4 10 12 7 24Z" />
+          <path d="M31 26c-5-7-5-16-1-24 5 5 7 14 1 24Z" />
+          <path d="M18 88c-6-6-9-14-8-23 6 4 10 12 8 23Z" opacity=".7" />
+          <path d="M13 66c-5-7-6-16-3-24 6 5 8 14 3 24Z" opacity=".7" />
+          <path d="M12 45c-3-8-2-17 3-24 4 6 4 15-3 24Z" opacity=".7" />
+        </g>
+        <path d="M36 94C22 82 14 66 14 48c0-17 6-32 20-46" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </div>
+
+    <ul class="stats__row" role="list" data-reveal-group>
+      {facts.map((f) => (
+        <li class="stat" data-reveal>
+          <span class="stat__value num" data-live={f.hook}>{f.value}</span>
+          <span class="stat__label">{f.label}</span>
+        </li>
+      ))}
+    </ul>
+
+    <div class="stats__rule" aria-hidden="true"></div>
+  </div>
+</section>
+
+<style>
+  .stats {
+    position: relative;
+    padding-block: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  /* Hairlines that fade out at both ends, like a rule drawn on the black. */
+  .stats__rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent);
+  }
+
+  .laurel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-3);
+    padding-block: clamp(2rem, 4vw, 3rem) clamp(1.5rem, 3vw, 2.25rem);
+    color: var(--ink-0);
+  }
+
+  .laurel__leaf {
+    width: 34px;
+    height: 82px;
+    flex: none;
+    color: color-mix(in srgb, var(--ink-0) 85%, transparent);
+  }
+
+  .laurel__leaf--r {
+    transform: scaleX(-1);
+  }
+
+  .laurel__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .laurel__num {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.4vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .laurel__label {
+    margin-top: 6px;
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    font-weight: 600;
+  }
+
+  /* --- Fact row ----------------------------------------------------------- */
+
+  .stats__row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 0;
+    padding: 0 0 clamp(2rem, 4vw, 3rem);
+    list-style: none;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding-block: var(--s-2);
+    border-inline-start: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .stat:first-child {
+    border-inline-start: 0;
+  }
+
+  .stat__value {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .stat__label {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  @media (max-width: 720px) {
+    .stats__row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      row-gap: var(--s-5);
+    }
+
+    .stat:nth-child(4) {
+      border-inline-start: 0;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .stats__row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stat:nth-child(4) {
+      border-inline-start: 1px solid var(--line);
+    }
+
+    .stat:nth-child(odd) {
+      border-inline-start: 0;
+    }
+  }
+</style>

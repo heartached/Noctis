@@ -1,0 +1,150 @@
+---
+/**
+ * Source for public/og-image.png, rendered at exactly 1200x630 and captured by
+ * scripts/make-og.py. Kept as a real route so the card uses the same
+ * self-hosted Bricolage Grotesque / Hanken Grotesk as the site instead of
+ * whatever face the image toolchain happens to find.
+ *
+ * Not linked from anywhere and marked noindex.
+ */
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import Logo from '../components/Logo.astro';
+import { site } from '../config/site';
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Noctis — social card</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 30px;
+        padding: 0 88px;
+        background: var(--bg-0);
+        color: var(--ink-0);
+        font-family: var(--font-body);
+      }
+
+      .glow {
+        position: absolute;
+        width: 900px;
+        height: 900px;
+        right: -260px;
+        top: -320px;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 66%);
+        filter: blur(30px);
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        opacity: 0.03;
+        mix-blend-mode: overlay;
+        background-image: var(--grain-url);
+        background-size: 180px 180px;
+      }
+
+      :root {
+        --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .brand {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .brand span {
+        font-family: var(--font-display);
+        font-optical-sizing: auto;
+        font-weight: 600;
+        font-size: 44px;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        position: relative;
+        margin: 0;
+        font-family: var(--font-display);
+        font-optical-sizing: auto;
+        font-weight: 700;
+        font-size: 82px;
+        line-height: 0.98;
+        letter-spacing: -0.032em;
+        max-width: 17ch;
+      }
+
+      h1 em {
+        font-style: normal;
+        font-weight: 800;
+        font-variation-settings: var(--wdth-tight);
+        color: var(--accent-500);
+      }
+
+      p {
+        position: relative;
+        margin: 0;
+        max-width: 60ch;
+        font-size: 25px;
+        line-height: 1.5;
+        color: var(--ink-1);
+      }
+
+      .meta {
+        position: relative;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 18px;
+        color: var(--ink-2);
+        letter-spacing: 0.04em;
+      }
+
+      .meta b {
+        color: var(--accent-500);
+        font-weight: 500;
+      }
+
+      .dot {
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+    <div class="grain"></div>
+
+    <div class="brand">
+      <Logo size={52} />
+      <span>{site.name}</span>
+    </div>
+
+    <h1>A music player that respects what’s <em>yours</em>.</h1>
+
+    <p>Open source, lossless, and completely local. Windows, macOS and Linux.</p>
+
+    <div class="meta">
+      <b>FLAC</b><span class="dot">·</span><b>ALAC</b><span class="dot">·</span><b>WAV</b>
+      <span class="dot">·</span><span>no telemetry</span><span class="dot">·</span><span>MIT licensed</span>
+    </div>
+  </body>
+</html>

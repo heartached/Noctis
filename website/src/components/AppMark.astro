@@ -1,0 +1,189 @@
+---
+/**
+ * Real application icons, for the comparison tables and the download cards.
+ *
+ * Two kinds of mark, chosen per vendor by what their CURRENT icon actually is:
+ *
+ * RASTER — the vendor's own shipping icon, squared to 256px by
+ * scripts/fetch-app-icons.mjs and committed to public/logos. Used wherever the
+ * real icon is painted artwork or carries gradients and gloss that a
+ * hand-drawn path would not reproduce but replace:
+ *   musicbee    the bee, from getmusicbee.com's own 256px favicon
+ *   harmonoid   the round mark harmonoid.com serves as its favicon
+ *   strawberry  the 1000px icon from the project's own repo
+ *   linux       Tux, vectorised, rendered at 512dpi
+ *
+ * VECTOR — where the official artwork IS geometry, so a path is sharper than
+ * any raster at any size:
+ *   noctis      the site's own mark, same geometry as Logo.astro
+ *   spotify     the current mark redrawn as geometry — green disc, three
+ *               black waves as round-capped stroked arcs
+ *   applemusic  the current icon redrawn as geometry — the flat gradient
+ *               tile with the upright white beamed note. Replaced the old
+ *               256px raster, which went soft at display sizes
+ *   foobar2000  the mark lifted out of foobar2000.org's OWN foobarlogo.svg —
+ *               its four paths with the wordmark's fifth path dropped, and a
+ *               viewBox measured tight to the artwork
+ *   windows     the four-pane mark in Microsoft's blue
+ *   macos       the Apple mark
+ *
+ * foobar2000 and macOS take currentColor on purpose: both marks are MONOCHROME
+ * BY DESIGN — foobar2000's official logo file contains no colour at all.
+ * Pinning either to black would erase it on the dark theme, and to white would
+ * erase it on the light one.
+ */
+
+/* One line: the Astro compiler hoists `export` out of the frontmatter a line at
+   a time, so a union broken across lines fails the build with "Unexpected |". */
+// prettier-ignore
+export type AppId = 'noctis' | 'foobar2000' | 'musicbee' | 'harmonoid' | 'strawberry' | 'spotify' | 'applemusic' | 'windows' | 'macos' | 'linux';
+
+interface Props {
+  app: AppId;
+  size?: number;
+  class?: string;
+}
+
+const { app, size = 32, class: className } = Astro.props;
+
+/** Vendor icons that ship as artwork rather than as geometry. */
+const RASTER: Partial<Record<AppId, string>> = {
+  musicbee: '/logos/musicbee.webp',
+  harmonoid: '/logos/harmonoid.webp',
+  strawberry: '/logos/strawberry.webp',
+  linux: '/logos/tux.webp',
+};
+
+const raster = RASTER[app];
+
+/** Each vector mark is drawn in its own coordinate space; none are 24x24. */
+const BOX: Partial<Record<AppId, string>> = {
+  noctis: '0 0 2000 2000',
+  foobar2000: '0.49 0.5 8.61 11.65',
+};
+
+const box = BOX[app] ?? '0 0 24 24';
+---
+
+{
+  raster ? (
+    <img
+      class={className}
+      src={raster}
+      width={size}
+      height={size}
+      alt=""
+      loading="lazy"
+      decoding="async"
+    />
+  ) : (
+    <svg
+      class={className}
+      width={size}
+      height={size}
+      viewBox={box}
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {app === 'noctis' && (
+        <>
+          <circle cx="1000" cy="1000" r="1000" fill="#E74856" />
+          <g fill="#fff">
+            <path d="M690 866 L690 593.5 A48 48 0 0 1 728.8 546.4 L1417.5 412.1 A55 55 0 0 1 1462 448.7 L1462 715.6 Z" />
+            <rect x="690" y="560" width="132" height="731" />
+            <rect x="1329" y="410" width="133" height="879" />
+            <ellipse cx="601.5" cy="1291" rx="220" ry="180" />
+            <ellipse cx="1241.5" cy="1289" rx="220.5" ry="180" />
+          </g>
+        </>
+      )}
+
+      {
+        /* Straight out of foobar2000.org/foobarlogo.svg: the original nests the
+           artwork under two transforms and this keeps them, so the paths are
+           byte-for-byte the vendor's own. The wordmark's path is dropped and
+           the viewBox is measured tight to what remains.
+
+           The body takes currentColor. The two eyes and the chevron are the
+           page SURFACE, not the #fff the source file hardcodes — on the dark
+           theme the body is near-white, and white cut-outs would close the
+           face into a solid blob. */
+      }
+      {app === 'foobar2000' && (
+        <g fill="currentColor" stroke="currentColor">
+          <g transform="translate(-109.74 -21.661)">
+            <g transform="matrix(.041327 0 0 .041327 108.67 22.121)">
+              <path
+                transform="translate(5.7342 -45.32)"
+                d="m231.37 130.44c-7.0078-18.035-18.005-47.838-40.321-83.722l-36.909 49.676c-6.6817-1.0272-11.377-1.4552-17.926-1.4552-6.5484 1e-6 -11.244 0.42799-17.926 1.4552l-36.909-49.676c-22.316 35.884-33.314 65.687-40.321 83.722-5.6008 14.81-12.819 47.46-5.424 75.009 10.425 36.954 53.825 90.601 100.58 122.32 46.755-31.721 90.155-85.368 100.58-122.32 7.3953-27.55 0.17684-60.199-5.424-75.009z"
+                stroke-width=".5"
+              />
+              <path
+                d="m56.029 105.96c8.5741-6.5233 29.48 1.8808 47.519 25.506 8.7966 11.473 28.399 44.242 13.652 54.187-17.039 10.459-42.122-7.4842-51.435-22.542-12.993-18.713-19.874-49.434-9.7367-57.15z"
+                fill="var(--surface, #fff)"
+                stroke="none"
+              />
+              <path
+                d="m227.87 105.96c-8.5741-6.5233-29.48 1.8808-47.519 25.506-8.7966 11.473-28.399 44.242-13.652 54.187 17.039 10.459 42.122-7.4842 51.435-22.542 12.993-18.713 19.874-49.434 9.7367-57.15z"
+                fill="var(--surface, #fff)"
+                stroke="none"
+              />
+              <path
+                transform="scale(.26458)"
+                d="m536.5 771.78c-13.826 0.0769-23.332 6.1131-32 15l-94.75 107.5c-6.6594 9.8183-2.1573 12.568 3.416 16.668 9.5605 5.6877 23.522 6.2977 34.25-3.668l89.168-93.832 89 93.832c10.728 9.9657 24.689 9.3556 34.25 3.668 5.5733-4.0996 10.076-6.8496 3.416-16.668l-94.75-107.5c-8.6685-8.8869-18.174-14.923-32-15z"
+                fill="var(--surface, #fff)"
+                stroke="none"
+              />
+            </g>
+          </g>
+        </g>
+      )}
+
+      {app === 'spotify' && (
+        <>
+          <circle cx="12" cy="12" r="12" fill="#1ED760" />
+          <g fill="none" stroke="#121212" stroke-linecap="round">
+            <path stroke-width="2" d="M5.9 9.35c3.7-1.2 8.4-.85 11.9 1.25" />
+            <path stroke-width="1.75" d="M6.45 12.6c3.1-.95 7-.6 9.9 1.15" />
+            <path stroke-width="1.5" d="M6.95 15.7c2.5-.7 5.6-.4 8 1" />
+          </g>
+        </>
+      )}
+
+      {app === 'applemusic' && (
+        <>
+          {/* The id is fine as a constant: this mark renders once per page. */}
+          <defs>
+            <linearGradient id="am-tile" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#FB5C74" />
+              <stop offset="1" stop-color="#FA233B" />
+            </linearGradient>
+          </defs>
+          <rect width="24" height="24" rx="5.4" fill="url(#am-tile)" />
+          <g fill="#fff">
+            <path d="M9.2 6.85a.62.62 0 0 1 .5-.61l7.5-1.53a.52.52 0 0 1 .62.51v2.06a.62.62 0 0 1-.5.61l-7.5 1.53a.52.52 0 0 1-.62-.51Z" />
+            <rect x="9.2" y="6.7" width="1.24" height="9.8" rx="0.3" />
+            <rect x="16.58" y="5.2" width="1.24" height="9.8" rx="0.3" />
+            <ellipse cx="8.05" cy="16.5" rx="2.35" ry="1.8" />
+            <ellipse cx="15.45" cy="15" rx="2.35" ry="1.8" />
+          </g>
+        </>
+      )}
+
+      {app === 'windows' && (
+        <path
+          fill="#00A4EF"
+          d="M3 5.5 10.4 4.5v7.05H3V5.5ZM11.4 4.36 21 3v8.55h-9.6V4.36ZM3 12.55h7.4v7.05L3 18.5v-5.95ZM11.4 12.55H21V21l-9.6-1.36v-7.09Z"
+        />
+      )}
+
+      {app === 'macos' && (
+        <path
+          fill="currentColor"
+          d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.9-1.4-.1-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.7-2.1c.9-1.2 1.2-2.4 1.2-2.4s-2.2-.9-2.2-3.7ZM14.2 5.7c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.2Z"
+        />
+      )}
+    </svg>
+  )
+}

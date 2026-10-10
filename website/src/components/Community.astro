@@ -1,0 +1,208 @@
+---
+import Logo from './Logo.astro';
+import BrandIcon from './BrandIcon.astro';
+import { links } from '../config/site';
+
+/* Resolved at build time; rebuilding rolls it. */
+const year = new Date().getFullYear();
+
+/**
+ * Three link columns over a colophon, under a scatter of noise that marks the
+ * end of the page. Every destination is a live URL from src/config/site.ts.
+ */
+const columns = [
+  {
+    title: 'Noctis',
+    links: [
+      { label: 'Overview', href: '/' },
+      { label: 'Features', href: '/#showcase' },
+      { label: 'Compare', href: '/#compare' },
+      { label: 'Downloads', href: '/#download' },
+      { label: 'Changelog', href: '/changelog' },
+      { label: 'Plugins', href: '/plugins' },
+    ],
+  },
+  {
+    title: 'Support',
+    links: [
+      { label: 'FAQ', href: '/#faq' },
+      { label: 'Join Discord', href: links.discord, external: true },
+      { label: 'Report a bug', href: links.issues, external: true },
+      { label: 'Buy me a coffee', href: links.support, external: true },
+    ],
+  },
+  {
+    title: 'More',
+    links: [
+      { label: 'GitHub', href: links.repo, external: true },
+      { label: 'Releases', href: links.releases, external: true },
+      { label: 'Plugin docs', href: links.pluginDocs, external: true },
+      { label: 'Scoop bucket', href: links.scoopBucket, external: true },
+      { label: 'MIT License', href: links.license, external: true },
+    ],
+  },
+];
+
+const social = [
+  { brand: 'github', href: links.repo, label: 'Noctis on GitHub' },
+  { brand: 'discord', href: links.discord, label: 'Join the Noctis Discord' },
+  { brand: 'buymeacoffee', href: links.support, label: 'Support Noctis on Buy Me a Coffee' },
+] as const;
+---
+
+<footer class="ft">
+  <div class="container">
+    <div class="ft__cols">
+      {columns.map((col) => (
+        <nav class="ft__col" aria-label={col.title}>
+          <h2 class="ft__head">{col.title}</h2>
+          <ul class="ft__list">
+            {col.links.map((item) => (
+              <li>
+                <a
+                  class="ft__link"
+                  href={item.href}
+                  {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))}
+    </div>
+
+    <div class="ft__base">
+      <a class="ft__brand" href="/" aria-label="Noctis — home">
+        <Logo size={22} />
+        <span class="ft__copy">© {year} Noctis · MIT License · Yours truly, heartached.</span>
+      </a>
+      <div class="ft__social">
+        {social.map((item) => (
+          <a
+            class={`ft__icon ft__icon--${item.brand}`}
+            href={item.href}
+            target="_blank"
+            rel="noopener"
+            aria-label={item.label}
+          >
+            <BrandIcon brand={item.brand} />
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .ft {
+    position: relative;
+    padding-block-start: clamp(2.5rem, 4vw, 3.5rem);
+    padding-block-end: calc(var(--s-7) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+  }
+
+  .ft__cols {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-7) var(--s-6);
+    padding-top: var(--s-4);
+    padding-bottom: clamp(2rem, 4vw, 3rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ft__head {
+    margin-bottom: var(--s-4);
+    font-size: var(--step--1);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .ft__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ft__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    text-decoration: none;
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  .ft__link:hover {
+    color: var(--ink-0);
+  }
+
+  /* --- Colophon ------------------------------------------------------------ */
+
+  .ft__base {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4) var(--s-5);
+    padding-top: var(--s-6);
+  }
+
+  .ft__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 40px;
+    text-decoration: none;
+  }
+
+  .ft__copy {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  .ft__social {
+    display: flex;
+    gap: var(--s-3);
+  }
+
+  .ft__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition:
+      color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .ft__icon :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ft__icon:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 10%, transparent);
+  }
+
+  @media (max-width: 640px) {
+    .ft__cols {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .ft__cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

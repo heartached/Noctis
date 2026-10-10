@@ -1,0 +1,11 @@
+# GitHub Pages (heartached.github.io/Noctis) builds this repository root with
+# Jekyll. website/ is the Cloudflare-hosted marketing site — a separate Astro
+# build with its own pipeline in .github/workflows/deploy-website.yml — and has
+# no business being copied into the Jekyll output.
+#
+# Excluding it also keeps Jekyll away from the .astro files. Each one opens
+# with a `---` fence, which Jekyll reads as YAML front matter, and it would
+# then run the file through Liquid; a `{{` or `{%` anywhere in that source
+# would fail the Pages build for a site it should not be touching at all.
+exclude:
+  - website/

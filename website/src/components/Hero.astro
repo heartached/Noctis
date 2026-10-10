@@ -1,0 +1,280 @@
+---
+import Screenshot from './Screenshot.astro';
+import PackageManagers from './PackageManagers.astro';
+import PlatformIcon from './PlatformIcon.astro';
+import { versionLabel, release } from '../lib/release';
+import { assetUrl } from '../lib/release';
+
+/**
+ * Centred poster hero: version badge, two-line headline, lede, a white
+ * download button beside a red text link, a one-line note, then the app
+ * window bleeding off the bottom of the section.
+ *
+ * The primary CTA is rendered once per platform and the non-matching two are
+ * removed by CSS off a `data-os` attribute set before first paint.
+ */
+const ctas = [
+  { os: 'windows', label: 'Windows', href: assetUrl('windowsInstaller') },
+  { os: 'macos', label: 'macOS', href: assetUrl('macosArm') },
+  { os: 'linux', label: 'Linux', href: assetUrl('linuxAppImage') },
+] as const;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container hero__copy">
+    <a
+      class="verpill hero-in"
+      style="--i:0"
+      href={release.latestUrl}
+      target="_blank"
+      rel="noopener"
+      data-release-link
+    >
+      <span class="verpill__dot" aria-hidden="true"></span>
+      <span class="verpill__ver mono" data-release-version>{versionLabel ?? 'Latest'}</span>
+      <span class="verpill__tag">latest release</span>
+      <svg class="verpill__arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </a>
+
+    <h1 class="display hero__title" id="hero-title">
+      <span class="reveal-line" style="--line-i:0"><span>A music player that</span></span>
+      <span class="reveal-line" style="--line-i:1"><span>respects what’s <em>yours</em>.</span></span>
+    </h1>
+
+    <p class="lede hero__lede hero-in" style="--i:1">
+      Noctis plays your lossless library on Windows, macOS and Linux. Gapless playback,
+      synced lyrics and full theming. No account to make, no telemetry to switch off.
+    </p>
+
+    <div class="hero__cta hero-in" style="--i:2">
+      {ctas.map((c) => (
+        <a class="btn btn--primary btn--lg hero__dl" data-os-cta={c.os} href={c.href}>
+          <PlatformIcon os={c.os} />
+          Download for {c.label}
+        </a>
+      ))}
+      <PackageManagers />
+      <a class="link-arrow hero__more" href="#showcase">See the features</a>
+    </div>
+
+    <p class="hero__note hero-in" style="--i:3">
+      Free and open source · Windows, macOS and Linux · No account
+    </p>
+  </div>
+
+  <div class="hero__stage">
+    <div class="hero__window rise">
+      <div class="hero__chrome" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <Screenshot name="home" eager sizes="(min-width: 1280px) 1180px, 100vw" class="hero__shot" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-top: clamp(2.5rem, 7vw, 6rem);
+    overflow: clip;
+  }
+
+  .hero__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* --- Version badge ------------------------------------------------------ */
+
+  .verpill {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    gap: var(--s-2);
+    margin-bottom: var(--s-6);
+    padding: 6px 10px 6px 12px;
+    border: 1px solid color-mix(in srgb, var(--ink-0) 12%, transparent);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--ink-0) 5%, transparent);
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      border-color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .verpill:hover {
+    border-color: color-mix(in srgb, var(--ink-0) 22%, transparent);
+    background: color-mix(in srgb, var(--ink-0) 9%, transparent);
+  }
+
+  .verpill__dot {
+    width: 0.5em;
+    height: 0.5em;
+    flex: none;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+  }
+
+  .verpill__ver {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--ink-0);
+    letter-spacing: -0.01em;
+  }
+
+  .verpill__tag {
+    font-size: var(--step--2);
+    color: var(--ink-2);
+  }
+
+  .verpill__arw {
+    width: 13px;
+    height: 13px;
+    color: var(--ink-2);
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .verpill:hover .verpill__arw {
+      transform: translateX(2px);
+    }
+
+    .verpill__dot {
+      animation: verpill-breathe 2.8s var(--ease) infinite;
+    }
+  }
+
+  @keyframes verpill-breathe {
+    0%,
+    100% {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 6%, transparent);
+    }
+  }
+
+  /* --- Copy --------------------------------------------------------------- */
+
+  .hero__title {
+    max-width: 22ch;
+  }
+
+  .hero__lede {
+    margin-top: var(--s-6);
+    max-width: 48ch;
+  }
+
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-4) var(--s-5);
+    margin-top: var(--s-7);
+  }
+
+  .hero__dl {
+    display: none;
+    --btn-icon: 22px;
+  }
+
+  :global(html:not([data-os])) .hero__dl[data-os-cta='windows'],
+  :global(html[data-os='windows']) .hero__dl[data-os-cta='windows'],
+  :global(html[data-os='macos']) .hero__dl[data-os-cta='macos'],
+  :global(html[data-os='linux']) .hero__dl[data-os-cta='linux'] {
+    display: inline-flex;
+  }
+
+  .hero__more {
+    font-size: 1.05rem;
+  }
+
+  .hero__note {
+    margin-top: var(--s-5);
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+
+  /* --- The window --------------------------------------------------------- */
+
+  .hero__stage {
+    position: relative;
+    max-width: 1180px;
+    margin: clamp(3rem, 6vw, 5rem) auto 0;
+    padding-inline: var(--gutter);
+    perspective: 1600px;
+    /* Bleeds off the bottom: the last quarter fades into the page rather than
+       ending on a hard edge, and the section below sits over the fade. */
+    mask-image: linear-gradient(to bottom, #000 0, #000 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 70%, transparent 100%);
+    margin-bottom: clamp(-6rem, -8vw, -3rem);
+  }
+
+  .hero__window {
+    position: relative;
+    border: 1px solid color-mix(in srgb, var(--ink-0) 12%, transparent);
+    border-radius: 22px;
+    background: var(--bg-1);
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+  }
+
+  .hero__chrome {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px var(--s-4);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+
+  .hero__chrome span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--ink-0) 18%, transparent);
+  }
+
+  .hero__window :global(.hero__shot img) {
+    width: 100%;
+    height: auto;
+  }
+
+  /* --- Responsive --------------------------------------------------------- */
+
+  @media (max-width: 640px) {
+    .hero__title {
+      font-size: clamp(2.5rem, 10vw, 3.4rem);
+    }
+
+    .hero__cta {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+
+    .hero__cta > :global(*) {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .hero__stage {
+      padding-inline: var(--s-3);
+    }
+
+    .hero__window {
+      border-radius: 14px;
+    }
+
+    .verpill__tag {
+      display: none;
+    }
+  }
+</style>

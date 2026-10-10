@@ -1,0 +1,162 @@
+/* ==========================================================================
+   Design tokens
+   Pure black page, white primary action, one red accent for links and marks.
+   Ramp derived from #E74856 in OKLCH — see scripts/accent-ramp.mjs.
+   ========================================================================== */
+
+:root {
+  /* --- Accent ------------------------------------------------------------ */
+  --accent-hue: 19.93;
+  --accent-chroma: 0.1947;
+
+  --accent-50: oklch(0.96 0.03 var(--accent-hue));
+  --accent-100: oklch(0.9 0.06 var(--accent-hue));
+  --accent-300: oklch(0.76 0.14 var(--accent-hue));
+  --accent-500: #e74856; /* canonical brand */
+  --accent-600: oklch(0.56 var(--accent-chroma) var(--accent-hue));
+  --accent-700: oklch(0.46 var(--accent-chroma) var(--accent-hue));
+  --accent-glow: oklch(0.6304 var(--accent-chroma) var(--accent-hue) / 0.35);
+
+  /* Accent at a value that clears 4.5:1 on the current page background.
+     Overridden per theme — never use --accent-500 for small text. */
+  --accent-text: var(--accent-500);
+  --on-accent: #fff;
+
+  /* --- Type ---------------------------------------------------------------
+     One family for everything. Hanken Grotesk at 700 with tight tracking
+     sets the headlines; the same face at 400 sets the body. JetBrains Mono
+     carries versions, commands and labels. */
+  --font-display: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --step-display: clamp(2.9rem, 7.4vw, 6.4rem);
+  --step-3: clamp(2.3rem, 5vw, 4.1rem);
+  --step-2: clamp(1.7rem, 2.8vw, 2.4rem);
+  --step-1: clamp(1.2rem, 1.5vw, 1.45rem);
+  --step-0: clamp(1.02rem, 0.4vw + 0.92rem, 1.18rem);
+  --step--1: 0.875rem;
+  --step--2: 0.78rem;
+
+  /* --- Space ------------------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+  --s-11: 160px;
+
+  --section-pad: clamp(2.5rem, 4.5vw, 4rem);
+  --gutter: clamp(1.25rem, 4vw, 2.5rem);
+  --max-w: 1200px;
+  --max-prose: 68ch;
+  /* Floating pill (56px) plus its 16px offset from the top edge. */
+  --header-h: 88px;
+
+  /* --- Shape ------------------------------------------------------------- */
+  --r-pill: 999px;
+  --r-card: 28px;
+  --r-nested: 18px;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-instant: 120ms;
+  --t-fast: 180ms;
+  --t-base: 240ms;
+  --t-slow: 520ms;
+}
+
+/* ==========================================================================
+   Dark theme — the default
+   ========================================================================== */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-0: #000000;
+  --bg-1: #0e0e10;
+  --bg-2: #161618;
+  --line: #222225;
+
+  --ink-0: #ffffff;
+  --ink-1: #a1a1a6;
+  --ink-2: #7d7d83;
+
+  --accent-text: var(--accent-500);
+  --ok: #3fb950;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 14px 40px -14px rgb(0 0 0 / 0.8);
+  --shadow-window: 0 2px 8px rgb(0 0 0 / 0.5), 0 50px 120px -30px rgb(0 0 0 / 0.95);
+}
+
+/* ==========================================================================
+   Light theme
+   ========================================================================== */
+
+:root {
+  --l-bg-0: #ffffff;
+  --l-bg-1: #f5f5f7;
+  --l-bg-2: #ebebee;
+  --l-line: #e0e0e4;
+
+  --l-ink-0: #0a0a0a;
+  --l-ink-1: #55555c;
+  --l-ink-2: #75757c;
+
+  --l-ok: #1a7f37;
+
+  --l-shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 40px -16px rgb(0 0 0 / 0.16);
+  --l-shadow-window: 0 2px 8px rgb(0 0 0 / 0.06), 0 50px 120px -34px rgb(0 0 0 / 0.3);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-0: var(--l-bg-0);
+  --bg-1: var(--l-bg-1);
+  --bg-2: var(--l-bg-2);
+  --line: var(--l-line);
+
+  --ink-0: var(--l-ink-0);
+  --ink-1: var(--l-ink-1);
+  --ink-2: var(--l-ink-2);
+  --ok: var(--l-ok);
+
+  --accent-text: var(--accent-600);
+
+  --shadow-card: var(--l-shadow-card);
+  --shadow-window: var(--l-shadow-window);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    --bg-0: var(--l-bg-0);
+    --bg-1: var(--l-bg-1);
+    --bg-2: var(--l-bg-2);
+    --line: var(--l-line);
+
+    --ink-0: var(--l-ink-0);
+    --ink-1: var(--l-ink-1);
+    --ink-2: var(--l-ink-2);
+    --ok: var(--l-ok);
+
+    --accent-text: var(--accent-600);
+
+    --shadow-card: var(--l-shadow-card);
+    --shadow-window: var(--l-shadow-window);
+  }
+}
+
+/* Every section sits on the page colour now — no tinted bands. */
+:root {
+  --surface: var(--bg-0);
+}

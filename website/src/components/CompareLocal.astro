@@ -1,0 +1,109 @@
+---
+import CompareTable from './CompareTable.astro';
+import type { Group } from './CompareTable.astro';
+
+/**
+ * Noctis against four other local players.
+ *
+ * Every competitor cell is verified against that project's own site, docs or
+ * repository — never a forum post or a listicle. Rows whose cells could not be
+ * confirmed from an authoritative source are not in the table at all.
+ *
+ * The table is a capability comparison, not a scorecard: it lists what each
+ * player ships, and the qualifiers on the shortened values are load-bearing.
+ * Do not soften a `t(...)` title to make a cell look better than it is — the
+ * titles are the reason the table is credible.
+ */
+const columns = [
+  { name: 'Noctis', highlight: true, app: 'noctis' as const },
+  { name: 'foobar2000', app: 'foobar2000' as const },
+  { name: 'MusicBee', app: 'musicbee' as const },
+  { name: 'Harmonoid', app: 'harmonoid' as const },
+  { name: 'Strawberry', app: 'strawberry' as const },
+];
+
+const t = (text: string, title: string) => ({ text, title });
+
+const PLUGIN = (who: string) =>
+  t('plugin', `Not built in — provided by a third-party plugin for ${who}.`);
+
+const groups: Group[] = [
+  {
+    heading: 'Reach and licence',
+    rows: [
+      {
+        label: 'Runs on all three desktops',
+        values: [
+          true,
+          t('Win + Mac', 'foobar2000 has no native Linux build; Linux use means Wine.'),
+          t('Windows', 'MusicBee is Windows-only and the project calls a port unlikely.'),
+          true,
+          t(
+            'sponsor build',
+            'Strawberry supports all three, but prebuilt Windows and macOS binaries are available to sponsors at $7/month. Linux builds are free.'
+          ),
+        ],
+      },
+      {
+        label: 'Licence',
+        values: [
+          t('MIT', 'OSI-approved permissive licence.'),
+          t('freeware', 'Binary-only freeware under its own licence, not open source.'),
+          t('freeware', 'Closed source. The project FAQ answers "Is MusicBee open source? No".'),
+          t('PolyForm', 'PolyForm Strict 1.0.0 — source-available, but not an OSI-approved open source licence.'),
+          t('GPL-3.0', 'OSI-approved copyleft licence.'),
+        ],
+      },
+      { label: 'Native app, not Electron', values: [true, true, true, true, true] },
+    ],
+  },
+  {
+    heading: 'What ships built in',
+    rows: [
+      {
+        label: 'Artwork carousel browsing',
+        values: [true, PLUGIN('foobar2000, and that plugin is unmaintained since 2020'), PLUGIN('MusicBee'), false, false],
+      },
+      { label: 'Discord Rich Presence', values: [true, PLUGIN('foobar2000'), PLUGIN('MusicBee'), true, true] },
+      {
+        label: 'Theme editor, any accent colour',
+        values: [
+          true,
+          t('partial', 'Per-element colour overrides and theme files, but no propagating accent colour.'),
+          t('skin files', 'No in-app editor — theming means hand-authoring skin XML.'),
+          false,
+          true,
+        ],
+      },
+      {
+        label: 'In-app self-update',
+        values: [
+          true,
+          t('components', 'Updates its components in-app, not the application itself.'),
+          false,
+          false,
+          t('macOS only', 'Self-update ships on macOS builds only.'),
+        ],
+      },
+    ],
+  },
+  {
+    heading: 'Even footing',
+    rows: [
+      { label: 'ReplayGain', values: [true, true, true, true, true] },
+      { label: 'Gapless playback', values: [true, true, true, true, true] },
+    ],
+  },
+];
+---
+
+{/* No heading — the section's segmented control already names this panel.
+    The table's caption keeps the full comparison named for screen readers. */}
+<div class="cl" data-reveal>
+  <CompareTable
+    id="cmp-local"
+    caption="Noctis compared with foobar2000, MusicBee, Harmonoid and Strawberry"
+    columns={columns}
+    groups={groups}
+  />
+</div>

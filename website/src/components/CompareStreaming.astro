@@ -1,0 +1,118 @@
+---
+import CompareTable from './CompareTable.astro';
+import type { Group } from './CompareTable.astro';
+
+/**
+ * What a local player does that a streaming service cannot.
+ *
+ * Every row below is fact-checked. Deliberately absent, because both services
+ * also have them and claiming otherwise would be false: lossless audio, gapless
+ * playback, crossfade, volume normalisation, and synced lyrics. Do not add them
+ * back as wins.
+ *
+ * Also removed after source verification: a "self-hosted source" row. Noctis
+ * ships Navidrome/SMB/WebDAV connectors, but no shipped UI can create a source
+ * connection, so it is not a capability a user can actually use today.
+ *
+ * Competitor cells re-checked July 2026: Spotify's equaliser is no longer
+ * mobile-only (it rolled out to desktop), and its Local Files FLAC behaviour
+ * is "plays on desktop, unofficial, no mobile sync" — both titles say so.
+ */
+const columns = [
+  { name: 'Noctis', sub: 'Free', highlight: true, app: 'noctis' as const },
+  { name: 'Spotify', sub: 'Premium', app: 'spotify' as const },
+  { name: 'Apple Music', sub: 'Subscription', app: 'applemusic' as const },
+];
+
+const groups: Group[] = [
+  {
+    heading: 'Ownership',
+    rows: [
+      { label: 'Works with no subscription', values: [true, false, false] },
+      { label: 'No account required', values: [true, false, false] },
+      { label: 'No telemetry or analytics', values: [true, false, false] },
+      {
+        label: 'Plays FLAC files you own',
+        values: [
+          true,
+          {
+            text: 'partial',
+            title:
+              'FLAC added via Local Files usually plays on the desktop app, but FLAC is not an officially supported format and does not sync to the mobile apps.',
+          },
+          false,
+        ],
+      },
+      { label: 'Nothing can be delisted or swapped', values: [true, false, false] },
+      { label: 'Offline forever, no re-auth check-in', values: [true, false, false] },
+      { label: 'Open source, MIT', values: [true, false, false] },
+    ],
+  },
+  {
+    heading: 'Your library, your rules',
+    rows: [
+      { label: 'Edit metadata tags', values: [true, false, false] },
+      { label: 'Embed your own artwork', values: [true, false, false] },
+      { label: 'Bring your own lyrics files', values: [true, false, false] },
+      { label: 'Folder-based browsing', values: [true, false, false] },
+      {
+        label: 'Parametric EQ with presets',
+        values: [
+          true,
+          {
+            text: 'basic',
+            title:
+              'Spotify ships a fixed-band graphic equaliser with presets on mobile and desktop, with no per-band frequency or Q control.',
+          },
+          {
+            text: 'basic',
+            title:
+              'Apple Music offers a fixed 10-band graphic EQ with presets — in-app on Mac, system settings on iOS — with no frequency or Q control.',
+          },
+        ],
+      },
+      {
+        label: 'Always-on listening stats',
+        values: [
+          true,
+          { text: 'annual recap', title: 'Spotify Wrapped is published once a year.' },
+          { text: 'annual recap', title: 'Apple Music Replay is published once a year.' },
+        ],
+      },
+      { label: 'Cover Flow browsing', values: [true, false, false] },
+      { label: 'Full theme editor, any accent colour', values: [true, false, false] },
+    ],
+  },
+  {
+    heading: 'Integrations',
+    rows: [
+      { label: 'Last.fm scrobbling', values: [true, true, false] },
+      {
+        label: 'ListenBrainz scrobbling',
+        values: [
+          true,
+          {
+            text: 'account link',
+            title:
+              'Nothing in the Spotify app itself — ListenBrainz can link a Spotify account on its own site and import listens automatically.',
+          },
+          false,
+        ],
+      },
+      { label: 'Discord Rich Presence', values: [true, true, false] },
+    ],
+  },
+];
+
+---
+
+{/* No heading — the section's segmented control already names this panel.
+    The table's caption keeps the full comparison named for screen readers. */}
+<div class="cs" data-reveal>
+  <CompareTable
+    id="cmp-streaming"
+    caption="Noctis compared with Spotify Premium and Apple Music"
+    columns={columns}
+    groups={groups}
+  />
+</div>

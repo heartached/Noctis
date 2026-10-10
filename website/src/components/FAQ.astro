@@ -1,0 +1,164 @@
+---
+import { links } from '../config/site';
+
+/**
+ * Native <details> accordion — keyboard, screen readers and no-JS all work
+ * without a script. Every answer traces to src/data/verified-claims.md.
+ */
+const faqs = [
+  {
+    q: 'What is Noctis?',
+    a: 'An open source music player for your own files. It runs on Windows, macOS and Linux, is built in C# with Avalonia rather than Electron, and plays lossless and lossy formats through LibVLC.',
+  },
+  {
+    q: 'Which formats does it play?',
+    a: 'Thirteen: FLAC, ALAC, WAV, AIFF, APE, WavPack, MP3, AAC, M4A, MP4, OGG, Opus and WMA. Bit depth and sample rate are shown per file, with a Hi-Res Lossless badge for 24-bit files above 48 kHz.',
+  },
+  {
+    q: 'Is it really free?',
+    a: 'Yes. Noctis is MIT-licensed, every feature is included, and there is no paid tier, trial or account. If it earns its keep you can buy the developer a coffee.',
+  },
+  {
+    q: 'Does it track me?',
+    a: 'No telemetry, no analytics, no crash reporting, no ads. The app does contact GitHub to check for updates and Deezer to fetch artist portraits; nothing about your listening leaves your machine.',
+  },
+  {
+    q: 'Does it play gapless?',
+    a: 'Gapless is on by default. Crossfade runs from 1 to 12 seconds, and AutoMix can time the blend using BPM and key when the tags carry them. ReplayGain has Track, Album and Auto modes with a built-in scanner.',
+  },
+  {
+    q: 'Where do the lyrics come from?',
+    a: 'From LRCLIB and NetEase, cached offline once fetched, or from .lrc, .lyricsfile and .ttml files beside your music. Lines light up as they are sung, and individual words do when the source carries word timing.',
+  },
+  {
+    q: 'Can I change how it looks?',
+    a: 'Five built-in themes — Dark, Gray, Midnight, Light and System — plus an accent colour picker and a custom theme editor for when none of them fit.',
+  },
+  {
+    q: 'How do I install it?',
+    a: 'Download the build for your platform from GitHub Releases, or on Windows use winget, Scoop or Chocolatey. Noctis checks for new versions itself and links you to the update.',
+  },
+];
+---
+
+<section class="section faq" id="faq" aria-labelledby="faq-title">
+  <div class="container">
+    <header class="sec-head" data-reveal>
+      <h2 class="h2" id="faq-title">Questions, answered.</h2>
+    </header>
+
+    <div class="faq__list" data-reveal>
+      {faqs.map((f) => (
+        <details class="faq__item" name="faq">
+          <summary class="faq__q">
+            <span>{f.q}</span>
+            <span class="faq__plus" aria-hidden="true"></span>
+          </summary>
+          <p class="faq__a">{f.a}</p>
+        </details>
+      ))}
+    </div>
+
+    <p class="faq__more" data-reveal>
+      <a class="link-arrow" href={links.issues} target="_blank" rel="noopener">
+        Ask something else on GitHub
+      </a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .faq__list {
+    max-width: 46rem;
+    margin-inline: auto;
+    border-top: 1px solid var(--line);
+  }
+
+  .faq__item {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .faq__q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    padding-block: clamp(1.1rem, 2vw, 1.5rem);
+    font-size: var(--step-0);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    list-style: none;
+    cursor: pointer;
+    color: var(--ink-0);
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  .faq__q::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__q:hover {
+    color: var(--ink-1);
+  }
+
+  /* A plus that turns into a minus. */
+  .faq__plus {
+    position: relative;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--ink-2);
+  }
+
+  .faq__plus::before,
+  .faq__plus::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background: currentColor;
+    border-radius: 1px;
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  .faq__plus::before {
+    width: 14px;
+    height: 1.5px;
+  }
+
+  .faq__plus::after {
+    width: 1.5px;
+    height: 14px;
+  }
+
+  .faq__item[open] .faq__plus::after {
+    transform: rotate(90deg);
+  }
+
+  .faq__a {
+    max-width: 60ch;
+    padding-bottom: clamp(1.1rem, 2vw, 1.5rem);
+    color: var(--ink-1);
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .faq__item[open] .faq__a {
+      animation: faq-in var(--t-base) var(--ease);
+    }
+  }
+
+  @keyframes faq-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  .faq__more {
+    display: flex;
+    justify-content: center;
+    margin-top: clamp(2rem, 4vw, 3rem);
+  }
+</style>
