@@ -37,6 +37,8 @@ internal static class ExtendedTagIO
     // e.g. "album; soundtrack" — we pick the most specific token).
     private const string ReleaseTypeKey = "RELEASETYPE";
     private const string MusicBrainzAlbumTypeKey = "MUSICBRAINZ_ALBUM_TYPE";
+    // Picard's ID3 name for the same field: TXXX "MusicBrainz Album Type" (GitHub #122).
+    private const string PicardId3AlbumTypeDescription = "MusicBrainz Album Type";
     private const string NoctisReleaseTypeOverrideKey = "NOCTIS_RELEASETYPE";
 
     // Apple MP4 atom names (4 chars including the © sign).
@@ -364,6 +366,7 @@ internal static class ExtendedTagIO
     /// 1. NOCTIS_RELEASETYPE (user override)
     /// 2. RELEASETYPE (mp3tag/foobar2000 convention)
     /// 3. MUSICBRAINZ_ALBUM_TYPE (Picard, may be multi-valued)
+    /// 4. ID3 TXXX "MusicBrainz Album Type" (Picard's MP3 name for 3)
     /// Returns null if none of the tags are set, so callers can fall back to
     /// album-name heuristics or track-count heuristics.
     /// </summary>
@@ -385,6 +388,18 @@ internal static class ExtendedTagIO
         var mb = ReadCustomStringValues(file, MusicBrainzAlbumTypeKey);
         if (!string.IsNullOrWhiteSpace(mb) && TryParseReleaseTypeList(mb, out var parsedMb))
             return parsedMb;
+
+        // Picard tags MP3s with TXXX "MusicBrainz Album Type", which neither key above
+        // matched, so a Picard-tagged MP3 live album or compilation fell back to the
+        // track-count heuristic (GitHub #122, 2026-10-10). Matched case-insensitively.
+        if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+        {
+            var frame = id3.GetFrames<UserTextInformationFrame>().FirstOrDefault(f =>
+                string.Equals(f.Description, PicardId3AlbumTypeDescription, StringComparison.OrdinalIgnoreCase));
+            var picard = frame == null ? null : string.Join("; ", frame.Text.Where(t => !string.IsNullOrWhiteSpace(t)));
+            if (!string.IsNullOrWhiteSpace(picard) && TryParseReleaseTypeList(picard, out var parsedPicard))
+                return parsedPicard;
+        }
 
         return null;
     }
