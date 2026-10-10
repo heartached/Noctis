@@ -642,8 +642,8 @@ public class ContextMenuV2ViewsTests
             Assert.Contains(MenuV2.MenuClass, menu.Classes);
 
             string?[] Visible() => menu.Items.OfType<MenuItem>().Where(i => i.IsVisible).Select(i => i.Header as string).ToArray();
-            // Not a favourite, no picture: Set as Favorite, Choose, Find; no Remove Picture.
-            Assert.Equal(new[] { Loc.T("LibraryArtists.SetAsFavorite"), Loc.T("LibraryArtists.ChooseFromFile"), Loc.T("LibraryArtists.FindPictureOnline") }, Visible());
+            // Not a favourite, no picture: Set as Favorite, Snooze, Choose, Find; no Remove Picture.
+            Assert.Equal(new[] { Loc.T("LibraryArtists.SetAsFavorite"), Loc.T("Menu.Snooze"), Loc.T("LibraryArtists.ChooseFromFile"), Loc.T("LibraryArtists.FindPictureOnline") }, Visible());
             Assert.All(menu.Items.OfType<MenuItem>().Where(i => i.IsVisible), i =>
             {
                 Assert.NotNull(i.Command);
@@ -658,7 +658,7 @@ public class ContextMenuV2ViewsTests
             RightClick(drake);
             Assert.Same(menu, drake.ContextMenu);
             Assert.Null(plain.ContextMenu);
-            Assert.Equal(new[] { Loc.T("LibraryArtists.RemoveFromFavorites"), Loc.T("LibraryArtists.ChooseFromFile"),
+            Assert.Equal(new[] { Loc.T("LibraryArtists.RemoveFromFavorites"), Loc.T("Menu.Snooze"), Loc.T("LibraryArtists.ChooseFromFile"),
                 Loc.T("LibraryArtists.FindPictureOnline"), Loc.T("LibraryArtists.RemovePicture") }, Visible());
             Assert.All(menu.Items.OfType<MenuItem>().Where(i => i.IsVisible), i => Assert.Same(artists[1], i.CommandParameter));
             Assert.Contains("mv2-fav", MenuV2.IconPath(menu.Items.OfType<MenuItem>().First(i => i.IsVisible).Icon)!.Classes);

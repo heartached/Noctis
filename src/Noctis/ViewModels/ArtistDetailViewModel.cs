@@ -917,17 +917,26 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>Every track the artist is on: releases newest-first in album order, then
     /// feature appearances; de-duplicated.</summary>
-    internal List<Track> GetAllTracks()
+    internal List<Track> GetAllTracks() => PlayableTracks(_allReleases, _allSongs);
+
+    /// <summary>The tracks an artist page plays: each release's tracks in disc/track order, then the
+    /// songs credited to the artist, de-duplicated. Shared with the Artists page's snooze.</summary>
+    internal static List<Track> PlayableTracks(IEnumerable<Album> releases, IEnumerable<Track> songs)
     {
         var tracks = new List<Track>();
         var seen = new HashSet<Guid>();
-        foreach (var album in _allReleases)
+        foreach (var album in releases)
             foreach (var t in album.Tracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber))
                 if (seen.Add(t.Id)) tracks.Add(t);
-        foreach (var t in _allSongs)
+        foreach (var t in songs)
             if (seen.Add(t.Id)) tracks.Add(t);
         return tracks;
     }
+
+    /// <summary>Artist header menu: snoozes every track the page plays for a month.</summary>
+    [RelayCommand]
+    private Task SnoozeArtistForMonth() =>
+        _library.SetTracksSnoozedAsync(GetAllTracks(), DateTime.UtcNow.AddDays(PlayerViewModel.SnoozeDurationDays));
 
     [RelayCommand]
     private void PlayAll()

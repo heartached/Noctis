@@ -26,6 +26,8 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
+    /// <summary>Snooze every track of the album for a month (optional; hidden unless Bind gets a command).</summary>
+    public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
@@ -100,6 +102,9 @@ public sealed class AlbumContextMenuBuilder
             Foreground = new SolidColorBrush(Color.Parse("#E74856"))
         };
         items.Add(Unfavorite);
+
+        SnoozeForMonth = MenuV2.Row(resourceHost, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
+        items.Add(SnoozeForMonth);
 
         Metadata = new MenuItem { Header = "Metadata" };
         Metadata.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
@@ -182,6 +187,9 @@ public sealed class AlbumContextMenuBuilder
         Unfavorite = MenuV2.Row(host, Loc.T("LibraryAlbums.RemoveFromFavorites"), "MenuLineHeart");
         MenuV2.IconPath(Unfavorite.Icon)?.Classes.Add("mv2-fav");
         items.Add(Unfavorite);
+        // Same row and icon as the track menu's Snooze (TrackContextMenuBuilder.BuildV2).
+        SnoozeForMonth = MenuV2.Row(host, Loc.T("Menu.Snooze"), "MenuLineSnooze", visible: false);
+        items.Add(SnoozeForMonth);
 
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
@@ -238,7 +246,8 @@ public sealed class AlbumContextMenuBuilder
         ICommand? editDescriptionCommand = null,
         ICommand? convertCommand = null,
         ICommand? scanReplayGainCommand = null,
-        ICommand? searchLyricsCommand = null)
+        ICommand? searchLyricsCommand = null,
+        ICommand? snoozeCommand = null)
     {
         Menu.DataContext = album;
 
@@ -278,6 +287,7 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(Convert, convertCommand, album);
         BindOptional(ScanReplayGain, scanReplayGainCommand, album);
         BindOptional(SearchLyrics, searchLyricsCommand, album);
+        BindOptional(SnoozeForMonth, snoozeCommand, album);
 
         ShowFolder.Command = showInExplorerCommand;
         ShowFolder.CommandParameter = album;

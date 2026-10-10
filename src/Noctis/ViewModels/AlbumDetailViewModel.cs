@@ -917,6 +917,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
+    [RelayCommand]
+    private void SnoozeRelatedAlbumForMonth(Album album) => _player.SnoozeAlbumForMonthCommand.Execute(album);
+
     /// <summary>Star click on a row or Rate ▸ in its menu. Rates the whole Ctrl-selection when
     /// the row is in it, like the Songs and playlist pages (it used to rate the one row).</summary>
     public Task RateAsync(Track track, int stars) => _library.SetTracksRatingAsync(SelectionOr(track), stars);
