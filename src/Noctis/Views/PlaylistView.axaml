@@ -56,17 +56,6 @@
         <Style Selector="Button.neutral-desc-btn:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
-        <!-- Bare glyph button (hero star): the artist page's header-icon-btn, no hover box or zoom. -->
-        <Style Selector="Button.header-icon-btn:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
-        <Style Selector="Button.header-icon-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.header-icon-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Opacity" Value="0.7" />
-        </Style>
         <!-- Glass pill buttons (Shuffle / options) — visible against the theme bg -->
         <Style Selector="Button.glass-pill">
             <Setter Property="Background" Value="{DynamicResource GlassPillBackground}" />
@@ -568,26 +557,8 @@
                                 <TextBlock Text="{loc:T Playlist.ShuffleTip}" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
                             </StackPanel>
                         </Button>
-                        <!-- Star in sidebar (09-14): mirrors the tile menu's Star/Unstar. -->
-                        <!-- Bare star, the artist page's favourite star exactly: no pill, zooms in
-                             on star and out on unstar with the colour crossfading (HeartIcon). -->
-                        <Button Classes="header-icon-btn"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="0"
-                                Width="34" Height="34"
-                                VerticalAlignment="Center"
-                                Cursor="Hand"
-                                Command="{Binding TogglePinCommand}"
-                                ToolTip.Tip="{Binding StarTip}">
-                            <controls:HeartIcon IsFavorite="{Binding IsPinned}"
-                                                Glyph="{StaticResource StarIcon}"
-                                                Size="18"
-                                                OnBrush="{DynamicResource AccentColorBrush}"
-                                                OffOpacity="0.7"
-                                                OutlineWhenOff="False"
-                                                ZoomOnToggle="True" />
-                        </Button>
+                        <!-- No star here (owner 10-09): starring lives in the Edit Playlist pop-up
+                             ("Star — keep at the top of the sidebar") and the playlist tile menu. -->
                         <Button Classes="glass-pill"
                                 Width="42" Height="34"
                                 Padding="0"
