@@ -10,6 +10,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Localization;
 using Noctis.Models;
@@ -86,6 +87,47 @@ public static class MenuV2
         var item = new MenuItem { Header = header, IsVisible = visible };
         if (iconKey != null) item.Icon = LineIcon(host, iconKey);
         return item;
+    }
+
+    /// <summary>Size of the round artist picture in a View Artist ▸ row.</summary>
+    public const double AvatarSize = 20;
+
+    /// <summary>
+    /// A round artist picture for a row's icon slot: the Artists page's placeholder (person
+    /// glyph on the artwork-placeholder circle) with a <see cref="CachedImage"/> over it, which
+    /// shows once the caller sets its <see cref="CachedImage.SourcePath"/>.
+    ///
+    /// The Fluent template's icon slot is a fixed 16×16 box (a Viewbox inside a ContentControl,
+    /// both clipping) that would shrink a 20px picture to 16. So the picture measures as 16 (a
+    /// -2 margin all round) and draws 2px past the slot on each side, with the clip lifted on
+    /// the slot's parts once it is attached: same centre line as the line icons, and the name
+    /// starts where every other row's label does.
+    /// </summary>
+    public static Border ArtistAvatar(out CachedImage photo)
+    {
+        var glyph = new Path { Stretch = Stretch.Uniform, Height = 11, Opacity = 0.35,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        if (Application.Current?.TryGetResource("ArtistsIcon", null, out var data) == true && data is Geometry g)
+            glyph.Data = g;
+        glyph[!Shape.FillProperty] = glyph.GetResourceObservable("SystemControlForegroundBaseHighBrush").ToBinding();
+        photo = new CachedImage { Stretch = Stretch.UniformToFill, Width = AvatarSize, Height = AvatarSize, IsVisible = false };
+        var panel = new Panel();
+        panel.Children.Add(glyph);
+        panel.Children.Add(photo);
+        var circle = new Border
+        {
+            Width = AvatarSize, Height = AvatarSize, CornerRadius = new CornerRadius(AvatarSize / 2),
+            ClipToBounds = true, Child = panel, Margin = new Thickness(-(AvatarSize - 16) / 2),
+        };
+        circle[!Border.BackgroundProperty] = circle.GetResourceObservable("ArtworkPlaceholderBackground").ToBinding();
+        circle.Classes.Add("mv2-avatar");
+        circle.AttachedToVisualTree += (_, _) =>
+        {
+            // Local values outrank the template's ClipToBounds; stops at the row.
+            foreach (var part in circle.GetVisualAncestors().OfType<Control>().TakeWhile(c => c is not MenuItem))
+                part.ClipToBounds = false;
+        };
+        return circle;
     }
 
     /// <summary>

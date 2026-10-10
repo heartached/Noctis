@@ -699,6 +699,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         TopArtists.ReplaceAll(artists);
     }
 
+    /// <summary>
+    /// The portrait the Artists page cached for a credited artist name, or null (the menu
+    /// shows the placeholder). Cache files only, never a download; safe off the UI thread
+    /// (the track menus' View Artist ▸ calls it from a worker).
+    /// </summary>
+    internal string? CachedArtistPhoto(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var trimmed = name.Trim();
+        var artist = _library.Artists.FirstOrDefault(a => string.Equals(a.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+                     ?? new Artist { Id = ComputeArtistId(trimmed), Name = trimmed };
+        return StatisticsViewModel.CachedArtistPhoto(artist, _artistImages);
+    }
+
     private static Guid ComputeArtistId(string artistName)
     {
         var hash = System.Security.Cryptography.MD5.HashData(

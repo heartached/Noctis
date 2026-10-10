@@ -125,12 +125,14 @@ public partial class HomeView : UserControl
         vm.PlayChartRowCommand.Execute(item);
     }
 
+    // Most Played / Last Played show artist pictures in View Artist ▸ (owner 10-09); the
+    // rails below keep plain names for now.
     private void OnChartRowContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (IsLastPlayedRow(sender as Control))
-            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand);
+            OpenTrackMenu(sender, e, static vm => vm.PlayLastPlayedCommand, static vm => vm.ShuffleLastPlayedCommand, artistPhotos: true);
         else
-            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand);
+            OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand, artistPhotos: true);
     }
 
 
@@ -144,14 +146,16 @@ public partial class HomeView : UserControl
         => OpenTrackMenu(sender, e, static vm => vm.PlayRediscoveredCommand, static vm => vm.ShuffleRediscoveredCommand);
 
     private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
+        bool artistPhotos = false)
     {
-        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand))
+        if (OpenTrackMenu(sender as Control, playCommand, shuffleCommand, artistPhotos))
             e.Handled = true;
     }
 
     private bool OpenTrackMenu(Control? owner,
-        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand,
+        bool artistPhotos)
     {
         if (owner == null) return false;
         // Top-song rows wrap their Track in a TopSongRow for rank/bar display.
@@ -189,7 +193,8 @@ public partial class HomeView : UserControl
             startRadioCommand: vm.StartRadioCommand,
             snoozeCommand: vm.SnoozeForMonthCommand,
             viewAlbumCommand: vm.ViewAlbumFromTrackCommand,
-            viewArtistCommand: vm.ViewArtistCommand);
+            viewArtistCommand: vm.ViewArtistCommand,
+            artistPhotoSource: artistPhotos ? vm.CachedArtistPhoto : null);
 
         OpenMenu(_trackMenuBuilder.Menu, owner);
         return true;

@@ -8,8 +8,10 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Controls;
 using Noctis.Converters;
 using Noctis.Localization;
 using Noctis.Models;
@@ -438,13 +440,15 @@ public sealed class TrackContextMenuBuilder
         ICommand? badgeCommand = null,
         IReadOnlyList<string>? badgeNames = null,
         ICommand? viewAlbumCommand = null,
-        ICommand? viewArtistCommand = null)
+        ICommand? viewArtistCommand = null,
+        Func<string, string?>? artistPhotoSource = null)
     {
         Menu.DataContext = track;
 
-        // View Album / View Artist (optional).
+        // View Album / View Artist (optional). A photo source (opt-in, per open) puts each
+        // artist's round picture beside their name in View Artist ▸.
         BindViewAlbum(track, viewAlbumCommand);
-        BindViewArtist(track, viewArtistCommand);
+        BindViewArtist(track, viewArtistCommand, artistPhotoSource);
         _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible;
 
         // Badge ▸ (optional). Rebuilt per bind: the names come from what the library holds now.
@@ -670,19 +674,69 @@ public sealed class TrackContextMenuBuilder
 
     /// <summary>
     /// One credited artist opens directly; several become a submenu with one entry per
-    /// name, like the album and lyrics pages' per-artist links.
+    /// name, like the album and lyrics pages' per-artist links. With a photo source each
+    /// entry also gets the artist's round picture (placeholder until the lookup lands).
     /// </summary>
-    private void BindViewArtist(Track track, ICommand? command)
+    private void BindViewArtist(Track track, ICommand? command, Func<string, string?>? artistPhotoSource)
     {
         ViewArtist.Items.Clear();
+        var generation = ++_artistAvatarGeneration;
+        ArtistAvatarsLoaded = Task.CompletedTask;
         var names = command != null ? CreditedArtists(track) : Array.Empty<string>();
         ViewArtist.IsVisible = names.Count > 0;
         var single = names.Count == 1;
         ViewArtist.Command = single ? command : null;
         ViewArtist.CommandParameter = single ? names[0] : null;
         if (names.Count < 2) return;
-        foreach (var name in names)
-            ViewArtist.Items.Add(new MenuItem { Header = name, Command = command, CommandParameter = name });
+        var photos = artistPhotoSource != null ? new CachedImage[names.Count] : null;
+        for (var i = 0; i < names.Count; i++)
+        {
+            var item = new MenuItem { Header = names[i], Command = command, CommandParameter = names[i] };
+            if (photos != null)
+                item.Icon = MenuV2.ArtistAvatar(out photos[i]);
+            ViewArtist.Items.Add(item);
+        }
+        if (photos != null)
+            ArtistAvatarsLoaded = LoadArtistAvatarsAsync(generation, names, photos, artistPhotoSource!);
+    }
+
+    /// <summary>Bumped on every Bind, so a lookup still running for the previous track drops its result.</summary>
+    private int _artistAvatarGeneration;
+
+    /// <summary>The current Bind's artist-picture lookup (tests await it).</summary>
+    internal Task ArtistAvatarsLoaded { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// Looks the pictures up off the UI thread (cache files only: the source never downloads),
+    /// then hands each path to its row's <see cref="CachedImage"/>, which decodes through the
+    /// shared artwork cache and holds the bitmap only while the submenu is on screen.
+    /// </summary>
+    private async Task LoadArtistAvatarsAsync(int generation, IReadOnlyList<string> names,
+        CachedImage[] photos, Func<string, string?> source)
+    {
+        string?[] paths;
+        try
+        {
+            paths = await Task.Run(() => names.Select(name =>
+            {
+                try { return source(name); }
+                catch { return null; } // an unreadable cache folder just means a placeholder
+            }).ToArray());
+        }
+        catch { return; }
+
+        void Apply()
+        {
+            if (generation != _artistAvatarGeneration) return;
+            for (var i = 0; i < photos.Length; i++)
+            {
+                photos[i].SourcePath = paths[i];
+                photos[i].IsVisible = !string.IsNullOrEmpty(paths[i]);
+            }
+        }
+
+        if (Dispatcher.UIThread.CheckAccess()) Apply();
+        else await Dispatcher.UIThread.InvokeAsync(Apply);
     }
 
     /// <summary>The track's credited artists, split with the separators set in Settings →
