@@ -826,13 +826,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         await RefreshTimeAwareRowsAsync();
     }
 
-    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write.</summary>
+    /// <summary>The album, or the Ctrl-selection it is in (owner 10-10), in one snooze write;
+    /// then the loaded suggestion rows drop its songs, as the song snooze above does.</summary>
     [RelayCommand]
-    private Task SnoozeAlbumForMonth(Album album)
+    private async Task SnoozeAlbumForMonth(Album album)
     {
         var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).ToList();
         CtrlSelectedAlbums.Clear();
-        return _player.SnoozeTracksForMonthAsync(tracks);
+        await _player.SnoozeTracksForMonthAsync(tracks);
+        await RefreshTimeAwareRowsAsync();
     }
 
     /// <summary>Fires when the user wants to view a track's album.</summary>

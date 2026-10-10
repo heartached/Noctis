@@ -132,6 +132,23 @@ public class HomeSnoozedSuggestionsTests
         Assert.Same(s.Heavy, s.Vm.LastPlayed.First());
     }
 
+    /// <summary>Snoozing an album from Home's album menu drops its songs from the loaded rows too
+    /// (album snooze, 10-10, used to skip the refresh the song snooze does).</summary>
+    [AvaloniaFact]
+    public async Task SnoozeAlbumFromHomeMenu_DropsItsSongsFromTheLoadedRows()
+    {
+        var s = Build(null);
+        await s.Vm.RefreshAsync();
+        Assert.Contains(s.Heavy, s.Vm.HeavyRotationTracks);
+        var album = new Album { Id = s.Heavy.AlbumId, Name = "X", Artist = "A", Tracks = new() { s.Heavy } };
+
+        await s.Vm.SnoozeAlbumForMonthCommand.ExecuteAsync(album);
+
+        Assert.True(s.Heavy.IsSnoozed);
+        Assert.DoesNotContain(s.Heavy, s.Vm.HeavyRotationTracks);
+        Assert.Contains(s.HeavySpare, s.Vm.HeavyRotationTracks);
+    }
+
     [AvaloniaFact]
     public async Task PlaylistSuggestions_SkipSnoozedSongs()
     {
