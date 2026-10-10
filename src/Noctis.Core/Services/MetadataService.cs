@@ -109,6 +109,40 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The file's genres (<see cref="Track.Genre"/> form) without a full read: the
+    /// FLAC comment block alone, otherwise TagLib with lazy pictures, like <see cref="ReadLabel"/>.</summary>
+    public string ReadGenres(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a genre either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacGenres(stream, out var flacGenres))
+                    return flacGenres;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return Track.JoinGenres(file.Tag.Genres);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
         embeddedArt = null;

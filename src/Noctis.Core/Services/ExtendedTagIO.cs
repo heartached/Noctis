@@ -123,6 +123,31 @@ internal static class ExtendedTagIO
     internal static bool TryReadFlacLabel(Stream stream, out string label)
     {
         label = string.Empty;
+        if (!TryReadFlacComments(stream, out var fields)) return false;
+        string? First(string key) => fields.TryGetValue(key, out var v) ? v[0] : null;
+        label = (First(LabelKey) ?? First(XiphOrganizationKey) ?? First(PublisherKey) ?? string.Empty).Trim();
+        return true;
+    }
+
+    /// <summary>
+    /// The genres of a plain FLAC as <see cref="Track.Genre"/> holds them (every GENRE value),
+    /// reading only the VORBIS_COMMENT block, for the v12 genre pass (GitHub #123 follow-up,
+    /// 2026-10-10). False means "ask TagLib", as for <see cref="TryReadFlacLabel"/>.
+    /// </summary>
+    internal static bool TryReadFlacGenres(Stream stream, out string genres)
+    {
+        genres = string.Empty;
+        if (!TryReadFlacComments(stream, out var fields)) return false;
+        genres = fields.TryGetValue("GENRE", out var values) ? Track.JoinGenres(values) : string.Empty;
+        return true;
+    }
+
+    /// <summary>The VORBIS_COMMENT fields of a plain FLAC, every non-blank value per key (keys
+    /// case-insensitive), without reading any other block. Empty when the file has no comment
+    /// block; false for anything <see cref="TryReadFlacLabel"/> leaves to TagLib.</summary>
+    private static bool TryReadFlacComments(Stream stream, out Dictionary<string, List<string>> fields)
+    {
+        fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         try
         {
             var length = stream.Length;
@@ -161,7 +186,6 @@ internal static class ExtendedTagIO
             if (comment == null) return true;   // no Vorbis comment: TagLib finds no label either
 
             // vendor_length, vendor, count, then count × (length, "KEY=value") — lengths LE.
-            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var offset = 0;
             if (!TryReadUInt32(comment, ref offset, out var vendorLength) || vendorLength > comment.Length - offset)
                 return false;
@@ -179,16 +203,15 @@ internal static class ExtendedTagIO
                 // keys untrimmed; the first remaining value is GetField(key)[0].
                 var value = entry[(eq + 1)..];
                 if (string.IsNullOrWhiteSpace(value)) continue;
-                fields.TryAdd(entry[..eq], value);
+                var key = entry[..eq];
+                if (!fields.TryGetValue(key, out var values)) fields[key] = values = new List<string>();
+                values.Add(value);
             }
-
-            string? First(string key) => fields.TryGetValue(key, out var v) ? v : null;
-            label = (First(LabelKey) ?? First(XiphOrganizationKey) ?? First(PublisherKey) ?? string.Empty).Trim();
             return true;
         }
         catch
         {
-            label = string.Empty;
+            fields.Clear();
             return false;
         }
 
