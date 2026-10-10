@@ -491,6 +491,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
                 var candidates = library.Tracks
                     .Where(t => !inPlaylist.Contains(t.Id)
+                                && !t.IsSnoozed // snoozed = hidden from suggestions (owner 10-10)
                                 && Track.ParseArtistTokens(t.Artist).Any(playlistArtists.Contains))
                     .ToList();
 
