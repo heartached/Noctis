@@ -150,6 +150,10 @@ public static class MenuV2
     /// button runs its Command with its CommandParameter (set per Bind).
     /// </summary>
     public static Button Tile(Control host, ContextMenu menu, string iconKey, string label)
+        => Tile(host, menu.Close, iconKey, label);
+
+    /// <summary>A quick-action tile for a menu closed by <paramref name="close"/> (a MenuFlyout's Hide).</summary>
+    public static Button Tile(Control host, Action close, string iconKey, string label)
     {
         var fullName = label;
         // Translations run long (es "Reproducir a continuación", fr "Ajouter à la file
@@ -174,8 +178,18 @@ public static class MenuV2
         button.Classes.Add("mv2-tile");
         ToolTip.SetTip(button, fullName);
         AutomationProperties.SetName(button, fullName);
-        button.Click += (_, _) => menu.Close();
+        button.Click += (_, _) => close();
         return button;
+    }
+
+    /// <summary>Re-labels a tile in place (the player's Play tile reads Pause while playing).</summary>
+    public static void SetTile(Control host, Button tile, string iconKey, string label)
+    {
+        if (tile.Content is not StackPanel { Children: [Viewbox icon, TextBlock text] }) return;
+        if (IconPath(icon) is { } path) path.Data = FindGeometry(host, iconKey);
+        text.Text = label;
+        ToolTip.SetTip(tile, label);
+        AutomationProperties.SetName(tile, label);
     }
 
     /// <summary>The tile row: four equal columns.</summary>

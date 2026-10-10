@@ -100,6 +100,14 @@ public partial class PlaybackBarView : UserControl
 
         // Right-click on track info area opens the options flyout
         TrackInfoPanel.AddHandler(PointerReleasedEvent, OnTrackInfoRightClick, RoutingStrategies.Bubble);
+        if (OptionsButton.Flyout is MenuFlyout optionsMenu)
+        {
+            optionsMenu.Opening += OnOptionsMenuOpening;
+            // The rows' IsVisible bindings first resolve once the items are in the open
+            // presenter: on a first open the lyrics-page group still counted as shown during
+            // Opening and two separators met on the main bar. Settle again once open.
+            optionsMenu.Opened += (_, _) => MenuV2.RefreshLayout(optionsMenu.Items);
+        }
 
         // Seek slider: use Tunnel routing so our handlers fire BEFORE the
         // Slider's internal Thumb/Track handlers.  When we mark Handled the
@@ -1635,12 +1643,64 @@ public partial class PlaybackBarView : UserControl
     private void OnBoxOptionsClick(object? sender, RoutedEventArgs e) =>
         OptionsButton.Flyout?.ShowAt(BoxOptionsButton);
 
-    // Expands a submenu the instant the pointer enters its parent item, skipping the
-    // default hover delay. Shared by the Sleep Timer and Lyrics Display menu items.
-    private void OnExpandSubMenuPointerEntered(object? sender, PointerEventArgs e)
+    // ── Options menu: the track menus' v2 layout (owner 10-10, "make it the same as Home") ──
+
+    private Button? _quickPlayTile, _quickShuffleTile, _quickPlayNextTile, _quickQueueTile;
+
+    /// <summary>
+    /// Per open: puts the Play / Shuffle / Play Next / Add to Queue tiles on top (once), points
+    /// them at the current track, fills View Artist with the credited names and settles the
+    /// separators, as <see cref="TrackContextMenuBuilder"/> does for the other track menus.
+    /// The menu stays a MenuFlyout so Liquid Glass can frost it (GlassMenuFlyout).
+    /// </summary>
+    private void OnOptionsMenuOpening(object? sender, EventArgs e)
     {
-        if (sender is MenuItem item)
-            item.IsSubMenuOpen = true;
+        if (sender is not MenuFlyout menu || DataContext is not PlayerViewModel vm) return;
+
+        if (_quickPlayTile == null)
+        {
+            _quickPlayTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlay", Loc.T("PlaybackBar.Play"));
+            _quickShuffleTile = MenuV2.Tile(this, menu.Hide, "MenuLineShuffle", Loc.T("LibraryAlbums.Shuffle"));
+            _quickPlayNextTile = MenuV2.Tile(this, menu.Hide, "MenuLinePlayNext", Loc.T("LibraryAlbums.PlayNext"));
+            _quickQueueTile = MenuV2.Tile(this, menu.Hide, "MenuLineQueue", Loc.T("LibraryAlbums.AddQueue"));
+            menu.Items.Insert(0, MenuV2.TileRow(_quickPlayTile, _quickShuffleTile, _quickPlayNextTile, _quickQueueTile));
+        }
+
+        // Play pauses the current song while it plays: say so on the tile.
+        if (vm.IsPlaying)
+            MenuV2.SetTile(this, _quickPlayTile, "MenuLinePause", Loc.T("PlaybackBar.Pause"));
+        else
+            MenuV2.SetTile(this, _quickPlayTile, "MenuLinePlay", Loc.T("PlaybackBar.Play"));
+        _quickPlayTile.Command = vm.PlayPauseCommand;
+        _quickShuffleTile!.Command = vm.ShuffleCurrentAlbumCommand;
+        _quickPlayNextTile!.Command = vm.PlayNextCurrentTrackCommand;
+        _quickQueueTile!.Command = vm.AddCurrentTrackToQueueCommand;
+
+        var track = vm.CurrentTrack;
+        BindViewArtist(vm, track);
+
+        LyricsBackgroundClearMenuItem.IsVisible = track != null &&
+            LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForTrack(track));
+
+        OpenWithMenuItem.Header = ExternalOpenApp.MenuHeader;
+        OpenWithMenuItem.IsVisible = ExternalOpenApp.IsAvailable;
+        OpenWithMenuItem.Command ??= new CommunityToolkit.Mvvm.Input.RelayCommand<Noctis.Models.Track>(ExternalOpenApp.Open);
+
+        MenuV2.RefreshLayout(menu.Items);
+    }
+
+    private void BindViewArtist(PlayerViewModel vm, Noctis.Models.Track? track)
+    {
+        var item = ViewArtistMenuItem;
+        item.Items.Clear();
+        var names = track != null ? TrackContextMenuBuilder.CreditedArtists(track) : Array.Empty<string>();
+        item.IsVisible = names.Count > 0;
+        var single = names.Count == 1;
+        item.Command = single ? vm.ViewArtistNamedCommand : null;
+        item.CommandParameter = single ? names[0] : null;
+        if (names.Count < 2) return;
+        foreach (var name in names)
+            item.Items.Add(new MenuItem { Header = name, Command = vm.ViewArtistNamedCommand, CommandParameter = name });
     }
 
     private void OnLyricsButtonClick(object? sender, RoutedEventArgs e)

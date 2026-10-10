@@ -1339,32 +1339,11 @@
                                         PlacementConstraintAdjustment="FlipY"
                                         helpers:MenuOpenAnimation.EnableFlyoutClose="True"
                                         helpers:GlassMenuFlyout.Enable="True">
-                                <!-- v2 menu (10-09): plain header like every other row (the card trims it),
-                                     muted line icons throughout. -->
-                                <MenuItem Header="{loc:T PlaybackBar.Play}"
-                                          Command="{Binding PlayPauseCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlay}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.ShuffleTip}"
-                                          Command="{Binding ShuffleCurrentAlbumCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineShuffle}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.PlayNext}"
-                                          Command="{Binding PlayNextCurrentTrackCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlayNext}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.AddQueue}"
-                                          Command="{Binding AddCurrentTrackToQueueCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineQueue}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
+                                <!-- Same layout as the track menus elsewhere (Home, Songs, albums; owner
+                                     10-10): the Play / Shuffle / Play Next / Add to Queue tiles go in on
+                                     top from code (OnOptionsMenuOpening), then the same groups in the same
+                                     order, with the player's own entries (sleep timer, lyrics page) in
+                                     groups of their own. Separators settle per open (MenuV2.RefreshLayout). -->
                                 <Separator />
                                 <MenuItem x:Name="AddToPlaylistMenuItem"
                                           Header="{loc:T PlaybackBar.AddPlaylist}"
@@ -1373,7 +1352,6 @@
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.Favorites}"
                                           Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
@@ -1388,48 +1366,6 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-fav" Data="{StaticResource MenuLineHeart}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.Metadata}"
-                                          Command="{Binding OpenCurrentTrackMetadataCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.SearchLyrics}"
-                                          Command="{Binding SearchCurrentTrackLyricsCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <!-- Lyrics page, online lyrics shown (GitHub #115): save them next to the
-                                     song under its name, replacing its lyrics files (asks first). -->
-                                <MenuItem Header="{loc:T PlaybackBar.SaveLyrics}"
-                                          Command="{Binding SaveCurrentTrackLyricsCommand}"
-                                          IsVisible="{Binding CanSaveLyricsToFile}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSave}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <!-- Lyrics side-panel toggle (everywhere but the lyrics full view). -->
-                                <MenuItem Header="{loc:T PlaybackBar.LyricsPanel}"
-                                          Click="OnLyricsPanelButtonClick"
-                                          IsVisible="{Binding !IsLyricsPageActive}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyricsPanel}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.RemoveLyrics}" Classes="danger"
-                                          Command="{Binding RemoveCurrentTrackLyricsCommand}"
-                                          IsVisible="{Binding IsLyricsPageActive}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.ShowFolder}"
-                                          Command="{Binding ShowCurrentTrackInExplorerCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.ViewAlbumTip}"
                                           Command="{Binding ViewCurrentTrackAlbumCommand}">
@@ -1437,10 +1373,104 @@
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- One credited artist opens directly; several get one entry each
+                                     (filled per open, like TrackContextMenuBuilder.BindViewArtist). -->
+                                <MenuItem x:Name="ViewArtistMenuItem"
+                                          Header="{loc:T PlaybackBar.ViewArtistTip}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineArtist}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="{loc:T PlaybackBar.Metadata}"
+                                          Command="{Binding OpenCurrentTrackMetadataCommand}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T Tab.Lyrics}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="{loc:T PlaybackBar.SearchLyrics}"
+                                              Command="{Binding SearchCurrentTrackLyricsCommand}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Lyrics page, online lyrics shown (GitHub #115): save them next to the
+                                         song under its name, replacing its lyrics files (asks first). -->
+                                    <MenuItem Header="{loc:T PlaybackBar.SaveLyrics}"
+                                              Command="{Binding SaveCurrentTrackLyricsCommand}"
+                                              IsVisible="{Binding CanSaveLyricsToFile}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSave}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T PlaybackBar.ShareLyrics}"
+                                              Command="{Binding ShareCurrentTrackLyricsCommand}"
+                                              IsVisible="{Binding CanShareLyrics}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineCamera}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Lyrics side-panel toggle (everywhere but the lyrics full view). -->
+                                    <MenuItem Header="{loc:T PlaybackBar.LyricsPanel}"
+                                              Click="OnLyricsPanelButtonClick"
+                                              IsVisible="{Binding !IsLyricsPageActive}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyricsPanel}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{loc:T PlaybackBar.RemoveLyrics}" Classes="danger"
+                                              Command="{Binding RemoveCurrentTrackLyricsCommand}"
+                                              IsVisible="{Binding IsLyricsPageActive}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T AlbumDetail.LyricsBackgroundVideo}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVideo}"/>
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="{loc:T Menu.ChooseSongVideo}"
+                                              Command="{x:Static helpers:LyricsBackgroundOverrides.ChooseForTrackCommand}"
+                                              CommandParameter="{Binding CurrentTrack}" />
+                                    <MenuItem x:Name="LyricsBackgroundClearMenuItem"
+                                              Header="{loc:T AlbumDetail.UseDefaultVideo}"
+                                              Command="{x:Static helpers:LyricsBackgroundOverrides.ClearForTrackCommand}"
+                                              CommandParameter="{Binding CurrentTrack}" />
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="{loc:T PlaybackBar.ShowFolder}"
+                                          Command="{Binding ShowCurrentTrackInExplorerCommand}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T Favorites.Tools}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTools}"/>
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="{loc:T Favorites.Spectrogram}"
+                                              Command="{x:Static helpers:SpectrogramLauncher.OpenCommand}"
+                                              CommandParameter="{Binding CurrentTrack}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSpectrogram}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Header, visibility and command per open (ExternalOpenApp reads Settings). -->
+                                    <MenuItem x:Name="OpenWithMenuItem"
+                                              CommandParameter="{Binding CurrentTrack}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineOpenWith}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.SleepTimer}"
-                                          x:Name="SleepTimerMenuItem"
-                                          PointerEntered="OnExpandSubMenuPointerEntered">
+                                          x:Name="SleepTimerMenuItem">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTimer}"/>
                                     </MenuItem.Icon>
@@ -1501,19 +1531,12 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding StopAfterCurrentTrack}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Lyrics-page entries (only while the bar is mounted inside the lyrics
+                                     page): their own group above Remove, so the danger row stays last. -->
                                 <Separator />
-                                <MenuItem Header="{loc:T PlaybackBar.RemoveFromLibrary}" Classes="danger"
-                                          Command="{Binding RemoveCurrentTrackFromLibraryCommand}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <!-- Lyrics-mode entries (only visible when the bar is mounted inside the lyrics page) -->
-                                <Separator IsVisible="{Binding IsLyricsPageActive}"/>
                                 <MenuItem x:Name="LyricsDisplayMenuItem"
                                           Header="{loc:T PlaybackBar.LyricsDisplay}"
-                                          IsVisible="{Binding IsLyricsPageActive}"
-                                          PointerEntered="OnExpandSubMenuPointerEntered">
+                                          IsVisible="{Binding IsLyricsPageActive}">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineText}"/>
                                     </MenuItem.Icon>
@@ -1530,6 +1553,13 @@
                                             <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsLyricsPlainActive}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T PlaybackBar.BackgroundColor}"
+                                          Command="{Binding OpenLyricsBackgroundColorCommand}"
+                                          IsVisible="{Binding IsLyricsPageActive}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePalette}"/>
+                                    </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.MusicVideo}"
                                           Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ToggleMusicVideosCommand}"
@@ -1548,18 +1578,11 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.MusicVideoUseVideoAudio}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.BackgroundColor}"
-                                          Command="{Binding OpenLyricsBackgroundColorCommand}"
-                                          IsVisible="{Binding IsLyricsPageActive}">
+                                <Separator />
+                                <MenuItem Header="{loc:T PlaybackBar.RemoveFromLibrary}" Classes="danger"
+                                          Command="{Binding RemoveCurrentTrackFromLibraryCommand}">
                                     <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePalette}"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="{loc:T PlaybackBar.ShareLyrics}"
-                                          Command="{Binding ShareCurrentTrackLyricsCommand}"
-                                          IsVisible="{Binding CanShareLyrics}">
-                                    <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineCamera}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
