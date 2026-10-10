@@ -167,7 +167,8 @@ public sealed class PlaybackQueue
     /// Current (an explicit skip still advances). Otherwise Current goes to History and the
     /// head of UpNext becomes Current; with UpNext empty and <see cref="RepeatMode.All"/> the
     /// recorded cycle restarts (falling back to reversed History when no cycle was recorded,
-    /// e.g. a queue restored without one); else Current becomes null (stopped).
+    /// e.g. a queue restored without one), keeping History so Back reaches the last pass;
+    /// else Current becomes null (stopped).
     /// </summary>
     public Track? Advance(QueueAdvance reason)
     {
@@ -186,10 +187,11 @@ public sealed class PlaybackQueue
 
         if (RepeatMode == RepeatMode.All && (_repeatCycle.Count > 0 || _history.Count > 0))
         {
-            var all = _repeatCycle.Count > 0
-                ? new List<Track>(_repeatCycle)
-                : Enumerable.Reverse(_history).ToList();
-            _history.Clear();
+            // No cycle recorded: replay History and keep it as the cycle, since History is no
+            // longer cleared here (GitHub #124: Back on a new pass's first song did nothing).
+            if (_repeatCycle.Count == 0)
+                _repeatCycle = Enumerable.Reverse(_history).ToList();
+            var all = new List<Track>(_repeatCycle);
             _originalOrder.Clear();
             PlayedInQueue = 0;
             if (all.Count == 0) { Current = null; return null; }

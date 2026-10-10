@@ -692,7 +692,7 @@ public partial class PlayerViewModel : ViewModelBase
         // track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were all
         // silent no-ops, and only a natural track end wrapped.
         UpNext.Count > 0 ||
-        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || History.Count > 0));
+        (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0));
 
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()
@@ -730,7 +730,7 @@ public partial class PlayerViewModel : ViewModelBase
             RemainingTimeText = FormatTime(Duration);
             Seeked?.Invoke(this, TimeSpan.Zero);
         }
-        else if (Math.Min(_queueHistoryDepth, History.Count) > 0)
+        else if (PlayedInThisQueue > 0)
         {
             // Undo the Next / natural advances made inside this queue before touching the
             // pre-start tracks: started at 3, Next to 4, Previous must return to 3 — it went
@@ -765,6 +765,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// it steps into <see cref="_precedingInQueue"/>; anything deeper played before the queue
     /// was started and is only reached once its first track is passed (GitHub #74).</summary>
     private int _queueHistoryDepth;
+
+    /// <summary>The History entries this queue played (newest-first); deeper ones are older.</summary>
+    private int PlayedInThisQueue => Math.Min(_queueHistoryDepth, History.Count);
 
     /// <summary>Island speed menu; parameter is a percent ("75" … "200").</summary>
     [RelayCommand]
@@ -1635,7 +1638,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Stops playback and clears all queue data.</summary>
     /// <param name="reason">Why the queue is being wiped; recorded in the log.</param>
-    public void StopAndClear(string reason = "unspecified")
+    /// <param name="keepHistory">Keep the played songs (the queue ran out) so Previous can
+    /// go back to them; they no longer count as this queue's.</param>
+    public void StopAndClear(string reason = "unspecified", bool keepHistory = false)
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "StopAndClear",
             $"reason={reason}, track={CurrentTrack?.Id}, upNext={UpNext.Count}, history={History.Count}");
@@ -1652,7 +1657,7 @@ public partial class PlayerViewModel : ViewModelBase
         State = PlaybackState.Stopped;
         CurrentTrack = null;
         UpNext.Clear();
-        History.Clear();
+        if (!keepHistory) History.Clear();
         _queueHistoryDepth = 0;
         _precedingInQueue.Clear();
         _originalQueue.Clear();
@@ -1942,6 +1947,9 @@ public partial class PlayerViewModel : ViewModelBase
             if (track != null) restoredHistory.Add(track);
         }
         History.AddRange(restoredHistory);
+        // Unknown which queue each entry came from: count them all as this queue's, so the
+        // Repeat All fallback (no restored cycle) still replays them as it always did.
+        _queueHistoryDepth = restoredHistory.Count;
 
         // Restore up-next
         var restoredUpNext = new List<Track>();
@@ -2857,19 +2865,20 @@ public partial class PlayerViewModel : ViewModelBase
             PlayTrack(next);
             RefillRadioIfNeeded();
         }
-        else if (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || History.Count > 0))
+        else if (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || PlayedInThisQueue > 0))
         {
             // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
-            // back to History only when there isn't one (e.g. a queue restored from a
-            // previous session, where the cycle was never recorded).
-            var allTracks = _repeatCycleTracks.Count > 0
-                ? new List<Track>(_repeatCycleTracks)
-                : History.Reverse().ToList();
+            // back to what this queue played only when there isn't one (e.g. songs queued
+            // onto the emptied player, or a queue restored without a cycle), and record it
+            // as the cycle so the next wrap does not read the longer History again.
+            if (_repeatCycleTracks.Count == 0)
+                _repeatCycleTracks = History.Take(PlayedInThisQueue).Reverse().ToList();
+            var allTracks = new List<Track>(_repeatCycleTracks);
             if (!_allowExplicitContent)
                 allTracks.RemoveAll(IsBlockedExplicit);
 
-            History.Clear();
-            _queueHistoryDepth = 0;
+            // History stays (GitHub #124): it was cleared here, so Previous on the first
+            // song of a new pass did nothing. The pass just played stays this queue's.
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
 
             if (allTracks.Count == 0) { StopAndClear("repeatAllNothingPlayable"); return; }
@@ -2902,7 +2911,8 @@ public partial class PlayerViewModel : ViewModelBase
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
-            StopAndClear("queueEnded");
+            // Keep what played (GitHub #124): Previous goes back to the last songs.
+            StopAndClear("queueEnded", keepHistory: true);
         }
     }
 
