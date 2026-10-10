@@ -130,6 +130,39 @@ public sealed class SendToFolderMoveTests : IDisposable
         Assert.Equal(3, kept.PlayCount);
     }
 
+    /// <summary>A library track whose stored id isn't the hash of its path (no current code
+    /// writes one; a hand-edited or foreign library.json can): RelocateTracksAsync looked it
+    /// up by the path's id only, missed, and the moved file was left with the library still
+    /// pointing at the old path.</summary>
+    [Fact]
+    public async Task Move_TrackWhoseIdIsNotItsPathHash_LibraryStillFollows()
+    {
+        var persistence = new PersistenceService(Path.Combine(_root, "data"));
+        var path = Song("01 - First.mp3");
+        var oddId = Guid.NewGuid();
+        await persistence.SaveLibraryAsync(new List<Track>
+        {
+            new() { Id = oddId, FilePath = path, Title = "First", Artist = "Tester", Album = "Fixture Album", PlayCount = 5 },
+        });
+        var library = new LibraryService(new MetadataService(), persistence,
+            new SqliteLibraryIndexService(persistence), new FolderMetadataBackfillTests.FakeAuditTrail());
+        await library.LoadAsync();
+        var track = ByTitle(library, "First");
+        Assert.Equal(oddId, track.Id);
+
+        var service = new SendToFolderService(library);
+        var plan = service.Plan(new[] { track }, _dst, null, includeLyrics: false, move: true);
+        var result = await service.MoveAsync(plan, null, TestContext.Current.CancellationToken);
+
+        var moved = Path.Combine(_dst, "01 - First.mp3");
+        Assert.Equal(1, result.Copied);
+        Assert.True(File.Exists(moved));
+        Assert.Same(track, ByTitle(library, "First"));
+        Assert.Equal(moved, track.FilePath);   // the library follows the file
+        Assert.Equal(5, track.PlayCount);
+        Assert.Equal(track.Id, result.TrackIdRemap[oddId]); // remapped from its real id
+    }
+
     [Fact]
     public async Task Move_ASongThatCantMove_IsLeftUntouched_TheOthersMove()
     {
