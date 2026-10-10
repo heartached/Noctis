@@ -1,6 +1,15 @@
 {
   "releases": [
     {
+      "tag": "plugin-mixxx-v1.0.1",
+      "version": "plugin-mixxx-v1.0.1",
+      "name": "Mixxx plugin 1.0.1",
+      "publishedAt": "2026-10-10T02:06:45Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-mixxx-v1.0.1",
+      "prerelease": true,
+      "sections": []
+    },
+    {
       "tag": "v1.5.9",
       "version": "1.5.9",
       "name": "v1.5.9",
@@ -3042,6 +3051,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-10-02T11:17:40.907Z",
+  "updatedAt": "2026-10-10T02:07:00.734Z",
   "degraded": false
 }
