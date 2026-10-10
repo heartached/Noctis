@@ -74,6 +74,11 @@ public class MiniPlayerMenuClickTests
     private static void EnsureAppResources()
     {
         var app = Application.Current!;
+        // The menu rows' hover/pressed brushes come from the theme. Without them the pressed
+        // row has no background, so the release hit-tests nothing and Click never fires.
+        foreach (var key in new[] { "MenuV2HoverBrush", "MenuV2TileHoverBrush" })
+            if (!app.Resources.TryGetResource(key, null, out _))
+                app.Resources[key] = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1FFFFFFF"));
         if (app.Resources.TryGetResource("SearchIcon", null, out _)) return;
         app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null)
         {
@@ -281,6 +286,9 @@ public class MiniPlayerMenuClickTests
 
             Assert.True(Click(more), "the … button never received the press");
             await PumpFor(400);   // past the 0.18s fade and the 200ms close delay
+            // A loaded CI runner can fall behind the fade's clock; give it a bounded extra wait.
+            for (var waited = 0; card.Opacity < 0.999 && waited < 1500; waited += 100)
+                await PumpFor(100);
 
             Assert.True(popup.IsOpen, $"{form}: the menu is not open after the click");
             Assert.Equal(1, card.Opacity, 3);
