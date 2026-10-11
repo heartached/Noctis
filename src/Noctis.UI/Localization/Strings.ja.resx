@@ -4089,6 +4089,18 @@
     <value>エクスプリシット</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
+    <value>歌詞を隠す</value>
+    <comment>Mini player "…" menu item while lyrics are open</comment>
+  </data>
+  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
+    <value>最前面に固定</value>
+    <comment>Mini player pin (tooltip + "…" menu item)</comment>
+  </data>
+  <data name="MiniPlayer.Unpin" xml:space="preserve">
+    <value>固定を解除</value>
+    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
+  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>お気に入り</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>

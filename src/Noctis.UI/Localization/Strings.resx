@@ -1550,6 +1550,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="MiniPlayer.EqualizerOff" xml:space="preserve"><value>Off</value><comment>Mini player "…" menu EQ item state</comment></data>
   <data name="MiniPlayer.PinOnTop" xml:space="preserve"><value>Pin on top</value><comment>Mini player pin (tooltip + "…" menu item): keeps it visible through Show desktop / Minimize all and over games</comment></data>
   <data name="MiniPlayer.Unpin" xml:space="preserve"><value>Unpin</value><comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment></data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve"><value>Hide Lyrics</value><comment>Mini player "…" menu item while lyrics are open</comment></data>
   <data name="MiniPlayer.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.PreviousTip" xml:space="preserve"><value>Previous</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.ForwardTip" xml:space="preserve"><value>Forward</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>

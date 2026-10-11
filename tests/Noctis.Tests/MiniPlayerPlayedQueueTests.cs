@@ -6,8 +6,10 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -145,6 +147,38 @@ public class MiniPlayerPlayedQueueTests
     }
 
     private static List<Track> Tracks(int n) => Enumerable.Range(0, n).Select(i => T($"Song {i}")).ToList();
+
+    /// <summary>The "…" menu rows read their labels to screen readers. Their content is a
+    /// StackPanel with no tooltip to mirror, so UIA read them as "Avalonia.Controls.StackPanel"
+    /// (measured live 10-10); the Lyrics / Pin rows follow their state.</summary>
+    [AvaloniaFact]
+    public void MoreMenuRows_ReadTheirLabels()
+    {
+        AccessibleNames.Install(); // as App does: string tooltips name icon rows (Equalizer)
+        var rig = Open(Tracks(2), ended: 0, keepPlayed: false);
+        var popup = rig.Win.FindControl<Avalonia.Controls.Primitives.Popup>("MorePopup")!;
+        var rows = ((Control)popup.Child!).GetLogicalDescendants().OfType<Button>()
+            .Where(b => b.Classes.Contains("mini-menu-item")).ToList();
+        Assert.True(rows.Count >= 7, $"{rows.Count} menu rows");
+
+        string? NameOf(Control c) => Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(c).GetName();
+        var names = rows.Select(NameOf).ToList();
+        Assert.All(names, n => Assert.False(string.IsNullOrWhiteSpace(n) || n!.StartsWith("Avalonia."), $"row read as '{n}'"));
+
+        // Not English literals: LocalizationTests may switch the culture in parallel.
+        var lyricsRow = rows.Single(b => b.Command == rig.Vm.ToggleLyricsFormCommand);
+        Assert.Equal(rig.Vm.LyricsMenuLabel, NameOf(lyricsRow));
+        var closed = NameOf(lyricsRow);
+        var wasLyrics = rig.Vm.IsLyricsForm;
+        rig.Vm.ToggleLyricsFormCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(rig.Vm.LyricsMenuLabel, NameOf(lyricsRow));
+        // The form only switches where the current design allows it (state other tests in
+        // the run can leave); when it does, the name follows ("Lyrics" → "Hide Lyrics").
+        if (rig.Vm.IsLyricsForm != wasLyrics)
+            Assert.NotEqual(closed, NameOf(lyricsRow));
+        rig.Win.Close();
+    }
 
     [AvaloniaFact]
     public async Task SettingOff_DrawerListsUpNextOnly_AsBefore()

@@ -2601,7 +2601,11 @@
                         </Transitions>
                     </Border.Transitions>
                     <StackPanel Spacing="0">
+                        <!-- AutomationProperties.Name on each row: the content is a StackPanel and
+                             there is no tooltip to mirror, so screen readers read the rows as
+                             "Avalonia.Controls.StackPanel" (UIA, live 10-10). -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleSearchDrawerCommand}"
+                                AutomationProperties.Name="{loc:T MiniPlayer.Search}"
                                 Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
@@ -2609,6 +2613,7 @@
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Command="{Binding ToggleQueueDrawerCommand}"
+                                AutomationProperties.Name="{loc:T MiniPlayer.Queue}"
                                 Click="OnMenuItemClick" IsVisible="{Binding SupportsDrawer}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <!-- The v2 menus' line icons (10-09): Queue (play mark on the last
@@ -2621,6 +2626,7 @@
                         </Button>
                         <!-- The large-icon form has its own always-visible volume bar -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleVolumeDrawerCommand}"
+                                AutomationProperties.Name="{loc:T MiniPlayer.Volume}"
                                 Click="OnMenuItemClick"
                                 IsVisible="{Binding ShowVolumeMenuItem}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
@@ -2630,6 +2636,7 @@
                         </Button>
                         <!-- The fixed designs have no heart button on the card, so the menu carries it. -->
                         <Button Classes="mini-menu-item" Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
+                                AutomationProperties.Name="{loc:T MiniPlayer.FavoritesTip}"
                                 Click="OnMenuItemClick" IsVisible="{Binding IsDesignForm}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <controls:HeartIcon Size="16" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
@@ -2640,6 +2647,7 @@
                         <!-- Stays in the list while lyrics are open: it is the only way back
                              out of the split view, so hiding it stranded the user there. -->
                         <Button Classes="mini-menu-item" Command="{Binding ToggleLyricsFormCommand}"
+                                AutomationProperties.Name="{Binding LyricsMenuLabel}"
                                 Click="OnMenuItemClick">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
@@ -2706,6 +2714,7 @@
                         <!-- Pin (Windows): survives Show desktop / Minimize all and stays
                              above games; the label says which way it goes. -->
                         <Button x:Name="PinMenuItem" Classes="mini-menu-item" Command="{Binding TogglePinCommand}"
+                                AutomationProperties.Name="{Binding PinMenuLabel}"
                                 Click="OnMenuItemClick" IsVisible="{Binding CanPin}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <Panel Width="16" Height="16">
@@ -2720,7 +2729,8 @@
                                 </Panel>
                             </StackPanel>
                         </Button>
-                        <Button Classes="mini-menu-item" Click="OnCloseClick">
+                        <Button Classes="mini-menu-item" Click="OnCloseClick"
+                                AutomationProperties.Name="{loc:T MiniPlayer.BackFullViewTip}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineExpand}"/>
                                 <TextBlock Text="{loc:T MiniPlayer.BackFullViewTip}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>

@@ -4089,6 +4089,18 @@
     <value>Explicite</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
+    <value>Masquer les paroles</value>
+    <comment>Mini player "…" menu item while lyrics are open</comment>
+  </data>
+  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
+    <value>Épingler au premier plan</value>
+    <comment>Mini player pin (tooltip + "…" menu item)</comment>
+  </data>
+  <data name="MiniPlayer.Unpin" xml:space="preserve">
+    <value>Désépingler</value>
+    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
+  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>Favoris</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>

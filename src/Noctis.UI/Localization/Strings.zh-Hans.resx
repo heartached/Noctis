@@ -4089,6 +4089,18 @@
     <value>儿童不宜</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
+  <data name="MiniPlayer.HideLyrics" xml:space="preserve">
+    <value>隐藏歌词</value>
+    <comment>Mini player "…" menu item while lyrics are open</comment>
+  </data>
+  <data name="MiniPlayer.PinOnTop" xml:space="preserve">
+    <value>置顶</value>
+    <comment>Mini player pin (tooltip + "…" menu item)</comment>
+  </data>
+  <data name="MiniPlayer.Unpin" xml:space="preserve">
+    <value>取消置顶</value>
+    <comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment>
+  </data>
   <data name="MiniPlayer.FavoritesTip" xml:space="preserve">
     <value>收藏</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>

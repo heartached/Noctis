@@ -75,6 +75,13 @@ public partial class MiniPlayerViewModel : ViewModelBase
             Form = styled;
 
         _isPinned = CanPin && Settings.MiniPlayerPinned;
+
+        // Code-built labels re-read on a language switch, as the {loc:T} ones do.
+        Noctis.Localization.Loc.Instance.CultureChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(LyricsMenuLabel));
+            OnPropertyChanged(nameof(PinMenuLabel));
+        };
     }
 
     // ── Pin (Windows): survive Show desktop / Minimize all, stay above games ──
@@ -84,9 +91,14 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     /// <summary>Pinned: the window drops its minimize box and re-asserts always-on-top on
     /// every foreground change (the window applies it). Persisted like the placement.</summary>
-    [ObservableProperty] private bool _isPinned;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PinMenuLabel))]
+    private bool _isPinned;
 
     partial void OnIsPinnedChanged(bool value) => Settings.SetMiniPlayerPinned(value);
+
+    /// <summary>The pin row's name for screen readers; the row shows one of two labels.</summary>
+    public string PinMenuLabel => Noctis.Localization.Loc.T(IsPinned ? "MiniPlayer.Unpin" : "MiniPlayer.PinOnTop");
 
     [RelayCommand]
     private void TogglePin()
@@ -267,7 +279,7 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     /// <summary>The "…" menu keeps this item in the list while lyrics are open — it is the
     /// only way back out — so its label has to say which direction it goes.</summary>
-    public string LyricsMenuLabel => IsLyricsForm ? "Hide Lyrics" : "Lyrics";
+    public string LyricsMenuLabel => Noctis.Localization.Loc.T(IsLyricsForm ? "MiniPlayer.HideLyrics" : "PlaybackBar.LyricsTip");
 
     [RelayCommand]
     private void ToggleLyricsForm()
