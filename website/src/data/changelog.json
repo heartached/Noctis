@@ -1,6 +1,65 @@
 {
   "releases": [
     {
+      "tag": "v1.6.1",
+      "version": "1.6.1",
+      "name": "v1.6.1",
+      "publishedAt": "2026-10-11T02:18:45Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.6.1",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added unified Home-style menu for player bar and lyrics page",
+            "Added Play Next and Add to Queue tiles in the player menu",
+            "Added accent color on Lyrics and Queue buttons when open",
+            "Added custom theme colors for the player island",
+            "Added Already on playlist indicator in Add to Playlist",
+            "Added Snooze for a Month option",
+            "Added Clear lyrics option in Lyrics Studio",
+            "Added Send to Folder for albums, artists and playlists",
+            "Added Move instead of copy option for Send to Folder",
+            "Added Live Albums and Compilations filter entries",
+            "Added Live Albums and Compilations artist page tabs",
+            "Added genre suggestions in the Metadata editor",
+            "Added artist pictures in View Artist menus"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Albums filter empty-state message",
+            "Improved Send to Folder subtitle and footer when moving",
+            "Improved Snooze description in Settings",
+            "Improved confirmation pop-up styling"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed hover box covering the whole artist credit instead of one name",
+            "Fixed Picard-tagged live albums and compilations being read as plain albums",
+            "Fixed Picard MP3 release types not being read",
+            "Fixed Lyrics Studio timing old lyrics instead of pasted ones",
+            "Fixed Re-sync dropping lyric edits",
+            "Fixed moved songs losing plays and playlist spots on rescan",
+            "Fixed moved songs pointing to old locations",
+            "Fixed multiple genres being lost on save",
+            "Fixed Snooze ignoring Ctrl multi-selection",
+            "Fixed snoozed songs appearing in Home suggestions",
+            "Fixed snoozed songs appearing in playlist suggestions",
+            "Fixed Home not updating after snoozing an album",
+            "Fixed plugin and content pack installs failing to move into place",
+            "Fixed double separators in the player bar menu on first open",
+            "Fixed songs being cut off early on some MP3 files",
+            "Fixed 96 kHz ALAC files being imported as 48 kHz",
+            "Fixed artist credit zooming on hover or click"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.6.0",
       "version": "1.6.0",
       "name": "v1.6.0",
@@ -3234,6 +3293,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-10-10T12:35:16.996Z",
+  "updatedAt": "2026-10-11T02:19:00.832Z",
   "degraded": false
 }
