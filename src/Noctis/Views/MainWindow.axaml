@@ -986,12 +986,14 @@
                                                                               Stretch="UniformToFill" />
                                                     </Border>
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                        <!-- No MaxWidth: the star column already bounds it, and a
+                                                             stretched TextBlock narrower than its slot is centred,
+                                                             which set the title off from the artist line. -->
                                                         <TextBlock Text="{Binding TitleDisplay}"
                                                                    Classes="one-line-explicit-title"
                                                                    FontSize="12"
                                                                    FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource QueueDrawerForeground}"
-                                                                   MaxWidth="190" />
+                                                                   Foreground="{DynamicResource QueueDrawerForeground}" />
                                                         <TextBlock Text="{Binding ArtistDisplay}"
                                                                    FontSize="11"
                                                                    Foreground="{DynamicResource QueueDrawerForeground}"
